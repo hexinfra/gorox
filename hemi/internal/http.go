@@ -589,12 +589,13 @@ type httpInMessage_ struct {
 	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	headResult  int16  // result of receiving message head. values are same as http status
 	// Stream states (zeros)
-	headReason      string // the reason of head result
-	inputNext       int32  // HTTP/1 only. next message begins from r.input[r.inputNext]. exists because HTTP/1 messages can be pipelined
-	inputEdge       int32  // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
-	contentBuffer   []byte // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
-	contentBlob     []byte // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
-	httpInMessage0_        // all values must be zero by default in this struct!
+	headReason      string   // the reason of head result
+	inputNext       int32    // HTTP/1 only. next message begins from r.input[r.inputNext]. exists because HTTP/1 messages can be pipelined
+	inputEdge       int32    // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
+	contentBuffer   []byte   // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	contentBlob     []byte   // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
+	contentFile     *os.File // used by holdContent(), if content is TempFile
+	httpInMessage0_          // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
 	receiveTime     int64 // the time when receiving message (seconds since unix epoch)
@@ -686,6 +687,11 @@ func (r *httpInMessage_) onEnd() { // for zeros
 		PutNK(r.contentBlob)
 	}
 	r.contentBlob = nil
+	if r.contentFile != nil {
+		r.contentFile.Close()
+		os.Remove(r.contentFile.Name())
+		r.contentFile = nil
+	}
 
 	r.httpInMessage0_ = httpInMessage0_{}
 }
@@ -1112,7 +1118,11 @@ badRecv:
 }
 func (r *httpInMessage_) holdContent() any { // used by proxies
 	if r.contentReceived {
-		return r.contentBlob
+		if r.contentFile == nil { // content is either blob or file
+			return r.contentBlob
+		} else {
+			return r.contentFile
+		}
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
@@ -1121,7 +1131,8 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
 		return r.contentBlob[0:r.sizeReceived]
 	case TempFile: // [0, r.app.maxUploadContentSize]. case happens when identity content > 64K1, or content is chunked.
-		return content.(*os.File)
+		r.contentFile = content.(*os.File)
+		return r.contentFile
 	case error:
 		// TODO: log err
 	}

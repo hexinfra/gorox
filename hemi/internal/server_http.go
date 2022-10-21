@@ -2644,25 +2644,6 @@ func (r *httpResponse_) SetAcceptBytesRange() {
 	r.acceptBytesRange = true
 }
 
-func (r *httpResponse_) addDate(date []byte) {
-	if !r.dateAdded {
-		r.dateAdded = true
-		r.shell.addHeader(httpBytesDate, date)
-	}
-}
-func (r *httpResponse_) addLastModified(lastModified []byte) {
-	if !r.lastModifiedAdded {
-		r.lastModifiedAdded = true
-		r.shell.addHeader(httpBytesLastModified, lastModified)
-	}
-}
-func (r *httpResponse_) addETag(etag []byte) {
-	if !r.etagAdded {
-		r.etagAdded = true
-		r.shell.addHeader(httpBytesETag, etag)
-	}
-}
-
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
 	return r.sendError(StatusBadRequest, content)
 }
@@ -2806,17 +2787,17 @@ func (r *httpResponse_) finishPush() error {
 func (r *httpResponse_) withHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
 	// copy critical headers from resp
-	if date := resp.unsafeDate(); date != nil {
-		r.addDate(date)
+	if date := resp.unsafeDate(); date != nil && !r._withHeader(&r.dateAdded, httpBytesDate, date) {
+		return false
 	}
-	if lastModified := resp.unsafeLastModified(); lastModified != nil {
-		r.addLastModified(lastModified)
+	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r._withHeader(&r.lastModifiedAdded, httpBytesLastModified, lastModified) {
+		return false
 	}
-	if etag := resp.unsafeETag(); etag != nil {
-		r.addETag(etag)
+	if etag := resp.unsafeETag(); etag != nil && !r._withHeader(&r.etagAdded, httpBytesETag, etag) {
+		return false
 	}
-	if contentType := resp.UnsafeContentType(); contentType != nil {
-		r.addContentType(contentType)
+	if contentType := resp.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {
+		return false
 	}
 	resp.delCriticalHeaders()
 	resp.delHopHeaders()

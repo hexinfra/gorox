@@ -1717,6 +1717,17 @@ func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 
+func (r *httpOutMessage_) _withHeader(added *bool, name []byte, value []byte) bool {
+	if *added {
+		return true
+	}
+	if r.shell.addHeader(name, value) {
+		*added = true
+		return true
+	}
+	return false
+}
+
 func (r *httpOutMessage_) post(content any) error { // used by proxies
 	if file, ok := content.(*os.File); ok {
 		info, err := file.Stat()

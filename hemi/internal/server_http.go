@@ -341,6 +341,7 @@ type Request interface {
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
+	UserAgent() string
 	ContentType() string
 	ContentSize() int64
 	AcceptTrailers() bool
@@ -388,6 +389,7 @@ type Request interface {
 	UnsafeQuery(name string) (value []byte, ok bool)
 	UnsafeHeader(name string) (value []byte, ok bool)
 	UnsafeCookie(name string) (value []byte, ok bool)
+	UnsafeUserAgent() []byte
 	UnsafeContentType() []byte
 	UnsafeContent() []byte
 	UnsafePost(name string) (value []byte, ok bool)
@@ -1432,6 +1434,16 @@ func (r *httpRequest_) parseCookie(cookieString text) bool {
 	return true
 }
 
+func (r *httpRequest_) UserAgent() string {
+	return string(r.UnsafeUserAgent())
+}
+func (r *httpRequest_) UnsafeUserAgent() []byte {
+	if r.indexes.userAgent == 0 {
+		return nil
+	}
+	vAgent := r.primes[r.indexes.userAgent].value
+	return r.input[vAgent.from:vAgent.edge]
+}
 func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
 
 func (r *httpRequest_) delHost() { // used by proxies

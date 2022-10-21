@@ -342,6 +342,7 @@ type hResponse0_ struct { // for fast reset, entirely
 	status           int16 // 200, 302, 404, ...
 	dateTime         int64 // parsed unix timestamp of date
 	lastModifiedTime int64 // parsed unix timestamp of last-modified
+	expiresTime      int64 // parsed unix timestamp of expires
 	cacheControl     struct {
 		noCache         bool  // ...
 		noStore         bool  // ...
@@ -358,6 +359,7 @@ type hResponse0_ struct { // for fast reset, entirely
 		server       uint8 // server header ->r.input
 		date         uint8 // date header ->r.input
 		lastModified uint8 // last-modified header ->r.input
+		expires      uint8 // expires header ->r.input
 		etag         uint8 // etag header ->r.input
 		acceptRanges uint8 // accept-ranges header ->r.input
 	}
@@ -510,9 +512,9 @@ func (r *hResponse_) checkETag(header *pair, index uint8) bool {
 	r.indexes.etag = index
 	return true
 }
-func (h *hResponse_) checkExpires(header *pair, index uint8) bool {
-	// TODO
-	return true
+func (r *hResponse_) checkExpires(header *pair, index uint8) bool {
+	// Expires = HTTP-date
+	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.expiresTime)
 }
 func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 	// Last-Modified = HTTP-date
@@ -578,7 +580,8 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 	// TODO
 	return false
 }
-func (r *hResponse_) addSetCookie(setCookie *cookie) bool {
+
+func (r *hResponse_) addCookie(cookie *cookie) bool {
 	// TODO
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false

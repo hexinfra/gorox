@@ -44,7 +44,7 @@ func (h *deroxHandler) OnShutdown() {
 }
 
 func (h *deroxHandler) Handle(req Request, resp Response) (next bool) {
-	h.testC(req, resp)
+	h.testUserAgent(req, resp)
 	return
 }
 
@@ -54,4 +54,7 @@ func (h *deroxHandler) testC(req Request, resp Response) {
 }
 func (h *deroxHandler) testQ(req Request, resp Response) {
 	resp.Send(req.Q("aa"))
+}
+func (h *deroxHandler) testUserAgent(req Request, resp Response) {
+	resp.Send(req.UserAgent())
 }

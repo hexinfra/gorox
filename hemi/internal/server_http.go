@@ -291,53 +291,34 @@ type Request interface {
 	PeerAddr() net.Addr
 	App() *App
 
-	UnsafeMake(size int) []byte
-
 	VersionCode() uint8
 	Version() string
-	UnsafeVersion() []byte
 
 	SchemeCode() uint8
 	IsHTTP() bool
 	IsHTTPS() bool
 	Scheme() string
-	UnsafeScheme() []byte
 
 	MethodCode() uint32
 	Method() string
-	UnsafeMethod() []byte
 	IsGET() bool
 	IsPOST() bool
 	IsPUT() bool
 	IsDELETE() bool
 
-	isAbsoluteForm() bool
-	isServerOptions() bool
-
 	Authority() string
-	UnsafeAuthority() []byte
 	Hostname() string
-	UnsafeHostname() []byte
 	ColonPort() string
-	UnsafeColonPort() []byte
 
 	URI() string
-	UnsafeURI() []byte
 	Path() string
-	UnsafePath() []byte
-	getPathInfo() system.FileInfo
-	makeAbsPath()
 	AbsPath() string
-	UnsafeAbsPath() []byte
 	EncodedPath() string
-	UnsafeEncodedPath() []byte
 
 	QueryString() string
-	UnsafeQueryString() []byte
 	Q(name string) string
 	Qint(name string, defaultValut int) int
 	Query(name string) (value string, ok bool)
-	UnsafeQuery(name string) (value []byte, ok bool)
 	QueryList(name string) (list []string, ok bool)
 	Queries() (queries [][2]string)
 	HasQuery(name string) bool
@@ -346,20 +327,14 @@ type Request interface {
 
 	H(name string) string
 	Header(name string) (value string, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
 	HeaderList(name string) (list []string, ok bool)
 	Headers() (headers [][2]string)
 	HasHeader(name string) bool
 	AddHeader(name string, value string) bool
 	DelHeader(name string) (deleted bool)
-	delHost()
-	delCriticalHeaders()
-	delHopHeaders()
-	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
 
 	C(name string) string
 	Cookie(name string) (value string, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
 	CookieList(name string) (list []string, ok bool)
 	Cookies() (cookies [][2]string)
 	HasCookie(name string) bool
@@ -367,26 +342,18 @@ type Request interface {
 	DelCookie(name string) (deleted bool)
 
 	ContentType() string
-	UnsafeContentType() []byte
 	ContentSize() int64
 	AcceptTrailers() bool
 
 	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
 
-	unsafeVariable(index int16) []byte
-
 	HasContent() bool                // contentSize=0 is considered as true
 	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
 	Content() string
-	UnsafeContent() []byte
-	recvContent(retain bool) any
-	holdContent() any
-	readContent() (from int, edge int, err error)
 
 	P(name string) string
 	Post(name string) (value string, ok bool)
-	UnsafePost(name string) (value []byte, ok bool)
 	PostList(name string) (list []string, ok bool)
 	Posts() (posts [][2]string)
 	HasPost(name string) bool
@@ -397,18 +364,51 @@ type Request interface {
 	Uploads() (uploads []*Upload)
 	HasUpload(name string) bool
 
-	hasTrailers() bool
 	T(name string) string
 	Trailer(name string) (value string, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
 	TrailerList(name string) (list []string, ok bool)
 	Trailers() (trailers [][2]string)
 	HasTrailer(name string) bool
 	AddTrailer(name string, value string) bool
 	DelTrailer(name string) (deleted bool)
-	delHopTrailers()
 
+	// Unsafe
+	UnsafeMake(size int) []byte
+	UnsafeVersion() []byte
+	UnsafeScheme() []byte
+	UnsafeMethod() []byte
+	UnsafeAuthority() []byte
+	UnsafeHostname() []byte
+	UnsafeColonPort() []byte
+	UnsafeURI() []byte
+	UnsafePath() []byte
+	UnsafeAbsPath() []byte
+	UnsafeEncodedPath() []byte
+	UnsafeQueryString() []byte
+	UnsafeQuery(name string) (value []byte, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
+	UnsafeContentType() []byte
+	UnsafeContent() []byte
+	UnsafePost(name string) (value []byte, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
+
+	// Internal only
+	isAbsoluteForm() bool
+	isServerOptions() bool
+	getPathInfo() system.FileInfo
+	makeAbsPath()
+	delHost()
+	delCriticalHeaders()
+	delHopHeaders()
+	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	recvContent(retain bool) any
+	holdContent() any
+	readContent() (from int, edge int, err error)
+	hasTrailers() bool
+	delHopTrailers()
 	hookChanger(changer Changer)
+	unsafeVariable(index int16) []byte
 }
 
 // httpRequest_ is the mixin for http[1-3]Request.
@@ -2458,8 +2458,6 @@ func (u *Upload) MoveTo(path string) error {
 type Response interface {
 	Request() Request
 
-	unsafeMake(size int) []byte
-
 	SetStatus(status int16) error
 	Status() int16
 
@@ -2478,12 +2476,9 @@ type Response interface {
 	AddHeaderBytes(name string, value []byte) bool
 	AddHeaderByBytes(name []byte, value string) bool
 	AddHeaderBytesByBytes(name []byte, value []byte) bool
-	addHeader(name []byte, value []byte) bool
 	Header(name string) (value string, ok bool)
-	header(name []byte) (value []byte, ok bool)
 	DelHeader(name string) bool
 	DelHeaderByBytes(name []byte) bool
-	delHeader(name []byte) bool
 
 	IsSent() bool
 	SetMaxSendSeconds(seconds int64) // to defend against slowloris attack
@@ -2491,10 +2486,7 @@ type Response interface {
 	Send(content string) error
 	SendBytes(content []byte) error
 	SendFile(contentPath string) error
-	sendBlob(content []byte) error
-	sendSysf(content system.File, info system.FileInfo) error // will close content after sent
-	sendFile(content *os.File, info os.FileInfo) error        // will close content after sent
-	doSend(chain Chain) error
+
 	SendBadRequest(content []byte) error
 	SendForbidden(content []byte) error
 	SendNotFound(content []byte) error
@@ -2507,11 +2499,19 @@ type Response interface {
 	Push(chunk string) error
 	PushBytes(chunk []byte) error
 	PushFile(chunkPath string) error
+	AddTrailer(name string, value string) bool
+
+	// Internal only
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	delHeader(name []byte) bool
+	sendBlob(content []byte) error
+	sendSysf(content system.File, info system.FileInfo) error // will close content after sent
+	sendFile(content *os.File, info os.FileInfo) error        // will close content after sent
+	doSend(chain Chain) error
 	pushHeaders() error
 	doPush(chain Chain) error
-	AddTrailer(name string, value string) bool
 	pushEnd() error
-
 	hookReviser(reviser Reviser)
 	setBypassRevisers(bypass bool)
 	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
@@ -2522,6 +2522,7 @@ type Response interface {
 	pass(resp response) error        // used by proxies
 	post(content any) error          // used by proxies
 	passTrailers(resp response) bool // used by proxies
+	unsafeMake(size int) []byte
 }
 
 // httpResponse_ is the mixin for http[1-3]Response.

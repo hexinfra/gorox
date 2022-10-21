@@ -1051,6 +1051,10 @@ func (s *http2Stream) execute() {
 	putHTTP2Stream(s)
 }
 
+func (s *http2Stream) getHolder() holder { return s.conn.getServer() }
+
+func (s *http2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+
 func (s *http2Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
@@ -1075,7 +1079,6 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 func (s *http2Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return s.conn.makeTempName(p, seconds)
 }
-func (s *http2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) setReadDeadline(deadline time.Time) error { // for content only
 	return nil
@@ -1099,8 +1102,6 @@ func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 
 func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
-
-func (s *http2Stream) getHolder() holder { return s.conn.getServer() }
 
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct {
@@ -1206,7 +1207,6 @@ func (r *http2Response) pushEnd() error {
 	// TODO
 	return nil
 }
-func (r *http2Response) trailers() []byte { return nil }
 
 func (r *http2Response) finalizeHeaders() {
 	// TODO

@@ -265,6 +265,13 @@ func (s *http3Stream) execute() {
 	putHTTP3Stream(s)
 }
 
+func (s *http3Stream) getHolder() holder { return s.conn.getServer() }
+
+func (s *http3Stream) peerAddr() net.Addr {
+	// TODO
+	return nil
+}
+
 func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
@@ -289,10 +296,6 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 func (s *http3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return s.conn.makeTempName(p, seconds)
 }
-func (s *http3Stream) peerAddr() net.Addr {
-	// TODO
-	return nil
-}
 
 func (s *http3Stream) setReadDeadline(deadline time.Time) error { // for content only
 	return nil
@@ -316,8 +319,6 @@ func (s *http3Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 
 func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
-
-func (s *http3Stream) getHolder() holder { return s.conn.getServer() }
 
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct {
@@ -408,7 +409,6 @@ func (r *http3Response) pushEnd() error {
 	// TODO
 	return nil
 }
-func (r *http3Response) trailers() []byte { return nil }
 
 func (r *http3Response) finalizeHeaders() {
 	// TODO

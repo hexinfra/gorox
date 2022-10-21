@@ -697,6 +697,9 @@ func (r *httpOutMessage_) pushEnd2() error {
 	// TODO
 	return nil
 }
+func (r *httpOutMessage_) trailers2() []byte {
+	return nil
+}
 
 func (r *httpOutMessage_) writeBlock2(block *Block, chunked bool) error {
 	// TODO

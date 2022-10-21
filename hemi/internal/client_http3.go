@@ -208,13 +208,6 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.h3Stream0 = h3Stream0{}
 }
 
-func (s *H3Stream) Request() *H3Request   { return &s.request }
-func (s *H3Stream) Response() *H3Response { return &s.response }
-func (s *H3Stream) Socket() *H3Socket {
-	// TODO
-	return nil
-}
-
 func (s *H3Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
@@ -222,12 +215,22 @@ func (s *H3Stream) reverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
-func (s *H3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *H3Stream) Request() *H3Request   { return &s.request }
+func (s *H3Stream) Response() *H3Response { return &s.response }
+func (s *H3Stream) Socket() *H3Socket {
+	// TODO
+	return nil
 }
+
+func (s *H3Stream) getHolder() holder { return s.conn.getClient() }
+
 func (s *H3Stream) peerAddr() net.Addr {
 	// TODO
 	return nil
+}
+
+func (s *H3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
+	return s.conn.makeTempName(p, seconds)
 }
 
 func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content only
@@ -252,8 +255,6 @@ func (s *H3Stream) readFull(p []byte) (int, error) { // for content only
 
 func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
-
-func (s *H3Stream) getHolder() holder { return s.conn.getClient() }
 
 // H3Request
 type H3Request struct {
@@ -310,7 +311,6 @@ func (r *H3Request) pushEnd() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) trailers() []byte { return nil }
 
 func (r *H3Request) finalizeHeaders() {
 	// TODO

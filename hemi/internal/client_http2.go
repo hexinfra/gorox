@@ -237,13 +237,6 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.h2Stream0 = h2Stream0{}
 }
 
-func (s *H2Stream) Request() *H2Request   { return &s.request }
-func (s *H2Stream) Response() *H2Response { return &s.response }
-func (s *H2Stream) Socket() *H2Socket {
-	// TODO
-	return nil
-}
-
 func (s *H2Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
@@ -251,10 +244,20 @@ func (s *H2Stream) reverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
+func (s *H2Stream) Request() *H2Request   { return &s.request }
+func (s *H2Stream) Response() *H2Response { return &s.response }
+func (s *H2Stream) Socket() *H2Socket {
+	// TODO
+	return nil
+}
+
+func (s *H2Stream) getHolder() holder { return s.conn.getClient() }
+
+func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+
 func (s *H2Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return s.conn.makeTempName(p, seconds)
 }
-func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content only
 	return nil
@@ -278,8 +281,6 @@ func (s *H2Stream) readFull(p []byte) (int, error) { // for content only
 
 func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
-
-func (s *H2Stream) getHolder() holder { return s.conn.getClient() }
 
 // H2Request
 type H2Request struct {
@@ -336,7 +337,6 @@ func (r *H2Request) pushEnd() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) trailers() []byte { return nil }
 
 func (r *H2Request) finalizeHeaders() {
 	// TODO

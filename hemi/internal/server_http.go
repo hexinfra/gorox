@@ -1534,6 +1534,7 @@ func (r *httpRequest_) checkHead() bool {
 		}
 		r.contentSize = -2 // mark as chunked. use -2 to check chunked content from now on
 	} else if r.versionCode >= Version2 && r.contentSize == -1 {
+		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame.
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as chunked
 	}
 

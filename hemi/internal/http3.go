@@ -232,6 +232,9 @@ func (r *httpOutMessage_) pushEnd3() error {
 	// TODO
 	return nil
 }
+func (r *httpOutMessage_) trailers3() []byte {
+	return nil
+}
 
 func (r *httpOutMessage_) writeBlock3(block *Block, chunked bool) error {
 	// TODO

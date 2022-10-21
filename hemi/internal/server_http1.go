@@ -259,6 +259,10 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.httpStream_.onEnd()
 }
 
+func (s *http1Stream) getHolder() holder { return s.conn.getServer() }
+
+func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.
 	if s.setWriteDeadline(time.Now().Add(s.conn.server.WriteTimeout())) == nil {
@@ -351,7 +355,6 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 func (s *http1Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return s.conn.makeTempName(p, seconds)
 }
-func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s.conn
@@ -383,8 +386,6 @@ func (s *http1Stream) writev(vector *net.Buffers) (int64, error) {
 
 func (s *http1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *http1Stream) markBroken()    { s.conn.markBroken() }
-
-func (s *http1Stream) getHolder() holder { return s.conn.getServer() }
 
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct {

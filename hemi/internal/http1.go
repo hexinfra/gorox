@@ -597,7 +597,17 @@ func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) {
 	r.fieldsEdge += 2
 }
 
-func (r *httpOutMessage_) doSend1(chain Chain, vector [][]byte) error {
+func (r *httpOutMessage_) doSend1(chain Chain) error {
+	r.shell.finalizeHeaders()
+	var vector [][]byte // waiting for write
+	if r.forbidContent {
+		vector = r.fixedVector[0:3]
+		chain.free()
+	} else if nBlocks := chain.Size(); nBlocks == 1 { // content chain has exactly one block
+		vector = r.fixedVector[0:4]
+	} else { // nBlocks >= 2
+		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
+	}
 	vector[0] = r.shell.control()
 	vector[1] = r.shell.addedHeaders()
 	vector[2] = r.shell.fixedHeaders()

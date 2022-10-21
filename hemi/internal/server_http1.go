@@ -928,17 +928,7 @@ func (r *http1Response) AddRawCookie(cookie *Cookie) bool {
 }
 
 func (r *http1Response) doSend(chain Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
-	r.finalizeHeaders()
-	var vector [][]byte // waiting for write
-	if r.forbidContent {
-		vector = r.fixedVector[0:3]
-		chain.free()
-	} else if nBlocks := chain.Size(); nBlocks == 1 { // content chain has exactly one block
-		vector = r.fixedVector[0:4]
-	} else { // nBlocks >= 2
-		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
-	}
-	return r.doSend1(chain, vector)
+	return r.doSend1(chain)
 }
 
 func (r *http1Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.

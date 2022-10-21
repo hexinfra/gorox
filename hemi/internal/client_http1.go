@@ -371,14 +371,7 @@ func (r *H1Request) fixedHeaders() []byte {
 }
 
 func (r *H1Request) doSend(chain Chain) error {
-	r.finalizeHeaders()
-	var vector [][]byte                        // waiting for write
-	if nBlocks := chain.Size(); nBlocks == 1 { // content chain has exactly one block
-		vector = r.fixedVector[0:4]
-	} else { // nBlocks >= 2
-		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
-	}
-	return r.doSend1(chain, vector)
+	return r.doSend1(chain)
 }
 
 func (r *H1Request) pushHeaders() error {

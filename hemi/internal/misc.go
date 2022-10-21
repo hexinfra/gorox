@@ -222,16 +222,10 @@ func (c *Chain) PushTail(block *Block) {
 	c.size++
 }
 
-// hostnameApp
-type hostnameApp struct {
+// hostnameTo
+type hostnameTo[T Component] struct {
 	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	app      *App
-}
-
-// hostnameSvc
-type hostnameSvc struct {
-	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	svc      *Svc
+	target   T
 }
 
 // contentSaver

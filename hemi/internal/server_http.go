@@ -48,19 +48,19 @@ type httpServer_ struct {
 	gates      []httpGate
 	defaultApp *App
 	// States
-	exactApps           []*hostnameApp // like: ("example.com")
-	suffixApps          []*hostnameApp // like: ("*.example.com")
-	prefixApps          []*hostnameApp // like: ("www.example.*")
-	exactSvcs           []*hostnameSvc // like: ("example.com")
-	suffixSvcs          []*hostnameSvc // like: ("*.example.com")
-	prefixSvcs          []*hostnameSvc // like: ("www.example.*")
-	logFile             string         // ...
-	maxStreamsPerConn   int32          // ...
-	recvRequestTimeout  time.Duration  // ...
-	sendResponseTimeout time.Duration  // ...
-	hrpcMode            bool           // works as hrpc server and dispatches to svcs instead of apps?
-	enableTCPTun        bool           // allow CONNECT method?
-	enableUDPTun        bool           // allow upgrade: connect-udp?
+	exactApps           []*hostnameTo[*App] // like: ("example.com")
+	suffixApps          []*hostnameTo[*App] // like: ("*.example.com")
+	prefixApps          []*hostnameTo[*App] // like: ("www.example.*")
+	exactSvcs           []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs          []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs          []*hostnameTo[*Svc] // like: ("www.example.*")
+	logFile             string              // ...
+	maxStreamsPerConn   int32               // ...
+	recvRequestTimeout  time.Duration       // ...
+	sendResponseTimeout time.Duration       // ...
+	hrpcMode            bool                // works as hrpc server and dispatches to svcs instead of apps?
+	enableTCPTun        bool                // allow CONNECT method?
+	enableUDPTun        bool                // allow upgrade: connect-udp?
 	logger              *logger.Logger
 }
 
@@ -119,34 +119,34 @@ func (s *httpServer_) linkApp(app *App) {
 	}
 	// TODO: use hash table?
 	for _, hostname := range app.exactHostnames {
-		s.exactApps = append(s.exactApps, &hostnameApp{hostname, app})
+		s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
 	}
 	// TODO: use radix trie?
 	for _, hostname := range app.suffixHostnames {
-		s.suffixApps = append(s.suffixApps, &hostnameApp{hostname, app})
+		s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
 	}
 	// TODO: use radix trie?
 	for _, hostname := range app.prefixHostnames {
-		s.prefixApps = append(s.prefixApps, &hostnameApp{hostname, app})
+		s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
 	}
 }
 func (s *httpServer_) findApp(hostname []byte) *App {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {
-			return exactMap.app
+			return exactMap.target
 		}
 	}
 	// TODO: use radix trie?
 	for _, suffixMap := range s.suffixApps {
 		if bytes.HasSuffix(hostname, suffixMap.hostname) {
-			return suffixMap.app
+			return suffixMap.target
 		}
 	}
 	// TODO: use radix trie?
 	for _, prefixMap := range s.prefixApps {
 		if bytes.HasPrefix(hostname, prefixMap.hostname) {
-			return prefixMap.app
+			return prefixMap.target
 		}
 	}
 	return s.defaultApp
@@ -156,34 +156,34 @@ func (s *httpServer_) linkSvc(svc *Svc) {
 	svc.linkHRPC(s.shell.(httpServer))
 	// TODO: use hash table?
 	for _, hostname := range svc.exactHostnames {
-		s.exactSvcs = append(s.exactSvcs, &hostnameSvc{hostname, svc})
+		s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
 	}
 	// TODO: use radix trie?
 	for _, hostname := range svc.suffixHostnames {
-		s.suffixSvcs = append(s.suffixSvcs, &hostnameSvc{hostname, svc})
+		s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
 	}
 	// TODO: use radix trie?
 	for _, hostname := range svc.prefixHostnames {
-		s.prefixSvcs = append(s.prefixSvcs, &hostnameSvc{hostname, svc})
+		s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
 	}
 }
 func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactSvcs {
 		if bytes.Equal(hostname, exactMap.hostname) {
-			return exactMap.svc
+			return exactMap.target
 		}
 	}
 	// TODO: use radix trie?
 	for _, suffixMap := range s.suffixSvcs {
 		if bytes.HasSuffix(hostname, suffixMap.hostname) {
-			return suffixMap.svc
+			return suffixMap.target
 		}
 	}
 	// TODO: use radix trie?
 	for _, prefixMap := range s.prefixSvcs {
 		if bytes.HasPrefix(hostname, prefixMap.hostname) {
-			return prefixMap.svc
+			return prefixMap.target
 		}
 	}
 	return nil

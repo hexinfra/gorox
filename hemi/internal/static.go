@@ -196,7 +196,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 			}
 		}
 		resp.AddContentType(contentType)
-		resp.sendSysf(file, info)
+		resp.sendSysf(file, info, true)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {

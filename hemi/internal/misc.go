@@ -35,6 +35,7 @@ func putBlock(block *Block) { poolBlock.Put(block) }
 type Block struct { // 64 bytes
 	next *Block      // next block
 	pool bool        // true if this block is got from poolBlock. don't change this after set
+	shut bool        // close sysf/file?
 	kind int8        // 0:blob 1:system.File 2:*os.File
 	sysf system.File // for optimized use (for example, by static handler)
 	file *os.File    // for general use
@@ -45,6 +46,7 @@ type Block struct { // 64 bytes
 
 func (b *Block) free() {
 	b.closeFile()
+	b.shut = false
 	b.kind = 0
 	b.data.Reset()
 	b.size = 0
@@ -55,10 +57,14 @@ func (b *Block) closeFile() {
 		return
 	}
 	if b.IsSysf() {
-		b.sysf.Close()
+		if b.shut {
+			b.sysf.Close()
+		}
 		b.sysf = system.File{}
 	} else { // *os.File
-		b.file.Close()
+		if b.shut {
+			b.file.Close()
+		}
 		b.file = nil
 	}
 }
@@ -96,30 +102,37 @@ func (b *Block) IsFile() bool { return b.kind == 2 }
 
 func (b *Block) SetBlob(blob []byte) {
 	b.closeFile()
+	b.shut = false
 	b.kind = 0
 	b.data = risky.ReferTo(blob)
 	b.size = int64(len(blob))
 	b.time = 0
 }
-func (b *Block) SetSysf(file system.File, info system.FileInfo) {
+func (b *Block) SetSysf(file system.File, info system.FileInfo, shut bool) {
 	if b.IsBlob() {
 		b.data.Reset()
 	} else if b.IsFile() {
-		b.file.Close()
+		if b.shut {
+			b.file.Close()
+		}
 		b.file = nil
 	}
+	b.shut = shut
 	b.kind = 1 // system.File
 	b.sysf = file
 	b.size = info.Size()
 	b.time = info.ModTime()
 }
-func (b *Block) SetFile(file *os.File, info os.FileInfo) {
+func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 	if b.IsBlob() {
 		b.data.Reset()
 	} else if b.IsSysf() {
-		b.sysf.Close()
+		if b.shut {
+			b.sysf.Close()
+		}
 		b.sysf = system.File{}
 	}
+	b.shut = shut
 	b.kind = 2 // *os.File
 	b.file = file
 	b.size = info.Size()

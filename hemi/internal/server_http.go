@@ -2519,8 +2519,8 @@ type Response interface {
 	header(name []byte) (value []byte, ok bool)
 	delHeader(name []byte) bool
 	sendBlob(content []byte) error
-	sendSysf(content system.File, info system.FileInfo) error // will close content after sent
-	sendFile(content *os.File, info os.FileInfo) error        // will close content after sent
+	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
+	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
 	doSend(chain Chain) error
 	pushHeaders() error
 	doPush(chain Chain) error

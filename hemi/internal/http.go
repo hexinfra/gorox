@@ -688,6 +688,9 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	}
 	r.contentBlob = nil
 	if r.contentFile != nil {
+		if IsDevel() {
+			fmt.Println("contentFile is closed!!")
+		}
 		r.contentFile.Close()
 		os.Remove(r.contentFile.Name())
 		r.contentFile = nil
@@ -1643,21 +1646,21 @@ func (r *httpOutMessage_) SendFile(contentPath string) error {
 		file.Close()
 		return err
 	}
-	return r.sendFile(file, info)
+	return r.sendFile(file, info, true)
 }
-func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo) error {
+func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r.checkSend(); err != nil {
 		return err
 	}
-	r.content.head.SetFile(content, info)
+	r.content.head.SetFile(content, info, shut)
 	r.contentSize = info.Size() // original size, may be revised
 	return r.shell.send()
 }
-func (r *httpOutMessage_) sendSysf(content system.File, info system.FileInfo) error {
+func (r *httpOutMessage_) sendSysf(content system.File, info system.FileInfo, shut bool) error {
 	if err := r.checkSend(); err != nil {
 		return err
 	}
-	r.content.head.SetSysf(content, info)
+	r.content.head.SetSysf(content, info, shut)
 	r.contentSize = info.Size()
 	return r.shell.send()
 }
@@ -1687,9 +1690,9 @@ func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	return r.shell.push(chunk_)
 }
 func (r *httpOutMessage_) PushFile(chunkPath string) error {
-	return r.pushFile(chunkPath)
+	return r.pushFile(chunkPath, true)
 }
-func (r *httpOutMessage_) pushFile(chunkPath string) error {
+func (r *httpOutMessage_) pushFile(chunkPath string, shut bool) error {
 	file, err := os.Open(chunkPath)
 	if err != nil {
 		return err
@@ -1707,7 +1710,7 @@ func (r *httpOutMessage_) pushFile(chunkPath string) error {
 		return nil
 	}
 	chunk := GetBlock()
-	chunk.SetFile(file, info)
+	chunk.SetFile(file, info, shut)
 	return r.shell.push(chunk)
 }
 
@@ -1737,7 +1740,7 @@ func (r *httpOutMessage_) post(content any) error { // used by proxies
 			file.Close()
 			return err
 		}
-		return r.sendFile(file, info)
+		return r.sendFile(file, info, false)
 	} else if content == nil { // nil
 		return r.sendBlob(nil)
 	} else { // []byte

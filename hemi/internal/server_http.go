@@ -1607,27 +1607,27 @@ func (r *httpRequest_) checkHead() bool {
 				typeParams  text
 				contentType []byte
 			)
-			header := &r.primes[r.iContentType]
-			if i := bytes.IndexByte(r.input[header.value.from:header.value.edge], ';'); i == -1 {
-				typeParams.from = header.value.edge
-				typeParams.edge = header.value.edge
-				contentType = r.input[header.value.from:header.value.edge]
+			vType := r.primes[r.iContentType].value
+			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
+				typeParams.from = vType.edge
+				typeParams.edge = vType.edge
+				contentType = r.input[vType.from:vType.edge]
 			} else {
-				typeParams.from = header.value.from + int32(i)
-				typeParams.edge = typeParams.from         // too lazy to alloc a new variable. reuse typeParams.edge
-				for typeParams.edge > header.value.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
+				typeParams.from = vType.from + int32(i)
+				typeParams.edge = typeParams.from  // too lazy to alloc a new variable. reuse typeParams.edge
+				for typeParams.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
 					if b := r.input[typeParams.edge-1]; b == ' ' || b == '\t' {
 						typeParams.edge--
 					} else {
 						break
 					}
 				}
-				if typeParams.edge == header.value.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
+				if typeParams.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
 					r.headResult, r.headReason = StatusBadRequest, "content-type can't be an empty value"
 					return false
 				}
-				contentType = r.input[header.value.from:typeParams.edge]
-				typeParams.edge = header.value.edge
+				contentType = r.input[vType.from:typeParams.edge]
+				typeParams.edge = vType.edge
 			}
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, httpBytesURLEncodedForm) {

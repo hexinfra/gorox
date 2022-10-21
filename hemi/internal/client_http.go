@@ -587,22 +587,22 @@ func (r *hResponse_) unsafeDate() []byte { // used by proxies
 	if r.indexes.date == 0 {
 		return nil
 	}
-	date := &r.primes[r.indexes.date]
-	return r.input[date.value.from:date.value.edge]
+	vDate := r.primes[r.indexes.date].value
+	return r.input[vDate.from:vDate.edge]
 }
 func (r *hResponse_) unsafeLastModified() []byte { // used by proxies
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
-	lastModified := &r.primes[r.indexes.lastModified]
-	return r.input[lastModified.value.from:lastModified.value.edge]
+	vDate := r.primes[r.indexes.lastModified].value
+	return r.input[vDate.from:vDate.edge]
 }
 func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	if r.indexes.etag == 0 {
 		return nil
 	}
-	etag := &r.primes[r.indexes.etag]
-	return r.input[etag.value.from:etag.value.edge]
+	vETag := r.primes[r.indexes.etag].value
+	return r.input[vETag.from:vETag.edge]
 }
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.indexes.server)

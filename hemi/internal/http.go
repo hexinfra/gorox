@@ -848,6 +848,7 @@ func (r *httpInMessage_) checkContentLength(header *pair, index uint8) bool {
 	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here.
 		if size, ok := decToI64(r.input[header.value.from:header.value.edge]); ok {
 			r.contentSize = size
+			r.iContentLength = index
 			return true
 		}
 	}

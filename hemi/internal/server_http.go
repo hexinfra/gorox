@@ -2463,7 +2463,7 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
-	SetContentType(contentType string) bool
+	AddContentType(contentType string) bool
 	SetLastModified(lastModified int64) bool
 	SetETag(etag string) bool
 	SetETagBytes(etag []byte) bool
@@ -2801,6 +2801,9 @@ func (r *httpResponse_) withHead(resp response) bool { // used by proxies
 	}
 	if etag := resp.unsafeETag(); etag != nil {
 		r.addETag(etag)
+	}
+	if contentType := resp.UnsafeContentType(); contentType != nil {
+		r.addContentType(contentType)
 	}
 	resp.delCriticalHeaders()
 	resp.delHopHeaders()

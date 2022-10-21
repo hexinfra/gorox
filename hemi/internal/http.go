@@ -1487,15 +1487,15 @@ type httpOutMessage_ struct {
 	httpOutMessage0_
 }
 type httpOutMessage0_ struct { // for fast reset, entirely
-	maxSendSeconds int64  // max seconds to send message
-	sendTime       int64  // unix timestamp in seconds when first send operation is performed
-	fieldsEdge     uint16 // edge of r.fields. max size of r.fields must be <= 16K
-	controlEdge    uint16 // edge of control in r.fields. only used by request
-	nHeaders       uint8  // num of added headers, <= 255
-	nTrailers      uint8  // num of added trailers, <= 255
-	isSent         bool   // whether the message is sent
-	contentTypeSet bool   // is content-type header set?
-	dateAdded      bool   // is date header added?
+	maxSendSeconds   int64  // max seconds to send message
+	sendTime         int64  // unix timestamp in seconds when first send operation is performed
+	fieldsEdge       uint16 // edge of r.fields. max size of r.fields must be <= 16K
+	controlEdge      uint16 // edge of control in r.fields. only used by request
+	nHeaders         uint8  // num of added headers, <= 255
+	nTrailers        uint8  // num of added trailers, <= 255
+	isSent           bool   // whether the message is sent
+	contentTypeAdded bool   // is content-type header added?
+	dateAdded        bool   // is date header added?
 }
 
 func (r *httpOutMessage_) onUse() { // for non-zeros
@@ -1554,15 +1554,15 @@ func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) {
 	return
 }
 
-func (r *httpOutMessage_) SetContentType(contentType string) bool {
-	return r.setContentType(risky.ConstBytes(contentType))
+func (r *httpOutMessage_) AddContentType(contentType string) bool {
+	return r.addContentType(risky.ConstBytes(contentType))
 }
-func (r *httpOutMessage_) setContentType(contentType []byte) bool {
-	if r.contentTypeSet && !r.shell.delHeader(httpBytesContentType) {
-		BugExitln("setContentType")
+func (r *httpOutMessage_) addContentType(contentType []byte) bool {
+	if r.contentTypeAdded {
+		return true
 	}
 	if ok := r.shell.addHeader(httpBytesContentType, contentType); ok {
-		r.contentTypeSet = true
+		r.contentTypeAdded = true
 		return true
 	} else {
 		return false

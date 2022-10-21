@@ -195,7 +195,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 				contentType = mimeType
 			}
 		}
-		resp.SetContentType(contentType)
+		resp.AddContentType(contentType)
 		resp.sendSysf(file, info)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)

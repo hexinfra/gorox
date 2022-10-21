@@ -316,6 +316,7 @@ type response interface {
 	unsafeDate() []byte
 	unsafeETag() []byte
 	unsafeLastModified() []byte
+	UnsafeContentType() []byte
 	hasTrailers() bool
 	delCriticalHeaders()
 	delHopHeaders()
@@ -609,6 +610,7 @@ func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.indexes.date)
 	r.delPrimeAt(r.indexes.lastModified)
 	r.delPrimeAt(r.indexes.etag)
+	r.delPrimeAt(r.iContentType)
 }
 func (r *hResponse_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)

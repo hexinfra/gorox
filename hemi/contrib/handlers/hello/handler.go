@@ -49,7 +49,7 @@ func (h *helloHandler) OnShutdown() {
 }
 
 func (h *helloHandler) Handle(req Request, resp Response) (next bool) {
-	resp.SetContentType(h.Type)
+	resp.AddContentType(h.Type)
 	resp.Send(h.text)
 	return
 }

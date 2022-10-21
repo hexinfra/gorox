@@ -326,7 +326,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb buffer, don't use its methods (like Send) to send anything here!
 	resp.SetStatus(status)
-	resp.setContentType(httpBytesTextHTML)
+	resp.addContentType(httpBytesTextHTML)
 	resp.setContentSize(int64(len(content)))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
@@ -989,7 +989,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes. not used b
 			r.stream.(*http1Stream).keepConn = false
 		}
 		// content-type: text/html; charset=utf-8
-		if !r.contentTypeSet {
+		if !r.contentTypeAdded {
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
 		}
 	}

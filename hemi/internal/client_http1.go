@@ -400,7 +400,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes. not used by pr
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		}
 		// content-type: text/html; charset=utf-8
-		if !r.contentTypeSet {
+		if !r.contentTypeAdded {
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
 		}
 	}

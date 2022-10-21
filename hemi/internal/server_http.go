@@ -2594,7 +2594,9 @@ func (r *httpResponse_) SetStatus(status int16) error {
 		return httpUnknownStatus
 	}
 }
-func (r *httpResponse_) Status() int16 { return r.status }
+func (r *httpResponse_) Status() int16 {
+	return r.status
+}
 
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 	if lastModified >= 0 {

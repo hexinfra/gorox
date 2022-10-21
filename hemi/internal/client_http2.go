@@ -295,7 +295,9 @@ func (r *H2Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 	// TODO
 	return false
 }
-func (r *H2Request) control() []byte { return nil }
+func (r *H2Request) control() []byte {
+	return nil
+}
 
 func (r *H2Request) header(name []byte) (value []byte, ok bool) {
 	return r.header2(name)
@@ -306,8 +308,12 @@ func (r *H2Request) addHeader(name []byte, value []byte) bool {
 func (r *H2Request) delHeader(name []byte) (deleted bool) {
 	return r.delHeader2(name)
 }
-func (r *H2Request) addedHeaders() []byte { return nil }
-func (r *H2Request) fixedHeaders() []byte { return nil }
+func (r *H2Request) addedHeaders() []byte {
+	return nil
+}
+func (r *H2Request) fixedHeaders() []byte {
+	return nil
+}
 
 func (r *H2Request) doSend(chain Chain) error {
 	// TODO

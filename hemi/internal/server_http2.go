@@ -1142,7 +1142,9 @@ type http2Response struct {
 	// Stream states (zeros)
 }
 
-func (r *http2Response) control() []byte { return nil }
+func (r *http2Response) control() []byte {
+	return nil
+}
 
 func (r *http2Response) header(name []byte) (value []byte, ok bool) {
 	return r.header2(name)
@@ -1153,8 +1155,12 @@ func (r *http2Response) addHeader(name []byte, value []byte) bool {
 func (r *http2Response) delHeader(name []byte) bool {
 	return r.delHeader2(name)
 }
-func (r *http2Response) addedHeaders() []byte { return nil }
-func (r *http2Response) fixedHeaders() []byte { return nil }
+func (r *http2Response) addedHeaders() []byte {
+	return nil
+}
+func (r *http2Response) fixedHeaders() []byte {
+	return nil
+}
 
 func (r *http2Response) AddHTTPSRedirection() bool {
 	// TODO

@@ -352,7 +352,9 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 		return false
 	}
 }
-func (r *H1Request) control() []byte { return r.fields[0:r.controlEdge] }
+func (r *H1Request) control() []byte {
+	return r.fields[0:r.controlEdge]
+}
 
 func (r *H1Request) header(name []byte) (value []byte, ok bool) {
 	return r.header1(name)

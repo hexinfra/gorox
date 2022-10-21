@@ -344,7 +344,9 @@ type http3Response struct {
 	// Stream states (zeros)
 }
 
-func (r *http3Response) control() []byte { return nil }
+func (r *http3Response) control() []byte {
+	return nil
+}
 
 func (r *http3Response) header(name []byte) (value []byte, ok bool) {
 	return r.header3(name)
@@ -355,8 +357,12 @@ func (r *http3Response) addHeader(name []byte, value []byte) bool {
 func (r *http3Response) delHeader(name []byte) bool {
 	return r.delHeader3(name)
 }
-func (r *http3Response) addedHeaders() []byte { return nil }
-func (r *http3Response) fixedHeaders() []byte { return nil }
+func (r *http3Response) addedHeaders() []byte {
+	return nil
+}
+func (r *http3Response) fixedHeaders() []byte {
+	return nil
+}
 
 func (r *http3Response) AddHTTPSRedirection() bool {
 	// TODO

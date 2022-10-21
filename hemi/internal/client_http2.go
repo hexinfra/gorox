@@ -291,7 +291,7 @@ type H2Request struct {
 	// Stream states (zeros)
 }
 
-func (r *H2Request) setControl(method []byte, uri []byte) bool {
+func (r *H2Request) setControl(method []byte, uri []byte, hasContent bool) bool {
 	// TODO
 	return false
 }

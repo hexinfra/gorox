@@ -330,7 +330,7 @@ type H1Request struct {
 	// Stream states (zeros)
 }
 
-func (r *H1Request) setControl(method []byte, uri []byte) bool {
+func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool {
 	size := len(method) + 1 + len(uri) + 1 + len(httpBytesHTTP1_1) + len(httpBytesCRLF) // METHOD uri HTTP/1.1\r\n
 	if from, edge, ok := r._growFields(size); ok {
 		r.controlEdge = uint16(edge)
@@ -343,6 +343,10 @@ func (r *H1Request) setControl(method []byte, uri []byte) bool {
 		from += copy(r.fields[from:], httpBytesHTTP1_1) // we always use HTTP/1.1
 		r.fields[from] = '\r'
 		r.fields[from+1] = '\n'
+		if !hasContent {
+			r.forbidContent = true
+			r.forbidFraming = true
+		}
 		return true
 	} else {
 		return false
@@ -391,7 +395,7 @@ func (r *H1Request) pushEnd() error {
 }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes. not used by proxies!
-	if r.contentSize != -1 {
+	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: 12345
 			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)

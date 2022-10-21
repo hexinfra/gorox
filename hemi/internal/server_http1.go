@@ -975,7 +975,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes. not used b
 	if r.nETag > 0 && !r.etagAdded {
 		r._addFixedHeader1(httpBytesETag, r.etag[0:r.nETag])
 	}
-	if r.contentSize != -1 && !r.forbidFramingHeader {
+	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: 12345
 			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)

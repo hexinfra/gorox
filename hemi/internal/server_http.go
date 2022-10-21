@@ -1450,7 +1450,8 @@ func (r *httpRequest_) delHost() { // used by proxies
 	r.delPrimeAt(r.indexes.host) // zero safe
 }
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	// TODO
+	r.delPrimeAt(r.iContentType)
+	r.delPrimeAt(r.iContentLength)
 }
 func (r *httpRequest_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
@@ -2556,15 +2557,13 @@ type httpResponse_ struct {
 	httpResponse0_      // all values must be zero by default in this struct!
 }
 type httpResponse0_ struct { // for fast reset, entirely
-	revisers            [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	hasRevisers         bool      // are there any revisers hooked on this response?
-	bypassRevisers      bool      // bypass revisers when writing response to client?
-	nETag               int8      // etag is at r.etag[:r.nETag]
-	forbidContent       bool      // forbid content?
-	forbidFramingHeader bool      // forbid content-length: xxx and transfer-encoding: chunked?
-	acceptBytesRange    bool      // accept-ranges: bytes?
-	lastModifiedAdded   bool      // ...
-	etagAdded           bool      // ...
+	revisers          [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
+	hasRevisers       bool      // are there any revisers hooked on this response?
+	bypassRevisers    bool      // bypass revisers when writing response to client?
+	nETag             int8      // etag is at r.etag[:r.nETag]
+	acceptBytesRange  bool      // accept-ranges: bytes?
+	lastModifiedAdded bool      // ...
+	etagAdded         bool      // ...
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
@@ -2583,11 +2582,11 @@ func (r *httpResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {
 		r.status = status
 		if status == StatusNoContent {
-			r.forbidFramingHeader = true
+			r.forbidFraming = true
 			r.forbidContent = true
 		} else if status == StatusNotModified {
 			// A server MAY send a Content-Length header field in a 304 (Not Modified) response to a conditional GET request.
-			r.forbidFramingHeader = true // we forbid it.
+			r.forbidFraming = true // we forbid it.
 			r.forbidContent = true
 		}
 		return nil

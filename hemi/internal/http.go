@@ -1494,6 +1494,8 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 	controlEdge      uint16 // edge of control in r.fields. only used by request
 	nHeaders         uint8  // num of added headers, <= 255
 	nTrailers        uint8  // num of added trailers, <= 255
+	forbidContent    bool   // forbid content?
+	forbidFraming    bool   // forbid content-length: xxx and transfer-encoding: chunked?
 	isSent           bool   // whether the message is sent
 	contentTypeAdded bool   // is content-type header added?
 	dateAdded        bool   // is date header added?

@@ -169,7 +169,7 @@ func (s *hStream_) callSocket() {
 // request is the client-side HTTP request and the interface for *H[1-3]Request.
 type request interface {
 	Response() response
-	setControl(method []byte, uri []byte) bool
+	setControl(method []byte, uri []byte, hasContent bool) bool
 	addHeader(name []byte, value []byte) bool
 }
 
@@ -250,7 +250,7 @@ func (r *hRequest_) withHead(req Request) bool { // used by proxies
 	} else {
 		uri = req.UnsafeURI()
 	}
-	if !r.shell.(request).setControl(req.UnsafeMethod(), uri) {
+	if !r.shell.(request).setControl(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	// copy critical headers from req

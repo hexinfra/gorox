@@ -1,0 +1,22 @@
+QUIC endpoints communicate by exchanging QUIC packets.
+Most QUIC packets contain QUIC frames.
+QUIC frames carry control information and application data between endpoints.
+QUIC packets are carried in UDP datagrams.
+
+udp datagram 1
+  quic packet 1
+    quic frame 1
+	quic frame 2
+	quic frame 3
+  quic packet 2
+    quic frame 4
+    quic frame 5
+  quic packet 3
+    quic frame 6
+
+udp datagram 2
+  quic packet 4
+    quic frame 7
+    quic frame 8
+  quic packet 5
+    quic frame 9

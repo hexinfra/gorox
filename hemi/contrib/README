@@ -1,0 +1,4 @@
+Components contributed by community.
+
+Import (i.e. from your "exts/import.go") the components you need and rebuild.
+Some components are preloaded, see "import.go".

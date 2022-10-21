@@ -1,0 +1,32 @@
+ABOUT
+=====
+
+  Currently, only these systems are supported:
+
+    Linux Kernel >= 3.9
+    FreeBSD      >= 12
+    macOS        >= Catalina
+    Windows      >= 7
+
+  And, only 64-bit of these systems are supported.
+
+FILE
+====
+
+  For better performance, we implemented a simple abstraction layer on top of
+  file descriptor or *os.File.
+
+NET
+===
+
+  TODO
+
+PROC
+====
+
+  TODO
+
+MISC
+====
+
+  TODO

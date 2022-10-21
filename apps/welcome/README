@@ -1,0 +1,16 @@
+This is a trivial app for Gorox, and can be used as a default app for all
+defined http servers. It's a static app and is configured in "conf/gorox.conf".
+
+To visit locally:
+
+  http://localhost:3080/
+
+If you are interested in benchmarking Gorox, use these URLs:
+
+  For text:
+
+    http://localhost:3080/benchmark
+
+  For file:
+
+    http://localhost:3080/benchmark.html

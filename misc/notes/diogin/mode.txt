@@ -1,0 +1,42 @@
+normal mode
+===========
+
+  request/response
+
+  through handler
+  ---------------
+
+    client  ---http/1/2/3-->  handler
+    client  ---http/1/2/3-->  reverse proxy  ---http/1/2/3/fcgi-->  backend
+    client  ---http/1/2/3-->  forward proxy  ~~~http/1/2/3~~>  target
+
+tcptun mode
+===========
+
+  CONNECT
+
+  through stream
+  --------------
+
+    client  ---connect/1/2/3-->  stream.processTCPTun()  ---tcp-->  server
+
+udptun mode
+===========
+
+  connect-udp
+
+  through stream
+  --------------
+
+    client  ---connect/1/2/3-->  stream.processUDPTun()  ---udp-->  server
+
+socket mode
+===========
+
+  websocket
+
+  through socklet
+  ---------------
+
+    client  ---ws/1/2/3-->  socklet
+    client  ---ws/1/2/3-->  proxy socklet  ---ws-->  socklet

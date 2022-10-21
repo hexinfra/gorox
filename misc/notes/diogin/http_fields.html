@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>HTTP 重要字段列表</title>
+		<style type="text/css">
+		table{margin:20px 10px;border-collapse:collapse;}
+		th,td{border:1px solid #000;text-align:center;padding:4px 8px;}
+		tr td:first-child{text-align:right;}
+		tr td:last-child{text-align:left;}
+		.code{font-family:Monospace;}
+		.request{background:#eef;}
+		.response{background:#fee;}
+		.general{background:#efe;}
+		</style>
+	</head>
+	<body>
+		<h1>HTTP 重要字段列表</h1>
+
+		<h2>前言</h2>
+		<p>参考 RFC：</p>
+		<ul>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc3986.html">RFC 3986：URI</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9110.html">RFC 9110：HTTP 语义</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9111.html">RFC 9111：HTTP 缓存</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9112.html">RFC 9112：HTTP/1.1</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9113.html">RFC 9113：HTTP/2</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9114.html">RFC 9114：HTTP/3</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc7541.html">RFC 7541：HPACK</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9204.html">RFC 9204：QPACK</a></li>
+		</ul>
+		<p>部分 ABNF：</p>
+		<ul class="code">
+			<li>ALPHA = %x41-5A / %x61-7A ; A-Z / a-z</li>
+			<li>DIGIT = "0" / "1" / "2" / "3" / "4" / "5" / "6" / "7" / "8" / "9"</li>
+			<li>OCTET = %x00-FF ; 8 bits of data</li>
+			<li>host = IP-literal / IPv4address / reg-name</li>
+			<li>uri-host = host</li>
+			<li>port = *DIGIT</li>
+			<li>tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA</li>
+			<li>token = 1*tchar</li>
+		</ul>
+		<p>本列表省略了“可拖挂”参数，因为拖挂字段通常单独存储（RFC 建议的），因此无需在乎字段是否可拖挂。</p>
+
+		<h2>字段列表</h2>
+
+		<table class="request">
+			<tr><th width="200px">请求字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">备注/说明</th></tr>
+			<tr><td>:authority</td>           <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>authority = host [ ":" port ]</td>
+					<td>如果请求有 :authority，则必须忽略 Host。</td></tr>
+			<tr><td>:method</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>method = token</td>
+					<td>包含合法的请求方法。</td></tr>
+			<tr><td>:path</td>                <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>request-target = origin-form / absolute-form / authority-form / asterisk-form</td>
+					<td>参见 request-target。包含“?”，如果带查询字符串的话。This pseudo-header field MUST NOT be empty for "http" or "https" URIs; "http" or "https" URIs that do not contain a path component MUST include a value of '/'. The exceptions to this rule are: 1) an OPTIONS request for an "http" or "https" URI that does not include a path component; these MUST include a ":path" pseudo-header field with a value of '*' (see Section 7.1 of [HTTP]); 2) CONNECT requests (Section 8.5), where the ":path" pseudo-header field is omitted.</td></tr>
+			<tr><td>:scheme</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>"http" / "https"</td>
+					<td>TODO</td></tr>
+			<tr><td>accept</td>               <td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td>
+					<td>TODO</td></tr>
+			<tr><td>accept-language</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>authorization</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>cookie</td>               <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>expect</td>               <td>✗</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>Expect = #expectation</td>
+					<td>目前只支持 100-continue 一个值。</td></tr>
+			<tr><td>forwarded</td>            <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>host</td>                 <td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Host = uri-host [ ":" port ]</td>
+					<td>名义上值可空，但实践中 HTTP/HTTPS Scheme 均不允许。</td></tr>
+			<tr><td>if-match</td>             <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Match = "*" / #entity-tag</td>
+					<td>TODO</td></tr>
+			<tr><td>if-modified-since</td>    <td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Modified-Since = HTTP-date</td>
+					<td>TODO</td></tr>
+			<tr><td>if-none-match</td>        <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-None-Match = "*" / #entity-tag</td>
+					<td>TODO</td></tr>
+			<tr><td>if-range</td>             <td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Range = entity-tag / HTTP-date</td>
+					<td>TODO</td></tr>
+			<tr><td>if-unmodified-since</td>  <td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Unmodified-Since = HTTP-date</td>
+					<td>TODO</td></tr>
+			<tr><td>max-forwards</td>         <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Max-Forwards = 1*DIGIT</td>
+					<td>TODO</td></tr>
+			<tr><td>proxy-authorization</td>  <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>proxy-connection</td>     <td>✓</td><td>?</td><td>?</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>range</td>                <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>referer</td>              <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>te</td>                   <td>✓</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>?</td>
+					<td>在 HTTP/2 和 HTTP/3 里仅允许 trailers。</td></tr>
+			<tr><td>user-agent</td>           <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><th>请求字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th><th>备注/说明</th></tr>
+		</table>
+
+		<table class="response">
+			<tr><th width="200px">响应字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">备注/说明</th></tr>
+			<tr><td>:status</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>status-code = 3DIGIT</td>
+					<td>TODO</td></tr>
+			<tr><td>accept-ranges</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Ranges = 1#range-unit</td>
+					<td>TODO</td></tr>
+			<tr><td>age</td>                  <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>allow</td>                <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>alt-svc</td>              <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>content-disposition</td>  <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>etag</td>                 <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>ETag = [ weak ] opaque-tag</td>
+					<td>TODO</td></tr>
+			<tr><td>expires</td>              <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>last-modified</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Last-Modified = HTTP-date</td>
+					<td>TODO</td></tr>
+			<tr><td>location</td>             <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Location = URI-reference</td>
+					<td>TODO</td></tr>
+			<tr><td>proxy-authenticate</td>   <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>retry-after</td>          <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>server</td>               <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>set-cookie</td>           <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>vary</td>                 <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>www-authenticate</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><th>响应字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th><th>备注/说明</th></tr>
+		</table>
+
+		<table class="general">
+			<tr><th width="200px">通用字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">备注/说明</th></tr>
+			<tr><td>accept-encoding</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Encoding  = #( codings [ weight ] )</td>
+					<td>TODO</td></tr>
+			<tr><td>cache-control</td>        <td>?</td><td>+</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>connection</td>           <td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #connection-option</td>
+					<td>列出逐跳字段名称列表，同时可指定 close 和 keep-alive。<br>其值大小写不敏感。代理在转发消息时，必须删除 connection 里指定的字段，这些字段仅作用于当前连接。</td></tr>
+			<tr><td>content-encoding</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Encoding = #content-coding</td>
+					<td>TODO</td></tr>
+			<tr><td>content-length</td>       <td>✗</td><td>1</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>content-location</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Location = absolute-URI / partial-URI</td>
+					<td>TODO</td></tr>
+			<tr><td>content-range</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Range = range-unit SP ( range-resp / unsatisfied-range )</td>
+					<td>TODO</td></tr>
+			<tr><td>content-type</td>         <td>✗</td><td>1</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>date</td>                 <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Date = HTTP-date</td>
+					<td>TODO</td></tr>
+			<tr><td>keep-alive</td>           <td>✓</td><td>?</td><td>?</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>pragma</td>               <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>trailer</td>              <td>?</td><td>*</td><td>✗</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Trailer = #field-name</td>
+					<td>TODO</td></tr>
+			<tr><td>transfer-encoding</td>    <td>✓</td><td>+</td><td>?</td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td>Transfer-Encoding = #transfer-coding</td>
+					<td>TODO</td></tr>
+			<tr><td>upgrade</td>              <td>✓</td><td>*</td><td>✗</td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td>Upgrade = #protocol</td>
+					<td>邀请或同意从 HTTP/1.1 升级到的协议名称列表。协议名称大小写不敏感。<br>如果接收端同意升级，则必须同时提供一个 upgrade 字段指定升级到哪个协议。<br>如果发送端同时指定了 expect，则优先响应 expect，发出 100-continue。<br>如果该字段来自 HTTP/1.0，则必须忽略。</td></tr>
+			<tr><td>via</td>                  <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><th>通用字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th><th>备注/说明</th></tr>
+		</table>
+
+		<h2>备忘</h2>
+		<p>代理在转发消息时，有些已知字段，无论是否在 connection 里指定，都必须删除：proxy-connection、keep-alive、transfer-encoding、upgrade、te 等，包括 connection 本身。当后端为 HTTP/1 时，代理可以重新指定 connection，但当后端是 HTTP/2 或 HTTP/3 时，则必须不能使用 connection。后端为 HTTP/2 或 HTTP/3 时，可以加入 te，但是其值必须为 trailers。</p>
+
+	</body>
+</html>

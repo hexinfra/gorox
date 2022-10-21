@@ -1,0 +1,20 @@
+This directory holds apps of gorox, basically one app per directory.
+By default there are 4 apps:
+
+  example/           - An example app.
+  official/en_us/    - The official Gorox website in en_US.
+  official/zh_cn/    - The official Gorox website in zh_CN.
+  welcome/           - A static app that can be used as a default app.
+
+To add a new app named "foo":
+
+  1. Create a folder called "foo" inside this directory,
+  2. Create file "foo/app.conf",
+  3. Create file "foo/app.go" if it is not a static app,
+  4. Import package "foo" in "import.go" if it is not a static app,
+  5. Add your app "foo" in "../conf/gorox.conf".
+
+In gorox, an http server (like httpxServer and http3Server) can host many apps,
+whereas an app can be bound to many http servers.
+
+For examples, see "example/" and "welcome/".

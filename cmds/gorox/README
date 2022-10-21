@@ -1,0 +1,35 @@
+Gorox
+=====
+
+  Gorox is the HTTP server, application server, microservice server, and proxy server.
+
+Process Architecture
+====================
+
+  There are two kinds of gorox processes: leader and worker.
+  There are two process architectures:
+
+    * 1 leader + 1 worker, worker has GOMAXPROCS=N
+	* 1 leader + N workers, each worker has GOMAXPROCS=1
+
+Program Dependencies
+====================
+
+  +--------------------------------------------------------+
+  |                        <gorox>                         |
+  +---------------------+-----------------------------+----+
+                        |                             |
+                        v                             v
+  +------+   +----------------------+   +------+ +---------+
+  | libs |<--+     apps & svcs      +-->| exts | |<manager>|
+  +------+   +--+----------------+--+   +--+---+ +----+----+
+                |                |         |          |
+                v                v         v          v
+  +-----------------------+   +----------------------------+
+  |       <contrib>       |<--+           <hemi>           |
+  +-----------+-----------+   +--------------+-------------+
+              |                              |
+              v                              v
+  +--------------------------------------------------------+
+  |                       <internal>                       |
+  +--------------------------------------------------------+

@@ -1,0 +1,4 @@
+Only for TCP socket, UDP socket, and Unix domain socket.
+
+The main blocker is that runtime doesn't export its netpoll ability.
+And internal/poll is not exported either.

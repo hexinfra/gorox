@@ -1,0 +1,21 @@
+*{
+	box-sizing:border-box;
+	margin:0;
+	padding:0;
+}
+html{
+	background:#f0f0f0;
+}
+body{
+	background:#e0e0e0;
+}
+ul{
+	list-style-type:none;
+}
+a{
+	text-decoration:none;
+}
+main{
+	max-width:1200px;
+	margin:auto;
+}

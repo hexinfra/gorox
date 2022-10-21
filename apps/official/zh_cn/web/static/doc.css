@@ -1,0 +1,9 @@
+article table{border-collapse:collapse;}
+article th,article td{border:1px solid #000;}
+article h1,article h2,article h3,article h4,article h5,article h6{padding:5px;}
+article h1{background:#d0e0f0;}
+article h2{background:#d0f0e0;}
+article h3{background:#f0e0d0;}
+article li{padding:2px;}
+article a{text-decoration:none;}
+article dt{font-weight:bold;font-style:italic;}

@@ -1,0 +1,42 @@
+<style type="text/css">
+header{
+	display:flex;
+	flex-direction:column;
+	justify-content:space-between;
+	background:#aac;
+}
+header span{
+	display:block;
+	height:100px;
+	line-height:100px;
+	text-align:center;
+	background:#f00;
+}
+header ul{
+	display:flex;
+	justify-content:center;
+}
+header li{
+	border-right:1px solid #36f;
+	background:#aca;
+}
+header li a{
+	display:block;
+	padding:10px;
+}
+</style>
+
+<header>
+	<span>Gorox is an HTTP server, application server, microservice server, and proxy server.</span>
+	<ul>
+		<li><a href="/">Home</a></li>
+		<li><a href="/about">About</a></li>
+		<li><a href="/download">Download</a></li>
+		<li><a href="/docs/gorox/">Documentation</a></li>
+		<li><a href="/community">Community</a></li>
+		<li><a href="/developers">Developers</a></li>
+		<li><a href="/support">Support</a></li>
+		<li><a href="https://github.com/hexinfra/gorox">Source</a></li>
+		<li><a href="{{$scheme}}://www.gorox.net{{$colonPort}}{{$uri}}">简体中文</a></li>
+	</ul>
+</header>

@@ -19,9 +19,9 @@ type httpProxy_ struct {
 	bufferClientContent bool        // buffer client content into TempFile?
 	bufferServerContent bool        // buffer server content into TempFile?
 	delRequestHeaders   [][]byte    // client request headers to delete
-	setRequestHeaders   [][2][]byte // headers appended to client request
+	addRequestHeaders   [][2][]byte // headers appended to client request
 	delResponseHeaders  [][]byte    // server response headers to delete
-	setResponseHeaders  [][2][]byte // headers appended to server response
+	addResponseHeaders  [][2][]byte // headers appended to server response
 }
 
 func (h *httpProxy_) init(name string, stage *Stage, app *App) {

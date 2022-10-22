@@ -1477,8 +1477,8 @@ type httpOutMessage_ struct {
 		finalizeHeaders()
 	}
 	// Stream states (buffers)
-	stockFields [_1K]byte // for r.fields
-	stockBlock  Block     // for r.content. if content has only one block, this one is used
+	stockFields [1536]byte // for r.fields
+	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
 	edges [128]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers
 	// Stream states (non-zeros)

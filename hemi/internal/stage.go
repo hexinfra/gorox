@@ -503,14 +503,14 @@ func (s *Stage) startRouters() {
 	if IsDebug() {
 		fmt.Println("start routers")
 	}
-	for _, router := range s.quicRouters {
-		go router.serve()
+	for _, quicRouter := range s.quicRouters {
+		go quicRouter.serve()
 	}
-	for _, router := range s.tcpsRouters {
-		go router.serve()
+	for _, tcpsRouter := range s.tcpsRouters {
+		go tcpsRouter.serve()
 	}
-	for _, router := range s.udpsRouters {
-		go router.serve()
+	for _, udpsRouter := range s.udpsRouters {
+		go udpsRouter.serve()
 	}
 }
 func (s *Stage) startCachers() {

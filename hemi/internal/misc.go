@@ -445,10 +445,10 @@ func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
 func (f _fakeFile) Close() error                           { return nil }
 
 // region
-type region struct { // 1K
+type region struct { // 512B
 	blocks [][]byte  // the blocks. [<stocks>/make]
 	stocks [4][]byte // for blocks. 96B
-	block0 [904]byte // for blocks[0]. 904B
+	block0 [392]byte // for blocks[0]
 }
 
 func (r *region) init() {

@@ -641,7 +641,8 @@ func (r *hResponse_) UnsafeContent() []byte {
 }
 
 func (r *hResponse_) useTrailer(trailer *pair) bool {
-	// TODO: check trailer?
+	r.addTrailer(trailer)
+	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 func (r *hResponse_) delHopTrailers() { // used by proxies

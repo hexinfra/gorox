@@ -1501,7 +1501,6 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 	forbidFraming    bool   // forbid content-length: xxx and transfer-encoding: chunked?
 	isSent           bool   // whether the message is sent
 	contentTypeAdded bool   // is content-type header added?
-	dateAdded        bool   // is date header added?
 }
 
 func (r *httpOutMessage_) onUse() { // for non-zeros

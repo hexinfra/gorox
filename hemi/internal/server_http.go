@@ -2563,6 +2563,7 @@ type httpResponse0_ struct { // for fast reset, entirely
 	bypassRevisers    bool      // bypass revisers when writing response to client?
 	nETag             int8      // etag is at r.etag[:r.nETag]
 	acceptBytesRange  bool      // accept-ranges: bytes?
+	dateAdded         bool      // is date header added?
 	lastModifiedAdded bool      // ...
 	etagAdded         bool      // ...
 }

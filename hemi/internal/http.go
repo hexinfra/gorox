@@ -592,7 +592,7 @@ type httpInMessage_ struct {
 	headReason      string   // the reason of head result
 	inputNext       int32    // HTTP/1 only. next message begins from r.input[r.inputNext]. exists because HTTP/1 messages can be pipelined
 	inputEdge       int32    // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
-	contentBuffer   []byte   // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	bodyBuffer      []byte   // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	contentBlob     []byte   // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile     *os.File // used by holdContent(), if content is TempFile
 	httpInMessage0_          // all values must be zero by default in this struct!
@@ -622,9 +622,9 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	chunkSize       int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack           int32 // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore           int32 // for parsing chunked elements. HTTP/1.1 chunked only
-	chunkEdge       int32 // edge position of the filled chunked data in r.contentBuffer. HTTP/1.1 chunked only
+	chunkEdge       int32 // edge position of the filled chunked data in r.bodyBuffer. HTTP/1.1 chunked only
 	transferChunked bool  // transfer-encoding: chunked? HTTP/1.1 only
-	overChunked     bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.contentBuffer, then r.contentBuffer will be used as r.input on ends
+	overChunked     bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.bodyBuffer, then r.bodyBuffer will be used as r.input on ends
 	trailers        zone  // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
@@ -667,21 +667,21 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	r.headReason = ""
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked content
-			// Use bytes over received in r.contentBuffer as new r.input.
-			// This means the size list for r.contentBuffer must sync with r.input!
+			// Use bytes over received in r.bodyBuffer as new r.input.
+			// This means the size list for r.bodyBuffer must sync with r.input!
 			if cap(r.input) != cap(r.stockInput) {
 				PutNK(r.input)
 			}
-			r.input = r.contentBuffer // use r.contentBuffer as new r.input
+			r.input = r.bodyBuffer // use r.bodyBuffer as new r.input
 		}
 		// slide r.input
 		copy(r.input, r.input[r.inputNext:r.inputEdge]) // r.inputNext and r.inputEdge have already been set
 		r.inputEdge -= r.inputNext
 		r.inputNext = 0
-	} else if r.contentBuffer != nil { // r.contentBuffer was used to receive content and failed to free. we free it here.
-		PutNK(r.contentBuffer)
+	} else if r.bodyBuffer != nil { // r.bodyBuffer was used to receive content and failed to free. we free it here.
+		PutNK(r.bodyBuffer)
 	}
-	r.contentBuffer = nil
+	r.bodyBuffer = nil
 
 	if r.contentBlobKind == httpContentBlobPool {
 		PutNK(r.contentBlob)
@@ -1077,7 +1077,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		if err := r.stream.setReadDeadline(time.Now().Add(timeout)); err != nil {
 			return err
 		}
-		// Since content is small, r.contentBuffer is not needed, and TempFile is not used either.
+		// Since content is small, r.bodyBuffer is not needed, and TempFile is not used either.
 		content := GetNK(r.contentSize) // max size of content is 64K1
 		r.sizeReceived = int64(r.imme.size())
 		if r.sizeReceived > 0 {
@@ -1104,7 +1104,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 			break
 		} else if err != nil {
 			goto badRecv
-		} else if _, err = content.Write(r.contentBuffer[from:edge]); err != nil {
+		} else if _, err = content.Write(r.bodyBuffer[from:edge]); err != nil {
 			goto badRecv
 		}
 	}

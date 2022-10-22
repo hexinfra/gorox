@@ -1029,7 +1029,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 	s.httpStream_.onUse()
 	s.conn = conn
 	s.id = id
-	s.inWindow = _64K1 // max size of r.contentBuffer
+	s.inWindow = _64K1 // max size of r.bodyBuffer
 	s.outWindow = outWindow
 	s.request.versionCode = Version2 // explicitly set
 	s.request.onUse()

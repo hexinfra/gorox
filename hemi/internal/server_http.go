@@ -430,7 +430,7 @@ type httpRequest_ struct {
 	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0')
 	app           *App            // target app of this request. set before processing stream
 	svc           *Svc            // target svc of this request. set before processing stream
-	parsingBuffer []byte          // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
+	formBuffer    []byte          // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
 	httpRequest0_                 // all values must be zero by default in this struct!
 }
 type httpRequest0_ struct { // for fast reset, entirely
@@ -483,8 +483,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 	hasChangers  bool      // ...
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
-	parsingEdge  int32     // edge position of the filled content in r.parsingBuffer
-	pFieldName   text      // raw field name. used during receiving and parsing multipart form in case of sliding r.parsingBuffer
+	formEdge     int32     // edge position of the filled content in r.formBuffer
+	pFieldName   text      // raw field name. used during receiving and parsing multipart form in case of sliding r.formBuffer
 	sizeConsumed int64     // bytes of consumed content when consuming received TempFile. used by, for example, _recvMultipartForm.
 }
 
@@ -514,7 +514,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.pathInfo.Reset()
 	r.app = nil
 	r.svc = nil
-	r.parsingBuffer = nil // if r.parsingBuffer is fetched from pool, it's put into pool at return. so just set nil
+	r.formBuffer = nil // if r.formBuffer is fetched from pool, it's put into pool at return. so just set nil
 
 	r.httpRequest0_ = httpRequest0_{}
 	r.httpInMessage_.onEnd()
@@ -1866,14 +1866,14 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	r.sizeConsumed = r.sizeReceived
 	if r.contentReceived { // (0, 64K1)
 		// r.contentBlob is set, r.contentBlobKind == httpContentBlobInput
-		r.parsingBuffer, r.parsingEdge = r.contentBlob, int32(len(r.parsingBuffer)) // r.parsingBuffer refers to the exact r.contentBlob.
+		r.formBuffer, r.formEdge = r.contentBlob, int32(len(r.formBuffer)) // r.formBuffer refers to the exact r.contentBlob.
 	} else { // content is not received
 		r.contentReceived = true
 		switch content := r.recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when identity content <= 64K1
 			r.contentBlob = content
-			r.contentBlobKind = httpContentBlobPool                                                 // so r.contentBlob can be freed on end
-			r.parsingBuffer, r.parsingEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.parsingBuffer refers to the exact r.content.
+			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
+			r.formBuffer, r.formEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.formBuffer refers to the exact r.content.
 		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when identity content > 64K1, or content is chunked.
 			tempFile = content.(*os.File)
 			defer func() {
@@ -1884,13 +1884,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				// Chunked content can be empty.
 				return
 			}
-			// We need a window to read and parse. An adaptive r.parsingBuffer is used
-			r.parsingBuffer = GetNK(r.sizeReceived) // max size of r.parsingBuffer is 64K1
+			// We need a window to read and parse. An adaptive r.formBuffer is used
+			r.formBuffer = GetNK(r.sizeReceived) // max size of r.formBuffer is 64K1
 			defer func() {
-				PutNK(r.parsingBuffer)
-				r.parsingBuffer = nil
+				PutNK(r.formBuffer)
+				r.formBuffer = nil
 			}()
-			r.parsingEdge = 0  // no initial data, will fill below
+			r.formEdge = 0     // no initial data, will fill below
 			r.sizeConsumed = 0 // increases when we grow content
 			if !r._growMultipartForm(tempFile) {
 				return
@@ -1907,9 +1907,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	separator := template[0:n] // \n--boundary
 	template[n], template[n+1] = '-', '-'
 	for { // each part in multipart
-		// Now r.parsingBuffer is used for receiving --boundary-- EOL or --boundary EOL
-		for r.parsingBuffer[r.pFore] != '\n' {
-			if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+		// Now r.formBuffer is used for receiving --boundary-- EOL or --boundary EOL
+		for r.formBuffer[r.pFore] != '\n' {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 				return
 			}
 		}
@@ -1918,21 +1918,21 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			return
 		}
 		fore := r.pFore
-		if fore >= 1 && r.parsingBuffer[fore-1] == '\r' {
+		if fore >= 1 && r.formBuffer[fore-1] == '\r' {
 			fore--
 		}
-		if bytes.Equal(r.parsingBuffer[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
+		if bytes.Equal(r.formBuffer[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
 			if IsDevel() {
 				fmt.Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
-		} else if !bytes.Equal(r.parsingBuffer[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
+		} else if !bytes.Equal(r.formBuffer[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
 			r.stream.markBroken()
 			return
 		}
 		// Skip '\n'
-		if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 			return
 		}
 		// r.pFore is at fields of current part.
@@ -1950,11 +1950,11 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		}
 		for { // each field in current part
 			// End of part fields?
-			if b := r.parsingBuffer[r.pFore]; b == '\r' {
-				if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+			if b := r.formBuffer[r.pFore]; b == '\r' {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 					return
 				}
-				if r.parsingBuffer[r.pFore] != '\n' {
+				if r.formBuffer[r.pFore] != '\n' {
 					r.stream.markBroken()
 					return
 				}
@@ -1962,19 +1962,19 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			} else if b == '\n' {
 				break
 			}
-			r.pBack = r.pFore // now r.parsingBuffer is used for receiving field-name and onward
+			r.pBack = r.pFore // now r.formBuffer is used for receiving field-name and onward
 			for {             // field name
-				b := r.parsingBuffer[r.pFore]
+				b := r.formBuffer[r.pFore]
 				if b == ':' {
 					break
 				}
 				if b >= 'A' && b <= 'Z' {
-					r.parsingBuffer[r.pFore] = b + 0x20 // to lower
+					r.formBuffer[r.pFore] = b + 0x20 // to lower
 				} else if httpTchar[b] == 0 {
 					r.stream.markBroken()
 					return
 				}
-				if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 					return
 				}
 			}
@@ -1982,72 +1982,72 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				r.stream.markBroken()
 				return
 			}
-			r.pFieldName.set(r.pBack, r.pFore) // in case of sliding r.parsingBuffer when r._growMultipartForm()
+			r.pFieldName.set(r.pBack, r.pFore) // in case of sliding r.formBuffer when r._growMultipartForm()
 			// Skip ':'
-			if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 				return
 			}
 			// Skip OWS before field value
-			for r.parsingBuffer[r.pFore] == ' ' || r.parsingBuffer[r.pFore] == '\t' {
-				if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+			for r.formBuffer[r.pFore] == ' ' || r.formBuffer[r.pFore] == '\t' {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 					return
 				}
 			}
-			r.pBack = r.pFore // now r.parsingBuffer is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
-			if fieldName := r.parsingBuffer[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, httpBytesContentDisposition) {
+			r.pBack = r.pFore // now r.formBuffer is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
+			if fieldName := r.formBuffer[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, httpBytesContentDisposition) {
 				// form-data; name="avatar"; filename="michael.jpg"
-				for r.parsingBuffer[r.pFore] != ';' {
-					if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+				for r.formBuffer[r.pFore] != ';' {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 						return
 					}
 				}
-				if r.pBack == r.pFore || !bytes.Equal(r.parsingBuffer[r.pBack:r.pFore], httpBytesFormData) {
+				if r.pBack == r.pFore || !bytes.Equal(r.formBuffer[r.pBack:r.pFore], httpBytesFormData) {
 					r.stream.markBroken()
 					return
 				}
-				r.pBack = r.pFore // now r.parsingBuffer is used for receiving params and onward
-				for r.parsingBuffer[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+				r.pBack = r.pFore // now r.formBuffer is used for receiving params and onward
+				for r.formBuffer[r.pFore] != '\n' {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 						return
 					}
 				}
 				fore := r.pFore
-				if r.parsingBuffer[fore-1] == '\r' {
+				if r.formBuffer[fore-1] == '\r' {
 					fore--
 				}
 				// Skip OWS after field value
-				for r.parsingBuffer[fore-1] == ' ' || r.parsingBuffer[fore-1] == '\t' {
+				for r.formBuffer[fore-1] == ' ' || r.formBuffer[fore-1] == '\t' {
 					fore--
 				}
 				paras := make([]nava, 2) // for name & filename. won't escape to heap
-				n, ok := r.parseParams(r.parsingBuffer, r.pBack, fore, paras)
+				n, ok := r.parseParams(r.formBuffer, r.pBack, fore, paras)
 				if !ok {
 					r.stream.markBroken()
 					return
 				}
 				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
 					para := &paras[i]
-					if paraName := r.parsingBuffer[para.name.from:para.name.edge]; bytes.Equal(paraName, httpBytesName) { // name="avatar"
+					if paraName := r.formBuffer[para.name.from:para.name.edge]; bytes.Equal(paraName, httpBytesName) { // name="avatar"
 						if n := para.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
 						}
 						part.valid = true
 						part.name.from = r.arrayEdge
-						if !r.arrayCopy(r.parsingBuffer[para.value.from:para.value.edge]) { // add "avatar"
+						if !r.arrayCopy(r.formBuffer[para.value.from:para.value.edge]) { // add "avatar"
 							r.stream.markBroken()
 							return
 						}
 						part.name.edge = r.arrayEdge
 						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value to hint this?
 						for p := para.value.from; p < para.value.edge; p++ {
-							part.hash += uint16(r.parsingBuffer[p])
+							part.hash += uint16(r.formBuffer[p])
 						}
 					} else if bytes.Equal(paraName, httpBytesFilename) { // filename="michael.jpg"
 						part.isFile = true
 						if n := para.value.size(); n > 0 && n <= 255 {
 							part.base.from = r.arrayEdge
-							if !r.arrayCopy(r.parsingBuffer[para.value.from:para.value.edge]) { // add "michael.jpg"
+							if !r.arrayCopy(r.formBuffer[para.value.from:para.value.edge]) { // add "michael.jpg"
 								r.stream.markBroken()
 								return
 							}
@@ -2074,36 +2074,36 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 			} else if bytes.Equal(fieldName, httpBytesContentType) {
 				// image/jpeg
-				for r.parsingBuffer[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+				for r.formBuffer[r.pFore] != '\n' {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 						return
 					}
 				}
 				fore := r.pFore
-				if r.parsingBuffer[fore-1] == '\r' {
+				if r.formBuffer[fore-1] == '\r' {
 					fore--
 				}
 				// Skip OWS after field value
-				for r.parsingBuffer[fore-1] == ' ' || r.parsingBuffer[fore-1] == '\t' {
+				for r.formBuffer[fore-1] == ' ' || r.formBuffer[fore-1] == '\t' {
 					fore--
 				}
 				if n := fore - r.pBack; n > 0 && n <= 255 {
 					part.type_.from = r.arrayEdge
-					if !r.arrayCopy(r.parsingBuffer[r.pBack:fore]) { // add "image/jpeg"
+					if !r.arrayCopy(r.formBuffer[r.pBack:fore]) { // add "image/jpeg"
 						r.stream.markBroken()
 						return
 					}
 					part.type_.edge = r.arrayEdge
 				}
 			} else { // other fields are ignored
-				for r.parsingBuffer[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+				for r.formBuffer[r.pFore] != '\n' {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 						return
 					}
 				}
 			}
 			// Skip '\n' and goto next field or end of fields
-			if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 				return
 			}
 		}
@@ -2112,7 +2112,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			return
 		}
 		// Now all fields of the part are received. Skip end of fields and goto part data
-		if r.pFore++; r.pFore == r.parsingEdge && !r._growMultipartForm(tempFile) {
+		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 			return
 		}
 		if part.isFile {
@@ -2138,10 +2138,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			part.post.nameSize, part.post.nameFrom = uint8(part.name.size()), part.name.from
 			part.post.value.from = r.arrayEdge
 		}
-		r.pBack = r.pFore // now r.parsingBuffer is used for receiving part data and onward
+		r.pBack = r.pFore // now r.formBuffer is used for receiving part data and onward
 		for {             // each partial in current part
-			partial := r.parsingBuffer[r.pBack:r.parsingEdge]
-			r.pFore = r.parsingEdge
+			partial := r.formBuffer[r.pBack:r.formEdge]
+			r.pFore = r.formEdge
 			mode := 0 // by default, we assume end of part ("\n--boundary") is not in partial
 			var i int
 			if i = bytes.Index(partial, separator); i >= 0 {
@@ -2151,10 +2151,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}
 			if mode > 0 { // found "\n" at i
 				r.pFore = r.pBack + int32(i)
-				if r.pFore > r.pBack && r.parsingBuffer[r.pFore-1] == '\r' {
+				if r.pFore > r.pBack && r.formBuffer[r.pFore-1] == '\r' {
 					r.pFore--
 				}
-				partial = r.parsingBuffer[r.pBack:r.pFore] // pure data
+				partial = r.formBuffer[r.pBack:r.pFore] // pure data
 			}
 			if !part.isFile {
 				if !r.arrayCopy(partial) { // join post value
@@ -2183,7 +2183,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			if mode == 2 {
 				r.pBack = r.pFore // from EOL (\r or \n). need more and continue
 			} else { // mode == 0
-				r.pBack, r.parsingEdge = 0, 0 // pure data, clean r.parsingBuffer. need more and continue
+				r.pBack, r.formEdge = 0, 0 // pure data, clean r.formBuffer. need more and continue
 			}
 			// Grow more
 			if !r._growMultipartForm(tempFile) {
@@ -2193,19 +2193,19 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	}
 }
 func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller needs more data.
-	if r.sizeConsumed == r.sizeReceived || (r.parsingEdge == int32(len(r.parsingBuffer)) && r.pBack == 0) {
+	if r.sizeConsumed == r.sizeReceived || (r.formEdge == int32(len(r.formBuffer)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
 	}
 	if r.pBack > 0 { // have useless data. slide to start
-		copy(r.parsingBuffer, r.parsingBuffer[r.pBack:r.parsingEdge])
-		r.parsingEdge -= r.pBack
+		copy(r.formBuffer, r.formBuffer[r.pBack:r.formEdge])
+		r.formEdge -= r.pBack
 		r.pFore -= r.pBack
 		r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
 		r.pBack = 0
 	}
-	if n, err := tempFile.Read(r.parsingBuffer[r.parsingEdge:]); err == nil {
-		r.parsingEdge += int32(n)
+	if n, err := tempFile.Read(r.formBuffer[r.formEdge:]); err == nil {
+		r.formEdge += int32(n)
 		r.sizeConsumed += int64(n)
 		return true
 	} else {
@@ -2329,7 +2329,7 @@ func (r *httpRequest_) UnsafeContent() []byte {
 
 func (r *httpRequest_) useTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
-	// TODO: check trailer?
+	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 func (r *httpRequest_) delHopTrailers() { // used by proxies

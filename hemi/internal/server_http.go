@@ -2579,6 +2579,8 @@ func (r *httpResponse_) onEnd() { // for zeros
 	r.httpOutMessage_.onEnd()
 }
 
+func (r *httpResponse_) Request() Request { return r.request }
+
 func (r *httpResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {
 		r.status = status
@@ -2820,8 +2822,6 @@ func (r *httpResponse_) passTrailers(resp response) bool { // used by proxies
 	// TODO
 	return false
 }
-
-func (r *httpResponse_) Request() Request { return r.request }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true

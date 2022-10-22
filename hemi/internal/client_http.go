@@ -198,6 +198,8 @@ func (r *hRequest_) onEnd() { // for zeros
 	r.httpOutMessage_.onEnd()
 }
 
+func (r *hRequest_) Response() response { return r.response }
+
 func (r *hRequest_) addCookie(name []byte, value []byte) bool {
 	// TODO: to r.array?
 	return false
@@ -270,7 +272,6 @@ func (r *hRequest_) withHead(req Request) bool { // used by proxies
 	}, false) {
 		return false
 	}
-	// TODO: add date?
 	return true
 }
 func (r *hRequest_) pass(req Request) error { // used by proxies.
@@ -282,8 +283,6 @@ func (r *hRequest_) passTrailers(req Request) bool { // used by proxies
 	// TODO
 	return false
 }
-
-func (r *hRequest_) Response() response { return r.response }
 
 func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
 	return httpIsForbiddenRequestField(hash, name)

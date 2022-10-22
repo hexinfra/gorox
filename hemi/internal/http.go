@@ -583,7 +583,7 @@ type httpInMessage_ struct {
 	input       []byte // bytes of incoming messages (for HTTP/1) or message heads (for HTTP/2 & HTTP/3). [<r.stockInput>/4K/16K]
 	array       []byte // store path, queries, extra queries & headers & cookies & trailers, posts, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.posts->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
-	extras      []pair // hold extra queries, headers, cookies, posts, and trailers. refers to r.array. [<r.stockExtras>/255]
+	extras      []pair // hold extra queries, headers, cookies, and trailers. refers to r.array. [<r.stockExtras>/255]
 	contentSize int64  // value of content-length header. >=0:size -1:absent -2:chunked
 	asResponse  bool   // use message as response?
 	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
@@ -604,11 +604,11 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	pFore           int32 // element spanning to. for parsing control & headers & content & trailers elements
 	head            text  // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme            text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	headers         zone  // raw headers ->r.input|r.array
+	headers         zone  // raw headers ->r.input
 	options         zone  // connection options ->r.input
 	receiving       int8  // currently receiving. see httpSectionXXX
 	versionCode     uint8 // Version1_0, Version1_1, Version2, Version3
-	nContentCodings int8  // num of content-encoding flags
+	nContentCodings int8  // num of content-encoding flags, controls r.contentCodings
 	arrayKind       int8  // kind of current r.array. see arrayKindXXX
 	arrayEdge       int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	iContentLength  uint8 // content-length header ->r.input
@@ -619,10 +619,10 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	maxRecvSeconds  int64 // max seconds to recv message content
 	maxContentSize  int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
 	sizeReceived    int64 // bytes of currently received content. for both identity & chunked content receiver
-	chunkSize       int64 // left size of current chunk if the chunk is too large to receive in one call. chunked only
-	cBack           int32 // for parsing chunked elements. chunked only
-	cFore           int32 // for parsing chunked elements. chunked only
-	chunkEdge       int32 // edge position of the filled chunked data in r.contentBuffer. chunked only
+	chunkSize       int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
+	cBack           int32 // for parsing chunked elements. HTTP/1.1 chunked only
+	cFore           int32 // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkEdge       int32 // edge position of the filled chunked data in r.contentBuffer. HTTP/1.1 chunked only
 	transferChunked bool  // transfer-encoding: chunked? HTTP/1.1 only
 	overChunked     bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.contentBuffer, then r.contentBuffer will be used as r.input on ends
 	trailers        zone  // raw trailers -> r.array. set after trailer section is received and parsed
@@ -1628,14 +1628,6 @@ func (r *httpOutMessage_) Send(content string) error {
 func (r *httpOutMessage_) SendBytes(content []byte) error {
 	return r.sendBlob(content)
 }
-func (r *httpOutMessage_) sendBlob(content []byte) error {
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	r.content.head.SetBlob(content)
-	r.contentSize = int64(len(content)) // original size, may be revised
-	return r.shell.send()
-}
 func (r *httpOutMessage_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)
 	if err != nil {
@@ -1647,6 +1639,14 @@ func (r *httpOutMessage_) SendFile(contentPath string) error {
 		return err
 	}
 	return r.sendFile(file, info, true)
+}
+func (r *httpOutMessage_) sendBlob(content []byte) error {
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	r.content.head.SetBlob(content)
+	r.contentSize = int64(len(content)) // original size, may be revised
+	return r.shell.send()
 }
 func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r.checkSend(); err != nil {
@@ -1678,6 +1678,9 @@ func (r *httpOutMessage_) Push(chunk string) error {
 func (r *httpOutMessage_) PushBytes(chunk []byte) error {
 	return r.pushBlob(chunk)
 }
+func (r *httpOutMessage_) PushFile(chunkPath string) error {
+	return r.pushFile(chunkPath, true)
+}
 func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err
@@ -1688,9 +1691,6 @@ func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	chunk_ := GetBlock()
 	chunk_.SetBlob(chunk)
 	return r.shell.push(chunk_)
-}
-func (r *httpOutMessage_) PushFile(chunkPath string) error {
-	return r.pushFile(chunkPath, true)
 }
 func (r *httpOutMessage_) pushFile(chunkPath string, shut bool) error {
 	file, err := os.Open(chunkPath)
@@ -1718,7 +1718,6 @@ func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	if !r.isSent { // trailers must be set after headers & content are sent
 		return false
 	}
-	// TODO: check name
 	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 
@@ -1734,18 +1733,17 @@ func (r *httpOutMessage_) _withHeader(added *bool, name []byte, value []byte) bo
 }
 
 func (r *httpOutMessage_) post(content any) error { // used by proxies
-	if file, ok := content.(*os.File); ok {
-		info, err := file.Stat()
+	if contentFile, ok := content.(*os.File); ok {
+		fileInfo, err := contentFile.Stat()
 		if err != nil {
-			file.Close()
+			contentFile.Close()
 			return err
 		}
-		return r.sendFile(file, info, false)
-	} else if content == nil { // nil
+		return r.sendFile(contentFile, fileInfo, false)
+	} else if contentBlob, ok := content.([]byte); ok {
+		return r.sendBlob(contentBlob)
+	} else { // nil
 		return r.sendBlob(nil)
-	} else { // []byte
-		content := content.([]byte)
-		return r.sendBlob(content)
 	}
 }
 

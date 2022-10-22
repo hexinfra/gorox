@@ -857,11 +857,21 @@ func (r *http1Response) fixedHeaders() []byte {
 	return http1BytesFixedResponseHeaders
 }
 
-func (r *http1Response) AddHTTPSRedirection() bool {
-	size := len(http1BytesLocationHTTPS) + len(r.request.UnsafeAuthority()) + len(r.request.UnsafeURI()) + len(httpBytesCRLF)
+func (r *http1Response) AddHTTPSRedirection(authority string) bool {
+	size := len(http1BytesLocationHTTPS)
+	if authority == "" {
+		size += len(r.request.UnsafeAuthority())
+	} else {
+		size += len(authority)
+	}
+	size += len(r.request.UnsafeURI()) + len(httpBytesCRLF)
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], http1BytesLocationHTTPS)
-		from += copy(r.fields[from:], r.request.UnsafeAuthority())
+		if authority == "" {
+			from += copy(r.fields[from:], r.request.UnsafeAuthority())
+		} else {
+			from += copy(r.fields[from:], authority)
+		}
 		from += copy(r.fields[from:], r.request.UnsafeURI())
 		r._addCRLFHeader1(from)
 		return true

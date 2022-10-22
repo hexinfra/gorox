@@ -28,6 +28,7 @@ type httpsHandler struct {
 	app   *App
 	// States
 	permanent bool
+	authority string
 }
 
 func (h *httpsHandler) init(name string, stage *Stage, app *App) {
@@ -39,6 +40,8 @@ func (h *httpsHandler) init(name string, stage *Stage, app *App) {
 func (h *httpsHandler) OnConfigure() {
 	// permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
+	// authority
+	h.ConfigureString("authority", &h.authority, nil, "")
 }
 func (h *httpsHandler) OnPrepare() {
 }
@@ -54,7 +57,7 @@ func (h *httpsHandler) Handle(req Request, resp Response) (next bool) {
 	} else {
 		resp.SetStatus(StatusFound)
 	}
-	resp.AddHTTPSRedirection()
+	resp.AddHTTPSRedirection(h.authority)
 	resp.SendBytes(nil)
 	return
 }

@@ -365,7 +365,7 @@ func (r *http3Response) fixedHeaders() []byte {
 	return nil
 }
 
-func (r *http3Response) AddHTTPSRedirection() bool {
+func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }

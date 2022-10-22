@@ -1163,7 +1163,7 @@ func (r *http2Response) fixedHeaders() []byte {
 	return nil
 }
 
-func (r *http2Response) AddHTTPSRedirection() bool {
+func (r *http2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }

@@ -879,7 +879,7 @@ func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 		return false
 	}
 }
-func (r *http1Response) AddHostnameRedirection(hostname []byte) bool {
+func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 	var prefix []byte
 	if r.request.IsHTTPS() {
 		prefix = http1BytesLocationHTTPS

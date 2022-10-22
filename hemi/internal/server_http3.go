@@ -369,7 +369,7 @@ func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) AddHostnameRedirection(hostname []byte) bool {
+func (r *http3Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }

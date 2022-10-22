@@ -1167,7 +1167,7 @@ func (r *http2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) AddHostnameRedirection(hostname []byte) bool {
+func (r *http2Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }

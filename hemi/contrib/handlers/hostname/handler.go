@@ -8,7 +8,6 @@
 package hostname
 
 import (
-	"bytes"
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
@@ -28,7 +27,7 @@ type hostnameHandler struct {
 	stage *Stage
 	app   *App
 	// States
-	hostname  []byte
+	hostname  string
 	permanent bool
 }
 
@@ -42,7 +41,7 @@ func (h *hostnameHandler) OnConfigure() {
 	// hostname
 	if v, ok := h.Find("hostname"); ok {
 		if hostname, ok := v.String(); ok {
-			h.hostname = []byte(hostname)
+			h.hostname = hostname
 		} else {
 			UseExitln("invalid hostname")
 		}
@@ -58,7 +57,7 @@ func (h *hostnameHandler) OnShutdown() {
 }
 
 func (h *hostnameHandler) Handle(req Request, resp Response) (next bool) {
-	if bytes.Equal(req.UnsafeHostname(), h.hostname) {
+	if req.Hostname() == h.hostname {
 		return true
 	}
 	if h.permanent {

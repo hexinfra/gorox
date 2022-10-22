@@ -2481,7 +2481,7 @@ type Response interface {
 	SetETagBytes(etag []byte) bool
 	SetAcceptBytesRange()
 	AddHTTPSRedirection(authority string) bool
-	AddHostnameRedirection(hostname []byte) bool
+	AddHostnameRedirection(hostname string) bool
 
 	AddCookie(cookie *Cookie) bool
 	AddRawCookie(cookie *Cookie) bool

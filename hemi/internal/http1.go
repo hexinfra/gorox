@@ -752,8 +752,22 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error { // sys
 			r.stream.markBroken()
 			return err
 		}
-		// TODO: test chunked mode and write chunk
-		nw, err = r.stream.write(buffer[nWritten:nr])
+		if chunked {
+			sizeBuffer := r.stream.smallStack()
+			n := i64ToHex(int64(nr-nWritten), sizeBuffer)
+			sizeBuffer[n] = '\r'
+			sizeBuffer[n+1] = '\n'
+			n += 2
+			r.vector = r.fixedVector[0:3]
+			r.vector[0] = sizeBuffer[:n]
+			r.vector[1] = buffer[nWritten:nr]
+			r.vector[2] = sizeBuffer[n-2 : n]
+			nn, ee := r.stream.writev(&r.vector)
+			nw = int(nn)
+			err = ee
+		} else {
+			nw, err = r.stream.write(buffer[nWritten:nr])
+		}
 		nWritten += nw
 		if err == nil && (r.maxSendSeconds > 0 && time.Now().Unix()-r.sendTime >= r.maxSendSeconds) {
 			err = httpWriteTooSlow

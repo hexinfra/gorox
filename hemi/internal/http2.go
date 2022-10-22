@@ -655,10 +655,19 @@ func (r *httpInMessage_) _growHeaders2(size int32) bool {
 	r.input = input
 	return true
 }
+func (r *httpInMessage_) checkHeaders2() bool {
+	// TODO
+	return false
+}
 
 func (r *httpInMessage_) readContent2() (from int, edge int, err error) {
 	// TODO
 	return
+}
+
+func (r *httpInMessage_) checkTrailers2() bool {
+	// TODO
+	return false
 }
 
 // http2OutMessage_

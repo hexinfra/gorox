@@ -327,16 +327,8 @@ type H3Response struct {
 	// Stream states (zeros)
 }
 
-func (r *H3Response) joinHeaders(p []byte) bool {
-	return false
-}
-
 func (r *H3Response) readContent() (from int, edge int, err error) {
 	return r.readContent3()
-}
-
-func (r *H3Response) joinTrailers(p []byte) bool {
-	return false
 }
 
 // H3Socket is the client-side HTTP/3 websocket.

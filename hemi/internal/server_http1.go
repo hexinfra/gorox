@@ -934,8 +934,18 @@ func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 func (r *http1Response) AddRawCookie(cookie *Cookie) bool {
-	// TODO
-	return false
+	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + cookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n
+	if from, _, ok := r.growHeader(size); ok {
+		from += copy(r.fields[from:], httpBytesSetCookie)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += cookie.writeTo(r.fields[from:])
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
 }
 
 func (r *http1Response) doSend(chain Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.

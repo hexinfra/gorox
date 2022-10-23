@@ -2861,20 +2861,149 @@ var ( // forbidden response fields
 
 // Cookie is a cookie sent to client.
 type Cookie struct {
-	Name     string
-	Value    string
-	Expires  time.Time
-	MaxAge   int64
-	Domain   string
-	Path     string
-	Secure   bool
-	HttpOnly bool
-	SameSite string
+	name     string
+	value    string
+	expires  time.Time
+	maxAge   int64
+	domain   string
+	path     string
+	sameSite string
+	secure   bool
+	httpOnly bool
+	aFrom    int8
+	aEdge    int8
+	quote    bool // if true, quote value with ""
+	ageBuf   [19]byte
 }
 
-func (c *Cookie) Size() int {
-	// TODO
-	return 0
+func (c *Cookie) Set(name string, value string) bool {
+	if name == "" {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; httpKchar[b] == 0 {
+			return false
+		}
+	}
+	c.name = name
+	for i := 0; i < len(name); i++ {
+		b := value[i]
+		if httpKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		return false
+	}
+	c.value = value
+	return true
+}
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	// TODO: check
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int64) bool {
+	// TODO: check
+	c.maxAge = maxAge
+	return true
+}
+func (c *Cookie) SetDomain(domain string) bool {
+	// TODO: check
+	c.domain = domain
+	return true
+}
+func (c *Cookie) SetPath(path string) bool {
+	// TODO: check
+	c.path = path
+	return true
+}
+func (c *Cookie) SetSecure()         { c.secure = true }
+func (c *Cookie) SetHttpOnly()       { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict() { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()    { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()   { c.sameSite = "None" }
+
+func (c *Cookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if c._isValidExpires() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		from, edge := i64ToDec(c.maxAge, c.ageBuf[:])
+		c.aFrom, c.aEdge = int8(from), int8(edge)
+		n += len("; Max-Age=") + (edge - from)
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aFrom, c.aEdge = 0, 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *Cookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if c._isValidExpires() {
+		i += copy(p[i:], "; Expires=")
+		i += copy(p[i:], "Sun, 06 Nov 1994 08:49:37 GMT") // TODO
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[c.aFrom:c.aEdge])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
+}
+func (c *Cookie) _isValidExpires() bool {
+	return c.expires.Year() >= 1601
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

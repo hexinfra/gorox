@@ -44,7 +44,7 @@ func (h *deroxHandler) OnShutdown() {
 }
 
 func (h *deroxHandler) Handle(req Request, resp Response) (next bool) {
-	h.testUserAgent(req, resp)
+	h.testSetCookie(req, resp)
 	return
 }
 
@@ -57,4 +57,12 @@ func (h *deroxHandler) testQ(req Request, resp Response) {
 }
 func (h *deroxHandler) testUserAgent(req Request, resp Response) {
 	resp.Send(req.UserAgent())
+}
+func (h *deroxHandler) testSetCookie(req Request, resp Response) {
+	cookie := new(Cookie)
+	cookie.Set("hello", "wo r,ld")
+	cookie.SetMaxAge(99)
+	cookie.SetSecure()
+	resp.AddRawCookie(cookie)
+	resp.SendBytes(nil)
 }

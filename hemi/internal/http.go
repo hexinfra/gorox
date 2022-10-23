@@ -245,17 +245,18 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	httpHashRange             = 525
 	httpHashUserAgent         = 1019
 	// Response fields
-	httpHashAcceptRanges    = 1309
-	httpHashAllow           = 543
-	httpHashDate            = 414
-	httpHashETag            = 417
-	httpHashExpires         = 768
-	httpHashLastModified    = 1314
-	httpHashLocation        = 857
-	httpHashServer          = 663
-	httpHashSetCookie       = 1011
-	httpHashVary            = 450
-	httpHashWWWAuthenticate = 1681
+	httpHashAcceptRanges      = 1309
+	httpHashAllow             = 543
+	httpHashDate              = 414
+	httpHashETag              = 417
+	httpHashExpires           = 768
+	httpHashLastModified      = 1314
+	httpHashLocation          = 857
+	httpHashProxyAuthenticate = 1902
+	httpHashServer            = 663
+	httpHashSetCookie         = 1011
+	httpHashVary              = 450
+	httpHashWWWAuthenticate   = 1681
 )
 
 var ( // byteses of http fields.

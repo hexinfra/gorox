@@ -27,7 +27,7 @@ func (r *fcgiRequest) onEnd() {
 	r.conn = nil
 }
 
-func (r *fcgiRequest) copyHead(req Request) bool {
+func (r *fcgiRequest) withHead(req Request) bool {
 	return false
 }
 

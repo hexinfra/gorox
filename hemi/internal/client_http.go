@@ -255,9 +255,9 @@ func (r *hRequest_) withHead(req Request) bool { // used by proxies
 	if !r.shell.(request).setControl(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
+	req.delHopHeaders()
 	// copy critical headers from req
 	req.delCriticalHeaders()
-	req.delHopHeaders()
 	if req.isAbsoluteForm() {
 		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
 		// field (if any) and instead replace it with the host information of the request-target. A proxy that forwards such a request
@@ -267,6 +267,7 @@ func (r *hRequest_) withHead(req Request) bool { // used by proxies
 			return false
 		}
 	}
+	// copy remaining headers
 	if !req.walkHeaders(func(name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
 	}, false) {
@@ -430,28 +431,29 @@ func (r *hResponse_) useHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for multiple response headers
-	httpMultipleResponseHeaderBytes = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding trailer transfer-encoding upgrade vary via www-authenticate")
-	httpMultipleResponseHeaderTable = [12]struct {
+	httpMultipleResponseHeaderBytes = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	httpMultipleResponseHeaderTable = [13]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		must  bool // true if 1#, false if #
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {httpHashVary, 112, 116, false, nil},
-		1:  {httpHashUpgrade, 104, 111, false, (*hResponse_).checkUpgrade},
-		2:  {httpHashWWWAuthenticate, 121, 137, false, nil},
+		0:  {httpHashProxyAuthenticate, 78, 96, false, nil},
+		1:  {httpHashAcceptEncoding, 0, 15, false, nil},
+		2:  {httpHashTransferEncoding, 105, 122, false, (*hResponse_).checkTransferEncoding},
 		3:  {httpHashAllow, 30, 35, false, nil},
 		4:  {httpHashConnection, 50, 60, false, (*hResponse_).checkConnection},
-		5:  {httpHashAcceptEncoding, 0, 15, false, nil},
-		6:  {httpHashVia, 117, 120, false, nil},
-		7:  {httpHashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
-		8:  {httpHashTransferEncoding, 86, 103, false, (*hResponse_).checkTransferEncoding},
-		9:  {httpHashAcceptRanges, 16, 29, false, nil},
-		10: {httpHashTrailer, 78, 85, false, nil},
+		5:  {httpHashUpgrade, 123, 130, false, (*hResponse_).checkUpgrade},
+		6:  {httpHashAcceptRanges, 16, 29, false, nil},
+		7:  {httpHashVia, 136, 139, false, nil},
+		8:  {httpHashWWWAuthenticate, 140, 156, false, nil},
+		9:  {httpHashVary, 131, 135, false, nil},
+		10: {httpHashTrailer, 97, 104, false, nil},
 		11: {httpHashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
+		12: {httpHashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
 	}
-	httpMultipleResponseHeaderFind = func(hash uint16) int { return (750969 / int(hash)) % 12 }
+	httpMultipleResponseHeaderFind = func(hash uint16) int { return (2373696 / int(hash)) % 13 }
 )
 
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
@@ -575,7 +577,7 @@ func (r *hResponse_) checkHead() bool {
 	return true
 }
 
-func (r *hResponse_) parseSetCookie(setCookieString text) bool {
+func (r *hResponse_) parseCookie(cookieString text) bool {
 	// TODO
 	return false
 }
@@ -607,6 +609,9 @@ func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	vETag := r.primes[r.indexes.etag].value
 	return r.input[vETag.from:vETag.edge]
 }
+func (r *hResponse_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, r.delHeader)
+}
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.indexes.server)
 	r.delPrimeAt(r.indexes.date)
@@ -614,9 +619,6 @@ func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.indexes.etag)
 	r.delPrimeAt(r.iContentType)
 	r.delPrimeAt(r.iContentLength)
-}
-func (r *hResponse_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
 }
 
 func (r *hResponse_) HasContent() bool {

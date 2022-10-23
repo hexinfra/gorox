@@ -7,10 +7,10 @@ import (
 func main() {
 	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE PATCH LINK UNLINK QUERY"))
 	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via"))
-	//calc([]byte("accept-encoding accept-ranges allow cache-control connection content-encoding trailer transfer-encoding upgrade vary via www-authenticate"))
+	//calc([]byte("accept-encoding accept-ranges allow cache-control connection content-encoding proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate"))
 	//calc([]byte("content-length content-range content-type date etag expires last-modified location server set-cookie"))
 	//calc([]byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent"))
-	println(sum("user-agent"))
+	println(sum("proxy-authenticate"))
 }
 
 type Node struct {

@@ -54,7 +54,8 @@ func (b *HTTP3Backend) maintain() { // blocking
 }
 
 func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {
-	return b.nodes[b.getIndex()].fetchConn()
+	node := b.nodes[b.getIndex()]
+	return node.fetchConn()
 }
 func (b *HTTP3Backend) StoreConn(conn *H3Conn) {
 	conn.node.storeConn(conn)

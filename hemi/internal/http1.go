@@ -714,7 +714,9 @@ func (r *httpOutMessage_) pushEnd1() error {
 	}
 	return r.writeVector1(&r.vector)
 }
-func (r *httpOutMessage_) trailers1() []byte { return r.fields[0:r.fieldsEdge] }
+func (r *httpOutMessage_) trailers1() []byte {
+	return r.fields[0:r.fieldsEdge]
+}
 
 func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {

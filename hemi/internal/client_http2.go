@@ -55,7 +55,8 @@ func (b *HTTP2Backend) maintain() { // blocking
 }
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
-	return b.nodes[b.getIndex()].fetchConn()
+	node := b.nodes[b.getIndex()]
+	return node.fetchConn()
 }
 func (b *HTTP2Backend) StoreConn(conn *H2Conn) {
 	conn.node.storeConn(conn)

@@ -1446,17 +1446,6 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 }
 func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
 
-func (r *httpRequest_) delHost() { // used by proxies
-	r.delPrimeAt(r.indexes.host) // zero safe
-}
-func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	r.delPrimeAt(r.iContentType)
-	r.delPrimeAt(r.iContentLength)
-}
-func (r *httpRequest_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
-}
-
 func (r *httpRequest_) addCookie(cookie *pair) bool {
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
@@ -1684,6 +1673,17 @@ func (r *httpRequest_) checkHead() bool {
 		}
 	}
 	return true
+}
+
+func (r *httpRequest_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, r.delHeader)
+}
+func (r *httpRequest_) delCriticalHeaders() { // used by proxies
+	r.delPrimeAt(r.iContentType)
+	r.delPrimeAt(r.iContentLength)
+}
+func (r *httpRequest_) delHost() { // used by proxies
+	r.delPrimeAt(r.indexes.host) // zero safe
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
@@ -2791,6 +2791,7 @@ func (r *httpResponse_) finishPush() error {
 
 func (r *httpResponse_) withHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
+	resp.delHopHeaders()
 	// copy critical headers from resp
 	if date := resp.unsafeDate(); date != nil && !r._withHeader(&r.dateAdded, httpBytesDate, date) {
 		return false
@@ -2805,7 +2806,7 @@ func (r *httpResponse_) withHead(resp response) bool { // used by proxies
 		return false
 	}
 	resp.delCriticalHeaders()
-	resp.delHopHeaders()
+	// copy remaining headers
 	if !resp.walkHeaders(func(name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
 	}, false) {

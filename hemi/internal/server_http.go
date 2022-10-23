@@ -2886,7 +2886,7 @@ func (c *Cookie) Set(name string, value string) bool {
 		}
 	}
 	c.name = name
-	for i := 0; i < len(name); i++ {
+	for i := 0; i < len(value); i++ {
 		b := value[i]
 		if httpKchar[b] == 1 {
 			continue

@@ -390,7 +390,7 @@ func (r *H1Request) pushEnd() error {
 	return r.pushEnd1()
 }
 
-func (r *H1Request) finalizeHeaders() { // add at most 256 bytes. not used by proxies!
+func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: 12345
 			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length

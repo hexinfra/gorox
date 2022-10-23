@@ -961,7 +961,7 @@ func (r *http1Response) pushEnd() error {
 	return r.pushEnd1()
 }
 
-func (r *http1Response) finalizeHeaders() { // add at most 256 bytes. not used by proxies!
+func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
 	if !r.dateAdded {
 		r.stream.getHolder().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])

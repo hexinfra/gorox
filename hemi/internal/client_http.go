@@ -280,10 +280,6 @@ func (r *hRequest_) pass(req Request) error { // used by proxies.
 	// content may be identity (write through) or chunked (use push)
 	return nil
 }
-func (r *hRequest_) passTrailers(req Request) bool { // used by proxies
-	// TODO
-	return false
-}
 
 func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
 	return httpIsForbiddenRequestField(hash, name)

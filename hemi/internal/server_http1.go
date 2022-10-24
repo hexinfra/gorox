@@ -1035,6 +1035,17 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return true
 }
+func (r *http1Response) passTrailers(resp response) bool { // used by proxies
+	if !resp.walkTrailers(func(name []byte, value []byte) bool {
+		return r.shell.addTrailer(name, value)
+	}, false) {
+		return false
+	}
+	r.vector = r.fixedVector[0:2]
+	r.vector[0] = r.trailers1()
+	r.vector[1] = httpBytesCRLF
+	return r.writeVector1(&r.vector) == nil
+}
 
 // http1Socket is the server-side HTTP/1 websocket.
 type http1Socket struct {

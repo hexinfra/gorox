@@ -404,6 +404,7 @@ type Request interface {
 	delCriticalHeaders()
 	delHopHeaders()
 	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	recvContent(retain bool) any
 	holdContent() any
 	readContent() (from int, edge int, err error)
@@ -2818,10 +2819,6 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 	// content may be identity or chunked.
 	// if there are any revisers, then we always use push(), switch to chunked mode if content is in identity mode
 	return nil
-}
-func (r *httpResponse_) passTrailers(resp response) bool { // used by proxies
-	// TODO
-	return false
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

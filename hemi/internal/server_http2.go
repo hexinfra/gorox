@@ -1214,6 +1214,10 @@ func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
+func (r *http2Response) passTrailers(resp response) bool { // used by proxies
+	// TODO
+	return false
+}
 
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {

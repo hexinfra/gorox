@@ -408,6 +408,18 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
 
+func (r *H1Request) passTrailers(req Request) bool { // used by proxies
+	if !req.walkTrailers(func(name []byte, value []byte) bool {
+		return r.shell.addTrailer(name, value)
+	}, false) {
+		return false
+	}
+	r.vector = r.fixedVector[0:2]
+	r.vector[0] = r.trailers1()
+	r.vector[1] = httpBytesCRLF
+	return r.writeVector1(&r.vector) == nil
+}
+
 // H1Response is the client-side HTTP/1 response.
 type H1Response struct {
 	// Mixins

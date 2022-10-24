@@ -343,6 +343,11 @@ func (r *H2Request) finalizeHeaders() {
 	// TODO
 }
 
+func (r *H2Request) passTrailers(req Request) bool { // used by proxies
+	// TODO
+	return false
+}
+
 // H2Response
 type H2Response struct {
 	// Mixins

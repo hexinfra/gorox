@@ -416,6 +416,10 @@ func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
+func (r *http3Response) passTrailers(resp response) bool { // used by proxies
+	// TODO
+	return false
+}
 
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {

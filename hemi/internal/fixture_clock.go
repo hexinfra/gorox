@@ -284,6 +284,45 @@ func clockParseHTTPDate(date []byte) (int64, bool) {
 	days -= 719528    // total days between [0000-01-01 00:00:00, 1970-01-01 00:00:00)
 	return int64(days)*86400 + int64(hour*3600+minute*60+second), true
 }
+func clockWriteHTTPDate(date time.Time, p []byte) int {
+	if len(p) < clockHTTPDateSize {
+		BugExitln("invalid buffer for clockWriteHTTPDate")
+	}
+	s := clockDayString[3*date.Weekday():]
+	p[0] = s[0]
+	p[1] = s[1]
+	p[2] = s[2]
+	p[3] = ','
+	p[4] = ' '
+	year, month, day := date.Date()
+	p[5] = byte(day/10) + '0'
+	p[6] = byte(day%10) + '0'
+	p[7] = ' '
+	s = clockMonthString[3*(month-1):]
+	p[8] = s[0]
+	p[9] = s[1]
+	p[10] = s[2]
+	p[11] = ' '
+	p[12] = byte(year/1000) + '0'
+	p[13] = byte(year/100%10) + '0'
+	p[14] = byte(year/10%10) + '0'
+	p[15] = byte(year%10) + '0'
+	p[16] = ' '
+	hour, minute, second := date.Clock()
+	p[17] = byte(hour/10) + '0'
+	p[18] = byte(hour%10) + '0'
+	p[19] = ':'
+	p[20] = byte(minute/10) + '0'
+	p[21] = byte(minute%10) + '0'
+	p[22] = ':'
+	p[23] = byte(second/10) + '0'
+	p[24] = byte(second%10) + '0'
+	p[25] = ' '
+	p[26] = 'G'
+	p[27] = 'M'
+	p[28] = 'T'
+	return clockHTTPDateSize
+}
 
 const (
 	clockHTTPDateSize     = len("Sun, 06 Nov 1994 08:49:37 GMT")

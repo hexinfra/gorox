@@ -930,7 +930,7 @@ func (r *http1Response) setConnectionClose() {
 	r.stream.(*http1Stream).keepConn = false
 }
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
-	if cookie.name == "" || cookie.inValid {
+	if cookie.name == "" || cookie.invalid {
 		return false
 	}
 	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + cookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n

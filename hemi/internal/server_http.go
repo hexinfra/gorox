@@ -2869,7 +2869,7 @@ type Cookie struct {
 	sameSite string
 	secure   bool
 	httpOnly bool
-	inValid  bool
+	invalid  bool
 	quote    bool // if true, quote value with ""
 	aFrom    int8
 	aEdge    int8
@@ -2877,17 +2877,20 @@ type Cookie struct {
 }
 
 func (c *Cookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	if name == "" {
-		c.inValid = true
+		c.invalid = true
 		return false
 	}
 	for i := 0; i < len(name); i++ {
 		if b := name[i]; httpKchar[b] == 0 {
-			c.inValid = true
+			c.invalid = true
 			return false
 		}
 	}
 	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	for i := 0; i < len(value); i++ {
 		b := value[i]
 		if httpKchar[b] == 1 {
@@ -2897,21 +2900,24 @@ func (c *Cookie) Set(name string, value string) bool {
 			c.quote = true
 			continue
 		}
-		c.inValid = true
+		c.invalid = true
 		return false
 	}
 	c.value = value
 	return true
 }
+
 func (c *Cookie) SetDomain(domain string) bool {
 	// TODO: check domain
 	c.domain = domain
 	return true
 }
 func (c *Cookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
 	for i := 0; i < len(path); i++ {
-		if b := path[i]; b < 0x20 || b >= 0x7F || b == ';' {
-			c.inValid = true
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
 			return false
 		}
 	}
@@ -2919,8 +2925,8 @@ func (c *Cookie) SetPath(path string) bool {
 	return true
 }
 func (c *Cookie) SetExpires(expires time.Time) bool {
-	if !c._isValidExpires(expires) {
-		c.inValid = true
+	if expires.Year() < 1601 {
+		c.invalid = true
 		return false
 	}
 	c.expires = expires
@@ -2983,7 +2989,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	}
 	if !c.expires.IsZero() {
 		i += copy(p[i:], "; Expires=")
-		i += copy(p[i:], "Sun, 06 Nov 1994 08:49:37 GMT") // TODO
+		i += clockWriteHTTPDate(c.expires, p[i:])
 	}
 	if c.maxAge != 0 {
 		i += copy(p[i:], "; Max-Age=")
@@ -3008,9 +3014,6 @@ func (c *Cookie) writeTo(p []byte) int {
 		i += copy(p[i:], c.sameSite)
 	}
 	return i
-}
-func (c *Cookie) _isValidExpires(expires time.Time) bool {
-	return expires.Year() >= 1601
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

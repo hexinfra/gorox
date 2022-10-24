@@ -7,6 +7,7 @@ package derox
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	"time"
 )
 
 func init() {
@@ -63,6 +64,7 @@ func (h *deroxHandler) testSetCookie(req Request, resp Response) {
 	cookie.Set("hello", "wo r,ld")
 	cookie.SetMaxAge(99)
 	cookie.SetSecure()
-	resp.AddRawCookie(cookie)
+	cookie.SetExpires(time.Now())
+	resp.AddCookie(cookie)
 	resp.SendBytes(nil)
 }

@@ -2484,7 +2484,6 @@ type Response interface {
 	AddHostnameRedirection(hostname string) bool
 
 	AddCookie(cookie *Cookie) bool
-	AddRawCookie(cookie *Cookie) bool
 
 	AddHeader(name string, value string) bool
 	AddHeaderBytes(name string, value []byte) bool
@@ -2870,18 +2869,21 @@ type Cookie struct {
 	sameSite string
 	secure   bool
 	httpOnly bool
+	inValid  bool
+	quote    bool // if true, quote value with ""
 	aFrom    int8
 	aEdge    int8
-	quote    bool // if true, quote value with ""
 	ageBuf   [19]byte
 }
 
 func (c *Cookie) Set(name string, value string) bool {
 	if name == "" {
+		c.inValid = true
 		return false
 	}
 	for i := 0; i < len(name); i++ {
 		if b := name[i]; httpKchar[b] == 0 {
+			c.inValid = true
 			return false
 		}
 	}
@@ -2895,36 +2897,41 @@ func (c *Cookie) Set(name string, value string) bool {
 			c.quote = true
 			continue
 		}
+		c.inValid = true
 		return false
 	}
 	c.value = value
 	return true
 }
-func (c *Cookie) SetExpires(expires time.Time) bool {
-	// TODO: check
-	c.expires = expires
-	return true
-}
-func (c *Cookie) SetMaxAge(maxAge int64) bool {
-	// TODO: check
-	c.maxAge = maxAge
-	return true
-}
 func (c *Cookie) SetDomain(domain string) bool {
-	// TODO: check
+	// TODO: check domain
 	c.domain = domain
 	return true
 }
 func (c *Cookie) SetPath(path string) bool {
-	// TODO: check
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b >= 0x7F || b == ';' {
+			c.inValid = true
+			return false
+		}
+	}
 	c.path = path
 	return true
 }
-func (c *Cookie) SetSecure()         { c.secure = true }
-func (c *Cookie) SetHttpOnly()       { c.httpOnly = true }
-func (c *Cookie) SetSameSiteStrict() { c.sameSite = "Strict" }
-func (c *Cookie) SetSameSiteLax()    { c.sameSite = "Lax" }
-func (c *Cookie) SetSameSiteNone()   { c.sameSite = "None" }
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	if !c._isValidExpires(expires) {
+		c.inValid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int64) { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()             { c.secure = true }
+func (c *Cookie) SetHttpOnly()           { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()     { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()        { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()       { c.sameSite = "None" }
 
 func (c *Cookie) size() int {
 	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
@@ -2932,7 +2939,7 @@ func (c *Cookie) size() int {
 	if c.quote {
 		n += 2 // ""
 	}
-	if c._isValidExpires() {
+	if !c.expires.IsZero() {
 		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
 	}
 	if c.maxAge > 0 {
@@ -2974,7 +2981,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	} else {
 		i += copy(p[i:], c.value)
 	}
-	if c._isValidExpires() {
+	if !c.expires.IsZero() {
 		i += copy(p[i:], "; Expires=")
 		i += copy(p[i:], "Sun, 06 Nov 1994 08:49:37 GMT") // TODO
 	}
@@ -3002,8 +3009,8 @@ func (c *Cookie) writeTo(p []byte) int {
 	}
 	return i
 }
-func (c *Cookie) _isValidExpires() bool {
-	return c.expires.Year() >= 1601
+func (c *Cookie) _isValidExpires(expires time.Time) bool {
+	return expires.Year() >= 1601
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

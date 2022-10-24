@@ -384,10 +384,6 @@ func (r *http3Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) AddRawCookie(cookie *Cookie) bool {
-	// TODO
-	return false
-}
 
 func (r *http3Response) doSend(chain Chain) error {
 	// TODO

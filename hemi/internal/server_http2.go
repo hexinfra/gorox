@@ -1182,10 +1182,6 @@ func (r *http2Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) AddRawCookie(cookie *Cookie) bool {
-	// TODO
-	return false
-}
 
 func (r *http2Response) doSend(chain Chain) error {
 	// TODO

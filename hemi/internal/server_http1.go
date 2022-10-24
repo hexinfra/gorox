@@ -930,10 +930,9 @@ func (r *http1Response) setConnectionClose() {
 	r.stream.(*http1Stream).keepConn = false
 }
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
-	// TODO
-	return false
-}
-func (r *http1Response) AddRawCookie(cookie *Cookie) bool {
+	if cookie.name == "" || cookie.inValid {
+		return false
+	}
 	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + cookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], httpBytesSetCookie)

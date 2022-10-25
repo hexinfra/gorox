@@ -1124,7 +1124,7 @@ func (r *http2Request) joinHeaders(p []byte) bool {
 	return true
 }
 
-func (r *http2Request) readContent() (from int, edge int, err error) {
+func (r *http2Request) readContent() (p []byte, err error) {
 	return r.readContent2()
 }
 
@@ -1213,6 +1213,12 @@ func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	r.onEnd()
 	r.onUse()
 	return false
+}
+func (r *http2Response) passHeaders() error {
+	return nil
+}
+func (r *http2Response) doPass(p []byte) error {
+	return nil
 }
 func (r *http2Response) passTrailers(resp response) bool { // used by proxies
 	// TODO

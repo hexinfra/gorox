@@ -317,6 +317,12 @@ func (r *H3Request) finalizeHeaders() {
 	// TODO
 }
 
+func (r *H3Request) passHeaders() error {
+	return nil
+}
+func (r *H3Request) doPass(p []byte) error {
+	return nil
+}
 func (r *H3Request) passTrailers(req Request) bool { // used by proxies
 	// TODO
 	return false
@@ -333,7 +339,7 @@ type H3Response struct {
 	// Stream states (zeros)
 }
 
-func (r *H3Response) readContent() (from int, edge int, err error) {
+func (r *H3Response) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 

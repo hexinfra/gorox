@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"io"
 	"sync/atomic"
 )
 
@@ -240,7 +241,7 @@ func (r *hRequest_) finishPush() error {
 	return r.shell.pushEnd()
 }
 
-func (r *hRequest_) withHead(req Request) bool { // used by proxies
+func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	var uri []byte
 	if req.isServerOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
@@ -276,9 +277,30 @@ func (r *hRequest_) withHead(req Request) bool { // used by proxies
 	return true
 }
 func (r *hRequest_) pass(req Request) error { // used by proxies.
-	// TODO
-	// content may be identity (write through) or chunked (use push)
-	return nil
+	pass := r.shell.doPass
+	if size := req.ContentSize(); size == -2 {
+		pass = r.PushBytes
+	} else {
+		r.isSent = true
+		r.contentSize = size
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := req.readContent()
+		if len(p) > 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
@@ -320,6 +342,7 @@ type response interface {
 	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	recvContent(retain bool) any
+	readContent() (p []byte, err error)
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

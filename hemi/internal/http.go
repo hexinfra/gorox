@@ -586,7 +586,7 @@ type httpInMessage_ struct {
 	shell  interface { // *http[1-3]Request or *H[1-3]Response
 		arrayCopy(p []byte) bool
 		useHeader(header *pair) bool
-		readContent() (from int, edge int, err error)
+		readContent() (p []byte, err error)
 		useTrailer(trailer *pair) bool
 		getSaveContentFilesDir() string
 	}
@@ -1118,12 +1118,12 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		return err
 	}
 	for {
-		from, edge, err := r.shell.readContent()
+		p, err := r.shell.readContent()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			goto badRecv
-		} else if _, err = content.Write(r.bodyBuffer[from:edge]); err != nil {
+		} else if _, err = content.Write(p); err != nil {
 			goto badRecv
 		}
 	}
@@ -1492,6 +1492,8 @@ type httpOutMessage_ struct {
 		pushHeaders() error
 		push(chunk *Block) error
 		doPush(chain Chain) error
+		doPass(p []byte) error
+		passHeaders() error
 		addTrailer(name []byte, value []byte) bool
 		pushEnd() error
 		finalizeHeaders()
@@ -1738,12 +1740,12 @@ func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 
-func (r *httpOutMessage_) _withHeader(added *bool, name []byte, value []byte) bool {
-	if *added {
+func (r *httpOutMessage_) _copyHeader(copied *bool, name []byte, value []byte) bool {
+	if *copied {
 		return true
 	}
 	if r.shell.addHeader(name, value) {
-		*added = true
+		*copied = true
 		return true
 	}
 	return false

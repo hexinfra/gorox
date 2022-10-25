@@ -408,9 +408,15 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
 
+func (r *H1Request) passHeaders() error {
+	return r.passHeaders1()
+}
+func (r *H1Request) doPass(p []byte) error {
+	return r.doPass1(p)
+}
 func (r *H1Request) passTrailers(req Request) bool { // used by proxies
 	if !req.walkTrailers(func(name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
+		return r.addTrailer(name, value)
 	}, false) {
 		return false
 	}
@@ -566,7 +572,7 @@ func (r *H1Response) _cleanInput() {
 	}
 }
 
-func (r *H1Response) readContent() (from int, edge int, err error) {
+func (r *H1Response) readContent() (p []byte, err error) {
 	return r.readContent1()
 }
 

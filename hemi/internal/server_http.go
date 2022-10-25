@@ -15,6 +15,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -407,7 +408,7 @@ type Request interface {
 	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	recvContent(retain bool) any
 	holdContent() any
-	readContent() (from int, edge int, err error)
+	readContent() (p []byte, err error)
 	hasTrailers() bool
 	delHopTrailers()
 	hookChanger(changer Changer)
@@ -2532,7 +2533,7 @@ type Response interface {
 	setConnectionClose()
 	addDirectoryRedirection() bool
 	pass1xx(resp response) bool      // used by proxies
-	withHead(resp response) bool     // used by proxies
+	copyHead(resp response) bool     // used by proxies
 	pass(resp response) error        // used by proxies
 	post(content any) error          // used by proxies
 	passTrailers(resp response) bool // used by proxies
@@ -2558,14 +2559,14 @@ type httpResponse_ struct {
 	httpResponse0_      // all values must be zero by default in this struct!
 }
 type httpResponse0_ struct { // for fast reset, entirely
-	revisers          [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	hasRevisers       bool      // are there any revisers hooked on this response?
-	bypassRevisers    bool      // bypass revisers when writing response to client?
-	nETag             int8      // etag is at r.etag[:r.nETag]
-	acceptBytesRange  bool      // accept-ranges: bytes?
-	dateAdded         bool      // is date header added?
-	lastModifiedAdded bool      // ...
-	etagAdded         bool      // ...
+	revisers           [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
+	hasRevisers        bool      // are there any revisers hooked on this response?
+	bypassRevisers     bool      // bypass revisers when writing response to client?
+	nETag              int8      // etag is at r.etag[:r.nETag]
+	acceptBytesRange   bool      // accept-ranges: bytes?
+	dateCopied         bool      // is date header copied?
+	lastModifiedCopied bool      // ...
+	etagCopied         bool      // ...
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
@@ -2789,17 +2790,17 @@ func (r *httpResponse_) finishPush() error {
 	return resp.pushEnd()
 }
 
-func (r *httpResponse_) withHead(resp response) bool { // used by proxies
+func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
 	resp.delHopHeaders()
 	// copy critical headers from resp
-	if date := resp.unsafeDate(); date != nil && !r._withHeader(&r.dateAdded, httpBytesDate, date) {
+	if date := resp.unsafeDate(); date != nil && !r._copyHeader(&r.dateCopied, httpBytesDate, date) {
 		return false
 	}
-	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r._withHeader(&r.lastModifiedAdded, httpBytesLastModified, lastModified) {
+	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r._copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
 		return false
 	}
-	if etag := resp.unsafeETag(); etag != nil && !r._withHeader(&r.etagAdded, httpBytesETag, etag) {
+	if etag := resp.unsafeETag(); etag != nil && !r._copyHeader(&r.etagCopied, httpBytesETag, etag) {
 		return false
 	}
 	if contentType := resp.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {
@@ -2815,10 +2816,30 @@ func (r *httpResponse_) withHead(resp response) bool { // used by proxies
 	return true
 }
 func (r *httpResponse_) pass(resp response) error { // used by proxies
-	// TODO
-	// content may be identity or chunked.
-	// if there are any revisers, then we always use push(), switch to chunked mode if content is in identity mode
-	return nil
+	pass := r.shell.doPass
+	if size := resp.ContentSize(); size == -2 || (r.hasRevisers && !r.bypassRevisers) {
+		pass = r.PushBytes
+	} else {
+		r.isSent = true
+		r.contentSize = size
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := resp.readContent()
+		if len(p) > 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

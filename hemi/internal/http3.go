@@ -191,7 +191,7 @@ func (r *httpInMessage_) _growHeaders3(size int32) bool {
 	return false
 }
 
-func (r *httpInMessage_) readContent3() (from int, edge int, err error) {
+func (r *httpInMessage_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
@@ -228,11 +228,11 @@ func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) pushEnd3() error {
-	// TODO
+func (r *httpOutMessage_) trailers3() []byte {
 	return nil
 }
-func (r *httpOutMessage_) trailers3() []byte {
+func (r *httpOutMessage_) pushEnd3() error {
+	// TODO
 	return nil
 }
 

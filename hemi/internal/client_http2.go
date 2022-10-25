@@ -343,6 +343,12 @@ func (r *H2Request) finalizeHeaders() {
 	// TODO
 }
 
+func (r *H2Request) passHeaders() error {
+	return nil
+}
+func (r *H2Request) doPass(p []byte) error {
+	return nil
+}
 func (r *H2Request) passTrailers(req Request) bool { // used by proxies
 	// TODO
 	return false
@@ -364,7 +370,7 @@ func (r *H2Response) joinHeaders(p []byte) bool {
 	return false
 }
 
-func (r *H2Response) readContent() (from int, edge int, err error) {
+func (r *H2Response) readContent() (p []byte, err error) {
 	return r.readContent2()
 }
 

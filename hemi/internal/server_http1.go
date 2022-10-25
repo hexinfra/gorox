@@ -816,7 +816,7 @@ func (r *http1Request) _cleanInput() {
 	}
 }
 
-func (r *http1Request) readContent() (from int, edge int, err error) {
+func (r *http1Request) readContent() (p []byte, err error) {
 	return r.readContent1()
 }
 
@@ -972,17 +972,17 @@ func (r *http1Response) pushEnd() error {
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
-	if !r.dateAdded {
+	if !r.dateCopied {
 		r.stream.getHolder().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])
 		r.fieldsEdge += uint16(clockDateSize)
 	}
 	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT
-	if r.lastModified != -1 && !r.lastModifiedAdded {
+	if r.lastModified != -1 && !r.lastModifiedCopied {
 		clockWriteLastModified(r.fields[r.fieldsEdge:r.fieldsEdge+uint16(clockLastModifiedSize)], r.lastModified)
 		r.fieldsEdge += uint16(clockLastModifiedSize)
 	}
 	// etag: "xxxx-xxxx"
-	if r.nETag > 0 && !r.etagAdded {
+	if r.nETag > 0 && !r.etagCopied {
 		r._addFixedHeader1(httpBytesETag, r.etag[0:r.nETag])
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
@@ -1035,9 +1035,15 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return true
 }
+func (r *http1Response) passHeaders() error {
+	return r.passHeaders1()
+}
+func (r *http1Response) doPass(p []byte) error {
+	return r.doPass1(p)
+}
 func (r *http1Response) passTrailers(resp response) bool { // used by proxies
 	if !resp.walkTrailers(func(name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
+		return r.addTrailer(name, value)
 	}, false) {
 		return false
 	}

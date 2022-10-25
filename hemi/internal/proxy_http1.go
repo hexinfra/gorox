@@ -94,12 +94,12 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	// TODO: use stream1.forwardProxy() or stream1.reverseProxy()
 
 	req1 := stream1.Request()
-	if !req1.withHead(req) {
+	if !req1.copyHead(req) {
 		stream1.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
-	if h.bufferClientContent || !hasContent {
+	if !hasContent || h.bufferClientContent {
 		err1 = req1.post(content) // nil (no content), []byte, TempFile
 	} else if err1 = req1.pass(req); err1 != nil {
 		stream1.markBroken()
@@ -150,9 +150,9 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.withHead(resp1) {
+	if !resp.copyHead(resp1) {
 		stream1.markBroken()
-	} else if h.bufferServerContent || !hasContent1 {
+	} else if !hasContent1 || h.bufferServerContent {
 		resp.post(content1) // nil (no content), []byte, TempFile
 	} else if err := resp.pass(resp1); err != nil {
 		stream1.markBroken()

@@ -331,7 +331,7 @@ type http3Request struct {
 	// Stream states (zeros)
 }
 
-func (r *http3Request) readContent() (from int, edge int, err error) {
+func (r *http3Request) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 
@@ -415,6 +415,12 @@ func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	r.onEnd()
 	r.onUse()
 	return false
+}
+func (r *http3Response) passHeaders() error {
+	return nil
+}
+func (r *http3Response) doPass(p []byte) error {
+	return nil
 }
 func (r *http3Response) passTrailers(resp response) bool { // used by proxies
 	// TODO

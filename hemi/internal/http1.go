@@ -199,45 +199,46 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 	return true
 }
 
-func (r *httpInMessage_) readContent1() (from int, edge int, err error) {
+func (r *httpInMessage_) readContent1() (p []byte, err error) {
 	if r.contentSize > 0 { // identity
 		return r._readIdentityContent1()
 	} else { // must be -2 (chunked). others (0 and -1) are excluded priorly
 		return r._readChunkedContent1()
 	}
 }
-func (r *httpInMessage_) _readIdentityContent1() (from int, edge int, err error) {
+func (r *httpInMessage_) _readIdentityContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize {
-		if r.bodyBuffer != nil {
-			PutNK(r.bodyBuffer)
-			r.bodyBuffer = nil
+		if r.bodyBuffer == nil { // body buffer is not used. this means content is immediate
+			return r.contentBlob[:r.sizeReceived], io.EOF
 		}
-		return 0, 0, io.EOF
+		PutNK(r.bodyBuffer)
+		r.bodyBuffer = nil
+		return nil, io.EOF
 	}
 	if r.bodyBuffer == nil {
 		r.bodyBuffer = Get16K() // will be freed on ends
 	}
 	if r.imme.notEmpty() {
-		edge = copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyBuffer
-		r.sizeReceived = int64(r.imme.size())
+		size := copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyBuffer
+		r.sizeReceived = int64(size)
 		r.imme.zero()
-		return 0, edge, nil
+		return r.bodyBuffer[0:size], nil
 	}
 	if err = r._prepareRead(&r.contentTime); err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	recvSize := int64(cap(r.bodyBuffer))
 	if sizeLeft := r.contentSize - r.sizeReceived; sizeLeft < recvSize {
 		recvSize = sizeLeft
 	}
-	edge, err = r.stream.readFull(r.bodyBuffer[:recvSize])
-	r.sizeReceived += int64(edge)
+	size, err := r.stream.readFull(r.bodyBuffer[:recvSize])
+	r.sizeReceived += int64(size)
 	if err == nil && (r.maxRecvSeconds > 0 && time.Now().Unix()-r.contentTime >= r.maxRecvSeconds) {
 		err = httpReadTooSlow
 	}
-	return
+	return r.bodyBuffer[0:size], err
 }
-func (r *httpInMessage_) _readChunkedContent1() (from int, edge int, err error) {
+func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 	if r.bodyBuffer == nil {
 		r.bodyBuffer = Get16K() // will be freed on ends
 	}
@@ -343,13 +344,13 @@ func (r *httpInMessage_) _readChunkedContent1() (from int, edge int, err error) 
 				PutNK(r.bodyBuffer)
 				r.bodyBuffer = nil
 			}
-			return 0, 0, io.EOF
+			return nil, io.EOF
 		}
 		// Not last chunk, now r.cFore is at the beginning of chunk-data CRLF
 		fallthrough
 	default: // r.chunkSize > 0, receiving chunk-data CRLF
 		r.cBack = 0 // so _growChunked1() works correctly
-		from = int(r.cFore)
+		from := int(r.cFore)
 		var dataEdge int32
 		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
 			r.sizeReceived += haveSize
@@ -386,11 +387,10 @@ func (r *httpInMessage_) _readChunkedContent1() (from int, edge int, err error) 
 				goto badRecv
 			}
 		}
-		edge = int(dataEdge)
-		return from, edge, nil
+		return r.bodyBuffer[from:int(dataEdge)], nil
 	}
 badRecv:
-	return 0, 0, http1ReadBadChunk
+	return nil, http1ReadBadChunk
 }
 
 func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-line CRLF)
@@ -717,6 +717,9 @@ func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
 		return false
 	}
 }
+func (r *httpOutMessage_) trailers1() []byte {
+	return r.fields[0:r.fieldsEdge]
+}
 func (r *httpOutMessage_) pushEnd1() error {
 	if r.nTrailers == 0 {
 		r.vector = r.fixedVector[0:1]
@@ -729,8 +732,27 @@ func (r *httpOutMessage_) pushEnd1() error {
 	}
 	return r.writeVector1(&r.vector)
 }
-func (r *httpOutMessage_) trailers1() []byte {
-	return r.fields[0:r.fieldsEdge]
+
+func (r *httpOutMessage_) passHeaders1() error {
+	r.shell.finalizeHeaders()
+	r.vector = r.fixedVector[0:3]
+	r.vector[0] = r.shell.control()
+	r.vector[1] = r.shell.addedHeaders()
+	r.vector[2] = r.shell.fixedHeaders()
+	if IsDevel() {
+		if r.asRequest {
+			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+		} else {
+			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+		}
+		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
+	}
+	return r.writeVector1(&r.vector)
+}
+func (r *httpOutMessage_) doPass1(p []byte) error {
+	r.vector = r.fixedVector[0:1]
+	r.vector[0] = p
+	return r.writeVector1(&r.vector)
 }
 
 func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {

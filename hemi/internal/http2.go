@@ -660,7 +660,7 @@ func (r *httpInMessage_) checkHeaders2() bool {
 	return false
 }
 
-func (r *httpInMessage_) readContent2() (from int, edge int, err error) {
+func (r *httpInMessage_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
@@ -702,11 +702,11 @@ func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) pushEnd2() error {
-	// TODO
+func (r *httpOutMessage_) trailers2() []byte {
 	return nil
 }
-func (r *httpOutMessage_) trailers2() []byte {
+func (r *httpOutMessage_) pushEnd2() error {
+	// TODO
 	return nil
 }
 

@@ -301,6 +301,14 @@ func (r *hRequest_) pass(req Request) error { // used by proxies.
 			return err
 		}
 	}
+	if req.hasTrailers() {
+		if !req.walkTrailers(func(name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}, false) {
+			return httpAddTrailerFailed
+		}
+	}
+	return nil
 }
 
 func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {

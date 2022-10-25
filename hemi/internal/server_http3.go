@@ -406,10 +406,6 @@ func (r *http3Response) pushEnd() error {
 	return nil
 }
 
-func (r *http3Response) finalizeHeaders() {
-	// TODO
-}
-
 func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	// TODO
 	r.onEnd()
@@ -422,9 +418,9 @@ func (r *http3Response) passHeaders() error {
 func (r *http3Response) doPass(p []byte) error {
 	return nil
 }
-func (r *http3Response) passTrailers(resp response) bool { // used by proxies
+
+func (r *http3Response) finalizeHeaders() {
 	// TODO
-	return false
 }
 
 // http3Socket is the server-side HTTP/3 websocket.

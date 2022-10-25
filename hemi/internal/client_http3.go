@@ -313,19 +313,15 @@ func (r *H3Request) pushEnd() error {
 	return nil
 }
 
-func (r *H3Request) finalizeHeaders() {
-	// TODO
-}
-
 func (r *H3Request) passHeaders() error {
 	return nil
 }
 func (r *H3Request) doPass(p []byte) error {
 	return nil
 }
-func (r *H3Request) passTrailers(req Request) bool { // used by proxies
+
+func (r *H3Request) finalizeHeaders() {
 	// TODO
-	return false
 }
 
 // H3Response

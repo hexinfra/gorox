@@ -339,19 +339,15 @@ func (r *H2Request) pushEnd() error {
 	return nil
 }
 
-func (r *H2Request) finalizeHeaders() {
-	// TODO
-}
-
 func (r *H2Request) passHeaders() error {
 	return nil
 }
 func (r *H2Request) doPass(p []byte) error {
 	return nil
 }
-func (r *H2Request) passTrailers(req Request) bool { // used by proxies
+
+func (r *H2Request) finalizeHeaders() {
 	// TODO
-	return false
 }
 
 // H2Response

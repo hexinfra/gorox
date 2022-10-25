@@ -2520,6 +2520,9 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
 	delHeader(name []byte) bool
+	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
+	setConnectionClose()
+	addDirectoryRedirection() bool
 	sendBlob(content []byte) error
 	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
 	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
@@ -2527,16 +2530,12 @@ type Response interface {
 	pushHeaders() error
 	doPush(chain Chain) error
 	pushEnd() error
+	pass1xx(resp response) bool  // used by proxies
+	copyHead(resp response) bool // used by proxies
+	pass(resp response) error    // used by proxies
+	post(content any) error      // used by proxies
 	hookReviser(reviser Reviser)
 	setBypassRevisers(bypass bool)
-	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
-	setConnectionClose()
-	addDirectoryRedirection() bool
-	pass1xx(resp response) bool      // used by proxies
-	copyHead(resp response) bool     // used by proxies
-	pass(resp response) error        // used by proxies
-	post(content any) error          // used by proxies
-	passTrailers(resp response) bool // used by proxies
 	unsafeMake(size int) []byte
 }
 
@@ -2835,11 +2834,19 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 		}
 		if err != nil {
 			if err == io.EOF {
-				return nil
+				break
 			}
 			return err
 		}
 	}
+	if resp.hasTrailers() {
+		if !resp.walkTrailers(func(name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}, false) {
+			return httpAddTrailerFailed
+		}
+	}
+	return nil
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

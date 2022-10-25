@@ -390,6 +390,13 @@ func (r *H1Request) pushEnd() error {
 	return r.pushEnd1()
 }
 
+func (r *H1Request) passHeaders() error {
+	return r.passHeaders1()
+}
+func (r *H1Request) doPass(p []byte) error {
+	return r.doPass1(p)
+}
+
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: 12345
@@ -406,24 +413,6 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	}
 	// connection: keep-alive
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
-}
-
-func (r *H1Request) passHeaders() error {
-	return r.passHeaders1()
-}
-func (r *H1Request) doPass(p []byte) error {
-	return r.doPass1(p)
-}
-func (r *H1Request) passTrailers(req Request) bool { // used by proxies
-	if !req.walkTrailers(func(name []byte, value []byte) bool {
-		return r.addTrailer(name, value)
-	}, false) {
-		return false
-	}
-	r.vector = r.fixedVector[0:2]
-	r.vector[0] = r.trailers1()
-	r.vector[1] = httpBytesCRLF
-	return r.writeVector1(&r.vector) == nil
 }
 
 // H1Response is the client-side HTTP/1 response.

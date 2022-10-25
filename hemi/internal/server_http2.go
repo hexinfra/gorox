@@ -1204,10 +1204,6 @@ func (r *http2Response) pushEnd() error {
 	return nil
 }
 
-func (r *http2Response) finalizeHeaders() {
-	// TODO
-}
-
 func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	// TODO
 	r.onEnd()
@@ -1220,9 +1216,9 @@ func (r *http2Response) passHeaders() error {
 func (r *http2Response) doPass(p []byte) error {
 	return nil
 }
-func (r *http2Response) passTrailers(resp response) bool { // used by proxies
+
+func (r *http2Response) finalizeHeaders() {
 	// TODO
-	return false
 }
 
 // http2Socket is the server-side HTTP/2 websocket.

@@ -747,7 +747,11 @@ func (r *httpOutMessage_) passHeaders1() error {
 		}
 		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
-	return r.writeVector1(&r.vector)
+	if err := r.writeVector1(&r.vector); err != nil {
+		return err
+	}
+	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
+	return nil
 }
 func (r *httpOutMessage_) doPass1(p []byte) error {
 	r.vector = r.fixedVector[0:1]

@@ -1163,7 +1163,7 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 }
 
 func (r *httpInMessage_) hasTrailers() bool { // used by proxies
-	return r.trailers.isEmpty()
+	return r.trailers.notEmpty()
 }
 func (r *httpInMessage_) T(name string) string {
 	value, _ := r.Trailer(name)
@@ -1421,11 +1421,12 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 		if field.hash == 0 {
 			continue
 		}
-		fieldName := r.input[field.nameFrom : field.nameFrom+int32(field.nameSize)]
+		p := r._getPlace(field)
+		fieldName := p[field.nameFrom : field.nameFrom+int32(field.nameSize)]
 		if !withConnection && field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
 			continue
 		}
-		if !fn(fieldName, r.input[field.value.from:field.value.edge]) {
+		if !fn(fieldName, p[field.value.from:field.value.edge]) {
 			return false
 		}
 	}
@@ -1487,15 +1488,15 @@ type httpOutMessage_ struct {
 		fixedHeaders() []byte
 		isForbiddenField(hash uint16, name []byte) bool
 		send() error
-		checkPush() error
 		doSend(chain Chain) error
+		checkPush() error
 		pushHeaders() error
 		push(chunk *Block) error
 		doPush(chain Chain) error
-		doPass(p []byte) error
-		passHeaders() error
 		addTrailer(name []byte, value []byte) bool
 		pushEnd() error
+		passHeaders() error
+		doPass(p []byte) error
 		finalizeHeaders()
 	}
 	// Stream states (buffers)
@@ -1732,7 +1733,6 @@ func (r *httpOutMessage_) pushFile(chunkPath string, shut bool) error {
 	chunk.SetFile(file, info, shut)
 	return r.shell.push(chunk)
 }
-
 func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	if !r.isSent { // trailers must be set after headers & content are sent
 		return false
@@ -1750,7 +1750,6 @@ func (r *httpOutMessage_) _copyHeader(copied *bool, name []byte, value []byte) b
 	}
 	return false
 }
-
 func (r *httpOutMessage_) post(content any) error { // used by proxies
 	if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
@@ -1766,16 +1765,16 @@ func (r *httpOutMessage_) post(content any) error { // used by proxies
 	}
 }
 
+func (r *httpOutMessage_) unsafeMake(size int) []byte {
+	return r.stream.unsafeMake(size)
+}
+
 func (r *httpOutMessage_) _prepareWrite() error {
 	now := time.Now()
 	if r.sendTime == 0 {
 		r.sendTime = now.Unix()
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.getHolder().WriteTimeout()))
-}
-
-func (r *httpOutMessage_) unsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
 }
 
 var ( // http outgoing message errors
@@ -1786,6 +1785,7 @@ var ( // http outgoing message errors
 	httpAlreadySent        = errors.New("already sent")
 	httpContentTooLarge    = errors.New("content too large")
 	httpMixIdentityChunked = errors.New("mix identity and chunked")
+	httpAddTrailerFailed   = errors.New("add trailer failed")
 )
 
 var httpErrorPages = func() map[int16][]byte {

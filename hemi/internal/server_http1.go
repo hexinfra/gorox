@@ -296,6 +296,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 		if !resp.isSent { // only happens on identity content.
 			resp.doSend(resp.content)
 		} else if resp.contentSize == -2 { // push last chunk and trailers (if exist)
+			// TODO: what about behavior for pass()?
 			resp.finishPush()
 		}
 	} else { // we hijack OPTIONS *. TODO: what if this is to be proxied?
@@ -970,6 +971,34 @@ func (r *http1Response) pushEnd() error {
 	return r.pushEnd1()
 }
 
+func (r *http1Response) pass1xx(resp response) bool { // used by proxies
+	r.status = resp.Status()
+	resp.delHopHeaders()
+	if !resp.walkHeaders(func(name []byte, value []byte) bool {
+		return r.addHeader(name, value)
+	}, false) {
+		return false
+	}
+	r.vector = r.fixedVector[0:3]
+	r.vector[0] = r.control()
+	r.vector[1] = r.addedHeaders()
+	r.vector[2] = httpBytesCRLF
+	// 1xx has no content.
+	if r.writeVector1(&r.vector) != nil {
+		return false
+	}
+	// For next use.
+	r.onEnd()
+	r.onUse()
+	return true
+}
+func (r *http1Response) passHeaders() error {
+	return r.passHeaders1()
+}
+func (r *http1Response) doPass(p []byte) error {
+	return r.doPass1(p)
+}
+
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
 	if !r.dateCopied {
@@ -1012,45 +1041,6 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.acceptBytesRange {
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesAcceptRangesBytes))
 	}
-}
-
-func (r *http1Response) pass1xx(resp response) bool { // used by proxies
-	r.status = resp.Status()
-	resp.delHopHeaders()
-	if !resp.walkHeaders(func(name []byte, value []byte) bool {
-		return r.addHeader(name, value)
-	}, false) {
-		return false
-	}
-	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.control()
-	r.vector[1] = r.addedHeaders()
-	r.vector[2] = httpBytesCRLF
-	// 1xx has no content.
-	if r.writeVector1(&r.vector) != nil {
-		return false
-	}
-	// For next use.
-	r.onEnd()
-	r.onUse()
-	return true
-}
-func (r *http1Response) passHeaders() error {
-	return r.passHeaders1()
-}
-func (r *http1Response) doPass(p []byte) error {
-	return r.doPass1(p)
-}
-func (r *http1Response) passTrailers(resp response) bool { // used by proxies
-	if !resp.walkTrailers(func(name []byte, value []byte) bool {
-		return r.addTrailer(name, value)
-	}, false) {
-		return false
-	}
-	r.vector = r.fixedVector[0:2]
-	r.vector[0] = r.trailers1()
-	r.vector[1] = httpBytesCRLF
-	return r.writeVector1(&r.vector) == nil
 }
 
 // http1Socket is the server-side HTTP/1 websocket.

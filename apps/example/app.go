@@ -47,6 +47,7 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 
 	m.GET("/foo", h.handleFoo)
 	m.POST("/bar", h.handleBar)
+	m.GET("/baz", h.handleBaz)
 
 	h.mapper = m
 }
@@ -77,6 +78,11 @@ func (h *exampleHandler) handleBar(req Request, resp Response) {
 	resp.Push(req.T("x"))
 	resp.Push(req.T("y"))
 	resp.AddTrailer("z", "123")
+}
+func (h *exampleHandler) handleBaz(req Request, resp Response) {
+	resp.Push("aa")
+	resp.Push("bb")
+	resp.AddTrailer("cc", "dd")
 }
 
 // exampleMapper

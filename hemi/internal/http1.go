@@ -79,6 +79,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 	for { // each header
 		// End of headers?
 		if b := r.input[r.pFore]; b == '\r' {
+			// Skip '\r'
 			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
 				return false
 			}
@@ -100,7 +101,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		for {
 			b := r.input[r.pFore]
 			if b >= 'a' && b <= 'z' {
-				// Do nothing
+				// Fast path, do nothing
 			} else if b >= 'A' && b <= 'Z' {
 				b += 0x20 // to lower
 				r.input[r.pFore] = b
@@ -147,6 +148,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 					return false
 				}
 			} else if b == '\r' {
+				// Skip '\r'
 				if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
 					return false
 				}
@@ -240,7 +242,7 @@ func (r *httpInMessage_) _readChunkedContent1() (from int, edge int, err error) 
 		r.bodyBuffer = Get16K() // will be freed on ends
 	}
 	if r.imme.notEmpty() {
-		r.chunkEdge = int32(copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge]))
+		r.chunkEdge = int32(copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyBuffer
 		r.imme.zero()
 	}
 	if r.chunkEdge == 0 && !r._growChunked1() { // r.bodyBuffer is empty. must fill
@@ -314,20 +316,21 @@ func (r *httpInMessage_) _readChunkedContent1() (from int, edge int, err error) 
 		}
 		// Last chunk?
 		if r.chunkSize == 0 { // last-chunk = 1*("0") [chunk-ext] CRLF
-			// last-chunk trailer-part CRLF
+			// last-chunk trailer-section CRLF
 			if r.bodyBuffer[r.cFore] == '\r' {
+				// Skip '\r'
 				if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
 					goto badRecv
 				}
 				if r.bodyBuffer[r.cFore] != '\n' {
 					goto badRecv
 				}
-			} else if r.bodyBuffer[r.cFore] != '\n' { // must be trailer-part
+			} else if r.bodyBuffer[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
 				if !r._recvTrailers1() {
 					goto badRecv
 				}
-				// r._recvTrailers1() must ends with r.cFore at the last '\n'.
+				// r._recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
 			r.cFore++ // now the whole chunked content is received and r.cFore is immediately after chunked content.
@@ -390,8 +393,7 @@ badRecv:
 	return 0, 0, http1ReadBadChunk
 }
 
-func (r *httpInMessage_) _recvTrailers1() bool {
-	// trailer-part = *( header-field CRLF)
+func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyBuffer, r.bodyBuffer[r.cFore:r.chunkEdge]) // slide to start
 	r.chunkEdge -= r.cFore
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyBuffer will not slide, so the whole trailers must fit in r.bodyBuffer.
@@ -403,6 +405,7 @@ func (r *httpInMessage_) _recvTrailers1() bool {
 	trailer.setPlace(pairPlaceArray) // all received trailers are placed in r.array
 	for {
 		if b := r.bodyBuffer[r.pFore]; b == '\r' {
+			// Skip '\r'
 			if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
 				return false
 			}
@@ -414,13 +417,13 @@ func (r *httpInMessage_) _recvTrailers1() bool {
 			break
 		}
 		trailer.hash = 0
-		r.pBack = r.pFore
+		r.pBack = r.pFore // for field-name
 		for {
 			b := r.bodyBuffer[r.pFore]
 			if b >= 'a' && b <= 'z' {
-				// Do nothing
+				// Fast path, do nothing
 			} else if b >= 'A' && b <= 'Z' {
-				b += 0x20
+				b += 0x20 // to lower
 				r.bodyBuffer[r.pFore] = b
 			} else if httpTchar[b] == 1 {
 				// Do nothing
@@ -447,13 +450,14 @@ func (r *httpInMessage_) _recvTrailers1() bool {
 				return false
 			}
 		}
-		r.pBack = r.pFore
+		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyBuffer[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
 					return false
 				}
 			} else if b == '\r' {
+				// Skip '\r'
 				if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
 					return false
 				}
@@ -480,31 +484,37 @@ func (r *httpInMessage_) _recvTrailers1() bool {
 		} else {
 			trailer.value.zero()
 		}
+
+		// Copy trailer to r.array
 		fore = r.arrayEdge
 		if !r.shell.arrayCopy(r.bodyBuffer[trailer.nameFrom : trailer.nameFrom+int32(trailer.nameSize)]) {
 			return false
 		}
-		trailer.nameFrom = fore
+		trailer.nameFrom = fore // adjust name from
 		fore = r.arrayEdge
 		if !r.shell.arrayCopy(r.bodyBuffer[trailer.value.from:trailer.value.edge]) {
 			return false
 		}
 		trailer.value.set(fore, r.arrayEdge)
+
+		// Trailer is received in general algorithm. Now use it
 		if !r.shell.useTrailer(trailer) {
 			return false
 		}
+		// Trailer is successfully received. Skip '\n'
 		if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
 			return false
 		}
+		// r.pFore is now at the next trailer or end of trailers.
 	}
-	r.cFore = r.pFore // r.cFore ends at the last '\n'
+	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true
 }
 func (r *httpInMessage_) _growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyBuffer)) && r.cBack == 0 { // r.bodyBuffer is full and we can't slide
 		return false
 	}
-	if r.cBack > 0 { // has previously used data. slide to start
+	if r.cBack > 0 { // has previously used data. slide to start so we can read more data
 		copy(r.bodyBuffer, r.bodyBuffer[r.cBack:r.chunkEdge])
 		r.chunkEdge -= r.cBack
 		r.cFore -= r.cBack
@@ -586,7 +596,7 @@ func (r *httpOutMessage_) _addCRLFHeader1(from int) {
 	r.edges[r.nHeaders] = uint16(from + 2)
 	r.nHeaders++
 }
-func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) {
+func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
 	r.fields[r.fieldsEdge] = ':'
 	r.fields[r.fieldsEdge+1] = ' '
@@ -612,6 +622,11 @@ func (r *httpOutMessage_) doSend1(chain Chain) error {
 	vector[1] = r.shell.addedHeaders()
 	vector[2] = r.shell.fixedHeaders()
 	if IsDevel() {
+		if r.asRequest {
+			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+		} else {
+			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+		}
 		fmt.Printf("-------> [%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3

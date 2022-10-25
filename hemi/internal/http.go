@@ -613,7 +613,7 @@ type httpInMessage_ struct {
 	inputEdge       int32    // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
 	bodyBuffer      []byte   // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	contentBlob     []byte   // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile     *os.File // used by holdContent(), if content is TempFile
+	contentHeld     *os.File // used by holdContent(), if content is TempFile
 	httpInMessage0_          // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
@@ -706,13 +706,13 @@ func (r *httpInMessage_) onEnd() { // for zeros
 		PutNK(r.contentBlob)
 	}
 	r.contentBlob = nil
-	if r.contentFile != nil {
+	if r.contentHeld != nil {
 		if IsDevel() {
 			fmt.Println("contentFile is closed!!")
 		}
-		r.contentFile.Close()
-		os.Remove(r.contentFile.Name())
-		r.contentFile = nil
+		r.contentHeld.Close()
+		os.Remove(r.contentHeld.Name())
+		r.contentHeld = nil
 	}
 
 	r.httpInMessage0_ = httpInMessage0_{}
@@ -1140,10 +1140,10 @@ badRecv:
 }
 func (r *httpInMessage_) holdContent() any { // used by proxies
 	if r.contentReceived {
-		if r.contentFile == nil { // content is either blob or file
+		if r.contentHeld == nil { // content is either blob or file
 			return r.contentBlob
 		} else {
-			return r.contentFile
+			return r.contentHeld
 		}
 	}
 	r.contentReceived = true
@@ -1153,8 +1153,8 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
 		return r.contentBlob[0:r.sizeReceived]
 	case TempFile: // [0, r.app.maxUploadContentSize]. case happens when identity content > 64K1, or content is chunked.
-		r.contentFile = content.(*os.File)
-		return r.contentFile
+		r.contentHeld = content.(*os.File)
+		return r.contentHeld
 	case error:
 		// TODO: log err
 	}
@@ -1205,17 +1205,11 @@ func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, w
 	return r._walkFields(r.trailers, extraKindTrailer, fn, withConnection)
 }
 
-func (r *httpInMessage_) PeerAddr() net.Addr {
-	return r.stream.peerAddr()
-}
 func (r *httpInMessage_) UnsafeMake(size int) []byte {
 	return r.stream.unsafeMake(size)
 }
-func (r *httpInMessage_) arrayPush(b byte) {
-	r.array[r.arrayEdge] = b
-	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
-		r._growArray(1)
-	}
+func (r *httpInMessage_) PeerAddr() net.Addr {
+	return r.stream.peerAddr()
 }
 
 func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
@@ -1316,6 +1310,13 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 }
 func (r *httpInMessage_) delPrimeAt(i uint8) {
 	r.primes[i].zero()
+}
+
+func (r *httpInMessage_) arrayPush(b byte) {
+	r.array[r.arrayEdge] = b
+	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
+		r._growArray(1)
+	}
 }
 
 func (r *httpInMessage_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->...->1G)
@@ -1503,6 +1504,7 @@ type httpOutMessage_ struct {
 	// Stream states (non-zeros)
 	fields      []byte // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
 	contentSize int64  // -1: not set, -2: chunked encoding, >=0: size
+	asRequest   bool   // use message as request?
 	content     Chain  // message content, refers to r.stockBlock or a linked list
 	// Stream states (zeros)
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
@@ -1522,9 +1524,10 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 	contentTypeAdded bool   // is content-type header added?
 }
 
-func (r *httpOutMessage_) onUse() { // for non-zeros
+func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.contentSize = -1                // not set
+	r.contentSize = -1 // not set
+	r.asRequest = asRequest
 	r.content.PushTail(&r.stockBlock) // r.content has 1 block by default
 }
 func (r *httpOutMessage_) onEnd() { // for zeros
@@ -1536,10 +1539,6 @@ func (r *httpOutMessage_) onEnd() { // for zeros
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
 	r.httpOutMessage0_ = httpOutMessage0_{}
-}
-
-func (r *httpOutMessage_) unsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
 }
 
 func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
@@ -1771,6 +1770,10 @@ func (r *httpOutMessage_) _prepareWrite() error {
 		r.sendTime = now.Unix()
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.getHolder().WriteTimeout()))
+}
+
+func (r *httpOutMessage_) unsafeMake(size int) []byte {
+	return r.stream.unsafeMake(size)
 }
 
 var ( // http outgoing message errors

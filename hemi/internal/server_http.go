@@ -2569,7 +2569,7 @@ type httpResponse0_ struct { // for fast reset, entirely
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
-	r.httpOutMessage_.onUse()
+	r.httpOutMessage_.onUse(false)
 	r.status = StatusOK
 	r.lastModified = -1
 }

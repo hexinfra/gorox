@@ -440,7 +440,7 @@ func (r *H1Response) recvHead() { // control + headers
 	}
 	r._cleanInput()
 	if IsDevel() {
-		fmt.Printf("<------- [%s]\n", r.input[r.head.from:r.head.edge])
+		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

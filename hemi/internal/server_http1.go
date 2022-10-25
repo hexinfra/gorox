@@ -411,7 +411,7 @@ func (r *http1Request) recvHead() { // control + headers
 	}
 	r._cleanInput()
 	if IsDevel() {
-		fmt.Printf("<------- [%s]\n", r.input[r.head.from:r.head.edge])
+		fmt.Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF

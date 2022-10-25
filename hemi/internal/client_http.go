@@ -191,7 +191,7 @@ type hRequest0_ struct { // for fast reset, entirely
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
-	r.httpOutMessage_.onUse()
+	r.httpOutMessage_.onUse(true)
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}

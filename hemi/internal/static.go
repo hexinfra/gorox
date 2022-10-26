@@ -62,6 +62,7 @@ func (h *staticHandler) OnConfigure() {
 	} else {
 		UseExitln("webRoot is required for staticHandler")
 	}
+	h.webRoot = strings.TrimRight(h.webRoot, "/")
 	// aliasTo
 	if v, ok := h.Find("aliasTo"); ok {
 		if fromTo, ok := v.StringListN(2); ok {

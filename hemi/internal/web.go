@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -108,6 +109,7 @@ func (a *App) OnConfigure() {
 	}
 	// webRoot
 	a.ConfigureString("webRoot", &a.webRoot, func(value string) bool { return value != "" }, "")
+	a.webRoot = strings.TrimRight(a.webRoot, "/")
 	// file404
 	a.ConfigureString("file404", &a.file404, func(value string) bool { return value != "" }, "")
 	// tlsCertificate
@@ -338,7 +340,7 @@ func (a *App) dispatchNormal(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
-	req.makeAbsPath() // for checking -f, -d, -e, etc
+	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
 			continue
@@ -354,7 +356,7 @@ func (a *App) dispatchNormal(req Request, resp Response) {
 	resp.SendNotFound(a.bytes404)
 }
 func (a *App) dispatchSocket(req Request, sock Socket) {
-	req.makeAbsPath() // for checking -f, -d, -e, etc
+	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
 			continue

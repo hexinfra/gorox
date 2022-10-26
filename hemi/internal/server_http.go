@@ -293,12 +293,12 @@ type Request interface {
 	App() *App
 
 	VersionCode() uint8
-	Version() string
+	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
 
-	SchemeCode() uint8
+	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
 	IsHTTP() bool
 	IsHTTPS() bool
-	Scheme() string
+	Scheme() string // http, https
 
 	MethodCode() uint32
 	Method() string
@@ -307,18 +307,18 @@ type Request interface {
 	IsPUT() bool
 	IsDELETE() bool
 
-	Authority() string
-	Hostname() string
-	ColonPort() string
+	Authority() string // hostname[:port]
+	Hostname() string  // hostname
+	ColonPort() string // :port
 
-	URI() string
-	Path() string
-	AbsPath() string
-	EncodedPath() string
+	URI() string         // /encodedPath?queryString
+	Path() string        // /path
+	AbsPath() string     // /app/web/path
+	EncodedPath() string // /encodedPath
 
-	QueryString() string
+	QueryString() string // including '?' if query string exists
 	Q(name string) string
-	Qint(name string, defaultValut int) int
+	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
 	QueryList(name string) (list []string, ok bool)
 	Queries() (queries [][2]string)
@@ -334,14 +334,6 @@ type Request interface {
 	AddHeader(name string, value string) bool
 	DelHeader(name string) (deleted bool)
 
-	C(name string) string
-	Cookie(name string) (value string, ok bool)
-	CookieList(name string) (list []string, ok bool)
-	Cookies() (cookies [][2]string)
-	HasCookie(name string) bool
-	AddCookie(name string, value string) bool
-	DelCookie(name string) (deleted bool)
-
 	UserAgent() string
 	ContentType() string
 	ContentSize() int64
@@ -349,6 +341,14 @@ type Request interface {
 
 	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
+
+	C(name string) string
+	Cookie(name string) (value string, ok bool)
+	CookieList(name string) (list []string, ok bool)
+	Cookies() (cookies [][2]string)
+	HasCookie(name string) bool
+	AddCookie(name string, value string) bool
+	DelCookie(name string) (deleted bool)
 
 	HasContent() bool                // contentSize=0 is considered as true
 	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack

@@ -13,7 +13,7 @@ Welcome
     * Service Mesh (Data Plane & Control Plane)
     * API Gateway (HTTP APIs & gRPC APIs)
     * Web Application Firewall
-    * ... and MORE!
+    * ... and more through its highly extensible compoments design!
 
   There is also a Gocmc which can optionally manage your Gorox cluster.
 

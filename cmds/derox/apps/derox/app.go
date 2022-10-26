@@ -45,7 +45,7 @@ func (h *deroxHandler) OnShutdown() {
 }
 
 func (h *deroxHandler) Handle(req Request, resp Response) (next bool) {
-	h.testSetCookie(req, resp)
+	h.testQueryString(req, resp)
 	return
 }
 
@@ -67,4 +67,7 @@ func (h *deroxHandler) testSetCookie(req Request, resp Response) {
 	cookie.SetExpires(time.Now())
 	resp.AddCookie(cookie)
 	resp.SendBytes(nil)
+}
+func (h *deroxHandler) testQueryString(req Request, resp Response) {
+	resp.Send(req.QueryString())
 }

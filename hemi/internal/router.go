@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General router implementation.
+// General router implementation. Router is designed for network proxy, especially service mesh.
 
 package internal
 

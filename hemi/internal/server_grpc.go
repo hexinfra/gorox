@@ -8,6 +8,8 @@
 // Due to gRPC's large dependancies, to keep hemi small, we won't implement our own grpc server.
 // Users can implement their own grpc server in exts, which implements GRPCServer interface.
 
+// Maybe we can implements our own gRPC server following its official spec. TBD.
+
 package internal
 
 // GRPCServer is the interface for all grpc servers.

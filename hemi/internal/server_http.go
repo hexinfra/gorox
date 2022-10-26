@@ -703,9 +703,7 @@ func (r *httpRequest_) makeAbsPath() {
 func (r *httpRequest_) getPathInfo() system.FileInfo {
 	if !r.pathInfoGot {
 		r.pathInfoGot = true
-		if r.absPath != nil {
-			r.pathInfo, _ = system.Stat0(r.absPath[0:cap(r.absPath)]) // NUL terminated
-		}
+		r.pathInfo, _ = system.Stat0(r.absPath[0:cap(r.absPath)]) // NUL terminated
 	}
 	return r.pathInfo
 }

@@ -27,6 +27,12 @@ const (
 	workShard uint16 = 1 // multiple worker processes
 )
 
+var (
+	configPrefix string
+	configFile   string
+	currentStage *hemi.Stage
+)
+
 // workerMain is main() for worker process(es).
 func workerMain(token string) {
 	parts := strings.Split(token, "|") // ip:port|pipeKey|workerID
@@ -50,10 +56,10 @@ func workerMain(token string) {
 	if !ok {
 		crash("call leader failed")
 	}
-	// Register succeeded.
-	prefix := resp.Get("prefix")
-	file := resp.Get("file")
-	stage, err := hemi.ApplyFile(prefix, file)
+	// Register succeeded. Now start initial stage
+	configPrefix = resp.Get("prefix")
+	configFile = resp.Get("file")
+	currentStage, err = hemi.ApplyFile(configPrefix, configFile)
 	if err != nil {
 		crash(err.Error())
 	}
@@ -68,7 +74,7 @@ func workerMain(token string) {
 		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
-				onCall(stage, req, resp)
+				onCall(currentStage, req, resp)
 			} else {
 				resp.Flag = 404
 			}
@@ -78,12 +84,12 @@ func workerMain(token string) {
 		} else { // tell
 			if req.Comd == comdRun {
 				if req.Flag == workAlone {
-					stage.StartAlone()
+					currentStage.StartAlone()
 				} else {
-					stage.StartShard(int32(workerID))
+					currentStage.StartShard(int32(workerID))
 				}
 			} else if onTell, ok := onTells[req.Comd]; ok {
-				onTell(stage, req)
+				onTell(currentStage, req)
 			}
 		}
 	}
@@ -94,7 +100,16 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 		resp.Set("pid", fmt.Sprintf("%d", os.Getpid()))
 	},
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("foo", "bar")
+		/*
+			newStage, err := hemi.ApplyFile(configPrefix, configFile)
+			if err != nil {
+				resp.Set("result", "false")
+				return
+			}
+			currentStage = newStage
+			stage.Shutdown()
+		*/
+		resp.Set("result", "true")
 	},
 }
 

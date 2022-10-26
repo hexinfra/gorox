@@ -6,5 +6,5 @@ import (
 
 func main() {
 	// TODO: use http clients in hemi.
-	fmt.Println("goben is a benchmarking tool.")
+	fmt.Println("goben is an HTTP benchmarking tool.")
 }

@@ -2793,13 +2793,13 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
 	resp.delHopHeaders()
 	// copy critical headers from resp
-	if date := resp.unsafeDate(); date != nil && !r._copyHeader(&r.dateCopied, httpBytesDate, date) {
+	if date := resp.unsafeDate(); date != nil && !r.copyHeader(&r.dateCopied, httpBytesDate, date) {
 		return false
 	}
-	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r._copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
+	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r.copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
 		return false
 	}
-	if etag := resp.unsafeETag(); etag != nil && !r._copyHeader(&r.etagCopied, httpBytesETag, etag) {
+	if etag := resp.unsafeETag(); etag != nil && !r.copyHeader(&r.etagCopied, httpBytesETag, etag) {
 		return false
 	}
 	if contentType := resp.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {

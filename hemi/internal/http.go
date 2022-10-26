@@ -1740,7 +1740,7 @@ func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 
-func (r *httpOutMessage_) _copyHeader(copied *bool, name []byte, value []byte) bool {
+func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {
 	if *copied {
 		return true
 	}

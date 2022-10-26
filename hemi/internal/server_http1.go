@@ -953,7 +953,7 @@ func (r *http1Response) doSend(chain Chain) error { // TODO: if r.conn is TLS, d
 }
 
 func (r *http1Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
-	return r.pushHeaders1()
+	return r.writeHeaders1()
 }
 func (r *http1Response) doPush(chain Chain) error {
 	return r.doPush1(chain, r.request.VersionCode() == Version1_1)
@@ -987,7 +987,7 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	return true
 }
 func (r *http1Response) passHeaders() error {
-	return r.passHeaders1()
+	return r.writeHeaders1()
 }
 func (r *http1Response) doPass(p []byte) error {
 	return r.doPass1(p)

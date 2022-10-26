@@ -378,7 +378,7 @@ func (r *H1Request) doSend(chain Chain) error {
 }
 
 func (r *H1Request) pushHeaders() error {
-	return r.pushHeaders1()
+	return r.writeHeaders1()
 }
 func (r *H1Request) doPush(chain Chain) error {
 	return r.doPush1(chain, true)
@@ -388,7 +388,7 @@ func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 }
 
 func (r *H1Request) passHeaders() error {
-	return r.passHeaders1()
+	return r.writeHeaders1()
 }
 func (r *H1Request) doPass(p []byte) error {
 	return r.doPass1(p)

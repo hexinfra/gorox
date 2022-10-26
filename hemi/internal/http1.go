@@ -674,21 +674,6 @@ func (r *httpOutMessage_) doSend1(chain Chain) error {
 	return nil
 }
 
-func (r *httpOutMessage_) pushHeaders1() error { // headers are sent immediately upon pushing chunks.
-	r.shell.finalizeHeaders()
-	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.shell.control()
-	r.vector[1] = r.shell.addedHeaders()
-	r.vector[2] = r.shell.fixedHeaders()
-	if IsDevel() {
-		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
-	}
-	if err := r.writeVector1(&r.vector); err != nil {
-		return err
-	}
-	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
-	return nil
-}
 func (r *httpOutMessage_) doPush1(chain Chain, chunked bool) error {
 	for block := chain.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
@@ -718,29 +703,10 @@ func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
 	}
 }
 func (r *httpOutMessage_) trailers1() []byte {
+	// Headers and trailers are not present at the same time, so after headers is sent, r.fields is used by trailers.
 	return r.fields[0:r.fieldsEdge]
 }
 
-func (r *httpOutMessage_) passHeaders1() error {
-	r.shell.finalizeHeaders()
-	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.shell.control()
-	r.vector[1] = r.shell.addedHeaders()
-	r.vector[2] = r.shell.fixedHeaders()
-	if IsDevel() {
-		if r.asRequest {
-			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
-		} else {
-			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
-		}
-		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
-	}
-	if err := r.writeVector1(&r.vector); err != nil {
-		return err
-	}
-	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
-	return nil
-}
 func (r *httpOutMessage_) doPass1(p []byte) error {
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
@@ -760,6 +726,26 @@ func (r *httpOutMessage_) finalizeChunked1() error {
 	return r.writeVector1(&r.vector)
 }
 
+func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
+	r.shell.finalizeHeaders()
+	r.vector = r.fixedVector[0:3]
+	r.vector[0] = r.shell.control()
+	r.vector[1] = r.shell.addedHeaders()
+	r.vector[2] = r.shell.fixedHeaders()
+	if IsDevel() {
+		if r.asRequest {
+			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+		} else {
+			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+		}
+		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
+	}
+	if err := r.writeVector1(&r.vector); err != nil {
+		return err
+	}
+	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
+	return nil
+}
 func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpWriteBroken

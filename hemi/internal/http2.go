@@ -706,6 +706,13 @@ func (r *httpOutMessage_) trailers2() []byte {
 	return nil
 }
 
+func (r *httpOutMessage_) passHeaders2() error {
+	return nil
+}
+func (r *httpOutMessage_) doPass2(p []byte) error {
+	return nil
+}
+
 func (r *httpOutMessage_) finalizeChunked2() error {
 	// TODO
 	return nil

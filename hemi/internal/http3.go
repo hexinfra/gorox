@@ -232,6 +232,13 @@ func (r *httpOutMessage_) trailers3() []byte {
 	return nil
 }
 
+func (r *httpOutMessage_) passHeaders3() error {
+	return nil
+}
+func (r *httpOutMessage_) doPass3(p []byte) error {
+	return nil
+}
+
 func (r *httpOutMessage_) finalizeChunked3() error {
 	// TODO
 	return nil

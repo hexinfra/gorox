@@ -251,6 +251,9 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		return false
 	}
 	req.delHopHeaders()
+	if req.AcceptTrailers() {
+		// TODO
+	}
 	// copy critical headers from req
 	req.delCriticalHeaders()
 	if req.isAbsoluteForm() {

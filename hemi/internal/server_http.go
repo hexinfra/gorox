@@ -1446,7 +1446,9 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	vAgent := r.primes[r.indexes.userAgent].value
 	return r.input[vAgent.from:vAgent.edge]
 }
-func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *httpRequest_) AcceptTrailers() bool {
+	return r.acceptTrailers
+}
 
 func (r *httpRequest_) addCookie(cookie *pair) bool {
 	if edge, ok := r.addPrime(cookie); ok {

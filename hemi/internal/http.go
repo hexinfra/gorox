@@ -527,7 +527,7 @@ type httpTableEntry struct { // 8 bytes
 	totalSize uint16 // nameSize + valueSize + 32
 }
 
-// holder is an httpServer or httpClient.
+// holder is an httpServer or httpClient which holds http connections and streams.
 type holder interface {
 	Stage() *Stage
 	TLSMode() bool
@@ -603,7 +603,7 @@ type httpInMessage_ struct {
 	array       []byte // store path, queries, extra queries & headers & cookies & trailers, posts, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.posts->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
 	extras      []pair // hold extra queries, headers, cookies, and trailers. refers to r.array. [<r.stockExtras>/255]
-	contentSize int64  // value of content-length header. >=0:size -1:absent -2:chunked
+	contentSize int64  // info of content. >=0:content-length -1:absent -2:chunked
 	asResponse  bool   // use message as response?
 	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	headResult  int16  // result of receiving message head. values are same as http status
@@ -1701,6 +1701,12 @@ func (r *httpOutMessage_) PushBytes(chunk []byte) error {
 func (r *httpOutMessage_) PushFile(chunkPath string) error {
 	return r.pushFile(chunkPath, true)
 }
+func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
+	if !r.isSent { // trailers must be set after headers & content are sent
+		return false
+	}
+	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
+}
 func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err
@@ -1732,12 +1738,6 @@ func (r *httpOutMessage_) pushFile(chunkPath string, shut bool) error {
 	chunk := GetBlock()
 	chunk.SetFile(file, info, shut)
 	return r.shell.push(chunk)
-}
-func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
-	if !r.isSent { // trailers must be set after headers & content are sent
-		return false
-	}
-	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 
 func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {

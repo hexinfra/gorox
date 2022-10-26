@@ -1,10 +1,10 @@
 This directory holds commands and tools, basically one cmd per directory.
 By default there are 4 cmds:
 
-  derox/
-  goben/
-  gocmc/
-  gorox/
+  derox/    - Used to develop hemi.
+  goben/    - An HTTP benchmarking tool.
+  gocmc/    - Gorox Cluster Management Center/Console.
+  gorox/    - The gorox server.
 
 To add a new cmd named "foo":
 

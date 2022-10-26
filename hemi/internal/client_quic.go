@@ -132,8 +132,8 @@ type QConn struct {
 	quicConn   *quix.Conn
 	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)
-	usedStreams int32 // how many streams has been used?
-	broken      int32 // use sync/atomic
+	usedStreams atomic.Int32 // how many streams has been used?
+	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) {
@@ -146,18 +146,18 @@ func (c *QConn) onPut() {
 	c.conn_.onPut()
 	c.node = nil
 	c.quicConn = nil
-	c.usedStreams = 0
-	atomic.StoreInt32(&c.broken, 0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
 
 func (c *QConn) reachLimit() bool {
-	return atomic.AddInt32(&c.usedStreams, 1) > c.maxStreams
+	return c.usedStreams.Add(1) > c.maxStreams
 }
 
-func (c *QConn) isBroken() bool { return atomic.LoadInt32(&c.broken) == 1 }
-func (c *QConn) markBroken()    { atomic.StoreInt32(&c.broken, 1) }
+func (c *QConn) isBroken() bool { return c.broken.Load() }
+func (c *QConn) markBroken()    { c.broken.Store(true) }
 
 func (c *QConn) FetchStream() *QStream {
 	// TODO

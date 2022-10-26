@@ -119,9 +119,9 @@ type hConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	counter     int64 // used to make temp name
-	usedStreams int32 // how many streams has been used?
-	broken      int32 // use sync/atomic
+	counter     atomic.Int64 // used to make temp name
+	usedStreams atomic.Int32 // how many streams has been used?
+	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *hConn_) onGet(id int64, client httpClient) {
@@ -129,22 +129,22 @@ func (c *hConn_) onGet(id int64, client httpClient) {
 }
 func (c *hConn_) onPut() {
 	c.conn_.onPut()
-	c.counter = 0
-	c.usedStreams = 0
-	atomic.StoreInt32(&c.broken, 0)
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *hConn_) getClient() httpClient { return c.client.(httpClient) }
 
 func (c *hConn_) reachLimit() bool {
-	return atomic.AddInt32(&c.usedStreams, 1) > c.getClient().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
 }
 
-func (c *hConn_) isBroken() bool { return atomic.LoadInt32(&c.broken) == 1 }
-func (c *hConn_) markBroken()    { atomic.StoreInt32(&c.broken, 1) }
+func (c *hConn_) isBroken() bool { return c.broken.Load() }
+func (c *hConn_) markBroken()    { c.broken.Store(true) }
 
 func (c *hConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, seconds, atomic.AddInt64(&c.counter, 1))
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, seconds, c.counter.Add(1))
 }
 
 // hStream_ is the mixin for H[1-3]Stream.

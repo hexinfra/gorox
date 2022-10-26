@@ -29,7 +29,9 @@ func GetBlock() *Block { // only exported to hemi, to be used by changers and re
 		return x.(*Block)
 	}
 }
-func putBlock(block *Block) { poolBlock.Put(block) }
+func putBlock(block *Block) {
+	poolBlock.Put(block)
+}
 
 // Block is an item of http message content linked list.
 type Block struct { // 64 bytes

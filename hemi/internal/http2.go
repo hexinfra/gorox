@@ -405,16 +405,16 @@ func putHTTP2Inputs(inputs *http2Inputs) { poolHTTP2Inputs.Put(inputs) }
 // http2Inputs
 type http2Inputs struct {
 	buf [9 + http2FrameMaxSize]byte // header + payload
-	ref int32
+	ref atomic.Int32
 }
 
 func (p *http2Inputs) size() uint32  { return uint32(cap(p.buf)) }
-func (p *http2Inputs) getRef() int32 { return atomic.LoadInt32(&p.ref) }
-func (p *http2Inputs) incRef()       { atomic.AddInt32(&p.ref, 1) }
+func (p *http2Inputs) getRef() int32 { return p.ref.Load() }
+func (p *http2Inputs) incRef()       { p.ref.Add(1) }
 func (p *http2Inputs) decRef() {
-	if atomic.AddInt32(&p.ref, -1) == 0 {
+	if p.ref.Add(-1) == 0 {
 		if IsDebug() {
-			fmt.Printf("putHTTP2Inputs ref=%d\n", p.ref)
+			fmt.Printf("putHTTP2Inputs ref=%d\n", p.ref.Load())
 		}
 		putHTTP2Inputs(p)
 	}

@@ -140,7 +140,7 @@ type UConn struct { // only exported to hemi
 	udpConn *net.UDPConn    // udp conn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
-	broken int32 // use sync/atomic
+	broken atomic.Bool // is conn broken?
 }
 
 func (c *UConn) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
@@ -154,13 +154,13 @@ func (c *UConn) onPut() {
 	c.node = nil
 	c.udpConn = nil
 	c.rawConn = nil
-	atomic.StoreInt32(&c.broken, 0)
+	c.broken.Store(false)
 }
 
 func (c *UConn) getClient() udpsClient { return c.client.(udpsClient) }
 
-func (c *UConn) isBroken() bool { return atomic.LoadInt32(&c.broken) == 1 }
-func (c *UConn) markBroken()    { atomic.StoreInt32(&c.broken, 1) }
+func (c *UConn) isBroken() bool { return c.broken.Load() }
+func (c *UConn) markBroken()    { c.broken.Store(true) }
 
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {

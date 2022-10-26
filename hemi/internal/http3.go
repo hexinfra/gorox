@@ -149,16 +149,16 @@ func putHTTP3Inputs(inputs *http3Inputs) { poolHTTP3Inputs.Put(inputs) }
 // http3Inputs
 type http3Inputs struct {
 	buf [_16K]byte // header + payload
-	ref int32
+	ref atomic.Int32
 }
 
 func (a *http3Inputs) size() uint32  { return uint32(cap(a.buf)) }
-func (a *http3Inputs) getRef() int32 { return atomic.LoadInt32(&a.ref) }
-func (a *http3Inputs) incRef()       { atomic.AddInt32(&a.ref, 1) }
+func (a *http3Inputs) getRef() int32 { return a.ref.Load() }
+func (a *http3Inputs) incRef()       { a.ref.Add(1) }
 func (a *http3Inputs) decRef() {
-	if atomic.AddInt32(&a.ref, -1) == 0 {
+	if a.ref.Add(-1) == 0 {
 		if IsDebug() {
-			fmt.Printf("putHTTP3Inputs ref=%d\n", a.ref)
+			fmt.Printf("putHTTP3Inputs ref=%d\n", a.ref.Load())
 		}
 		putHTTP3Inputs(a)
 	}

@@ -15,26 +15,18 @@ import (
 )
 
 var ( // global variables shared between stages
-	_debug int32 // enable debug?
-	_devel int32 // developer mode?
+	_debug atomic.Bool // enable debug?
+	_devel atomic.Bool // developer mode?
 )
 
-func IsDebug() bool { return atomic.LoadInt32(&_debug) == 1 }
-func IsDevel() bool { return atomic.LoadInt32(&_devel) == 1 }
+func IsDebug() bool { return _debug.Load() }
+func IsDevel() bool { return _devel.Load() }
 
 func SetDebug(debug bool) {
-	debug_ := int32(0)
-	if debug {
-		debug_ = 1
-	}
-	atomic.StoreInt32(&_debug, debug_)
+	_debug.Store(debug)
 }
 func SetDevel(devel bool) {
-	devel_ := int32(0)
-	if devel {
-		devel_ = 1
-	}
-	atomic.StoreInt32(&_devel, devel_)
+	_devel.Store(devel)
 }
 
 var ( // global variables shared between stages

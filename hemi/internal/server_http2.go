@@ -490,7 +490,7 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 			return http2ErrorProtocol
 		}
 		c.lastStreamID = streamID
-		c.usedStreams++
+		c.usedStreams.Add(1)
 		stream = getHTTP2Stream(c, streamID, c.clientSettings.initialWindowSize)
 		req = &stream.request
 		if !c._decodeFields(inFrame.effective(), req.joinHeaders) {

@@ -44,6 +44,7 @@ type Component_ struct {
 	name  string           // main, ...
 	info  any              // extra info about this component, used by config
 	props map[string]Value // name=value, ...
+	shut  atomic.Bool      // is component told to shutdown?
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -387,7 +388,7 @@ type Gate_ struct {
 	id       int32
 	address  string
 	maxConns int32
-	numConns int32 // TODO: false sharing
+	numConns atomic.Int32 // TODO: false sharing
 }
 
 func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
@@ -395,15 +396,15 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 	g.id = id
 	g.address = address
 	g.maxConns = maxConns
-	g.numConns = 0
+	g.numConns.Store(0)
 }
 
 func (g *Gate_) Stage() *Stage   { return g.stage }
 func (g *Gate_) Address() string { return g.address }
 
-func (g *Gate_) DecConns() int32 { return atomic.AddInt32(&g.numConns, -1) }
+func (g *Gate_) DecConns() int32 { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool {
-	return atomic.AddInt32(&g.numConns, 1) > atomic.LoadInt32(&g.maxConns)
+	return g.numConns.Add(1) > g.maxConns
 }
 
 // outgate_ is a mixin for outgates.

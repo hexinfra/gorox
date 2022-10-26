@@ -238,11 +238,11 @@ type httpConn_ struct {
 	id     int64      // the conn id
 	server httpServer // the server to which the conn belongs
 	// Conn states (zeros)
-	lastRead    time.Time // deadline of last read operation
-	lastWrite   time.Time // deadline of last write operation
-	counter     int64     // together with id, used to generate a random number as uploaded file's path
-	usedStreams int32     // num of streams served
-	broken      int32     // use sync/atomic
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
+	usedStreams atomic.Int32 // num of streams served
+	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *httpConn_) onGet(id int64, server httpServer) {
@@ -253,18 +253,18 @@ func (c *httpConn_) onPut() {
 	c.server = nil
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-	c.counter = 0
-	c.usedStreams = 0
-	atomic.StoreInt32(&c.broken, 0)
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *httpConn_) getServer() httpServer { return c.server }
 
-func (c *httpConn_) isBroken() bool { return atomic.LoadInt32(&c.broken) == 1 }
-func (c *httpConn_) markBroken()    { atomic.StoreInt32(&c.broken, 1) }
+func (c *httpConn_) isBroken() bool { return c.broken.Load() }
+func (c *httpConn_) markBroken()    { c.broken.Store(true) }
 
 func (c *httpConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, seconds, atomic.AddInt64(&c.counter, 1))
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, seconds, c.counter.Add(1))
 }
 
 // httpStream_ is the mixin for http[1-3]Stream.

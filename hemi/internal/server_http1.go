@@ -233,8 +233,8 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if req.expectContinue && !s.writeContinue() {
 		return
 	}
-	conn.usedStreams++
-	if maxStreamsPerConn := server.MaxStreamsPerConn(); (maxStreamsPerConn > 0 && conn.usedStreams == maxStreamsPerConn) || req.keepAlive == 0 {
+	conn.usedStreams.Add(1)
+	if maxStreamsPerConn := server.MaxStreamsPerConn(); (maxStreamsPerConn > 0 && conn.usedStreams.Load() == maxStreamsPerConn) || req.keepAlive == 0 {
 		s.keepConn = false
 	}
 

@@ -150,12 +150,12 @@ type node interface {
 // node_ is a mixin for backend nodes.
 type node_ struct {
 	// States
-	id        int32    // the node id
-	address   string   // hostname:port
-	weight    int32    // 1, 22, 333, ...
-	keepConns int32    // max conns to keep alive
-	down      int32    // use atomic. TODO: false-sharing
-	freeList  struct { // free list of conn in this node
+	id        int32       // the node id
+	address   string      // hostname:port
+	weight    int32       // 1, 22, 333, ...
+	keepConns int32       // max conns to keep alive
+	down      atomic.Bool // TODO: false-sharing
+	freeList  struct {    // free list of conn in this node
 		sync.Mutex
 		size int32
 		head conn
@@ -167,9 +167,9 @@ func (n *node_) init(id int32) {
 	n.id = id
 }
 
-func (n *node_) markDown()    { atomic.StoreInt32(&n.down, 1) }
-func (n *node_) markUp()      { atomic.StoreInt32(&n.down, 0) }
-func (n *node_) isDown() bool { return atomic.LoadInt32(&n.down) == 1 }
+func (n *node_) markDown()    { n.down.Store(true) }
+func (n *node_) markUp()      { n.down.Store(false) }
+func (n *node_) isDown() bool { return n.down.Load() }
 
 func (n *node_) takeConn() conn {
 	list := &n.freeList
@@ -260,9 +260,9 @@ type pConn_ struct {
 	// Conn states (non-zeros)
 	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)
-	usedStreams int32 // how many streams has been used?
-	writeBroken int32 // use sync/atomic
-	readBroken  int32 // use sync/atomic
+	usedStreams atomic.Int32 // how many streams has been used?
+	writeBroken atomic.Bool  // write-side broken?
+	readBroken  atomic.Bool  // read-side broken?
 }
 
 func (c *pConn_) onGet(id int64, client client, maxStreams int32) {
@@ -271,17 +271,17 @@ func (c *pConn_) onGet(id int64, client client, maxStreams int32) {
 }
 func (c *pConn_) onPut() {
 	c.conn_.onPut()
-	c.usedStreams = 0
-	atomic.StoreInt32(&c.writeBroken, 0)
-	atomic.StoreInt32(&c.readBroken, 0)
+	c.usedStreams.Store(0)
+	c.writeBroken.Store(false)
+	c.readBroken.Store(false)
 }
 
 func (c *pConn_) reachLimit() bool {
-	return atomic.AddInt32(&c.usedStreams, 1) > c.maxStreams
+	return c.usedStreams.Add(1) > c.maxStreams
 }
 
 func (c *pConn_) isBroken() bool {
-	return atomic.LoadInt32(&c.writeBroken) == 1 || atomic.LoadInt32(&c.readBroken) == 1
+	return c.writeBroken.Load() || c.readBroken.Load()
 }
-func (c *pConn_) markWriteBroken() { atomic.StoreInt32(&c.writeBroken, 1) }
-func (c *pConn_) markReadBroken()  { atomic.StoreInt32(&c.readBroken, 1) }
+func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
+func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }

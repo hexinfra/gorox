@@ -31,13 +31,13 @@ type clockFixture struct {
 	fixture_
 	// States
 	resolution time.Duration
-	date       int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit
+	date       atomic.Int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit
 }
 
 func (f *clockFixture) init(stage *Stage) {
 	f.fixture_.init(signClock, stage)
 	f.resolution = 100 * time.Millisecond
-	f.date = 0x7394804991b60000 // Sun, 06 Nov 1994 08:49:37
+	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }
 
 func (f *clockFixture) OnConfigure() {
@@ -68,7 +68,7 @@ func (f *clockFixture) run() { // blocking
 		date |= int64(day%10) << 16
 		date |= int64(day/10) << 12
 		date |= int64(weekday) << 8
-		atomic.StoreInt64(&f.date, date)
+		f.date.Store(date)
 		time.Sleep(f.resolution)
 	}
 }
@@ -77,7 +77,7 @@ func (f *clockFixture) writeDate(p []byte) {
 	if len(p) < clockDateSize {
 		BugExitln("bad date buffer")
 	}
-	date := atomic.LoadInt64(&f.date)
+	date := f.date.Load()
 	copy(p, "date: ")
 	s := clockDayString[3*(date>>8&0xf):]
 	p[6] = s[0] // 'S'

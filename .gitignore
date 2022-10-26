@@ -20,6 +20,7 @@
 
 .idea
 .DS_Store
+desktop.ini
 
 /data
 /logs

@@ -112,17 +112,16 @@ var varCodes = map[string]int16{ // predefined variables for config
 	// udps conn vars. keep sync with udpsConnVariables in router_udps.go
 
 	// http request vars. keep sync with httpRequestVariables in server_http.go
-	"method":      0,  // GET, POST, ...
-	"scheme":      1,  // http, https
-	"authority":   2,  // example.com, example.org:8080
-	"hostname":    3,  // example.com, example.org
-	"colonPort":   4,  // :80, :8080
-	"path":        5,  // /abc, /def/
-	"absPath":     6,  // /path/to/abc, /path/to/def/
-	"uri":         7,  // /abc?x=y, /%cc%dd?y=z&z=%ff
-	"encodedPath": 8,  // /abc, /%cc%dd
-	"queryString": 9,  // ?x=y, ?y=z&z=%ff
-	"contentType": 10, // text/html; charset=utf-8
+	"method":      0, // GET, POST, ...
+	"scheme":      1, // http, https
+	"authority":   2, // example.com, example.org:8080
+	"hostname":    3, // example.com, example.org
+	"colonPort":   4, // :80, :8080
+	"path":        5, // /abc, /def/
+	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
+	"encodedPath": 7, // /abc, /%cc%dd
+	"queryString": 8, // ?x=y, ?y=z&z=%ff
+	"contentType": 9, // text/html; charset=utf-8
 }
 
 var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below

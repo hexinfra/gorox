@@ -338,7 +338,7 @@ func (a *App) dispatchNormal(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
-	req.makeAbsPath() // for checking -f, -d, -e, static, etc
+	req.makeAbsPath() // for checking -f, -d, -e, etc
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
 			continue
@@ -354,7 +354,7 @@ func (a *App) dispatchNormal(req Request, resp Response) {
 	resp.SendNotFound(a.bytes404)
 }
 func (a *App) dispatchSocket(req Request, sock Socket) {
-	req.makeAbsPath() // for checking -f, -d, -e, static, etc
+	req.makeAbsPath() // for checking -f, -d, -e, etc
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
 			continue
@@ -490,7 +490,7 @@ func (r *Rule) OnConfigure() {
 		if matcher, ok := ruleMatchers[cond.compare]; ok {
 			r.matcher = matcher.matcher
 			if matcher.fsCheck && r.app.webRoot == "" {
-				UseExitln("can't fs check since app's webRoot is empty")
+				UseExitln("can't do fs check since app's webRoot is empty. you must set webRoot for app")
 			}
 		} else {
 			UseExitln("unknown compare in rule condition")

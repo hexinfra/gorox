@@ -313,7 +313,6 @@ type Request interface {
 
 	URI() string         // /encodedPath?queryString
 	Path() string        // /path
-	AbsPath() string     // /app/web/path
 	EncodedPath() string // /encodedPath
 
 	QueryString() string // including '?' if query string exists
@@ -384,7 +383,6 @@ type Request interface {
 	UnsafeColonPort() []byte
 	UnsafeURI() []byte
 	UnsafePath() []byte
-	UnsafeAbsPath() []byte
 	UnsafeEncodedPath() []byte
 	UnsafeQueryString() []byte
 	UnsafeQuery(name string) (value []byte, ok bool)
@@ -400,6 +398,7 @@ type Request interface {
 	isAbsoluteForm() bool
 	isServerOptions() bool
 	getPathInfo() system.FileInfo
+	unsafeAbsPath() []byte
 	makeAbsPath()
 	delHost()
 	delCriticalHeaders()
@@ -428,8 +427,8 @@ type httpRequest_ struct {
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
 	path          []byte          // decoded path. only a reference. refers to r.array or arena if rewrited, so can't be a text
-	absPath       []byte          // app.webRoot + r.path. set when dispatching rules. only a reference
-	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0')
+	absPath       []byte          // app.webRoot + r.path. if app.webRoot is not set then this is nil. set when dispatching rules. only a reference
+	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0') if r.absPath is not nil
 	app           *App            // target app of this request. set before processing stream
 	svc           *Svc            // target svc of this request. set before processing stream
 	formBuffer    []byte          // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
@@ -437,6 +436,7 @@ type httpRequest_ struct {
 }
 type httpRequest0_ struct { // for fast reset, entirely
 	gotInput         bool     // got some input from client? for request timeout handling
+	pathInfoGot      bool     // is r.pathInfo got?
 	schemeCode       uint8    // SchemeHTTP, SchemeHTTPS
 	targetForm       int8     // http request-target form. see httpTargetXXX
 	methodCode       uint32   // known method code. 0: unknown method
@@ -460,11 +460,10 @@ type httpRequest0_ struct { // for fast reset, entirely
 	ifNoneMatch      int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	ifMatches        zone     // the zone of if-match in r.primes
 	ifNoneMatches    zone     // the zone of if-none-match in r.primes
-	acceptTrailers   bool     // does client accept trailers? i.e. te: trailers, gzip
 	acceptGzip       bool     // does client accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool     // does client accept brotli content coding? i.e. accept-encoding: gzip, br
-	pathInfoGot      bool     // is r.pathInfo got?
 	expectContinue   bool     // expect: 100-continue?
+	acceptTrailers   bool     // does client accept trailers? i.e. te: trailers, gzip
 	cacheControl     struct { // the cache-control info
 		noCache      bool  // no-cache directive in cache-control
 		noStore      bool  // no-store directive in cache-control
@@ -481,8 +480,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 		ifModifiedSince   uint8 // if-modified-since header ->r.input
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
-	changers     [32]uint8 // ...
-	hasChangers  bool      // ...
+	changers     [32]uint8 // changer ids which will apply on this request. indexed by changer order
+	hasChangers  bool      // are there any changers hooked on this request?
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formBuffer
@@ -517,8 +516,8 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
 	r.formBuffer = nil // if r.formBuffer is fetched from pool, it's put into pool at return. so just set nil
-
 	r.httpRequest0_ = httpRequest0_{}
+
 	r.httpInMessage_.onEnd()
 }
 
@@ -687,9 +686,13 @@ func (r *httpRequest_) cleanPath() {
 		r.path = r.path[:pReal]
 	}
 }
-func (r *httpRequest_) AbsPath() string       { return string(r.UnsafeAbsPath()) }
-func (r *httpRequest_) UnsafeAbsPath() []byte { return r.absPath }
+func (r *httpRequest_) unsafeAbsPath() []byte {
+	return r.absPath
+}
 func (r *httpRequest_) makeAbsPath() {
+	if r.app.webRoot == "" { // if app's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
+		return
+	}
 	webRoot := r.app.webRoot
 	absPath := r.UnsafeMake(len(webRoot) + len(r.path) + 1)
 	absPath[len(absPath)-1] = 0                            // ends with NUL character, so we can avoid make+copy for system function calls
@@ -699,8 +702,10 @@ func (r *httpRequest_) makeAbsPath() {
 }
 func (r *httpRequest_) getPathInfo() system.FileInfo {
 	if !r.pathInfoGot {
-		r.pathInfo, _ = system.Stat0(r.absPath[0:cap(r.absPath)]) // NUL terminated
 		r.pathInfoGot = true
+		if r.absPath != nil {
+			r.pathInfo, _ = system.Stat0(r.absPath[0:cap(r.absPath)]) // NUL terminated
+		}
 	}
 	return r.pathInfo
 }
@@ -2363,7 +2368,6 @@ var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with va
 	(*httpRequest_).UnsafeHostname,
 	(*httpRequest_).UnsafeColonPort,
 	(*httpRequest_).UnsafePath,
-	(*httpRequest_).UnsafeAbsPath,
 	(*httpRequest_).UnsafeURI,
 	(*httpRequest_).UnsafeEncodedPath,
 	(*httpRequest_).UnsafeQueryString,

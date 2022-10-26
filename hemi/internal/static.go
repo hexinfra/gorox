@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"os"
@@ -109,7 +110,20 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
 		return
 	}
-	absPath := req.UnsafeAbsPath()
+	var absPath []byte
+	if h.customRoot {
+		webRoot := h.webRoot
+		allPath := req.UnsafeMake(len(webRoot) + len(req.UnsafePath()) + 1)
+		allPath[len(allPath)-1] = 0 // ends with NUL character, so we can avoid make+copy for system function calls
+		n := copy(allPath, webRoot)
+		copy(allPath[n:], req.UnsafePath())
+		if IsDevel() {
+			fmt.Printf("%v\n", allPath)
+		}
+		absPath = allPath[0 : len(allPath)-1 : len(allPath)] // absPath doesn't include NUL, but we can get NUL through cap(absPath)
+	} else {
+		absPath = req.unsafeAbsPath()
+	}
 	isFile := absPath[len(absPath)-1] != '/'
 	var thePath []byte // must be NUL terminated
 	if isFile && !h.customRoot {

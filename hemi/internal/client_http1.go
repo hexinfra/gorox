@@ -386,9 +386,6 @@ func (r *H1Request) doPush(chain Chain) error {
 func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
-func (r *H1Request) pushEnd() error {
-	return r.pushEnd1()
-}
 
 func (r *H1Request) passHeaders() error {
 	return r.passHeaders1()
@@ -413,6 +410,9 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	}
 	// connection: keep-alive
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+}
+func (r *H1Request) finalizeChunked() error {
+	return r.finalizeChunked1()
 }
 
 // H1Response is the client-side HTTP/1 response.

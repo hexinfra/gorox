@@ -14,9 +14,10 @@ type Controller struct {
 	sitex.Controller_
 }
 
-func (c *Controller) GET_example(req Request, resp Response) {
+func (c *Controller) GET_example(req Request, resp Response) { // GET /example
 	resp.Send("get example")
 }
-func (c *Controller) POST_example(req Request, resp Response) {
-	resp.Send("post example")
+func (c *Controller) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
+	resp.Push("foo")
+	resp.Push("bar")
 }

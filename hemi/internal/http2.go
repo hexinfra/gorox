@@ -705,7 +705,8 @@ func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
 func (r *httpOutMessage_) trailers2() []byte {
 	return nil
 }
-func (r *httpOutMessage_) pushEnd2() error {
+
+func (r *httpOutMessage_) finalizeChunked2() error {
 	// TODO
 	return nil
 }

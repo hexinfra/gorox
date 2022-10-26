@@ -308,10 +308,6 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *H3Request) pushEnd() error {
-	// TODO
-	return nil
-}
 
 func (r *H3Request) passHeaders() error {
 	return nil
@@ -322,6 +318,10 @@ func (r *H3Request) doPass(p []byte) error {
 
 func (r *H3Request) finalizeHeaders() {
 	// TODO
+}
+func (r *H3Request) finalizeChunked() error {
+	// TODO
+	return nil
 }
 
 // H3Response

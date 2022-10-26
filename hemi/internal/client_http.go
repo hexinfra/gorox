@@ -234,12 +234,6 @@ func (r *hRequest_) push(chunk *Block) error {
 	}
 	return r.shell.doPush(curChain)
 }
-func (r *hRequest_) finishPush() error {
-	if r.stream.isBroken() {
-		return httpWriteBroken
-	}
-	return r.shell.pushEnd()
-}
 
 func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	var uri []byte
@@ -309,6 +303,13 @@ func (r *hRequest_) pass(req Request) error { // used by proxies.
 		}
 	}
 	return nil
+}
+
+func (r *hRequest_) finishChunked() error {
+	if r.stream.isBroken() {
+		return httpWriteBroken
+	}
+	return r.shell.finalizeChunked()
 }
 
 func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {

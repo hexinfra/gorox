@@ -720,18 +720,6 @@ func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
 func (r *httpOutMessage_) trailers1() []byte {
 	return r.fields[0:r.fieldsEdge]
 }
-func (r *httpOutMessage_) pushEnd1() error {
-	if r.nTrailers == 0 {
-		r.vector = r.fixedVector[0:1]
-		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
-	} else { // with trailers
-		r.vector = r.fixedVector[0:3]
-		r.vector[0] = http1BytesZeroCRLF // 0\r\n
-		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
-		r.vector[2] = httpBytesCRLF      // \r\n
-	}
-	return r.writeVector1(&r.vector)
-}
 
 func (r *httpOutMessage_) passHeaders1() error {
 	r.shell.finalizeHeaders()
@@ -756,6 +744,19 @@ func (r *httpOutMessage_) passHeaders1() error {
 func (r *httpOutMessage_) doPass1(p []byte) error {
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
+	return r.writeVector1(&r.vector)
+}
+
+func (r *httpOutMessage_) finalizeChunked1() error {
+	if r.nTrailers == 0 {
+		r.vector = r.fixedVector[0:1]
+		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
+	} else { // with trailers
+		r.vector = r.fixedVector[0:3]
+		r.vector[0] = http1BytesZeroCRLF // 0\r\n
+		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
+		r.vector[2] = httpBytesCRLF      // \r\n
+	}
 	return r.writeVector1(&r.vector)
 }
 

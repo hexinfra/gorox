@@ -2529,11 +2529,11 @@ type Response interface {
 	doSend(chain Chain) error
 	pushHeaders() error
 	doPush(chain Chain) error
-	pushEnd() error
 	pass1xx(resp response) bool  // used by proxies
 	copyHead(resp response) bool // used by proxies
 	pass(resp response) error    // used by proxies
 	post(content any) error      // used by proxies
+	finalizeChunked() error
 	hookReviser(reviser Reviser)
 	setBypassRevisers(bypass bool)
 	unsafeMake(size int) []byte
@@ -2772,22 +2772,6 @@ func (r *httpResponse_) push(chunk *Block) error {
 	}
 	return resp.doPush(curChain)
 }
-func (r *httpResponse_) finishPush() error {
-	if r.stream.isBroken() {
-		return httpWriteBroken
-	}
-	resp := r.shell.(Response)
-	if r.hasRevisers && !r.bypassRevisers {
-		for _, id := range r.revisers {
-			if id == 0 { // reviser id is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.FinishPush(resp.Request(), resp)
-		}
-	}
-	return resp.pushEnd()
-}
 
 func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
@@ -2847,6 +2831,23 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 		}
 	}
 	return nil
+}
+
+func (r *httpResponse_) finishChunked() error {
+	if r.stream.isBroken() {
+		return httpWriteBroken
+	}
+	resp := r.shell.(Response)
+	if r.hasRevisers && !r.bypassRevisers {
+		for _, id := range r.revisers {
+			if id == 0 { // reviser id is ensured to be > 0
+				continue
+			}
+			reviser := r.app.reviserByID(id)
+			reviser.FinishPush(resp.Request(), resp)
+		}
+	}
+	return resp.finalizeChunked()
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

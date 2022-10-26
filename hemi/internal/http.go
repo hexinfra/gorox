@@ -1494,10 +1494,10 @@ type httpOutMessage_ struct {
 		push(chunk *Block) error
 		doPush(chain Chain) error
 		addTrailer(name []byte, value []byte) bool
-		pushEnd() error
 		passHeaders() error
 		doPass(p []byte) error
 		finalizeHeaders()
+		finalizeChunked() error
 	}
 	// Stream states (buffers)
 	stockFields [1536]byte // for r.fields

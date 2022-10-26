@@ -380,6 +380,7 @@ func (r *http3Response) addDirectoryRedirection() bool {
 func (r *http3Response) setConnectionClose() {
 	BugExitln("not used in HTTP/3")
 }
+
 func (r *http3Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
@@ -401,10 +402,6 @@ func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) pushEnd() error {
-	// TODO
-	return nil
-}
 
 func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	// TODO
@@ -421,6 +418,10 @@ func (r *http3Response) doPass(p []byte) error {
 
 func (r *http3Response) finalizeHeaders() {
 	// TODO
+}
+func (r *http3Response) finalizeChunked() error {
+	// TODO
+	return nil
 }
 
 // http3Socket is the server-side HTTP/3 websocket.

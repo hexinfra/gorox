@@ -231,7 +231,8 @@ func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
 func (r *httpOutMessage_) trailers3() []byte {
 	return nil
 }
-func (r *httpOutMessage_) pushEnd3() error {
+
+func (r *httpOutMessage_) finalizeChunked3() error {
 	// TODO
 	return nil
 }

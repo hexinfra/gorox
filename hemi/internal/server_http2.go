@@ -1178,6 +1178,7 @@ func (r *http2Response) addDirectoryRedirection() bool {
 func (r *http2Response) setConnectionClose() {
 	BugExitln("not used in HTTP/2")
 }
+
 func (r *http2Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
@@ -1199,10 +1200,6 @@ func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) pushEnd() error {
-	// TODO
-	return nil
-}
 
 func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	// TODO
@@ -1219,6 +1216,10 @@ func (r *http2Response) doPass(p []byte) error {
 
 func (r *http2Response) finalizeHeaders() {
 	// TODO
+}
+func (r *http2Response) finalizeChunked() error {
+	// TODO
+	return nil
 }
 
 // http2Socket is the server-side HTTP/2 websocket.

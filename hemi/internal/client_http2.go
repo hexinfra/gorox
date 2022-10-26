@@ -334,10 +334,6 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *H2Request) pushEnd() error {
-	// TODO
-	return nil
-}
 
 func (r *H2Request) passHeaders() error {
 	return nil
@@ -348,6 +344,10 @@ func (r *H2Request) doPass(p []byte) error {
 
 func (r *H2Request) finalizeHeaders() {
 	// TODO
+}
+func (r *H2Request) finalizeChunked() error {
+	// TODO
+	return nil
 }
 
 // H2Response

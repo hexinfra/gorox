@@ -295,9 +295,8 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 		app.dispatchNormal(req, resp)
 		if !resp.isSent { // only happens on identity content.
 			resp.doSend(resp.content)
-		} else if resp.contentSize == -2 { // push last chunk and trailers (if exist)
-			// TODO: what about behavior for pass()?
-			resp.finishPush()
+		} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
+			resp.finishChunked()
 		}
 	} else { // we hijack OPTIONS *. TODO: what if this is to be proxied?
 		resp.sendError(StatusOK, nil)
@@ -930,6 +929,7 @@ func (r *http1Response) addDirectoryRedirection() bool {
 func (r *http1Response) setConnectionClose() {
 	r.stream.(*http1Stream).keepConn = false
 }
+
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
 		return false
@@ -963,12 +963,6 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 		return true
 	}
 	return r.addTrailer1(name, value)
-}
-func (r *http1Response) pushEnd() error {
-	if r.request.VersionCode() == Version1_0 {
-		return nil
-	}
-	return r.pushEnd1()
 }
 
 func (r *http1Response) pass1xx(resp response) bool { // used by proxies
@@ -1041,6 +1035,12 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.acceptBytesRange {
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesAcceptRangesBytes))
 	}
+}
+func (r *http1Response) finalizeChunked() error {
+	if r.request.VersionCode() == Version1_0 {
+		return nil
+	}
+	return r.finalizeChunked1()
 }
 
 // http1Socket is the server-side HTTP/1 websocket.

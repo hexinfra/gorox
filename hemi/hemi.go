@@ -26,13 +26,13 @@ var ( // core funcs
 	RegisterUDPSFilter = internal.RegisterUDPSFilter
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
 	RegisterCacher     = internal.RegisterCacher
-	RegisterServer     = internal.RegisterServer
+	RegisterAppInit    = internal.RegisterAppInit
 	RegisterHandler    = internal.RegisterHandler
 	RegisterChanger    = internal.RegisterChanger
 	RegisterReviser    = internal.RegisterReviser
 	RegisterSocklet    = internal.RegisterSocklet
-	RegisterAppInit    = internal.RegisterAppInit
 	RegisterSvcInit    = internal.RegisterSvcInit
+	RegisterServer     = internal.RegisterServer
 	RegisterCronjob    = internal.RegisterCronjob
 
 	IsDebug = internal.IsDebug
@@ -66,46 +66,6 @@ type ( // core types
 	Stage = internal.Stage
 
 	Optware = internal.Optware
-
-	QUICRouter = internal.QUICRouter
-	QUICRunner = internal.QUICRunner
-	QUICFilter = internal.QUICFilter
-	QUICEditor = internal.QUICEditor
-	QUICConn   = internal.QUICConn
-
-	TCPSRouter = internal.TCPSRouter
-	TCPSRunner = internal.TCPSRunner
-	TCPSFilter = internal.TCPSFilter
-	TCPSEditor = internal.TCPSEditor
-	TCPSConn   = internal.TCPSConn
-
-	UDPSRouter = internal.UDPSRouter
-	UDPSRunner = internal.UDPSRunner
-	UDPSFilter = internal.UDPSFilter
-	UDPSEditor = internal.UDPSEditor
-	UDPSConn   = internal.UDPSConn
-
-	Cacher = internal.Cacher
-	Centry = internal.Centry
-
-	Block = internal.Block
-
-	Server   = internal.Server
-	App      = internal.App
-	Handler  = internal.Handler
-	Handle   = internal.Handle
-	Changer  = internal.Changer
-	Reviser  = internal.Reviser
-	Socklet  = internal.Socklet
-	Rule     = internal.Rule
-	Request  = internal.Request
-	Upload   = internal.Upload
-	Response = internal.Response
-	Cookie   = internal.Cookie
-	Socket   = internal.Socket
-
-	GRPCServer = internal.GRPCServer // for implementing grpc server in exts
-	Svc        = internal.Svc        // supports both gRPC and HRPC
 
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
@@ -150,6 +110,46 @@ type ( // core types
 	PBackend = internal.PBackend // TCPSBackend | UnixBackend
 	PConn    = internal.PConn    // TConn | XConn
 
+	QUICRouter = internal.QUICRouter
+	QUICRunner = internal.QUICRunner
+	QUICFilter = internal.QUICFilter
+	QUICEditor = internal.QUICEditor
+	QUICConn   = internal.QUICConn
+
+	TCPSRouter = internal.TCPSRouter
+	TCPSRunner = internal.TCPSRunner
+	TCPSFilter = internal.TCPSFilter
+	TCPSEditor = internal.TCPSEditor
+	TCPSConn   = internal.TCPSConn
+
+	UDPSRouter = internal.UDPSRouter
+	UDPSRunner = internal.UDPSRunner
+	UDPSFilter = internal.UDPSFilter
+	UDPSEditor = internal.UDPSEditor
+	UDPSConn   = internal.UDPSConn
+
+	Cacher = internal.Cacher
+	Centry = internal.Centry
+
+	Block = internal.Block
+
+	App      = internal.App
+	Handler  = internal.Handler
+	Handle   = internal.Handle
+	Changer  = internal.Changer
+	Reviser  = internal.Reviser
+	Socklet  = internal.Socklet
+	Rule     = internal.Rule
+	Request  = internal.Request
+	Upload   = internal.Upload
+	Response = internal.Response
+	Cookie   = internal.Cookie
+	Socket   = internal.Socket
+
+	Svc        = internal.Svc        // supports both gRPC and HRPC
+	GRPCServer = internal.GRPCServer // for implementing grpc server in exts
+
+	Server  = internal.Server
 	Cronjob = internal.Cronjob
 )
 

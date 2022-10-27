@@ -10,11 +10,6 @@ import (
 
 var config = `
 stage {
-    servers {
-        httpxServer "main" {
-            address = ":3080"
-        }
-    }
     apps {
         app "filex" {
             hostnames = ("*")
@@ -36,6 +31,11 @@ stage {
     ]
     svcs {}
     svcServers = []
+    servers {
+        httpxServer "main" {
+            address = ":3080"
+        }
+    }
 }
 `
 

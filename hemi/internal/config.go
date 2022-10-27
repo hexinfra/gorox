@@ -53,7 +53,6 @@ const ( // comp list. if you change this list, change compNames too.
 	compUDPSEditor            // ...
 	compCase                  // case
 	compCacher                // localCacher, redisCacher, ...
-	compServer                // httpxServer, echoServer, ...
 	compApp                   // app
 	compHandler               // helloHandler, static, ...
 	compChanger               // gunzipChanger, ...
@@ -61,6 +60,7 @@ const ( // comp list. if you change this list, change compNames too.
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
 	compSvc                   // svc
+	compServer                // httpxServer, echoServer, ...
 	compCronjob               // cleanCronjob, ...
 )
 
@@ -83,7 +83,6 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compUDPSEditor: "udpsEditor", // dynamic
 	compCase:       "case",       // static
 	compCacher:     "cacher",     // dynamic
-	compServer:     "server",     // dynamic
 	compApp:        "app",        // static
 	compHandler:    "handler",    // dynamic
 	compChanger:    "changer",    // dynamic
@@ -91,6 +90,7 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compSocklet:    "socklet",    // dynamic
 	compRule:       "rule",       // static
 	compSvc:        "svc",        // static
+	compServer:     "server",     // dynamic
 	compCronjob:    "cronjob",    // dynamic
 }
 
@@ -206,12 +206,12 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 				c.parseRouters(stage)
 			case "cachers":
 				c.parseContainer0(compCacher, c.parseCacher, current.Text, stage)
-			case "servers":
-				c.parseContainer0(compServer, c.parseServer, current.Text, stage)
 			case "apps":
 				c.parseContainer0(compApp, c.parseApp, current.Text, stage)
 			case "svcs":
 				c.parseContainer0(compSvc, c.parseSvc, current.Text, stage)
+			case "servers":
+				c.parseContainer0(compServer, c.parseServer, current.Text, stage)
 			case "cronjobs":
 				c.parseContainer0(compCronjob, c.parseCronjob, current.Text, stage)
 			default:
@@ -221,7 +221,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 	}
 }
 
-func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, cachers, servers, apps, svcs, cronjobs {}
+func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, cachers, apps, svcs, servers, cronjobs {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -254,20 +254,6 @@ func (c *config) parseOptware(sign Token, stage *Stage) { // xxxOptware {}
 func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func (c *config) parseCacher(sign Token, stage *Stage) { // xxxCacher <name> {}
-	parseComponent0(c, sign, stage, stage.createCacher)
-}
-func (c *config) parseServer(sign Token, stage *Stage) { // xxxServer <name> {}
-	parseComponent0(c, sign, stage, stage.createServer)
-}
-func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, cacher, server
-	name := c.ForwardExpect(TokenString)
-	component := create(sign.Text, name.Text)
-	component.setParent(stage)
-	c.Forward()
-	c.parseAssigns(component)
-}
-
 func (c *config) parseRouters(stage *Stage) { // routers {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
@@ -584,6 +570,17 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	kase.setInfo(cond)
 }
 
+func (c *config) parseCacher(sign Token, stage *Stage) { // xxxCacher <name> {}
+	parseComponent0(c, sign, stage, stage.createCacher)
+}
+func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, cacher, server
+	name := c.ForwardExpect(TokenString)
+	component := create(sign.Text, name.Text)
+	component.setParent(stage)
+	c.Forward()
+	c.parseAssigns(component)
+}
+
 func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 	appName := c.ForwardExpect(TokenString)
 	app := stage.createApp(appName.Text)
@@ -759,6 +756,9 @@ func (c *config) parseSvc(sign Token, stage *Stage) { // svc <name> {}
 	c.parseAssigns(svc)
 }
 
+func (c *config) parseServer(sign Token, stage *Stage) { // xxxServer <name> {}
+	parseComponent0(c, sign, stage, stage.createServer)
+}
 func (c *config) parseCronjob(sign Token, stage *Stage) { // xxxCronjob {}
 	cronjob := stage.createCronjob(sign.Text)
 	cronjob.setParent(stage)

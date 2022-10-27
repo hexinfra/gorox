@@ -149,11 +149,11 @@ var ( // global maps, shared between stages
 	udpsFilterCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSFilter)
 	udpsEditorCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSEditor)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
-	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
 	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
 	changerCreators    = make(map[string]func(name string, stage *Stage, app *App) Changer)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
+	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
 	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 	initsLock          sync.RWMutex
 	appInits           = make(map[string]func(app *App) error) // indexed by app name.
@@ -203,9 +203,6 @@ func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, rout
 func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
 	registerComponent0(sign, compCacher, cacherCreators, create)
 }
-func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
-	registerComponent0(sign, compServer, serverCreators, create)
-}
 func RegisterHandler(sign string, create func(name string, stage *Stage, app *App) Handler) {
 	registerComponent1(sign, compHandler, handlerCreators, create)
 }
@@ -227,6 +224,9 @@ func RegisterSvcInit(name string, init func(svc *Svc) error) {
 	initsLock.Lock()
 	svcInits[name] = init
 	initsLock.Unlock()
+}
+func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
+	registerComponent0(sign, compServer, serverCreators, create)
 }
 func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
 	registerComponent0(sign, compCronjob, cronjobCreators, create)

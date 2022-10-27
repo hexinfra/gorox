@@ -52,9 +52,9 @@ type Stage struct {
 	tcpsRouters compDict[*TCPSRouter] // indexed by routerName
 	udpsRouters compDict[*UDPSRouter] // indexed by routerName
 	cachers     compDict[Cacher]      // indexed by cacherName
-	servers     compDict[Server]      // indexed by serverName
 	apps        compDict[*App]        // indexed by appName
 	svcs        compDict[*Svc]        // indexed by svcName
+	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by sign
 	// States
 	appServers map[string][]string
@@ -103,9 +103,9 @@ func (s *Stage) init() {
 	s.tcpsRouters = make(compDict[*TCPSRouter])
 	s.udpsRouters = make(compDict[*UDPSRouter])
 	s.cachers = make(compDict[Cacher])
-	s.servers = make(compDict[Server])
 	s.apps = make(compDict[*App])
 	s.svcs = make(compDict[*Svc])
+	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
 
 	s.appServers = make(map[string][]string)
@@ -181,19 +181,6 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	s.cachers[name] = cacher
 	return cacher
 }
-func (s *Stage) createServer(sign string, name string) Server {
-	create, ok := serverCreators[sign]
-	if !ok {
-		UseExitln("unknown server type: " + sign)
-	}
-	if s.Server(name) != nil {
-		UseExitf("conflicting server with a same name '%s'\n", name)
-	}
-	server := create(name, s)
-	server.setShell(server)
-	s.servers[name] = server
-	return server
-}
 func (s *Stage) createApp(name string) *App {
 	if s.App(name) != nil {
 		UseExitf("conflicting app with a same name '%s'\n", name)
@@ -213,6 +200,19 @@ func (s *Stage) createSvc(name string) *Svc {
 	svc.setShell(svc)
 	s.svcs[name] = svc
 	return svc
+}
+func (s *Stage) createServer(sign string, name string) Server {
+	create, ok := serverCreators[sign]
+	if !ok {
+		UseExitln("unknown server type: " + sign)
+	}
+	if s.Server(name) != nil {
+		UseExitf("conflicting server with a same name '%s'\n", name)
+	}
+	server := create(name, s)
+	server.setShell(server)
+	s.servers[name] = server
+	return server
 }
 func (s *Stage) createCronjob(sign string) Cronjob {
 	create, ok := cronjobCreators[sign]
@@ -242,9 +242,9 @@ func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name]
 func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
 func (s *Stage) UDPSRouter(name string) *UDPSRouter { return s.udpsRouters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
 func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
+func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
 
 func (s *Stage) OnConfigure() {
@@ -302,9 +302,9 @@ func (s *Stage) OnConfigure() {
 	s.tcpsRouters.walk((*TCPSRouter).OnConfigure)
 	s.udpsRouters.walk((*UDPSRouter).OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
-	s.servers.walk(Server.OnConfigure)
 	s.apps.walk((*App).OnConfigure)
 	s.svcs.walk((*Svc).OnConfigure)
+	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
 func (s *Stage) OnPrepare() {
@@ -322,9 +322,9 @@ func (s *Stage) OnPrepare() {
 	s.tcpsRouters.walk((*TCPSRouter).OnPrepare)
 	s.udpsRouters.walk((*UDPSRouter).OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
-	s.servers.walk(Server.OnPrepare)
 	s.apps.walk((*App).OnPrepare)
 	s.svcs.walk((*Svc).OnPrepare)
+	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 func (s *Stage) OnShutdown() {

@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	configPrefix string
+	configBase   string
 	configFile   string
 	currentStage *hemi.Stage
 )
@@ -56,10 +56,10 @@ func workerMain(token string) {
 	if !ok {
 		crash("call leader failed")
 	}
-	// Register succeeded. Now start initial stage
-	configPrefix = resp.Get("prefix")
+	// Register succeeded. Now start the initial stage
+	configBase = resp.Get("base")
 	configFile = resp.Get("file")
-	currentStage, err = hemi.ApplyFile(configPrefix, configFile)
+	currentStage, err = hemi.ApplyFile(configBase, configFile)
 	if err != nil {
 		crash(err.Error())
 	}
@@ -101,7 +101,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 	},
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		/*
-			newStage, err := hemi.ApplyFile(configPrefix, configFile)
+			newStage, err := hemi.ApplyFile(configBase, configFile)
 			if err != nil {
 				resp.Set("result", "false")
 				return

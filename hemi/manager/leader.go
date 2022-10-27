@@ -40,15 +40,15 @@ func leaderMain() {
 	logger = osFile
 
 	// Load config
-	prefix, file := getConfig()
+	base, file := getConfig()
 	logger.WriteString("parse config\n")
-	if _, err := hemi.ApplyFile(prefix, file); err != nil {
+	if _, err := hemi.ApplyFile(base, file); err != nil {
 		crash("leader: " + err.Error())
 	}
 
 	// Start workers
 	msgChan := make(chan *msgx.Message) // msgChan is channel between leaderMain() and keepWorkers()
-	go keepWorkers(prefix, file, msgChan)
+	go keepWorkers(base, file, msgChan)
 	<-msgChan // waiting for keepWorkers() to ensure all workers have started.
 
 	// Start admin
@@ -115,7 +115,7 @@ func leaderMain() {
 	}
 }
 
-func keepWorkers(prefix string, file string, msgChan chan *msgx.Message) {
+func keepWorkers(base string, file string, msgChan chan *msgx.Message) {
 	workMode, totalWorkers := workAlone, 1
 	if *multiple != 0 { // change to multi-worker mode
 		workMode, totalWorkers = workShard, *multiple
@@ -125,7 +125,7 @@ func keepWorkers(prefix string, file string, msgChan chan *msgx.Message) {
 	dieChan := make(chan *worker) // all dead workers go through this channel
 	pipeKey := newPipeKey()
 
-	workers := makeWorkers(workMode, totalWorkers, prefix, file, dieChan, pipeKey)
+	workers := makeWorkers(workMode, totalWorkers, base, file, dieChan, pipeKey)
 	msgChan <- nil // reply to leaderMain that we have created the workers.
 
 	for { // each event from leaderMain and workers
@@ -135,7 +135,7 @@ func keepWorkers(prefix string, file string, msgChan chan *msgx.Message) {
 				switch req.Comd {
 				case comdRework: // restart workers
 					newDieChan := make(chan *worker)
-					newWorkers := makeWorkers(workMode, totalWorkers, prefix, file, newDieChan, pipeKey)
+					newWorkers := makeWorkers(workMode, totalWorkers, base, file, newDieChan, pipeKey)
 					// Shutdown old workers
 					req.Comd = comdQuit
 					for _, worker := range workers {
@@ -193,7 +193,7 @@ func keepWorkers(prefix string, file string, msgChan chan *msgx.Message) {
 				stop()
 			} else if now := time.Now(); now.Sub(worker.lastExit) > time.Second {
 				worker.lastExit = now
-				worker.start(prefix, file, dieChan) // start again
+				worker.start(base, file, dieChan) // start again
 			} else { // worker has suffered too frequent crashes. mark it as broken.
 				worker.broken = true
 				nwAlive--
@@ -206,11 +206,11 @@ func keepWorkers(prefix string, file string, msgChan chan *msgx.Message) {
 	}
 }
 
-func makeWorkers(workMode uint16, nWorkers int, prefix string, file string, dieChan chan *worker, pipeKey string) []*worker {
+func makeWorkers(workMode uint16, nWorkers int, base string, file string, dieChan chan *worker, pipeKey string) []*worker {
 	workers := make([]*worker, nWorkers)
 	for id := 0; id < nWorkers; id++ {
 		worker := newWorker(id, workMode, pipeKey)
-		worker.start(prefix, file, dieChan)
+		worker.start(base, file, dieChan)
 		fmt.Fprintf(logger, "worker id=%d started\n", id)
 		workers[id] = worker
 	}
@@ -255,7 +255,7 @@ func newWorker(id int, workMode uint16, pipeKey string) *worker {
 	w.pipeKey = pipeKey
 	return w
 }
-func (w *worker) start(prefix string, file string, dieChan chan *worker) {
+func (w *worker) start(base string, file string, dieChan chan *worker) {
 	tmpGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
 	if err != nil {
 		crash(err.Error())
@@ -288,8 +288,8 @@ func (w *worker) start(prefix string, file string, dieChan chan *worker) {
 		crash("bad worker")
 	}
 	resp := msgx.NewMessage(req.Comd, req.Flag, map[string]string{
-		"prefix": prefix,
-		"file":   file,
+		"base": base,
+		"file": file,
 	})
 	msgx.SendMessage(msgPipe, resp)
 	w.msgPipe = msgPipe

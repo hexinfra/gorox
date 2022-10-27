@@ -19,9 +19,9 @@ func ApplyText(text string) (*Stage, error) {
 	c := getConfig()
 	return c.applyText(text)
 }
-func ApplyFile(prefix string, file string) (*Stage, error) {
+func ApplyFile(base string, file string) (*Stage, error) {
 	c := getConfig()
-	return c.applyFile(prefix, file)
+	return c.applyFile(base, file)
 }
 func getConfig() (c config) {
 	constants := map[string]string{
@@ -162,13 +162,13 @@ func (c *config) applyText(text string) (stage *Stage, err error) {
 	c.ScanText(text)
 	return c.parse()
 }
-func (c *config) applyFile(prefix string, path string) (stage *Stage, err error) {
+func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
 	}()
-	c.ScanFile(prefix, path)
+	c.ScanFile(base, path)
 	return c.parse()
 }
 

@@ -37,9 +37,9 @@ func (p *Parser_) ScanText(text string) {
 	p.tokens = l.scanText(text)
 	p.process()
 }
-func (p *Parser_) ScanFile(prefix string, file string) {
+func (p *Parser_) ScanFile(base string, file string) {
 	var l lexer
-	p.tokens = l.scanFile(prefix, file)
+	p.tokens = l.scanFile(base, file)
 	p.process()
 }
 func (p *Parser_) Show() {
@@ -105,7 +105,7 @@ type lexer struct {
 	config string // the config text
 	index  int
 	limit  int
-	prefix string
+	base   string
 	file   string
 }
 
@@ -113,15 +113,15 @@ func (l *lexer) scanText(text string) []Token {
 	l.config = text
 	return l.scan()
 }
-func (l *lexer) scanFile(prefix string, file string) []Token {
-	l.prefix = prefix
+func (l *lexer) scanFile(base string, file string) []Token {
+	l.base = base
 	l.file = file
 	return l.scan()
 }
 
 func (l *lexer) scan() []Token {
 	if l.file != "" {
-		l.config = l.load(l.prefix, l.file)
+		l.config = l.load(l.base, l.file)
 	}
 	l.index = 0
 	l.limit = len(l.config)
@@ -170,7 +170,7 @@ func (l *lexer) scan() []Token {
 			tokens = append(tokens, Token{TokenString, 0, line, l.file, l.config[from+1 : l.index]})
 			l.index++
 		case '<': // <includedFile>
-			if l.prefix == "" {
+			if l.base == "" {
 				panic(errors.New("lexer: include is not allowed in text mode"))
 			} else {
 				l.index++
@@ -179,7 +179,7 @@ func (l *lexer) scan() []Token {
 				file := l.config[from+1 : l.index]
 				l.index++
 				var ll lexer
-				tokens = append(tokens, ll.scanFile(l.prefix, file)...)
+				tokens = append(tokens, ll.scanFile(l.base, file)...)
 			}
 		case '@': // @constant
 			l.nextAlnums()
@@ -283,20 +283,20 @@ func (l *lexer) nextDigits() {
 	}
 }
 
-func (l *lexer) load(prefix string, file string) string {
+func (l *lexer) load(base string, file string) string {
 	if true { // TODO
-		return l._loadFS(prefix, file)
+		return l._loadFS(base, file)
 	} else {
-		return l._loadURL(prefix, file)
+		return l._loadURL(base, file)
 	}
 }
-func (l *lexer) _loadFS(prefix string, file string) string {
+func (l *lexer) _loadFS(base string, file string) string {
 	path := file
 	if file[0] != '/' {
-		if prefix[len(prefix)-1] == '/' {
-			path = prefix + file
+		if base[len(base)-1] == '/' {
+			path = base + file
 		} else {
-			path = prefix + "/" + file
+			path = base + "/" + file
 		}
 	}
 	data, err := os.ReadFile(path)
@@ -305,7 +305,7 @@ func (l *lexer) _loadFS(prefix string, file string) string {
 	}
 	return string(data)
 }
-func (l *lexer) _loadURL(prefix string, file string) string {
+func (l *lexer) _loadURL(base string, file string) string {
 	// TODO
 	return ""
 }

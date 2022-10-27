@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-const (
+const ( // proc modes
 	ProcModeGeneral = 0
 	ProcModeAlone   = 1
 	ProcModeDevelop = 2
@@ -33,7 +33,7 @@ const (
 
 var program string
 
-var (
+var ( // flags
 	debugMode  = flag.Bool("debug", false, "")
 	targetAddr string
 	adminAddr  string
@@ -182,7 +182,7 @@ func serve() { // as leader or worker
 
 var procArgs = append([]string{system.ExePath}, os.Args[1:]...)
 
-const (
+const ( // exit codes
 	codeCrash = 10
 	codeStop  = 11
 )
@@ -195,22 +195,22 @@ func stop() {
 	os.Exit(codeStop)
 }
 
-func getConfig() (prefix string, file string) {
+func getConfig() (base string, file string) {
 	baseDir, config := *baseDir, *config
 	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
 		panic("currently not supported!")
 	} else {
 		if config == "" {
-			prefix = baseDir
+			base = baseDir
 			file = "conf/" + program + ".conf"
 		} else if filepath.IsAbs(config) { // /path/to/file.conf
-			prefix = filepath.Dir(config)
+			base = filepath.Dir(config)
 			file = config
 		} else { // path/to/file.conf
-			prefix = baseDir
+			base = baseDir
 			file = baseDir + "/" + config
 		}
-		prefix += "/"
+		base += "/"
 	}
 	return
 }

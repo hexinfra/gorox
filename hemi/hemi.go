@@ -16,7 +16,6 @@ const Version = "0.1.0-dev"
 
 var ( // core funcs
 	RegisterOptware    = internal.RegisterOptware
-	RegisterCronjob    = internal.RegisterCronjob
 	RegisterQUICRunner = internal.RegisterQUICRunner
 	RegisterQUICFilter = internal.RegisterQUICFilter
 	RegisterQUICEditor = internal.RegisterQUICEditor
@@ -32,9 +31,9 @@ var ( // core funcs
 	RegisterChanger    = internal.RegisterChanger
 	RegisterReviser    = internal.RegisterReviser
 	RegisterSocklet    = internal.RegisterSocklet
-
-	RegisterAppInit = internal.RegisterAppInit
-	RegisterSvcInit = internal.RegisterSvcInit
+	RegisterAppInit    = internal.RegisterAppInit
+	RegisterSvcInit    = internal.RegisterSvcInit
+	RegisterCronjob    = internal.RegisterCronjob
 
 	IsDebug = internal.IsDebug
 	IsDevel = internal.IsDevel
@@ -67,7 +66,6 @@ type ( // core types
 	Stage = internal.Stage
 
 	Optware = internal.Optware
-	Cronjob = internal.Cronjob
 
 	QUICRouter = internal.QUICRouter
 	QUICRunner = internal.QUICRunner
@@ -151,13 +149,14 @@ type ( // core types
 
 	PBackend = internal.PBackend // TCPSBackend | UnixBackend
 	PConn    = internal.PConn    // TConn | XConn
+
+	Cronjob = internal.Cronjob
 )
 
 type ( // core mixins
 	Component_ = internal.Component_
 
 	Optware_    = internal.Optware_
-	Cronjob_    = internal.Cronjob_
 	Cacher_     = internal.Cacher_
 	QUICRunner_ = internal.QUICRunner_
 	QUICFilter_ = internal.QUICFilter_
@@ -174,6 +173,7 @@ type ( // core mixins
 	Changer_    = internal.Changer_
 	Reviser_    = internal.Reviser_
 	Socklet_    = internal.Socklet_
+	Cronjob_    = internal.Cronjob_
 )
 
 const ( // core constants

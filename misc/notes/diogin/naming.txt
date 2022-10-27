@@ -23,7 +23,6 @@ COMPONENTS
   stage [*]
     fixture (clock, ...)
     optware (...)
-    cronjob (clean, ...)
     backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
     router (tcpsRouter, udpsRouter, quicRouter)
       runner (...)
@@ -39,6 +38,7 @@ COMPONENTS
       reviser (gzip, header, ...)
       socklet (hello, ...)
       rule [*]
+    cronjob (clean, ...)
 
 
 MEMORY

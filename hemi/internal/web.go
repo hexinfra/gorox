@@ -279,6 +279,7 @@ func (a *App) Handler(name string) Handler { return a.handlers[name] }
 func (a *App) Changer(name string) Changer { return a.changers[name] }
 func (a *App) Reviser(name string) Reviser { return a.revisers[name] }
 func (a *App) Socklet(name string) Socklet { return a.socklets[name] }
+
 func (a *App) Rule(name string) *Rule {
 	for _, rule := range a.rules {
 		if rule.name == name {

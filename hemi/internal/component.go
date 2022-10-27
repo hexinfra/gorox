@@ -138,7 +138,6 @@ var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
 	optwareCreators    = make(map[string]func(name string, stage *Stage) Optware) // indexed by sign, same below.
-	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicRunnerCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICRunner)
 	quicFilterCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICFilter)
@@ -155,6 +154,7 @@ var ( // global maps, shared between stages
 	changerCreators    = make(map[string]func(name string, stage *Stage, app *App) Changer)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
+	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 	initsLock          sync.RWMutex
 	appInits           = make(map[string]func(app *App) error) // indexed by app name.
 	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
@@ -169,9 +169,6 @@ func registerFixture(sign string) {
 }
 func RegisterOptware(sign string, create func(name string, stage *Stage) Optware) {
 	registerComponent0(sign, compOptware, optwareCreators, create)
-}
-func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
-	registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
 	registerComponent0(sign, compBackend, backendCreators, create)
@@ -231,8 +228,11 @@ func RegisterSvcInit(name string, init func(svc *Svc) error) {
 	svcInits[name] = init
 	initsLock.Unlock()
 }
+func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
+	registerComponent0(sign, compCronjob, cronjobCreators, create)
+}
 
-func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, cronjob, backend, cacher, server
+func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, backend, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {
@@ -287,19 +287,6 @@ type Optware interface {
 type Optware_ struct {
 	// Mixins
 	Component_
-}
-
-// Cronjob component
-type Cronjob interface {
-	Component
-	Run() // blocking
-}
-
-// Cronjob_ is the mixin for all cronjobs.
-type Cronjob_ struct {
-	// Mixins
-	Component_
-	// States
 }
 
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
@@ -457,4 +444,17 @@ func (p *proxy_) configure(c Component) {
 	} else if p.proxyMode == "reverse" {
 		UseExitln("toBackend is required for reverse proxy")
 	}
+}
+
+// Cronjob component
+type Cronjob interface {
+	Component
+	Run() // blocking
+}
+
+// Cronjob_ is the mixin for all cronjobs.
+type Cronjob_ struct {
+	// Mixins
+	Component_
+	// States
 }

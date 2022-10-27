@@ -47,7 +47,6 @@ type Stage struct {
 	http3       *HTTP3Outgate         // for fast accessing
 	fixtures    compDict[fixture]     // indexed by sign
 	optwares    compDict[Optware]     // indexed by sign
-	cronjobs    compDict[Cronjob]     // indexed by sign
 	backends    compDict[backend]     // indexed by backendName
 	quicRouters compDict[*QUICRouter] // indexed by routerName
 	tcpsRouters compDict[*TCPSRouter] // indexed by routerName
@@ -56,6 +55,7 @@ type Stage struct {
 	servers     compDict[Server]      // indexed by serverName
 	apps        compDict[*App]        // indexed by appName
 	svcs        compDict[*Svc]        // indexed by svcName
+	cronjobs    compDict[Cronjob]     // indexed by sign
 	// States
 	appServers map[string][]string
 	svcServers map[string][]string
@@ -98,7 +98,6 @@ func (s *Stage) init() {
 	s.fixtures[signHTTP3] = s.http3
 
 	s.optwares = make(compDict[Optware])
-	s.cronjobs = make(compDict[Cronjob])
 	s.backends = make(compDict[backend])
 	s.quicRouters = make(compDict[*QUICRouter])
 	s.tcpsRouters = make(compDict[*TCPSRouter])
@@ -107,6 +106,7 @@ func (s *Stage) init() {
 	s.servers = make(compDict[Server])
 	s.apps = make(compDict[*App])
 	s.svcs = make(compDict[*Svc])
+	s.cronjobs = make(compDict[Cronjob])
 
 	s.appServers = make(map[string][]string)
 	s.svcServers = make(map[string][]string)
@@ -124,19 +124,6 @@ func (s *Stage) createOptware(sign string) Optware {
 	optware.setShell(optware)
 	s.optwares[sign] = optware
 	return optware
-}
-func (s *Stage) createCronjob(sign string) Cronjob {
-	create, ok := cronjobCreators[sign]
-	if !ok {
-		UseExitln("unknown cronjob type: " + sign)
-	}
-	if s.Cronjob(sign) != nil {
-		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
-	}
-	cronjob := create(sign, s)
-	cronjob.setShell(cronjob)
-	s.cronjobs[sign] = cronjob
-	return cronjob
 }
 func (s *Stage) createBackend(sign string, name string) backend {
 	create, ok := backendCreators[sign]
@@ -227,6 +214,19 @@ func (s *Stage) createSvc(name string) *Svc {
 	s.svcs[name] = svc
 	return svc
 }
+func (s *Stage) createCronjob(sign string) Cronjob {
+	create, ok := cronjobCreators[sign]
+	if !ok {
+		UseExitln("unknown cronjob type: " + sign)
+	}
+	if s.Cronjob(sign) != nil {
+		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
+	}
+	cronjob := create(sign, s)
+	cronjob.setShell(cronjob)
+	s.cronjobs[sign] = cronjob
+	return cronjob
+}
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
@@ -237,7 +237,6 @@ func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
 func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
 func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
 func (s *Stage) Optware(sign string) Optware        { return s.optwares[sign] }
-func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
 func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
@@ -246,6 +245,7 @@ func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
 func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
+func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
 
 func (s *Stage) OnConfigure() {
 	// appServers

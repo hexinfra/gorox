@@ -38,7 +38,6 @@ const ( // comp list. if you change this list, change compNames too.
 	compStage      = 1 + iota // stage
 	compFixture               // clock, filesys, ...
 	compOptware               // ...
-	compCronjob               // cleanCronjob, ...
 	compBackend               // TCPSBackend, HTTP1Backend, ...
 	compQUICRouter            // quicRouter
 	compQUICRunner            // ...
@@ -62,13 +61,13 @@ const ( // comp list. if you change this list, change compNames too.
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
 	compSvc                   // svc
+	compCronjob               // cleanCronjob, ...
 )
 
 var compNames = [...]string{ // comp names. if you change this list, change comp list too.
 	compStage:      "stage",      // static
 	compFixture:    "fixture",    // dynamic
 	compOptware:    "optware",    // dynamic
-	compCronjob:    "cronjob",    // dynamic
 	compBackend:    "backend",    // dynamic
 	compQUICRouter: "quicRouter", // static
 	compQUICRunner: "quicRunner", // dynamic
@@ -92,6 +91,7 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compSocklet:    "socklet",    // dynamic
 	compRule:       "rule",       // static
 	compSvc:        "svc",        // static
+	compCronjob:    "cronjob",    // dynamic
 }
 
 var varCodes = map[string]int16{ // predefined variables for config
@@ -200,8 +200,6 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 				c.parseContainer0(compFixture, c.parseFixture, current.Text, stage)
 			case "optwares":
 				c.parseContainer0(compOptware, c.parseOptware, current.Text, stage)
-			case "cronjobs":
-				c.parseContainer0(compCronjob, c.parseCronjob, current.Text, stage)
 			case "backends":
 				c.parseContainer0(compBackend, c.parseBackend, current.Text, stage)
 			case "routers":
@@ -214,6 +212,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 				c.parseContainer0(compApp, c.parseApp, current.Text, stage)
 			case "svcs":
 				c.parseContainer0(compSvc, c.parseSvc, current.Text, stage)
+			case "cronjobs":
+				c.parseContainer0(compCronjob, c.parseCronjob, current.Text, stage)
 			default:
 				panic(fmt.Errorf("unknown container '%s' in stage\n", current.Text))
 			}
@@ -221,7 +221,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 	}
 }
 
-func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, cronjobs, backends, cachers, servers, apps, svcs {}
+func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, cachers, servers, apps, svcs, cronjobs {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -250,12 +250,6 @@ func (c *config) parseOptware(sign Token, stage *Stage) { // xxxOptware {}
 	optware.setParent(stage)
 	c.Forward()
 	c.parseAssigns(optware)
-}
-func (c *config) parseCronjob(sign Token, stage *Stage) { // xxxCronjob {}
-	cronjob := stage.createCronjob(sign.Text)
-	cronjob.setParent(stage)
-	c.Forward()
-	c.parseAssigns(cronjob)
 }
 func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
@@ -763,6 +757,13 @@ func (c *config) parseSvc(sign Token, stage *Stage) { // svc <name> {}
 	svc.setParent(stage)
 	c.Forward()
 	c.parseAssigns(svc)
+}
+
+func (c *config) parseCronjob(sign Token, stage *Stage) { // xxxCronjob {}
+	cronjob := stage.createCronjob(sign.Text)
+	cronjob.setParent(stage)
+	c.Forward()
+	c.parseAssigns(cronjob)
 }
 
 func (c *config) parseAssigns(component Component) {

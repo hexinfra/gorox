@@ -38,7 +38,7 @@ type client_ struct {
 	readTimeout  time.Duration // ...
 	writeTimeout time.Duration // ...
 	aliveTimeout time.Duration // ...
-	connID       int64
+	connID       atomic.Int64
 }
 
 func (c *client_) init(name string, stage *Stage) {
@@ -73,7 +73,7 @@ func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
 func (c *client_) nextConnID() int64 {
-	return atomic.AddInt64(&c.connID, 1)
+	return c.connID.Add(1)
 }
 
 // backend is a group of nodes.
@@ -89,13 +89,13 @@ type backend_ struct {
 	// States
 	balancer  string       // roundRobin, ipHash, random, ...
 	indexGet  func() int64 // ...
-	nodeIndex int64        // for roundRobin. won't overflow because it is so large!
+	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
 	numNodes  int64        // ...
 }
 
 func (b *backend_) init(name string, stage *Stage) {
 	b.client_.init(name, stage)
-	b.nodeIndex = -1
+	b.nodeIndex.Store(-1)
 }
 
 func (b *backend_) configure() {
@@ -128,7 +128,7 @@ func (b *backend_) getIndex() int64 {
 }
 
 func (b *backend_) getIndexByRoundRobin() int64 {
-	index := atomic.AddInt64(&b.nodeIndex, 1)
+	index := b.nodeIndex.Add(1)
 	return index % b.numNodes
 }
 func (b *backend_) getIndexByIPHash() int64 {

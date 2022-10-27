@@ -142,7 +142,7 @@ func signComp(sign string, comp int16) {
 	signedComps[sign] = comp
 }
 
-// config
+// config parses configuration and creates a new stage.
 type config struct {
 	// Mixins
 	Parser_
@@ -220,7 +220,6 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-
 func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, cachers, apps, svcs, servers, cronjobs {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
@@ -253,6 +252,13 @@ func (c *config) parseOptware(sign Token, stage *Stage) { // xxxOptware {}
 }
 func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
+}
+func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, cacher, server
+	name := c.ForwardExpect(TokenString)
+	component := create(sign.Text, name.Text)
+	component.setParent(stage)
+	c.Forward()
+	c.parseAssigns(component)
 }
 func (c *config) parseRouters(stage *Stage) { // routers {}
 	c.ForwardExpect(TokenLeftBrace) // {
@@ -307,13 +313,13 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 		}
 	}
 }
-func (c *config) parseQUICRunner(sign Token, router *QUICRouter, kase *quicCase) { // xxxRunner <name> {}, xxxRunner {}
+func (c *config) parseQUICRunner(sign Token, router *QUICRouter, kase *quicCase) { // qqqRunner <name> {}, qqqRunner {}
 	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // xxxFilter <name> {}, xxxFilter {}
+func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseQUICEditor(sign Token, router *QUICRouter, kase *quicCase) { // xxxEditor <name> {}, xxxEditor {}
+func (c *config) parseQUICEditor(sign Token, router *QUICRouter, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
 	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
@@ -347,13 +353,13 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 		}
 	}
 }
-func (c *config) parseTCPSRunner(sign Token, router *TCPSRouter, kase *tcpsCase) { // xxxRunner <name> {}, xxxRunner {}
+func (c *config) parseTCPSRunner(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttRunner <name> {}, tttRunner {}
 	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // xxxFilter <name> {}, xxxFilter {}
+func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseTCPSEditor(sign Token, router *TCPSRouter, kase *tcpsCase) { // xxxEditor <name> {}, xxxEditor {}
+func (c *config) parseTCPSEditor(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
 	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
@@ -387,13 +393,13 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 		}
 	}
 }
-func (c *config) parseUDPSRunner(sign Token, router *UDPSRouter, kase *udpsCase) { // xxxRunner <name> {}, xxxRunner {}
+func (c *config) parseUDPSRunner(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuRunner <name> {}, uuuRunner {}
 	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // xxxFilter <name> {}, xxxFilter {}
+func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseUDPSEditor(sign Token, router *UDPSRouter, kase *udpsCase) { // xxxEditor <name> {}, xxxEditor {}
+func (c *config) parseUDPSEditor(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
 	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
 func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // runners, filters, editors {}
@@ -425,7 +431,7 @@ func parseComponent1[R Component, T Component, C any](c *config, sign Token, rou
 	c.parseAssigns(component)
 }
 
-func parseCases[T Component](c *config, router T, parseCase func(T)) {
+func parseCases[T Component](c *config, router T, parseCase func(T)) { // cases {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -532,7 +538,6 @@ func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <na
 		}
 	}
 }
-
 func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	variable := c.Expect(TokenVariable)
 	c.Forward()
@@ -572,13 +577,6 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 
 func (c *config) parseCacher(sign Token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
-}
-func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, cacher, server
-	name := c.ForwardExpect(TokenString)
-	component := create(sign.Text, name.Text)
-	component.setParent(stage)
-	c.Forward()
-	c.parseAssigns(component)
 }
 
 func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
@@ -627,19 +625,6 @@ func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign 
 		parseComponent(current, app, nil) // not in rule
 	}
 }
-func (c *config) parseRules(app *App) { // rules {}
-	c.ForwardExpect(TokenLeftBrace) // {
-	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
-			return
-		}
-		if current.Kind != TokenWord || current.Info != compRule {
-			panic(errors.New("config error: only rules are allowed in rules"))
-		}
-		c.parseRule(app)
-	}
-}
 
 func (c *config) parseHandler(sign Token, app *App, rule *Rule) { // xxxHandler <name> {}, xxxHandler {}
 	parseComponent2(c, sign, app, app.createHandler, rule, rule.addHandler)
@@ -667,6 +652,20 @@ func parseComponent2[T Component](c *config, sign Token, app *App, create func(s
 		assign(component)
 	}
 	c.parseAssigns(component)
+}
+
+func (c *config) parseRules(app *App) { // rules {}
+	c.ForwardExpect(TokenLeftBrace) // {
+	for {
+		current := c.Forward()
+		if current.Kind == TokenRightBrace { // }
+			return
+		}
+		if current.Kind != TokenWord || current.Info != compRule {
+			panic(errors.New("config error: only rules are allowed in rules"))
+		}
+		c.parseRule(app)
+	}
 }
 
 func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}

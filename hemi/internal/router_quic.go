@@ -264,7 +264,7 @@ type QUICConn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id       int64
-	stage    *Stage
+	stage    *Stage // current stage
 	router   *QUICRouter
 	gate     *quicGate
 	quicConn *quix.Conn

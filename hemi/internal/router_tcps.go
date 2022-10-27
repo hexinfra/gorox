@@ -326,7 +326,7 @@ type TCPSConn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64
-	stage   *Stage
+	stage   *Stage // current stage
 	router  *TCPSRouter
 	gate    *tcpsGate
 	netConn net.Conn

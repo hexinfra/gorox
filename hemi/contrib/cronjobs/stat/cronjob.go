@@ -39,11 +39,12 @@ func (j *statCronjob) OnConfigure() {
 func (j *statCronjob) OnPrepare() {
 }
 func (j *statCronjob) OnShutdown() {
+	j.SetShutting()
 }
 
 func (j *statCronjob) Run() {
 	// TODO
-	for {
+	for !j.IsShutting() {
 		time.Sleep(time.Minute)
 	}
 }

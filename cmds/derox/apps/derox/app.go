@@ -42,6 +42,7 @@ func (h *deroxHandler) OnConfigure() {
 func (h *deroxHandler) OnPrepare() {
 }
 func (h *deroxHandler) OnShutdown() {
+	// Do nothing.
 }
 
 func (h *deroxHandler) Handle(req Request, resp Response) (next bool) {

@@ -105,7 +105,7 @@ func (r *UDPSRouter) dispatch(conn *UDPSConn) {
 type udpsGate struct {
 	// Mixins
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	router *UDPSRouter
 	// States
 	id      int32
@@ -274,7 +274,7 @@ type UDPSConn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64
-	stage   *Stage
+	stage   *Stage // current stage
 	router  *UDPSRouter
 	gate    *udpsGate
 	netConn *net.UDPConn

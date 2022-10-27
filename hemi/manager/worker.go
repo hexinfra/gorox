@@ -30,7 +30,7 @@ const (
 var (
 	configBase   string
 	configFile   string
-	currentStage *hemi.Stage
+	currentStage *hemi.Stage // current stage
 )
 
 // workerMain is main() for worker process(es).

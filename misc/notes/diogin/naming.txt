@@ -30,13 +30,13 @@ COMPONENTS
       editor (...)
       case [*]
     cacher (localCacher, redisCacher, ...)
-    svc [*]
     app [*]
       handler (hello, static, ...)
       changer (gunzip, ...)
       reviser (gzip, header, ...)
       socklet (hello, ...)
       rule [*]
+    svc [*]
     server (httpxServer, echoServer, http3Server, ...)
     cronjob (clean, ...)
 

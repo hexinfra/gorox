@@ -31,8 +31,8 @@ type Component interface {
 	setShell(shell Component)
 	setParent(parent Component)
 	getParent() Component
-	setProp(name string, value Value)
 	setInfo(info any)
+	setProp(name string, value Value)
 }
 
 // Component_ is the mixin for all components.
@@ -41,10 +41,10 @@ type Component_ struct {
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
 	// States
-	name  string           // main, ...
-	info  any              // extra info about this component, used by config
-	props map[string]Value // name=value, ...
-	shut  atomic.Bool      // is component told to shutdown?
+	name     string           // main, ...
+	info     any              // extra info about this component, used by config
+	props    map[string]Value // name=value, ...
+	shutting atomic.Bool      // is component shutting down?
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -115,6 +115,9 @@ func (c *Component_) setProp(name string, value Value) {
 	}
 	c.props[name] = value
 }
+
+func (c *Component_) SetShutting()     { c.shutting.Store(true) }
+func (c *Component_) IsShutting() bool { return c.shutting.Load() }
 
 // compList
 type compList[T Component] []T

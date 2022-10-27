@@ -402,16 +402,18 @@ func (s *Stage) start() {
 	if err := os.Chdir(BaseDir()); err != nil {
 		EnvExitln(err.Error())
 	}
-	// TODO: use memory barriers
-	s.startFixtures()
-	s.startOptwares()
-	s.startBackends()
-	s.startRouters()
-	s.startCachers()
-	s.startApps()
-	s.startSvcs()
-	s.startServers()
-	s.startCronjobs()
+
+	// TODO: use sync?
+	s.startFixtures() // go fixture.run()
+	s.startOptwares() // go optware.Run()
+	s.startBackends() // go backend.maintain()
+	s.startRouters()  // go router.serve()
+	s.startCachers()  // go cacher.Maintain()
+	s.startApps()     // app.start()
+	s.startSvcs()     // svc.start()
+	s.startServers()  // go server.Serve()
+	s.startCronjobs() // go cronjob.Run()
+
 	// TODO: change user here
 	s.Logln("stage is ready to serve.")
 }
@@ -476,80 +478,86 @@ func (s *Stage) linkSvcServers() {
 }
 
 func (s *Stage) startFixtures() {
-	if IsDebug() {
-		fmt.Println("start fixtures")
-	}
 	for _, fixture := range s.fixtures {
+		if IsDebug() {
+			fmt.Printf("fixture=%s go run()\n", fixture.Name())
+		}
 		go fixture.run()
 	}
 }
 func (s *Stage) startOptwares() {
-	if IsDebug() {
-		fmt.Println("start optwares")
-	}
 	for _, optware := range s.optwares {
+		if IsDebug() {
+			fmt.Printf("optware=%s go Run()\n", optware.Name())
+		}
 		go optware.Run()
 	}
 }
 func (s *Stage) startBackends() {
-	if IsDebug() {
-		fmt.Println("start backends")
-	}
 	for _, backend := range s.backends {
+		if IsDebug() {
+			fmt.Printf("backend=%s go maintain()\n", backend.Name())
+		}
 		go backend.maintain()
 	}
 }
 func (s *Stage) startRouters() {
-	if IsDebug() {
-		fmt.Println("start routers")
-	}
 	for _, quicRouter := range s.quicRouters {
+		if IsDebug() {
+			fmt.Printf("quicRouter=%s go serve()\n", quicRouter.Name())
+		}
 		go quicRouter.serve()
 	}
 	for _, tcpsRouter := range s.tcpsRouters {
+		if IsDebug() {
+			fmt.Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
+		}
 		go tcpsRouter.serve()
 	}
 	for _, udpsRouter := range s.udpsRouters {
+		if IsDebug() {
+			fmt.Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
+		}
 		go udpsRouter.serve()
 	}
 }
 func (s *Stage) startCachers() {
-	if IsDebug() {
-		fmt.Println("start cachers")
-	}
 	for _, cacher := range s.cachers {
+		if IsDebug() {
+			fmt.Printf("cacher=%s go Maintain()\n", cacher.Name())
+		}
 		go cacher.Maintain()
 	}
 }
 func (s *Stage) startApps() {
-	if IsDebug() {
-		fmt.Println("start apps")
-	}
 	for _, app := range s.apps {
+		if IsDebug() {
+			fmt.Printf("app=%s start()\n", app.Name())
+		}
 		app.start()
 	}
 }
 func (s *Stage) startSvcs() {
-	if IsDebug() {
-		fmt.Println("start svcs")
-	}
 	for _, svc := range s.svcs {
+		if IsDebug() {
+			fmt.Printf("svc=%s start()\n", svc.Name())
+		}
 		svc.start()
 	}
 }
 func (s *Stage) startServers() {
-	if IsDebug() {
-		fmt.Println("start servers")
-	}
 	for _, server := range s.servers {
+		if IsDebug() {
+			fmt.Printf("server=%s go Serve()\n", server.Name())
+		}
 		go server.Serve()
 	}
 }
 func (s *Stage) startCronjobs() {
-	if IsDebug() {
-		fmt.Println("start cronjobs")
-	}
 	for _, cronjob := range s.cronjobs {
+		if IsDebug() {
+			fmt.Printf("cronjob=%s go Run()\n", cronjob.Name())
+		}
 		go cronjob.Run()
 	}
 }

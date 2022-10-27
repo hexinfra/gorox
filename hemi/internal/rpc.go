@@ -12,7 +12,7 @@ type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage       *Stage
+	stage       *Stage // current stage
 	grpcServers []GRPCServer
 	hrpcServers []httpServer
 	// States

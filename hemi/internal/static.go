@@ -29,7 +29,7 @@ type staticHandler struct {
 	// Mixins
 	Handler_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	app   *App
 	// States
 	webRoot     string            // root dir for the web

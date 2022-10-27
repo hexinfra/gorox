@@ -44,11 +44,6 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 
 	m := new(exampleMapper)
 	m.init()
-
-	m.GET("/foo", h.handleFoo)
-	m.POST("/bar", h.handleBar)
-	m.GET("/baz", h.handleBaz)
-
 	h.mapper = m
 }
 
@@ -57,8 +52,14 @@ func (h *exampleHandler) OnConfigure() {
 	h.ConfigureString("content", &h.content, nil, "this is example.")
 }
 func (h *exampleHandler) OnPrepare() {
+	m := h.mapper
+
+	m.GET("/foo", h.handleFoo)
+	m.POST("/bar", h.handleBar)
+	m.GET("/baz", h.handleBaz)
 }
 func (h *exampleHandler) OnShutdown() {
+	// Do nothing.
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {

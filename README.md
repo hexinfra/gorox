@@ -55,13 +55,13 @@ Documentation
 
   View documentation online:
 
-    English version: https://gorox.io/docs/gorox/
-    Chinese version: https://www.gorox.io/docs/gorox/
+    English version: https://gorox.io/docs
+    Chinese version: https://www.gorox.io/docs
 
   Or view locally (ensure your local gorox server is started):
 
-    English version: http://gorox.net:3080/docs/gorox/
-    Chinese version: http://www.gorox.net:3080/docs/gorox/
+    English version: http://gorox.net:3080/docs
+    Chinese version: http://www.gorox.net:3080/docs
 
 
 License

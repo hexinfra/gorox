@@ -18,7 +18,7 @@ import "github.com/hexinfra/gorox/hemi/manager"
 
 const usage = `
 Gocmc (%s)
-=====================
+================================================================================
 
   gocmc [ACTION] [OPTIONS]
 
@@ -33,14 +33,14 @@ ACTION
   stop         # tell server to exit immediately
   reopen       # tell leader to re-listen its admin interface
   rework       # tell leader to restart worker(s) gracefully
-  cpu          # tell worker to perform cpu profiling
-  heap         # tell worker to perform heap profiling
-  thread       # tell worker to perform thread profiling
-  goroutine    # tell worker to perform goroutine profiling
-  block        # tell worker to perform block profiling
+  cpu          # tell a worker to perform cpu profiling
+  heap         # tell a worker to perform heap profiling
+  thread       # tell a worker to perform thread profiling
+  goroutine    # tell a worker to perform goroutine profiling
+  block        # tell a worker to perform block profiling
   ping         # call ping of leader
   info         # call info of leader and worker(s)
-  reconf       # call worker to reconfigure
+  reconf       # call worker(s) to reconfigure
 
   Only one action is allowed at a time.
   If ACTION is missing, the default action is "run".

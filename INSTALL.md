@@ -5,7 +5,7 @@ From Binary
 
     shell> tar zxf gorox-x.y.z-os-arch.tar.gz
     shell> cd gorox-x.y.z
-    shell> ./gorox run -daemon
+    shell> ./gorox serve -daemon
     shell> ./gorox quit
 
   See http://localhost:3080/ while gorox is running, you'll see a welcome page.
@@ -22,7 +22,7 @@ From Source
     shell> cd gorox-x.y.z                 # switch to source directory
     shell> go build cmds/gomake.go        # build gomake which will builds gorox
     shell> ./gomake all                   # move gomake to $PATH if you like
-    shell> ./gorox run -daemon            # start gorox server in daemon mode
+    shell> ./gorox serve -daemon          # start gorox server in daemon mode
     shell> ./gorox quit                   # tell gorox server to exit gracefully
 
   See http://localhost:3080/ while gorox is running, you'll see a welcome page.

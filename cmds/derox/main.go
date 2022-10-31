@@ -62,7 +62,7 @@ ACTION
   help         # show this message
   version      # show version info
   advise       # show platform advice
-  run          # start as server
+  serve        # start as server
   quit         # tell server to exit gracefully
   stop         # tell server to exit immediately
   reopen       # tell leader to re-listen its admin interface
@@ -77,7 +77,7 @@ ACTION
   reconf       # call worker(s) to reconfigure
 
   Only one action is allowed at a time.
-  If ACTION is missing, the default action is "run".
+  If ACTION is missing, the default action is "serve".
 
 OPTIONS
 -------

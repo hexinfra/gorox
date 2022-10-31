@@ -62,7 +62,7 @@ func Main(name string, usage string, procMode int, addr string) {
 	}
 	flag.StringVar(&targetAddr, "target", addr, "")
 	flag.StringVar(&adminAddr, "admin", addr, "")
-	action := "run"
+	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
 		flag.CommandLine.Parse(os.Args[2:])
@@ -89,7 +89,7 @@ func Main(name string, usage string, procMode int, addr string) {
 		fmt.Println(hemi.Version)
 	} else if action == "advise" {
 		system.Advise()
-	} else if action != "run" { // as control agent
+	} else if action != "serve" { // as control agent
 		agentMain(action)
 	} else { // run as server
 		serve()

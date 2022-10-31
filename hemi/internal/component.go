@@ -292,6 +292,18 @@ type Optware_ struct {
 	Component_
 }
 
+// outgate_ is a mixin for outgates.
+type outgate_ struct {
+	// Mixins
+	client_
+	// States
+}
+
+func (f *outgate_) init(name string, stage *Stage) {
+	f.client_.init(name, stage)
+	// other states
+}
+
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
 	Component
@@ -315,7 +327,7 @@ type Centry struct {
 	trailers any
 }
 
-// office_ is a mixin for servers and routers.
+// office_ is a mixin for routers and servers.
 type office_ struct {
 	// Mixins
 	Component_
@@ -370,7 +382,7 @@ func (o *office_) TLSMode() bool          { return o.tlsMode }
 func (o *office_) NumGates() int32        { return o.numGates }
 func (o *office_) MaxConnsPerGate() int32 { return o.maxConnsPerGate }
 
-// Gate_ is a mixin for server gates and router gates.
+// Gate_ is a mixin for router gates and server gates.
 type Gate_ struct {
 	// Assocs
 	stage *Stage // current stage
@@ -397,19 +409,7 @@ func (g *Gate_) ReachLimit() bool {
 	return g.numConns.Add(1) > g.maxConns
 }
 
-// outgate_ is a mixin for outgates.
-type outgate_ struct {
-	// Mixins
-	client_
-	// States
-}
-
-func (f *outgate_) init(name string, stage *Stage) {
-	f.client_.init(name, stage)
-	// other states
-}
-
-// proxy_ is a mixin for proxies and relays.
+// proxy_ is a mixin for relays and proxies.
 type proxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage

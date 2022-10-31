@@ -2888,6 +2888,37 @@ var ( // forbidden response fields
 	}
 )
 
+var httpErrorPages = func() map[int16][]byte {
+	const template = `<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="utf-8">
+<title>%d %s</title>
+<style type="text/css">
+body{text-align:center;}
+header{font-size:72pt;}
+main{font-size:36pt;}
+footer{padding:20px;}
+</style>
+</head>
+<body>
+	<header>%d</header>
+	<main>%s</main>
+	<footer>Powered by Gorox</footer>
+</body>
+</html>`
+	pages := make(map[int16][]byte)
+	for status, control := range http1Controls {
+		if status < 400 || control == nil {
+			continue
+		}
+		phrase := control[len("HTTP/1.1 XXX ") : len(control)-2]
+		pages[int16(status)] = []byte(fmt.Sprintf(template, status, phrase, status, phrase))
+	}
+	return pages
+}()
+
 // Cookie is a cookie sent to client.
 type Cookie struct {
 	name     string

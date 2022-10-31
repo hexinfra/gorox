@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Developer mode of manager. Only a single foreground process is started in this mode.
+// Single mode of manager. Only a single foreground process is started in this mode.
 
 package manager
 
@@ -12,8 +12,8 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 )
 
-// develMain is main() for developer mode.
-func develMain() {
+// singleMain is main() for single mode.
+func singleMain() {
 	stage, err := hemi.ApplyFile(getConfig())
 	if err != nil {
 		fmt.Println(err.Error())

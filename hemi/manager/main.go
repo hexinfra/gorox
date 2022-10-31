@@ -28,7 +28,7 @@ import (
 const ( // proc modes
 	ProcModeGeneral = 0
 	ProcModeAlone   = 1 // only alone mode is allowed
-	ProcModeDevelop = 2 // force debugLevel = 2, develMode = true
+	ProcModeDevelop = 2 // force debugLevel = 2, singleMode = true
 )
 
 var program string
@@ -37,7 +37,7 @@ var ( // flags
 	debugLevel = flag.Int("debug", 0, "")
 	targetAddr string
 	adminAddr  string
-	develMode  = flag.Bool("devel", false, "")
+	singleMode = flag.Bool("single", false, "")
 	tryRun     = flag.Bool("try", false, "")
 	baseDir    = flag.String("base", "", "")
 	dataDir    = flag.String("data", "", "")
@@ -79,7 +79,7 @@ func Main(name string, usage string, procMode int, addr string) {
 		}
 		if procMode == ProcModeDevelop {
 			*debugLevel = 2
-			*develMode = true
+			*singleMode = true
 		}
 	}
 
@@ -139,8 +139,8 @@ func serve() { // as leader or worker
 	*tempDir = filepath.ToSlash(*tempDir)
 	hemi.SetTempDir(*tempDir)
 
-	if *develMode { // run as foreground worker. for developer mode
-		develMain()
+	if *singleMode { // run as foreground worker. for single mode
+		singleMain()
 	} else if *tryRun { // for testing config file
 		if _, err := hemi.ApplyFile(getConfig()); err != nil {
 			fmt.Println(err.Error())

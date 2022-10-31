@@ -44,8 +44,8 @@ func (f *httpOutgate_) init(name string, stage *Stage) {
 	f.outgate_.init(name, stage)
 }
 
-func (f *httpOutgate_) configure() {
-	f.outgate_.configure()
+func (f *httpOutgate_) onConfigure() {
+	f.outgate_.onConfigure()
 	// maxStreamsPerConn
 	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 	// saveContentFilesDir
@@ -53,12 +53,12 @@ func (f *httpOutgate_) configure() {
 	// maxContentSize
 	f.ConfigureInt64("maxContentSize", &f.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
-func (f *httpOutgate_) prepare() {
-	f.outgate_.prepare()
+func (f *httpOutgate_) onPrepare() {
+	f.outgate_.onPrepare()
 	f.makeContentFilesDir(0755)
 }
-func (f *httpOutgate_) shutdown() {
-	f.outgate_.shutdown()
+func (f *httpOutgate_) onShutdown() {
+	f.outgate_.onShutdown()
 }
 
 // httpBackend_ is the mixin for HTTP[1-3]Backend.
@@ -74,8 +74,8 @@ func (b *httpBackend_) init(name string, stage *Stage) {
 	b.backend_.init(name, stage)
 }
 
-func (b *httpBackend_) configure() {
-	b.backend_.configure()
+func (b *httpBackend_) onConfigure() {
+	b.backend_.onConfigure()
 	// maxStreamsPerConn
 	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 	// saveContentFilesDir
@@ -83,12 +83,12 @@ func (b *httpBackend_) configure() {
 	// maxContentSize
 	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
-func (b *httpBackend_) prepare(numNodes int) {
-	b.backend_.prepare(numNodes)
+func (b *httpBackend_) onPrepare(numNodes int) {
+	b.backend_.onPrepare(numNodes)
 	b.makeContentFilesDir(0755)
 }
-func (b *httpBackend_) shutdown() {
-	b.backend_.shutdown()
+func (b *httpBackend_) onShutdown() {
+	b.backend_.onShutdown()
 }
 
 // httpNode_ is the mixin for http[1-3]Node.

@@ -69,8 +69,8 @@ func (s *httpServer_) init(name string, stage *Stage) {
 	s.Init(name, stage)
 }
 
-func (s *httpServer_) configure() {
-	s.Configure()
+func (s *httpServer_) onConfigure() {
+	s.OnConfigure()
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/http_"+s.name+".log")
 	// maxStreamsPerConn
@@ -86,16 +86,16 @@ func (s *httpServer_) configure() {
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
 }
-func (s *httpServer_) prepare() {
-	s.Prepare()
+func (s *httpServer_) onPrepare() {
+	s.OnPrepare()
 	// logger
 	if err := os.MkdirAll(filepath.Dir(s.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
 	}
 	//s.logger = newLogger(s.logFile, "") // dividing not needed
 }
-func (s *httpServer_) shutdown() {
-	s.Shutdown()
+func (s *httpServer_) onShutdown() {
+	s.OnShutdown()
 	// closing gates and their conns
 	// finally s.logger.Close()
 }

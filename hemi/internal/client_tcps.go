@@ -46,15 +46,15 @@ func (b *TCPSBackend) init(name string, stage *Stage) {
 }
 
 func (b *TCPSBackend) OnConfigure() {
-	b.configure()
+	b.backend_.onConfigure()
 	// maxStreamsPerConn
 	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (b *TCPSBackend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.backend_.onPrepare(len(b.nodes))
 }
 func (b *TCPSBackend) OnShutdown() {
-	b.shutdown()
+	b.backend_.onShutdown()
 }
 
 func (b *TCPSBackend) maintain() { // blocking

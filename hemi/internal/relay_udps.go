@@ -32,11 +32,13 @@ func (r *udpsRelay) init(name string, stage *Stage, router *UDPSRouter) {
 }
 
 func (r *udpsRelay) OnConfigure() {
-	r.configure(r)
+	r.proxy_.onConfigure(r)
 }
 func (r *udpsRelay) OnPrepare() {
+	r.proxy_.onPrepare(r)
 }
 func (r *udpsRelay) OnShutdown() {
+	r.proxy_.onShutdown(r)
 }
 
 func (r *udpsRelay) Process(conn *UDPSConn) (next bool) {

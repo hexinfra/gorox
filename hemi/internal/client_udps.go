@@ -42,13 +42,13 @@ func (b *UDPSBackend) init(name string, stage *Stage) {
 }
 
 func (b *UDPSBackend) OnConfigure() {
-	b.configure()
+	b.backend_.onConfigure()
 }
 func (b *UDPSBackend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.backend_.onPrepare(len(b.nodes))
 }
 func (b *UDPSBackend) OnShutdown() {
-	b.shutdown()
+	b.backend_.onShutdown()
 }
 
 func (b *UDPSBackend) maintain() { // blocking

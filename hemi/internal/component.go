@@ -334,7 +334,7 @@ func (o *office_) init(name string, stage *Stage) {
 	o.stage = stage
 }
 
-func (o *office_) configure() {
+func (o *office_) onConfigure() {
 	// address
 	if v, ok := o.Find("address"); ok {
 		if address, ok := v.String(); ok {
@@ -359,9 +359,9 @@ func (o *office_) configure() {
 	// maxConnsPerGate
 	o.ConfigureInt32("maxConnsPerGate", &o.maxConnsPerGate, func(value int32) bool { return value > 0 }, 100000)
 }
-func (o *office_) prepare() {
+func (o *office_) onPrepare() {
 }
-func (o *office_) shutdown() {
+func (o *office_) onShutdown() {
 }
 
 func (o *office_) Stage() *Stage          { return o.stage }
@@ -422,7 +422,7 @@ func (p *proxy_) init(stage *Stage) {
 	p.stage = stage
 }
 
-func (p *proxy_) configure(c Component) {
+func (p *proxy_) onConfigure(c Component) {
 	// proxyMode
 	if v, ok := c.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
@@ -447,6 +447,10 @@ func (p *proxy_) configure(c Component) {
 	} else if p.proxyMode == "reverse" {
 		UseExitln("toBackend is required for reverse proxy")
 	}
+}
+func (p *proxy_) onPrepare(c Component) {
+}
+func (p *proxy_) onShutdown(c Component) {
 }
 
 // Cronjob component

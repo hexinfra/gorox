@@ -32,7 +32,7 @@ func (r *QUICRouter) init(name string, stage *Stage) {
 }
 
 func (r *QUICRouter) OnConfigure() {
-	r.Configure()
+	r.router_.onConfigure()
 	// logFile
 	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/quic_"+r.name+".log")
 
@@ -41,7 +41,7 @@ func (r *QUICRouter) OnConfigure() {
 	r.cases.walk((*quicCase).OnConfigure)
 }
 func (r *QUICRouter) OnPrepare() {
-	r.Prepare()
+	r.router_.onPrepare()
 	// logger
 	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
@@ -56,7 +56,7 @@ func (r *QUICRouter) OnShutdown() {
 	// sub components
 	r.shutdownSubs()
 
-	r.Shutdown()
+	r.router_.onShutdown()
 }
 
 func (r *QUICRouter) createCase(name string) *quicCase {

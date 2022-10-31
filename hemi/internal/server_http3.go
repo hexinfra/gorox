@@ -38,13 +38,13 @@ func (s *http3Server) init(name string, stage *Stage) {
 }
 
 func (s *http3Server) OnConfigure() {
-	s.configure()
+	s.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
-	s.prepare()
+	s.onPrepare()
 }
 func (s *http3Server) OnShutdown() {
-	s.shutdown()
+	s.onShutdown()
 }
 
 func (s *http3Server) Serve() {

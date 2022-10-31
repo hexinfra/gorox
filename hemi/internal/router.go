@@ -60,8 +60,8 @@ func (r *router_[T, G, R, F, E]) setCreators(runnerCreators map[string]func(stri
 	r.editorCreators = editorCreators
 }
 
-func (r *router_[T, G, R, F, E]) Configure() {
-	r.office_.configure()
+func (r *router_[T, G, R, F, E]) onConfigure() {
+	r.office_.onConfigure()
 }
 func (r *router_[T, G, R, F, E]) configureSubs() {
 	r.runners.walk(R.OnConfigure)
@@ -69,8 +69,8 @@ func (r *router_[T, G, R, F, E]) configureSubs() {
 	r.editors.walk(E.OnConfigure)
 }
 
-func (r *router_[T, G, R, F, E]) Prepare() {
-	r.office_.prepare()
+func (r *router_[T, G, R, F, E]) onPrepare() {
+	r.office_.onPrepare()
 }
 func (r *router_[T, G, R, F, E]) prepareSubs() {
 	r.runners.walk(R.OnPrepare)
@@ -78,8 +78,8 @@ func (r *router_[T, G, R, F, E]) prepareSubs() {
 	r.editors.walk(E.OnPrepare)
 }
 
-func (r *router_[T, G, R, F, E]) Shutdown() {
-	r.office_.shutdown()
+func (r *router_[T, G, R, F, E]) onShutdown() {
+	r.office_.onShutdown()
 }
 func (r *router_[T, G, R, F, E]) shutdownSubs() {
 	r.editors.walk(E.OnShutdown)

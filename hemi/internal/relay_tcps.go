@@ -32,11 +32,13 @@ func (r *tcpsRelay) init(name string, stage *Stage, router *TCPSRouter) {
 }
 
 func (r *tcpsRelay) OnConfigure() {
-	r.configure(r)
+	r.proxy_.onConfigure(r)
 }
 func (r *tcpsRelay) OnPrepare() {
+	r.proxy_.onPrepare(r)
 }
 func (r *tcpsRelay) OnShutdown() {
+	r.proxy_.onShutdown(r)
 }
 
 func (r *tcpsRelay) Process(conn *TCPSConn) (next bool) {

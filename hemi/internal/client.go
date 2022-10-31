@@ -46,7 +46,7 @@ func (c *client_) init(name string, stage *Stage) {
 	c.stage = stage
 }
 
-func (c *client_) configure() {
+func (c *client_) onConfigure() {
 	// tlsMode
 	c.ConfigureBool("tlsMode", &c.tlsMode, false)
 	if c.tlsMode {
@@ -61,9 +61,9 @@ func (c *client_) configure() {
 	// aliveTimeout
 	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 10*time.Second)
 }
-func (c *client_) prepare() {
+func (c *client_) onPrepare() {
 }
-func (c *client_) shutdown() {
+func (c *client_) onShutdown() {
 }
 
 func (c *client_) Stage() *Stage               { return c.stage }
@@ -98,15 +98,15 @@ func (b *backend_) init(name string, stage *Stage) {
 	b.nodeIndex.Store(-1)
 }
 
-func (b *backend_) configure() {
-	b.client_.configure()
+func (b *backend_) onConfigure() {
+	b.client_.onConfigure()
 	// balancer
 	b.ConfigureString("balancer", &b.balancer, func(value string) bool {
 		return value == "roundRobin" || value == "ipHash" || value == "random"
 	}, "roundRobin")
 }
-func (b *backend_) prepare(numNodes int) {
-	b.client_.prepare()
+func (b *backend_) onPrepare(numNodes int) {
+	b.client_.onPrepare()
 	switch b.balancer {
 	case "roundRobin":
 		b.indexGet = b.getIndexByRoundRobin
@@ -119,8 +119,8 @@ func (b *backend_) prepare(numNodes int) {
 	}
 	b.numNodes = int64(numNodes)
 }
-func (b *backend_) shutdown() {
-	b.client_.shutdown()
+func (b *backend_) onShutdown() {
+	b.client_.onShutdown()
 }
 
 func (b *backend_) getIndex() int64 {

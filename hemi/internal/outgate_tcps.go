@@ -38,15 +38,15 @@ func (f *TCPSOutgate) init(stage *Stage) {
 }
 
 func (f *TCPSOutgate) OnConfigure() {
-	f.configure()
+	f.outgate_.onConfigure()
 	// maxStreamsPerConn
 	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (f *TCPSOutgate) OnPrepare() {
-	f.prepare()
+	f.outgate_.onPrepare()
 }
 func (f *TCPSOutgate) OnShutdown() {
-	f.shutdown()
+	f.outgate_.onShutdown()
 }
 
 func (f *TCPSOutgate) run() { // blocking

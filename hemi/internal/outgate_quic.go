@@ -33,15 +33,15 @@ func (f *QUICOutgate) init(stage *Stage) {
 }
 
 func (f *QUICOutgate) OnConfigure() {
-	f.configure()
+	f.outgate_.onConfigure()
 	// maxStreamsPerConn
 	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (f *QUICOutgate) OnPrepare() {
-	f.prepare()
+	f.outgate_.onPrepare()
 }
 func (f *QUICOutgate) OnShutdown() {
-	f.shutdown()
+	f.outgate_.onShutdown()
 }
 
 func (f *QUICOutgate) run() { // blocking

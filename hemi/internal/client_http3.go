@@ -37,13 +37,13 @@ func (b *HTTP3Backend) init(name string, stage *Stage) {
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.configure()
+	b.httpBackend_.onConfigure()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.httpBackend_.onPrepare(len(b.nodes))
 }
 func (b *HTTP3Backend) OnShutdown() {
-	b.shutdown()
+	b.httpBackend_.onShutdown()
 }
 
 func (b *HTTP3Backend) maintain() { // blocking

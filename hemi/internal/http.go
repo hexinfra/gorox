@@ -260,6 +260,12 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 )
 
 var ( // byteses of http fields.
+	// Pseudo headers
+	httpBytesAuthority = []byte(":authority")
+	httpBytesMethod    = []byte(":method")
+	httpBytesPath      = []byte(":path")
+	httpBytesScheme    = []byte(":scheme")
+	httpBytesStatus    = []byte(":status")
 	// General fields
 	httpBytesCacheControl       = []byte("cache-control")
 	httpBytesConnection         = []byte("connection")

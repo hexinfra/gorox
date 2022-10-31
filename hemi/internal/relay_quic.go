@@ -32,11 +32,13 @@ func (r *quicRelay) init(name string, stage *Stage, router *QUICRouter) {
 }
 
 func (r *quicRelay) OnConfigure() {
-	r.configure(r)
+	r.proxy_.onConfigure(r)
 }
 func (r *quicRelay) OnPrepare() {
+	r.proxy_.onPrepare(r)
 }
 func (r *quicRelay) OnShutdown() {
+	r.proxy_.onShutdown(r)
 }
 
 func (r *quicRelay) Process(conn *QUICConn, stream *QUICStream) (next bool) {

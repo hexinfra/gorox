@@ -33,7 +33,7 @@ func (r *UDPSRouter) init(name string, stage *Stage) {
 }
 
 func (r *UDPSRouter) OnConfigure() {
-	r.Configure()
+	r.router_.onConfigure()
 	// logFile
 	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/udps_"+r.name+".log")
 
@@ -42,7 +42,7 @@ func (r *UDPSRouter) OnConfigure() {
 	r.cases.walk((*udpsCase).OnConfigure)
 }
 func (r *UDPSRouter) OnPrepare() {
-	r.Prepare()
+	r.router_.onPrepare()
 	// logger
 	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
@@ -57,7 +57,7 @@ func (r *UDPSRouter) OnShutdown() {
 	// sub components
 	r.shutdownSubs()
 
-	r.Shutdown()
+	r.router_.onShutdown()
 }
 
 func (r *UDPSRouter) createCase(name string) *udpsCase {

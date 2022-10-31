@@ -38,13 +38,13 @@ func (s *socksServer) init(name string, stage *Stage) {
 }
 
 func (s *socksServer) OnConfigure() {
-	s.Configure()
+	s.Server_.OnConfigure()
 }
 func (s *socksServer) OnPrepare() {
-	s.Prepare()
+	s.Server_.OnPrepare()
 }
 func (s *socksServer) OnShutdown() {
-	s.Shutdown()
+	s.Server_.OnShutdown()
 }
 
 func (s *socksServer) Serve() {

@@ -48,7 +48,7 @@ func (s *httpxServer) init(name string, stage *Stage) {
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.configure()
+	s.onConfigure()
 	var forceScheme string
 	// forceScheme
 	s.ConfigureString("forceScheme", &forceScheme, func(value string) bool {
@@ -67,7 +67,7 @@ func (s *httpxServer) OnConfigure() {
 	s.ConfigureBool("h2cMode", &s.h2cMode, false)
 }
 func (s *httpxServer) OnPrepare() {
-	s.prepare()
+	s.onPrepare()
 	if s.tlsMode {
 		var nextProtos []string
 		if s.enableHTTP2 {
@@ -81,7 +81,7 @@ func (s *httpxServer) OnPrepare() {
 	}
 }
 func (s *httpxServer) OnShutdown() {
-	s.shutdown()
+	s.onShutdown()
 }
 
 func (s *httpxServer) Serve() {

@@ -38,13 +38,13 @@ func (b *HTTP2Backend) init(name string, stage *Stage) {
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.configure()
+	b.httpBackend_.onConfigure()
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.httpBackend_.onPrepare(len(b.nodes))
 }
 func (b *HTTP2Backend) OnShutdown() {
-	b.shutdown()
+	b.httpBackend_.onShutdown()
 }
 
 func (b *HTTP2Backend) maintain() { // blocking

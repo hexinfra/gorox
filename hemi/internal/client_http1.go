@@ -41,7 +41,7 @@ func (b *HTTP1Backend) init(name string, stage *Stage) {
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.configure()
+	b.httpBackend_.onConfigure()
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -92,10 +92,10 @@ func (b *HTTP1Backend) OnConfigure() {
 	}
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.httpBackend_.onPrepare(len(b.nodes))
 }
 func (b *HTTP1Backend) OnShutdown() {
-	b.shutdown()
+	b.httpBackend_.onShutdown()
 }
 
 func (b *HTTP1Backend) maintain() { // blocking

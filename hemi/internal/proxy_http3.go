@@ -32,13 +32,13 @@ func (h *http3Proxy) init(name string, stage *Stage, app *App) {
 }
 
 func (h *http3Proxy) OnConfigure() {
-	h.configure(h)
+	h.httpProxy_.onConfigure(h)
 }
 func (h *http3Proxy) OnPrepare() {
-	h.prepare()
+	h.httpProxy_.onPrepare(h)
 }
 func (h *http3Proxy) OnShutdown() {
-	h.shutdown()
+	h.httpProxy_.onShutdown(h)
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -58,13 +58,13 @@ func (s *sock3Proxy) init(name string, stage *Stage, app *App) {
 }
 
 func (s *sock3Proxy) OnConfigure() {
-	s.configure(s)
+	s.sockProxy_.onConfigure(s)
 }
 func (s *sock3Proxy) OnPrepare() {
-	s.prepare()
+	s.sockProxy_.onPrepare(s)
 }
 func (s *sock3Proxy) OnShutdown() {
-	s.shutdown()
+	s.sockProxy_.onShutdown(s)
 }
 
 func (s *sock3Proxy) Serve(req Request, sock Socket) { // currently reverse only

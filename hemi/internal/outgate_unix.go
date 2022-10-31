@@ -33,15 +33,15 @@ func (f *UnixOutgate) init(stage *Stage) {
 }
 
 func (f *UnixOutgate) OnConfigure() {
-	f.configure()
+	f.outgate_.onConfigure()
 	// maxStreamsPerConn
 	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (f *UnixOutgate) OnPrepare() {
-	f.prepare()
+	f.outgate_.onPrepare()
 }
 func (f *UnixOutgate) OnShutdown() {
-	f.shutdown()
+	f.outgate_.onShutdown()
 }
 
 func (f *UnixOutgate) run() { // blocking

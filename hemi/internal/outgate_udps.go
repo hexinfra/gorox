@@ -32,13 +32,13 @@ func (f *UDPSOutgate) init(stage *Stage) {
 }
 
 func (f *UDPSOutgate) OnConfigure() {
-	f.configure()
+	f.outgate_.onConfigure()
 }
 func (f *UDPSOutgate) OnPrepare() {
-	f.prepare()
+	f.outgate_.onPrepare()
 }
 func (f *UDPSOutgate) OnShutdown() {
-	f.shutdown()
+	f.outgate_.onShutdown()
 }
 
 func (f *UDPSOutgate) run() { // blocking

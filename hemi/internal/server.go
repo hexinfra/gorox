@@ -30,17 +30,17 @@ func (s *Server_) Init(name string, stage *Stage) {
 	s.office_.init(name, stage)
 }
 
-func (s *Server_) Configure() {
-	s.office_.configure()
+func (s *Server_) OnConfigure() {
+	s.office_.onConfigure()
 	p := strings.IndexByte(s.address, ':')
 	s.colonPort = s.address[p:]
 	s.colonPortBytes = []byte(s.colonPort)
 }
-func (s *Server_) Prepare() {
-	s.office_.prepare()
+func (s *Server_) OnPrepare() {
+	s.office_.onPrepare()
 }
-func (s *Server_) Shutdown() {
-	s.office_.shutdown()
+func (s *Server_) OnShutdown() {
+	s.office_.onShutdown()
 }
 
 func (s *Server_) ColonPort() string      { return s.colonPort }

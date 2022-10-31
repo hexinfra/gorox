@@ -36,13 +36,13 @@ func (f *HTTP3Outgate) init(stage *Stage) {
 }
 
 func (f *HTTP3Outgate) OnConfigure() {
-	f.configure()
+	f.outgate_.onConfigure()
 }
 func (f *HTTP3Outgate) OnPrepare() {
-	f.prepare()
+	f.outgate_.onPrepare()
 }
 func (f *HTTP3Outgate) OnShutdown() {
-	f.shutdown()
+	f.outgate_.onShutdown()
 }
 
 func (f *HTTP3Outgate) run() { // blocking

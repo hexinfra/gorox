@@ -43,15 +43,15 @@ func (b *QUICBackend) init(name string, stage *Stage) {
 }
 
 func (b *QUICBackend) OnConfigure() {
-	b.configure()
+	b.backend_.onConfigure()
 	// maxStreamsPerConn
 	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (b *QUICBackend) OnPrepare() {
-	b.prepare(len(b.nodes))
+	b.backend_.onPrepare(len(b.nodes))
 }
 func (b *QUICBackend) OnShutdown() {
-	b.shutdown()
+	b.backend_.onShutdown()
 }
 
 func (b *QUICBackend) maintain() { // blocking

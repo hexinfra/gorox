@@ -38,13 +38,13 @@ func (s *echoServer) init(name string, stage *Stage) {
 }
 
 func (s *echoServer) OnConfigure() {
-	s.Configure()
+	s.Server_.OnConfigure()
 }
 func (s *echoServer) OnPrepare() {
-	s.Prepare()
+	s.Server_.OnPrepare()
 }
 func (s *echoServer) OnShutdown() {
-	s.Shutdown()
+	s.Server_.OnShutdown()
 }
 
 func (s *echoServer) Serve() {

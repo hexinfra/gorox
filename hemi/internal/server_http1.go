@@ -170,7 +170,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
 		s.httpMode = httpModeTCPTun
-		s.conn.keepConn = false
+		s.conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
 		return
 	}
 
@@ -208,7 +208,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		}
 		s.serveSocket()
 		s.httpMode = httpModeSocket
-		s.conn.keepConn = false
+		s.conn.keepConn = false // hijacked, so must close conn after s.serveSocket()
 		return
 	}
 
@@ -235,14 +235,14 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 	conn.usedStreams.Add(1)
-	if maxStreamsPerConn := server.MaxStreamsPerConn(); (maxStreamsPerConn > 0 && conn.usedStreams.Load() == maxStreamsPerConn) || req.keepAlive == 0 {
-		s.conn.keepConn = false
+	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 {
+		s.conn.keepConn = false // reaches limit
 	}
 
 	s.serveNormal(app, req, resp)
 
 	if s.isBroken() {
-		s.conn.keepConn = false
+		s.conn.keepConn = false // i/o error
 	}
 }
 
@@ -270,7 +270,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 			return true
 		}
 	}
-	s.conn.keepConn = false
+	s.conn.keepConn = false // i/o error
 	return false
 }
 func (s *http1Stream) serveTCPTun() { // CONNECT method
@@ -927,7 +927,7 @@ func (r *http1Response) addDirectoryRedirection() bool {
 	}
 }
 func (r *http1Response) setConnectionClose() {
-	r.stream.(*http1Stream).conn.keepConn = false
+	r.stream.(*http1Stream).conn.keepConn = false // explicitly
 }
 
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
@@ -1009,7 +1009,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r._addFixedHeader1(httpBytesETag, r.etag[0:r.nETag])
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if r.contentSize != -2 { // content-length: 12345
+		if r.contentSize != -2 { // content-length: >= 0
 			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
@@ -1019,7 +1019,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// RFC 7230 (section 3.3.1): A server MUST NOT send a
 			// response containing Transfer-Encoding unless the corresponding
 			// request indicates HTTP/1.1 (or later).
-			r.stream.(*http1Stream).conn.keepConn = false
+			r.stream.(*http1Stream).conn.keepConn = false // close conn for HTTP/1.0
 		}
 		// content-type: text/html; charset=utf-8
 		if !r.contentTypeAdded {

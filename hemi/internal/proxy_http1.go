@@ -118,6 +118,9 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			return
 		}
 		if resp1.Status() >= StatusOK {
+			if resp1.keepAlive == 0 {
+				conn1.keepConn = false
+			}
 			break
 		}
 		// We got 1xx

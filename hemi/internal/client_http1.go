@@ -173,7 +173,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	}
 }
 func (n *http1Node) storeConn(hConn *H1Conn) {
-	if hConn.isBroken() || n.isDown() || !hConn.isAlive() {
+	if hConn.isBroken() || n.isDown() || !hConn.isAlive() || !hConn.keepConn {
 		if Debug() >= 2 {
 			fmt.Printf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
 		}
@@ -221,9 +221,10 @@ type H1Conn struct {
 	// Conn states (buffers)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *http1Node      // belonging node if client is http backend
-	netConn net.Conn        // the connection (TCP/TLS)
-	rawConn syscall.RawConn // used when netConn is TCP
+	node     *http1Node      // belonging node if client is http backend
+	netConn  net.Conn        // the connection (TCP/TLS)
+	rawConn  syscall.RawConn // used when netConn is TCP
+	keepConn bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
@@ -232,6 +233,7 @@ func (c *H1Conn) onGet(id int64, client httpClient, node *http1Node, netConn net
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.keepConn = true
 }
 func (c *H1Conn) onPut() {
 	c.node = nil

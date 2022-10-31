@@ -28,7 +28,6 @@ ACTION
   help         # show this message
   version      # show version info
   advise       # show platform advice
-  serve        # start as server
   quit         # tell server to exit gracefully
   stop         # tell server to exit immediately
   reopen       # tell leader to re-listen its admin interface
@@ -41,6 +40,7 @@ ACTION
   ping         # call ping of leader
   info         # call info of leader and worker(s)
   reconf       # call worker(s) to reconfigure
+  serve        # start as server
 
   Only one action is allowed at a time.
   If ACTION is missing, the default action is "serve".
@@ -64,8 +64,8 @@ OPTIONS
 
   "-debug" applies for all actions.
   "-target" applies for telling and calling actions only.
-  "-admin" applies for "reopen" and server.
-  Other options apply for server only.
+  "-admin" applies for "reopen" and "serve".
+  Other options apply for "serve" only.
 
 `
 

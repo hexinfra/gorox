@@ -47,7 +47,8 @@ Performance
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
 
-  Change the parameters to match your computer's configuration.
+  Change the parameters and/or target url to match your need.
+  Be sure not to use "127.0.0.1" as target, as it is used by the "example" app.
 
 
 Documentation

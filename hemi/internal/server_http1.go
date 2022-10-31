@@ -58,6 +58,7 @@ type http1Conn struct {
 	gate      *httpxGate      // the gate to which the conn belongs
 	netConn   net.Conn        // the connection (TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
+	keepConn  bool            // keep the connection after current stream? true by default
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
@@ -69,6 +70,7 @@ func (c *http1Conn) onGet(id int64, server httpServer, gate *httpxGate, netConn 
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.keepConn = true
 	c.closeSafe = true
 }
 func (c *http1Conn) onPut() {
@@ -89,7 +91,7 @@ func (c *http1Conn) serve() {
 	stream := &c.stream
 	for { // each stream
 		stream.execute(c)
-		if !stream.keepConn {
+		if !c.keepConn {
 			break
 		}
 	}
@@ -144,8 +146,7 @@ type http1Stream struct {
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn     *http1Conn // belonging conn
-	keepConn bool       // keep the connection after current stream? true by default
+	conn *http1Conn // belonging conn
 	// Stream states (zeros)
 }
 
@@ -169,7 +170,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
 		s.httpMode = httpModeTCPTun
-		s.keepConn = false
+		s.conn.keepConn = false
 		return
 	}
 
@@ -207,7 +208,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		}
 		s.serveSocket()
 		s.httpMode = httpModeSocket
-		s.keepConn = false
+		s.conn.keepConn = false
 		return
 	}
 
@@ -235,20 +236,19 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	}
 	conn.usedStreams.Add(1)
 	if maxStreamsPerConn := server.MaxStreamsPerConn(); (maxStreamsPerConn > 0 && conn.usedStreams.Load() == maxStreamsPerConn) || req.keepAlive == 0 {
-		s.keepConn = false
+		s.conn.keepConn = false
 	}
 
 	s.serveNormal(app, req, resp)
 
 	if s.isBroken() {
-		s.keepConn = false
+		s.conn.keepConn = false
 	}
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
 	s.httpStream_.onUse()
 	s.conn = conn
-	s.keepConn = true
 	s.request.onUse()
 	s.response.onUse()
 }
@@ -270,7 +270,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 			return true
 		}
 	}
-	s.keepConn = false
+	s.conn.keepConn = false
 	return false
 }
 func (s *http1Stream) serveTCPTun() { // CONNECT method
@@ -310,7 +310,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	if IsDevel() {
 		//fmt.Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.name, conn.gate.id, conn.id, s.request.headResult)
 	}
-	s.keepConn = false // close anyway.
+	s.conn.keepConn = false // close anyway.
 	status := req.headResult
 	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
 		return // send nothing.
@@ -927,7 +927,7 @@ func (r *http1Response) addDirectoryRedirection() bool {
 	}
 }
 func (r *http1Response) setConnectionClose() {
-	r.stream.(*http1Stream).keepConn = false
+	r.stream.(*http1Stream).conn.keepConn = false
 }
 
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
@@ -1019,14 +1019,14 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// RFC 7230 (section 3.3.1): A server MUST NOT send a
 			// response containing Transfer-Encoding unless the corresponding
 			// request indicates HTTP/1.1 (or later).
-			r.stream.(*http1Stream).keepConn = false
+			r.stream.(*http1Stream).conn.keepConn = false
 		}
 		// content-type: text/html; charset=utf-8
 		if !r.contentTypeAdded {
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
 		}
 	}
-	if r.stream.(*http1Stream).keepConn { // connection: keep-alive
+	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))

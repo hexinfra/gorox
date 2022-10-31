@@ -609,9 +609,9 @@ type httpInMessage_ struct {
 	array       []byte // store path, queries, extra queries & headers & cookies & trailers, posts, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.posts->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
 	extras      []pair // hold extra queries, headers, cookies, and trailers. refers to r.array. [<r.stockExtras>/255]
-	contentSize int64  // info of content. >=0:content-length -1:absent -2:chunked
-	asResponse  bool   // use message as response?
+	contentSize int64  // info of content. >=0: content-length, -1: no content-length header, -2: chunked
 	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	asResponse  bool   // use message as response?
 	headResult  int16  // result of receiving message head. values are same as http status
 	// Stream states (zeros)
 	headReason      string   // the reason of head result
@@ -662,9 +662,9 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.contentSize = -1
+	r.contentSize = -1                               // no content-length header
+	r.keepAlive = -1                                 // no connection header
 	r.asResponse = asResponse
-	r.keepAlive = -1
 	r.headResult = StatusOK
 }
 func (r *httpInMessage_) onEnd() { // for zeros

@@ -34,7 +34,7 @@ type Stater_ struct {
 type Session struct {
 	// TODO
 	sid  []byte
-	role any
+	role int8
 	data any
 }
 

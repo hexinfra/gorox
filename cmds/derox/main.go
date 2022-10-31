@@ -12,7 +12,7 @@ import (
 	_ "github.com/hexinfra/gorox/cmds/derox/svcs/derox"
 )
 
-import (
+import ( // all contrib components
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/changers/gunzip"
@@ -23,6 +23,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/access"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/ajp"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/favicon"
+	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/fcgi"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/gatex"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/hostname"
@@ -75,7 +76,6 @@ OPTIONS
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
   -config <config>    # path or url to config file
-  -log    <path>      # log file (default: derox.log in logs dir)
 
   All options apply for "serve" only.
 

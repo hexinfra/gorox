@@ -28,7 +28,7 @@ const ( // for tells
 	comdRun = iota // start server. this is in fact a fake command. must be 0
 	comdQuit
 	comdStop
-	comdReopen
+	comdReadmin
 	comdRework
 	comdCPU
 	comdHeap
@@ -40,7 +40,7 @@ const ( // for tells
 var tellActions = map[string]func(){
 	"quit":      tellQuit,
 	"stop":      tellStop,
-	"reopen":    tellReopen,
+	"readmin":   tellReadmin,
 	"rework":    tellRework,
 	"cpu":       tellCPU,
 	"heap":      tellHeap,
@@ -51,7 +51,7 @@ var tellActions = map[string]func(){
 
 func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
 func tellStop()      { _tellLeader(comdStop, 0, nil) }
-func tellReopen()    { _tellLeader(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
+func tellReadmin()   { _tellLeader(comdReadmin, 0, map[string]string{"newAddr": adminAddr}) }
 func tellRework()    { _tellLeader(comdRework, 0, nil) }
 func tellCPU()       { _tellLeader(comdCPU, 0, nil) }
 func tellHeap()      { _tellLeader(comdHeap, 0, nil) }

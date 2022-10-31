@@ -80,7 +80,7 @@ func leaderMain() {
 			if req.Comd == comdStop {
 				logger.WriteString("received stop\n")
 				stop() // worker(s) will stop immediately after the pipe is closed
-			} else if req.Comd == comdReopen {
+			} else if req.Comd == comdReadmin {
 				newAddr := req.Get("newAddr") // succeeding adminAddr
 				if newAddr == "" {
 					goto closeNext
@@ -88,10 +88,10 @@ func leaderMain() {
 				if newDoor, err := net.Listen("tcp", newAddr); err == nil {
 					admDoor.Close()
 					admDoor = newDoor
-					fmt.Fprintf(logger, "reopen to %s\n", newAddr)
+					fmt.Fprintf(logger, "readmin to %s\n", newAddr)
 					goto closeNext
 				} else {
-					fmt.Fprintf(logger, "reopen failed: %s\n", err.Error())
+					fmt.Fprintf(logger, "readmin failed: %s\n", err.Error())
 				}
 			} else { // the rest messages are sent to keepWorkers().
 				msgChan <- req

@@ -29,7 +29,7 @@ ACTION
   advise       # show platform advice
   quit         # tell server to exit gracefully
   stop         # tell server to exit immediately
-  reopen       # tell leader to re-listen its admin interface
+  readmin      # tell leader to re-listen its admin interface
   rework       # tell leader to restart worker(s) gracefully
   cpu          # tell a worker to perform cpu profiling
   heap         # tell a worker to perform heap profiling
@@ -65,7 +65,7 @@ OPTIONS
 
   "-debug" applies for all actions.
   "-target" applies for telling and calling actions only.
-  "-admin" applies for "reopen" and "serve".
+  "-admin" applies for "readmin" and "serve".
   Other options apply for "serve" only.
 
 `

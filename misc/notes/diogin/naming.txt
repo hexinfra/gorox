@@ -29,6 +29,7 @@ COMPONENTS
       filter (...)
       editor (...)
       case [*]
+    stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)
     app [*]
       handler (hello, static, ...)

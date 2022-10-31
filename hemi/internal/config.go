@@ -52,6 +52,7 @@ const ( // comp list. if you change this list, change compNames too.
 	compUDPSFilter            // ...
 	compUDPSEditor            // ...
 	compCase                  // case
+	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
 	compApp                   // app
 	compHandler               // helloHandler, static, ...
@@ -82,6 +83,7 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compUDPSFilter: "udpsFilter", // dynamic
 	compUDPSEditor: "udpsEditor", // dynamic
 	compCase:       "case",       // static
+	compStater:     "stater",     // dynamic
 	compCacher:     "cacher",     // dynamic
 	compApp:        "app",        // static
 	compHandler:    "handler",    // dynamic
@@ -204,6 +206,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 				c.parseContainer0(compBackend, c.parseBackend, current.Text, stage)
 			case "routers":
 				c.parseRouters(stage)
+			case "staters":
+				c.parseContainer0(compStater, c.parseStater, current.Text, stage)
 			case "cachers":
 				c.parseContainer0(compCacher, c.parseCacher, current.Text, stage)
 			case "apps":
@@ -220,7 +224,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, cachers, apps, svcs, servers, cronjobs {}
+func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optwares, backends, staters, cachers, apps, svcs, servers, cronjobs {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -253,7 +257,7 @@ func (c *config) parseOptware(sign Token, stage *Stage) { // xxxOptware {}
 func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, cacher, server
+func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
 	name := c.ForwardExpect(TokenString)
 	component := create(sign.Text, name.Text)
 	component.setParent(stage)
@@ -573,6 +577,10 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	cond.patterns = patterns
 	cond.compare = compare.Text
 	kase.setInfo(cond)
+}
+
+func (c *config) parseStater(sign Token, stage *Stage) { // xxxStater <name> {}
+	parseComponent0(c, sign, stage, stage.createStater)
 }
 
 func (c *config) parseCacher(sign Token, stage *Stage) { // xxxCacher <name> {}

@@ -44,6 +44,8 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"
+	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"
+	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"
 )
 
 import "github.com/hexinfra/gorox/hemi/manager"

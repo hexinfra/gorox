@@ -151,6 +151,7 @@ var ( // global maps, shared between stages
 	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSRunner)
 	udpsFilterCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSFilter)
 	udpsEditorCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSEditor)
+	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
 	changerCreators    = make(map[string]func(name string, stage *Stage, app *App) Changer)
@@ -203,6 +204,9 @@ func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, rout
 func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSEditor) {
 	registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
 }
+func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
+	registerComponent0(sign, compStater, staterCreators, create)
+}
 func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
 	registerComponent0(sign, compCacher, cacherCreators, create)
 }
@@ -235,7 +239,7 @@ func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob
 	registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
-func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, backend, cacher, server, cronjob
+func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {
@@ -304,12 +308,36 @@ func (f *outgate_) init(name string, stage *Stage) {
 	// other states
 }
 
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // blocking
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session
+type Session struct {
+	// TODO
+	sid  []byte
+	role any
+	data any
+}
+
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
 	Component
 	Maintain() // blocking
 	Set(key []byte, value *Centry)
 	Get(key []byte) (value *Centry)
+	Del(key []byte) bool
 }
 
 // Cacher_

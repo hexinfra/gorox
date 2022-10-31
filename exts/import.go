@@ -20,6 +20,7 @@ import ( // import contribs here.
 	_ "github.com/hexinfra/gorox/hemi/contrib/runners/tcps/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/runners/udps/dns"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
+	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"
 )
 
 import ( // import vendor exts here.

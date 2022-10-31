@@ -25,6 +25,7 @@ var ( // core funcs
 	RegisterUDPSRunner = internal.RegisterUDPSRunner
 	RegisterUDPSFilter = internal.RegisterUDPSFilter
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
+	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
 	RegisterAppInit    = internal.RegisterAppInit
 	RegisterHandler    = internal.RegisterHandler
@@ -128,6 +129,9 @@ type ( // core types
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
+	Stater  = internal.Stater
+	Session = internal.Session
+
 	Cacher = internal.Cacher
 	Centry = internal.Centry
 
@@ -157,6 +161,7 @@ type ( // core mixins
 	Component_ = internal.Component_
 
 	Optware_    = internal.Optware_
+	Stater_     = internal.Stater_
 	Cacher_     = internal.Cacher_
 	QUICRunner_ = internal.QUICRunner_
 	QUICFilter_ = internal.QUICFilter_

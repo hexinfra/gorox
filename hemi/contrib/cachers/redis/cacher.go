@@ -49,3 +49,6 @@ func (c *redisCacher) Set(key []byte, value *Centry) {
 func (c *redisCacher) Get(key []byte) (value *Centry) {
 	return
 }
+func (c *redisCacher) Del(key []byte) bool {
+	return false
+}

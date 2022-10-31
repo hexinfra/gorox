@@ -51,6 +51,7 @@ type Stage struct {
 	quicRouters compDict[*QUICRouter] // indexed by routerName
 	tcpsRouters compDict[*TCPSRouter] // indexed by routerName
 	udpsRouters compDict[*UDPSRouter] // indexed by routerName
+	staters     compDict[Stater]      // indexed by staterName
 	cachers     compDict[Cacher]      // indexed by cacherName
 	apps        compDict[*App]        // indexed by appName
 	svcs        compDict[*Svc]        // indexed by svcName
@@ -102,6 +103,7 @@ func (s *Stage) init() {
 	s.quicRouters = make(compDict[*QUICRouter])
 	s.tcpsRouters = make(compDict[*TCPSRouter])
 	s.udpsRouters = make(compDict[*UDPSRouter])
+	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
 	s.apps = make(compDict[*App])
 	s.svcs = make(compDict[*Svc])
@@ -167,6 +169,19 @@ func (s *Stage) createUDPSRouter(name string) *UDPSRouter {
 	router.setShell(router)
 	s.udpsRouters[name] = router
 	return router
+}
+func (s *Stage) createStater(sign string, name string) Stater {
+	create, ok := staterCreators[sign]
+	if !ok {
+		UseExitln("unknown stater type: " + sign)
+	}
+	if s.Stater(name) != nil {
+		UseExitf("conflicting stater with a same name '%s'\n", name)
+	}
+	stater := create(name, s)
+	stater.setShell(stater)
+	s.staters[name] = stater
+	return stater
 }
 func (s *Stage) createCacher(sign string, name string) Cacher {
 	create, ok := cacherCreators[sign]
@@ -241,6 +256,7 @@ func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
 func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
 func (s *Stage) UDPSRouter(name string) *UDPSRouter { return s.udpsRouters[name] }
+func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
 func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
@@ -301,6 +317,7 @@ func (s *Stage) OnConfigure() {
 	s.quicRouters.walk((*QUICRouter).OnConfigure)
 	s.tcpsRouters.walk((*TCPSRouter).OnConfigure)
 	s.udpsRouters.walk((*UDPSRouter).OnConfigure)
+	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
 	s.apps.walk((*App).OnConfigure)
 	s.svcs.walk((*Svc).OnConfigure)
@@ -321,6 +338,7 @@ func (s *Stage) OnPrepare() {
 	s.quicRouters.walk((*QUICRouter).OnPrepare)
 	s.tcpsRouters.walk((*TCPSRouter).OnPrepare)
 	s.udpsRouters.walk((*UDPSRouter).OnPrepare)
+	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
 	s.apps.walk((*App).OnPrepare)
 	s.svcs.walk((*Svc).OnPrepare)
@@ -334,6 +352,7 @@ func (s *Stage) OnShutdown() {
 	s.svcs.walk((*Svc).OnShutdown)
 	s.apps.walk((*App).OnShutdown)
 	s.cachers.walk(Cacher.OnShutdown)
+	s.staters.walk(Stater.OnShutdown)
 	s.udpsRouters.walk((*UDPSRouter).OnShutdown)
 	s.tcpsRouters.walk((*TCPSRouter).OnShutdown)
 	s.quicRouters.walk((*QUICRouter).OnShutdown)
@@ -408,6 +427,7 @@ func (s *Stage) start() {
 	s.startOptwares() // go optware.Run()
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
+	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
 	s.startApps()     // app.start()
 	s.startSvcs()     // svc.start()
@@ -519,6 +539,14 @@ func (s *Stage) startRouters() {
 			fmt.Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
 		go udpsRouter.serve()
+	}
+}
+func (s *Stage) startStaters() {
+	for _, stater := range s.staters {
+		if IsDebug() {
+			fmt.Printf("stater=%s go Maintain()\n", stater.Name())
+		}
+		go stater.Maintain()
 	}
 }
 func (s *Stage) startCachers() {

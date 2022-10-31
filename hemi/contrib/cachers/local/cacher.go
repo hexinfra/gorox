@@ -56,3 +56,6 @@ func (c *localCacher) Set(key []byte, value *Centry) {
 func (c *localCacher) Get(key []byte) (value *Centry) {
 	return
 }
+func (c *localCacher) Del(key []byte) bool {
+	return false
+}

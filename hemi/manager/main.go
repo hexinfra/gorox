@@ -112,32 +112,18 @@ func serve() { // as leader or worker
 	*baseDir = filepath.ToSlash(*baseDir)
 	hemi.SetBaseDir(*baseDir)
 
-	// dataDir
-	if dir := *dataDir; dir == "" {
-		*dataDir = *baseDir + "/data"
-	} else if !filepath.IsAbs(dir) {
-		*dataDir = *baseDir + "/" + dir
+	setDir := func(pDir *string, name string, set func(string)) {
+		if dir := *pDir; dir == "" {
+			*pDir = *baseDir + "/" + name
+		} else if !filepath.IsAbs(dir) {
+			*pDir = *baseDir + "/" + dir
+		}
+		*pDir = filepath.ToSlash(*pDir)
+		set(*pDir)
 	}
-	*dataDir = filepath.ToSlash(*dataDir)
-	hemi.SetDataDir(*dataDir)
-
-	// logsDir
-	if dir := *logsDir; dir == "" {
-		*logsDir = *baseDir + "/logs"
-	} else if !filepath.IsAbs(dir) {
-		*logsDir = *baseDir + "/" + dir
-	}
-	*logsDir = filepath.ToSlash(*logsDir)
-	hemi.SetLogsDir(*logsDir)
-
-	// tempDir
-	if dir := *tempDir; dir == "" {
-		*tempDir = *baseDir + "/temp"
-	} else if !filepath.IsAbs(dir) {
-		*tempDir = *baseDir + "/" + dir
-	}
-	*tempDir = filepath.ToSlash(*tempDir)
-	hemi.SetTempDir(*tempDir)
+	setDir(dataDir, "data", hemi.SetDataDir)
+	setDir(logsDir, "logs", hemi.SetLogsDir)
+	setDir(tempDir, "temp", hemi.SetTempDir)
 
 	if *singleMode { // run as foreground worker. for single mode
 		singleMain()

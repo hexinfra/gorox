@@ -67,7 +67,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		outgate1 := h.stage.http1
 		conn1, err1 = outgate1.FetchConn(req.Authority(), req.IsHTTPS()) // TODO: use hostname + colonPort
 		if err1 != nil {
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Println(err1.Error())
 			}
 			resp.SendBadGateway(nil)
@@ -78,7 +78,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		backend1 := h.backend.(*HTTP1Backend)
 		conn1, err1 = backend1.FetchConn()
 		if err1 != nil {
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Println(err1.Error())
 			}
 			resp.SendBadGateway(nil)

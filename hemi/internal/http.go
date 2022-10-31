@@ -713,7 +713,7 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	}
 	r.contentBlob = nil
 	if r.contentHeld != nil {
-		if IsDevel() {
+		if Debug() >= 2 {
 			fmt.Println("contentFile is closed!!")
 		}
 		r.contentHeld.Close()

@@ -413,7 +413,7 @@ func (p *http2Inputs) getRef() int32 { return p.ref.Load() }
 func (p *http2Inputs) incRef()       { p.ref.Add(1) }
 func (p *http2Inputs) decRef() {
 	if p.ref.Add(-1) == 0 {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("putHTTP2Inputs ref=%d\n", p.ref.Load())
 		}
 		putHTTP2Inputs(p)

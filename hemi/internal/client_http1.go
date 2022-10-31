@@ -174,13 +174,13 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 }
 func (n *http1Node) storeConn(hConn *H1Conn) {
 	if hConn.isBroken() || n.isDown() || !hConn.isAlive() {
-		if IsDevel() {
+		if Debug() >= 2 {
 			fmt.Printf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
 		}
 		hConn.closeConn()
 		putH1Conn(hConn)
 	} else {
-		if IsDevel() {
+		if Debug() >= 2 {
 			fmt.Printf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
@@ -434,7 +434,7 @@ func (r *H1Response) recvHead() { // control + headers
 		return
 	}
 	r._cleanInput()
-	if IsDevel() {
+	if Debug() >= 2 {
 		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }

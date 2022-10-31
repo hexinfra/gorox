@@ -48,7 +48,7 @@ ACTION
 OPTIONS
 -------
 
-  -debug              # enable debug
+  -debug  <level>     # debug level (default: 0, means disable)
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9528)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9528)
   -devel              # run server in developer mode. only a process is started

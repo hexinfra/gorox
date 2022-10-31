@@ -367,7 +367,7 @@ func (s *Stage) StartAlone() { // single worker process mode
 	s.alone = true
 	s.id = 0
 	s.numCPU = int32(runtime.NumCPU())
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Printf("mode=alone numcpu=%d\n", s.numCPU)
 	}
 	s.start()
@@ -377,13 +377,13 @@ func (s *Stage) StartShard(id int32) { // multiple worker processes mode
 	s.id = id
 	s.numCPU = 1
 	runtime.GOMAXPROCS(1)
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Println("mode=shard numcpu=1")
 	}
 	s.start()
 }
 func (s *Stage) start() {
-	if IsDevel() {
+	if Debug() >= 2 {
 		fmt.Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
 		fmt.Printf("size of h1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
 		fmt.Printf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
@@ -392,7 +392,7 @@ func (s *Stage) start() {
 		fmt.Printf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
 		fmt.Printf("size of Block = %d\n", unsafe.Sizeof(Block{}))
 	}
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Printf("baseDir=%s\n", BaseDir())
 		fmt.Printf("dataDir=%s\n", DataDir())
 		fmt.Printf("logsDir=%s\n", LogsDir())
@@ -439,13 +439,13 @@ func (s *Stage) start() {
 }
 
 func (s *Stage) linkAppServers() {
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Println("link apps to http servers")
 	}
 	for _, app := range s.apps {
 		serverNames := s.appServers[app.Name()]
 		if serverNames == nil {
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Printf("no server provided for app '%s'\n", app.name)
 			}
 			continue
@@ -460,20 +460,20 @@ func (s *Stage) linkAppServers() {
 			} else {
 				UseExitf("server '%s' is not an http server, cannot link app to it", serverName)
 			}
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Printf("app %s is linked to http server %s\n", app.name, serverName)
 			}
 		}
 	}
 }
 func (s *Stage) linkSvcServers() {
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Println("link svcs to http servers")
 	}
 	for _, svc := range s.svcs {
 		serverNames := s.svcServers[svc.Name()]
 		if serverNames == nil {
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Printf("no server provided for svc '%s'\n", svc.name)
 			}
 			continue
@@ -490,7 +490,7 @@ func (s *Stage) linkSvcServers() {
 			} else {
 				UseExitf("server '%s' is not an http server nor grpc server, cannot link svc to it", serverName)
 			}
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Printf("svc %s is linked to rpc server %s\n", svc.name, serverName)
 			}
 		}
@@ -499,7 +499,7 @@ func (s *Stage) linkSvcServers() {
 
 func (s *Stage) startFixtures() {
 	for _, fixture := range s.fixtures {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("fixture=%s go run()\n", fixture.Name())
 		}
 		go fixture.run()
@@ -507,7 +507,7 @@ func (s *Stage) startFixtures() {
 }
 func (s *Stage) startOptwares() {
 	for _, optware := range s.optwares {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("optware=%s go Run()\n", optware.Name())
 		}
 		go optware.Run()
@@ -515,7 +515,7 @@ func (s *Stage) startOptwares() {
 }
 func (s *Stage) startBackends() {
 	for _, backend := range s.backends {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("backend=%s go maintain()\n", backend.Name())
 		}
 		go backend.maintain()
@@ -523,19 +523,19 @@ func (s *Stage) startBackends() {
 }
 func (s *Stage) startRouters() {
 	for _, quicRouter := range s.quicRouters {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("quicRouter=%s go serve()\n", quicRouter.Name())
 		}
 		go quicRouter.serve()
 	}
 	for _, tcpsRouter := range s.tcpsRouters {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
 		}
 		go tcpsRouter.serve()
 	}
 	for _, udpsRouter := range s.udpsRouters {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
 		go udpsRouter.serve()
@@ -543,7 +543,7 @@ func (s *Stage) startRouters() {
 }
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("stater=%s go Maintain()\n", stater.Name())
 		}
 		go stater.Maintain()
@@ -551,7 +551,7 @@ func (s *Stage) startStaters() {
 }
 func (s *Stage) startCachers() {
 	for _, cacher := range s.cachers {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("cacher=%s go Maintain()\n", cacher.Name())
 		}
 		go cacher.Maintain()
@@ -559,7 +559,7 @@ func (s *Stage) startCachers() {
 }
 func (s *Stage) startApps() {
 	for _, app := range s.apps {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("app=%s start()\n", app.Name())
 		}
 		app.start()
@@ -567,7 +567,7 @@ func (s *Stage) startApps() {
 }
 func (s *Stage) startSvcs() {
 	for _, svc := range s.svcs {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("svc=%s start()\n", svc.Name())
 		}
 		svc.start()
@@ -575,7 +575,7 @@ func (s *Stage) startSvcs() {
 }
 func (s *Stage) startServers() {
 	for _, server := range s.servers {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("server=%s go Serve()\n", server.Name())
 		}
 		go server.Serve()
@@ -583,7 +583,7 @@ func (s *Stage) startServers() {
 }
 func (s *Stage) startCronjobs() {
 	for _, cronjob := range s.cronjobs {
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Printf("cronjob=%s go Run()\n", cronjob.Name())
 		}
 		go cronjob.Run()
@@ -591,14 +591,14 @@ func (s *Stage) startCronjobs() {
 }
 
 func (s *Stage) configure() (err error) {
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Println("now configure stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Println("stage successfully configured")
 		}
 	}()
@@ -606,14 +606,14 @@ func (s *Stage) configure() (err error) {
 	return nil
 }
 func (s *Stage) prepare() (err error) {
-	if IsDebug() {
+	if Debug() >= 1 {
 		fmt.Println("now prepare stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if IsDebug() {
+		if Debug() >= 1 {
 			fmt.Println("stage successfully prepared")
 		}
 	}()

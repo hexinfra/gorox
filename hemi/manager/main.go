@@ -27,14 +27,14 @@ import (
 
 const ( // proc modes
 	ProcModeGeneral = 0
-	ProcModeAlone   = 1
-	ProcModeDevelop = 2
+	ProcModeAlone   = 1 // only alone mode is allowed
+	ProcModeDevelop = 2 // force debugLevel = 2, develMode = true
 )
 
 var program string
 
 var ( // flags
-	debugMode  = flag.Bool("debug", false, "")
+	debugLevel = flag.Int("debug", 0, "")
 	targetAddr string
 	adminAddr  string
 	develMode  = flag.Bool("devel", false, "")
@@ -78,7 +78,7 @@ func Main(name string, usage string, procMode int, addr string) {
 			*multiple = ncpu
 		}
 		if procMode == ProcModeDevelop {
-			*debugMode = true
+			*debugLevel = 2
 			*develMode = true
 		}
 	}
@@ -97,12 +97,7 @@ func Main(name string, usage string, procMode int, addr string) {
 }
 
 func serve() { // as leader or worker
-	if *debugMode {
-		hemi.SetDebug(true)
-	}
-	if *develMode {
-		hemi.SetDevel(true)
-	}
+	hemi.SetDebug(int32(*debugLevel))
 
 	// baseDir
 	if *baseDir == "" {

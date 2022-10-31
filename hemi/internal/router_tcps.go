@@ -155,7 +155,7 @@ func (g *tcpsGate) serveTCP() {
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
-			if IsDebug() {
+			if Debug() >= 1 {
 				fmt.Printf("%+v\n", tcpsConn)
 			}
 			go g.router.dispatch(tcpsConn) // tcpsConn is put to pool in dispatch()

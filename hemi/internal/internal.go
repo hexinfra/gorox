@@ -15,21 +15,7 @@ import (
 )
 
 var ( // global variables shared between stages
-	_debug atomic.Bool // enable debug?
-	_devel atomic.Bool // developer mode?
-)
-
-func IsDebug() bool { return _debug.Load() }
-func IsDevel() bool { return _devel.Load() }
-
-func SetDebug(debug bool) {
-	_debug.Store(debug)
-}
-func SetDevel(devel bool) {
-	_devel.Store(devel)
-}
-
-var ( // global variables shared between stages
+	_debug    atomic.Int32 // debug level
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
 	_dataOnce sync.Once    // protects _dataDir
@@ -40,11 +26,13 @@ var ( // global variables shared between stages
 	_tempDir  atomic.Value // directory of the run-time files
 )
 
+func Debug() int32    { return _debug.Load() }
 func BaseDir() string { return _baseDir.Load().(string) }
 func DataDir() string { return _dataDir.Load().(string) }
 func LogsDir() string { return _logsDir.Load().(string) }
 func TempDir() string { return _tempDir.Load().(string) }
 
+func SetDebug(level int32)  { _debug.Store(level) }
 func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once
 func SetDataDir(dir string) { _dataOnce.Do(func() { _dataDir.Store(dir) }) } // only once
 func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // only once

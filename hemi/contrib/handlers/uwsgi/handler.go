@@ -56,8 +56,8 @@ func (h *uwsgiProxy) OnConfigure() {
 	} else {
 		UseExitln("toBackend is required for uwsgiProxy")
 	}
-	// withCache
-	if v, ok := h.Find("withCache"); ok {
+	// withCacher
+	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if cacher := h.stage.Cacher(name); cacher == nil {
 				UseExitf("unknown cacher: '%s'\n", name)
@@ -65,7 +65,7 @@ func (h *uwsgiProxy) OnConfigure() {
 				h.cacher = cacher
 			}
 		} else {
-			UseExitln("invalid withCache")
+			UseExitln("invalid withCacher")
 		}
 	}
 	// bufferServerContent

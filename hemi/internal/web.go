@@ -15,6 +15,29 @@ import (
 	"sync"
 )
 
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // blocking
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session
+type Session struct {
+	// TODO
+	sid  []byte
+	role any
+	data any
+}
+
 // App is the application.
 type App struct {
 	// Mixins
@@ -22,6 +45,7 @@ type App struct {
 	contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	stage    *Stage            // current stage
+	stater   Stater            // the stater which is used by this app
 	servers  []httpServer      // linked http servers. may be empty
 	handlers compDict[Handler] // defined handlers. indexed by name
 	changers compDict[Changer] // defined changers. indexed by name
@@ -146,6 +170,18 @@ func (a *App) OnConfigure() {
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 	// proxyOnly
 	a.ConfigureBool("proxyOnly", &a.proxyOnly, false)
+	// withStater
+	if v, ok := a.Find("withStater"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if stater := a.stage.Stater(name); stater == nil {
+				UseExitf("unknown stater: '%s'\n", name)
+			} else {
+				a.stater = stater
+			}
+		} else {
+			UseExitln("invalid withStater")
+		}
+	}
 
 	// sub components
 	a.handlers.walk(Handler.OnConfigure)

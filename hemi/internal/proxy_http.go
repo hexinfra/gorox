@@ -35,8 +35,8 @@ func (h *httpProxy_) onConfigure(c Component) {
 	if h.proxyMode == "forward" && !h.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
-	// withCache
-	if v, ok := h.Find("withCache"); ok {
+	// withCacher
+	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if cacher := h.stage.Cacher(name); cacher == nil {
 				UseExitf("unknown cacher: '%s'\n", name)
@@ -44,7 +44,7 @@ func (h *httpProxy_) onConfigure(c Component) {
 				h.cacher = cacher
 			}
 		} else {
-			UseExitln("invalid withCache")
+			UseExitln("invalid withCacher")
 		}
 	}
 	// bufferClientContent

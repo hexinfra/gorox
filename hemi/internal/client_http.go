@@ -257,7 +257,7 @@ func (r *hRequest_) pass(req Request) error { // used by proxies.
 	}
 	for {
 		p, err := req.readContent()
-		if len(p) > 0 {
+		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e
 			}

@@ -1118,18 +1118,23 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		}
 		return content // []byte, fetched from pool
 	}
-	// (64K1, r.maxContentSize] when identity or [0, r.maxContentSize] when chunked. to TempFile
+	// (64K1, r.maxContentSize] when identity, or [0, r.maxContentSize] when chunked. to TempFile
 	content, err := r._newTempFile(retain)
 	if err != nil {
 		return err
 	}
+	var p []byte
 	for {
-		p, err := r.shell.readContent()
+		p, err = r.shell.readContent()
+		if len(p) > 0 {
+			if _, e := content.Write(p); e != nil {
+				err = e
+				goto badRecv
+			}
+		}
 		if err == io.EOF {
 			break
-		} else if err != nil {
-			goto badRecv
-		} else if _, err = content.Write(p); err != nil {
+		} else {
 			goto badRecv
 		}
 	}

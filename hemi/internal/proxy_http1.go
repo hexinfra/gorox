@@ -103,6 +103,10 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		err1 = req1.post(content) // nil (no content), []byte, TempFile
 	} else if err1 = req1.pass(req); err1 != nil {
 		stream1.markBroken()
+	} else if req1.contentSize == -2 { // write last chunk and trailers (if exist)
+		if err1 = req1.finishChunked(); err1 != nil {
+			stream1.markBroken()
+		}
 	}
 	if err1 != nil {
 		resp.SendBadGateway(nil)

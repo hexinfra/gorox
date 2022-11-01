@@ -83,10 +83,18 @@ Contact
     Chinese version: https://www.gorox.io/
 
 
+Community
+=========
+
+  Currently Github Discussions is used for discussing:
+
+    https://github.com/hexinfra/gorox/discussions
+
+
 Contributing
 ============
 
-  Gorox is currently hosted at Github:
+  Gorox is hosted at Github:
 
     https://github.com/hexinfra/gorox
 

@@ -2815,7 +2815,7 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 	}
 	for {
 		p, err := resp.readContent()
-		if len(p) > 0 {
+		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e
 			}

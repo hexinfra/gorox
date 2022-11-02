@@ -585,17 +585,21 @@ func (s *stream_) onEnd() { // for zeros
 func (s *stream_) unsafeMake(size int) []byte { return s.arena.alloc(size) }
 func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
 
+// httpInMessage is a Request or response.
+type httpInMessage interface {
+	arrayCopy(p []byte) bool
+	useHeader(header *pair) bool
+	readContent() (p []byte, err error)
+	useTrailer(trailer *pair) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	getSaveContentFilesDir() string
+}
+
 // httpInMessage_ is a trait for httpRequest_ and hResponse_.
 type httpInMessage_ struct {
 	// Assocs
-	stream stream      // the stream to which the message belongs
-	shell  interface { // *http[1-3]Request or *H[1-3]Response
-		arrayCopy(p []byte) bool
-		useHeader(header *pair) bool
-		readContent() (p []byte, err error)
-		useTrailer(trailer *pair) bool
-		getSaveContentFilesDir() string
-	}
+	stream stream        // the stream to which the message belongs
+	shell  httpInMessage // *http[1-3]Request or *H[1-3]Response
 	// Stream states (buffers)
 	stockInput  [_2K]byte // for r.input
 	stockArray  [_1K]byte // for r.array
@@ -1486,30 +1490,33 @@ var ( // http incoming message errors
 	httpReadTooSlow = errors.New("read too slow")
 )
 
+// httpOutMessage is a Response or request.
+type httpOutMessage interface {
+	control() []byte
+	header(name []byte) (value []byte, ok bool)
+	delHeader(name []byte) (deleted bool)
+	addHeader(name []byte, value []byte) bool
+	addedHeaders() []byte
+	fixedHeaders() []byte
+	isForbiddenField(hash uint16, name []byte) bool
+	send() error
+	doSend(chain Chain) error
+	checkPush() error
+	pushHeaders() error
+	push(chunk *Block) error
+	doPush(chain Chain) error
+	addTrailer(name []byte, value []byte) bool
+	passHeaders() error
+	doPass(p []byte) error
+	finalizeHeaders()
+	finalizeChunked() error
+}
+
 // httpOutMessage_ is a trait for httpResponse_ and hRequest_.
 type httpOutMessage_ struct {
 	// Assocs
-	stream stream      // *http[1-3]Stream or *H[1-3]Stream
-	shell  interface { // *http[1-3]Response or *H[1-3]Request
-		control() []byte
-		header(name []byte) (value []byte, ok bool)
-		delHeader(name []byte) (deleted bool)
-		addHeader(name []byte, value []byte) bool
-		addedHeaders() []byte
-		fixedHeaders() []byte
-		isForbiddenField(hash uint16, name []byte) bool
-		send() error
-		doSend(chain Chain) error
-		checkPush() error
-		pushHeaders() error
-		push(chunk *Block) error
-		doPush(chain Chain) error
-		addTrailer(name []byte, value []byte) bool
-		passHeaders() error
-		doPass(p []byte) error
-		finalizeHeaders()
-		finalizeChunked() error
-	}
+	stream stream         // *http[1-3]Stream or *H[1-3]Stream
+	shell  httpOutMessage // *http[1-3]Response or *H[1-3]Request
 	// Stream states (buffers)
 	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
@@ -1768,14 +1775,19 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 			contentFile.Close()
 			return err
 		}
-		if hasTrailers {
+		if hasTrailers { // we must use chunked
 			return r.pushFile(contentFile, fileInfo, false)
 		} else {
 			return r.sendFile(contentFile, fileInfo, false)
 		}
 	} else if contentBlob, ok := content.([]byte); ok {
+		if hasTrailers { // if we supports holding chunked content in buffer, this happens
+			return r.pushBlob(contentBlob)
+		} else {
+			return r.sendBlob(contentBlob)
+		}
 		return r.sendBlob(contentBlob)
-	} else { // nil
+	} else { // nil means no content, but we have to send, so send nil.
 		return r.sendBlob(nil)
 	}
 }

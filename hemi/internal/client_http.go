@@ -248,7 +248,7 @@ func (r *hRequest_) pass(req Request) error { // used by proxies.
 	pass := r.shell.doPass
 	if size := req.ContentSize(); size == -2 {
 		pass = r.PushBytes
-	} else {
+	} else { // >=0
 		r.isSent = true
 		r.contentSize = size
 		if err := r.shell.passHeaders(); err != nil {

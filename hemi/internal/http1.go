@@ -200,9 +200,9 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 }
 
 func (r *httpInMessage_) readContent1() (p []byte, err error) {
-	if r.contentSize > 0 { // identity
+	if r.contentSize >= 0 { // identity
 		return r._readIdentityContent1()
-	} else { // must be -2 (chunked). others (0 and -1) are excluded priorly
+	} else { // must be -2 (chunked). -1 is excluded priorly
 		return r._readChunkedContent1()
 	}
 }
@@ -714,7 +714,7 @@ func (r *httpOutMessage_) doPass1(p []byte) error {
 }
 
 func (r *httpOutMessage_) finalizeChunked1() error {
-	if r.nTrailers == 0 {
+	if r.nTrailers == 0 { // no trailers
 		r.vector = r.fixedVector[0:1]
 		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
 	} else { // with trailers

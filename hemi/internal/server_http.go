@@ -349,7 +349,7 @@ type Request interface {
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
-	HasContent() bool                // contentSize=0 is considered as true
+	HasContent() bool                // contentSize=0 and contentSize=-2 are considered as true
 	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
 	Content() string
 
@@ -2808,7 +2808,7 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 	pass := r.shell.doPass
 	if size := resp.ContentSize(); size == -2 || (r.hasRevisers && !r.bypassRevisers) {
 		pass = r.PushBytes
-	} else {
+	} else { // >= 0
 		r.isSent = true
 		r.contentSize = size
 		if err := r.shell.passHeaders(); err != nil {

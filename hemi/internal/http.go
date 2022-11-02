@@ -1126,7 +1126,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 	var p []byte
 	for {
 		p, err = r.shell.readContent()
-		if len(p) > 0 {
+		if len(p) > 0 { // skip 0, don't write
 			if _, e := content.Write(p); e != nil {
 				err = e
 				goto badRecv
@@ -1738,17 +1738,17 @@ func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	chunk_.SetBlob(chunk)
 	return r.shell.push(chunk_)
 }
-func (r *httpOutMessage_) pushFile(file *os.File, info os.FileInfo, shut bool) error {
+func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
-		file.Close()
+		chunk.Close()
 		return nil
 	}
-	chunk := GetBlock()
-	chunk.SetFile(file, info, shut)
-	return r.shell.push(chunk)
+	chunk_ := GetBlock()
+	chunk_.SetFile(chunk, info, shut)
+	return r.shell.push(chunk_)
 }
 
 func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {

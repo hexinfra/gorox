@@ -1801,7 +1801,17 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 		return r.sendBlob(nil)
 	}
 }
-func (r *httpOutMessage_) xpass(in httpInMessage, pass func(p []byte) error) error {
+func (r *httpOutMessage_) xpass(in httpInMessage, revise bool) error {
+	pass := r.shell.doPass
+	if size := in.ContentSize(); size == -2 || revise {
+		pass = r.PushBytes
+	} else { // >= 0
+		r.isSent = true
+		r.contentSize = size
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
 	for {
 		p, err := in.readContent()
 		if len(p) >= 0 {

@@ -2801,18 +2801,8 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	}
 	return true
 }
-func (r *httpResponse_) pass(in httpInMessage) error { // used by proxies
-	pass := r.shell.doPass
-	if size := in.ContentSize(); size == -2 || (r.hasRevisers && !r.bypassRevisers) {
-		pass = r.PushBytes
-	} else { // >= 0
-		r.isSent = true
-		r.contentSize = size
-		if err := r.shell.passHeaders(); err != nil {
-			return err
-		}
-	}
-	return r.xpass(in, pass)
+func (r *httpResponse_) pass(resp httpInMessage) error { // used by proxies
+	return r.xpass(resp, r.hasRevisers && !r.bypassRevisers)
 }
 
 func (r *httpResponse_) finishChunked() error {

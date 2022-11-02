@@ -243,18 +243,8 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	}
 	return true
 }
-func (r *hRequest_) pass(in httpInMessage) error { // used by proxies.
-	pass := r.shell.doPass
-	if size := in.ContentSize(); size == -2 {
-		pass = r.PushBytes
-	} else { // >= 0
-		r.isSent = true
-		r.contentSize = size
-		if err := r.shell.passHeaders(); err != nil {
-			return err
-		}
-	}
-	return r.xpass(in, pass)
+func (r *hRequest_) pass(req httpInMessage) error { // used by proxies.
+	return r.xpass(req, false)
 }
 
 func (r *hRequest_) finishChunked() error {

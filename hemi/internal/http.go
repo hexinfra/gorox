@@ -1710,7 +1710,16 @@ func (r *httpOutMessage_) PushBytes(chunk []byte) error {
 	return r.pushBlob(chunk)
 }
 func (r *httpOutMessage_) PushFile(chunkPath string) error {
-	return r.pushFile(chunkPath, true)
+	file, err := os.Open(chunkPath)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return err
+	}
+	return r.pushFile(file, info, true)
 }
 func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	if !r.isSent { // trailers must be set after headers & content are sent
@@ -1729,16 +1738,7 @@ func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	chunk_.SetBlob(chunk)
 	return r.shell.push(chunk_)
 }
-func (r *httpOutMessage_) pushFile(chunkPath string, shut bool) error {
-	file, err := os.Open(chunkPath)
-	if err != nil {
-		return err
-	}
-	info, err := file.Stat()
-	if err != nil {
-		file.Close()
-		return err
-	}
+func (r *httpOutMessage_) pushFile(file *os.File, info os.FileInfo, shut bool) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err
 	}
@@ -1761,19 +1761,27 @@ func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bo
 	}
 	return false
 }
-func (r *httpOutMessage_) post(content any) error { // used by proxies
+func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies
 	if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
 			contentFile.Close()
 			return err
 		}
-		return r.sendFile(contentFile, fileInfo, false)
+		if hasTrailers {
+			return r.pushFile(contentFile, fileInfo, false)
+		} else {
+			return r.sendFile(contentFile, fileInfo, false)
+		}
 	} else if contentBlob, ok := content.([]byte); ok {
 		return r.sendBlob(contentBlob)
 	} else { // nil
 		return r.sendBlob(nil)
 	}
+}
+
+func (r *httpOutMessage_) ContentSize() int64 {
+	return r.contentSize
 }
 
 func (r *httpOutMessage_) unsafeMake(size int) []byte {

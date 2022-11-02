@@ -99,8 +99,21 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		resp.SendBadGateway(nil)
 		return
 	}
+	hasTrailers := req.hasTrailers()
 	if !hasContent || h.bufferClientContent {
-		err1 = req1.post(content) // nil (no content), []byte, TempFile
+		err1 = req1.post(content, hasTrailers) // nil (no content), []byte, TempFile
+		if err1 == nil && hasTrailers {
+			if !req.walkTrailers(func(name []byte, value []byte) bool {
+				return req1.addTrailer(name, value)
+			}, false) {
+				stream1.markBroken()
+				err1 = httpAddTrailerFailed
+			} else if err1 = req1.finishChunked(); err1 != nil {
+				stream1.markBroken()
+			}
+		} else if hasTrailers {
+			stream1.markBroken()
+		}
 	} else if err1 = req1.pass(req); err1 != nil {
 		stream1.markBroken()
 	} else if req1.contentSize == -2 { // write last chunk and trailers (if exist)
@@ -159,10 +172,25 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 
 	if !resp.copyHead(resp1) {
 		stream1.markBroken()
-	} else if !hasContent1 || h.bufferServerContent {
-		resp.post(content1) // nil (no content), []byte, TempFile
+		return
+	}
+	hasTrailers1 := resp1.hasTrailers()
+	if !hasContent1 || h.bufferServerContent {
+		if resp.post(content1, hasTrailers1) != nil { // nil (no content), []byte, TempFile
+			if hasTrailers1 {
+				stream1.markBroken()
+			}
+			return
+		} else if hasTrailers1 {
+			if !resp1.walkTrailers(func(name []byte, value []byte) bool {
+				return resp.addTrailer(name, value)
+			}, false) {
+				return
+			}
+		}
 	} else if err := resp.pass(resp1); err != nil {
 		stream1.markBroken()
+		return
 	}
 	return
 }

@@ -2533,11 +2533,14 @@ type Response interface {
 	doSend(chain Chain) error
 	pushHeaders() error
 	doPush(chain Chain) error
+	addTrailer(name []byte, value []byte) bool
 	pass1xx(resp response) bool  // used by proxies
 	copyHead(resp response) bool // used by proxies
 	pass(resp response) error    // used by proxies
-	post(content any) error      // used by proxies
+	finishChunked() error
+	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
+	ContentSize() int64
 	hookReviser(reviser Reviser)
 	setBypassRevisers(bypass bool)
 	unsafeMake(size int) []byte

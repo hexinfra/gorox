@@ -60,13 +60,13 @@ func tellGoroutine() { _tellLeader(comdGoroutine, 0, nil) }
 func tellBlock()     { _tellLeader(comdBlock, 0, nil) }
 
 func _tellLeader(comd uint8, flag uint16, args map[string]string) {
-	msgConn, err := net.Dial("tcp", targetAddr)
+	admConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		fmt.Printf("tell leader failed: %s\n", err.Error())
 		return
 	}
-	defer msgConn.Close()
-	if msgx.Tell(msgConn, msgx.NewMessage(comd, flag, args)) {
+	defer admConn.Close()
+	if msgx.Tell(admConn, msgx.NewMessage(comd, flag, args)) {
 		fmt.Printf("tell leader at %s: ok!\n", targetAddr)
 	} else {
 		fmt.Printf("tell leader at %s: failed!\n", targetAddr)
@@ -112,10 +112,10 @@ func callReconf() {
 }
 
 func _callLeader(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
-	msgConn, err := net.Dial("tcp", targetAddr)
+	admConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		return nil, false
 	}
-	defer msgConn.Close()
-	return msgx.Call(msgConn, msgx.NewMessage(comd, flag, args))
+	defer admConn.Close()
+	return msgx.Call(admConn, msgx.NewMessage(comd, flag, args))
 }

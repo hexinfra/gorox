@@ -7,7 +7,7 @@
 
 // Some terms:
 //   admDoor - Used by leader process, for receiving msgConns from control agent.
-//   msgConn - control agent ----> leader admin
+//   admConn - control agent ----> leader admin
 //   msgChan - leaderMain() <---> keepWorkers()
 //   dieChan - keepWorkers() <---> worker
 //   msgPipe - leader process <---> worker process

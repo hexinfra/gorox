@@ -63,15 +63,15 @@ func leaderMain() {
 		resp *msgx.Message
 		ok   bool
 	)
-	for { // each msgConn from control agent
-		msgConn, err := admDoor.Accept() // msgConn is connection between leader and control agent
+	for { // each admConn from control agent
+		admConn, err := admDoor.Accept() // admConn is connection between leader and control agent
 		if err != nil {
 			continue
 		}
-		if msgConn.SetReadDeadline(time.Now().Add(10*time.Second)) != nil {
+		if admConn.SetReadDeadline(time.Now().Add(10*time.Second)) != nil {
 			goto closeNext
 		}
-		req, ok = msgx.RecvMessage(msgConn)
+		req, ok = msgx.RecvMessage(admConn)
 		if !ok {
 			goto closeNext
 		}
@@ -100,18 +100,18 @@ func leaderMain() {
 			// Some messages are calling leader only, hijack them.
 			if req.Comd == comdPing {
 				resp := msgx.NewMessage(comdPing, req.Flag, nil)
-				msgx.SendMessage(msgConn, resp)
+				msgx.SendMessage(admConn, resp)
 			} else { // the rest messages are sent to keepWorkers().
 				msgChan <- req
 				resp = <-msgChan
 				if req.Comd == comdInfo {
 					resp.Set("leader", fmt.Sprintf("%d", os.Getpid()))
 				}
-				msgx.SendMessage(msgConn, resp)
+				msgx.SendMessage(admConn, resp)
 			}
 		}
 	closeNext:
-		msgConn.Close()
+		admConn.Close()
 	}
 }
 

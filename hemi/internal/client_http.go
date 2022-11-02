@@ -177,7 +177,7 @@ func (r *hRequest_) addCookie(name []byte, value []byte) bool {
 }
 
 func (r *hRequest_) send() error {
-	return r.shell.doSend(r.content)
+	return r.shell.sendChain(r.content)
 }
 
 func (r *hRequest_) checkPush() error {
@@ -202,7 +202,7 @@ func (r *hRequest_) push(chunk *Block) error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
 	}
-	return r.shell.doPush(curChain)
+	return r.shell.pushChain(curChain)
 }
 
 func (r *hRequest_) copyHead(req Request) bool { // used by proxies
@@ -244,7 +244,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	return true
 }
 func (r *hRequest_) pass(req httpInMessage) error { // used by proxies.
-	return r.xpass(req, false)
+	return r.doPass(req, false)
 }
 
 func (r *hRequest_) finishChunked() error {

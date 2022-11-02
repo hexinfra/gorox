@@ -291,7 +291,7 @@ func (r *H3Request) fixedHeaders() []byte {
 	return nil
 }
 
-func (r *H3Request) doSend(chain Chain) error {
+func (r *H3Request) sendChain(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -300,7 +300,7 @@ func (r *H3Request) pushHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) doPush(chain Chain) error {
+func (r *H3Request) pushChain(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -312,7 +312,7 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 func (r *H3Request) passHeaders() error {
 	return nil
 }
-func (r *H3Request) doPass(p []byte) error {
+func (r *H3Request) passBytes(p []byte) error {
 	return nil
 }
 

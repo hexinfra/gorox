@@ -1184,17 +1184,17 @@ func (r *http2Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http2Response) doSend(chain Chain) error {
+func (r *http2Response) sendChain(chain Chain) error {
 	// TODO
-	return r.doSend2(chain, nil)
+	return r.sendChain2(chain, nil)
 }
 
 func (r *http2Response) pushHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http2Response) doPush(chain Chain) error {
-	return r.doPush2(chain)
+func (r *http2Response) pushChain(chain Chain) error {
+	return r.pushChain2(chain)
 }
 func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	// TODO
@@ -1210,7 +1210,7 @@ func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 func (r *http2Response) passHeaders() error {
 	return nil
 }
-func (r *http2Response) doPass(p []byte) error {
+func (r *http2Response) passBytes(p []byte) error {
 	return nil
 }
 

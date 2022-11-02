@@ -211,7 +211,7 @@ func (r *httpOutMessage_) delHeader3(name []byte) (deleted bool) {
 	return false
 }
 
-func (r *httpOutMessage_) doSend3(chain Chain, vector [][]byte) error {
+func (r *httpOutMessage_) sendChain3(chain Chain, vector [][]byte) error {
 	// TODO
 	return nil
 }
@@ -220,7 +220,7 @@ func (r *httpOutMessage_) pushHeaders3() error {
 	// TODO
 	return nil
 }
-func (r *httpOutMessage_) doPush3(chain Chain) error {
+func (r *httpOutMessage_) pushChain3(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -235,7 +235,7 @@ func (r *httpOutMessage_) trailers3() []byte {
 func (r *httpOutMessage_) passHeaders3() error {
 	return nil
 }
-func (r *httpOutMessage_) doPass3(p []byte) error {
+func (r *httpOutMessage_) passBytes3(p []byte) error {
 	return nil
 }
 

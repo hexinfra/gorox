@@ -294,7 +294,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 	if req.methodCode != MethodOPTIONS || req.uri.notEmpty() { // dispatch to app rules
 		app.dispatchNormal(req, resp)
 		if !resp.isSent { // only happens on identity content.
-			resp.doSend(resp.content)
+			resp.sendChain(resp.content)
 		} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
 			resp.finishChunked()
 		}
@@ -948,15 +948,15 @@ func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	}
 }
 
-func (r *http1Response) doSend(chain Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
-	return r.doSend1(chain)
+func (r *http1Response) sendChain(chain Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
+	return r.sendChain1(chain)
 }
 
 func (r *http1Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
 	return r.writeHeaders1()
 }
-func (r *http1Response) doPush(chain Chain) error {
-	return r.doPush1(chain, r.request.VersionCode() == Version1_1)
+func (r *http1Response) pushChain(chain Chain) error {
+	return r.pushChain1(chain, r.request.VersionCode() == Version1_1)
 }
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_0 { // HTTP/1.0 doesn't support trailer.
@@ -989,8 +989,8 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 func (r *http1Response) passHeaders() error {
 	return r.writeHeaders1()
 }
-func (r *http1Response) doPass(p []byte) error {
-	return r.doPass1(p)
+func (r *http1Response) passBytes(p []byte) error {
+	return r.passBytes1(p)
 }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes

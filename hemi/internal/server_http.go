@@ -2527,9 +2527,9 @@ type Response interface {
 	sendBlob(content []byte) error
 	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
 	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
-	doSend(chain Chain) error
+	sendChain(chain Chain) error
 	pushHeaders() error
-	doPush(chain Chain) error
+	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
 	pass1xx(resp response) bool    // used by proxies
 	copyHead(resp response) bool   // used by proxies
@@ -2689,7 +2689,7 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 	}
 	r.content.head.SetBlob(content)
 	r.contentSize = int64(len(content))
-	return r.shell.doSend(r.content)
+	return r.shell.sendChain(r.content)
 }
 
 func (r *httpResponse_) send() error {
@@ -2724,7 +2724,7 @@ func (r *httpResponse_) send() error {
 			}
 		}
 	}
-	return resp.doSend(curChain)
+	return resp.sendChain(curChain)
 }
 
 func (r *httpResponse_) checkPush() error {
@@ -2773,7 +2773,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 			}
 		}
 	}
-	return resp.doPush(curChain)
+	return resp.pushChain(curChain)
 }
 
 func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
@@ -2802,7 +2802,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	return true
 }
 func (r *httpResponse_) pass(resp httpInMessage) error { // used by proxies
-	return r.xpass(resp, r.hasRevisers && !r.bypassRevisers)
+	return r.doPass(resp, r.hasRevisers && !r.bypassRevisers)
 }
 
 func (r *httpResponse_) finishChunked() error {

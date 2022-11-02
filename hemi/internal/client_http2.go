@@ -317,7 +317,7 @@ func (r *H2Request) fixedHeaders() []byte {
 	return nil
 }
 
-func (r *H2Request) doSend(chain Chain) error {
+func (r *H2Request) sendChain(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -326,7 +326,7 @@ func (r *H2Request) pushHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) doPush(chain Chain) error {
+func (r *H2Request) pushChain(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -338,7 +338,7 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 func (r *H2Request) passHeaders() error {
 	return nil
 }
-func (r *H2Request) doPass(p []byte) error {
+func (r *H2Request) passBytes(p []byte) error {
 	return nil
 }
 

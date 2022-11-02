@@ -607,7 +607,7 @@ func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) { // used 
 	r.fieldsEdge += 2
 }
 
-func (r *httpOutMessage_) doSend1(chain Chain) error {
+func (r *httpOutMessage_) sendChain1(chain Chain) error {
 	r.shell.finalizeHeaders()
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
@@ -674,7 +674,7 @@ func (r *httpOutMessage_) doSend1(chain Chain) error {
 	return nil
 }
 
-func (r *httpOutMessage_) doPush1(chain Chain, chunked bool) error {
+func (r *httpOutMessage_) pushChain1(chain Chain, chunked bool) error {
 	for block := chain.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
@@ -707,7 +707,7 @@ func (r *httpOutMessage_) trailers1() []byte {
 	return r.fields[0:r.fieldsEdge]
 }
 
-func (r *httpOutMessage_) doPass1(p []byte) error {
+func (r *httpOutMessage_) passBytes1(p []byte) error {
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
 	return r.writeVector1(&r.vector)

@@ -375,15 +375,15 @@ func (r *H1Request) fixedHeaders() []byte {
 	return http1BytesFixedRequestHeaders
 }
 
-func (r *H1Request) doSend(chain Chain) error {
-	return r.doSend1(chain)
+func (r *H1Request) sendChain(chain Chain) error {
+	return r.sendChain1(chain)
 }
 
 func (r *H1Request) pushHeaders() error {
 	return r.writeHeaders1()
 }
-func (r *H1Request) doPush(chain Chain) error {
-	return r.doPush1(chain, true)
+func (r *H1Request) pushChain(chain Chain) error {
+	return r.pushChain1(chain, true)
 }
 func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
@@ -392,8 +392,8 @@ func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 func (r *H1Request) passHeaders() error {
 	return r.writeHeaders1()
 }
-func (r *H1Request) doPass(p []byte) error {
-	return r.doPass1(p)
+func (r *H1Request) passBytes(p []byte) error {
+	return r.passBytes1(p)
 }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes

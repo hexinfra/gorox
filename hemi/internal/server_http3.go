@@ -386,7 +386,7 @@ func (r *http3Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http3Response) doSend(chain Chain) error {
+func (r *http3Response) sendChain(chain Chain) error {
 	// TODO
 	return nil
 }
@@ -395,8 +395,8 @@ func (r *http3Response) pushHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http3Response) doPush(chain Chain) error {
-	return r.doPush3(chain)
+func (r *http3Response) pushChain(chain Chain) error {
+	return r.pushChain3(chain)
 }
 func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	// TODO
@@ -412,7 +412,7 @@ func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 func (r *http3Response) passHeaders() error {
 	return nil
 }
-func (r *http3Response) doPass(p []byte) error {
+func (r *http3Response) passBytes(p []byte) error {
 	return nil
 }
 

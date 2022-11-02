@@ -1510,14 +1510,14 @@ type httpOutMessage interface {
 	fixedHeaders() []byte
 	isForbiddenField(hash uint16, name []byte) bool
 	send() error
-	doSend(chain Chain) error
+	sendChain(chain Chain) error
 	checkPush() error
 	pushHeaders() error
 	push(chunk *Block) error
-	doPush(chain Chain) error
+	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
 	passHeaders() error
-	doPass(p []byte) error
+	passBytes(p []byte) error
 	finalizeHeaders()
 	finalizeChunked() error
 }
@@ -1801,8 +1801,8 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 		return r.sendBlob(nil)
 	}
 }
-func (r *httpOutMessage_) xpass(in httpInMessage, revise bool) error {
-	pass := r.shell.doPass
+func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error {
+	pass := r.shell.passBytes
 	if size := in.ContentSize(); size == -2 || revise {
 		pass = r.PushBytes
 	} else { // >= 0

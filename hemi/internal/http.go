@@ -1134,7 +1134,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		}
 		if err == io.EOF {
 			break
-		} else {
+		} else if err != nil {
 			goto badRecv
 		}
 	}

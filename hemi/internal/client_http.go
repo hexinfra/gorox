@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"io"
 	"sync/atomic"
 )
 
@@ -244,39 +243,18 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	}
 	return true
 }
-func (r *hRequest_) pass(req Request) error { // used by proxies.
+func (r *hRequest_) pass(in httpInMessage) error { // used by proxies.
 	pass := r.shell.doPass
-	if size := req.ContentSize(); size == -2 {
+	if size := in.ContentSize(); size == -2 {
 		pass = r.PushBytes
-	} else { // >=0
+	} else { // >= 0
 		r.isSent = true
 		r.contentSize = size
 		if err := r.shell.passHeaders(); err != nil {
 			return err
 		}
 	}
-	for {
-		p, err := req.readContent()
-		if len(p) >= 0 {
-			if e := pass(p); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-	}
-	if req.hasTrailers() {
-		if !req.walkTrailers(func(name []byte, value []byte) bool {
-			return r.shell.addTrailer(name, value)
-		}, false) {
-			return httpAddTrailerFailed
-		}
-	}
-	return nil
+	return r.xpass(in, pass)
 }
 
 func (r *hRequest_) finishChunked() error {
@@ -611,9 +589,6 @@ func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	vETag := r.primes[r.indexes.etag].value
 	return r.input[vETag.from:vETag.edge]
 }
-func (r *hResponse_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
-}
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.indexes.server)
 	r.delPrimeAt(r.indexes.date)
@@ -648,9 +623,6 @@ func (r *hResponse_) useTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
-}
-func (r *hResponse_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, r.delTrailer)
 }
 
 func (r *hResponse_) getSaveContentFilesDir() string {

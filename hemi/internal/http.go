@@ -587,9 +587,11 @@ func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
 
 // httpInMessage is a Request or response.
 type httpInMessage interface {
+	ContentSize() int64
 	arrayCopy(p []byte) bool
 	useHeader(header *pair) bool
 	readContent() (p []byte, err error)
+	hasTrailers() bool
 	useTrailer(trailer *pair) bool
 	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	getSaveContentFilesDir() string
@@ -1323,8 +1325,16 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 	}
 	return
 }
+
 func (r *httpInMessage_) delPrimeAt(i uint8) {
 	r.primes[i].zero()
+}
+
+func (r *httpInMessage_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, r.delHeader)
+}
+func (r *httpInMessage_) delHopTrailers() { // used by proxies
+	r._delHopFields(r.trailers, r.delTrailer)
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {
@@ -1790,6 +1800,30 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 	} else { // nil means no content, but we have to send, so send nil.
 		return r.sendBlob(nil)
 	}
+}
+func (r *httpOutMessage_) xpass(in httpInMessage, pass func(p []byte) error) error {
+	for {
+		p, err := in.readContent()
+		if len(p) >= 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	if in.hasTrailers() {
+		if !in.walkTrailers(func(name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}, false) {
+			return httpAddTrailerFailed
+		}
+	}
+	return nil
 }
 
 func (r *httpOutMessage_) unsafeMake(size int) []byte {

@@ -15,7 +15,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -395,11 +394,13 @@ type Request interface {
 	UnsafeTrailer(name string) (value []byte, ok bool)
 
 	// Internal only
+	arrayCopy(p []byte) bool
 	isAbsoluteForm() bool
 	isServerOptions() bool
 	getPathInfo() system.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
+	useHeader(header *pair) bool
 	delHost()
 	delCriticalHeaders()
 	delHopHeaders()
@@ -410,6 +411,8 @@ type Request interface {
 	readContent() (p []byte, err error)
 	hasTrailers() bool
 	delHopTrailers()
+	useTrailer(trailer *pair) bool
+	getSaveContentFilesDir() string
 	hookChanger(changer Changer)
 	unsafeVariable(index int16) []byte
 }
@@ -1682,9 +1685,6 @@ func (r *httpRequest_) checkHead() bool {
 	return true
 }
 
-func (r *httpRequest_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
-}
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
 	r.delPrimeAt(r.iContentType)
 	r.delPrimeAt(r.iContentLength)
@@ -2334,17 +2334,14 @@ func (r *httpRequest_) UnsafeContent() []byte {
 	return r.contentBlob[0:r.sizeReceived]
 }
 
+func (r *httpRequest_) App() *App { return r.app }
+func (r *httpRequest_) Svc() *Svc { return r.svc }
+
 func (r *httpRequest_) useTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
-func (r *httpRequest_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, r.delTrailer)
-}
-
-func (r *httpRequest_) App() *App { return r.app }
-func (r *httpRequest_) Svc() *Svc { return r.svc }
 
 func (r *httpRequest_) getSaveContentFilesDir() string {
 	return r.app.saveContentFilesDir // must ends with '/'
@@ -2534,9 +2531,9 @@ type Response interface {
 	pushHeaders() error
 	doPush(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
-	pass1xx(resp response) bool  // used by proxies
-	copyHead(resp response) bool // used by proxies
-	pass(resp response) error    // used by proxies
+	pass1xx(resp response) bool    // used by proxies
+	copyHead(resp response) bool   // used by proxies
+	pass(resp httpInMessage) error // used by proxies
 	finishChunked() error
 	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
@@ -2804,9 +2801,9 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	}
 	return true
 }
-func (r *httpResponse_) pass(resp response) error { // used by proxies
+func (r *httpResponse_) pass(in httpInMessage) error { // used by proxies
 	pass := r.shell.doPass
-	if size := resp.ContentSize(); size == -2 || (r.hasRevisers && !r.bypassRevisers) {
+	if size := in.ContentSize(); size == -2 || (r.hasRevisers && !r.bypassRevisers) {
 		pass = r.PushBytes
 	} else { // >= 0
 		r.isSent = true
@@ -2815,28 +2812,7 @@ func (r *httpResponse_) pass(resp response) error { // used by proxies
 			return err
 		}
 	}
-	for {
-		p, err := resp.readContent()
-		if len(p) >= 0 {
-			if e := pass(p); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	if resp.hasTrailers() {
-		if !resp.walkTrailers(func(name []byte, value []byte) bool {
-			return r.shell.addTrailer(name, value)
-		}, false) {
-			return httpAddTrailerFailed
-		}
-	}
-	return nil
+	return r.xpass(in, pass)
 }
 
 func (r *httpResponse_) finishChunked() error {

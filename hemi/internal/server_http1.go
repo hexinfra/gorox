@@ -901,7 +901,7 @@ func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 		return false
 	}
 }
-func (r *http1Response) addDirectoryRedirection() bool {
+func (r *http1Response) AddDirectoryRedirection() bool {
 	var prefix []byte
 	if r.request.IsHTTPS() {
 		prefix = http1BytesLocationHTTPS

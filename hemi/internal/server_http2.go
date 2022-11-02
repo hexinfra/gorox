@@ -1171,7 +1171,7 @@ func (r *http2Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) addDirectoryRedirection() bool {
+func (r *http2Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }

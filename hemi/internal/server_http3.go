@@ -373,7 +373,7 @@ func (r *http3Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) addDirectoryRedirection() bool {
+func (r *http3Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }

@@ -2320,18 +2320,11 @@ func (r *httpRequest_) HasUpload(name string) bool {
 func (r *httpRequest_) HasContent() bool {
 	return r.contentSize >= 0 || r.contentSize == -2 // -2 means chunked
 }
-func (r *httpRequest_) Content() string {
-	return string(r.UnsafeContent())
-}
 func (r *httpRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
-	r.loadContent()
-	if r.stream.isBroken() {
-		return nil
-	}
-	return r.contentBlob[0:r.sizeReceived]
+	return r.unsafeContent()
 }
 
 func (r *httpRequest_) App() *App { return r.app }
@@ -2485,6 +2478,7 @@ type Response interface {
 	SetAcceptBytesRange()
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
+	AddDirectoryRedirection() bool
 
 	AddCookie(cookie *Cookie) bool
 
@@ -2523,7 +2517,6 @@ type Response interface {
 	delHeader(name []byte) bool
 	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
 	setConnectionClose()
-	addDirectoryRedirection() bool
 	sendBlob(content []byte) error
 	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
 	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent

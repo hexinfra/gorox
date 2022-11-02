@@ -598,15 +598,8 @@ func (r *hResponse_) HasContent() bool {
 	// be of zero length.
 	return r.contentSize >= 0 || r.contentSize == -2
 }
-func (r *hResponse_) Content() string {
-	return string(r.UnsafeContent())
-}
 func (r *hResponse_) UnsafeContent() []byte {
-	r.loadContent()
-	if r.stream.isBroken() {
-		return nil
-	}
-	return r.contentBlob[0:r.sizeReceived]
+	return r.unsafeContent()
 }
 
 func (r *hResponse_) useTrailer(trailer *pair) bool {

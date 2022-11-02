@@ -190,7 +190,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 	if info.IsDir() {
 		file.Close()
 		resp.SetStatus(StatusFound)
-		resp.addDirectoryRedirection()
+		resp.AddDirectoryRedirection()
 		resp.SendBytes(nil)
 		return
 	}

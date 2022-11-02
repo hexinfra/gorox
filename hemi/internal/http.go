@@ -588,6 +588,7 @@ func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
 // httpInMessage is a Request or response.
 type httpInMessage interface {
 	ContentSize() int64
+	UnsafeContent() []byte
 	arrayCopy(p []byte) bool
 	useHeader(header *pair) bool
 	readContent() (p []byte, err error)
@@ -1179,6 +1180,17 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 	return nil
 }
 
+func (r *httpInMessage_) Content() string {
+	return string(r.shell.UnsafeContent())
+}
+func (r *httpInMessage_) unsafeContent() []byte {
+	r.loadContent()
+	if r.stream.isBroken() {
+		return nil
+	}
+	return r.contentBlob[0:r.sizeReceived]
+}
+
 func (r *httpInMessage_) hasTrailers() bool { // used by proxies
 	return r.trailers.notEmpty()
 }
@@ -1688,6 +1700,7 @@ func (r *httpOutMessage_) SendFile(contentPath string) error {
 	}
 	return r.sendFile(file, info, true)
 }
+
 func (r *httpOutMessage_) sendBlob(content []byte) error {
 	if err := r.checkSend(); err != nil {
 		return err
@@ -1744,6 +1757,7 @@ func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	}
 	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
 }
+
 func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err

@@ -54,6 +54,7 @@ func (h *exampleHandler) OnConfigure() {
 func (h *exampleHandler) OnPrepare() {
 	m := h.mapper
 
+	m.GET("/", h.handleIndex)
 	m.GET("/foo", h.handleFoo)
 	m.POST("/bar", h.handleBar)
 	m.GET("/baz", h.handleBaz)
@@ -66,11 +67,14 @@ func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
 	if handle := h.mapper.dispatch(req); handle != nil {
 		handle(req, resp)
 	} else { // 404
-		resp.Send(h.content)
+		resp.SendNotFound(nil)
 	}
 	return // request is handled, next = false
 }
 
+func (h *exampleHandler) handleIndex(req Request, resp Response) {
+	resp.Send(h.content)
+}
 func (h *exampleHandler) handleFoo(req Request, resp Response) {
 	resp.Send("this is page foo")
 }

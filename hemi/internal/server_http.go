@@ -2540,7 +2540,6 @@ type Response interface {
 	finishChunked() error
 	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
-	ContentSize() int64
 	hookReviser(reviser Reviser)
 	setBypassRevisers(bypass bool)
 	unsafeMake(size int) []byte

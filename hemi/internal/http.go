@@ -1780,10 +1780,6 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 	}
 }
 
-func (r *httpOutMessage_) ContentSize() int64 {
-	return r.contentSize
-}
-
 func (r *httpOutMessage_) unsafeMake(size int) []byte {
 	return r.stream.unsafeMake(size)
 }

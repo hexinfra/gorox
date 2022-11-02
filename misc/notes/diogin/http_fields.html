@@ -47,7 +47,7 @@
 		<table class="request">
 			<tr><th width="200px">请求字段</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">备注/说明</th></tr>
 			<tr><td>:authority</td>           <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>authority = host [ ":" port ]</td>
-					<td>如果请求有 :authority，则必须忽略 Host。</td></tr>
+					<td>参见：<a href="https://www.rfc-editor.org/rfc/rfc9113.html#name-request-pseudo-header-field">RFC 9113</a> 和 <a href="https://www.rfc-editor.org/rfc/rfc9114.html#name-request-pseudo-header-field">RFC 9114</a></td></tr>
 			<tr><td>:method</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>method = token</td>
 					<td>包含合法的请求方法。</td></tr>
 			<tr><td>:path</td>                <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>request-target = origin-form / absolute-form / authority-form / asterisk-form</td>
@@ -141,6 +141,8 @@
 			<tr><td>connection</td>           <td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #connection-option</td>
 					<td>列出逐跳字段名称列表，同时可指定 close 和 keep-alive。<br>其值大小写不敏感。代理在转发消息时，必须删除 connection 里指定的字段，这些字段仅作用于当前连接。</td></tr>
 			<tr><td>content-encoding</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Encoding = #content-coding</td>
+					<td>TODO</td></tr>
+			<tr><td>content-language</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
 					<td>TODO</td></tr>
 			<tr><td>content-length</td>       <td>✗</td><td>1</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>?</td>
 					<td>TODO</td></tr>

@@ -401,29 +401,30 @@ func (r *hResponse_) useHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for multiple response headers
-	httpMultipleResponseHeaderBytes = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
-	httpMultipleResponseHeaderTable = [13]struct {
+	httpMultipleResponseHeaderBytes = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	httpMultipleResponseHeaderTable = [14]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		must  bool // true if 1#, false if #
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {httpHashProxyAuthenticate, 78, 96, false, nil},
-		1:  {httpHashAcceptEncoding, 0, 15, false, nil},
-		2:  {httpHashTransferEncoding, 105, 122, false, (*hResponse_).checkTransferEncoding},
-		3:  {httpHashAllow, 30, 35, false, nil},
-		4:  {httpHashConnection, 50, 60, false, (*hResponse_).checkConnection},
-		5:  {httpHashUpgrade, 123, 130, false, (*hResponse_).checkUpgrade},
+		0:  {httpHashVary, 148, 152, false, nil},
+		1:  {httpHashConnection, 50, 60, false, (*hResponse_).checkConnection},
+		2:  {httpHashAllow, 30, 35, false, nil},
+		3:  {httpHashTrailer, 114, 121, false, nil},
+		4:  {httpHashVia, 153, 156, false, nil},
+		5:  {httpHashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
 		6:  {httpHashAcceptRanges, 16, 29, false, nil},
-		7:  {httpHashVia, 136, 139, false, nil},
-		8:  {httpHashWWWAuthenticate, 140, 156, false, nil},
-		9:  {httpHashVary, 131, 135, false, nil},
-		10: {httpHashTrailer, 97, 104, false, nil},
-		11: {httpHashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
-		12: {httpHashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
+		7:  {httpHashProxyAuthenticate, 95, 113, false, nil},
+		8:  {httpHashTransferEncoding, 122, 139, false, (*hResponse_).checkTransferEncoding},
+		9:  {httpHashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
+		10: {httpHashContentLanguage, 78, 94, false, nil},
+		11: {httpHashWWWAuthenticate, 157, 173, false, nil},
+		12: {httpHashAcceptEncoding, 0, 15, false, nil},
+		13: {httpHashUpgrade, 140, 147, false, (*hResponse_).checkUpgrade},
 	}
-	httpMultipleResponseHeaderFind = func(hash uint16) int { return (2373696 / int(hash)) % 13 }
+	httpMultipleResponseHeaderFind = func(hash uint16) int { return (4114134 / int(hash)) % 14 }
 )
 
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {

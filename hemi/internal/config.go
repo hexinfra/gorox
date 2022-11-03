@@ -292,7 +292,7 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 		} else {
 			switch current.Text {
 			case "filters":
-				parseFilters(c, router, compQUICFilter, c.parseQUICFilter, current.Text)
+				parseContainer1(c, router, compQUICFilter, c.parseQUICFilter, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseQUICCase)
 			default:
@@ -302,7 +302,7 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 	}
 }
 func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
-	parseFilter(c, sign, router, router.createFilter, kase, kase.addFilter)
+	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
 func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 	routerName := c.ForwardExpect(TokenString)
@@ -322,7 +322,7 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 		} else {
 			switch current.Text {
 			case "filters":
-				parseFilters(c, router, compTCPSFilter, c.parseTCPSFilter, current.Text)
+				parseContainer1(c, router, compTCPSFilter, c.parseTCPSFilter, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseTCPSCase)
 			default:
@@ -332,7 +332,7 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 	}
 }
 func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
-	parseFilter(c, sign, router, router.createFilter, kase, kase.addFilter)
+	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
 func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 	routerName := c.ForwardExpect(TokenString)
@@ -352,7 +352,7 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 		} else {
 			switch current.Text {
 			case "filters":
-				parseFilters(c, router, compUDPSFilter, c.parseUDPSFilter, current.Text)
+				parseContainer1(c, router, compUDPSFilter, c.parseUDPSFilter, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseUDPSCase)
 			default:
@@ -362,9 +362,9 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 	}
 }
 func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
-	parseFilter(c, sign, router, router.createFilter, kase, kase.addFilter)
+	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func parseFilters[R Component, C any](c *config, router R, comp int16, parseFilter func(sign Token, router R, kase *C), compName string) { // filters {}
+func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // filters {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -374,10 +374,10 @@ func parseFilters[R Component, C any](c *config, router R, comp int16, parseFilt
 		if current.Kind != TokenWord || current.Info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
-		parseFilter(current, router, nil) // not in case
+		parseComponent(current, router, nil) // not in case
 	}
 }
-func parseFilter[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // filter
+func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // filter
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text
@@ -385,12 +385,12 @@ func parseFilter[R Component, T Component, C any](c *config, sign Token, router 
 	} else if kase != nil { // in case
 		name = c.NewName()
 	}
-	filter := create(sign.Text, name)
-	filter.setParent(router)
+	component := create(sign.Text, name)
+	component.setParent(router)
 	if kase != nil { // in case
-		assign(filter)
+		assign(component)
 	}
-	c.parseAssigns(filter)
+	c.parseAssigns(component)
 }
 
 func parseCases[T Component](c *config, router T, parseCase func(T)) { // cases {}

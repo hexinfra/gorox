@@ -28,9 +28,9 @@ type router_[T Component, G _gate, F _filter] struct {
 	gates   []G         // gates opened
 	filters compDict[F] // defined filters. indexed by name
 	// States
-	creators    map[string]func(name string, stage *Stage, router T) F
-	filtersByID [256]F // for fast searching. position 0 is not used
-	nFilters    uint8  // used number of filtersByID in this router
+	filterCreators map[string]func(name string, stage *Stage, router T) F
+	filtersByID    [256]F // for fast searching. position 0 is not used
+	nFilters       uint8  // used number of filtersByID in this router
 }
 
 func (r *router_[T, G, F]) init(name string, stage *Stage) {
@@ -38,8 +38,8 @@ func (r *router_[T, G, F]) init(name string, stage *Stage) {
 	r.filters = make(compDict[F])
 	r.nFilters = 1 // position 0 is not used
 }
-func (r *router_[T, G, F]) setCreators(creators map[string]func(string, *Stage, T) F) {
-	r.creators = creators
+func (r *router_[T, G, F]) setCreators(filterCreators map[string]func(string, *Stage, T) F) {
+	r.filterCreators = filterCreators
 }
 
 func (r *router_[T, G, F]) onConfigure() {
@@ -72,7 +72,7 @@ func (r *router_[T, G, F]) createFilter(sign string, name string) F {
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := r.creators[sign]
+	create, ok := r.filterCreators[sign]
 	if !ok {
 		UseExitln("unknown filter sign: " + sign)
 	}
@@ -126,9 +126,7 @@ func (c *case_[T, F]) OnPrepare() {
 func (c *case_[T, F]) OnShutdown() {
 }
 
-func (c *case_[T, F]) addFilter(filter F) {
-	c.filters = append(c.filters, filter)
-}
+func (c *case_[T, F]) addFilter(filter F) { c.filters = append(c.filters, filter) }
 
 func (c *case_[T, F]) equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {

@@ -25,7 +25,6 @@ COMPONENTS
     optware (...)
     backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
     router (tcpsRouter, udpsRouter, quicRouter)
-      runner (...)
       filter (...)
       case [*]
     stater (localStater, redisStater, ...)

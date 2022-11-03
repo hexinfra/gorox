@@ -16,11 +16,8 @@ const Version = "0.1.0-dev"
 
 var ( // core funcs
 	RegisterOptware    = internal.RegisterOptware
-	RegisterQUICRunner = internal.RegisterQUICRunner
 	RegisterQUICFilter = internal.RegisterQUICFilter
-	RegisterTCPSRunner = internal.RegisterTCPSRunner
 	RegisterTCPSFilter = internal.RegisterTCPSFilter
-	RegisterUDPSRunner = internal.RegisterUDPSRunner
 	RegisterUDPSFilter = internal.RegisterUDPSFilter
 	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
@@ -105,17 +102,14 @@ type ( // core types
 	PConn    = internal.PConn    // TConn | XConn
 
 	QUICRouter = internal.QUICRouter
-	QUICRunner = internal.QUICRunner
 	QUICFilter = internal.QUICFilter
 	QUICConn   = internal.QUICConn
 
 	TCPSRouter = internal.TCPSRouter
-	TCPSRunner = internal.TCPSRunner
 	TCPSFilter = internal.TCPSFilter
 	TCPSConn   = internal.TCPSConn
 
 	UDPSRouter = internal.UDPSRouter
-	UDPSRunner = internal.UDPSRunner
 	UDPSFilter = internal.UDPSFilter
 	UDPSConn   = internal.UDPSConn
 
@@ -153,11 +147,8 @@ type ( // core mixins
 	Optware_    = internal.Optware_
 	Stater_     = internal.Stater_
 	Cacher_     = internal.Cacher_
-	QUICRunner_ = internal.QUICRunner_
 	QUICFilter_ = internal.QUICFilter_
-	TCPSRunner_ = internal.TCPSRunner_
 	TCPSFilter_ = internal.TCPSFilter_
-	UDPSRunner_ = internal.UDPSRunner_
 	UDPSFilter_ = internal.UDPSFilter_
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_

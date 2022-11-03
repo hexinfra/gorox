@@ -34,7 +34,7 @@ type socksServer struct {
 }
 
 func (s *socksServer) init(name string, stage *Stage) {
-	s.Init(name, stage)
+	s.Server_.Init(name, stage)
 }
 
 func (s *socksServer) OnConfigure() {
@@ -71,7 +71,7 @@ type socksGate struct {
 }
 
 func (g *socksGate) init(server *socksServer, id int32) {
-	g.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
+	g.Gate_.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 

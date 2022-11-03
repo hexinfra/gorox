@@ -11,11 +11,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
-	"os"
-	"path/filepath"
 	"sync"
 	"syscall"
 )
@@ -23,42 +20,24 @@ import (
 // TCPSRouter
 type TCPSRouter struct {
 	// Mixins
-	router_[*TCPSRouter, *tcpsGate, TCPSRunner, TCPSFilter]
-	// Assocs
-	cases compList[*tcpsCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
-	// States
-	logFile string
-	logger  *logger.Logger
+	router_[*TCPSRouter, *tcpsGate, TCPSRunner, TCPSFilter, *tcpsCase]
 }
 
 func (r *TCPSRouter) init(name string, stage *Stage) {
-	r.router_.init(name, stage)
-	r.router_.setCreators(tcpsRunnerCreators, tcpsFilterCreators)
+	r.router_.init(name, stage, tcpsRunnerCreators, tcpsFilterCreators)
 }
 
 func (r *TCPSRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// logFile
-	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/tcps_"+r.name+".log")
 
-	// sub components
 	r.configureSubs()
-	r.cases.walk((*tcpsCase).OnConfigure)
 }
 func (r *TCPSRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// logger
-	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
-	}
 
-	// sub components
 	r.prepareSubs()
-	r.cases.walk((*tcpsCase).OnPrepare)
 }
 func (r *TCPSRouter) OnShutdown() {
-	r.cases.walk((*tcpsCase).OnShutdown)
-	// sub components
 	r.shutdownSubs()
 
 	r.router_.onShutdown()
@@ -116,7 +95,7 @@ type tcpsGate struct {
 }
 
 func (g *tcpsGate) init(router *TCPSRouter, id int32) {
-	g.Init(router.stage, id, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 

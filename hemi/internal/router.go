@@ -9,6 +9,9 @@ package internal
 
 import (
 	"bytes"
+	"github.com/hexinfra/gorox/hemi/libraries/logger"
+	"os"
+	"path/filepath"
 )
 
 type _gate interface {
@@ -22,58 +25,71 @@ type _filter interface {
 	Component
 	ider
 }
+type _case interface {
+	Component
+}
 
 // router_ is the mixin for all routers.
-type router_[T Component, G _gate, R _runner, F _filter] struct {
+type router_[T Component, G _gate, R _runner, F _filter, C _case] struct {
 	// Mixins
 	office_
 	// Assocs
 	gates   []G         // gates opened
 	runners compDict[R] // defined runners. indexed by name
 	filters compDict[F] // defined filters. indexed by name
+	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	runnerCreators map[string]func(name string, stage *Stage, router T) R
 	filterCreators map[string]func(name string, stage *Stage, router T) F
 	filtersByID    [256]F // for fast searching. position 0 is not used
 	nFilters       uint8  // used number of filtersByID in this router
+	logFile        string
+	logger         *logger.Logger
 }
 
-func (r *router_[T, G, R, F]) init(name string, stage *Stage) {
+func (r *router_[T, G, R, F, C]) init(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, T) R, filterCreators map[string]func(string, *Stage, T) F) {
 	r.office_.init(name, stage)
 	r.runners = make(compDict[R])
 	r.filters = make(compDict[F])
-	r.nFilters = 1 // position 0 is not used
-}
-func (r *router_[T, G, R, F]) setCreators(runnerCreators map[string]func(string, *Stage, T) R, filterCreators map[string]func(string, *Stage, T) F) {
 	r.runnerCreators = runnerCreators
 	r.filterCreators = filterCreators
+	r.nFilters = 1 // position 0 is not used
 }
 
-func (r *router_[T, G, R, F]) onConfigure() {
+func (r *router_[T, G, R, F, C]) onConfigure() {
 	r.office_.onConfigure()
+	// logFile
+	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/quic_"+r.name+".log")
 }
-func (r *router_[T, G, R, F]) configureSubs() {
+func (r *router_[T, G, R, F, C]) configureSubs() {
 	r.runners.walk(R.OnConfigure)
 	r.filters.walk(F.OnConfigure)
+	r.cases.walk(C.OnConfigure)
 }
 
-func (r *router_[T, G, R, F]) onPrepare() {
+func (r *router_[T, G, R, F, C]) onPrepare() {
 	r.office_.onPrepare()
+	// logger
+	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
+		EnvExitln(err.Error())
+	}
 }
-func (r *router_[T, G, R, F]) prepareSubs() {
+func (r *router_[T, G, R, F, C]) prepareSubs() {
 	r.runners.walk(R.OnPrepare)
 	r.filters.walk(F.OnPrepare)
+	r.cases.walk(C.OnPrepare)
 }
 
-func (r *router_[T, G, R, F]) onShutdown() {
+func (r *router_[T, G, R, F, C]) onShutdown() {
 	r.office_.onShutdown()
 }
-func (r *router_[T, G, R, F]) shutdownSubs() {
+func (r *router_[T, G, R, F, C]) shutdownSubs() {
+	r.cases.walk(C.OnShutdown)
 	r.filters.walk(F.OnShutdown)
 	r.runners.walk(R.OnShutdown)
 }
 
-func (r *router_[T, G, R, F]) createRunner(sign string, name string) R {
+func (r *router_[T, G, R, F, C]) createRunner(sign string, name string) R {
 	if _, ok := r.runners[name]; ok {
 		UseExitln("conflicting runner with a same name in router")
 	}
@@ -88,7 +104,7 @@ func (r *router_[T, G, R, F]) createRunner(sign string, name string) R {
 	r.runners[name] = runner
 	return runner
 }
-func (r *router_[T, G, R, F]) createFilter(sign string, name string) F {
+func (r *router_[T, G, R, F, C]) createFilter(sign string, name string) F {
 	if r.nFilters == 255 {
 		UseExitln("cannot create filter: too many filters in one router")
 	}
@@ -110,7 +126,7 @@ func (r *router_[T, G, R, F]) createFilter(sign string, name string) F {
 	return filter
 }
 
-func (r *router_[T, G, R, F]) filterByID(id uint8) F { // for fast searching
+func (r *router_[T, G, R, F, C]) filterByID(id uint8) F { // for fast searching
 	return r.filtersByID[id]
 }
 

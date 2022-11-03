@@ -63,11 +63,11 @@ type httpServer_ struct {
 }
 
 func (s *httpServer_) init(name string, stage *Stage) {
-	s.Init(name, stage)
+	s.Server_.Init(name, stage)
 }
 
 func (s *httpServer_) onConfigure() {
-	s.OnConfigure()
+	s.Server_.OnConfigure()
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/http_"+s.name+".log")
 	// maxStreamsPerConn
@@ -84,7 +84,7 @@ func (s *httpServer_) onConfigure() {
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
 }
 func (s *httpServer_) onPrepare() {
-	s.OnPrepare()
+	s.Server_.OnPrepare()
 	// logger
 	if err := os.MkdirAll(filepath.Dir(s.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
@@ -92,7 +92,7 @@ func (s *httpServer_) onPrepare() {
 	//s.logger = newLogger(s.logFile, "") // dividing not needed
 }
 func (s *httpServer_) onShutdown() {
-	s.OnShutdown()
+	s.Server_.OnShutdown()
 	// closing gates and their conns
 	// finally s.logger.Close()
 }
@@ -215,7 +215,7 @@ type httpGate_ struct {
 }
 
 func (g *httpGate_) init(stage *Stage, id int32, address string, maxConns int32) {
-	g.Init(stage, id, address, maxConns)
+	g.Gate_.Init(stage, id, address, maxConns)
 }
 
 // httpConn is the interface for *http[1-3]Conn.

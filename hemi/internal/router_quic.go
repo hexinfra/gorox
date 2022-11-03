@@ -8,52 +8,31 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
-	"os"
-	"path/filepath"
 	"sync"
 )
 
 // QUICRouter
 type QUICRouter struct {
 	// Mixins
-	router_[*QUICRouter, *quicGate, QUICRunner, QUICFilter]
-	// Assocs
-	cases compList[*quicCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
-	// States
-	logFile string
-	logger  *logger.Logger
+	router_[*QUICRouter, *quicGate, QUICRunner, QUICFilter, *quicCase]
 }
 
 func (r *QUICRouter) init(name string, stage *Stage) {
-	r.router_.init(name, stage)
-	r.router_.setCreators(quicRunnerCreators, quicFilterCreators)
+	r.router_.init(name, stage, quicRunnerCreators, quicFilterCreators)
 }
 
 func (r *QUICRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// logFile
-	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/quic_"+r.name+".log")
 
-	// sub components
 	r.configureSubs()
-	r.cases.walk((*quicCase).OnConfigure)
 }
 func (r *QUICRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// logger
-	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
-	}
 
-	// sub components
 	r.prepareSubs()
-	r.cases.walk((*quicCase).OnPrepare)
 }
 func (r *QUICRouter) OnShutdown() {
-	r.cases.walk((*quicCase).OnShutdown)
-	// sub components
 	r.shutdownSubs()
 
 	r.router_.onShutdown()
@@ -111,7 +90,7 @@ type quicGate struct {
 }
 
 func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Init(router.stage, id, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 

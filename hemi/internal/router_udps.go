@@ -8,10 +8,7 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"net"
-	"os"
-	"path/filepath"
 	"sync"
 	"syscall"
 )
@@ -19,42 +16,24 @@ import (
 // UDPSRouter
 type UDPSRouter struct {
 	// Mixins
-	router_[*UDPSRouter, *udpsGate, UDPSRunner, UDPSFilter]
-	// Assocs
-	cases compList[*udpsCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
-	// States
-	logFile string
-	logger  *logger.Logger
+	router_[*UDPSRouter, *udpsGate, UDPSRunner, UDPSFilter, *udpsCase]
 }
 
 func (r *UDPSRouter) init(name string, stage *Stage) {
-	r.router_.init(name, stage)
-	r.router_.setCreators(udpsRunnerCreators, udpsFilterCreators)
+	r.router_.init(name, stage, udpsRunnerCreators, udpsFilterCreators)
 }
 
 func (r *UDPSRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// logFile
-	r.ConfigureString("logFile", &r.logFile, func(value string) bool { return value != "" }, LogsDir()+"/udps_"+r.name+".log")
 
-	// sub components
 	r.configureSubs()
-	r.cases.walk((*udpsCase).OnConfigure)
 }
 func (r *UDPSRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// logger
-	if err := os.MkdirAll(filepath.Dir(r.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
-	}
 
-	// sub components
 	r.prepareSubs()
-	r.cases.walk((*udpsCase).OnPrepare)
 }
 func (r *UDPSRouter) OnShutdown() {
-	r.cases.walk((*udpsCase).OnShutdown)
-	// sub components
 	r.shutdownSubs()
 
 	r.router_.onShutdown()

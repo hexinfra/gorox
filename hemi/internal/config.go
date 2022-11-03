@@ -144,7 +144,7 @@ type config struct {
 }
 
 func (c *config) init(constants map[string]string, varCodes map[string]int16, signedComps map[string]int16) {
-	c.Init(constants, varCodes, signedComps)
+	c.Parser_.Init(constants, varCodes, signedComps)
 }
 
 func (c *config) applyText(text string) (stage *Stage, err error) {

@@ -34,7 +34,7 @@ type echoServer struct {
 }
 
 func (s *echoServer) init(name string, stage *Stage) {
-	s.Init(name, stage)
+	s.Server_.Init(name, stage)
 }
 
 func (s *echoServer) OnConfigure() {
@@ -71,7 +71,7 @@ type echoGate struct {
 }
 
 func (g *echoGate) init(server *echoServer, id int32) {
-	g.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
+	g.Gate_.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 

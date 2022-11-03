@@ -85,7 +85,7 @@ func (r *QUICRouter) serve() {
 	select {}
 }
 
-func (r *QUICRouter) dispatch(conn *QUICConn) {
+func (r *QUICRouter) dispatchRunner(conn *QUICConn) {
 	/*
 		for _, kase := range r.cases {
 			if !kase.isMatch(conn) {

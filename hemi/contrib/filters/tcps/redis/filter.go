@@ -42,6 +42,7 @@ func (f *redisViewer) OnPrepare() {
 func (f *redisViewer) OnShutdown() {
 }
 
-func (f *redisViewer) OnInput(conn *TCPSConn, data []byte) (next bool) {
-	return true
+func (f *redisViewer) OnInput(conn *TCPSConn, kind int8) {
+}
+func (f *redisViewer) OnOutput(conn *TCPSConn, kind int8) {
 }

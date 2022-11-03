@@ -291,8 +291,8 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 	s.conn.closeConn()
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
-	if req.methodCode != MethodOPTIONS || req.uri.notEmpty() { // dispatch to app rules
-		app.dispatchNormal(req, resp)
+	if req.methodCode != MethodOPTIONS || req.uri.notEmpty() {
+		app.dispatchHandler(req, resp)
 		if !resp.isSent { // only happens on identity content.
 			resp.sendChain(resp.content)
 		} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)

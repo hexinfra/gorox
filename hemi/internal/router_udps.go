@@ -86,7 +86,7 @@ func (r *UDPSRouter) serve() {
 	select {}
 }
 
-func (r *UDPSRouter) dispatch(conn *UDPSConn) {
+func (r *UDPSRouter) dispatchRunner(conn *UDPSConn) {
 	/*
 		for _, kase := range r.cases {
 			if !kase.isMatch(conn) {

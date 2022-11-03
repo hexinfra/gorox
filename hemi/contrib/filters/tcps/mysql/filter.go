@@ -42,6 +42,7 @@ func (f *mysqlViewer) OnPrepare() {
 func (f *mysqlViewer) OnShutdown() {
 }
 
-func (f *mysqlViewer) OnInput(conn *TCPSConn, data []byte) (next bool) {
-	return true
+func (f *mysqlViewer) OnInput(conn *TCPSConn, kind int8) {
+}
+func (f *mysqlViewer) OnOutput(conn *TCPSConn, kind int8) {
 }

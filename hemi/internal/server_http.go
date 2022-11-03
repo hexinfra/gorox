@@ -430,7 +430,7 @@ type httpRequest_ struct {
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
 	path          []byte          // decoded path. only a reference. refers to r.array or arena if rewrited, so can't be a text
-	absPath       []byte          // app.webRoot + r.path. if app.webRoot is not set then this is nil. set when dispatching rules. only a reference
+	absPath       []byte          // app.webRoot + r.path. if app.webRoot is not set then this is nil. set when dispatching to handlers. only a reference
 	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0') if r.absPath is not nil
 	app           *App            // target app of this request. set before processing stream
 	svc           *Svc            // target svc of this request. set before processing stream

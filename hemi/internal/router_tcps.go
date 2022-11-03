@@ -90,7 +90,7 @@ func (r *TCPSRouter) serve() {
 	select {}
 }
 
-func (r *TCPSRouter) dispatch(conn *TCPSConn) {
+func (r *TCPSRouter) dispatchRunner(conn *TCPSConn) {
 	/*
 		for _, kase := range r.cases {
 			if !kase.isMatch(conn) {
@@ -158,7 +158,7 @@ func (g *tcpsGate) serveTCP() {
 			if Debug() >= 1 {
 				fmt.Printf("%+v\n", tcpsConn)
 			}
-			go g.router.dispatch(tcpsConn) // tcpsConn is put to pool in dispatch()
+			go g.router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
 			connID++
 		}
 	}
@@ -180,7 +180,7 @@ func (g *tcpsGate) serveTLS() {
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tlsConn, nil)
-			go g.router.dispatch(tcpsConn) // tcpsConn is put to pool in dispatch()
+			go g.router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
 			connID++
 		}
 	}
@@ -202,14 +202,18 @@ type TCPSRunner interface {
 
 // TCPSRunner_
 type TCPSRunner_ struct {
+	// Mixins
 	Component_
+	// States
 }
 
 // TCPSFilter
 type TCPSFilter interface {
 	Component
 	ider
-	OnInput(conn *TCPSConn, data []byte) (next bool)
+
+	OnInput(conn *TCPSConn, kind int8)
+	OnOutput(conn *TCPSConn, kind int8)
 }
 
 // TCPSFilter_

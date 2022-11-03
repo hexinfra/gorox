@@ -340,7 +340,7 @@ func (a *App) reviserByID(id uint8) Reviser { // for fast searching
 	return a.revisersByID[id]
 }
 
-func (a *App) dispatchNormal(req Request, resp Response) {
+func (a *App) dispatchHandler(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
@@ -359,7 +359,7 @@ func (a *App) dispatchNormal(req Request, resp Response) {
 	// If we reach here, it means the stream is not processed by any rule in this app.
 	resp.SendNotFound(a.bytes404)
 }
-func (a *App) dispatchSocket(req Request, sock Socket) {
+func (a *App) dispatchSocklet(req Request, sock Socket) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -372,6 +372,9 @@ func (a *App) dispatchSocket(req Request, sock Socket) {
 	// If we reach here, it means the socket is not processed by any rule in this app.
 	sock.Close()
 }
+
+// Handle is a function which can handle http request and gives http response.
+type Handle func(req Request, resp Response)
 
 // Handler component handles the incoming request and gives an outgoing response if the request is handled.
 type Handler interface {
@@ -390,9 +393,6 @@ type Handler_ struct {
 
 func (h *Handler_) IsProxy() bool { return false } // override this for proxy handlers
 func (h *Handler_) IsCache() bool { return false } // override this for cache handlers
-
-// Handle is a function which can handle http request and gives http response.
-type Handle func(req Request, resp Response)
 
 // Reviser component revises the outgoing response.
 type Reviser interface {

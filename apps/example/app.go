@@ -64,7 +64,7 @@ func (h *exampleHandler) OnShutdown() {
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
-	if handle := h.mapper.dispatch(req); handle != nil {
+	if handle := h.mapper.findHandle(req); handle != nil {
 		handle(req, resp)
 	} else { // 404
 		resp.SendNotFound(nil)
@@ -108,7 +108,7 @@ func (m *exampleMapper) POST(pattern string, handle Handle) {
 	m.posts[pattern] = handle
 }
 
-func (m *exampleMapper) dispatch(req Request) Handle {
+func (m *exampleMapper) findHandle(req Request) Handle {
 	if path := req.Path(); req.IsGET() {
 		return m.gets[path]
 	} else if req.IsPOST() {

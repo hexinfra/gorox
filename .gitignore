@@ -19,6 +19,7 @@
 *.mine
 
 .idea
+.vscode
 .DS_Store
 desktop.ini
 
@@ -29,7 +30,7 @@ desktop.ini
 /vendor
 
 /gomake
-/derox
 /goben
 /gocmc
+/godev
 /gorox

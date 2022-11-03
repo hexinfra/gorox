@@ -3,13 +3,13 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Derox server (leader & worker(s)) and its control agent.
+// Godev server (leader & worker(s)) and its control agent.
 
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/derox/apps/derox"
-	_ "github.com/hexinfra/gorox/cmds/derox/svcs/derox"
+	_ "github.com/hexinfra/gorox/cmds/godev/apps/godev"
+	_ "github.com/hexinfra/gorox/cmds/godev/svcs/godev"
 )
 
 import ( // all contrib components
@@ -51,10 +51,10 @@ import ( // all contrib components
 import "github.com/hexinfra/gorox/hemi/manager"
 
 const usage = `
-Derox (%s)
+Godev (%s)
 ================================================================================
 
-  derox [ACTION] [OPTIONS]
+  godev [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -81,5 +81,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("derox", usage, manager.ProcModeDevelop, "127.0.0.1:9526")
+	manager.Main("godev", usage, manager.ProcModeDevelop, "127.0.0.1:9526")
 }

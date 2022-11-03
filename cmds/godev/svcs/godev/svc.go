@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package derox
+package godev
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {
-	RegisterSvcInit("derox", func(svc *Svc) error {
+	RegisterSvcInit("godev", func(svc *Svc) error {
 		/*
 			ss := svc.GRPCServers()
 			for _, s := range ss {

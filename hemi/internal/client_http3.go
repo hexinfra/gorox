@@ -17,11 +17,56 @@ import (
 )
 
 func init() {
+	registerFixture(signHTTP3)
 	registerBackend("http3Backend", func(name string, stage *Stage) backend {
 		b := new(HTTP3Backend)
 		b.init(name, stage)
 		return b
 	})
+}
+
+const signHTTP3 = "http3"
+
+func createHTTP3(stage *Stage) *HTTP3Outgate {
+	http3 := new(HTTP3Outgate)
+	http3.init(stage)
+	http3.setShell(http3)
+	return http3
+}
+
+// HTTP3Outgate
+type HTTP3Outgate struct {
+	// Mixins
+	httpOutgate_
+	// States
+}
+
+func (f *HTTP3Outgate) init(stage *Stage) {
+	f.httpOutgate_.init(signHTTP3, stage)
+}
+
+func (f *HTTP3Outgate) OnConfigure() {
+	f.httpOutgate_.onConfigure()
+}
+func (f *HTTP3Outgate) OnPrepare() {
+	f.httpOutgate_.onPrepare()
+}
+func (f *HTTP3Outgate) OnShutdown() {
+	f.httpOutgate_.onShutdown()
+}
+
+func (f *HTTP3Outgate) run() { // blocking
+	for {
+		time.Sleep(time.Second)
+	}
+}
+
+func (f *HTTP3Outgate) FetchConn(address string) (*H3Conn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *HTTP3Outgate) StoreConn(conn *H3Conn) {
+	// TODO
 }
 
 // HTTP3Backend

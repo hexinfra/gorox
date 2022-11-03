@@ -21,11 +21,58 @@ type udpsClient interface {
 }
 
 func init() {
+	registerFixture(signUDPS)
 	registerBackend("udpsBackend", func(name string, stage *Stage) backend {
 		b := new(UDPSBackend)
 		b.init(name, stage)
 		return b
 	})
+}
+
+const signUDPS = "udps"
+
+func createUDPS(stage *Stage) *UDPSOutgate {
+	udps := new(UDPSOutgate)
+	udps.init(stage)
+	udps.setShell(udps)
+	return udps
+}
+
+// UDPSOutgate component.
+type UDPSOutgate struct {
+	// Mixins
+	outgate_
+	// States
+}
+
+func (f *UDPSOutgate) init(stage *Stage) {
+	f.outgate_.init(signUDPS, stage)
+}
+
+func (f *UDPSOutgate) OnConfigure() {
+	f.outgate_.onConfigure()
+}
+func (f *UDPSOutgate) OnPrepare() {
+	f.outgate_.onPrepare()
+}
+func (f *UDPSOutgate) OnShutdown() {
+	f.outgate_.onShutdown()
+}
+
+func (f *UDPSOutgate) run() { // blocking
+	// TODO
+}
+
+func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*UConn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UDPSOutgate) FetchConn(address string, tlsMode bool) (*UConn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UDPSOutgate) StoreConn(conn *UConn) {
+	// TODO
 }
 
 // UDPSBackend component.

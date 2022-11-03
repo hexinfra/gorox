@@ -21,11 +21,61 @@ type unixClient interface {
 }
 
 func init() {
+	registerFixture(signUnix)
 	registerBackend("unixBackend", func(name string, stage *Stage) backend {
 		b := new(UnixBackend)
 		b.init(name, stage)
 		return b
 	})
+}
+
+const signUnix = "unix"
+
+func createUnix(stage *Stage) *UnixOutgate {
+	unix := new(UnixOutgate)
+	unix.init(stage)
+	unix.setShell(unix)
+	return unix
+}
+
+// UnixOutgate component.
+type UnixOutgate struct {
+	// Mixins
+	outgate_
+	streamHolder_
+	// States
+}
+
+func (f *UnixOutgate) init(stage *Stage) {
+	f.outgate_.init(signUnix, stage)
+}
+
+func (f *UnixOutgate) OnConfigure() {
+	f.outgate_.onConfigure()
+	// maxStreamsPerConn
+	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+}
+func (f *UnixOutgate) OnPrepare() {
+	f.outgate_.onPrepare()
+}
+func (f *UnixOutgate) OnShutdown() {
+	f.outgate_.onShutdown()
+}
+
+func (f *UnixOutgate) run() { // blocking
+	// TODO
+}
+
+func (f *UnixOutgate) Dial(address string) (*XConn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UnixOutgate) FetchConn(address string) (*XConn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UnixOutgate) StoreConn(conn *XConn) {
+	// TODO
 }
 
 // UnixBackend component.

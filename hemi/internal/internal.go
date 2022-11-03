@@ -330,18 +330,6 @@ type Optware_ struct {
 	Component_
 }
 
-// outgate_ is a mixin for outgates.
-type outgate_ struct {
-	// Mixins
-	client_
-	// States
-}
-
-func (f *outgate_) init(name string, stage *Stage) {
-	f.client_.init(name, stage)
-	// other states
-}
-
 // Stater component is the interface to storages of HTTP states. See RFC 6265.
 type Stater interface {
 	Component

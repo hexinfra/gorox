@@ -76,6 +76,18 @@ func (c *client_) nextConnID() int64 {
 	return c.connID.Add(1)
 }
 
+// outgate_ is a mixin for outgates.
+type outgate_ struct {
+	// Mixins
+	client_
+	// States
+}
+
+func (f *outgate_) init(name string, stage *Stage) {
+	f.client_.init(name, stage)
+	// other states
+}
+
 // backend is a group of nodes.
 type backend interface {
 	Component

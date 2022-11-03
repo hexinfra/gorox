@@ -20,7 +20,7 @@ import (
 // poolBlock
 var poolBlock sync.Pool
 
-func GetBlock() *Block { // only exported to hemi, to be used by changers and revisers.
+func GetBlock() *Block { // only exported to hemi, to be used by revisers.
 	if x := poolBlock.Get(); x == nil {
 		block := new(Block)
 		block.pool = true // other blocks are not pooled.
@@ -163,7 +163,7 @@ func (b *Block) File() *os.File {
 	return b.file
 }
 
-func (b *Block) ToBlob() error { // used by changers and revisers
+func (b *Block) ToBlob() error { // used by revisers
 	if b.IsBlob() {
 		return nil
 	}

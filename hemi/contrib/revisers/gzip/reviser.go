@@ -54,6 +54,21 @@ func (r *gzipReviser) OnShutdown() {
 
 func (r *gzipReviser) Rank() int8 { return RankGzip }
 
+func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // identity
+	// TODO
+}
+
+func (r *gzipReviser) BeforePull(req Request, resp Response) { // chunked
+	// TODO
+}
+func (r *gzipReviser) FinishPull(req Request, resp Response) { // chunked
+	// TODO
+}
+
+func (r *gzipReviser) Change(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
+
 func (r *gzipReviser) BeforeSend(req Request, resp Response) { // identity
 	// TODO
 }

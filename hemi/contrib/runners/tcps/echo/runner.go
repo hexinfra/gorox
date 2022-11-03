@@ -45,11 +45,11 @@ func (r *echoRunner) OnShutdown() {
 func (r *echoRunner) Process(conn *TCPSConn) (next bool) {
 	p := make([]byte, 4096)
 	for {
-		n, err := conn.Read(p) // filters
+		n, err := conn.Read(p)
 		if err != nil {
 			break
 		}
-		conn.Write(p[:n]) // editors
+		conn.Write(p[:n])
 	}
 	return
 }

@@ -413,7 +413,7 @@ type Request interface {
 	delHopTrailers()
 	useTrailer(trailer *pair) bool
 	getSaveContentFilesDir() string
-	hookChanger(changer Changer)
+	hookReviser(reviser Reviser)
 	unsafeVariable(index int16) []byte
 }
 
@@ -483,8 +483,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 		ifModifiedSince   uint8 // if-modified-since header ->r.input
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
-	changers     [32]uint8 // changer ids which will apply on this request. indexed by changer order
-	hasChangers  bool      // are there any changers hooked on this request?
+	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
+	hasRevisers  bool      // are there any revisers hooked on this request?
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formBuffer
@@ -2340,9 +2340,9 @@ func (r *httpRequest_) getSaveContentFilesDir() string {
 	return r.app.saveContentFilesDir // must ends with '/'
 }
 
-func (r *httpRequest_) hookChanger(changer Changer) {
-	r.hasChangers = true
-	r.changers[changer.Rank()] = changer.ID() // changers are placed to fixed position, by their ranks.
+func (r *httpRequest_) hookReviser(reviser Reviser) {
+	r.hasRevisers = true
+	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
 func (r *httpRequest_) unsafeVariable(index int16) []byte {

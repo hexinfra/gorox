@@ -15,7 +15,6 @@ import (
 import ( // all contrib components
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
-	_ "github.com/hexinfra/gorox/hemi/contrib/changers/gunzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/filters/tcps/mysql"

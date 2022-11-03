@@ -26,7 +26,6 @@ var ( // core funcs
 	RegisterCacher     = internal.RegisterCacher
 	RegisterAppInit    = internal.RegisterAppInit
 	RegisterHandler    = internal.RegisterHandler
-	RegisterChanger    = internal.RegisterChanger
 	RegisterReviser    = internal.RegisterReviser
 	RegisterSocklet    = internal.RegisterSocklet
 	RegisterSvcInit    = internal.RegisterSvcInit
@@ -130,7 +129,6 @@ type ( // core types
 	App      = internal.App
 	Handler  = internal.Handler
 	Handle   = internal.Handle
-	Changer  = internal.Changer
 	Reviser  = internal.Reviser
 	Socklet  = internal.Socklet
 	Rule     = internal.Rule
@@ -162,7 +160,6 @@ type ( // core mixins
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_
 	Handler_    = internal.Handler_
-	Changer_    = internal.Changer_
 	Reviser_    = internal.Reviser_
 	Socklet_    = internal.Socklet_
 	Cronjob_    = internal.Cronjob_

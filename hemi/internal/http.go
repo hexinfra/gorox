@@ -1876,7 +1876,7 @@ var ( // http outgoing message errors
 /*
 
 --http[1-3]Stream-->                        ----H[1-3]Stream--->
-[CHANGERS]      ^    -------pass/post----->                 ^
+[REVISERS]      ^    -------pass/post----->                 ^
                 |                                           |
 httpInMessage_  | stream                    httpOutMessage_ | stream
 ^ - stream -----+                           ^ - stream -----+

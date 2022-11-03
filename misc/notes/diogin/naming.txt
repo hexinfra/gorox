@@ -32,7 +32,6 @@ COMPONENTS
     cacher (localCacher, redisCacher, ...)
     app [*]
       handler (hello, static, ...)
-      changer (gunzip, ...)
       reviser (gzip, header, ...)
       socklet (hello, ...)
       rule [*]

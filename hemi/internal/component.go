@@ -151,7 +151,6 @@ var ( // global maps, shared between stages
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
-	changerCreators    = make(map[string]func(name string, stage *Stage, app *App) Changer)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
@@ -201,9 +200,6 @@ func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) 
 func RegisterHandler(sign string, create func(name string, stage *Stage, app *App) Handler) {
 	registerComponent1(sign, compHandler, handlerCreators, create)
 }
-func RegisterChanger(sign string, create func(name string, stage *Stage, app *App) Changer) {
-	registerComponent1(sign, compChanger, changerCreators, create)
-}
 func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
 	registerComponent1(sign, compReviser, reviserCreators, create)
 }
@@ -236,7 +232,7 @@ func registerComponent0[T Component](sign string, comp int16, creators map[strin
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, changer, reviser, socklet
+func registerComponent1[T, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {

@@ -48,6 +48,21 @@ func (r *wrapReviser) OnShutdown() {
 
 func (r *wrapReviser) Rank() int8 { return r.rank }
 
+func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // identity
+	// TODO
+}
+
+func (r *wrapReviser) BeforePull(req Request, resp Response) { // chunked
+	// TODO
+}
+func (r *wrapReviser) FinishPull(req Request, resp Response) { // chunked
+	// TODO
+}
+
+func (r *wrapReviser) Change(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
+
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // identity
 	// TODO
 }

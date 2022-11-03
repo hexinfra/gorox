@@ -48,7 +48,6 @@ type App struct {
 	stater   Stater            // the stater which is used by this app
 	servers  []httpServer      // linked http servers. may be empty
 	handlers compDict[Handler] // defined handlers. indexed by name
-	changers compDict[Changer] // defined changers. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
 	rules    compList[*Rule]   // defined rules. the order must be kept, so we use list. TODO: use ordered map?
@@ -72,9 +71,7 @@ type App struct {
 	accessLogger         *logger.Logger    // app access logger
 	errorLogger          *logger.Logger    // app error logger
 	bytes404             []byte            // bytes of the default 404 file
-	changersByID         [256]Changer      // for fast searching. position 0 is not used
 	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
-	nChangers            uint8             // used number of changersByID in this app
 	nRevisers            uint8             // used number of revisersByID in this app
 }
 
@@ -82,10 +79,8 @@ func (a *App) init(name string, stage *Stage) {
 	a.SetName(name)
 	a.stage = stage
 	a.handlers = make(compDict[Handler])
-	a.changers = make(compDict[Changer])
 	a.revisers = make(compDict[Reviser])
 	a.socklets = make(compDict[Socklet])
-	a.nChangers = 1 // position 0 is not used
 	a.nRevisers = 1 // position 0 is not used
 }
 
@@ -185,7 +180,6 @@ func (a *App) OnConfigure() {
 
 	// sub components
 	a.handlers.walk(Handler.OnConfigure)
-	a.changers.walk(Changer.OnConfigure)
 	a.revisers.walk(Reviser.OnConfigure)
 	a.socklets.walk(Socklet.OnConfigure)
 	a.rules.walk((*Rule).OnConfigure)
@@ -206,7 +200,6 @@ func (a *App) OnPrepare() {
 
 	// sub components
 	a.handlers.walk(Handler.OnPrepare)
-	a.changers.walk(Changer.OnPrepare)
 	a.revisers.walk(Reviser.OnPrepare)
 	a.socklets.walk(Socklet.OnPrepare)
 	a.rules.walk((*Rule).OnPrepare)
@@ -216,7 +209,6 @@ func (a *App) OnShutdown() {
 	a.rules.walk((*Rule).OnShutdown)
 	a.socklets.walk(Socklet.OnShutdown)
 	a.revisers.walk(Reviser.OnShutdown)
-	a.changers.walk(Changer.OnShutdown)
 	a.handlers.walk(Handler.OnShutdown)
 
 	// TODO: shutdown a
@@ -239,27 +231,6 @@ func (a *App) createHandler(sign string, name string) Handler {
 	handler.setShell(handler)
 	a.handlers[name] = handler
 	return handler
-}
-func (a *App) createChanger(sign string, name string) Changer {
-	if a.nChangers == 255 {
-		UseExitln("cannot create changer: too many changers in one app")
-	}
-	if a.Changer(name) != nil {
-		UseExitln("conflicting changer with a same name in app")
-	}
-	creatorsLock.RLock()
-	defer creatorsLock.RUnlock()
-	create, ok := changerCreators[sign]
-	if !ok {
-		UseExitln("unknown changer sign: " + sign)
-	}
-	changer := create(name, a.stage, a)
-	changer.setShell(changer)
-	changer.setID(a.nChangers)
-	a.changers[name] = changer
-	a.changersByID[a.nChangers] = changer
-	a.nChangers++
-	return changer
 }
 func (a *App) createReviser(sign string, name string) Reviser {
 	if a.nRevisers == 255 {
@@ -312,7 +283,6 @@ func (a *App) createRule(name string) *Rule {
 }
 
 func (a *App) Handler(name string) Handler { return a.handlers[name] }
-func (a *App) Changer(name string) Changer { return a.changers[name] }
 func (a *App) Reviser(name string) Reviser { return a.revisers[name] }
 func (a *App) Socklet(name string) Socklet { return a.socklets[name] }
 
@@ -366,9 +336,6 @@ func (a *App) start() {
 	// TODO: wait for shutdown?
 }
 
-func (a *App) changerByID(id uint8) Changer { // for fast searching
-	return a.changersByID[id]
-}
 func (a *App) reviserByID(id uint8) Reviser { // for fast searching
 	return a.revisersByID[id]
 }
@@ -427,12 +394,12 @@ func (h *Handler_) IsCache() bool { return false } // override this for cache ha
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Changer component changes the incoming request.
-type Changer interface {
+// Reviser component revises the outgoing response.
+type Reviser interface {
 	Component
 	ider
 
-	Rank() int8 // 0-31 (with 0-15 for fixed, 16-31 for user)
+	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
 
 	BeforeRecv(req Request, resp Response) // for identity content
 
@@ -440,22 +407,6 @@ type Changer interface {
 	FinishPull(req Request, resp Response) // for chunked content
 
 	Change(req Request, resp Response, chain Chain) Chain
-}
-
-// Changer_ is the mixin for all changers.
-type Changer_ struct {
-	// Mixins
-	Component_
-	ider_
-	// States
-}
-
-// Reviser component revises the outgoing response.
-type Reviser interface {
-	Component
-	ider
-
-	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
 
 	BeforeSend(req Request, resp Response) // for identity content
 
@@ -496,7 +447,6 @@ type Rule struct {
 	// Assocs
 	app      *App      // belonging app
 	handlers []Handler // handlers in this rule
-	changers []Changer // changers in this rule
 	revisers []Reviser // revisers in this rule
 	socklets []Socklet // socklets in this rule
 	// States
@@ -567,23 +517,6 @@ func (r *Rule) OnConfigure() {
 			UseExitln("invalid handler names")
 		}
 	}
-	// changers
-	if v, ok := r.Find("changers"); ok {
-		if len(r.changers) != 0 {
-			UseExitln("specifying changers is not allowed while there are literal changers")
-		}
-		if names, ok := v.StringList(); ok {
-			for _, name := range names {
-				if changer := r.app.Changer(name); changer != nil {
-					r.changers = append(r.changers, changer)
-				} else {
-					UseExitf("changer '%s' does not exist\n", name)
-				}
-			}
-		} else {
-			UseExitln("invalid changer names")
-		}
-	}
 	// revisers
 	if v, ok := r.Find("revisers"); ok {
 		if len(r.revisers) != 0 {
@@ -628,7 +561,6 @@ func (r *Rule) OnShutdown() {
 }
 
 func (r *Rule) addHandler(handler Handler) { r.handlers = append(r.handlers, handler) }
-func (r *Rule) addChanger(changer Changer) { r.changers = append(r.changers, changer) }
 func (r *Rule) addReviser(reviser Reviser) { r.revisers = append(r.revisers, reviser) }
 func (r *Rule) addSocklet(socklet Socklet) { r.socklets = append(r.socklets, socklet) }
 
@@ -813,9 +745,9 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 			// TODO: other general checks against origin server
 		}
 	}
-	// Hook changers on request. When receiving request content, these changers will be executed.
-	for _, changer := range r.changers {
-		req.hookChanger(changer)
+	// Hook revisers on request. When receiving request content, these revisers will be executed.
+	for _, reviser := range r.revisers {
+		req.hookReviser(reviser)
 	}
 	// Hook revisers on response. When sending response content, these revisers will be executed.
 	for _, reviser := range r.revisers {

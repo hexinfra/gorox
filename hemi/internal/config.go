@@ -40,20 +40,19 @@ const ( // comp list. if you change this list, change compNames too.
 	compOptware               // ...
 	compBackend               // TCPSBackend, HTTP1Backend, ...
 	compQUICRouter            // quicRouter
-	compQUICRunner            // ...
+	compQUICRunner            // quicRelay, ...
 	compQUICFilter            // ...
 	compTCPSRouter            // tcpsRouter
-	compTCPSRunner            // ...
+	compTCPSRunner            // tcpsRelay, ...
 	compTCPSFilter            // ...
 	compUDPSRouter            // udpsRouter
-	compUDPSRunner            // ...
+	compUDPSRunner            // udpsRelay, ...
 	compUDPSFilter            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
 	compApp                   // app
 	compHandler               // helloHandler, static, ...
-	compChanger               // gunzipChanger, ...
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
@@ -81,7 +80,6 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compCacher:     "cacher",     // dynamic
 	compApp:        "app",        // static
 	compHandler:    "handler",    // dynamic
-	compChanger:    "changer",    // dynamic
 	compReviser:    "reviser",    // dynamic
 	compSocklet:    "socklet",    // dynamic
 	compRule:       "rule",       // static
@@ -585,8 +583,6 @@ func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 			switch current.Text {
 			case "handlers":
 				c.parseContainer2(app, compHandler, c.parseHandler, current.Text)
-			case "changers":
-				c.parseContainer2(app, compChanger, c.parseChanger, current.Text)
 			case "revisers":
 				c.parseContainer2(app, compReviser, c.parseReviser, current.Text)
 			case "socklets":
@@ -599,7 +595,7 @@ func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 		}
 	}
 }
-func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign Token, app *App, rule *Rule), compName string) { // handlers, changers, revisers, socklets {}
+func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign Token, app *App, rule *Rule), compName string) { // handlers, revisers, socklets {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -616,16 +612,13 @@ func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign 
 func (c *config) parseHandler(sign Token, app *App, rule *Rule) { // xxxHandler <name> {}, xxxHandler {}
 	parseComponent2(c, sign, app, app.createHandler, rule, rule.addHandler)
 }
-func (c *config) parseChanger(sign Token, app *App, rule *Rule) { // xxxChanger <name> {}, xxxChanger {}
-	parseComponent2(c, sign, app, app.createChanger, rule, rule.addChanger)
-}
 func (c *config) parseReviser(sign Token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
 	parseComponent2(c, sign, app, app.createReviser, rule, rule.addReviser)
 }
 func (c *config) parseSocklet(sign Token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
 }
-func parseComponent2[T Component](c *config, sign Token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handler, changer, reviser, socklet
+func parseComponent2[T Component](c *config, sign Token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handler, reviser, socklet
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text
@@ -682,8 +675,6 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		switch current.Info {
 		case compHandler:
 			c.parseHandler(current, app, rule)
-		case compChanger:
-			c.parseChanger(current, app, rule)
 		case compReviser:
 			c.parseReviser(current, app, rule)
 		case compSocklet:

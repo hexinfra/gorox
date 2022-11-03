@@ -338,11 +338,11 @@ type hResponse_ struct {
 	hResponse0_ // all values must be zero by default in this struct!
 }
 type hResponse0_ struct { // for fast reset, entirely
-	status           int16 // 200, 302, 404, ...
-	dateTime         int64 // parsed unix timestamp of date
-	lastModifiedTime int64 // parsed unix timestamp of last-modified
-	expiresTime      int64 // parsed unix timestamp of expires
-	cacheControl     struct {
+	status           int16    // 200, 302, 404, ...
+	dateTime         int64    // parsed unix timestamp of date
+	lastModifiedTime int64    // parsed unix timestamp of last-modified
+	expiresTime      int64    // parsed unix timestamp of expires
+	cacheControl     struct { // the cache-control info
 		noCache         bool  // ...
 		noStore         bool  // ...
 		noTransform     bool  // ...
@@ -354,7 +354,7 @@ type hResponse0_ struct { // for fast reset, entirely
 		maxAge          int32 // ...
 		sMaxAge         int32 // ...
 	}
-	indexes struct {
+	indexes struct { // indexes of some selected headers, for fast accessing
 		server       uint8 // server header ->r.input
 		date         uint8 // date header ->r.input
 		lastModified uint8 // last-modified header ->r.input
@@ -399,7 +399,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) useHeader(header *pair) bool {
-	headerName := r.input[header.nameFrom : header.nameFrom+int32(header.nameSize)]
+	headerName := header.nameAt(r.input)
 	if h := &httpMultipleResponseHeaderTable[httpMultipleResponseHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpMultipleResponseHeaderBytes[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
@@ -610,12 +610,12 @@ func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	return r.input[vETag.from:vETag.edge]
 }
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
-	r.delPrimeAt(r.indexes.server)
-	r.delPrimeAt(r.indexes.date)
-	r.delPrimeAt(r.indexes.lastModified)
-	r.delPrimeAt(r.indexes.etag)
-	r.delPrimeAt(r.iContentType)
-	r.delPrimeAt(r.iContentLength)
+	r.delPrime(r.indexes.server)
+	r.delPrime(r.indexes.date)
+	r.delPrime(r.indexes.lastModified)
+	r.delPrime(r.indexes.etag)
+	r.delPrime(r.iContentType)
+	r.delPrime(r.iContentLength)
 }
 
 func (r *hResponse_) HasContent() bool {

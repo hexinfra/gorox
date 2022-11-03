@@ -1299,12 +1299,12 @@ func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
 		p := r._getPlace(prime)
-		all = append(all, [2]string{string(p[prime.nameFrom : prime.nameFrom+int32(prime.nameSize)]), string(p[prime.value.from:prime.value.edge])})
+		all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 	}
 	if extraKind != extraKindNoExtra {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.isKind(extraKind) {
-				all = append(all, [2]string{string(r.array[extra.nameFrom : extra.nameFrom+int32(extra.nameSize)]), string(r.array[extra.value.from:extra.value.edge])})
+				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 			}
 		}
 	}
@@ -1338,7 +1338,7 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 	return
 }
 
-func (r *httpInMessage_) delPrimeAt(i uint8) {
+func (r *httpInMessage_) delPrime(i uint8) {
 	r.primes[i].zero()
 }
 
@@ -1459,7 +1459,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 			continue
 		}
 		p := r._getPlace(field)
-		fieldName := p[field.nameFrom : field.nameFrom+int32(field.nameSize)]
+		fieldName := field.nameAt(p)
 		if !withConnection && field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
 			continue
 		}
@@ -1469,7 +1469,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 	}
 	for i := 0; i < len(r.extras); i++ {
 		if extra := &r.extras[i]; extra.isKind(extraKind) {
-			fieldName := r.array[extra.nameFrom : extra.nameFrom+int32(extra.nameSize)]
+			fieldName := extra.nameAt(r.array)
 			if !withConnection && extra.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
 				continue
 			}

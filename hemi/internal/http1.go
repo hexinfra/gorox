@@ -487,7 +487,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 
 		// Copy trailer to r.array
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(r.bodyBuffer[trailer.nameFrom : trailer.nameFrom+int32(trailer.nameSize)]) {
+		if !r.shell.arrayCopy(trailer.nameAt(r.bodyBuffer)) {
 			return false
 		}
 		trailer.nameFrom = fore // adjust name from

@@ -325,6 +325,12 @@ type pair struct { // 16 bytes
 }
 
 func (p *pair) zero() { *p = pair{} }
+func (p *pair) nameAt(t []byte) []byte {
+	return t[p.nameFrom : p.nameFrom+int32(p.nameSize)]
+}
+func (p *pair) valueAt(t []byte) []byte {
+	return t[p.value.from:p.value.edge]
+}
 func (p *pair) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
 }

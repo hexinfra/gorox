@@ -343,7 +343,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 		maxStale     int32 // max-stale directive in cache-control
 		minFresh     int32 // min-fresh directive in cache-control
 	}
-	indexes struct { // indexes of some selected headers
+	indexes struct { // indexes of some selected headers, for fast accessing
 		host              uint8 // host header ->r.input
 		userAgent         uint8 // user-agent header ->r.input
 		ifRange           uint8 // if-range header ->r.input
@@ -630,7 +630,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 }
 
 func (r *httpRequest_) useHeader(header *pair) bool {
-	headerName := r.input[header.nameFrom : header.nameFrom+int32(header.nameSize)]
+	headerName := header.nameAt(r.input)
 	if h := &httpMultipleRequestHeaderTable[httpMultipleRequestHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpMultipleRequestHeaderBytes[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
@@ -718,7 +718,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 		// RFC 7230 (section 6.7):
 		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
 		for i := from; i < edge; i++ {
-			r.delPrimeAt(i) // we delete it.
+			r.delPrime(i) // we delete it.
 		}
 	}
 	return true
@@ -888,7 +888,7 @@ func (r *httpRequest_) checkExpect(header *pair, index uint8) bool {
 		if r.versionCode == Version1_0 {
 			// RFC 7231 (section 5.1.1):
 			// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-			r.delPrimeAt(index) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+			r.delPrime(index) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		} else {
 			r.expectContinue = true
 		}
@@ -945,7 +945,7 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	if r.methodCode != MethodGET {
-		r.delPrimeAt(index)
+		r.delPrime(index)
 		return true
 	}
 	if r.nRanges > 0 {
@@ -1426,15 +1426,15 @@ func (r *httpRequest_) checkHead() bool {
 			r.ifNoneMatch = 0
 		}
 		if r.indexes.ifModifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince)
+			r.delPrime(r.indexes.ifModifiedSince)
 			r.indexes.ifModifiedSince = 0
 		}
 		if r.indexes.ifUnmodifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifUnmodifiedSince)
+			r.delPrime(r.indexes.ifUnmodifiedSince)
 			r.indexes.ifUnmodifiedSince = 0
 		}
 		if r.indexes.ifRange != 0 {
-			r.delPrimeAt(r.indexes.ifRange)
+			r.delPrime(r.indexes.ifRange)
 			r.indexes.ifRange = 0
 		}
 	} else {
@@ -1443,12 +1443,12 @@ func (r *httpRequest_) checkHead() bool {
 		// received field value is not a valid HTTP-date, the field value has
 		// more than one member, or if the request method is neither GET nor HEAD.
 		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince) // we delete it.
+			r.delPrime(r.indexes.ifModifiedSince) // we delete it.
 			r.indexes.ifModifiedSince = 0
 		}
 		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
 		if r.indexes.ifRange != 0 && r.nRanges == 0 {
-			r.delPrimeAt(r.indexes.ifRange) // we delete it.
+			r.delPrime(r.indexes.ifRange) // we delete it.
 			r.indexes.ifRange = 0
 		}
 	}
@@ -1553,11 +1553,11 @@ func (r *httpRequest_) checkHead() bool {
 }
 
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	r.delPrimeAt(r.iContentType)
-	r.delPrimeAt(r.iContentLength)
+	r.delPrime(r.iContentType)
+	r.delPrime(r.iContentLength)
 }
 func (r *httpRequest_) delHost() { // used by proxies
-	r.delPrimeAt(r.indexes.host) // zero safe
+	r.delPrime(r.indexes.host) // zero safe
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally

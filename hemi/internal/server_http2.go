@@ -547,7 +547,7 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 				return false
 			}
 			field := http2StaticTable[I]
-			fmt.Printf("name=%s value=%s\n", http2BytesStatic[field.nameFrom:field.nameFrom+int32(field.nameSize)], http2BytesStatic[field.value.from:field.value.edge])
+			fmt.Printf("name=%s value=%s\n", field.nameAt(http2BytesStatic), field.valueAt(http2BytesStatic))
 		} else if b >= 1<<6 { // Literal Header Field with Incremental Indexing
 			I, j, ok = http2DecodeInteger(fields[i:], 6, 128)
 			if !ok {
@@ -557,7 +557,7 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 			i += j
 			if I != 0 { // Literal Header Field with Incremental Indexing — Indexed Name
 				field := http2StaticTable[I]
-				N = http2BytesStatic[field.nameFrom : field.nameFrom+int32(field.nameSize)]
+				N = field.nameAt(http2BytesStatic)
 			} else { // Literal Header Field with Incremental Indexing — New Name
 				N, j, ok = http2DecodeString(fields[i:])
 				if !ok {
@@ -594,7 +594,7 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 			i += j
 			if I != 0 { // Literal Header Field Never Indexed — Indexed Name
 				field := http2StaticTable[I]
-				N = http2BytesStatic[field.nameFrom : field.nameFrom+int32(field.nameSize)]
+				N = field.nameAt(http2BytesStatic)
 			} else { // Literal Header Field Never Indexed — New Name
 				N, j, ok = http2DecodeString(fields[i:])
 				if !ok {

@@ -64,8 +64,10 @@ func (h *httpProxy_) onConfigure(c Component) {
 	}
 }
 func (h *httpProxy_) onPrepare(c Component) {
+	h.proxy_.onPrepare(c)
 }
 func (h *httpProxy_) onShutdown(c Component) {
+	h.proxy_.onShutdown(c)
 }
 
 func (h *httpProxy_) IsProxy() bool { return true }

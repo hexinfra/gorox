@@ -38,13 +38,13 @@ type Stage struct {
 	clock       *clockFixture         // for fast accessing
 	filesys     *filesysFixture       // for fast accessing
 	resolv      *resolvFixture        // for fast accessing
+	http1       *HTTP1Outgate         // for fast accessing
+	http2       *HTTP2Outgate         // for fast accessing
+	http3       *HTTP3Outgate         // for fast accessing
 	quic        *QUICOutgate          // for fast accessing
 	tcps        *TCPSOutgate          // for fast accessing
 	udps        *UDPSOutgate          // for fast accessing
 	unix        *UnixOutgate          // for fast accessing
-	http1       *HTTP1Outgate         // for fast accessing
-	http2       *HTTP2Outgate         // for fast accessing
-	http3       *HTTP3Outgate         // for fast accessing
 	fixtures    compDict[fixture]     // indexed by sign
 	optwares    compDict[Optware]     // indexed by sign
 	backends    compDict[backend]     // indexed by backendName
@@ -78,25 +78,25 @@ func (s *Stage) init() {
 	s.clock = createClock(s)
 	s.filesys = createFilesys(s)
 	s.resolv = createResolv(s)
+	s.http1 = createHTTP1(s)
+	s.http2 = createHTTP2(s)
+	s.http3 = createHTTP3(s)
 	s.quic = createQUIC(s)
 	s.tcps = createTCPS(s)
 	s.udps = createUDPS(s)
 	s.unix = createUnix(s)
-	s.http1 = createHTTP1(s)
-	s.http2 = createHTTP2(s)
-	s.http3 = createHTTP3(s)
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFilesys] = s.filesys
 	s.fixtures[signResolv] = s.resolv
+	s.fixtures[signHTTP1] = s.http1
+	s.fixtures[signHTTP2] = s.http2
+	s.fixtures[signHTTP3] = s.http3
 	s.fixtures[signQUIC] = s.quic
 	s.fixtures[signTCPS] = s.tcps
 	s.fixtures[signUDPS] = s.udps
 	s.fixtures[signUnix] = s.unix
-	s.fixtures[signHTTP1] = s.http1
-	s.fixtures[signHTTP2] = s.http2
-	s.fixtures[signHTTP3] = s.http3
 
 	s.optwares = make(compDict[Optware])
 	s.backends = make(compDict[backend])
@@ -244,13 +244,13 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
+func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
+func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
+func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
 func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
 func (s *Stage) TCPS() *TCPSOutgate                 { return s.tcps }
 func (s *Stage) UDPS() *UDPSOutgate                 { return s.udps }
 func (s *Stage) Unix() *UnixOutgate                 { return s.unix }
-func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
-func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
-func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
 func (s *Stage) Optware(sign string) Optware        { return s.optwares[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
@@ -620,6 +620,7 @@ func (s *Stage) prepare() (err error) {
 	s.OnPrepare()
 	return nil
 }
+
 func (s *Stage) Shutdown() {
 	// TODO
 	s.Logln("stage shutdown")

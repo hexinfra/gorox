@@ -26,7 +26,7 @@ func init() {
 	})
 }
 
-const signHTTP2 = "http2"
+const signHTTP2 = "h2"
 
 func createHTTP2(stage *Stage) *HTTP2Outgate {
 	http2 := new(HTTP2Outgate)

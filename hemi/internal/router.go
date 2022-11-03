@@ -152,8 +152,12 @@ func (c *case_[T, R, F]) OnPrepare() {
 func (c *case_[T, R, F]) OnShutdown() {
 }
 
-func (c *case_[T, R, F]) addRunner(runner R) { c.runners = append(c.runners, runner) }
-func (c *case_[T, R, F]) addFilter(filter F) { c.filters = append(c.filters, filter) }
+func (c *case_[T, R, F]) addRunner(runner R) {
+	c.runners = append(c.runners, runner)
+}
+func (c *case_[T, R, F]) addFilter(filter F) {
+	c.filters = append(c.filters, filter)
+}
 
 func (c *case_[T, R, F]) equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {

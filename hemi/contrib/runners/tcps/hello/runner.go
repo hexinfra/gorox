@@ -44,5 +44,6 @@ func (r *helloRunner) OnShutdown() {
 
 func (r *helloRunner) Process(conn *TCPSConn) (next bool) {
 	conn.Write([]byte("hello, world"))
+	conn.Close()
 	return
 }

@@ -398,7 +398,7 @@ func (g *Gate_) ReachLimit() bool {
 	return g.numConns.Add(1) > g.maxConns
 }
 
-// proxy_ is a mixin for relays and proxies.
+// proxy_ is a mixin for proxies.
 type proxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage

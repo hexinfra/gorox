@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// http3Proxy handler adapts and passes requests to backend HTTP/3 servers and cache responses.
+// http3Proxy handler passes requests to backend HTTP/3 servers and cache responses.
 type http3Proxy struct {
 	// Mixins
 	httpProxy_

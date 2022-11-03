@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// http2Proxy handler adapts and passes requests to backend HTTP/2 servers and cache responses.
+// http2Proxy handler passes requests to backend HTTP/2 servers and cache responses.
 type http2Proxy struct {
 	// Mixins
 	httpProxy_

@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// http1Proxy handler adapts and passes requests to backend HTTP/1 servers and cache responses.
+// http1Proxy handler passes requests to backend HTTP/1 servers and cache responses.
 type http1Proxy struct {
 	// Mixins
 	httpProxy_

@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS relay runner implementation.
+// TCP/TLS proxy runner implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSRunner("tcpsRelay", func(name string, stage *Stage, router *TCPSRouter) TCPSRunner {
-		r := new(tcpsRelay)
+	RegisterTCPSRunner("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSRunner {
+		r := new(tcpsProxy)
 		r.init(name, stage, router)
 		return r
 	})
 }
 
-// tcpsRelay relays TCP/TLS connections to another TCP/TLS server.
-type tcpsRelay struct {
+// tcpsProxy passes TCP/TLS connections to another TCP/TLS server.
+type tcpsProxy struct {
 	// Mixins
 	TCPSRunner_
 	proxy_
@@ -25,22 +25,22 @@ type tcpsRelay struct {
 	// States
 }
 
-func (r *tcpsRelay) init(name string, stage *Stage, router *TCPSRouter) {
+func (r *tcpsProxy) init(name string, stage *Stage, router *TCPSRouter) {
 	r.SetName(name)
 	r.proxy_.init(stage)
 	r.router = router
 }
 
-func (r *tcpsRelay) OnConfigure() {
+func (r *tcpsProxy) OnConfigure() {
 	r.proxy_.onConfigure(r)
 }
-func (r *tcpsRelay) OnPrepare() {
+func (r *tcpsProxy) OnPrepare() {
 	r.proxy_.onPrepare(r)
 }
-func (r *tcpsRelay) OnShutdown() {
+func (r *tcpsProxy) OnShutdown() {
 	r.proxy_.onShutdown(r)
 }
 
-func (r *tcpsRelay) Process(conn *TCPSConn) (next bool) {
+func (r *tcpsProxy) Process(conn *TCPSConn) (next bool) {
 	return
 }

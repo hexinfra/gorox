@@ -324,6 +324,11 @@ type TCPSConn struct {
 	rawConn syscall.RawConn
 	arena   region
 	// Conn states (zeros)
+	tcpsConn0
+}
+type tcpsConn0 struct {
+	filters    [32]uint8
+	hasFilters bool
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -342,10 +347,21 @@ func (c *TCPSConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.arena.free()
+	c.tcpsConn0 = tcpsConn0{}
 }
 
-func (c *TCPSConn) Read(p []byte) (n int, err error)  { return c.netConn.Read(p) }
-func (c *TCPSConn) Write(p []byte) (n int, err error) { return c.netConn.Write(p) }
+func (c *TCPSConn) Read(p []byte) (n int, err error) {
+	if c.hasFilters {
+	} else {
+	}
+	return c.netConn.Read(p)
+}
+func (c *TCPSConn) Write(p []byte) (n int, err error) {
+	if c.hasFilters {
+	} else {
+	}
+	return c.netConn.Write(p)
+}
 
 func (c *TCPSConn) Close() error {
 	netConn := c.netConn

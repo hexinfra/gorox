@@ -560,9 +560,15 @@ func (r *Rule) OnPrepare() {
 func (r *Rule) OnShutdown() {
 }
 
-func (r *Rule) addHandler(handler Handler) { r.handlers = append(r.handlers, handler) }
-func (r *Rule) addReviser(reviser Reviser) { r.revisers = append(r.revisers, reviser) }
-func (r *Rule) addSocklet(socklet Socklet) { r.socklets = append(r.socklets, socklet) }
+func (r *Rule) addHandler(handler Handler) {
+	r.handlers = append(r.handlers, handler)
+}
+func (r *Rule) addReviser(reviser Reviser) {
+	r.revisers = append(r.revisers, reviser)
+}
+func (r *Rule) addSocklet(socklet Socklet) {
+	r.socklets = append(r.socklets, socklet)
+}
 
 func (r *Rule) isMatch(req Request) bool {
 	if r.general {

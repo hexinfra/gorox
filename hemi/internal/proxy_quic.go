@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC relay runner implementation.
+// QUIC proxy runner implementation.
 
 package internal
 
 func init() {
-	RegisterQUICRunner("quicRelay", func(name string, stage *Stage, router *QUICRouter) QUICRunner {
-		r := new(quicRelay)
+	RegisterQUICRunner("quicProxy", func(name string, stage *Stage, router *QUICRouter) QUICRunner {
+		r := new(quicProxy)
 		r.init(name, stage, router)
 		return r
 	})
 }
 
-// quicRelay relays QUIC connections to another QUIC server.
-type quicRelay struct {
+// quicProxy passes QUIC connections to another QUIC server.
+type quicProxy struct {
 	// Mixins
 	QUICRunner_
 	proxy_
@@ -25,22 +25,22 @@ type quicRelay struct {
 	// States
 }
 
-func (r *quicRelay) init(name string, stage *Stage, router *QUICRouter) {
+func (r *quicProxy) init(name string, stage *Stage, router *QUICRouter) {
 	r.SetName(name)
 	r.proxy_.init(stage)
 	r.router = router
 }
 
-func (r *quicRelay) OnConfigure() {
+func (r *quicProxy) OnConfigure() {
 	r.proxy_.onConfigure(r)
 }
-func (r *quicRelay) OnPrepare() {
+func (r *quicProxy) OnPrepare() {
 	r.proxy_.onPrepare(r)
 }
-func (r *quicRelay) OnShutdown() {
+func (r *quicProxy) OnShutdown() {
 	r.proxy_.onShutdown(r)
 }
 
-func (r *quicRelay) Process(conn *QUICConn, stream *QUICStream) (next bool) {
+func (r *quicProxy) Process(conn *QUICConn, stream *QUICStream) (next bool) {
 	return
 }

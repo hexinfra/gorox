@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI proxy handlers adapt and pass requests to backend FCGI servers and cache responses.
+// FCGI proxy handlers pass requests to backend FCGI servers and cache responses.
 
 package fcgi
 

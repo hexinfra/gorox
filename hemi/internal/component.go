@@ -144,13 +144,10 @@ var ( // global maps, shared between stages
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicRunnerCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICRunner)
 	quicFilterCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICFilter)
-	quicEditorCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICEditor)
 	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSRunner)
 	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSFilter)
-	tcpsEditorCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSEditor)
 	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSRunner)
 	udpsFilterCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSFilter)
-	udpsEditorCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSEditor)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
@@ -183,26 +180,17 @@ func RegisterQUICRunner(sign string, create func(name string, stage *Stage, rout
 func RegisterQUICFilter(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICFilter) {
 	registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
 }
-func RegisterQUICEditor(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICEditor) {
-	registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
-}
 func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSRunner) {
 	registerComponent1(sign, compTCPSRunner, tcpsRunnerCreators, create)
 }
 func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSFilter) {
 	registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
 }
-func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSEditor) {
-	registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
-}
 func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSRunner) {
 	registerComponent1(sign, compUDPSRunner, udpsRunnerCreators, create)
 }
 func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSFilter) {
 	registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
-}
-func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSEditor) {
-	registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
 	registerComponent0(sign, compStater, staterCreators, create)
@@ -248,7 +236,7 @@ func registerComponent0[T Component](sign string, comp int16, creators map[strin
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, editor, handler, changer, reviser, socklet
+func registerComponent1[T, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, changer, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {

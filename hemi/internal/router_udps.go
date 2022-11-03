@@ -19,7 +19,7 @@ import (
 // UDPSRouter
 type UDPSRouter struct {
 	// Mixins
-	router_[*UDPSRouter, *udpsGate, UDPSRunner, UDPSFilter, UDPSEditor]
+	router_[*UDPSRouter, *udpsGate, UDPSRunner, UDPSFilter]
 	// Assocs
 	cases compList[*udpsCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
@@ -29,7 +29,7 @@ type UDPSRouter struct {
 
 func (r *UDPSRouter) init(name string, stage *Stage) {
 	r.router_.init(name, stage)
-	r.router_.setCreators(udpsRunnerCreators, udpsFilterCreators, udpsEditorCreators)
+	r.router_.setCreators(udpsRunnerCreators, udpsFilterCreators)
 }
 
 func (r *UDPSRouter) OnConfigure() {
@@ -166,23 +166,10 @@ type UDPSFilter_ struct {
 	ider_
 }
 
-// UDPSEditor
-type UDPSEditor interface {
-	Component
-	ider
-	OnOutput(conn *UDPSConn, data []byte)
-}
-
-// UDPSEditor_
-type UDPSEditor_ struct {
-	Component_
-	ider_
-}
-
 // udpsCase
 type udpsCase struct {
 	// Mixins
-	case_[*UDPSRouter, UDPSRunner, UDPSFilter, UDPSEditor]
+	case_[*UDPSRouter, UDPSRunner, UDPSFilter]
 	// States
 	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
 }

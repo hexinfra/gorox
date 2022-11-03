@@ -42,15 +42,12 @@ const ( // comp list. if you change this list, change compNames too.
 	compQUICRouter            // quicRouter
 	compQUICRunner            // ...
 	compQUICFilter            // ...
-	compQUICEditor            // ...
 	compTCPSRouter            // tcpsRouter
 	compTCPSRunner            // ...
 	compTCPSFilter            // ...
-	compTCPSEditor            // ...
 	compUDPSRouter            // udpsRouter
 	compUDPSRunner            // ...
 	compUDPSFilter            // ...
-	compUDPSEditor            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
@@ -73,15 +70,12 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compQUICRouter: "quicRouter", // static
 	compQUICRunner: "quicRunner", // dynamic
 	compQUICFilter: "quicFilter", // dynamic
-	compQUICEditor: "quicEditor", // dynamic
 	compTCPSRouter: "tcpsRouter", // static
 	compTCPSRunner: "tcpsRunner", // dynamic
 	compTCPSFilter: "tcpsFilter", // dynamic
-	compTCPSEditor: "tcpsEditor", // dynamic
 	compUDPSRouter: "udpsRouter", // static
 	compUDPSRunner: "udpsRunner", // dynamic
 	compUDPSFilter: "udpsFilter", // dynamic
-	compUDPSEditor: "udpsEditor", // dynamic
 	compCase:       "case",       // static
 	compStater:     "stater",     // dynamic
 	compCacher:     "cacher",     // dynamic
@@ -307,8 +301,6 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 				parseContainer1(c, router, compQUICRunner, c.parseQUICRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compQUICFilter, c.parseQUICFilter, current.Text)
-			case "editors":
-				parseContainer1(c, router, compQUICEditor, c.parseQUICEditor, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseQUICCase)
 			default:
@@ -322,9 +314,6 @@ func (c *config) parseQUICRunner(sign Token, router *QUICRouter, kase *quicCase)
 }
 func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
-}
-func (c *config) parseQUICEditor(sign Token, router *QUICRouter, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
-	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 	routerName := c.ForwardExpect(TokenString)
@@ -347,8 +336,6 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 				parseContainer1(c, router, compTCPSRunner, c.parseTCPSRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compTCPSFilter, c.parseTCPSFilter, current.Text)
-			case "editors":
-				parseContainer1(c, router, compTCPSEditor, c.parseTCPSEditor, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseTCPSCase)
 			default:
@@ -362,9 +349,6 @@ func (c *config) parseTCPSRunner(sign Token, router *TCPSRouter, kase *tcpsCase)
 }
 func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
-}
-func (c *config) parseTCPSEditor(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
-	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 	routerName := c.ForwardExpect(TokenString)
@@ -387,8 +371,6 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 				parseContainer1(c, router, compUDPSRunner, c.parseUDPSRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compUDPSFilter, c.parseUDPSFilter, current.Text)
-			case "editors":
-				parseContainer1(c, router, compUDPSEditor, c.parseUDPSEditor, current.Text)
 			case "cases":
 				parseCases(c, router, c.parseUDPSCase)
 			default:
@@ -403,10 +385,7 @@ func (c *config) parseUDPSRunner(sign Token, router *UDPSRouter, kase *udpsCase)
 func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseUDPSEditor(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
-	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
-}
-func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // runners, filters, editors {}
+func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // runners, filters {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -419,7 +398,7 @@ func parseContainer1[R Component, C any](c *config, router R, comp int16, parseC
 		parseComponent(current, router, nil) // not in case
 	}
 }
-func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter, editor
+func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text

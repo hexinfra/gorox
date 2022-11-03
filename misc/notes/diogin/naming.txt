@@ -27,7 +27,6 @@ COMPONENTS
     router (tcpsRouter, udpsRouter, quicRouter)
       runner (...)
       filter (...)
-      editor (...)
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)

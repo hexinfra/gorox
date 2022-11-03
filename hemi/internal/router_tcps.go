@@ -23,7 +23,7 @@ import (
 // TCPSRouter
 type TCPSRouter struct {
 	// Mixins
-	router_[*TCPSRouter, *tcpsGate, TCPSRunner, TCPSFilter, TCPSEditor]
+	router_[*TCPSRouter, *tcpsGate, TCPSRunner, TCPSFilter]
 	// Assocs
 	cases compList[*tcpsCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
@@ -33,7 +33,7 @@ type TCPSRouter struct {
 
 func (r *TCPSRouter) init(name string, stage *Stage) {
 	r.router_.init(name, stage)
-	r.router_.setCreators(tcpsRunnerCreators, tcpsFilterCreators, tcpsEditorCreators)
+	r.router_.setCreators(tcpsRunnerCreators, tcpsFilterCreators)
 }
 
 func (r *TCPSRouter) OnConfigure() {
@@ -218,23 +218,10 @@ type TCPSFilter_ struct {
 	ider_
 }
 
-// TCPSEditor
-type TCPSEditor interface {
-	Component
-	ider
-	OnOutput(conn *TCPSConn, data []byte)
-}
-
-// TCPSEditor_
-type TCPSEditor_ struct {
-	Component_
-	ider_
-}
-
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSRouter, TCPSRunner, TCPSFilter, TCPSEditor]
+	case_[*TCPSRouter, TCPSRunner, TCPSFilter]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }

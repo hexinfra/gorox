@@ -37,9 +37,9 @@ TARGET
   Specify cmd name as TARGET. If TARGET is empty, the default target is gorox.
   Some special targets are:
 
+  all      # build all cmds
   clean    # clean binaries and temp files
   dist     # make distribution
-  all      # build all cmds
 `
 
 var (

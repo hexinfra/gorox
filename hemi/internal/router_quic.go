@@ -18,7 +18,7 @@ import (
 // QUICRouter
 type QUICRouter struct {
 	// Mixins
-	router_[*QUICRouter, *quicGate, QUICFilter]
+	router_[*QUICRouter, *quicGate, QUICRunner, QUICFilter]
 	// Assocs
 	cases compList[*quicCase] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
@@ -28,7 +28,7 @@ type QUICRouter struct {
 
 func (r *QUICRouter) init(name string, stage *Stage) {
 	r.router_.init(name, stage)
-	r.router_.setCreators(quicFilterCreators)
+	r.router_.setCreators(quicRunnerCreators, quicFilterCreators)
 }
 
 func (r *QUICRouter) OnConfigure() {
@@ -132,11 +132,22 @@ func (g *quicGate) justClose(quicConn *quix.Conn) {
 	g.onConnectionClosed()
 }
 
+// QUICRunner
+type QUICRunner interface {
+	Component
+	Process(conn *QUICConn, stream *QUICStream) (next bool)
+}
+
+// QUICRunner_
+type QUICRunner_ struct {
+	Component_
+}
+
 // QUICFilter
 type QUICFilter interface {
 	Component
 	ider
-	//OnInput(conn *QUICConn, data []byte) (next bool)
+	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 
 // QUICFilter_
@@ -148,7 +159,7 @@ type QUICFilter_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICRouter, QUICFilter]
+	case_[*QUICRouter, QUICRunner, QUICFilter]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }

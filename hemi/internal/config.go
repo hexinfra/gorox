@@ -40,10 +40,13 @@ const ( // comp list. if you change this list, change compNames too.
 	compOptware               // ...
 	compBackend               // TCPSBackend, HTTP1Backend, ...
 	compQUICRouter            // quicRouter
+	compQUICRunner            // ...
 	compQUICFilter            // ...
 	compTCPSRouter            // tcpsRouter
+	compTCPSRunner            // ...
 	compTCPSFilter            // ...
 	compUDPSRouter            // udpsRouter
+	compUDPSRunner            // ...
 	compUDPSFilter            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
@@ -65,10 +68,13 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compOptware:    "optware",    // dynamic
 	compBackend:    "backend",    // dynamic
 	compQUICRouter: "quicRouter", // static
+	compQUICRunner: "quicRunner", // dynamic
 	compQUICFilter: "quicFilter", // dynamic
 	compTCPSRouter: "tcpsRouter", // static
+	compTCPSRunner: "tcpsRunner", // dynamic
 	compTCPSFilter: "tcpsFilter", // dynamic
 	compUDPSRouter: "udpsRouter", // static
+	compUDPSRunner: "udpsRunner", // dynamic
 	compUDPSFilter: "udpsFilter", // dynamic
 	compCase:       "case",       // static
 	compStater:     "stater",     // dynamic
@@ -291,6 +297,8 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 			c.parseAssign(current, router)
 		} else {
 			switch current.Text {
+			case "runners":
+				parseContainer1(c, router, compQUICRunner, c.parseQUICRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compQUICFilter, c.parseQUICFilter, current.Text)
 			case "cases":
@@ -300,6 +308,9 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 			}
 		}
 	}
+}
+func (c *config) parseQUICRunner(sign Token, router *QUICRouter, kase *quicCase) { // qqqRunner <name> {}, qqqRunner {}
+	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
 }
 func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
@@ -321,6 +332,8 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 			c.parseAssign(current, router)
 		} else {
 			switch current.Text {
+			case "runners":
+				parseContainer1(c, router, compTCPSRunner, c.parseTCPSRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compTCPSFilter, c.parseTCPSFilter, current.Text)
 			case "cases":
@@ -330,6 +343,9 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 			}
 		}
 	}
+}
+func (c *config) parseTCPSRunner(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttRunner <name> {}, tttRunner {}
+	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
 }
 func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
@@ -351,6 +367,8 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 			c.parseAssign(current, router)
 		} else {
 			switch current.Text {
+			case "runners":
+				parseContainer1(c, router, compUDPSRunner, c.parseUDPSRunner, current.Text)
 			case "filters":
 				parseContainer1(c, router, compUDPSFilter, c.parseUDPSFilter, current.Text)
 			case "cases":
@@ -361,10 +379,13 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 		}
 	}
 }
+func (c *config) parseUDPSRunner(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuRunner <name> {}, uuuRunner {}
+	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
+}
 func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
 	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
 }
-func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // filters {}
+func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // runners, filters {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -377,7 +398,7 @@ func parseContainer1[R Component, C any](c *config, router R, comp int16, parseC
 		parseComponent(current, router, nil) // not in case
 	}
 }
-func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // filter
+func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text

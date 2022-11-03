@@ -3,44 +3,44 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS relay filter implementation.
+// UDP/DTLS relay runner implementation.
 
 package internal
 
 func init() {
-	RegisterUDPSFilter("udpsRelay", func(name string, stage *Stage, router *UDPSRouter) UDPSFilter {
-		f := new(udpsRelay)
-		f.init(name, stage, router)
-		return f
+	RegisterUDPSRunner("udpsRelay", func(name string, stage *Stage, router *UDPSRouter) UDPSRunner {
+		r := new(udpsRelay)
+		r.init(name, stage, router)
+		return r
 	})
 }
 
 // udpsRelay relays UDP/DTLS connections to another UDP/DTLS server.
 type udpsRelay struct {
 	// Mixins
-	UDPSFilter_
+	UDPSRunner_
 	proxy_
 	// Assocs
 	router *UDPSRouter
 	// States
 }
 
-func (f *udpsRelay) init(name string, stage *Stage, router *UDPSRouter) {
-	f.SetName(name)
-	f.proxy_.init(stage)
-	f.router = router
+func (r *udpsRelay) init(name string, stage *Stage, router *UDPSRouter) {
+	r.SetName(name)
+	r.proxy_.init(stage)
+	r.router = router
 }
 
-func (f *udpsRelay) OnConfigure() {
-	f.proxy_.onConfigure(f)
+func (r *udpsRelay) OnConfigure() {
+	r.proxy_.onConfigure(r)
 }
-func (f *udpsRelay) OnPrepare() {
-	f.proxy_.onPrepare(f)
+func (r *udpsRelay) OnPrepare() {
+	r.proxy_.onPrepare(r)
 }
-func (f *udpsRelay) OnShutdown() {
-	f.proxy_.onShutdown(f)
+func (r *udpsRelay) OnShutdown() {
+	r.proxy_.onShutdown(r)
 }
 
-func (f *udpsRelay) Process(conn *UDPSConn) (next bool) {
+func (r *udpsRelay) Process(conn *UDPSConn) (next bool) {
 	return
 }

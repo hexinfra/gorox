@@ -22,6 +22,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/optwares/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/head"
+	_ "github.com/hexinfra/gorox/hemi/contrib/runners/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"

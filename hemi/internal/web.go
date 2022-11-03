@@ -19,29 +19,6 @@ import (
 	"time"
 )
 
-// Stater component is the interface to storages of HTTP states. See RFC 6265.
-type Stater interface {
-	Component
-	Maintain() // blocking
-	Set(sid []byte, session *Session)
-	Get(sid []byte) (session *Session)
-	Del(sid []byte) bool
-}
-
-// Stater_
-type Stater_ struct {
-	// Mixins
-	Component_
-}
-
-// Session is an HTTP session
-type Session struct {
-	// TODO
-	sid  []byte
-	role int8
-	data any
-}
-
 // App is the application.
 type App struct {
 	// Mixins
@@ -375,6 +352,215 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 	}
 	// If we reach here, it means the socket is not processed by any rule in this app.
 	sock.Close()
+}
+
+// Request is the server-side HTTP request and is the interface for *http[1-3]Request.
+type Request interface {
+	PeerAddr() net.Addr
+	App() *App
+
+	VersionCode() uint8
+	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
+
+	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
+	IsHTTP() bool
+	IsHTTPS() bool
+	Scheme() string // http, https
+
+	MethodCode() uint32
+	Method() string
+	IsGET() bool
+	IsPOST() bool
+	IsPUT() bool
+	IsDELETE() bool
+
+	Authority() string // hostname[:port]
+	Hostname() string  // hostname
+	ColonPort() string // :port
+
+	URI() string         // /encodedPath?queryString
+	Path() string        // /path
+	EncodedPath() string // /encodedPath
+
+	QueryString() string // including '?' if query string exists
+	Q(name string) string
+	Qint(name string, defaultValue int) int
+	Query(name string) (value string, ok bool)
+	QueryList(name string) (list []string, ok bool)
+	Queries() (queries [][2]string)
+	HasQuery(name string) bool
+	AddQuery(name string, value string) bool
+	DelQuery(name string) (deleted bool)
+
+	H(name string) string
+	Header(name string) (value string, ok bool)
+	HeaderList(name string) (list []string, ok bool)
+	Headers() (headers [][2]string)
+	HasHeader(name string) bool
+	AddHeader(name string, value string) bool
+	DelHeader(name string) (deleted bool)
+
+	UserAgent() string
+	ContentType() string
+	ContentSize() int64
+	AcceptTrailers() bool
+
+	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
+	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
+
+	C(name string) string
+	Cookie(name string) (value string, ok bool)
+	CookieList(name string) (list []string, ok bool)
+	Cookies() (cookies [][2]string)
+	HasCookie(name string) bool
+	AddCookie(name string, value string) bool
+	DelCookie(name string) (deleted bool)
+
+	HasContent() bool                // contentSize=0 and contentSize=-2 are considered as true
+	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
+	Content() string
+
+	P(name string) string
+	Post(name string) (value string, ok bool)
+	PostList(name string) (list []string, ok bool)
+	Posts() (posts [][2]string)
+	HasPost(name string) bool
+
+	U(name string) *Upload
+	Upload(name string) (upload *Upload, ok bool)
+	UploadList(name string) (list []*Upload, ok bool)
+	Uploads() (uploads []*Upload)
+	HasUpload(name string) bool
+
+	T(name string) string
+	Trailer(name string) (value string, ok bool)
+	TrailerList(name string) (list []string, ok bool)
+	Trailers() (trailers [][2]string)
+	HasTrailer(name string) bool
+	AddTrailer(name string, value string) bool
+	DelTrailer(name string) (deleted bool)
+
+	// Unsafe
+	UnsafeMake(size int) []byte
+	UnsafeVersion() []byte
+	UnsafeScheme() []byte
+	UnsafeMethod() []byte
+	UnsafeAuthority() []byte
+	UnsafeHostname() []byte
+	UnsafeColonPort() []byte
+	UnsafeURI() []byte
+	UnsafePath() []byte
+	UnsafeEncodedPath() []byte
+	UnsafeQueryString() []byte
+	UnsafeQuery(name string) (value []byte, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
+	UnsafeUserAgent() []byte
+	UnsafeContentType() []byte
+	UnsafeContent() []byte
+	UnsafePost(name string) (value []byte, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
+
+	// Internal only
+	arrayCopy(p []byte) bool
+	isAbsoluteForm() bool
+	isServerOptions() bool
+	getPathInfo() system.FileInfo
+	unsafeAbsPath() []byte
+	makeAbsPath()
+	useHeader(header *pair) bool
+	delHost()
+	delCriticalHeaders()
+	delHopHeaders()
+	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	recvContent(retain bool) any
+	holdContent() any
+	readContent() (p []byte, err error)
+	hasTrailers() bool
+	delHopTrailers()
+	useTrailer(trailer *pair) bool
+	getSaveContentFilesDir() string
+	hookReviser(reviser Reviser)
+	unsafeVariable(index int16) []byte
+}
+
+// Response is the server-side HTTP response and is the interface for *http[1-3]Response.
+type Response interface {
+	Request() Request
+
+	SetStatus(status int16) error
+	Status() int16
+
+	AddContentType(contentType string) bool
+	SetLastModified(lastModified int64) bool
+	SetETag(etag string) bool
+	SetETagBytes(etag []byte) bool
+	SetAcceptBytesRange()
+	AddHTTPSRedirection(authority string) bool
+	AddHostnameRedirection(hostname string) bool
+	AddDirectoryRedirection() bool
+
+	AddCookie(cookie *Cookie) bool
+
+	AddHeader(name string, value string) bool
+	AddHeaderBytes(name string, value []byte) bool
+	AddHeaderByBytes(name []byte, value string) bool
+	AddHeaderBytesByBytes(name []byte, value []byte) bool
+	Header(name string) (value string, ok bool)
+	DelHeader(name string) bool
+	DelHeaderByBytes(name []byte) bool
+
+	IsSent() bool
+	SetMaxSendSeconds(seconds int64) // to defend against slowloris attack
+
+	Send(content string) error
+	SendBytes(content []byte) error
+	SendFile(contentPath string) error
+
+	SendBadRequest(content []byte) error
+	SendForbidden(content []byte) error
+	SendNotFound(content []byte) error
+	SendMethodNotAllowed(allow string, content []byte) error
+	SendInternalServerError(content []byte) error
+	SendNotImplemented(content []byte) error
+	SendBadGateway(content []byte) error
+	SendGatewayTimeout(content []byte) error
+
+	Push(chunk string) error
+	PushBytes(chunk []byte) error
+	PushFile(chunkPath string) error
+	AddTrailer(name string, value string) bool
+
+	// Internal only
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	delHeader(name []byte) bool
+	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
+	setConnectionClose()
+	sendBlob(content []byte) error
+	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
+	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
+	sendChain(chain Chain) error
+	pushHeaders() error
+	pushChain(chain Chain) error
+	addTrailer(name []byte, value []byte) bool
+	pass1xx(resp response) bool    // used by proxies
+	copyHead(resp response) bool   // used by proxies
+	pass(resp httpInMessage) error // used by proxies
+	finishChunked() error
+	post(content any, hasTrailers bool) error // used by proxies
+	finalizeChunked() error
+	hookReviser(reviser Reviser)
+	setBypassRevisers(bypass bool)
+	unsafeMake(size int) []byte
+}
+
+// Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.
+type Socket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
 }
 
 // Handle is a function which can handle http request and gives http response.
@@ -771,7 +957,7 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 	}
 	return false
 }
-func (r *Rule) executeSocket(req Request, sock Socket) {
+func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 	/*
 		if r.socklet == nil {
 			return
@@ -783,137 +969,7 @@ func (r *Rule) executeSocket(req Request, sock Socket) {
 		}
 		r.socklet.Serve(req, sock)
 	*/
-}
-
-// Request is the server-side HTTP request and is the interface for *http[1-3]Request.
-type Request interface {
-	PeerAddr() net.Addr
-	App() *App
-
-	VersionCode() uint8
-	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
-
-	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
-	IsHTTP() bool
-	IsHTTPS() bool
-	Scheme() string // http, https
-
-	MethodCode() uint32
-	Method() string
-	IsGET() bool
-	IsPOST() bool
-	IsPUT() bool
-	IsDELETE() bool
-
-	Authority() string // hostname[:port]
-	Hostname() string  // hostname
-	ColonPort() string // :port
-
-	URI() string         // /encodedPath?queryString
-	Path() string        // /path
-	EncodedPath() string // /encodedPath
-
-	QueryString() string // including '?' if query string exists
-	Q(name string) string
-	Qint(name string, defaultValue int) int
-	Query(name string) (value string, ok bool)
-	QueryList(name string) (list []string, ok bool)
-	Queries() (queries [][2]string)
-	HasQuery(name string) bool
-	AddQuery(name string, value string) bool
-	DelQuery(name string) (deleted bool)
-
-	H(name string) string
-	Header(name string) (value string, ok bool)
-	HeaderList(name string) (list []string, ok bool)
-	Headers() (headers [][2]string)
-	HasHeader(name string) bool
-	AddHeader(name string, value string) bool
-	DelHeader(name string) (deleted bool)
-
-	UserAgent() string
-	ContentType() string
-	ContentSize() int64
-	AcceptTrailers() bool
-
-	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
-	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
-
-	C(name string) string
-	Cookie(name string) (value string, ok bool)
-	CookieList(name string) (list []string, ok bool)
-	Cookies() (cookies [][2]string)
-	HasCookie(name string) bool
-	AddCookie(name string, value string) bool
-	DelCookie(name string) (deleted bool)
-
-	HasContent() bool                // contentSize=0 and contentSize=-2 are considered as true
-	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
-	Content() string
-
-	P(name string) string
-	Post(name string) (value string, ok bool)
-	PostList(name string) (list []string, ok bool)
-	Posts() (posts [][2]string)
-	HasPost(name string) bool
-
-	U(name string) *Upload
-	Upload(name string) (upload *Upload, ok bool)
-	UploadList(name string) (list []*Upload, ok bool)
-	Uploads() (uploads []*Upload)
-	HasUpload(name string) bool
-
-	T(name string) string
-	Trailer(name string) (value string, ok bool)
-	TrailerList(name string) (list []string, ok bool)
-	Trailers() (trailers [][2]string)
-	HasTrailer(name string) bool
-	AddTrailer(name string, value string) bool
-	DelTrailer(name string) (deleted bool)
-
-	// Unsafe
-	UnsafeMake(size int) []byte
-	UnsafeVersion() []byte
-	UnsafeScheme() []byte
-	UnsafeMethod() []byte
-	UnsafeAuthority() []byte
-	UnsafeHostname() []byte
-	UnsafeColonPort() []byte
-	UnsafeURI() []byte
-	UnsafePath() []byte
-	UnsafeEncodedPath() []byte
-	UnsafeQueryString() []byte
-	UnsafeQuery(name string) (value []byte, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
-	UnsafeUserAgent() []byte
-	UnsafeContentType() []byte
-	UnsafeContent() []byte
-	UnsafePost(name string) (value []byte, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
-
-	// Internal only
-	arrayCopy(p []byte) bool
-	isAbsoluteForm() bool
-	isServerOptions() bool
-	getPathInfo() system.FileInfo
-	unsafeAbsPath() []byte
-	makeAbsPath()
-	useHeader(header *pair) bool
-	delHost()
-	delCriticalHeaders()
-	delHopHeaders()
-	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
-	recvContent(retain bool) any
-	holdContent() any
-	readContent() (p []byte, err error)
-	hasTrailers() bool
-	delHopTrailers()
-	useTrailer(trailer *pair) bool
-	getSaveContentFilesDir() string
-	hookReviser(reviser Reviser)
-	unsafeVariable(index int16) []byte
+	return true
 }
 
 // Upload is a file uploaded by client.
@@ -1016,77 +1072,6 @@ func (u *Upload) Size() int64  { return u.size }
 func (u *Upload) MoveTo(path string) error {
 	// TODO
 	return nil
-}
-
-// Response is the server-side HTTP response and is the interface for *http[1-3]Response.
-type Response interface {
-	Request() Request
-
-	SetStatus(status int16) error
-	Status() int16
-
-	AddContentType(contentType string) bool
-	SetLastModified(lastModified int64) bool
-	SetETag(etag string) bool
-	SetETagBytes(etag []byte) bool
-	SetAcceptBytesRange()
-	AddHTTPSRedirection(authority string) bool
-	AddHostnameRedirection(hostname string) bool
-	AddDirectoryRedirection() bool
-
-	AddCookie(cookie *Cookie) bool
-
-	AddHeader(name string, value string) bool
-	AddHeaderBytes(name string, value []byte) bool
-	AddHeaderByBytes(name []byte, value string) bool
-	AddHeaderBytesByBytes(name []byte, value []byte) bool
-	Header(name string) (value string, ok bool)
-	DelHeader(name string) bool
-	DelHeaderByBytes(name []byte) bool
-
-	IsSent() bool
-	SetMaxSendSeconds(seconds int64) // to defend against slowloris attack
-
-	Send(content string) error
-	SendBytes(content []byte) error
-	SendFile(contentPath string) error
-
-	SendBadRequest(content []byte) error
-	SendForbidden(content []byte) error
-	SendNotFound(content []byte) error
-	SendMethodNotAllowed(allow string, content []byte) error
-	SendInternalServerError(content []byte) error
-	SendNotImplemented(content []byte) error
-	SendBadGateway(content []byte) error
-	SendGatewayTimeout(content []byte) error
-
-	Push(chunk string) error
-	PushBytes(chunk []byte) error
-	PushFile(chunkPath string) error
-	AddTrailer(name string, value string) bool
-
-	// Internal only
-	addHeader(name []byte, value []byte) bool
-	header(name []byte) (value []byte, ok bool)
-	delHeader(name []byte) bool
-	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
-	setConnectionClose()
-	sendBlob(content []byte) error
-	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
-	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
-	sendChain(chain Chain) error
-	pushHeaders() error
-	pushChain(chain Chain) error
-	addTrailer(name []byte, value []byte) bool
-	pass1xx(resp response) bool    // used by proxies
-	copyHead(resp response) bool   // used by proxies
-	pass(resp httpInMessage) error // used by proxies
-	finishChunked() error
-	post(content any, hasTrailers bool) error // used by proxies
-	finalizeChunked() error
-	hookReviser(reviser Reviser)
-	setBypassRevisers(bypass bool)
-	unsafeMake(size int) []byte
 }
 
 // Cookie is a cookie sent to client.
@@ -1245,11 +1230,4 @@ func (c *Cookie) writeTo(p []byte) int {
 		i += copy(p[i:], c.sameSite)
 	}
 	return i
-}
-
-// Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.
-type Socket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
 }

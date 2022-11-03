@@ -66,16 +66,14 @@ func (r *UDPSRouter) serve() {
 }
 
 func (r *UDPSRouter) dispatchRunner(conn *UDPSConn) {
-	/*
-		for _, kase := range r.cases {
-			if !kase.isMatch(conn) {
-				continue
-			}
-			if processed := executeCase[*UDPSConn, udpsFilter](kase, conn); processed {
-				return
-			}
+	for _, kase := range r.cases {
+		if !kase.isMatch(conn) {
+			continue
 		}
-	*/
+		if processed := kase.execute(conn); processed {
+			break
+		}
+	}
 	conn.closeConn()
 	putUDPSConn(conn)
 }
@@ -119,6 +117,73 @@ func (g *udpsGate) serveTLS() {
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
+}
+
+// poolUDPSConn
+var poolUDPSConn sync.Pool
+
+func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+	var conn *UDPSConn
+	if x := poolUDPSConn.Get(); x == nil {
+		conn = new(UDPSConn)
+	} else {
+		conn = x.(*UDPSConn)
+	}
+	conn.onGet(id, stage, router, gate, netConn, rawConn)
+	return conn
+}
+func putUDPSConn(conn *UDPSConn) {
+	conn.onPut()
+	poolUDPSConn.Put(conn)
+}
+
+// UDPSConn
+type UDPSConn struct {
+	// Conn states (buffers)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stage   *Stage // current stage
+	router  *UDPSRouter
+	gate    *udpsGate
+	netConn *net.UDPConn
+	rawConn syscall.RawConn
+	// Conn states (zeros)
+}
+
+func (c *UDPSConn) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
+	c.id = id
+	c.stage = stage
+	c.router = router
+	c.gate = gate
+	c.netConn = netConn
+	c.rawConn = rawConn
+}
+func (c *UDPSConn) onPut() {
+	c.stage = nil
+	c.router = nil
+	c.gate = nil
+	c.netConn = nil
+	c.rawConn = nil
+}
+
+func (c *UDPSConn) Close() error {
+	netConn := c.netConn
+	putUDPSConn(c)
+	return netConn.Close()
+}
+
+func (c *UDPSConn) closeConn() {
+	c.netConn.Close()
+}
+
+func (c *UDPSConn) unsafeVariable(index int16) []byte {
+	return udpsConnVariables[index](c)
+}
+
+// udpsConnVariables
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
+	// TODO
 }
 
 // UDPSRunner
@@ -216,69 +281,7 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool {
 	return c.case_.notRegexpMatch(value)
 }
 
-// poolUDPSConn
-var poolUDPSConn sync.Pool
-
-func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
-	var conn *UDPSConn
-	if x := poolUDPSConn.Get(); x == nil {
-		conn = new(UDPSConn)
-	} else {
-		conn = x.(*UDPSConn)
-	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
-	return conn
-}
-func putUDPSConn(conn *UDPSConn) {
-	conn.onPut()
-	poolUDPSConn.Put(conn)
-}
-
-// UDPSConn
-type UDPSConn struct {
-	// Conn states (buffers)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	router  *UDPSRouter
-	gate    *udpsGate
-	netConn *net.UDPConn
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-}
-
-func (c *UDPSConn) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
-}
-func (c *UDPSConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
-	c.netConn = nil
-	c.rawConn = nil
-}
-
-func (c *UDPSConn) Close() error {
-	netConn := c.netConn
-	putUDPSConn(c)
-	return netConn.Close()
-}
-
-func (c *UDPSConn) closeConn() {
-	c.netConn.Close()
-}
-
-func (c *UDPSConn) unsafeVariable(index int16) []byte {
-	return udpsConnVariables[index](c)
-}
-
-// udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
+func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
 	// TODO
+	return false
 }

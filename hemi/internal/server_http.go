@@ -2217,16 +2217,16 @@ func (r *httpRequest_) unsafeVariable(index int16) []byte {
 }
 
 var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with varCodes in config.go
-	(*httpRequest_).UnsafeMethod,
-	(*httpRequest_).UnsafeScheme,
-	(*httpRequest_).UnsafeAuthority,
-	(*httpRequest_).UnsafeHostname,
-	(*httpRequest_).UnsafeColonPort,
-	(*httpRequest_).UnsafePath,
-	(*httpRequest_).UnsafeURI,
-	(*httpRequest_).UnsafeEncodedPath,
-	(*httpRequest_).UnsafeQueryString,
-	(*httpRequest_).UnsafeContentType,
+	(*httpRequest_).UnsafeMethod,      // method
+	(*httpRequest_).UnsafeScheme,      // scheme
+	(*httpRequest_).UnsafeAuthority,   // authority
+	(*httpRequest_).UnsafeHostname,    // hostname
+	(*httpRequest_).UnsafeColonPort,   // colonPort
+	(*httpRequest_).UnsafePath,        // path
+	(*httpRequest_).UnsafeURI,         // uri
+	(*httpRequest_).UnsafeEncodedPath, // encodedPath
+	(*httpRequest_).UnsafeQueryString, // queryString
+	(*httpRequest_).UnsafeContentType, // contentType
 }
 
 // httpResponse_ is the mixin for http[1-3]Response.

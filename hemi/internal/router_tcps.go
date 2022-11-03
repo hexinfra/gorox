@@ -117,6 +117,7 @@ func (g *tcpsGate) serve() {
 	}
 }
 func (g *tcpsGate) serveTCP() {
+	router := g.router
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
@@ -131,16 +132,17 @@ func (g *tcpsGate) serveTCP() {
 				tcpConn.Close()
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
+			tcpsConn := getTCPSConn(connID, g.stage, router, g, tcpConn, rawConn)
 			if Debug() >= 1 {
 				fmt.Printf("%+v\n", tcpsConn)
 			}
-			go g.router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
+			go router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
 			connID++
 		}
 	}
 }
 func (g *tcpsGate) serveTLS() {
+	router := g.router
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
@@ -150,14 +152,14 @@ func (g *tcpsGate) serveTLS() {
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			tlsConn := tls.Server(tcpConn, g.router.tlsConfig)
+			tlsConn := tls.Server(tcpConn, router.tlsConfig)
 			// TODO: set deadline
 			if err := tlsConn.Handshake(); err != nil {
 				tlsConn.Close()
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tlsConn, nil)
-			go g.router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
+			tcpsConn := getTCPSConn(connID, g.stage, router, g, tlsConn, nil)
+			go router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
 			connID++
 		}
 	}
@@ -169,6 +171,110 @@ func (g *tcpsGate) onConnectionClosed() {
 func (g *tcpsGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
+}
+
+// poolTCPSConn
+var poolTCPSConn sync.Pool
+
+func getTCPSConn(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+	var conn *TCPSConn
+	if x := poolTCPSConn.Get(); x == nil {
+		conn = new(TCPSConn)
+	} else {
+		conn = x.(*TCPSConn)
+	}
+	conn.onGet(id, stage, router, gate, netConn, rawConn)
+	return conn
+}
+func putTCPSConn(conn *TCPSConn) {
+	conn.onPut()
+	poolTCPSConn.Put(conn)
+}
+
+// TCPSConn
+type TCPSConn struct {
+	// Conn states (buffers)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stage   *Stage // current stage
+	router  *TCPSRouter
+	gate    *tcpsGate
+	netConn net.Conn
+	rawConn syscall.RawConn
+	arena   region
+	// Conn states (zeros)
+	tcpsConn0
+}
+type tcpsConn0 struct {
+	filters  [32]uint8
+	nFilters int8
+}
+
+func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.id = id
+	c.stage = stage
+	c.router = router
+	c.gate = gate
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.arena.init()
+}
+func (c *TCPSConn) onPut() {
+	c.stage = nil
+	c.router = nil
+	c.gate = nil
+	c.netConn = nil
+	c.rawConn = nil
+	c.arena.free()
+	c.tcpsConn0 = tcpsConn0{}
+}
+
+func (c *TCPSConn) hookFilter(filter TCPSFilter) {
+	if c.nFilters == int8(len(c.filters)) {
+		BugExitln("hook too many filters")
+	}
+	c.filters[c.nFilters] = filter.ID()
+	c.nFilters++
+}
+
+func (c *TCPSConn) Read(p []byte) (n int, err error) {
+	// TODO
+	if c.nFilters > 0 {
+	} else {
+	}
+	return c.netConn.Read(p)
+}
+func (c *TCPSConn) Write(p []byte) (n int, err error) {
+	// TODO
+	if c.nFilters > 0 {
+	} else {
+	}
+	return c.netConn.Write(p)
+}
+
+func (c *TCPSConn) Close() error {
+	netConn := c.netConn
+	putTCPSConn(c)
+	return netConn.Close()
+}
+
+func (c *TCPSConn) closeConn() {
+	c.netConn.Close()
+	c.gate.onConnectionClosed()
+}
+
+func (c *TCPSConn) unsafeVariable(index int16) []byte {
+	return tcpsConnVariables[index](c)
+}
+
+// tcpsConnVariables
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
+	nil, // srcHost
+	nil, // srcPort
+	nil, // transport
+	nil, // serverName
+	nil, // nextProto
 }
 
 // TCPSRunner
@@ -280,104 +386,4 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 		}
 	}
 	return false
-}
-
-// poolTCPSConn
-var poolTCPSConn sync.Pool
-
-func getTCPSConn(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
-	var conn *TCPSConn
-	if x := poolTCPSConn.Get(); x == nil {
-		conn = new(TCPSConn)
-	} else {
-		conn = x.(*TCPSConn)
-	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
-	return conn
-}
-func putTCPSConn(conn *TCPSConn) {
-	conn.onPut()
-	poolTCPSConn.Put(conn)
-}
-
-// TCPSConn
-type TCPSConn struct {
-	// Conn states (buffers)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	router  *TCPSRouter
-	gate    *tcpsGate
-	netConn net.Conn
-	rawConn syscall.RawConn
-	arena   region
-	// Conn states (zeros)
-	tcpsConn0
-}
-type tcpsConn0 struct {
-	filters  [32]uint8
-	nFilters int8
-}
-
-func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
-	c.arena.init()
-}
-func (c *TCPSConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
-	c.netConn = nil
-	c.rawConn = nil
-	c.arena.free()
-	c.tcpsConn0 = tcpsConn0{}
-}
-
-func (c *TCPSConn) hookFilter(filter TCPSFilter) {
-	if c.nFilters == int8(len(c.filters)) {
-		BugExitln("hook too many filters")
-	}
-	c.filters[c.nFilters] = filter.ID()
-	c.nFilters++
-}
-
-func (c *TCPSConn) Read(p []byte) (n int, err error) {
-	// TODO
-	if c.nFilters > 0 {
-	} else {
-	}
-	return c.netConn.Read(p)
-}
-func (c *TCPSConn) Write(p []byte) (n int, err error) {
-	// TODO
-	if c.nFilters > 0 {
-	} else {
-	}
-	return c.netConn.Write(p)
-}
-
-func (c *TCPSConn) Close() error {
-	netConn := c.netConn
-	putTCPSConn(c)
-	return netConn.Close()
-}
-
-func (c *TCPSConn) closeConn() {
-	c.netConn.Close()
-	c.gate.onConnectionClosed()
-}
-
-func (c *TCPSConn) unsafeVariable(index int16) []byte {
-	return tcpsConnVariables[index](c)
-}
-
-// tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
-	// TODO
 }

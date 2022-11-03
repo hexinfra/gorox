@@ -342,6 +342,29 @@ func (f *outgate_) init(name string, stage *Stage) {
 	// other states
 }
 
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // blocking
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session
+type Session struct {
+	// TODO
+	sid  []byte
+	role int8
+	data any
+}
+
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
 	Component

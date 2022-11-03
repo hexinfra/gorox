@@ -65,16 +65,14 @@ func (r *QUICRouter) serve() {
 }
 
 func (r *QUICRouter) dispatchRunner(conn *QUICConn) {
-	/*
-		for _, kase := range r.cases {
-			if !kase.isMatch(conn) {
-				continue
-			}
-			if processed := executeCase[*QUICConn, quicFilter](kase, conn); processed {
-				return
-			}
+	for _, kase := range r.cases {
+		if !kase.isMatch(conn) {
+			continue
 		}
-	*/
+		if processed := kase.execute(conn); processed {
+			break
+		}
+	}
 	conn.Close()
 	putQUICConn(conn)
 }
@@ -109,6 +107,85 @@ func (g *quicGate) onConnectionClosed() {
 func (g *quicGate) justClose(quicConn *quix.Conn) {
 	quicConn.Close()
 	g.onConnectionClosed()
+}
+
+// poolQUICConn
+var poolQUICConn sync.Pool
+
+func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) *QUICConn {
+	var conn *QUICConn
+	if x := poolQUICConn.Get(); x == nil {
+		conn = new(QUICConn)
+	} else {
+		conn = x.(*QUICConn)
+	}
+	conn.onGet(id, stage, router, gate, quicConn)
+	return conn
+}
+func putQUICConn(conn *QUICConn) {
+	conn.onPut()
+	poolQUICConn.Put(conn)
+}
+
+// QUICConn
+type QUICConn struct {
+	// Conn states (buffers)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id       int64
+	stage    *Stage // current stage
+	router   *QUICRouter
+	gate     *quicGate
+	quicConn *quix.Conn
+	// Conn states (zeros)
+	filters [32]uint8
+}
+
+func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) {
+	c.id = id
+	c.stage = stage
+	c.router = router
+	c.gate = gate
+	c.quicConn = quicConn
+}
+func (c *QUICConn) onPut() {
+	c.stage = nil
+	c.router = nil
+	c.gate = nil
+	c.quicConn = nil
+	c.filters = [32]uint8{}
+}
+
+func (c *QUICConn) Close() error {
+	// TODO
+	return nil
+}
+
+func (c *QUICConn) unsafeVariable(index int16) []byte {
+	return quicConnVariables[index](c)
+}
+
+// quicConnVariables
+var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
+	// TODO
+}
+
+// QUICStream
+type QUICStream struct {
+}
+
+func (s *QUICStream) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *QUICStream) Read(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+
+// quicStreamVariables
+var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
+	// TODO
 }
 
 // QUICRunner
@@ -206,81 +283,7 @@ func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool {
 	return c.case_.notRegexpMatch(value)
 }
 
-// poolQUICConn
-var poolQUICConn sync.Pool
-
-func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) *QUICConn {
-	var conn *QUICConn
-	if x := poolQUICConn.Get(); x == nil {
-		conn = new(QUICConn)
-	} else {
-		conn = x.(*QUICConn)
-	}
-	conn.onGet(id, stage, router, gate, quicConn)
-	return conn
-}
-func putQUICConn(conn *QUICConn) {
-	conn.onPut()
-	poolQUICConn.Put(conn)
-}
-
-// QUICConn
-type QUICConn struct {
-	// Conn states (buffers)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id       int64
-	stage    *Stage // current stage
-	router   *QUICRouter
-	gate     *quicGate
-	quicConn *quix.Conn
-	// Conn states (zeros)
-	filters [32]uint8
-}
-
-func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
-	c.quicConn = quicConn
-}
-func (c *QUICConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
-	c.quicConn = nil
-	c.filters = [32]uint8{}
-}
-
-func (c *QUICConn) Close() error {
+func (c *quicCase) execute(conn *QUICConn) (processed bool) {
 	// TODO
-	return nil
-}
-
-func (c *QUICConn) unsafeVariable(index int16) []byte {
-	return quicConnVariables[index](c)
-}
-
-// quicConnVariables
-var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
-	// TODO
-}
-
-// QUICStream
-type QUICStream struct {
-}
-
-func (s *QUICStream) Write(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-func (s *QUICStream) Read(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-
-// quicStreamVariables
-var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
-	// TODO
+	return false
 }

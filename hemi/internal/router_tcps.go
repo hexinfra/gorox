@@ -70,16 +70,14 @@ func (r *TCPSRouter) serve() {
 }
 
 func (r *TCPSRouter) dispatchRunner(conn *TCPSConn) {
-	/*
-		for _, kase := range r.cases {
-			if !kase.isMatch(conn) {
-				continue
-			}
-			if processed := executeCase[*TCPSConn, tcpsFilter](kase, conn); processed {
-				return
-			}
+	for _, kase := range r.cases {
+		if !kase.isMatch(conn) {
+			continue
 		}
-	*/
+		if processed := kase.execute(conn); processed {
+			break
+		}
+	}
 	conn.closeConn()
 	putTCPSConn(conn)
 }
@@ -272,6 +270,18 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool {
 	return c.case_.notRegexpMatch(value)
 }
 
+func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
+	for _, filter := range c.filters {
+		conn.hookFilter(filter)
+	}
+	for _, runner := range c.runners {
+		if next := runner.Process(conn); !next {
+			return true
+		}
+	}
+	return false
+}
+
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
@@ -306,8 +316,8 @@ type TCPSConn struct {
 	tcpsConn0
 }
 type tcpsConn0 struct {
-	filters    [32]uint8
-	hasFilters bool
+	filters  [32]uint8
+	nFilters int8
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -329,14 +339,24 @@ func (c *TCPSConn) onPut() {
 	c.tcpsConn0 = tcpsConn0{}
 }
 
+func (c *TCPSConn) hookFilter(filter TCPSFilter) {
+	if c.nFilters == int8(len(c.filters)) {
+		BugExitln("hook too many filters")
+	}
+	c.filters[c.nFilters] = filter.ID()
+	c.nFilters++
+}
+
 func (c *TCPSConn) Read(p []byte) (n int, err error) {
-	if c.hasFilters {
+	// TODO
+	if c.nFilters > 0 {
 	} else {
 	}
 	return c.netConn.Read(p)
 }
 func (c *TCPSConn) Write(p []byte) (n int, err error) {
-	if c.hasFilters {
+	// TODO
+	if c.nFilters > 0 {
 	} else {
 	}
 	return c.netConn.Write(p)

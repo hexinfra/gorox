@@ -4,7 +4,7 @@ By default there are 4 cmds:
   goben/    - An HTTP benchmarking tool.
   gocmc/    - Gorox Cluster Management Center/Console.
   godev/    - Used to develop hemi.
-  gorox/    - The gorox server.
+  gorox/    - The gorox server and control agent.
 
 To add a new cmd named "foo":
 

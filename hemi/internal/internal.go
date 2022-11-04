@@ -30,11 +30,11 @@ var ( // global variables shared between stages
 	_tempDir  atomic.Value // directory of the run-time files
 )
 
-func Debug() int32    { return _debug.Load() }
-func BaseDir() string { return _baseDir.Load().(string) }
-func DataDir() string { return _dataDir.Load().(string) }
-func LogsDir() string { return _logsDir.Load().(string) }
-func TempDir() string { return _tempDir.Load().(string) }
+func Debug(level int32) bool { return _debug.Load() >= level }
+func BaseDir() string        { return _baseDir.Load().(string) }
+func DataDir() string        { return _dataDir.Load().(string) }
+func LogsDir() string        { return _logsDir.Load().(string) }
+func TempDir() string        { return _tempDir.Load().(string) }
 
 func SetDebug(level int32)  { _debug.Store(level) }
 func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once

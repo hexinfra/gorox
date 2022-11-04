@@ -255,7 +255,7 @@ func (r *httpInMessage_) onEnd() { // for zeros
 		r.contentHeld.Close()
 		os.Remove(r.contentHeld.Name())
 		r.contentHeld = nil
-		if Debug() >= 2 {
+		if Debug(2) {
 			fmt.Println("contentHeld is closed and removed!!")
 		}
 	}

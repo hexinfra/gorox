@@ -609,7 +609,7 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 	vector[0] = r.shell.control()
 	vector[1] = r.shell.addedHeaders()
 	vector[2] = r.shell.fixedHeaders()
-	if Debug() >= 2 {
+	if Debug(2) {
 		if r.asRequest {
 			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
 		} else {
@@ -720,7 +720,7 @@ func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
 	r.vector[0] = r.shell.control()
 	r.vector[1] = r.shell.addedHeaders()
 	r.vector[2] = r.shell.fixedHeaders()
-	if Debug() >= 2 {
+	if Debug(2) {
 		if r.asRequest {
 			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
 		} else {

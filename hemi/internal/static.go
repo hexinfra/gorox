@@ -118,7 +118,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		allPath[len(allPath)-1] = 0 // ends with NUL character, so we can avoid make+copy for system function calls
 		n := copy(allPath, webRoot)
 		copy(allPath[n:], req.UnsafePath())
-		if Debug() >= 2 {
+		if Debug(2) {
 			fmt.Printf("%v\n", allPath)
 		}
 		absPath = allPath[0 : len(allPath)-1 : len(allPath)] // absPath doesn't include NUL, but we can get NUL through cap(absPath)

@@ -63,7 +63,7 @@ func (b *Block) closeFile() {
 		if b.shut {
 			b.sysf.Close()
 		}
-		if Debug() >= 2 {
+		if Debug(2) {
 			if b.shut {
 				fmt.Println("sysf closed on Block.closeFile()")
 			} else {
@@ -75,7 +75,7 @@ func (b *Block) closeFile() {
 		if b.shut {
 			b.file.Close()
 		}
-		if Debug() >= 2 {
+		if Debug(2) {
 			if b.shut {
 				fmt.Println("file closed on Block.closeFile()")
 			} else {
@@ -132,7 +132,7 @@ func (b *Block) SetSysf(file system.File, info system.FileInfo, shut bool) {
 		if b.shut {
 			b.file.Close()
 		}
-		if Debug() >= 2 {
+		if Debug(2) {
 			if b.shut {
 				fmt.Println("file closed on Block.SetSysf()")
 			} else {
@@ -154,7 +154,7 @@ func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 		if b.shut {
 			b.sysf.Close()
 		}
-		if Debug() >= 2 {
+		if Debug(2) {
 			if b.shut {
 				fmt.Println("sysf closed on Block.SetFile()")
 			} else {

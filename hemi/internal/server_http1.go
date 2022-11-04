@@ -307,7 +307,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
-	if Debug() >= 2 {
+	if Debug(2) {
 		//fmt.Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.name, conn.gate.id, conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
@@ -410,7 +410,7 @@ func (r *http1Request) recvHead() { // control + headers
 		return
 	}
 	r._cleanInput()
-	if Debug() >= 2 {
+	if Debug(2) {
 		fmt.Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }

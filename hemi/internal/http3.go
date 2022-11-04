@@ -226,7 +226,7 @@ func (a *http3Inputs) getRef() int32 { return a.ref.Load() }
 func (a *http3Inputs) incRef()       { a.ref.Add(1) }
 func (a *http3Inputs) decRef() {
 	if a.ref.Add(-1) == 0 {
-		if Debug() >= 1 {
+		if Debug(1) {
 			fmt.Printf("putHTTP3Inputs ref=%d\n", a.ref.Load())
 		}
 		putHTTP3Inputs(a)

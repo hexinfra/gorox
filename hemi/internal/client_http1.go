@@ -241,13 +241,13 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 }
 func (n *http1Node) storeConn(hConn *H1Conn) {
 	if hConn.isBroken() || n.isDown() || !hConn.isAlive() || !hConn.keepConn {
-		if Debug() >= 2 {
+		if Debug(2) {
 			fmt.Printf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
 		}
 		hConn.closeConn()
 		putH1Conn(hConn)
 	} else {
-		if Debug() >= 2 {
+		if Debug(2) {
 			fmt.Printf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
@@ -403,7 +403,6 @@ type H1Request struct {
 func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool {
 	size := len(method) + 1 + len(uri) + 1 + len(httpBytesHTTP1_1) + len(httpBytesCRLF) // METHOD uri HTTP/1.1\r\n
 	if from, edge, ok := r._growFields(size); ok {
-		r.controlEdge = uint16(edge)
 		from += copy(r.fields[from:], method)
 		r.fields[from] = ' '
 		from++
@@ -417,6 +416,7 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 			r.forbidContent = true
 			r.forbidFraming = true
 		}
+		r.controlEdge = uint16(edge)
 		return true
 	} else {
 		return false
@@ -503,7 +503,7 @@ func (r *H1Response) recvHead() { // control + headers
 		return
 	}
 	r._cleanInput()
-	if Debug() >= 2 {
+	if Debug(2) {
 		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }

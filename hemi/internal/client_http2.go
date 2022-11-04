@@ -283,11 +283,12 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.h2Stream0 = h2Stream0{}
 }
 
-func (s *H2Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
+func (s *H2Stream) getHolder() holder {
+	return s.conn.getClient()
 }
-func (s *H2Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
+
+func (s *H2Stream) peerAddr() net.Addr {
+	return s.conn.netConn.RemoteAddr()
 }
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }
@@ -297,9 +298,12 @@ func (s *H2Stream) Socket() *H2Socket {
 	return nil
 }
 
-func (s *H2Stream) getHolder() holder { return s.conn.getClient() }
-
-func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *H2Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
+func (s *H2Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
 
 func (s *H2Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return s.conn.makeTempName(p, seconds)

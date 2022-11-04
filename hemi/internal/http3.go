@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-// http3InMessage_
+// http3InMessage_ is used by http3Request and H3Response.
 
 func (r *httpInMessage_) _growHeaders3(size int32) bool {
 	// TODO
@@ -27,7 +27,7 @@ func (r *httpInMessage_) readContent3() (p []byte, err error) {
 	return
 }
 
-// http3OutMessage_
+// http3OutMessage_ is used by http3Response and H3Request.
 
 func (r *httpOutMessage_) header3(name []byte) (value []byte, ok bool) {
 	// TODO

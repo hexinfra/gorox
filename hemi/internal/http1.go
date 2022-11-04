@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// http1InMessage_
+// http1InMessage_ is used by http1Request and H1Response.
 
 func (r *httpInMessage_) _growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.input is full
@@ -525,7 +525,7 @@ var ( // http/1 message reading errors
 	http1ReadBadChunk = errors.New("bad chunk")
 )
 
-// http1OutMessage_
+// http1OutMessage_ is used by http1Response and H1Request.
 
 func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
 	if r.nHeaders > 0 && len(name) > 0 {

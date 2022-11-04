@@ -259,9 +259,13 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.httpStream_.onEnd()
 }
 
-func (s *http1Stream) getHolder() holder { return s.conn.getServer() }
+func (s *http1Stream) getHolder() holder {
+	return s.conn.getServer()
+}
 
-func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *http1Stream) peerAddr() net.Addr {
+	return s.conn.netConn.RemoteAddr()
+}
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.

@@ -265,7 +265,9 @@ func (s *http3Stream) execute() {
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) getHolder() holder { return s.conn.getServer() }
+func (s *http3Stream) getHolder() holder {
+	return s.conn.getServer()
+}
 
 func (s *http3Stream) peerAddr() net.Addr {
 	// TODO

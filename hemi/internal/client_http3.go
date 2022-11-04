@@ -254,11 +254,13 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.h3Stream0 = h3Stream0{}
 }
 
-func (s *H3Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
+func (s *H3Stream) getHolder() holder {
+	return s.conn.getClient()
 }
-func (s *H3Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+
+func (s *H3Stream) peerAddr() net.Addr {
 	// TODO
+	return nil
 }
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }
@@ -268,11 +270,11 @@ func (s *H3Stream) Socket() *H3Socket {
 	return nil
 }
 
-func (s *H3Stream) getHolder() holder { return s.conn.getClient() }
-
-func (s *H3Stream) peerAddr() net.Addr {
+func (s *H3Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
-	return nil
+}
+func (s *H3Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
 }
 
 func (s *H3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {

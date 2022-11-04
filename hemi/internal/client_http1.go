@@ -340,6 +340,18 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.hStream_.onEnd()
 }
 
+func (s *H1Stream) getHolder() holder {
+	return s.conn.getClient()
+}
+
+func (s *H1Stream) peerAddr() net.Addr {
+	return s.conn.netConn.RemoteAddr()
+}
+
+func (s *H1Stream) Request() *H1Request   { return &s.request }
+func (s *H1Stream) Response() *H1Response { return &s.response }
+func (s *H1Stream) Socket() *H1Socket     { return nil } // TODO
+
 func (s *H1Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
 	// TODO
 	return nil
@@ -347,16 +359,6 @@ func (s *H1Stream) forwardProxy(req Request, resp Response, bufferClientContent 
 func (s *H1Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
 	// TODO
 	return nil
-}
-
-func (s *H1Stream) Request() *H1Request   { return &s.request }
-func (s *H1Stream) Response() *H1Response { return &s.response }
-func (s *H1Stream) Socket() *H1Socket     { return nil } // TODO
-
-func (s *H1Stream) getHolder() holder { return s.conn.getClient() }
-
-func (s *H1Stream) peerAddr() net.Addr {
-	return s.conn.netConn.RemoteAddr()
 }
 
 func (s *H1Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {

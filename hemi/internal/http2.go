@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-// http2InMessage_
+// http2InMessage_ is used by http2Request and H2Response.
 
 func (r *httpInMessage_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
@@ -38,7 +38,7 @@ func (r *httpInMessage_) readContent2() (p []byte, err error) {
 	return
 }
 
-// http2OutMessage_
+// http2OutMessage_ is used by http2Response and H2Request.
 
 func (r *httpOutMessage_) header2(name []byte) (value []byte, ok bool) {
 	// TODO

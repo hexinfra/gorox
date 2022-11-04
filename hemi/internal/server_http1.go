@@ -381,9 +381,15 @@ func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *http1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
-func (s *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
-func (s *http1Stream) write(p []byte) (int, error)    { return s.conn.netConn.Write(p) }
+func (s *http1Stream) read(p []byte) (int, error) {
+	return s.conn.netConn.Read(p)
+}
+func (s *http1Stream) readFull(p []byte) (int, error) {
+	return io.ReadFull(s.conn.netConn, p)
+}
+func (s *http1Stream) write(p []byte) (int, error) {
+	return s.conn.netConn.Write(p)
+}
 func (s *http1Stream) writev(vector *net.Buffers) (int64, error) {
 	return vector.WriteTo(s.conn.netConn)
 }

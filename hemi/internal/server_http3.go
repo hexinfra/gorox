@@ -333,8 +333,17 @@ type http3Request struct {
 	// Stream states (zeros)
 }
 
+func (r *http3Request) joinHeaders(p []byte) bool {
+	return false
+}
+
 func (r *http3Request) readContent() (p []byte, err error) {
 	return r.readContent3()
+}
+
+func (r *http3Request) joinTrailers(p []byte) bool {
+	// TODO: to r.array
+	return false
 }
 
 // http3Response is the server-side HTTP/3 response.

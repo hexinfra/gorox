@@ -386,10 +386,18 @@ func (s *H1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *H1Stream) write(p []byte) (int, error)               { return s.conn.netConn.Write(p) }
-func (s *H1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(s.conn.netConn) }
-func (s *H1Stream) read(p []byte) (int, error)                { return s.conn.netConn.Read(p) }
-func (s *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(s.conn.netConn, p) }
+func (s *H1Stream) write(p []byte) (int, error) {
+	return s.conn.netConn.Write(p)
+}
+func (s *H1Stream) writev(vector *net.Buffers) (int64, error) {
+	return vector.WriteTo(s.conn.netConn)
+}
+func (s *H1Stream) read(p []byte) (int, error) {
+	return s.conn.netConn.Read(p)
+}
+func (s *H1Stream) readFull(p []byte) (int, error) {
+	return io.ReadFull(s.conn.netConn, p)
+}
 
 func (s *H1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *H1Stream) markBroken()    { s.conn.markBroken() }

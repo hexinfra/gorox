@@ -10,6 +10,7 @@ package internal
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
@@ -37,7 +38,7 @@ func putBlock(block *Block) {
 type Block struct { // 64 bytes
 	next *Block      // next block
 	pool bool        // true if this block is got from poolBlock. don't change this after set
-	shut bool        // close sysf/file?
+	shut bool        // close sysf/file on free()?
 	kind int8        // 0:blob 1:system.File 2:*os.File
 	sysf system.File // for optimized use (for example, by static handler)
 	file *os.File    // for general use
@@ -62,10 +63,24 @@ func (b *Block) closeFile() {
 		if b.shut {
 			b.sysf.Close()
 		}
+		if Debug() >= 2 {
+			if b.shut {
+				fmt.Println("sysf closed on Block.closeFile()")
+			} else {
+				fmt.Println("sysf NOT closed on Block.closeFile()")
+			}
+		}
 		b.sysf = system.File{}
 	} else { // *os.File
 		if b.shut {
 			b.file.Close()
+		}
+		if Debug() >= 2 {
+			if b.shut {
+				fmt.Println("file closed on Block.closeFile()")
+			} else {
+				fmt.Println("file NOT closed on Block.closeFile()")
+			}
 		}
 		b.file = nil
 	}
@@ -117,6 +132,13 @@ func (b *Block) SetSysf(file system.File, info system.FileInfo, shut bool) {
 		if b.shut {
 			b.file.Close()
 		}
+		if Debug() >= 2 {
+			if b.shut {
+				fmt.Println("file closed on Block.SetSysf()")
+			} else {
+				fmt.Println("file NOT closed on Block.SetSysf()")
+			}
+		}
 		b.file = nil
 	}
 	b.shut = shut
@@ -131,6 +153,13 @@ func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 	} else if b.IsSysf() {
 		if b.shut {
 			b.sysf.Close()
+		}
+		if Debug() >= 2 {
+			if b.shut {
+				fmt.Println("sysf closed on Block.SetFile()")
+			} else {
+				fmt.Println("sysf NOT closed on Block.SetFile()")
+			}
 		}
 		b.sysf = system.File{}
 	}

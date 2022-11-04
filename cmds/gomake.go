@@ -110,6 +110,7 @@ func clean() {
 	dirs := []string{
 		"logs",
 		"temp",
+		"dist",
 	}
 	for _, dir := range dirs {
 		dir = pwd + "/" + dir

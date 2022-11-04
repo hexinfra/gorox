@@ -796,7 +796,7 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 	matches.edge = edge
 	for i := from; i < edge; i++ {
 		header := &r.primes[i]
-		value := r.input[header.value.from:header.value.edge]
+		value := header.valueAt(r.input)
 		nMatch := *match // -1:*, 0:nonexist, >0:num
 		if len(value) == 1 && value[0] == '*' {
 			if nMatch != 0 {
@@ -882,7 +882,7 @@ func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
 }
 func (r *httpRequest_) checkExpect(header *pair, index uint8) bool {
 	// Expect = "100-continue"
-	value := r.input[header.value.from:header.value.edge]
+	value := header.valueAt(r.input)
 	bytesToLower(value) // the Expect field-value is case-insensitive.
 	if bytes.Equal(value, httpBytes100Continue) {
 		if r.versionCode == Version1_0 {
@@ -937,7 +937,7 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 		r.headResult, r.headReason = StatusBadRequest, "duplicated if-range"
 		return false
 	}
-	if time, ok := clockParseHTTPDate(r.input[header.value.from:header.value.edge]); ok {
+	if time, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
 		r.ifRangeTime = time
 	}
 	r.indexes.ifRange = index
@@ -957,7 +957,7 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	// range-spec   = int-range / suffix-range
 	// int-range    = first-pos "-" [ last-pos ]
 	// suffix-range = "-" suffix-length
-	rangeSet := r.input[header.value.from:header.value.edge]
+	rangeSet := header.valueAt(r.input)
 	nPrefix := len(httpBytesBytesEqual) // bytes=
 	if !bytes.Equal(rangeSet[0:nPrefix], httpBytesBytesEqual) {
 		r.headResult, r.headReason = StatusBadRequest, "unsupported range unit"
@@ -1596,7 +1596,7 @@ func (r *httpRequest_) testIfMatch(etag []byte) (pass bool) {
 		if header.hash != httpHashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
 			continue
 		}
-		if !header.isWeakETag() && bytes.Equal(r.input[header.value.from:header.value.edge], etag) {
+		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
 			return true
 		}
 	}
@@ -1611,7 +1611,7 @@ func (r *httpRequest_) testIfNoneMatch(etag []byte) (pass bool) {
 		if header.hash != httpHashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
 			continue
 		}
-		if bytes.Equal(r.input[header.value.from:header.value.edge], etag) {
+		if bytes.Equal(header.valueAt(r.input), etag) {
 			return false
 		}
 	}
@@ -1634,7 +1634,7 @@ func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (
 }
 func (r *httpRequest_) testIfRangeETag(etag []byte) (pass bool) {
 	ifRange := &r.primes[r.indexes.ifRange]
-	return !ifRange.isWeakETag() && bytes.Equal(r.input[ifRange.value.from:ifRange.value.edge], etag)
+	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
 }
 func (r *httpRequest_) testIfRangeTime(modTime int64) (pass bool) {
 	return r.ifRangeTime == modTime
@@ -2237,8 +2237,7 @@ type httpResponse_ struct {
 	request Request // *http[1-3]Request
 	// Stream states (buffers)
 	// Stream states (controlled)
-	start [32]byte // exactly 32 bytes for "HTTP/1.1 xxx Mysterious Status\r\n"
-	etag  [32]byte // etag buffer. like: "60928f91-21ef3c4" (modTime-fileSize, in hex format. DQUOTE included). controlled by r.nETag
+	etag [32]byte // etag buffer. like: "60928f91-21ef3c4" (modTime-fileSize, in hex format. DQUOTE included). controlled by r.nETag
 	// Stream states (non-zeros)
 	status       int16 // 200, 302, 404, 500, ...
 	lastModified int64 // -1: unknown. unix timestamp in seconds. if set, will add a "last-modified" response header

@@ -14,6 +14,75 @@ import (
 	"sync/atomic"
 )
 
+// http3InMessage_
+
+func (r *httpInMessage_) _growHeaders3(size int32) bool {
+	// TODO
+	// use r.input
+	return false
+}
+
+func (r *httpInMessage_) readContent3() (p []byte, err error) {
+	// TODO
+	return
+}
+
+// http3OutMessage_
+
+func (r *httpOutMessage_) header3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *httpOutMessage_) addHeader3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOutMessage_) delHeader3(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+
+func (r *httpOutMessage_) sendChain3(chain Chain, vector [][]byte) error {
+	// TODO
+	return nil
+}
+
+func (r *httpOutMessage_) pushHeaders3() error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) pushChain3(chain Chain) error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOutMessage_) trailers3() []byte {
+	return nil
+}
+
+func (r *httpOutMessage_) passHeaders3() error {
+	return nil
+}
+func (r *httpOutMessage_) passBytes3(p []byte) error {
+	return nil
+}
+
+func (r *httpOutMessage_) finalizeChunked3() error {
+	// TODO
+	return nil
+}
+
+func (r *httpOutMessage_) writeBlock3(block *Block, chunked bool) error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
+	return nil
+}
+
 const ( // HTTP/3 sizes and limits
 	http3MaxActiveStreams = 127
 	http3MaxTableSize     = _4K
@@ -182,72 +251,3 @@ var ( // HTTP/3 byteses, TODO
 	http3BytesFixedRequestHeaders  = []byte("user-agent gorox")
 	http3BytesFixedResponseHeaders = []byte("server gorox")
 )
-
-// http3InMessage_
-
-func (r *httpInMessage_) _growHeaders3(size int32) bool {
-	// TODO
-	// use r.input
-	return false
-}
-
-func (r *httpInMessage_) readContent3() (p []byte, err error) {
-	// TODO
-	return
-}
-
-// http3OutMessage_
-
-func (r *httpOutMessage_) header3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *httpOutMessage_) addHeader3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOutMessage_) delHeader3(name []byte) (deleted bool) {
-	// TODO
-	return false
-}
-
-func (r *httpOutMessage_) sendChain3(chain Chain, vector [][]byte) error {
-	// TODO
-	return nil
-}
-
-func (r *httpOutMessage_) pushHeaders3() error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) pushChain3(chain Chain) error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOutMessage_) trailers3() []byte {
-	return nil
-}
-
-func (r *httpOutMessage_) passHeaders3() error {
-	return nil
-}
-func (r *httpOutMessage_) passBytes3(p []byte) error {
-	return nil
-}
-
-func (r *httpOutMessage_) finalizeChunked3() error {
-	// TODO
-	return nil
-}
-
-func (r *httpOutMessage_) writeBlock3(block *Block, chunked bool) error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
-	return nil
-}

@@ -16,22 +16,6 @@ import (
 	"time"
 )
 
-var ( // HTTP/1 byteses
-	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
-	http1BytesTransferChunked      = []byte("transfer-encoding: chunked\r\n")
-	http1BytesConnectionClose      = []byte("connection: close\r\n")
-	http1BytesConnectionKeepAlive  = []byte("connection: keep-alive\r\n")
-	http1BytesLocationHTTP         = []byte("location: http://")
-	http1BytesLocationHTTPS        = []byte("location: https://")
-	http1BytesFixedRequestHeaders  = []byte("client: gorox\r\n\r\n")
-	http1BytesFixedResponseHeaders = []byte("server: gorox\r\n\r\n")
-	http1BytesAcceptRangesBytes    = []byte("accept-ranges: bytes\r\n")
-	http1BytesVaryEncoding         = []byte("vary: accept-encoding\r\n")
-	http1BytesContentTypeTextHTML  = []byte("content-type: text/html; charset=utf-8\r\n")
-	http1BytesZeroCRLF             = []byte("0\r\n")
-	http1BytesZeroCRLFCRLF         = []byte("0\r\n\r\n")
-)
-
 // http1InMessage_
 
 func (r *httpInMessage_) _growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
@@ -492,7 +476,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 		}
 		trailer.nameFrom = fore // adjust name from
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(r.bodyBuffer[trailer.value.from:trailer.value.edge]) {
+		if !r.shell.arrayCopy(trailer.valueAt(r.bodyBuffer)) {
 			return false
 		}
 		trailer.value.set(fore, r.arrayEdge)
@@ -536,6 +520,10 @@ func (r *httpInMessage_) _growChunked1() bool { // HTTP/1 is not a binary protoc
 	// err != nil. TODO: log err
 	return false
 }
+
+var ( // http/1 message reading errors
+	http1ReadBadChunk = errors.New("bad chunk")
+)
 
 // http1OutMessage_
 
@@ -856,8 +844,20 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 	}
 }
 
-var ( // http/1 message reading errors
-	http1ReadBadChunk = errors.New("bad chunk")
+var ( // HTTP/1 byteses
+	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
+	http1BytesTransferChunked      = []byte("transfer-encoding: chunked\r\n")
+	http1BytesConnectionClose      = []byte("connection: close\r\n")
+	http1BytesConnectionKeepAlive  = []byte("connection: keep-alive\r\n")
+	http1BytesLocationHTTP         = []byte("location: http://")
+	http1BytesLocationHTTPS        = []byte("location: https://")
+	http1BytesFixedRequestHeaders  = []byte("client: gorox\r\n\r\n")
+	http1BytesFixedResponseHeaders = []byte("server: gorox\r\n\r\n")
+	http1BytesAcceptRangesBytes    = []byte("accept-ranges: bytes\r\n")
+	http1BytesVaryEncoding         = []byte("vary: accept-encoding\r\n")
+	http1BytesContentTypeTextHTML  = []byte("content-type: text/html; charset=utf-8\r\n")
+	http1BytesZeroCRLF             = []byte("0\r\n")
+	http1BytesZeroCRLFCRLF         = []byte("0\r\n\r\n")
 )
 
 var http1Mysterious = [32]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', 'M', 'y', 's', 't', 'e', 'r', 'i', 'o', 'u', 's', ' ', 'S', 't', 'a', 't', 'u', 's', '\r', '\n'}

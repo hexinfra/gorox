@@ -328,16 +328,16 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	} else {
 		content = risky.ConstBytes(req.headReason)
 	}
-	// Use response as a dumb buffer, don't use its methods (like Send) to send anything here!
-	resp.SetStatus(status)
+	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
+	resp.status = status
 	resp.addContentType(httpBytesTextHTML)
-	resp.setContentSize(int64(len(content)))
+	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
 		resp.AddHeaderByBytes(httpBytesAllow, "GET")
 	}
 	resp.finalizeHeaders()
-	if req.methodCode == MethodHEAD || resp.forbidContent {
+	if req.methodCode == MethodHEAD || resp.forbidContent { // yes, we follow the method semantic even we are in abnormal
 		resp.vector = resp.fixedVector[0:3]
 	} else {
 		resp.vector = resp.fixedVector[0:4]
@@ -824,6 +824,8 @@ func (r *http1Request) readContent() (p []byte, err error) {
 type http1Response struct {
 	// Mixins
 	httpResponse_
+	// Stream states (controlled)
+	start [32]byte // exactly 32 bytes for "HTTP/1.1 xxx Mysterious Status\r\n"
 	// Stream states (non-zeros)
 }
 

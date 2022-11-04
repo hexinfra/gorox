@@ -14,6 +14,86 @@ import (
 	"sync/atomic"
 )
 
+// http2InMessage_
+
+func (r *httpInMessage_) _growHeaders2(size int32) bool {
+	edge := r.inputEdge + size      // size is ensured to not overflow
+	if edge < int32(cap(r.input)) { // fast path
+		return true
+	}
+	if edge > _16K { // exceeds the max headers limit
+		return false
+	}
+	input := GetNK(int64(edge)) // 4K/16K
+	copy(input, r.input[0:r.inputEdge])
+	if cap(r.input) != cap(r.stockInput) {
+		PutNK(r.input)
+	}
+	r.input = input
+	return true
+}
+
+func (r *httpInMessage_) readContent2() (p []byte, err error) {
+	// TODO
+	return
+}
+
+// http2OutMessage_
+
+func (r *httpOutMessage_) header2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *httpOutMessage_) addHeader2(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOutMessage_) delHeader2(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+
+func (r *httpOutMessage_) sendChain2(chain Chain, vector [][]byte) error {
+	// TODO
+	return nil
+}
+
+func (r *httpOutMessage_) pushHeaders2() error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) pushChain2(chain Chain) error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOutMessage_) trailers2() []byte {
+	return nil
+}
+
+func (r *httpOutMessage_) passHeaders2() error {
+	return nil
+}
+func (r *httpOutMessage_) passBytes2(p []byte) error {
+	return nil
+}
+
+func (r *httpOutMessage_) finalizeChunked2() error {
+	// TODO
+	return nil
+}
+
+func (r *httpOutMessage_) writeBlock2(block *Block, chunked bool) error {
+	// TODO
+	return nil
+}
+func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
+	return nil
+}
+
 const ( // HTTP/2 sizes and limits
 	http2FrameMaxSize     = _16K // for both client and server
 	http2MaxTableSize     = _4K  // for both client and server
@@ -636,92 +716,3 @@ var ( // HTTP/2 byteses, TODO
 	http2BytesFixedRequestHeaders  = []byte("user-agent gorox")
 	http2BytesFixedResponseHeaders = []byte("server gorox")
 )
-
-// http2InMessage_
-
-func (r *httpInMessage_) _growHeaders2(size int32) bool {
-	edge := r.inputEdge + size      // size is ensured to not overflow
-	if edge < int32(cap(r.input)) { // fast path
-		return true
-	}
-	if edge > _16K { // exceeds the max headers limit
-		return false
-	}
-	input := GetNK(int64(edge)) // 4K/16K
-	copy(input, r.input[0:r.inputEdge])
-	if cap(r.input) != cap(r.stockInput) {
-		PutNK(r.input)
-	}
-	r.input = input
-	return true
-}
-func (r *httpInMessage_) checkHeaders2() bool {
-	// TODO
-	return false
-}
-
-func (r *httpInMessage_) readContent2() (p []byte, err error) {
-	// TODO
-	return
-}
-
-func (r *httpInMessage_) checkTrailers2() bool {
-	// TODO
-	return false
-}
-
-// http2OutMessage_
-
-func (r *httpOutMessage_) header2(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *httpOutMessage_) addHeader2(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOutMessage_) delHeader2(name []byte) (deleted bool) {
-	// TODO
-	return false
-}
-
-func (r *httpOutMessage_) sendChain2(chain Chain, vector [][]byte) error {
-	// TODO
-	return nil
-}
-
-func (r *httpOutMessage_) pushHeaders2() error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) pushChain2(chain Chain) error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOutMessage_) trailers2() []byte {
-	return nil
-}
-
-func (r *httpOutMessage_) passHeaders2() error {
-	return nil
-}
-func (r *httpOutMessage_) passBytes2(p []byte) error {
-	return nil
-}
-
-func (r *httpOutMessage_) finalizeChunked2() error {
-	// TODO
-	return nil
-}
-
-func (r *httpOutMessage_) writeBlock2(block *Block, chunked bool) error {
-	// TODO
-	return nil
-}
-func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
-	return nil
-}

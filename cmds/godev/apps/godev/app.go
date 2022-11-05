@@ -46,7 +46,7 @@ func (h *godevHandler) OnShutdown() {
 }
 
 func (h *godevHandler) Handle(req Request, resp Response) (next bool) {
-	h.Dispatch(req, resp)
+	h.Dispatch(req, resp, h.notFound)
 	return
 }
 
@@ -71,4 +71,8 @@ func (h *godevHandler) GET_d(req Request, resp Response) {
 }
 func (h *godevHandler) GET_e(req Request, resp Response) {
 	resp.Send(req.QueryString())
+}
+
+func (h *godevHandler) notFound(req Request, resp Response) {
+	resp.Send("handle not found!")
 }

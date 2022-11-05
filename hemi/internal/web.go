@@ -591,7 +591,7 @@ func (h *Handler_) UseMapper(mapper Mapper) {
 	h.mapper = mapper
 }
 
-func (h *Handler_) Dispatch(req Request, resp Response) {
+func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
 	var mapper Mapper = defaultMapper
 	if h.mapper != nil {
 		mapper = h.mapper
@@ -607,7 +607,12 @@ func (h *Handler_) Dispatch(req Request, resp Response) {
 			found = true
 		}
 	}
-	if !found {
+	if found {
+		return
+	}
+	if notFound != nil {
+		notFound(req, resp)
+	} else {
 		resp.SendNotFound(nil)
 	}
 }

@@ -41,8 +41,7 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	m := new(exampleMapper)
-	m.init()
+	m := newExampleMapper()
 
 	m.GET("/", h.handleIndex)
 	m.GET("/foo", h.handleFoo)
@@ -63,7 +62,7 @@ func (h *exampleHandler) OnShutdown() {
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
-	h.Dispatch(req, resp)
+	h.Dispatch(req, resp, nil)
 	return // request is handled, next = false
 }
 
@@ -87,13 +86,19 @@ func (h *exampleHandler) handleBaz(req Request, resp Response) {
 
 // exampleMapper
 type exampleMapper struct {
-	gets  map[string]Handle
-	posts map[string]Handle
+	gets    map[string]Handle
+	posts   map[string]Handle
+	puts    map[string]Handle
+	deletes map[string]Handle
 }
 
-func (m *exampleMapper) init() {
+func newExampleMapper() *exampleMapper {
+	m := new(exampleMapper)
 	m.gets = make(map[string]Handle)
 	m.posts = make(map[string]Handle)
+	m.puts = make(map[string]Handle)
+	m.deletes = make(map[string]Handle)
+	return m
 }
 
 func (m *exampleMapper) GET(pattern string, handle Handle) {
@@ -102,12 +107,22 @@ func (m *exampleMapper) GET(pattern string, handle Handle) {
 func (m *exampleMapper) POST(pattern string, handle Handle) {
 	m.posts[pattern] = handle
 }
+func (m *exampleMapper) PUT(pattern string, handle Handle) {
+	m.puts[pattern] = handle
+}
+func (m *exampleMapper) DELETE(pattern string, handle Handle) {
+	m.deletes[pattern] = handle
+}
 
 func (m *exampleMapper) FindHandle(req Request) Handle {
 	if path := req.Path(); req.IsGET() {
 		return m.gets[path]
 	} else if req.IsPOST() {
 		return m.posts[path]
+	} else if req.IsPUT() {
+		return m.puts[path]
+	} else if req.IsDELETE() {
+		return m.deletes[path]
 	} else {
 		return nil
 	}

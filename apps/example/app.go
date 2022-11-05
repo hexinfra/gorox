@@ -90,7 +90,7 @@ func (h *exampleHandler) POST_def(req Request, resp Response) {
 	resp.Send("this is POST /def")
 }
 
-// exampleMapper
+// exampleMapper implements hemi.Mapper.
 type exampleMapper struct {
 	gets    map[string]Handle
 	posts   map[string]Handle

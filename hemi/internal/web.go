@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
@@ -625,24 +624,6 @@ type Mapper interface {
 	FindHandle(req Request) Handle
 	FindMethod(req Request) string
 }
-
-// _defaultMapper is the type for defaultMapper.
-type _defaultMapper struct{}
-
-func (m _defaultMapper) FindHandle(req Request) Handle {
-	return nil
-}
-func (m _defaultMapper) FindMethod(req Request) string {
-	path := req.Path()
-	method := req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
-	if Debug(2) {
-		fmt.Println(method)
-	}
-	return method
-}
-
-// defaultMapper is the default mapper.
-var defaultMapper _defaultMapper
 
 // Reviser component revises the outgoing response.
 type Reviser interface {

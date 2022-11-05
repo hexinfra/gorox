@@ -320,6 +320,25 @@ type ider_ struct {
 func (i *ider_) ID() uint8      { return i.id }
 func (i *ider_) setID(id uint8) { i.id = id }
 
+// defaultMapper is the default mapper.
+var defaultMapper _defaultMapper
+
+// _defaultMapper implements Mapper.
+type _defaultMapper struct{}
+
+func (m _defaultMapper) FindHandle(req Request) Handle {
+	// This is not used.
+	return nil
+}
+func (m _defaultMapper) FindMethod(req Request) string {
+	path := req.Path()
+	method := req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
+	if Debug(2) {
+		fmt.Println(method)
+	}
+	return method
+}
+
 const ( // array kinds
 	arrayKindStock = iota // refers to stock buffer. must be 0
 	arrayKindPool         // got from sync.Pool

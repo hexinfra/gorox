@@ -35,6 +35,7 @@ func (h *testsHandler) init(name string, stage *Stage, app *App) {
 	h.SetName(name)
 	h.stage = stage
 	h.app = app
+
 	h.UseMapper(h, nil)
 }
 

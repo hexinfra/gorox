@@ -579,33 +579,26 @@ type Handler_ struct {
 	// Mixins
 	Component_
 	// States
+	rShell reflect.Value
+	mapper Mapper
 }
 
-func (h *Handler_) IsProxy() bool { return false } // override this for proxy handlers
-func (h *Handler_) IsCache() bool { return false } // override this for cache handlers
-
-// Automap_
-type Automap_ struct {
-	rHandler reflect.Value
-	mapper   Mapper
+func (h *Handler_) UseMapper(shell any, mapper Mapper) {
+	h.rShell = reflect.ValueOf(shell)
+	h.mapper = mapper
 }
 
-func (a *Automap_) UseMapper(handler any, mapper Mapper) {
-	a.rHandler = reflect.ValueOf(handler)
-	a.mapper = mapper
-}
-
-func (a *Automap_) Dispatch(req Request, resp Response, notFound Handle) {
+func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
 	var mapper Mapper = defaultMapper
-	if a.mapper != nil {
-		mapper = a.mapper
+	if h.mapper != nil {
+		mapper = h.mapper
 	}
 	found := false
 	if handle := mapper.FindHandle(req); handle != nil {
 		handle(req, resp)
 		found = true
 	} else if method := mapper.FindMethod(req); method != "" {
-		rMethod := a.rHandler.MethodByName(method)
+		rMethod := h.rShell.MethodByName(method)
 		if rMethod.IsValid() {
 			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
 			found = true
@@ -620,6 +613,9 @@ func (a *Automap_) Dispatch(req Request, resp Response, notFound Handle) {
 		notFound(req, resp)
 	}
 }
+
+func (h *Handler_) IsProxy() bool { return false } // override this for proxy handlers
+func (h *Handler_) IsCache() bool { return false } // override this for cache handlers
 
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)

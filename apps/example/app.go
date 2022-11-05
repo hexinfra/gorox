@@ -29,7 +29,6 @@ func init() {
 type exampleHandler struct {
 	// Mixins
 	Handler_
-	Automap_
 	// Assocs
 	stage *Stage // current stage
 	app   *App   // belonging app

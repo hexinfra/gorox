@@ -160,7 +160,6 @@ type ( // core mixins
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_
 	Handler_    = internal.Handler_
-	Automap_    = internal.Automap_
 	Reviser_    = internal.Reviser_
 	Socklet_    = internal.Socklet_
 	Cronjob_    = internal.Cronjob_

@@ -83,6 +83,9 @@ func (h *exampleHandler) handleBaz(req Request, resp Response) {
 	resp.Push("bb")
 	resp.AddTrailer("cc", "dd")
 }
+func (h *exampleHandler) GET_abc(req Request, resp Response) {
+	resp.Send("this is abc")
+}
 
 // exampleMapper
 type exampleMapper struct {
@@ -129,5 +132,5 @@ func (m *exampleMapper) FindHandle(req Request) Handle {
 }
 func (m *exampleMapper) FindMethod(req Request) string {
 	path := req.Path()
-	return req.Method() + "_" + path[1:] // TODO: check empty path
+	return req.Method() + "_" + path[1:] // path always starts with '/'.
 }

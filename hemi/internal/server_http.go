@@ -297,7 +297,7 @@ type httpRequest_ struct {
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
 	path          []byte          // decoded path. only a reference. refers to r.array or arena if rewrited, so can't be a text
-	absPath       []byte          // app.webRoot + r.path. if app.webRoot is not set then this is nil. set when dispatching to handlers. only a reference
+	absPath       []byte          // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlers. only a reference
 	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0') if r.absPath is not nil
 	app           *App            // target app of this request. set before processing stream
 	svc           *Svc            // target svc of this request. set before processing stream
@@ -334,6 +334,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 	acceptBrotli     bool     // does client accept brotli content coding? i.e. accept-encoding: gzip, br
 	expectContinue   bool     // expect: 100-continue?
 	acceptTrailers   bool     // does client accept trailers? i.e. te: trailers, gzip
+	asteriskOptions  bool     // OPTIONS *?
 	cacheControl     struct { // the cache-control info
 		noCache      bool  // no-cache directive in cache-control
 		noStore      bool  // no-store directive in cache-control
@@ -427,10 +428,10 @@ func (r *httpRequest_) IsPOST() bool         { return r.methodCode == MethodPOST
 func (r *httpRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *httpRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
 
-func (r *httpRequest_) isServerOptions() bool { // used by proxies
-	return r.methodCode == MethodOPTIONS && r.uri.isEmpty()
+func (r *httpRequest_) IsAsteriskOptions() bool { // used by proxies
+	return r.asteriskOptions
 }
-func (r *httpRequest_) isAbsoluteForm() bool { // used by proxies
+func (r *httpRequest_) IsAbsoluteForm() bool { // used by proxies
 	return r.targetForm == httpTargetAbsolute
 }
 
@@ -462,9 +463,6 @@ func (r *httpRequest_) UnsafeColonPort() []byte {
 func (r *httpRequest_) URI() string {
 	if r.uri.notEmpty() {
 		return string(r.input[r.uri.from:r.uri.edge])
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		// OPTIONS * or CONNECT
-		return ""
 	} else { // use "/"
 		return httpStringSlash
 	}
@@ -472,9 +470,6 @@ func (r *httpRequest_) URI() string {
 func (r *httpRequest_) UnsafeURI() []byte {
 	if r.uri.notEmpty() {
 		return r.input[r.uri.from:r.uri.edge]
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		// OPTIONS * or CONNECT
-		return nil
 	} else { // use "/"
 		return httpBytesSlash
 	}
@@ -482,8 +477,6 @@ func (r *httpRequest_) UnsafeURI() []byte {
 func (r *httpRequest_) EncodedPath() string {
 	if r.encodedPath.notEmpty() {
 		return string(r.input[r.encodedPath.from:r.encodedPath.edge])
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		return ""
 	} else { // use "/"
 		return httpStringSlash
 	}
@@ -491,8 +484,6 @@ func (r *httpRequest_) EncodedPath() string {
 func (r *httpRequest_) UnsafeEncodedPath() []byte {
 	if r.encodedPath.notEmpty() {
 		return r.input[r.encodedPath.from:r.encodedPath.edge]
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		return nil
 	} else { // use "/"
 		return httpBytesSlash
 	}
@@ -500,8 +491,6 @@ func (r *httpRequest_) UnsafeEncodedPath() []byte {
 func (r *httpRequest_) Path() string {
 	if len(r.path) != 0 {
 		return string(r.path)
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		return ""
 	} else { // use "/"
 		return httpStringSlash
 	}
@@ -509,8 +498,6 @@ func (r *httpRequest_) Path() string {
 func (r *httpRequest_) UnsafePath() []byte {
 	if len(r.path) != 0 {
 		return r.path
-	} else if r.methodCode&(MethodOPTIONS|MethodCONNECT) != 0 {
-		return nil
 	} else { // use "/"
 		return httpBytesSlash
 	}
@@ -564,11 +551,11 @@ func (r *httpRequest_) makeAbsPath() {
 		return
 	}
 	webRoot := r.app.webRoot
-	absPath := r.UnsafeMake(len(webRoot) + len(r.path) + 1)
+	absPath := r.UnsafeMake(len(webRoot) + len(r.UnsafePath()) + 1)
 	absPath[len(absPath)-1] = 0                            // ends with NUL character, so we can avoid make+copy for system function calls
 	r.absPath = absPath[0 : len(absPath)-1 : len(absPath)] // r.absPath doesn't include NUL, but we can get NUL through cap(r.absPath)
 	n := copy(r.absPath, webRoot)
-	copy(r.absPath[n:], r.path)
+	copy(r.absPath[n:], r.UnsafePath())
 }
 func (r *httpRequest_) getPathInfo() system.FileInfo {
 	if !r.pathInfoGot {

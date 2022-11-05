@@ -295,15 +295,11 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 	s.conn.closeConn()
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
-	if req.methodCode != MethodOPTIONS || req.uri.notEmpty() {
-		app.dispatchHandler(req, resp)
-		if !resp.isSent { // only happens on identity content.
-			resp.sendChain(resp.content)
-		} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
-			resp.finishChunked()
-		}
-	} else { // we hijack OPTIONS *. TODO: what if this is to be proxied?
-		resp.sendError(StatusOK, nil)
+	app.dispatchHandler(req, resp)
+	if !resp.isSent { // only happens on identity content.
+		resp.sendChain(resp.content)
+	} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
+		resp.finishChunked()
 	}
 	if !req.contentReceived {
 		req.dropContent()
@@ -537,9 +533,14 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 				return false
 			}
 			if b == ' ' { // ends of request-target
-				// GET http://www.example.org HTTP/1.1
-				// OPTIONS http://www.example.org:8001 HTTP/1.1
-				// Don't treat this as httpTargetAsterisk!
+				// Don't treat this as httpTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
+				if r.methodCode == MethodOPTIONS {
+					// OPTIONS http://www.example.org:8001 HTTP/1.1
+					r.asteriskOptions = true
+				} else {
+					// GET http://www.example.org HTTP/1.1
+					// Do nothing.
+				}
 				goto beforeVersion // request target is done, since origin-form always starts with '/'.
 			}
 			r.pBack = r.pFore // at '/'.
@@ -691,10 +692,11 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 			r.headResult, r.headReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
 			return false
 		}
-		// Skip '*'. We don't use it as uri!
+		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
 		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
 			return false
 		}
+		r.asteriskOptions = true
 		// Expect SP
 		if r.input[r.pFore] != ' ' {
 			r.headResult, r.headReason = StatusBadRequest, "malformed asterisk-form"

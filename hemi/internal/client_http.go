@@ -236,7 +236,7 @@ func (r *hRequest_) push(chunk *Block) error {
 
 func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	var uri []byte
-	if req.isServerOptions() { // OPTIONS *
+	if req.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
@@ -255,7 +255,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	}
 	// copy critical headers from req
 	req.delCriticalHeaders()
-	if req.isAbsoluteForm() {
+	if req.IsAbsoluteForm() {
 		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
 		// field (if any) and instead replace it with the host information of the request-target. A proxy that forwards such a request
 		// MUST generate a new Host field value based on the received request-target rather than forward the received Host field value.

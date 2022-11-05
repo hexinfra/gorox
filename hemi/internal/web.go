@@ -376,6 +376,9 @@ type Request interface {
 	IsPUT() bool
 	IsDELETE() bool
 
+	IsAbsoluteForm() bool
+	IsAsteriskOptions() bool
+
 	Authority() string // hostname[:port]
 	Hostname() string  // hostname
 	ColonPort() string // :port
@@ -465,8 +468,6 @@ type Request interface {
 
 	// Internal only
 	arrayCopy(p []byte) bool
-	isAbsoluteForm() bool
-	isServerOptions() bool
 	getPathInfo() system.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
@@ -610,10 +611,10 @@ func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
 	if found {
 		return
 	}
-	if notFound != nil {
-		notFound(req, resp)
-	} else {
+	if notFound == nil {
 		resp.SendNotFound(nil)
+	} else {
+		notFound(req, resp)
 	}
 }
 
@@ -630,16 +631,14 @@ type Mapper interface {
 }
 
 // _defaultMapper is the type for defaultMapper.
-type _defaultMapper struct {
-}
+type _defaultMapper struct{}
 
 func (m _defaultMapper) FindHandle(req Request) Handle {
 	return nil
 }
 func (m _defaultMapper) FindMethod(req Request) string {
 	path := req.Path()
-	path = path[1:] // TODO: check "" because OPTIONS * gives empty path!
-	method := req.Method() + "_" + path
+	method := req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
 	if Debug(2) {
 		fmt.Println(method)
 	}

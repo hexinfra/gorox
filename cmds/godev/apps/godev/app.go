@@ -50,6 +50,20 @@ func (h *godevHandler) Handle(req Request, resp Response) (next bool) {
 	return
 }
 
+func (h *godevHandler) GET_(req Request, resp Response) {
+	if req.IsAbsoluteForm() {
+		resp.Send("this is absolute-form GET /")
+	} else {
+		resp.Send("this is origin-form GET /")
+	}
+}
+func (h *godevHandler) OPTIONS_(req Request, resp Response) {
+	if req.IsAsteriskOptions() {
+		resp.Send("this is OPTIONS *")
+	} else {
+		resp.Send("this is OPTIONS /")
+	}
+}
 func (h *godevHandler) GET_a(req Request, resp Response) {
 	resp.Push(req.C("a"))
 	resp.Push(req.C("b"))

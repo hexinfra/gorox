@@ -84,7 +84,10 @@ func (h *exampleHandler) handleBaz(req Request, resp Response) {
 	resp.AddTrailer("cc", "dd")
 }
 func (h *exampleHandler) GET_abc(req Request, resp Response) {
-	resp.Send("this is abc")
+	resp.Send("this is GET /abc")
+}
+func (h *exampleHandler) POST_def(req Request, resp Response) {
+	resp.Send("this is POST /def")
 }
 
 // exampleMapper

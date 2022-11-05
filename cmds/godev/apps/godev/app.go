@@ -59,9 +59,17 @@ func (h *godevHandler) GET_(req Request, resp Response) {
 }
 func (h *godevHandler) OPTIONS_(req Request, resp Response) {
 	if req.IsAsteriskOptions() {
-		resp.Send("this is OPTIONS *")
+		if req.IsAbsoluteForm() {
+			resp.Send("this is absolute-form OPTIONS *")
+		} else {
+			resp.Send("this is asterisk-form OPTIONS *")
+		}
 	} else {
-		resp.Send("this is OPTIONS /")
+		if req.IsAbsoluteForm() {
+			resp.Send("this is absolute-form OPTIONS /")
+		} else {
+			resp.Send("this is origin-form OPTIONS /")
+		}
 	}
 }
 func (h *godevHandler) GET_a(req Request, resp Response) {

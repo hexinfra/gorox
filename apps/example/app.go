@@ -33,18 +33,23 @@ type exampleHandler struct {
 	stage *Stage // current stage
 	app   *App   // belonging app
 	// States
-	mapper  *exampleMapper // an example path mapper, mapping request paths to handles
 	content string
 }
 
 func (h *exampleHandler) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.Handler_.Init(name, h)
 	h.stage = stage
 	h.app = app
 
 	m := new(exampleMapper)
 	m.init()
-	h.mapper = m
+
+	m.GET("/", h.handleIndex)
+	m.GET("/foo", h.handleFoo)
+	m.POST("/bar", h.handleBar)
+	m.GET("/baz", h.handleBaz)
+
+	h.UseMapper(m)
 }
 
 func (h *exampleHandler) OnConfigure() {
@@ -52,23 +57,13 @@ func (h *exampleHandler) OnConfigure() {
 	h.ConfigureString("content", &h.content, nil, "this is example.")
 }
 func (h *exampleHandler) OnPrepare() {
-	m := h.mapper
-
-	m.GET("/", h.handleIndex)
-	m.GET("/foo", h.handleFoo)
-	m.POST("/bar", h.handleBar)
-	m.GET("/baz", h.handleBaz)
 }
 func (h *exampleHandler) OnShutdown() {
 	// Do nothing.
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
-	if handle := h.mapper.findHandle(req); handle != nil {
-		handle(req, resp)
-	} else { // 404
-		resp.SendNotFound(nil)
-	}
+	h.Dispatch(req, resp)
 	return // request is handled, next = false
 }
 
@@ -108,7 +103,7 @@ func (m *exampleMapper) POST(pattern string, handle Handle) {
 	m.posts[pattern] = handle
 }
 
-func (m *exampleMapper) findHandle(req Request) Handle {
+func (m *exampleMapper) FindHandle(req Request) Handle {
 	if path := req.Path(); req.IsGET() {
 		return m.gets[path]
 	} else if req.IsPOST() {
@@ -116,4 +111,8 @@ func (m *exampleMapper) findHandle(req Request) Handle {
 	} else {
 		return nil
 	}
+}
+func (m *exampleMapper) FindMethod(req Request) string {
+	path := req.Path()
+	return req.Method() + "_" + path[1:] // TODO: check empty path
 }

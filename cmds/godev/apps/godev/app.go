@@ -32,7 +32,7 @@ type godevHandler struct {
 }
 
 func (h *godevHandler) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.Handler_.Init(name, h)
 	h.stage = stage
 	h.app = app
 }
@@ -46,21 +46,21 @@ func (h *godevHandler) OnShutdown() {
 }
 
 func (h *godevHandler) Handle(req Request, resp Response) (next bool) {
-	h.testQueryString(req, resp)
+	h.Dispatch(req, resp)
 	return
 }
 
-func (h *godevHandler) testC(req Request, resp Response) {
+func (h *godevHandler) GET_a(req Request, resp Response) {
 	resp.Push(req.C("a"))
 	resp.Push(req.C("b"))
 }
-func (h *godevHandler) testQ(req Request, resp Response) {
+func (h *godevHandler) GET_b(req Request, resp Response) {
 	resp.Send(req.Q("aa"))
 }
-func (h *godevHandler) testUserAgent(req Request, resp Response) {
+func (h *godevHandler) GET_c(req Request, resp Response) {
 	resp.Send(req.UserAgent())
 }
-func (h *godevHandler) testSetCookie(req Request, resp Response) {
+func (h *godevHandler) GET_d(req Request, resp Response) {
 	cookie := new(Cookie)
 	cookie.Set("hello", "wo r,ld")
 	cookie.SetMaxAge(99)
@@ -69,6 +69,6 @@ func (h *godevHandler) testSetCookie(req Request, resp Response) {
 	resp.AddCookie(cookie)
 	resp.SendBytes(nil)
 }
-func (h *godevHandler) testQueryString(req Request, resp Response) {
+func (h *godevHandler) GET_e(req Request, resp Response) {
 	resp.Send(req.QueryString())
 }

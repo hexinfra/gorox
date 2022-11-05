@@ -10,10 +10,12 @@ package internal
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -563,9 +565,6 @@ type Socket interface {
 	Close() error
 }
 
-// Handle is a function which can handle http request and gives http response.
-type Handle func(req Request, resp Response)
-
 // Handler component handles the incoming request and gives an outgoing response if the request is handled.
 type Handler interface {
 	Component
@@ -579,10 +578,71 @@ type Handler_ struct {
 	// Mixins
 	Component_
 	// States
+	rShell reflect.Value
+	mapper Mapper
+}
+
+func (h *Handler_) Init(name string, shell any) {
+	h.SetName(name)
+	h.rShell = reflect.ValueOf(shell)
+}
+
+func (h *Handler_) UseMapper(mapper Mapper) {
+	h.mapper = mapper
+}
+
+func (h *Handler_) Dispatch(req Request, resp Response) {
+	var mapper Mapper = defaultMapper
+	if h.mapper != nil {
+		mapper = h.mapper
+	}
+	found := false
+	if handle := mapper.FindHandle(req); handle != nil {
+		handle(req, resp)
+		found = true
+	} else if method := mapper.FindMethod(req); method != "" {
+		rMethod := h.rShell.MethodByName(method)
+		if rMethod.IsValid() {
+			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
+			found = true
+		}
+	}
+	if !found {
+		resp.SendNotFound(nil)
+	}
 }
 
 func (h *Handler_) IsProxy() bool { return false } // override this for proxy handlers
 func (h *Handler_) IsCache() bool { return false } // override this for cache handlers
+
+// Handle is a function which can handle http request and gives http response.
+type Handle func(req Request, resp Response)
+
+// Mapper performs URL mapping.
+type Mapper interface {
+	FindHandle(req Request) Handle
+	FindMethod(req Request) string
+}
+
+// _defaultMapper is the type for defaultMapper.
+type _defaultMapper struct {
+}
+
+func (m _defaultMapper) FindHandle(req Request) Handle {
+	return nil
+}
+func (m _defaultMapper) FindMethod(req Request) string {
+	path := req.Path()
+	path = path[1:] // TODO: check "" because OPTIONS * gives empty path!
+	method := req.Method() + "_" + path
+	if Debug(2) {
+		fmt.Println(method)
+	}
+	return method
+}
+
+// defaultMapper is the default mapper.
+var defaultMapper _defaultMapper
 
 // Reviser component revises the outgoing response.
 type Reviser interface {

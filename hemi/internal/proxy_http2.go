@@ -28,7 +28,7 @@ type http2Proxy struct {
 }
 
 func (h *http2Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app)
+	h.httpProxy_.init(name, stage, app, h)
 }
 
 func (h *http2Proxy) OnConfigure() {

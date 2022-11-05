@@ -32,7 +32,7 @@ type http1Proxy struct {
 }
 
 func (h *http1Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app)
+	h.httpProxy_.init(name, stage, app, h)
 }
 
 func (h *http1Proxy) OnConfigure() {

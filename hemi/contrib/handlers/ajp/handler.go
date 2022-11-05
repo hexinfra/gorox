@@ -34,7 +34,7 @@ type ajpProxy struct {
 }
 
 func (h *ajpProxy) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.Handler_.Init(name, h)
 	h.stage = stage
 	h.app = app
 }

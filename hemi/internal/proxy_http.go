@@ -24,8 +24,8 @@ type httpProxy_ struct {
 	addResponseHeaders  [][2][]byte // headers appended to server response
 }
 
-func (h *httpProxy_) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+func (h *httpProxy_) init(name string, stage *Stage, app *App, shell any) {
+	h.Handler_.Init(name, shell)
 	h.proxy_.init(stage)
 	h.app = app
 }
@@ -83,21 +83,21 @@ type sockProxy_ struct {
 	// States
 }
 
-func (h *sockProxy_) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
-	h.proxy_.init(stage)
-	h.app = app
+func (s *sockProxy_) init(name string, stage *Stage, app *App) {
+	s.SetName(name)
+	s.proxy_.init(stage)
+	s.app = app
 }
 
-func (h *sockProxy_) onConfigure(c Component) {
-	h.proxy_.onConfigure(c)
-	if h.proxyMode == "forward" && !h.app.isDefault {
+func (s *sockProxy_) onConfigure(c Component) {
+	s.proxy_.onConfigure(c)
+	if s.proxyMode == "forward" && !s.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }
-func (h *sockProxy_) onPrepare(c Component) {
+func (s *sockProxy_) onPrepare(c Component) {
 }
-func (h *sockProxy_) onShutdown(c Component) {
+func (s *sockProxy_) onShutdown(c Component) {
 }
 
-func (h *sockProxy_) IsProxy() bool { return true }
+func (s *sockProxy_) IsProxy() bool { return true }

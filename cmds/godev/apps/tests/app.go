@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package godev
+package tests
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
@@ -11,18 +11,18 @@ import (
 )
 
 func init() {
-	RegisterHandler("godevHandler", func(name string, stage *Stage, app *App) Handler {
-		h := new(godevHandler)
+	RegisterHandler("testsHandler", func(name string, stage *Stage, app *App) Handler {
+		h := new(testsHandler)
 		h.init(name, stage, app)
 		return h
 	})
-	RegisterAppInit("godev", func(app *App) error {
+	RegisterAppInit("tests", func(app *App) error {
 		return nil
 	})
 }
 
-// godevHandler
-type godevHandler struct {
+// testsHandler
+type testsHandler struct {
 	// Mixins
 	Handler_
 	// Assocs
@@ -31,33 +31,33 @@ type godevHandler struct {
 	// States
 }
 
-func (h *godevHandler) init(name string, stage *Stage, app *App) {
+func (h *testsHandler) init(name string, stage *Stage, app *App) {
 	h.Handler_.Init(name, h)
 	h.stage = stage
 	h.app = app
 }
 
-func (h *godevHandler) OnConfigure() {
+func (h *testsHandler) OnConfigure() {
 }
-func (h *godevHandler) OnPrepare() {
+func (h *testsHandler) OnPrepare() {
 }
-func (h *godevHandler) OnShutdown() {
+func (h *testsHandler) OnShutdown() {
 	// Do nothing.
 }
 
-func (h *godevHandler) Handle(req Request, resp Response) (next bool) {
+func (h *testsHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
 
-func (h *godevHandler) GET_(req Request, resp Response) {
+func (h *testsHandler) GET_(req Request, resp Response) {
 	if req.IsAbsoluteForm() {
 		resp.Send("this is absolute-form GET /")
 	} else {
 		resp.Send("this is origin-form GET /")
 	}
 }
-func (h *godevHandler) OPTIONS_(req Request, resp Response) {
+func (h *testsHandler) OPTIONS_(req Request, resp Response) {
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
 			resp.Send("this is absolute-form OPTIONS *")
@@ -72,17 +72,17 @@ func (h *godevHandler) OPTIONS_(req Request, resp Response) {
 		}
 	}
 }
-func (h *godevHandler) GET_a(req Request, resp Response) {
+func (h *testsHandler) GET_a(req Request, resp Response) {
 	resp.Push(req.C("a"))
 	resp.Push(req.C("b"))
 }
-func (h *godevHandler) GET_b(req Request, resp Response) {
+func (h *testsHandler) GET_b(req Request, resp Response) {
 	resp.Send(req.Q("aa"))
 }
-func (h *godevHandler) GET_c(req Request, resp Response) {
+func (h *testsHandler) GET_c(req Request, resp Response) {
 	resp.Send(req.UserAgent())
 }
-func (h *godevHandler) GET_d(req Request, resp Response) {
+func (h *testsHandler) GET_d(req Request, resp Response) {
 	cookie := new(Cookie)
 	cookie.Set("hello", "wo r,ld")
 	cookie.SetMaxAge(99)
@@ -91,10 +91,10 @@ func (h *godevHandler) GET_d(req Request, resp Response) {
 	resp.AddCookie(cookie)
 	resp.SendBytes(nil)
 }
-func (h *godevHandler) GET_e(req Request, resp Response) {
+func (h *testsHandler) GET_e(req Request, resp Response) {
 	resp.Send(req.QueryString())
 }
 
-func (h *godevHandler) notFound(req Request, resp Response) {
+func (h *testsHandler) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }

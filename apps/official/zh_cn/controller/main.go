@@ -14,6 +14,13 @@ type Controller struct {
 	sitex.Controller_
 }
 
+func (c *Controller) OPTIONS_index(req Request, resp Response) {
+	if req.IsAsteriskOptions() {
+		resp.Send("this is OPTIONS *")
+	} else {
+		resp.Send("this is OPTIONS / or OPTIONS /index")
+	}
+}
 func (c *Controller) GET_example(req Request, resp Response) { // GET /example
 	resp.Send("get example")
 }

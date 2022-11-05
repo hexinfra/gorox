@@ -8,8 +8,13 @@
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/godev/apps/godev"
-	_ "github.com/hexinfra/gorox/cmds/godev/svcs/godev"
+	"os"
+)
+
+import (
+	_ "github.com/hexinfra/gorox/cmds/godev/apps/tests"
+	_ "github.com/hexinfra/gorox/cmds/godev/svcs/tests"
+	"github.com/hexinfra/gorox/cmds/godev/test"
 )
 
 import ( // all contrib components
@@ -81,5 +86,9 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("godev", usage, manager.ProcModeDevelop, "127.0.0.1:9526")
+	if len(os.Args) == 2 && os.Args[1] == "test" {
+		test.Main()
+	} else {
+		manager.Main("godev", usage, manager.ProcModeDevelop, "127.0.0.1:9526")
+	}
 }

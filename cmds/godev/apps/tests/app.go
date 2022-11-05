@@ -42,7 +42,6 @@ func (h *testsHandler) OnConfigure() {
 func (h *testsHandler) OnPrepare() {
 }
 func (h *testsHandler) OnShutdown() {
-	// Do nothing.
 }
 
 func (h *testsHandler) Handle(req Request, resp Response) (next bool) {
@@ -52,23 +51,23 @@ func (h *testsHandler) Handle(req Request, resp Response) (next bool) {
 
 func (h *testsHandler) GET_(req Request, resp Response) {
 	if req.IsAbsoluteForm() {
-		resp.Send("this is absolute-form GET /")
+		resp.Send("absolute-form GET /")
 	} else {
-		resp.Send("this is origin-form GET /")
+		resp.Send("origin-form GET /")
 	}
 }
 func (h *testsHandler) OPTIONS_(req Request, resp Response) {
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
-			resp.Send("this is absolute-form OPTIONS *")
+			resp.Send("absolute-form OPTIONS *")
 		} else {
-			resp.Send("this is asterisk-form OPTIONS *")
+			resp.Send("asterisk-form OPTIONS *")
 		}
 	} else {
 		if req.IsAbsoluteForm() {
-			resp.Send("this is absolute-form OPTIONS /")
+			resp.Send("absolute-form OPTIONS /")
 		} else {
-			resp.Send("this is origin-form OPTIONS /")
+			resp.Send("origin-form OPTIONS /")
 		}
 	}
 }

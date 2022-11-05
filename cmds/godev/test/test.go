@@ -7,10 +7,12 @@
 
 package test
 
-import (
-	"fmt"
-)
-
 func Main() {
-	fmt.Println("tests")
+	http1TestHello()
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

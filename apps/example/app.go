@@ -29,6 +29,7 @@ func init() {
 type exampleHandler struct {
 	// Mixins
 	Handler_
+	Automap_
 	// Assocs
 	stage *Stage // current stage
 	app   *App   // belonging app
@@ -37,7 +38,7 @@ type exampleHandler struct {
 }
 
 func (h *exampleHandler) init(name string, stage *Stage, app *App) {
-	h.Handler_.Init(name, h)
+	h.SetName(name)
 	h.stage = stage
 	h.app = app
 
@@ -48,7 +49,7 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	m.POST("/bar", h.handleBar)
 	m.GET("/baz", h.handleBaz)
 
-	h.UseMapper(m)
+	h.UseMapper(h, m)
 }
 
 func (h *exampleHandler) OnConfigure() {

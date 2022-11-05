@@ -24,8 +24,8 @@ type httpProxy_ struct {
 	addResponseHeaders  [][2][]byte // headers appended to server response
 }
 
-func (h *httpProxy_) init(name string, stage *Stage, app *App, shell any) {
-	h.Handler_.Init(name, shell)
+func (h *httpProxy_) init(name string, stage *Stage, app *App) {
+	h.SetName(name)
 	h.proxy_.init(stage)
 	h.app = app
 }

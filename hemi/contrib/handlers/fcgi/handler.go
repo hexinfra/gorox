@@ -36,7 +36,7 @@ type fcgiProxy struct {
 }
 
 func (h *fcgiProxy) init(name string, stage *Stage, app *App) {
-	h.Handler_.Init(name, h)
+	h.SetName(name)
 	h.stage = stage
 	h.app = app
 }

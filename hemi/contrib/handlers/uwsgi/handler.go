@@ -34,7 +34,7 @@ type uwsgiProxy struct {
 }
 
 func (h *uwsgiProxy) init(name string, stage *Stage, app *App) {
-	h.Handler_.Init(name, h)
+	h.SetName(name)
 	h.stage = stage
 	h.app = app
 }

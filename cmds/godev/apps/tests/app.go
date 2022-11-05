@@ -25,6 +25,7 @@ func init() {
 type testsHandler struct {
 	// Mixins
 	Handler_
+	Automap_
 	// Assocs
 	stage *Stage
 	app   *App
@@ -32,9 +33,10 @@ type testsHandler struct {
 }
 
 func (h *testsHandler) init(name string, stage *Stage, app *App) {
-	h.Handler_.Init(name, h)
+	h.SetName(name)
 	h.stage = stage
 	h.app = app
+	h.UseMapper(h, nil)
 }
 
 func (h *testsHandler) OnConfigure() {

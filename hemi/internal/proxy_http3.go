@@ -28,7 +28,7 @@ type http3Proxy struct {
 }
 
 func (h *http3Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app, h)
+	h.httpProxy_.init(name, stage, app)
 }
 
 func (h *http3Proxy) OnConfigure() {

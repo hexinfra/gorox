@@ -491,11 +491,11 @@ func (r *httpInMessage_) HasHeader(name string) bool {
 	return ok
 }
 func (r *httpInMessage_) AddHeader(name string, value string) bool {
-	// TODO: forbid some important headers, like: if-match, if-none-match, so we don't need to handle them as extra.
+	// TODO: forbid some important headers, like: if-match, if-none-match, so we don't need to search them in extra.
 	return r.addExtra(name, value, extraKindHeader)
 }
 func (r *httpInMessage_) DelHeader(name string) (deleted bool) {
-	// TODO: forbid some important headers
+	// TODO: forbid some important headers, so we don't need to search them in extra.
 	return r.delPair(name, 0, r.headers, extraKindHeader)
 }
 func (r *httpInMessage_) addMultipleHeader(header *pair, must bool) bool {

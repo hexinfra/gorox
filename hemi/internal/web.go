@@ -554,7 +554,6 @@ type Response interface {
 	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
 	hookReviser(reviser Reviser)
-	setBypassRevisers(bypass bool)
 	unsafeMake(size int) []byte
 }
 

@@ -2239,7 +2239,6 @@ type httpResponse_ struct {
 type httpResponse0_ struct { // for fast reset, entirely
 	revisers           [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 	hasRevisers        bool      // are there any revisers hooked on this response?
-	bypassRevisers     bool      // bypass revisers when writing response to client?
 	nETag              int8      // etag is at r.etag[:r.nETag]
 	acceptBytesRange   bool      // accept-ranges: bytes?
 	dateCopied         bool      // is date header copied?
@@ -2371,7 +2370,7 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 func (r *httpResponse_) send() error {
 	curChain := r.content
 	resp := r.shell.(Response)
-	if r.hasRevisers && !r.bypassRevisers {
+	if r.hasRevisers {
 		// Travel through revisers
 		for _, id := range r.revisers { // revise headers
 			if id == 0 { // reviser id is ensured to be > 0
@@ -2416,7 +2415,7 @@ func (r *httpResponse_) checkPush() error {
 	r.isSent = true
 	r.contentSize = -2 // mark as chunked mode
 	resp := r.shell.(Response)
-	if r.hasRevisers && !r.bypassRevisers {
+	if r.hasRevisers {
 		for _, id := range r.revisers {
 			if id == 0 { // reviser id is ensured to be > 0
 				continue
@@ -2436,7 +2435,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 		return httpWriteBroken
 	}
 	resp := r.shell.(Response)
-	if r.hasRevisers && !r.bypassRevisers {
+	if r.hasRevisers {
 		for _, id := range r.revisers {
 			if id == 0 { // reviser id is ensured to be > 0
 				continue
@@ -2478,7 +2477,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	return true
 }
 func (r *httpResponse_) pass(resp httpInMessage) error { // used by proxies
-	return r.doPass(resp, r.hasRevisers && !r.bypassRevisers)
+	return r.doPass(resp, r.hasRevisers)
 }
 
 func (r *httpResponse_) finishChunked() error {
@@ -2486,7 +2485,7 @@ func (r *httpResponse_) finishChunked() error {
 		return httpWriteBroken
 	}
 	resp := r.shell.(Response)
-	if r.hasRevisers && !r.bypassRevisers {
+	if r.hasRevisers {
 		for _, id := range r.revisers {
 			if id == 0 { // reviser id is ensured to be > 0
 				continue
@@ -2501,9 +2500,6 @@ func (r *httpResponse_) finishChunked() error {
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-}
-func (r *httpResponse_) setBypassRevisers(bypass bool) {
-	r.bypassRevisers = bypass
 }
 
 func (r *httpResponse_) isForbiddenField(hash uint16, name []byte) bool {

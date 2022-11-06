@@ -44,10 +44,9 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	m := NewDefaultMapper() // you can write your own mapper type as long as it implements Mapper interface
 
 	m.GET("/", h.handleIndex)
-	m.GET("/foo", h.handleFoo)
-	m.POST("/bar", h.handleBar)
+	m.POST("/foo", h.handleFoo)
 
-	h.UseMapper(h, m) // equip handler with mapper
+	h.UseMapper(h, m) // equip handler with mapper so it can call handles automatically through Dispatch()
 }
 
 func (h *exampleHandler) OnConfigure() {
@@ -70,13 +69,9 @@ func (h *exampleHandler) handleIndex(req Request, resp Response) {
 	resp.Send(h.example)
 }
 func (h *exampleHandler) handleFoo(req Request, resp Response) {
-	resp.Push("this is /foo")
-}
-func (h *exampleHandler) handleBar(req Request, resp Response) {
 	resp.Push(req.Content())
 	resp.Push(req.T("x"))
-	resp.Push(req.T("y"))
-	resp.AddTrailer("z", "123")
+	resp.AddTrailer("y", "123")
 }
 
 func (h *exampleHandler) GET_abc(req Request, resp Response) {

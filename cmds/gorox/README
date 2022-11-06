@@ -1,7 +1,7 @@
 Gorox
 =====
 
-  Gorox is the HTTP server, application server, microservice server, and proxy server.
+  Gorox is the server and its control agent.
 
 Process Architecture
 ====================

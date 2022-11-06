@@ -364,9 +364,18 @@ func (m *defaultMapper) FindHandle(req Request) Handle {
 		return nil
 	}
 }
-func (m *defaultMapper) FindMethod(req Request) string {
-	path := req.Path()
-	return req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
+func (m *defaultMapper) CreateName(req Request) string {
+	method := req.UnsafeMethod()
+	path := req.UnsafePath() // always starts with '/'
+	name := req.UnsafeMake(len(method) + len(path))
+	n := copy(name, method)
+	copy(name[n:], path)
+	for i := n; i < len(name); i++ {
+		if name[i] == '/' {
+			name[i] = '_'
+		}
+	}
+	return risky.WeakString(name)
 }
 
 const ( // array kinds

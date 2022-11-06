@@ -595,8 +595,8 @@ func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
 	if handle := h.mapper.FindHandle(req); handle != nil {
 		handle(req, resp)
 		found = true
-	} else if method := h.mapper.FindMethod(req); method != "" {
-		rMethod := h.rShell.MethodByName(method)
+	} else if name := h.mapper.CreateName(req); name != "" {
+		rMethod := h.rShell.MethodByName(name)
 		if rMethod.IsValid() {
 			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
 			found = true
@@ -621,7 +621,7 @@ type Handle func(req Request, resp Response)
 // Mapper performs URL mapping.
 type Mapper interface {
 	FindHandle(req Request) Handle
-	FindMethod(req Request) string
+	CreateName(req Request) string
 }
 
 // Reviser component revises the outgoing response.

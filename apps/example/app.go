@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	// Register additional handlers for app.
+	// Register additional handlers for your app.
 	RegisterHandler("exampleHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(exampleHandler)
 		h.init(name, stage, app)
 		return h
 	})
-	// Register app initializer.
+	// Register initializer for your app.
 	RegisterAppInit("example", func(app *App) error {
-		app.AddSetting("name1", "value1")
+		app.AddSetting("name1", "value1") // add example setting
 		return nil
 	})
 }
@@ -33,7 +33,7 @@ type exampleHandler struct {
 	stage *Stage // current stage
 	app   *App   // belonging app
 	// States
-	content string
+	example string // an example config entry
 }
 
 func (h *exampleHandler) init(name string, stage *Stage, app *App) {
@@ -41,24 +41,24 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	m := NewDefaultMapper() // you can write your own mapper as long as it implements Mapper interface
+	m := NewDefaultMapper() // you can write your own mapper type as long as it implements Mapper interface
 
 	m.GET("/", h.handleIndex)
 	m.GET("/foo", h.handleFoo)
 	m.POST("/bar", h.handleBar)
-	m.GET("/baz", h.handleBaz)
 
-	h.UseMapper(h, m)
+	h.UseMapper(h, m) // equip handler with mapper
 }
 
 func (h *exampleHandler) OnConfigure() {
-	// content
-	h.ConfigureString("content", &h.content, nil, "this is example.")
+	// example
+	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *exampleHandler) OnPrepare() {
+	// Prepare this handler if needed
 }
 func (h *exampleHandler) OnShutdown() {
-	// Do nothing.
+	// Do something if needed when this handler is shutdown
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
@@ -67,10 +67,10 @@ func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
 }
 
 func (h *exampleHandler) handleIndex(req Request, resp Response) {
-	resp.Send(h.content)
+	resp.Send(h.example)
 }
 func (h *exampleHandler) handleFoo(req Request, resp Response) {
-	resp.Send("this is page foo")
+	resp.Push("this is /foo")
 }
 func (h *exampleHandler) handleBar(req Request, resp Response) {
 	resp.Push(req.Content())
@@ -78,11 +78,7 @@ func (h *exampleHandler) handleBar(req Request, resp Response) {
 	resp.Push(req.T("y"))
 	resp.AddTrailer("z", "123")
 }
-func (h *exampleHandler) handleBaz(req Request, resp Response) {
-	resp.Push("aa")
-	resp.Push("bb")
-	resp.AddTrailer("cc", "dd")
-}
+
 func (h *exampleHandler) GET_abc(req Request, resp Response) {
 	resp.Send("this is GET /abc")
 }

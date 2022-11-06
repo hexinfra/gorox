@@ -12,9 +12,9 @@ import (
 )
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/godev/apps/tests"
+	_ "github.com/hexinfra/gorox/cmds/godev/apps/test"
 	_ "github.com/hexinfra/gorox/cmds/godev/exts"
-	_ "github.com/hexinfra/gorox/cmds/godev/svcs/tests"
+	_ "github.com/hexinfra/gorox/cmds/godev/svcs/test"
 	"github.com/hexinfra/gorox/cmds/godev/test"
 )
 

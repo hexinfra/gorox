@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package tests
+package test
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
@@ -11,18 +11,18 @@ import (
 )
 
 func init() {
-	RegisterHandler("testsHandler", func(name string, stage *Stage, app *App) Handler {
-		h := new(testsHandler)
+	RegisterHandler("testHandler", func(name string, stage *Stage, app *App) Handler {
+		h := new(testHandler)
 		h.init(name, stage, app)
 		return h
 	})
-	RegisterAppInit("tests", func(app *App) error {
+	RegisterAppInit("test", func(app *App) error {
 		return nil
 	})
 }
 
-// testsHandler
-type testsHandler struct {
+// testHandler
+type testHandler struct {
 	// Mixins
 	Handler_
 	// Assocs
@@ -31,7 +31,7 @@ type testsHandler struct {
 	// States
 }
 
-func (h *testsHandler) init(name string, stage *Stage, app *App) {
+func (h *testHandler) init(name string, stage *Stage, app *App) {
 	h.SetName(name)
 	h.stage = stage
 	h.app = app
@@ -40,26 +40,26 @@ func (h *testsHandler) init(name string, stage *Stage, app *App) {
 	h.UseMapper(h, m)
 }
 
-func (h *testsHandler) OnConfigure() {
+func (h *testHandler) OnConfigure() {
 }
-func (h *testsHandler) OnPrepare() {
+func (h *testHandler) OnPrepare() {
 }
-func (h *testsHandler) OnShutdown() {
+func (h *testHandler) OnShutdown() {
 }
 
-func (h *testsHandler) Handle(req Request, resp Response) (next bool) {
+func (h *testHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
 
-func (h *testsHandler) GET_(req Request, resp Response) {
+func (h *testHandler) GET_(req Request, resp Response) {
 	if req.IsAbsoluteForm() {
 		resp.Send("absolute-form GET /")
 	} else {
 		resp.Send("origin-form GET /")
 	}
 }
-func (h *testsHandler) OPTIONS_(req Request, resp Response) {
+func (h *testHandler) OPTIONS_(req Request, resp Response) {
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
 			resp.Send("absolute-form OPTIONS *")
@@ -75,27 +75,27 @@ func (h *testsHandler) OPTIONS_(req Request, resp Response) {
 	}
 }
 
-func (h *testsHandler) GET_form_urlencoded(req Request, resp Response) {
+func (h *testHandler) GET_form_urlencoded(req Request, resp Response) {
 	resp.Send(`<form action="/form?a=bb" method="post">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *testsHandler) GET_form_multipart(req Request, resp Response) {
+func (h *testHandler) GET_form_multipart(req Request, resp Response) {
 	resp.Send(`<form action="/form?a=bb" method="post" enctype="multipart/form-data">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *testsHandler) POST_form(req Request, resp Response) {
+func (h *testHandler) POST_form(req Request, resp Response) {
 	resp.Push(req.Q("a"))
 	resp.Push(req.F("title"))
 	resp.Push(req.F("content"))
 }
 
-func (h *testsHandler) GET_setcookie(req Request, resp Response) {
+func (h *testHandler) GET_setcookie(req Request, resp Response) {
 	cookie1 := new(Cookie)
 	cookie1.Set("hello", "wo r,ld")
 	cookie1.SetMaxAge(99)
@@ -109,13 +109,13 @@ func (h *testsHandler) GET_setcookie(req Request, resp Response) {
 
 	resp.SendBytes(nil)
 }
-func (h *testsHandler) GET_cookies(req Request, resp Response) {
+func (h *testHandler) GET_cookies(req Request, resp Response) {
 	resp.Push(req.C("hello"))
 }
-func (h *testsHandler) GET_querystring(req Request, resp Response) {
+func (h *testHandler) GET_querystring(req Request, resp Response) {
 	resp.Send(req.QueryString())
 }
 
-func (h *testsHandler) notFound(req Request, resp Response) {
+func (h *testHandler) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }

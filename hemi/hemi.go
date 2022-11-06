@@ -53,6 +53,8 @@ var ( // core funcs
 
 	ApplyFile = internal.ApplyFile
 	ApplyText = internal.ApplyText
+
+	NewDefaultMapper = internal.NewDefaultMapper
 )
 
 type ( // core types

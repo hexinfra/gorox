@@ -320,23 +320,53 @@ type ider_ struct {
 func (i *ider_) ID() uint8      { return i.id }
 func (i *ider_) setID(id uint8) { i.id = id }
 
-// defaultMapper is the default mapper.
-var defaultMapper _defaultMapper
-
-// _defaultMapper implements Mapper.
-type _defaultMapper struct{}
-
-func (m _defaultMapper) FindHandle(req Request) Handle {
-	// This is not used.
-	return nil
+// defaultMapper implements Mapper.
+type defaultMapper struct {
+	gets    map[string]Handle
+	posts   map[string]Handle
+	puts    map[string]Handle
+	deletes map[string]Handle
 }
-func (m _defaultMapper) FindMethod(req Request) string {
-	path := req.Path()
-	method := req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
-	if Debug(2) {
-		fmt.Println(method)
+
+func NewDefaultMapper() *defaultMapper {
+	m := new(defaultMapper)
+	m.gets = make(map[string]Handle)
+	m.posts = make(map[string]Handle)
+	m.puts = make(map[string]Handle)
+	m.deletes = make(map[string]Handle)
+	return m
+}
+
+func (m *defaultMapper) GET(pattern string, handle Handle) {
+	m.gets[pattern] = handle
+}
+func (m *defaultMapper) POST(pattern string, handle Handle) {
+	m.posts[pattern] = handle
+}
+func (m *defaultMapper) PUT(pattern string, handle Handle) {
+	m.puts[pattern] = handle
+}
+func (m *defaultMapper) DELETE(pattern string, handle Handle) {
+	m.deletes[pattern] = handle
+}
+
+func (m *defaultMapper) FindHandle(req Request) Handle {
+	// TODO
+	if path := req.Path(); req.IsGET() {
+		return m.gets[path]
+	} else if req.IsPOST() {
+		return m.posts[path]
+	} else if req.IsPUT() {
+		return m.puts[path]
+	} else if req.IsDELETE() {
+		return m.deletes[path]
+	} else {
+		return nil
 	}
-	return method
+}
+func (m *defaultMapper) FindMethod(req Request) string {
+	path := req.Path()
+	return req.Method() + "_" + path[1:] // skip '/'. path always starts with '/'.
 }
 
 const ( // array kinds

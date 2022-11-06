@@ -588,15 +588,14 @@ func (h *Handler_) UseMapper(shell any, mapper Mapper) {
 }
 
 func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
-	var mapper Mapper = defaultMapper
-	if h.mapper != nil {
-		mapper = h.mapper
+	if h.mapper == nil {
+		BugExitln("called Dispatch() without a mapper")
 	}
 	found := false
-	if handle := mapper.FindHandle(req); handle != nil {
+	if handle := h.mapper.FindHandle(req); handle != nil {
 		handle(req, resp)
 		found = true
-	} else if method := mapper.FindMethod(req); method != "" {
+	} else if method := h.mapper.FindMethod(req); method != "" {
 		rMethod := h.rShell.MethodByName(method)
 		if rMethod.IsValid() {
 			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})

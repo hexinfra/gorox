@@ -20,6 +20,12 @@ Welcome
   For more details about Gorox, please see: https://gorox.io/
 
 
+Motivation
+==========
+
+  To be written.
+
+
 Platforms
 =========
 
@@ -47,8 +53,7 @@ Performance
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
 
-  Change the parameters and/or target url to match your need.
-  Be sure not to use "127.0.0.1" as target, as it is used by the "example" app.
+  Change the parameters and/or target URL to match your need.
 
 
 Documentation
@@ -65,10 +70,12 @@ Documentation
     Chinese version: http://www.gorox.net:3080/docs
 
 
-License
-=======
+Community
+=========
 
-  Gorox is licensed under a BSD License. See LICENSE.md file.
+  Currently Github Discussions is used for discussing:
+
+    https://github.com/hexinfra/gorox/discussions
 
 
 Contact
@@ -83,12 +90,10 @@ Contact
     Chinese version: https://www.gorox.io/
 
 
-Community
-=========
+License
+=======
 
-  Currently Github Discussions is used for discussing:
-
-    https://github.com/hexinfra/gorox/discussions
+  Gorox is licensed under a BSD License. See LICENSE.md file.
 
 
 Contributing

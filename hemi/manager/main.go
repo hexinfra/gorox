@@ -26,8 +26,8 @@ import (
 )
 
 const ( // proc modes
-	ProcModeGeneral = 0
-	ProcModeAlone   = 1 // only alone mode is allowed
+	ProcModeGeneral = 0 // together mode and isolated mode are both allowed
+	ProcModeLimited = 1 // only together mode is allowed
 	ProcModeDevelop = 2 // force debugLevel = 2, singleMode = true
 )
 
@@ -70,7 +70,7 @@ func Main(name string, usage string, procMode int, addr string) {
 		flag.Parse()
 	}
 
-	if procMode == ProcModeAlone {
+	if procMode == ProcModeLimited {
 		*multiple = 0
 	} else {
 		ncpu := runtime.NumCPU()

@@ -6,8 +6,8 @@ QUIC packets are carried in UDP datagrams.
 udp datagram 1
   quic packet 1
     quic frame 1
-	quic frame 2
-	quic frame 3
+    quic frame 2
+    quic frame 3
   quic packet 2
     quic frame 4
     quic frame 5

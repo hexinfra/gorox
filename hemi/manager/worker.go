@@ -5,9 +5,11 @@
 
 // Worker process(es) of manager.
 
-// Currently we support two architectures: one worker alone and many sharded workers.
-// Uses can choose one of the two architectures.
-// The purpose of many sharded workers architecture is to support SO_ATTACH_REUSEPORT_CBPF in the future,
+// Currently we support two worker process modes: together mode and isolated mode.
+// Together mode has one worker process, with all threads and CPUs running on it.
+// Isolated mode has many worker processes, each of which has many threads and one CPU.
+// Users can choose one of the two modes.
+// The purpose of isolated mode is to support SO_ATTACH_REUSEPORT_CBPF in the future,
 // because Go's runtime doesn't allow us to control threads individually. This also affects cpu pinning.
 
 package manager
@@ -23,8 +25,8 @@ import (
 )
 
 const (
-	workAlone uint16 = 0 // only a single worker process
-	workShard uint16 = 1 // multiple worker processes
+	workTogether uint16 = 0 // only one worker process
+	workIsolated uint16 = 1 // multiple worker processes
 )
 
 var (
@@ -83,10 +85,10 @@ func workerMain(token string) {
 			}
 		} else { // tell
 			if req.Comd == comdRun {
-				if req.Flag == workAlone {
-					currentStage.StartAlone()
+				if req.Flag == workTogether {
+					currentStage.StartTogether()
 				} else {
-					currentStage.StartShard(int32(workerID))
+					currentStage.StartIsolated(int32(workerID))
 				}
 			} else if onTell, ok := onTells[req.Comd]; ok {
 				onTell(currentStage, req)

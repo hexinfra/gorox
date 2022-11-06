@@ -19,6 +19,6 @@ func singleMain() {
 		fmt.Println(err.Error())
 		return
 	}
-	stage.StartAlone()
+	stage.StartTogether()
 	select {}
 }

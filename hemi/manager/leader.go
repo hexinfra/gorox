@@ -116,9 +116,9 @@ func leaderMain() {
 }
 
 func keepWorkers(base string, file string, msgChan chan *msgx.Message) {
-	workMode, totalWorkers := workAlone, 1
+	workMode, totalWorkers := workTogether, 1
 	if *multiple != 0 { // change to multi-worker mode
-		workMode, totalWorkers = workShard, *multiple
+		workMode, totalWorkers = workIsolated, *multiple
 	}
 
 	nwAlive := totalWorkers
@@ -230,7 +230,7 @@ func newPipeKey() string {
 type worker struct {
 	id       int    // 0, 1, ...
 	idString string // "0", "1", ...
-	workMode uint16 // workAlone, workShard
+	workMode uint16 // workTogether, workIsolated
 	name     string // "worker", "worker[0]", "worker[1]", ...
 	pipeKey  string
 
@@ -247,7 +247,7 @@ func newWorker(id int, workMode uint16, pipeKey string) *worker {
 	w.id = id
 	w.idString = fmt.Sprintf("%d", id)
 	w.workMode = workMode
-	if workMode == workAlone {
+	if workMode == workTogether {
 		w.name = "worker"
 	} else {
 		w.name = fmt.Sprintf("worker[%d]", id)
@@ -270,7 +270,7 @@ func (w *worker) start(base string, file string, dieChan chan *worker) {
 		crash(err.Error())
 	}
 	w.process = process
-	if w.workMode == workShard && *pinCPU && !system.SetAffinity(process.Pid, w.id) {
+	if w.workMode == workIsolated && *pinCPU && !system.SetAffinity(process.Pid, w.id) {
 		crash("set affinity failed")
 	}
 

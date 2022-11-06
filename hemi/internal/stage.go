@@ -66,7 +66,7 @@ type Stage struct {
 	thrFile    string
 	grtFile    string
 	blkFile    string
-	alone      bool
+	together   bool
 	id         int32
 	numCPU     int32
 	logger     *logger.Logger
@@ -363,22 +363,22 @@ func (s *Stage) OnShutdown() {
 	// TODO: shutdown stage
 }
 
-func (s *Stage) StartAlone() { // single worker process mode
-	s.alone = true
+func (s *Stage) StartTogether() { // one worker process mode
+	s.together = true
 	s.id = 0
 	s.numCPU = int32(runtime.NumCPU())
 	if Debug(1) {
-		fmt.Printf("mode=alone numcpu=%d\n", s.numCPU)
+		fmt.Printf("mode=together numcpu=%d\n", s.numCPU)
 	}
 	s.start()
 }
-func (s *Stage) StartShard(id int32) { // multiple worker processes mode
-	s.alone = false
+func (s *Stage) StartIsolated(id int32) { // many worker processes mode
+	s.together = false
 	s.id = id
 	s.numCPU = 1
 	runtime.GOMAXPROCS(1)
 	if Debug(1) {
-		fmt.Println("mode=shard numcpu=1")
+		fmt.Println("mode=isolated numcpu=1")
 	}
 	s.start()
 }

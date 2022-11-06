@@ -65,19 +65,6 @@ func (r *UDPSRouter) serve() {
 	select {}
 }
 
-func (r *UDPSRouter) dispatchRunner(conn *UDPSConn) {
-	for _, kase := range r.cases {
-		if !kase.isMatch(conn) {
-			continue
-		}
-		if processed := kase.execute(conn); processed {
-			break
-		}
-	}
-	conn.closeConn()
-	putUDPSConn(conn)
-}
-
 // udpsGate
 type udpsGate struct {
 	// Mixins
@@ -165,6 +152,19 @@ func (c *UDPSConn) onPut() {
 	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
+}
+
+func (c *UDPSConn) serve() {
+	for _, kase := range c.router.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.closeConn()
+	putUDPSConn(c)
 }
 
 func (c *UDPSConn) Close() error {

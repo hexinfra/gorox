@@ -185,6 +185,15 @@ func (a *App) OnPrepare() {
 	a.revisers.walk(Reviser.OnPrepare)
 	a.socklets.walk(Socklet.OnPrepare)
 	a.rules.walk((*Rule).OnPrepare)
+
+	initsLock.RLock()
+	appInit := appInits[a.name]
+	initsLock.RUnlock()
+	if appInit != nil {
+		if err := appInit(a); err != nil {
+			UseExitln(err.Error())
+		}
+	}
 }
 func (a *App) OnShutdown() {
 	// sub components
@@ -306,16 +315,11 @@ func (a *App) linkServer(server httpServer) {
 	a.servers = append(a.servers, server)
 }
 
-func (a *App) start() {
-	initsLock.RLock()
-	appInit := appInits[a.name]
-	initsLock.RUnlock()
-	if appInit != nil {
-		if err := appInit(a); err != nil {
-			BugExitln(err.Error())
-		}
+func (a *App) maintain() { // blocking
+	// TODO
+	for {
+		time.Sleep(time.Second)
 	}
-	// TODO: wait for shutdown?
 }
 
 func (a *App) reviserByID(id uint8) Reviser { // for fast searching

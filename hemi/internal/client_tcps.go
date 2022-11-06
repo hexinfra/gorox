@@ -123,6 +123,9 @@ func (b *TCPSBackend) OnShutdown() {
 
 func (b *TCPSBackend) maintain() { // blocking
 	// TODO: health check for all nodes
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (b *TCPSBackend) Dial() (PConn, error) {

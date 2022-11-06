@@ -64,19 +64,6 @@ func (r *QUICRouter) serve() {
 	select {}
 }
 
-func (r *QUICRouter) dispatchRunner(conn *QUICConn) {
-	for _, kase := range r.cases {
-		if !kase.isMatch(conn) {
-			continue
-		}
-		if processed := kase.execute(conn); processed {
-			break
-		}
-	}
-	conn.Close()
-	putQUICConn(conn)
-}
-
 // quicGate
 type quicGate struct {
 	// Mixins
@@ -154,6 +141,19 @@ func (c *QUICConn) onPut() {
 	c.gate = nil
 	c.quicConn = nil
 	c.filters = [32]uint8{}
+}
+
+func (c *QUICConn) serve() {
+	for _, kase := range c.router.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.Close()
+	putQUICConn(c)
 }
 
 func (c *QUICConn) Close() error {

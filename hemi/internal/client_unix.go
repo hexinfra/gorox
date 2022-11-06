@@ -106,6 +106,9 @@ func (b *UnixBackend) OnShutdown() {
 
 func (b *UnixBackend) maintain() { // blocking
 	// TODO: health check for all nodes
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (b *UnixBackend) Dial() (PConn, error) {

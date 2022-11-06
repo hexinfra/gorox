@@ -7,6 +7,10 @@
 
 package internal
 
+import (
+	"time"
+)
+
 // Svc is the microservice.
 type Svc struct {
 	// Mixins
@@ -30,6 +34,14 @@ func (s *Svc) init(name string, stage *Stage) {
 func (s *Svc) OnConfigure() {
 }
 func (s *Svc) OnPrepare() {
+	initsLock.RLock()
+	svcInit := svcInits[s.name]
+	initsLock.RUnlock()
+	if svcInit != nil {
+		if err := svcInit(s); err != nil {
+			UseExitln(err.Error())
+		}
+	}
 }
 func (s *Svc) OnShutdown() {
 }
@@ -43,14 +55,10 @@ func (s *Svc) linkHRPC(server httpServer) {
 	s.hrpcServers = append(s.hrpcServers, server)
 }
 
-func (s *Svc) start() {
-	initsLock.RLock()
-	svcInit := svcInits[s.name]
-	initsLock.RUnlock()
-	if svcInit != nil {
-		if err := svcInit(s); err != nil {
-			BugExitln(err.Error())
-		}
+func (s *Svc) maintain() { // blocking
+	// TODO
+	for {
+		time.Sleep(time.Second)
 	}
 }
 

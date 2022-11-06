@@ -105,6 +105,9 @@ func (b *QUICBackend) OnShutdown() {
 
 func (b *QUICBackend) maintain() { // blocking
 	// TODO: health check for all nodes
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (b *QUICBackend) Dial() (*QConn, error) {

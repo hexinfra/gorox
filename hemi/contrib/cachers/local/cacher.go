@@ -10,6 +10,7 @@ package local
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
+	"time"
 )
 
 func init() {
@@ -49,6 +50,9 @@ func (c *localCacher) OnShutdown() {
 }
 
 func (c *localCacher) Maintain() { // blocking
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (c *localCacher) Set(key []byte, value *Centry) {

@@ -9,6 +9,7 @@ package redis
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"time"
 )
 
 func init() {
@@ -42,6 +43,9 @@ func (c *redisCacher) OnShutdown() {
 }
 
 func (c *redisCacher) Maintain() { // blocking
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (c *redisCacher) Set(key []byte, value *Centry) {

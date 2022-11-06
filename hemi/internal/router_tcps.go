@@ -69,19 +69,6 @@ func (r *TCPSRouter) serve() {
 	select {}
 }
 
-func (r *TCPSRouter) dispatchRunner(conn *TCPSConn) {
-	for _, kase := range r.cases {
-		if !kase.isMatch(conn) {
-			continue
-		}
-		if processed := kase.execute(conn); processed {
-			break
-		}
-	}
-	conn.closeConn()
-	putTCPSConn(conn)
-}
-
 // tcpsGate
 type tcpsGate struct {
 	// Mixins
@@ -136,7 +123,7 @@ func (g *tcpsGate) serveTCP() {
 			if Debug(1) {
 				fmt.Printf("%+v\n", tcpsConn)
 			}
-			go router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
+			go tcpsConn.serve() // tcpsConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -159,7 +146,7 @@ func (g *tcpsGate) serveTLS() {
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, router, g, tlsConn, nil)
-			go router.dispatchRunner(tcpsConn) // tcpsConn is put to pool in dispatchRunner()
+			go tcpsConn.serve() // tcpsConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -228,6 +215,19 @@ func (c *TCPSConn) onPut() {
 	c.rawConn = nil
 	c.arena.free()
 	c.tcpsConn0 = tcpsConn0{}
+}
+
+func (c *TCPSConn) serve() {
+	for _, kase := range c.router.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.closeConn()
+	putTCPSConn(c)
 }
 
 func (c *TCPSConn) hookFilter(filter TCPSFilter) {

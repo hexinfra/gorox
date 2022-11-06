@@ -382,6 +382,7 @@ func (s *Stage) StartIsolated(id int32) { // many worker processes mode
 	}
 	s.start()
 }
+
 func (s *Stage) start() {
 	if Debug(2) {
 		fmt.Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
@@ -422,15 +423,14 @@ func (s *Stage) start() {
 		EnvExitln(err.Error())
 	}
 
-	// TODO: use sync?
 	s.startFixtures() // go fixture.run()
 	s.startOptwares() // go optware.Run()
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
-	s.startApps()     // app.start()
-	s.startSvcs()     // svc.start()
+	s.startApps()     // go app.maintain()
+	s.startSvcs()     // go svc.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Run()
 
@@ -560,17 +560,17 @@ func (s *Stage) startCachers() {
 func (s *Stage) startApps() {
 	for _, app := range s.apps {
 		if Debug(1) {
-			fmt.Printf("app=%s start()\n", app.Name())
+			fmt.Printf("app=%s go maintain()\n", app.Name())
 		}
-		app.start()
+		go app.maintain()
 	}
 }
 func (s *Stage) startSvcs() {
 	for _, svc := range s.svcs {
 		if Debug(1) {
-			fmt.Printf("svc=%s start()\n", svc.Name())
+			fmt.Printf("svc=%s go maintain()\n", svc.Name())
 		}
-		svc.start()
+		go svc.maintain()
 	}
 }
 func (s *Stage) startServers() {

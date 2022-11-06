@@ -100,6 +100,9 @@ func (b *UDPSBackend) OnShutdown() {
 
 func (b *UDPSBackend) maintain() { // blocking
 	// TODO: health check for all nodes
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {

@@ -10,6 +10,7 @@ package local
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
+	"time"
 )
 
 func init() {
@@ -49,6 +50,9 @@ func (s *localStater) OnShutdown() {
 }
 
 func (s *localStater) Maintain() { // blocking
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func (s *localStater) Set(sid []byte, session *Session) {

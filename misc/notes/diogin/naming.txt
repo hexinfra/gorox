@@ -61,7 +61,7 @@ MEMORY
   r.pairs
   -------
 
-    Hold queries, headers, cookies/setCookies, posts, and trailers
+    Hold queries, headers, cookies/setCookies, forms, and trailers
 
   r.uploads
   ---------

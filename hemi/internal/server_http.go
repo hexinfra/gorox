@@ -319,7 +319,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 	queryString      text     // raw query string (with '?') -> r.input
 	queries          zone     // decoded queries -> r.array
 	cookies          zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	posts            zone     // decoded posts -> r.array
+	forms            zone     // decoded forms -> r.array
 	nAcceptCodings   int8     // num of accept-encoding flags
 	nRanges          int8     // num of ranges
 	boundary         text     // boundary param of "multipart/form-data" if exists -> r.input
@@ -1627,13 +1627,13 @@ func (r *httpRequest_) testIfRangeTime(modTime int64) (pass bool) {
 	return r.ifRangeTime == modTime
 }
 
-func (r *httpRequest_) parseForm() {
+func (r *httpRequest_) parseHTMLForm() {
 	if r.formKind == httpFormNotForm || r.formReceived {
 		return
 	}
 	r.formReceived = true
-	r.posts.from = uint8(len(r.primes))
-	r.posts.edge = r.posts.from
+	r.forms.from = uint8(len(r.primes))
+	r.forms.edge = r.forms.from
 	if r.formKind == httpFormURLEncoded { // application/x-www-form-urlencoded
 		r._loadURLEncodedForm()
 	} else { // multipart/form-data
@@ -1648,26 +1648,27 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	var (
 		state = 2 // to be consistent with r._recvControl() in HTTP/1
 		octet byte
-		post  pair
+		form  pair
 	)
-	post.nameFrom = r.arrayEdge
+	form.setPlace(pairPlaceArray)
+	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.sizeReceived; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
-				if size := r.arrayEdge - post.nameFrom; size <= 255 {
-					post.nameSize = uint8(size)
+				if size := r.arrayEdge - form.nameFrom; size <= 255 {
+					form.nameSize = uint8(size)
 				} else {
 					return
 				}
-				post.value.from = r.arrayEdge
+				form.value.from = r.arrayEdge
 				state = 3
 			} else if httpPchar[b] == 1 || b == '?' {
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
-				post.hash += uint16(b)
+				form.hash += uint16(b)
 				r.arrayPush(b)
 			} else if b == '%' {
 				state = 0x2f // '2' means from state 2
@@ -1676,12 +1677,12 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			}
 		case 3: // expecting '&' to get a value
 			if b == '&' {
-				post.value.edge = r.arrayEdge
-				if post.nameSize > 0 {
-					r.addPost(&post)
+				form.value.edge = r.arrayEdge
+				if form.nameSize > 0 {
+					r.addForm(&form)
 				}
-				post.hash = 0 // reset hash for next post
-				post.nameFrom = r.arrayEdge
+				form.hash = 0 // reset hash for next form
+				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] == 1 || b == '?' {
 				if b == '+' {
@@ -1704,7 +1705,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			} else { // expecting the second HEXDIG
 				octet |= half
 				if state == 0x20 { // in name
-					post.hash += uint16(octet)
+					form.hash += uint16(octet)
 				}
 				r.arrayPush(octet)
 				state >>= 4 // restore last state
@@ -1713,9 +1714,9 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 	// Reaches end of content.
 	if state == 3 { // '&' not found
-		post.value.edge = r.arrayEdge
-		if post.nameSize > 0 {
-			r.addPost(&post)
+		form.value.edge = r.arrayEdge
+		if form.nameSize > 0 {
+			r.addForm(&form)
 		}
 	} else { // '=' not found, or incomplete pct-encoded
 		// Do nothing, just ignore.
@@ -1726,8 +1727,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	r.pBack, r.pFore = 0, 0
 	r.sizeConsumed = r.sizeReceived
 	if r.contentReceived { // (0, 64K1)
-		// r.contentBlob is set, r.contentBlobKind == httpContentBlobInput
-		r.formBuffer, r.formEdge = r.contentBlob, int32(len(r.formBuffer)) // r.formBuffer refers to the exact r.contentBlob.
+		// r.contentBlob is set, r.contentBlobKind == httpContentBlobInput. r.formBuffer refers to the exact r.contentBlob.
+		r.formBuffer = r.contentBlob
+		r.formEdge = int32(len(r.formBuffer))
 	} else { // content is not received
 		r.contentReceived = true
 		switch content := r.recvContent(true).(type) { // retain
@@ -1806,9 +1808,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			type_  text     // to r.array. like: "image/jpeg", or empty if part is not a file
 			path   text     // to r.array. like: "/path/to/391384576", or empty if part is not a file
 			osFile *os.File // if part is a file, this is used
-			post   pair     // if part is a post, this is used
+			form   pair     // if part is a form, this is used
 			upload Upload   // if part is a file, this is used. zeroed
 		}
+		part.form.setPlace(pairPlaceArray)
 		for { // each field in current part
 			// End of part fields?
 			if b := r.formBuffer[r.pFore]; b == '\r' {
@@ -1995,9 +1998,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				part.osFile = nil
 			}
 		} else {
-			part.post.hash = part.hash
-			part.post.nameSize, part.post.nameFrom = uint8(part.name.size()), part.name.from
-			part.post.value.from = r.arrayEdge
+			part.form.hash = part.hash
+			part.form.nameSize, part.form.nameFrom = uint8(part.name.size()), part.name.from
+			part.form.value.from = r.arrayEdge
 		}
 		r.pBack = r.pFore // now r.formBuffer is used for receiving part data and onward
 		for {             // each partial in current part
@@ -2018,13 +2021,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				partial = r.formBuffer[r.pBack:r.pFore] // pure data
 			}
 			if !part.isFile {
-				if !r.arrayCopy(partial) { // join post value
+				if !r.arrayCopy(partial) { // join form value
 					r.stream.markBroken()
 					return
 				}
-				if mode == 1 { // post part ends
-					part.post.value.edge = r.arrayEdge
-					r.addPost(&part.post)
+				if mode == 1 { // form part ends
+					part.form.value.edge = r.arrayEdge
+					r.addForm(&part.form)
 				}
 			} else if part.osFile != nil {
 				part.osFile.Write(partial)
@@ -2075,36 +2078,36 @@ func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller ne
 	}
 }
 
-func (r *httpRequest_) addPost(post *pair) {
-	if edge, ok := r.addPrime(post); ok {
-		r.posts.edge = edge
+func (r *httpRequest_) addForm(form *pair) {
+	if edge, ok := r.addPrime(form); ok {
+		r.forms.edge = edge
 	}
-	// Ignore too many posts
+	// Ignore too many forms
 }
-func (r *httpRequest_) P(name string) string {
-	value, _ := r.Post(name)
+func (r *httpRequest_) F(name string) string {
+	value, _ := r.Form(name)
 	return value
 }
-func (r *httpRequest_) Post(name string) (value string, ok bool) {
-	r.parseForm()
-	v, ok := r.getPair(name, 0, r.posts, extraKindNoExtra)
+func (r *httpRequest_) Form(name string) (value string, ok bool) {
+	r.parseHTMLForm()
+	v, ok := r.getPair(name, 0, r.forms, extraKindNoExtra)
 	return string(v), ok
 }
-func (r *httpRequest_) UnsafePost(name string) (value []byte, ok bool) {
-	r.parseForm()
-	return r.getPair(name, 0, r.posts, extraKindNoExtra)
+func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
+	r.parseHTMLForm()
+	return r.getPair(name, 0, r.forms, extraKindNoExtra)
 }
-func (r *httpRequest_) PostList(name string) (list []string, ok bool) {
-	r.parseForm()
-	return r.getPairList(name, 0, r.posts, extraKindNoExtra)
+func (r *httpRequest_) FormList(name string) (list []string, ok bool) {
+	r.parseHTMLForm()
+	return r.getPairList(name, 0, r.forms, extraKindNoExtra)
 }
-func (r *httpRequest_) Posts() (posts [][2]string) {
-	r.parseForm()
-	return r.getPairs(r.posts, extraKindNoExtra)
+func (r *httpRequest_) Forms() (forms [][2]string) {
+	r.parseHTMLForm()
+	return r.getPairs(r.forms, extraKindNoExtra)
 }
-func (r *httpRequest_) HasPost(name string) bool {
-	r.parseForm()
-	_, ok := r.getPair(name, 0, r.posts, extraKindNoExtra)
+func (r *httpRequest_) HasForm(name string) bool {
+	r.parseHTMLForm()
+	_, ok := r.getPair(name, 0, r.forms, extraKindNoExtra)
 	return ok
 }
 
@@ -2128,7 +2131,7 @@ func (r *httpRequest_) U(name string) *Upload {
 	return upload
 }
 func (r *httpRequest_) Upload(name string) (upload *Upload, ok bool) {
-	r.parseForm()
+	r.parseHTMLForm()
 	if n := len(r.uploads); n > 0 && name != "" {
 		hash := stringHash(name)
 		for i := 0; i < n; i++ {
@@ -2141,7 +2144,7 @@ func (r *httpRequest_) Upload(name string) (upload *Upload, ok bool) {
 	return
 }
 func (r *httpRequest_) UploadList(name string) (list []*Upload, ok bool) {
-	r.parseForm()
+	r.parseHTMLForm()
 	if n := len(r.uploads); n > 0 && name != "" {
 		hash := stringHash(name)
 		for i := 0; i < n; i++ {
@@ -2157,7 +2160,7 @@ func (r *httpRequest_) UploadList(name string) (list []*Upload, ok bool) {
 	return
 }
 func (r *httpRequest_) Uploads() (uploads []*Upload) {
-	r.parseForm()
+	r.parseHTMLForm()
 	for i := 0; i < len(r.uploads); i++ {
 		upload := &r.uploads[i]
 		upload.setMeta(r.array)
@@ -2166,7 +2169,7 @@ func (r *httpRequest_) Uploads() (uploads []*Upload) {
 	return uploads
 }
 func (r *httpRequest_) HasUpload(name string) bool {
-	r.parseForm()
+	r.parseHTMLForm()
 	_, ok := r.Upload(name)
 	return ok
 }

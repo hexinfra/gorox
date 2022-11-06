@@ -145,8 +145,8 @@ type httpInMessage_ struct {
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	// Stream states (non-zeros)
 	input       []byte // bytes of incoming messages (for HTTP/1) or message heads (for HTTP/2 & HTTP/3). [<r.stockInput>/4K/16K]
-	array       []byte // store path, queries, extra queries & headers & cookies & trailers, posts, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.posts->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
+	array       []byte // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
 	extras      []pair // hold extra queries, headers, cookies, and trailers. always refers to r.array. [<r.stockExtras>/255]
 	contentSize int64  // info of content. >=0: content-length, -1: no content, -2: chunked content
 	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive

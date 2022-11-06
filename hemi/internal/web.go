@@ -424,11 +424,11 @@ type Request interface {
 	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
 	Content() string
 
-	P(name string) string
-	Post(name string) (value string, ok bool)
-	PostList(name string) (list []string, ok bool)
-	Posts() (posts [][2]string)
-	HasPost(name string) bool
+	F(name string) string
+	Form(name string) (value string, ok bool)
+	FormList(name string) (list []string, ok bool)
+	Forms() (forms [][2]string)
+	HasForm(name string) bool
 
 	U(name string) *Upload
 	Upload(name string) (upload *Upload, ok bool)
@@ -462,7 +462,7 @@ type Request interface {
 	UnsafeUserAgent() []byte
 	UnsafeContentType() []byte
 	UnsafeContent() []byte
-	UnsafePost(name string) (value []byte, ok bool)
+	UnsafeForm(name string) (value []byte, ok bool)
 	UnsafeTrailer(name string) (value []byte, ok bool)
 
 	// Internal only

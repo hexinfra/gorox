@@ -79,10 +79,16 @@ func (h *testsHandler) GET_a(req Request, resp Response) {
 	resp.Push(req.C("b"))
 }
 func (h *testsHandler) GET_b(req Request, resp Response) {
-	resp.Send(req.Q("aa"))
+	resp.Send(`<form action="/c?a=aa" method="post" enctype="multipart/form-data">
+	<input type="text" name="title">
+	<textarea name="content"></textarea>
+	<input type="submit" value="submit">
+	</form>`)
 }
-func (h *testsHandler) GET_c(req Request, resp Response) {
-	resp.Send(req.UserAgent())
+func (h *testsHandler) POST_c(req Request, resp Response) {
+	resp.Push(req.Q("a"))
+	resp.Push(req.F("title"))
+	resp.Push(req.F("content"))
 }
 func (h *testsHandler) GET_d(req Request, resp Response) {
 	cookie := new(Cookie)

@@ -1208,7 +1208,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool {
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
+	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	var (
 		state  = 0
 		cookie pair
@@ -1260,7 +1260,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool {
 					return false
 				}
 				state = 4
-			} else if b < 0x21 || b == ',' || b == ';' || b == '\\' || b > 0x7e {
+			} else if b < 0x20 || b == ';' || b == '\\' || b > 0x7e { // ` ` and `,` are allowed here!
 				r.headResult, r.headReason = StatusBadRequest, "invalid cookie value"
 				return false
 			}

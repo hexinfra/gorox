@@ -74,32 +74,45 @@ func (h *testsHandler) OPTIONS_(req Request, resp Response) {
 		}
 	}
 }
-func (h *testsHandler) GET_a(req Request, resp Response) {
-	resp.Push(req.C("a"))
-	resp.Push(req.C("b"))
-}
-func (h *testsHandler) GET_b(req Request, resp Response) {
-	resp.Send(`<form action="/c?a=aa" method="post" enctype="multipart/form-data">
+
+func (h *testsHandler) GET_form_urlencoded(req Request, resp Response) {
+	resp.Send(`<form action="/form?a=bb" method="post">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *testsHandler) POST_c(req Request, resp Response) {
+func (h *testsHandler) GET_form_multipart(req Request, resp Response) {
+	resp.Send(`<form action="/form?a=bb" method="post" enctype="multipart/form-data">
+	<input type="text" name="title">
+	<textarea name="content"></textarea>
+	<input type="submit" value="submit">
+	</form>`)
+}
+func (h *testsHandler) POST_form(req Request, resp Response) {
 	resp.Push(req.Q("a"))
 	resp.Push(req.F("title"))
 	resp.Push(req.F("content"))
 }
-func (h *testsHandler) GET_d(req Request, resp Response) {
-	cookie := new(Cookie)
-	cookie.Set("hello", "wo r,ld")
-	cookie.SetMaxAge(99)
-	cookie.SetSecure()
-	cookie.SetExpires(time.Now())
-	resp.AddCookie(cookie)
+
+func (h *testsHandler) GET_setcookie(req Request, resp Response) {
+	cookie1 := new(Cookie)
+	cookie1.Set("hello", "wo r,ld")
+	cookie1.SetMaxAge(99)
+	cookie1.SetSecure()
+	cookie1.SetExpires(time.Now())
+	resp.AddCookie(cookie1)
+
+	cookie2 := new(Cookie)
+	cookie2.Set("world", "hello")
+	resp.AddCookie(cookie2)
+
 	resp.SendBytes(nil)
 }
-func (h *testsHandler) GET_e(req Request, resp Response) {
+func (h *testsHandler) GET_cookies(req Request, resp Response) {
+	resp.Push(req.C("hello"))
+}
+func (h *testsHandler) GET_querystring(req Request, resp Response) {
 	resp.Send(req.QueryString())
 }
 

@@ -7,7 +7,6 @@ package test
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	"time"
 )
 
 func init() {
@@ -50,70 +49,6 @@ func (h *testHandler) OnShutdown() {
 func (h *testHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
-}
-
-func (h *testHandler) GET_(req Request, resp Response) {
-	if req.IsAbsoluteForm() {
-		resp.Send("absolute-form GET /")
-	} else {
-		resp.Send("origin-form GET /")
-	}
-}
-func (h *testHandler) OPTIONS_(req Request, resp Response) {
-	if req.IsAsteriskOptions() {
-		if req.IsAbsoluteForm() {
-			resp.Send("absolute-form OPTIONS *")
-		} else {
-			resp.Send("asterisk-form OPTIONS *")
-		}
-	} else {
-		if req.IsAbsoluteForm() {
-			resp.Send("absolute-form OPTIONS /")
-		} else {
-			resp.Send("origin-form OPTIONS /")
-		}
-	}
-}
-
-func (h *testHandler) GET_form_urlencoded(req Request, resp Response) {
-	resp.Send(`<form action="/form?a=bb" method="post">
-	<input type="text" name="title">
-	<textarea name="content"></textarea>
-	<input type="submit" value="submit">
-	</form>`)
-}
-func (h *testHandler) GET_form_multipart(req Request, resp Response) {
-	resp.Send(`<form action="/form?a=bb" method="post" enctype="multipart/form-data">
-	<input type="text" name="title">
-	<textarea name="content"></textarea>
-	<input type="submit" value="submit">
-	</form>`)
-}
-func (h *testHandler) POST_form(req Request, resp Response) {
-	resp.Push(req.Q("a"))
-	resp.Push(req.F("title"))
-	resp.Push(req.F("content"))
-}
-
-func (h *testHandler) GET_setcookie(req Request, resp Response) {
-	cookie1 := new(Cookie)
-	cookie1.Set("hello", "wo r,ld")
-	cookie1.SetMaxAge(99)
-	cookie1.SetSecure()
-	cookie1.SetExpires(time.Now())
-	resp.AddCookie(cookie1)
-
-	cookie2 := new(Cookie)
-	cookie2.Set("world", "hello")
-	resp.AddCookie(cookie2)
-
-	resp.SendBytes(nil)
-}
-func (h *testHandler) GET_cookies(req Request, resp Response) {
-	resp.Push(req.C("hello"))
-}
-func (h *testHandler) GET_querystring(req Request, resp Response) {
-	resp.Send(req.QueryString())
 }
 
 func (h *testHandler) notFound(req Request, resp Response) {

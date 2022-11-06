@@ -1,2 +1,0 @@
-Put your proto files (generated through protoc) in this directory.
-Mainly used by gRPC svcs.

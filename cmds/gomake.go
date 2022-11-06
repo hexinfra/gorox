@@ -37,8 +37,11 @@ TARGET
   Specify cmd name as TARGET. If TARGET is empty, the default target is gorox.
   Some special targets are:
 
-  all      # build all cmds
-  clean    # clean binaries and temp files
+  b        # build goben, for convenience
+  c        # build gocmc, for convenience
+  d        # build godev, for convenience
+  all      # build all cmds in the directory
+  clean    # clean binaries, logs, and temp files
   dist     # make distribution
 `
 
@@ -81,6 +84,12 @@ func main() {
 			os.Setenv("GOARCH", *arch)
 		}
 		switch target {
+		case "b":
+			build("goben", "cmds/goben")
+		case "c":
+			build("gocmc", "cmds/gocmc")
+		case "d":
+			build("godev", "cmds/godev")
 		case "":
 			build("gorox", "cmds/gorox")
 		case "all":
@@ -108,9 +117,9 @@ func clean() {
 		return
 	}
 	dirs := []string{
+		"dist",
 		"logs",
 		"temp",
-		"dist",
 	}
 	for _, dir := range dirs {
 		dir = pwd + "/" + dir

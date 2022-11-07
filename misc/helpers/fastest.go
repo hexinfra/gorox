@@ -1,3 +1,7 @@
+
+// This is the fastest result that an http server written in Go (with package net) can achieve.
+// According to wrk, it is about 96% of nginx.
+
 package main
 
 import (
@@ -38,11 +42,11 @@ func handleBlob(conn net.Conn) {
 	request := make([]byte, 52) // GET /benchmark HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
 	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html; charset=utf-8\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")
 	for {
-		if _, err := io.ReadFull(conn, request); err != nil {
+		if _, err := io.ReadFull(conn, request); err != nil { // syscall 1: read()
 			fmt.Printf("io.ReadFull()=%s\n", err.Error())
 			return
 		}
-		if _, err := conn.Write(response); err != nil {
+		if _, err := conn.Write(response); err != nil { // syscall 2: write()
 			fmt.Printf("conn.Write()=%s\n", err.Error())
 			return
 		}
@@ -56,29 +60,29 @@ func handleFile(conn net.Conn) {
 	content := make([]byte, 147)
 	var response [2][]byte
 	for {
-		if _, err := io.ReadFull(conn, request); err != nil {
+		if _, err := io.ReadFull(conn, request); err != nil { // syscall 1: read()
 			fmt.Printf("io.ReadFull(1)=%s\n", err.Error())
 			return
 		}
-		file, err := os.Open("fastest.txt")
+		file, err := os.Open("benchmark.html") // syscall 2: openat()
 		if err != nil {
 			fmt.Printf("os.Open()=%s\n", err.Error())
 			return
 		}
-		stat, err := file.Stat()
+		stat, err := file.Stat() // syscall 3: stat()
 		if err != nil {
 			fmt.Printf("file.Stat()=%s\n", err.Error())
 			file.Close()
 			return
 		}
-		_, err = io.ReadFull(file, content[0:stat.Size()])
+		_, err = io.ReadFull(file, content[0:stat.Size()]) // syscall 4: read()
 		if err != nil {
 			fmt.Printf("io.ReadFull(2)=%s\n", err.Error())
 			return
 		}
 		response = [2][]byte{head, content}
 		buffers := net.Buffers(response[:])
-		if _, err := buffers.WriteTo(conn); err != nil {
+		if _, err := buffers.WriteTo(conn); err != nil { // syscall 5: writev()
 			fmt.Printf("buffers.WriteTo()=%s\n", err.Error())
 			return
 		}
@@ -92,6 +96,6 @@ func handleFile(conn net.Conn) {
 				return
 			}
 		*/
-		file.Close()
+		file.Close() // syscall 6: close()
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"errors"
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
 	"os"
 	"reflect"
@@ -471,7 +470,7 @@ type Request interface {
 
 	// Internal only
 	arrayCopy(p []byte) bool
-	getPathInfo() system.FileInfo
+	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	useHeader(header *pair) bool
@@ -545,8 +544,7 @@ type Response interface {
 	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
 	setConnectionClose()
 	sendBlob(content []byte) error
-	sendSysf(content system.File, info system.FileInfo, shut bool) error // will close content after sent
-	sendFile(content *os.File, info os.FileInfo, shut bool) error        // will close content after sent
+	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
 	pushHeaders() error
 	pushChain(chain Chain) error
@@ -868,7 +866,7 @@ func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= pattern
 }
 func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
 	pathInfo := req.getPathInfo()
-	return pathInfo.Valid() && !pathInfo.IsDir()
+	return pathInfo != nil && !pathInfo.IsDir()
 }
 func (r *Rule) dirMatch(req Request, value []byte) bool { // value -d
 	if len(value) == 1 && value[0] == '/' {
@@ -886,11 +884,11 @@ func (r *Rule) existMatch(req Request, value []byte) bool { // value -e
 }
 func (r *Rule) dirMatchWithWebRoot(req Request, _ []byte) bool { // value -D
 	pathInfo := req.getPathInfo()
-	return pathInfo.Valid() && pathInfo.IsDir()
+	return pathInfo != nil && pathInfo.IsDir()
 }
 func (r *Rule) existMatchWithWebRoot(req Request, _ []byte) bool { // value -E
 	pathInfo := req.getPathInfo()
-	return pathInfo.Valid()
+	return pathInfo != nil
 }
 func (r *Rule) notEqualMatch(req Request, value []byte) bool { // value != patterns
 	for _, pattern := range r.patterns {
@@ -926,15 +924,15 @@ func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patt
 }
 func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f
 	pathInfo := req.getPathInfo()
-	return !pathInfo.Valid() || pathInfo.IsDir()
+	return pathInfo == nil || pathInfo.IsDir()
 }
 func (r *Rule) notDirMatch(req Request, value []byte) bool { // value !d
 	pathInfo := req.getPathInfo()
-	return !pathInfo.Valid() || !pathInfo.IsDir()
+	return pathInfo == nil || !pathInfo.IsDir()
 }
 func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	pathInfo := req.getPathInfo()
-	return !pathInfo.Valid()
+	return pathInfo == nil
 }
 
 func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {

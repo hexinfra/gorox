@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -296,13 +295,13 @@ type httpRequest_ struct {
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
-	path          []byte          // decoded path. only a reference. refers to r.array or arena if rewrited, so can't be a text
-	absPath       []byte          // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlers. only a reference
-	pathInfo      system.FileInfo // cached result of system.Stat0(r.absPath+'\0') if r.absPath is not nil
-	app           *App            // target app of this request. set before processing stream
-	svc           *Svc            // target svc of this request. set before processing stream
-	formBuffer    []byte          // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
-	httpRequest0_                 // all values must be zero by default in this struct!
+	path          []byte      // decoded path. only a reference. refers to r.array or arena if rewrited, so can't be a text
+	absPath       []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlers. only a reference
+	pathInfo      os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
+	app           *App        // target app of this request. set before processing stream
+	svc           *Svc        // target svc of this request. set before processing stream
+	formBuffer    []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
+	httpRequest0_             // all values must be zero by default in this struct!
 }
 type httpRequest0_ struct { // for fast reset, entirely
 	gotInput         bool     // got some input from client? for request timeout handling
@@ -383,7 +382,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 
 	r.path = nil
 	r.absPath = nil
-	r.pathInfo.Reset()
+	r.pathInfo = nil
 	r.app = nil
 	r.svc = nil
 	r.formBuffer = nil // if r.formBuffer is fetched from pool, it's put into pool at return. so just set nil
@@ -551,16 +550,16 @@ func (r *httpRequest_) makeAbsPath() {
 		return
 	}
 	webRoot := r.app.webRoot
-	absPath := r.UnsafeMake(len(webRoot) + len(r.UnsafePath()) + 1)
-	absPath[len(absPath)-1] = 0                            // ends with NUL character, so we can avoid make+copy for system function calls
-	r.absPath = absPath[0 : len(absPath)-1 : len(absPath)] // r.absPath doesn't include NUL, but we can get NUL through cap(r.absPath)
+	r.absPath = r.UnsafeMake(len(webRoot) + len(r.UnsafePath()))
 	n := copy(r.absPath, webRoot)
 	copy(r.absPath[n:], r.UnsafePath())
 }
-func (r *httpRequest_) getPathInfo() system.FileInfo {
+func (r *httpRequest_) getPathInfo() os.FileInfo {
 	if !r.pathInfoGot {
 		r.pathInfoGot = true
-		r.pathInfo, _ = system.Stat0(r.absPath[0:cap(r.absPath)]) // NUL terminated
+		if pathInfo, err := os.Stat(risky.WeakString(r.absPath)); err == nil {
+			r.pathInfo = pathInfo
+		}
 	}
 	return r.pathInfo
 }

@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"os"
 	"sync"
 	"time"
@@ -110,7 +109,7 @@ func (f *filesysFixture) getFile(path string) (entry *filesysEntry) {
 		entry.info = info
 		// TODO: load small file
 	} else {
-		if system.IsNotExist(err) {
+		if os.IsNotExist(err) {
 			entry.code = 2
 		} else {
 			entry.code = 1

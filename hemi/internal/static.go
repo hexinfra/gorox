@@ -10,7 +10,6 @@ package internal
 import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"os"
 	"strconv"
 	"strings"
@@ -111,60 +110,52 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
 		return
 	}
+
 	var absPath []byte
 	if h.customRoot {
 		webRoot := h.webRoot
-		allPath := req.UnsafeMake(len(webRoot) + len(req.UnsafePath()) + 1)
-		allPath[len(allPath)-1] = 0 // ends with NUL character, so we can avoid make+copy for system function calls
-		n := copy(allPath, webRoot)
-		copy(allPath[n:], req.UnsafePath())
+		absPath = req.UnsafeMake(len(webRoot) + len(req.UnsafePath())) // TODO: alloc space for indexFile to avoid alloc again below
+		n := copy(absPath, webRoot)
+		copy(absPath[n:], req.UnsafePath())
 		if Debug(2) {
-			fmt.Printf("%v\n", allPath)
+			fmt.Printf("%v\n", absPath)
 		}
-		absPath = allPath[0 : len(allPath)-1 : len(allPath)] // absPath doesn't include NUL, but we can get NUL through cap(absPath)
 	} else {
 		absPath = req.unsafeAbsPath()
 	}
 	isFile := absPath[len(absPath)-1] != '/'
-	var thePath []byte // must be NUL terminated
+
+	var thePath []byte
 	if isFile && !h.customRoot {
-		thePath = absPath[0:cap(absPath)] // with NUL
+		thePath = absPath
 	} else if !isFile { // absPath ends with '/'
 		var n int
 		if h.customRoot {
 			path := req.UnsafePath()
-			thePath = req.UnsafeMake(len(h.webRoot) + len(path) + len(h.indexFile) + 1)
+			thePath = req.UnsafeMake(len(h.webRoot) + len(path) + len(h.indexFile))
 			n = copy(thePath, h.webRoot)
 			n += copy(thePath[n:], path)
-			absPath = thePath[:n]
+			absPath = thePath[:n] // h.webRoot + path
 		} else {
-			thePath = req.UnsafeMake(len(absPath) + len(h.indexFile) + 1)
+			thePath = req.UnsafeMake(len(absPath) + len(h.indexFile))
 			n = copy(thePath, absPath)
 		}
 		copy(thePath[n:], h.indexFile)
-		thePath[len(thePath)-1] = 0
-	} else { // custom root, regular file
+	} else { // custom root and regular file
 		path := req.UnsafePath()
-		thePath = req.UnsafeMake(len(h.webRoot) + len(path) + 1)
+		thePath = req.UnsafeMake(len(h.webRoot) + len(path))
 		n := copy(thePath, h.webRoot)
-		n += copy(thePath[n:], path)
-		thePath[len(thePath)-1] = 0
+		copy(thePath[n:], path)
 	}
 
-	var (
-		file system.File
-		info system.FileInfo
-		err  error
-	)
-
-	file, err = system.Open0(thePath)
+	file, err := os.Open(risky.WeakString(thePath))
 	if err != nil {
-		if !system.IsNotExist(err) {
+		if !os.IsNotExist(err) {
 			h.app.Logf("open file error=%s\n", err.Error())
 			resp.SendInternalServerError(nil)
-		} else if isFile {
+		} else if isFile { // file not found
 			resp.SendNotFound(nil)
-		} else if h.autoIndex {
+		} else if h.autoIndex { // directory not found
 			if dir, err := os.Open(risky.WeakString(absPath)); err == nil {
 				h.listDir(dir, resp)
 				dir.Close()
@@ -174,13 +165,13 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 				// TODO
 				resp.SendInternalServerError([]byte(err.Error()))
 			}
-		} else {
+		} else { // not auto index
 			resp.SendForbidden(nil)
 		}
 		return
 	}
 
-	info, err = file.Stat()
+	info, err := file.Stat()
 	if err != nil {
 		file.Close()
 		h.app.Logf("file stat error=%s\n", err.Error())
@@ -195,7 +186,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		return
 	}
 
-	modTime := info.ModTime()
+	modTime := info.ModTime().Unix()
 	etag, _ := resp.makeETagFrom(modTime, info.Size()) // with ""
 
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
@@ -203,7 +194,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		resp.SetETagBytes(etag)
 		resp.SetAcceptBytesRange()
 		contentType := h.defaultType
-		filePath := risky.WeakString(thePath[0 : len(thePath)-1]) // excluding NUL
+		filePath := risky.WeakString(thePath)
 		if pDot := strings.LastIndex(filePath, "."); pDot >= 0 {
 			ext := filePath[pDot+1:]
 			if mimeType, ok := h.mimeTypes[ext]; ok {
@@ -211,7 +202,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 			}
 		}
 		resp.AddContentType(contentType)
-		resp.sendSysf(file, info, true)
+		resp.sendFile(file, info, true)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {

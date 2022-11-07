@@ -58,7 +58,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"net"
 	"os"
@@ -1246,14 +1245,6 @@ func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo, shut bool
 	}
 	r.content.head.SetFile(content, info, shut)
 	r.contentSize = info.Size() // original size, may be revised
-	return r.shell.send()
-}
-func (r *httpOutMessage_) sendSysf(content system.File, info system.FileInfo, shut bool) error {
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	r.content.head.SetSysf(content, info, shut)
-	r.contentSize = info.Size()
 	return r.shell.send()
 }
 

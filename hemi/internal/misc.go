@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"os"
 	"sync"
@@ -35,12 +34,11 @@ func putBlock(block *Block) {
 }
 
 // Block is an item of http message content linked list.
-type Block struct { // 64 bytes
+type Block struct { // 56 bytes
 	next *Block      // next block
 	pool bool        // true if this block is got from poolBlock. don't change this after set
-	shut bool        // close sysf/file on free()?
-	kind int8        // 0:blob 1:system.File 2:*os.File
-	sysf system.File // for optimized use (for example, by static handler)
+	shut bool        // close file on free()?
+	kind int8        // 0:blob 1:*os.File
 	file *os.File    // for general use
 	data risky.Refer // blob, or buffer if buff is true
 	size int64       // size of blob or file
@@ -59,48 +57,26 @@ func (b *Block) closeFile() {
 	if b.IsBlob() {
 		return
 	}
-	if b.IsSysf() {
-		if b.shut {
-			b.sysf.Close()
-		}
-		if Debug(2) {
-			if b.shut {
-				fmt.Println("sysf closed on Block.closeFile()")
-			} else {
-				fmt.Println("sysf NOT closed on Block.closeFile()")
-			}
-		}
-		b.sysf = system.File{}
-	} else { // *os.File
-		if b.shut {
-			b.file.Close()
-		}
-		if Debug(2) {
-			if b.shut {
-				fmt.Println("file closed on Block.closeFile()")
-			} else {
-				fmt.Println("file NOT closed on Block.closeFile()")
-			}
-		}
-		b.file = nil
+	if b.shut {
+		b.file.Close()
 	}
+	if Debug(2) {
+		if b.shut {
+			fmt.Println("file closed on Block.closeFile()")
+		} else {
+			fmt.Println("file NOT closed on Block.closeFile()")
+		}
+	}
+	b.file = nil
 }
 
-func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is file or sysf.
+func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is a file.
 	if b.IsBlob() {
 		BugExitln("copyTo when block is blob")
 	}
-	var (
-		nRead int64
-		num   int
-		err   error
-	)
+	var nRead int64
 	for {
-		if b.IsSysf() {
-			num, err = b.sysf.Read(buffer[nRead:b.size])
-		} else {
-			num, err = b.file.Read(buffer[nRead:b.size])
-		}
+		num, err := b.file.Read(buffer[nRead:b.size])
 		if err != nil {
 			return err
 		}
@@ -114,8 +90,7 @@ func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b i
 func (b *Block) Next() *Block { return b.next }
 
 func (b *Block) IsBlob() bool { return b.kind == 0 }
-func (b *Block) IsSysf() bool { return b.kind == 1 }
-func (b *Block) IsFile() bool { return b.kind == 2 }
+func (b *Block) IsFile() bool { return b.kind == 1 }
 
 func (b *Block) SetBlob(blob []byte) {
 	b.closeFile()
@@ -125,46 +100,12 @@ func (b *Block) SetBlob(blob []byte) {
 	b.size = int64(len(blob))
 	b.time = 0
 }
-func (b *Block) SetSysf(file system.File, info system.FileInfo, shut bool) {
-	if b.IsBlob() {
-		b.data.Reset()
-	} else if b.IsFile() {
-		if b.shut {
-			b.file.Close()
-		}
-		if Debug(2) {
-			if b.shut {
-				fmt.Println("file closed on Block.SetSysf()")
-			} else {
-				fmt.Println("file NOT closed on Block.SetSysf()")
-			}
-		}
-		b.file = nil
-	}
-	b.shut = shut
-	b.kind = 1 // system.File
-	b.sysf = file
-	b.size = info.Size()
-	b.time = info.ModTime()
-}
 func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 	if b.IsBlob() {
 		b.data.Reset()
-	} else if b.IsSysf() {
-		if b.shut {
-			b.sysf.Close()
-		}
-		if Debug(2) {
-			if b.shut {
-				fmt.Println("sysf closed on Block.SetFile()")
-			} else {
-				fmt.Println("sysf NOT closed on Block.SetFile()")
-			}
-		}
-		b.sysf = system.File{}
 	}
 	b.shut = shut
-	b.kind = 2 // *os.File
+	b.kind = 1
 	b.file = file
 	b.size = info.Size()
 	b.time = info.ModTime().Unix()
@@ -179,12 +120,6 @@ func (b *Block) Blob() []byte {
 	}
 	return b.data.Bytes()
 }
-func (b *Block) Sysf() system.File {
-	if !b.IsSysf() {
-		BugExitln("block is not a sysf")
-	}
-	return b.sysf
-}
 func (b *Block) File() *os.File {
 	if !b.IsFile() {
 		BugExitln("block is not a file")
@@ -197,15 +132,7 @@ func (b *Block) ToBlob() error { // used by revisers
 		return nil
 	}
 	blob := make([]byte, b.size)
-	var (
-		num int
-		err error
-	)
-	if b.IsSysf() {
-		num, err = io.ReadFull(b.sysf, blob) // TODO: convT()?
-	} else { // *os.File
-		num, err = io.ReadFull(b.file, blob) // TODO: convT()?
-	}
+	num, err := io.ReadFull(b.file, blob) // TODO: convT()?
 	b.SetBlob(blob[:num])
 	return err
 }

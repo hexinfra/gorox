@@ -626,7 +626,7 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 		if block.IsBlob() {
 			vector[vEdge] = block.Blob()
 			vEdge++
-		} else if block.size <= _16K { // small sysf or file
+		} else if block.size <= _16K { // small file
 			buffer := GetNK(block.size)
 			if err := block.copyTo(buffer); err != nil {
 				r.stream.markBroken()
@@ -642,7 +642,7 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 			}
 			PutNK(buffer)
 			vFrom, vEdge = 0, 0
-		} else { // large sysf or file
+		} else { // large file
 			if vFrom < vEdge {
 				r.vector = vector[vFrom:vEdge]
 				if err := r.writeVector1(&r.vector); err != nil {
@@ -744,19 +744,11 @@ func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 		return r._writeFile1(block, chunked)
 	}
 }
-func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error { // sysf or file
-	var (
-		nr, nw int
-		err    error
-	)
+func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
 	for { // we don't use sendfile(2).
-		if block.IsSysf() {
-			nr, err = block.Sysf().Read(buffer)
-		} else {
-			nr, err = block.File().Read(buffer)
-		}
+		nr, err := block.File().Read(buffer)
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -770,6 +762,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error { // sys
 			r.stream.markBroken()
 			return err
 		}
+		var nw int
 		if chunked {
 			sizeBuffer := r.stream.smallStack()
 			n := i64ToHex(int64(nr-nWritten), sizeBuffer)

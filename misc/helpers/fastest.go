@@ -84,16 +84,6 @@ func handleFile(conn net.Conn) { // 70% of nginx
 			fmt.Printf("buffers.WriteTo()=%s\n", err.Error())
 			return
 		}
-		/*
-			if _, err := conn.Write(head); err != nil {
-				fmt.Printf("conn.Write(1)=%s\n", err.Error())
-				return
-			}
-			if _, err := conn.Write(content); err != nil {
-				fmt.Printf("conn.Write(2)=%s\n", err.Error())
-				return
-			}
-		*/
 		file.Close() // syscall 6: close()
 	}
 }

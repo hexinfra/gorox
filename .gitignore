@@ -9,11 +9,6 @@
 *.out
 *.err
 *.log
-*.cpu
-*.hep
-*.thr
-*.grt
-*.blk
 *.test
 *.prof
 *.mine

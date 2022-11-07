@@ -39,8 +39,8 @@ Platforms
   Other platforms are not tested and probably don't work.
 
 
-Quick Start
-===========
+Quickstart
+==========
 
   See INSTALL.md file.
 

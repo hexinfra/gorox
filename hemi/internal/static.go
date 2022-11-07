@@ -240,7 +240,9 @@ func (h *staticHandler) listDir(dir *os.File, resp Response) {
 	resp.Push("</table>")
 }
 
-func staticHTMLEscape(s string) string { return staticHTMLEscaper.Replace(s) }
+func staticHTMLEscape(s string) string {
+	return staticHTMLEscaper.Replace(s)
+}
 
 var staticHTMLEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 

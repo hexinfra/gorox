@@ -14,7 +14,7 @@ import (
 // Server component.
 type Server interface {
 	Component
-	Serve() // blocking
+	Serve() // goroutine
 }
 
 // Server_ is the mixin for all servers.

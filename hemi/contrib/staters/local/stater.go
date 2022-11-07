@@ -49,7 +49,7 @@ func (s *localStater) OnPrepare() {
 func (s *localStater) OnShutdown() {
 }
 
-func (s *localStater) Maintain() { // blocking
+func (s *localStater) Maintain() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

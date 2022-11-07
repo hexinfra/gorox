@@ -91,7 +91,7 @@ func (f *outgate_) init(name string, stage *Stage) {
 // backend is a group of nodes.
 type backend interface {
 	Component
-	maintain() // blocking
+	maintain() // goroutine
 }
 
 // backend_ is a mixin for backends.

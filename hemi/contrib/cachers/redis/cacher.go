@@ -42,7 +42,7 @@ func (c *redisCacher) OnPrepare() {
 func (c *redisCacher) OnShutdown() {
 }
 
-func (c *redisCacher) Maintain() { // blocking
+func (c *redisCacher) Maintain() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

@@ -49,7 +49,7 @@ func (c *localCacher) OnPrepare() {
 func (c *localCacher) OnShutdown() {
 }
 
-func (c *localCacher) Maintain() { // blocking
+func (c *localCacher) Maintain() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

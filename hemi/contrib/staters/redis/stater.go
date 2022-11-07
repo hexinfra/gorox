@@ -42,7 +42,7 @@ func (s *redisStater) OnPrepare() {
 func (s *redisStater) OnShutdown() {
 }
 
-func (s *redisStater) Maintain() { // blocking
+func (s *redisStater) Maintain() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

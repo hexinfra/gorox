@@ -47,7 +47,7 @@ func (s *socksServer) OnShutdown() {
 	s.Server_.OnShutdown()
 }
 
-func (s *socksServer) Serve() {
+func (s *socksServer) Serve() { // goroutine
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(socksGate)
 		gate.init(s, id)
@@ -87,7 +87,7 @@ func (g *socksGate) open() error {
 	return err
 }
 
-func (g *socksGate) serve() {
+func (g *socksGate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
@@ -157,7 +157,7 @@ func (c *socksConn) onPut() {
 	c.netConn = nil
 }
 
-func (c *socksConn) serve() {
+func (c *socksConn) serve() { // goroutine
 	defer putSocksConn(c)
 
 	c.netConn.Write([]byte("not implemented yet"))

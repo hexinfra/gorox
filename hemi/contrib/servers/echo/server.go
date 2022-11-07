@@ -47,7 +47,7 @@ func (s *echoServer) OnShutdown() {
 	s.Server_.OnShutdown()
 }
 
-func (s *echoServer) Serve() {
+func (s *echoServer) Serve() { // goroutine
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(echoGate)
 		gate.init(s, id)
@@ -87,7 +87,7 @@ func (g *echoGate) open() error {
 	return err
 }
 
-func (g *echoGate) serve() {
+func (g *echoGate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
@@ -158,7 +158,7 @@ func (c *echoConn) onPut() {
 	c.netConn = nil
 }
 
-func (c *echoConn) serve() {
+func (c *echoConn) serve() { // goroutine
 	defer putEchoConn(c)
 	for {
 		// TODO: set deadline?

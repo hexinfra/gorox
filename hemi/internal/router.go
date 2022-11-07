@@ -16,7 +16,6 @@ import (
 
 type _gate interface {
 	open() error
-	serve()
 }
 type _runner interface {
 	Component

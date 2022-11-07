@@ -51,7 +51,7 @@ func (r *QUICRouter) createCase(name string) *quicCase {
 	return kase
 }
 
-func (r *QUICRouter) serve() {
+func (r *QUICRouter) serve() { // goroutine
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quicGate)
 		gate.init(r, id)
@@ -84,7 +84,7 @@ func (g *quicGate) open() error {
 	return nil
 }
 
-func (g *quicGate) serve() {
+func (g *quicGate) serve() { // goroutine
 	// TODO
 }
 
@@ -143,7 +143,7 @@ func (c *QUICConn) onPut() {
 	c.filters = [32]uint8{}
 }
 
-func (c *QUICConn) serve() {
+func (c *QUICConn) serve() { // goroutine
 	for _, kase := range c.router.cases {
 		if !kase.isMatch(c) {
 			continue

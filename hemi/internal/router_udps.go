@@ -52,7 +52,7 @@ func (r *UDPSRouter) createCase(name string) *udpsCase {
 	return kase
 }
 
-func (r *UDPSRouter) serve() {
+func (r *UDPSRouter) serve() { // goroutine
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpsGate)
 		gate.init(r, id)
@@ -60,7 +60,11 @@ func (r *UDPSRouter) serve() {
 			EnvExitln(err.Error())
 		}
 		r.gates = append(r.gates, gate)
-		go gate.serve()
+		if r.tlsMode {
+			go gate.serveTLS()
+		} else {
+			go gate.serveUDP()
+		}
 	}
 	select {}
 }
@@ -88,17 +92,10 @@ func (g *udpsGate) open() error {
 	return nil
 }
 
-func (g *udpsGate) serve() {
-	if g.router.tlsMode {
-		g.serveTLS()
-	} else {
-		g.serveUDP()
-	}
-}
-func (g *udpsGate) serveUDP() {
+func (g *udpsGate) serveUDP() { // goroutine
 	// TODO
 }
-func (g *udpsGate) serveTLS() {
+func (g *udpsGate) serveTLS() { // goroutine
 	// TODO
 }
 
@@ -154,7 +151,7 @@ func (c *UDPSConn) onPut() {
 	c.rawConn = nil
 }
 
-func (c *UDPSConn) serve() {
+func (c *UDPSConn) serve() { // goroutine
 	for _, kase := range c.router.cases {
 		if !kase.isMatch(c) {
 			continue

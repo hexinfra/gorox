@@ -39,6 +39,6 @@ func (o *demoOptware) OnPrepare() {
 func (o *demoOptware) OnShutdown() {
 }
 
-func (o *demoOptware) Run() {
+func (o *demoOptware) Run() { // goroutine
 	// Do nothing.
 }

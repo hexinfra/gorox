@@ -61,7 +61,7 @@ func (s *AdminServer) OnPrepare() {
 func (s *AdminServer) OnShutdown() {
 }
 
-func (s *AdminServer) Serve() {
+func (s *AdminServer) Serve() { // goroutine
 	addr, err := net.ResolveTCPAddr("tcp", s.address)
 	if err != nil {
 		EnvExitln(err.Error())
@@ -117,7 +117,7 @@ func (c *adminConn) init(stage *Stage, server *AdminServer, id int64, tcpConn *n
 	c.tcpConn = tcpConn
 }
 
-func (c *adminConn) serve() {
+func (c *adminConn) serve() { // goroutine
 	defer c.closeConn()
 	for i := 0; i < 10; i++ {
 		fmt.Fprintf(c.tcpConn, "id=%d\n", c.id)

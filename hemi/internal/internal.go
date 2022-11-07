@@ -299,7 +299,7 @@ func registerComponent1[T, C Component](sign string, comp int16, creators map[st
 // implemented as fixtures.
 type fixture interface {
 	Component
-	run() // blocking
+	run() // goroutine
 }
 
 // fixture_ is the mixin for all fixtures.
@@ -321,7 +321,7 @@ func (f *fixture_) init(name string, stage *Stage) {
 // and extendible, so users can create their own optwares.
 type Optware interface {
 	Component
-	Run() // blocking
+	Run() // goroutine
 }
 
 // Optware_ is the mixin for all optwares.
@@ -333,7 +333,7 @@ type Optware_ struct {
 // Stater component is the interface to storages of HTTP states. See RFC 6265.
 type Stater interface {
 	Component
-	Maintain() // blocking
+	Maintain() // goroutine
 	Set(sid []byte, session *Session)
 	Get(sid []byte) (session *Session)
 	Del(sid []byte) bool
@@ -356,7 +356,7 @@ type Session struct {
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
 	Component
-	Maintain() // blocking
+	Maintain() // goroutine
 	Set(key []byte, value *Centry)
 	Get(key []byte) (value *Centry)
 	Del(key []byte) bool
@@ -506,7 +506,7 @@ func (p *proxy_) onShutdown(c Component) {
 // Cronjob component
 type Cronjob interface {
 	Component
-	Run() // blocking
+	Run() // goroutine
 }
 
 // Cronjob_ is the mixin for all cronjobs.

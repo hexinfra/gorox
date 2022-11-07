@@ -87,7 +87,7 @@ func (c *http1Conn) onPut() {
 	c.httpConn_.onPut()
 }
 
-func (c *http1Conn) serve() {
+func (c *http1Conn) serve() { // goroutine
 	stream := &c.stream
 	for { // each stream
 		stream.execute(c)

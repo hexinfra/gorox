@@ -42,7 +42,7 @@ func (f *resolvFixture) OnPrepare() {
 func (f *resolvFixture) OnShutdown() {
 }
 
-func (f *resolvFixture) run() { // blocking
+func (f *resolvFixture) run() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

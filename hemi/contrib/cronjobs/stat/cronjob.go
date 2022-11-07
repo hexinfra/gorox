@@ -42,7 +42,7 @@ func (j *statCronjob) OnShutdown() {
 	j.SetShutting()
 }
 
-func (j *statCronjob) Run() {
+func (j *statCronjob) Run() { // goroutine
 	// TODO
 	for !j.IsShutting() {
 		time.Sleep(time.Minute)

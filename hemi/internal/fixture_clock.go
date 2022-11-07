@@ -47,7 +47,7 @@ func (f *clockFixture) OnPrepare() {
 func (f *clockFixture) OnShutdown() {
 }
 
-func (f *clockFixture) run() { // blocking
+func (f *clockFixture) run() { // goroutine
 	for {
 		now := time.Now().UTC()
 		weekday := now.Weekday()       // weekday: 0-6

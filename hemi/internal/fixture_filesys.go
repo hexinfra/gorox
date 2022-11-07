@@ -59,7 +59,7 @@ func (f *filesysFixture) OnPrepare() {
 func (f *filesysFixture) OnShutdown() {
 }
 
-func (f *filesysFixture) run() { // blocking
+func (f *filesysFixture) run() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}

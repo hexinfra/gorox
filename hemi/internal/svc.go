@@ -55,7 +55,7 @@ func (s *Svc) linkHRPC(server httpServer) {
 	s.hrpcServers = append(s.hrpcServers, server)
 }
 
-func (s *Svc) maintain() { // blocking
+func (s *Svc) maintain() { // goroutine
 	// TODO
 	for {
 		time.Sleep(time.Second)

@@ -84,7 +84,7 @@ func (s *httpxServer) OnShutdown() {
 	s.onShutdown()
 }
 
-func (s *httpxServer) Serve() {
+func (s *httpxServer) Serve() { // goroutine
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
 		gate.init(s, id)
@@ -131,7 +131,7 @@ func (g *httpxGate) open() error {
 	return err
 }
 
-func (g *httpxGate) serveTCP() { // blocking
+func (g *httpxGate) serveTCP() { // goroutine
 	getHTTPConn := getHTTP1Conn
 	if g.server.h2cMode {
 		getHTTPConn = getHTTP2Conn
@@ -158,7 +158,7 @@ func (g *httpxGate) serveTCP() { // blocking
 		}
 	}
 }
-func (g *httpxGate) serveTLS() { // blocking
+func (g *httpxGate) serveTLS() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
@@ -303,7 +303,7 @@ func (c *http2Conn) allocInputs() {
 	c.inputs.incRef()
 }
 
-func (c *http2Conn) receive() { // runs on its own goroutine
+func (c *http2Conn) receive() { // goroutine
 	if Debug(1) {
 		defer fmt.Printf("conn=%d c.receive() quit\n", c.id)
 	}
@@ -320,7 +320,7 @@ func (c *http2Conn) receive() { // runs on its own goroutine
 		c.incoming <- inFrame
 	}
 }
-func (c *http2Conn) serve() {
+func (c *http2Conn) serve() { // goroutine
 	fmt.Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
 		fmt.Printf("========================== conn=%d exit =========================\n", c.id)
@@ -1043,7 +1043,7 @@ func (s *http2Stream) onEnd() { // for zeros
 	s.http2Stream0 = http2Stream0{}
 }
 
-func (s *http2Stream) execute() {
+func (s *http2Stream) execute() { // goroutine
 	// do
 	if Debug(2) {
 		fmt.Println("stream processing...")

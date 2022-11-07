@@ -62,7 +62,7 @@ func (f *UnixOutgate) OnShutdown() {
 	f.outgate_.onShutdown()
 }
 
-func (f *UnixOutgate) run() { // blocking
+func (f *UnixOutgate) run() { // goroutine
 	// TODO
 }
 
@@ -104,7 +104,7 @@ func (b *UnixBackend) OnShutdown() {
 	b.backend_.onShutdown()
 }
 
-func (b *UnixBackend) maintain() { // blocking
+func (b *UnixBackend) maintain() { // goroutine
 	// TODO: health check for all nodes
 	for {
 		time.Sleep(time.Second)

@@ -62,7 +62,7 @@ func (f *QUICOutgate) OnShutdown() {
 	f.outgate_.onShutdown()
 }
 
-func (f *QUICOutgate) run() { // blocking
+func (f *QUICOutgate) run() { // goroutine
 	// TODO
 }
 
@@ -103,7 +103,7 @@ func (b *QUICBackend) OnShutdown() {
 	b.backend_.onShutdown()
 }
 
-func (b *QUICBackend) maintain() { // blocking
+func (b *QUICBackend) maintain() { // goroutine
 	// TODO: health check for all nodes
 	for {
 		time.Sleep(time.Second)

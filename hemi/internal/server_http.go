@@ -220,7 +220,7 @@ func (g *httpGate_) init(stage *Stage, id int32, address string, maxConns int32)
 
 // httpConn is the interface for *http[1-3]Conn.
 type httpConn interface {
-	serve()
+	serve() // goroutine
 	getServer() httpServer
 	isBroken() bool
 	markBroken()

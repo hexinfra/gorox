@@ -65,7 +65,7 @@ func (f *TCPSOutgate) OnShutdown() {
 	f.outgate_.onShutdown()
 }
 
-func (f *TCPSOutgate) run() { // blocking
+func (f *TCPSOutgate) run() { // goroutine
 	// TODO
 }
 
@@ -121,7 +121,7 @@ func (b *TCPSBackend) OnShutdown() {
 	b.backend_.onShutdown()
 }
 
-func (b *TCPSBackend) maintain() { // blocking
+func (b *TCPSBackend) maintain() { // goroutine
 	// TODO: health check for all nodes
 	for {
 		time.Sleep(time.Second)

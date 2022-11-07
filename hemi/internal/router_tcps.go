@@ -56,7 +56,7 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 	return kase
 }
 
-func (r *TCPSRouter) serve() {
+func (r *TCPSRouter) serve() { // goroutine
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
 		gate.init(r, id)
@@ -64,7 +64,11 @@ func (r *TCPSRouter) serve() {
 			EnvExitln(err.Error())
 		}
 		r.gates = append(r.gates, gate)
-		go gate.serve()
+		if r.tlsMode {
+			go gate.serveTLS()
+		} else {
+			go gate.serveTCP()
+		}
 	}
 	select {}
 }
@@ -96,14 +100,7 @@ func (g *tcpsGate) open() error {
 	return err
 }
 
-func (g *tcpsGate) serve() {
-	if g.router.tlsMode {
-		g.serveTLS()
-	} else {
-		g.serveTCP()
-	}
-}
-func (g *tcpsGate) serveTCP() {
+func (g *tcpsGate) serveTCP() { // goroutine
 	router := g.router
 	connID := int64(0)
 	for {
@@ -128,7 +125,7 @@ func (g *tcpsGate) serveTCP() {
 		}
 	}
 }
-func (g *tcpsGate) serveTLS() {
+func (g *tcpsGate) serveTLS() { // goroutine
 	router := g.router
 	connID := int64(0)
 	for {
@@ -217,7 +214,7 @@ func (c *TCPSConn) onPut() {
 	c.tcpsConn0 = tcpsConn0{}
 }
 
-func (c *TCPSConn) serve() {
+func (c *TCPSConn) serve() { // goroutine
 	for _, kase := range c.router.cases {
 		if !kase.isMatch(c) {
 			continue

@@ -59,7 +59,7 @@ func (f *UDPSOutgate) OnShutdown() {
 	f.outgate_.onShutdown()
 }
 
-func (f *UDPSOutgate) run() { // blocking
+func (f *UDPSOutgate) run() { // goroutine
 	// TODO
 }
 
@@ -98,7 +98,7 @@ func (b *UDPSBackend) OnShutdown() {
 	b.backend_.onShutdown()
 }
 
-func (b *UDPSBackend) maintain() { // blocking
+func (b *UDPSBackend) maintain() { // goroutine
 	// TODO: health check for all nodes
 	for {
 		time.Sleep(time.Second)

@@ -47,7 +47,7 @@ func (s *http3Server) OnShutdown() {
 	s.onShutdown()
 }
 
-func (s *http3Server) Serve() {
+func (s *http3Server) Serve() { // goroutine
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
 		gate.init(s, id)
@@ -84,7 +84,7 @@ func (g *http3Gate) open() error {
 	return nil
 }
 
-func (g *http3Gate) serve() { // blocking
+func (g *http3Gate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		quicConn, err := g.gate.Accept()
@@ -180,7 +180,7 @@ func (c *http3Conn) allocInputs() {
 func (c *http3Conn) receive() {
 	// TODO
 }
-func (c *http3Conn) serve() {
+func (c *http3Conn) serve() { // goroutine
 	// TODO
 }
 

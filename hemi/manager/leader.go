@@ -115,7 +115,7 @@ func leaderMain() {
 	}
 }
 
-func keepWorkers(base string, file string, msgChan chan *msgx.Message) {
+func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goroutine
 	workMode, totalWorkers := workTogether, 1
 	if *multiple != 0 { // change to multi-worker mode
 		workMode, totalWorkers = workIsolated, *multiple
@@ -143,7 +143,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) {
 							msgx.Tell(worker.msgPipe, req)
 						}
 					}
-					go func(dieChan chan *worker, nWorkers int) {
+					go func(dieChan chan *worker, nWorkers int) { // goroutine
 						for i := 0; i < nWorkers; i++ {
 							<-dieChan
 						}
@@ -300,7 +300,7 @@ func (w *worker) start(base string, file string, dieChan chan *worker) {
 	// Watch process
 	go w.watch(dieChan)
 }
-func (w *worker) watch(dieChan chan *worker) {
+func (w *worker) watch(dieChan chan *worker) { // goroutine
 	stat, err := w.process.Wait()
 	if err != nil {
 		crash(err.Error())

@@ -55,7 +55,7 @@ func (f *HTTP3Outgate) OnShutdown() {
 	f.httpOutgate_.onShutdown()
 }
 
-func (f *HTTP3Outgate) run() { // blocking
+func (f *HTTP3Outgate) run() { // goroutine
 	for {
 		time.Sleep(time.Second)
 	}
@@ -91,7 +91,7 @@ func (b *HTTP3Backend) OnShutdown() {
 	b.httpBackend_.onShutdown()
 }
 
-func (b *HTTP3Backend) maintain() { // blocking
+func (b *HTTP3Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
 		node.checkHealth()
 		time.Sleep(time.Second)

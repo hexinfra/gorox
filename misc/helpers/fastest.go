@@ -1,6 +1,5 @@
 
 // This is the fastest result that an http server written in Go (with package net) can achieve.
-// According to wrk, it is about 96% of nginx.
 
 package main
 
@@ -37,7 +36,7 @@ func server(addr string, handle func(net.Conn)) {
 	}
 }
 
-func handleBlob(conn net.Conn) {
+func handleBlob(conn net.Conn) { // 96% of nginx
 	defer conn.Close()
 	request := make([]byte, 52) // GET /benchmark HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
 	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html; charset=utf-8\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")
@@ -53,9 +52,9 @@ func handleBlob(conn net.Conn) {
 	}
 }
 
-func handleFile(conn net.Conn) {
+func handleFile(conn net.Conn) { // 70% of nginx
 	defer conn.Close()
-	request := make([]byte, 57) // GET /benchmark.html HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
+	request := make([]byte, 57) // GET /benchmark.html HTTP/1.1\r\nHost: 192.168.1.10:8888\r\n\r\n
 	head := []byte("HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ndate: Sat, 08 Oct 2022 12:09:04 GMT\r\nlast-modified: Fri, 23 Sep 2022 18:21:12 GMT\r\netag: \"632df918-93\"\r\ncontent-length: 147\r\nconnection: keep-alive\r\naccept-ranges: bytes\r\nserver: gorox\r\n\r\n")
 	content := make([]byte, 147)
 	var response [2][]byte
@@ -69,7 +68,7 @@ func handleFile(conn net.Conn) {
 			fmt.Printf("os.Open()=%s\n", err.Error())
 			return
 		}
-		stat, err := file.Stat() // syscall 3: stat()
+		stat, err := file.Stat() // syscall 3: newfstatat()
 		if err != nil {
 			fmt.Printf("file.Stat()=%s\n", err.Error())
 			file.Close()

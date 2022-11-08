@@ -142,53 +142,48 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	info, err := os.Stat(risky.WeakString(openPath))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			h.app.Logf("open file error=%s\n", err.Error())
-			resp.SendInternalServerError(nil)
-		} else if isFile { // file not found
-			resp.SendNotFound(nil)
-		} else if h.autoIndex { // index file not found, but auto index is turned on
-			if file, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
-				h.listDir(file, resp)
-				file.Close()
-			} else if !os.IsNotExist(err) {
+	filesys := h.stage.Filesys()
+	entry, err := filesys.getEntry(openPath)
+	if err == nil {
+		if Debug(1) {
+			fmt.Println("entry HIT")
+		}
+	} else { // entry not exist
+		if Debug(1) {
+			fmt.Println("entry MISS")
+		}
+		entry, err = filesys.newEntry(string(openPath))
+		if err != nil {
+			if !os.IsNotExist(err) {
 				h.app.Logf("open file error=%s\n", err.Error())
 				resp.SendInternalServerError(nil)
-			} else { // directory not found
+			} else if isFile { // file not found
 				resp.SendNotFound(nil)
+			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
+				if file, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
+					h.listDir(file, resp)
+					file.Close()
+				} else if !os.IsNotExist(err) {
+					h.app.Logf("open file error=%s\n", err.Error())
+					resp.SendInternalServerError(nil)
+				} else { // directory not found
+					resp.SendNotFound(nil)
+				}
+			} else { // not auto index
+				resp.SendForbidden(nil)
 			}
-		} else { // not auto index
-			resp.SendForbidden(nil)
+			return
 		}
-		return
 	}
-	if info.IsDir() {
+	if entry.isDir() {
 		resp.SetStatus(StatusFound)
 		resp.AddDirectoryRedirection()
 		resp.SendBytes(nil)
 		return
 	}
-	fsCache := h.stage.Filesys()
-	entry := fsCache.getEntry(risky.WeakString(openPath), info)
-	if entry == nil {
-		if Debug(2) {
-			fmt.Println("fsCache MISS")
-		}
-		entry, err = fsCache.newEntry(string(openPath)) // DO NOT use risky.WeakString here!
-		if err != nil {
-			resp.SendInternalServerError(nil)
-			return
-		}
-	} else {
-		if Debug(2) {
-			fmt.Println("fsCache HIT")
-		}
-	}
 
-	modTime := info.ModTime().Unix()
-	etag, _ := resp.makeETagFrom(modTime, info.Size()) // with ""
+	modTime := entry.info.ModTime().Unix()
+	etag, _ := resp.makeETagFrom(modTime, entry.info.Size()) // with ""
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
 		resp.SetLastModified(modTime)
 		resp.SetETagBytes(etag)
@@ -202,7 +197,17 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 			}
 		}
 		resp.AddContentType(contentType)
-		resp.sendFile(entry.file, info, false)
+		if entry.isSmall() {
+			if Debug(2) {
+				fmt.Println("static send blob")
+			}
+			resp.sendBlob(entry.data)
+		} else {
+			if Debug(2) {
+				fmt.Println("static send file")
+			}
+			resp.sendFile(entry.file, entry.info, false)
+		}
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {

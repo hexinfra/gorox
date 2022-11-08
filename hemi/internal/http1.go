@@ -753,7 +753,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 			return nil
 		}
 		readSize := int64(cap(buffer))
-		if sizeLeft := block.size-nRead; sizeLeft < readSize {
+		if sizeLeft := block.size - nRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
 		nr, err := block.file.ReadAt(buffer[:readSize], nRead)
@@ -772,18 +772,18 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 		if chunked {
 			// TODO(diogin): the number calculation is incorrect
 			/*
-			sizeBuffer := r.stream.smallStack()
-			n := i64ToHex(int64(nr-nWritten), sizeBuffer)
-			sizeBuffer[n] = '\r'
-			sizeBuffer[n+1] = '\n'
-			n += 2
-			r.vector = r.fixedVector[0:3]
-			r.vector[0] = sizeBuffer[:n]
-			r.vector[1] = buffer[nWritten:nr]
-			r.vector[2] = sizeBuffer[n-2 : n]
-			nn, ee := r.stream.writev(&r.vector)
-			nw = int(nn)
-			err = ee
+				sizeBuffer := r.stream.smallStack()
+				n := i64ToHex(int64(nr-nWritten), sizeBuffer)
+				sizeBuffer[n] = '\r'
+				sizeBuffer[n+1] = '\n'
+				n += 2
+				r.vector = r.fixedVector[0:3]
+				r.vector[0] = sizeBuffer[:n]
+				r.vector[1] = buffer[nWritten:nr]
+				r.vector[2] = sizeBuffer[n-2 : n]
+				nn, ee := r.stream.writev(&r.vector)
+				nw = int(nn)
+				err = ee
 			*/
 		} else {
 			nw, err = r.stream.write(buffer[nWritten:nr])

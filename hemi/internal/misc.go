@@ -80,7 +80,7 @@ func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b i
 			return nil
 		}
 		readSize := int64(cap(buffer))
-		if sizeLeft := b.size-nRead; sizeLeft < readSize {
+		if sizeLeft := b.size - nRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
 		num, err := b.file.ReadAt(buffer[:readSize], nRead)

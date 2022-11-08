@@ -54,6 +54,7 @@ Performance
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
 
   Change the parameters and/or target URL to match your need.
+  Generally, the result is about 80% of nginx and slightly better than fasthttp.
 
 
 Documentation

@@ -74,15 +74,19 @@ func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b i
 	if b.IsBlob() {
 		BugExitln("copyTo when block is blob")
 	}
-	var nRead int64
+	nRead := int64(0)
 	for {
-		num, err := b.file.Read(buffer[nRead:b.size])
-		if err != nil {
-			return err
-		}
-		nRead += int64(num)
 		if nRead == b.size {
 			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := b.size-nRead; sizeLeft < readSize {
+			readSize = sizeLeft
+		}
+		num, err := b.file.ReadAt(buffer[:readSize], nRead)
+		nRead += int64(num)
+		if err != nil && nRead != b.size {
+			return err
 		}
 	}
 }

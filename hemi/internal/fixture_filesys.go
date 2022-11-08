@@ -35,12 +35,14 @@ type filesysFixture struct {
 	maxSmallFiles int32 // max number of small files
 	maxLargeFiles int32 // max number of large files
 	cacheDuration time.Duration
-	rwMutex       sync.RWMutex
-	entries       map[string]*filesysEntry
+
+	rwMutex sync.RWMutex
+	entries map[string]*filesysEntry
 }
 
 func (f *filesysFixture) init(stage *Stage) {
 	f.fixture_.init(signFilesys, stage)
+	f.entries = make(map[string]*filesysEntry)
 }
 
 func (f *filesysFixture) OnConfigure() {
@@ -64,6 +66,50 @@ func (f *filesysFixture) run() { // goroutine
 	}
 }
 
+func (f *filesysFixture) delEntry(path string) { // path is risky.WeakString
+	f.rwMutex.Lock()
+	defer f.rwMutex.Unlock()
+	if entry, ok := f.entries[path]; ok {
+		entry.closeFile()
+		delete(f.entries, path)
+	}
+}
+
+func (f *filesysFixture) getEntry(path string, info os.FileInfo) *filesysEntry { // path is risky.WeakString(), DO NOT copy it!
+	f.rwMutex.RLock()
+	defer f.rwMutex.RUnlock()
+	if entry, ok := f.entries[path]; ok && info.IsDir() == entry.info.IsDir() && info.Size() == entry.info.Size() && info.ModTime().Equal(entry.info.ModTime()) {
+		return entry
+	} else {
+		return nil
+	}
+}
+
+func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
+	f.rwMutex.Lock()
+	defer f.rwMutex.Unlock()
+
+	if entry, ok := f.entries[path]; ok {
+		return entry, nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	entry := new(filesysEntry)
+	entry.file = file
+	entry.info = info
+	f.entries[path] = entry
+	return entry, nil
+}
+
+/*
 func (f *filesysFixture) getFile(path string) (entry *filesysEntry) {
 	var ok bool
 
@@ -119,17 +165,17 @@ func (f *filesysFixture) getFile(path string) (entry *filesysEntry) {
 
 	return entry
 }
-func (f *filesysFixture) putFile(entry *filesysEntry) {
-}
+*/
 
 // filesysEntry
 type filesysEntry struct {
-	code int8 // 0:valid 1:error 2:not-exist
 	kind int8 // 0:small 1:large 2:dir
 	file *os.File
 	info os.FileInfo
 	data []byte // content of small file
+	last time.Time
 }
 
-func (e *filesysEntry) isValid() bool    { return e.code == 0 }
-func (e *filesysEntry) isNotExist() bool { return e.code == 2 }
+func (e *filesysEntry) closeFile() {
+	e.file.Close()
+}

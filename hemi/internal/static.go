@@ -131,7 +131,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 	var openPath []byte
 	if isFile {
 		openPath = fullPath[:pathSize]
-	} else { // is directory
+	} else { // is directory, add indexFile to openPath
 		if h.useAppRoot {
 			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
 			copy(openPath, fullPath)
@@ -142,7 +142,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	file, err := os.Open(risky.WeakString(openPath)) // DO NOT use risky.WeakString if file is to be stored outside of current stream lifetime!
+	info, err := os.Stat(risky.WeakString(openPath))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			h.app.Logf("open file error=%s\n", err.Error())
@@ -164,19 +164,27 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		}
 		return
 	}
-	info, err := file.Stat()
-	if err != nil {
-		file.Close()
-		h.app.Logf("file stat error=%s\n", err.Error())
-		resp.SendInternalServerError(nil)
-		return
-	}
 	if info.IsDir() {
-		file.Close()
 		resp.SetStatus(StatusFound)
 		resp.AddDirectoryRedirection()
 		resp.SendBytes(nil)
 		return
+	}
+	fsCache := h.stage.Filesys()
+	entry := fsCache.getEntry(risky.WeakString(openPath), info)
+	if entry == nil {
+		if Debug(2) {
+			fmt.Println("fsCache MISS")
+		}
+		entry, err = fsCache.newEntry(string(openPath)) // DO NOT use risky.WeakString here!
+		if err != nil {
+			resp.SendInternalServerError(nil)
+			return
+		}
+	} else {
+		if Debug(2) {
+			fmt.Println("fsCache HIT")
+		}
 	}
 
 	modTime := info.ModTime().Unix()
@@ -194,7 +202,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 			}
 		}
 		resp.AddContentType(contentType)
-		resp.sendFile(file, info, true)
+		resp.sendFile(entry.file, info, false)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {

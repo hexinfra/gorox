@@ -747,12 +747,18 @@ func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
+	nRead := int64(0)
 	for { // we don't use sendfile(2).
-		nr, err := block.File().Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
+		if nRead == block.size {
+			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := block.size-nRead; sizeLeft < readSize {
+			readSize = sizeLeft
+		}
+		nr, err := block.file.ReadAt(buffer[:readSize], nRead)
+		nRead += int64(nr)
+		if err != nil && nRead != block.size {
 			r.stream.markBroken()
 			return err
 		}
@@ -764,6 +770,8 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 		}
 		var nw int
 		if chunked {
+			// TODO(diogin): the number calculation is incorrect
+			/*
 			sizeBuffer := r.stream.smallStack()
 			n := i64ToHex(int64(nr-nWritten), sizeBuffer)
 			sizeBuffer[n] = '\r'
@@ -776,6 +784,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 			nn, ee := r.stream.writev(&r.vector)
 			nw = int(nn)
 			err = ee
+			*/
 		} else {
 			nw, err = r.stream.write(buffer[nWritten:nr])
 		}

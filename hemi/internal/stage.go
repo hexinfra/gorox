@@ -244,6 +244,7 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
+func (s *Stage) Filesys() *filesysFixture           { return s.filesys }
 func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
 func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
 func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }

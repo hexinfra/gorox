@@ -35,7 +35,6 @@ type staticHandler struct {
 	aliasTo     []string          // from is an alias to to
 	indexFile   string            // ...
 	autoIndex   bool              // ...
-	enableCache bool              // ...
 	mimeTypes   map[string]string // ...
 	defaultType string            // ...
 	useAppRoot  bool              // true if webRoot is same with app.webRoot
@@ -81,8 +80,6 @@ func (h *staticHandler) OnConfigure() {
 	h.ConfigureString("indexFile", &h.indexFile, func(value string) bool { return value != "" }, "index.html")
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
-	// enableCache
-	h.ConfigureBool("enableCache", &h.enableCache, false)
 	// mimeTypes
 	if v, ok := h.Find("mimeTypes"); ok {
 		if mimeTypes, ok := v.StringDict(); ok {

@@ -9,6 +9,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
@@ -36,12 +37,11 @@ type filesysFixture struct {
 	fixture_
 	// States
 	smallFileSize int64 // what size is considered as small file
-	maxSmallFiles int32 // max number of small files
-	maxLargeFiles int32 // max number of large files
+	maxSmallFiles int32 // max number of small files. for small files, contents are cached
+	maxLargeFiles int32 // max number of large files. for large files, *os.File are cached
 	cacheDuration time.Duration
-
-	rwMutex sync.RWMutex
-	entries map[string]*filesysEntry
+	rwMutex       sync.RWMutex // protects entries below
+	entries       map[string]*filesysEntry
 }
 
 func (f *filesysFixture) init(stage *Stage) {
@@ -58,7 +58,7 @@ func (f *filesysFixture) OnConfigure() {
 	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) bool { return value > 0 }, 200)
 	// cacheDuration
 	var defaultDuration = 10 * time.Second
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" { // these operating systems are mainly used for developing
 		defaultDuration = time.Second
 	}
 	f.ConfigureDuration("cacheDuration", &f.cacheDuration, func(value time.Duration) bool { return value > 0 }, defaultDuration)
@@ -66,17 +66,31 @@ func (f *filesysFixture) OnConfigure() {
 func (f *filesysFixture) OnPrepare() {
 }
 func (f *filesysFixture) OnShutdown() {
+	// TODO
 }
 
 func (f *filesysFixture) run() { // goroutine
 	for {
 		time.Sleep(time.Second)
+		now := time.Now()
+		f.rwMutex.Lock()
+		for path, entry := range f.entries {
+			if entry.last.After(now) {
+				continue
+			}
+			if Debug(2) {
+				fmt.Printf("filesys entry deleted: %s\n", path)
+			}
+			delete(f.entries, path) // files we be closed automatically thanks to finalizers
+		}
+		f.rwMutex.Unlock()
 	}
 }
 
 func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {
 	f.rwMutex.RLock()
 	defer f.rwMutex.RUnlock()
+
 	if entry, ok := f.entries[risky.WeakString(path)]; ok {
 		return entry, nil
 	} else {
@@ -110,7 +124,10 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 		file.Close()
 	} else if fileSize := info.Size(); fileSize <= f.smallFileSize {
 		data := make([]byte, fileSize)
-		io.ReadFull(file, data) // TODO: check error
+		if _, err := io.ReadFull(file, data); err != nil {
+			file.Close()
+			return nil, err
+		}
 		entry.kind = 0
 		entry.info = info
 		entry.data = data
@@ -120,22 +137,20 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 		entry.file = file
 		entry.info = info
 	}
+	entry.last = time.Now().Add(f.cacheDuration)
 	f.entries[path] = entry
+
 	return entry, nil
 }
 
 // filesysEntry
 type filesysEntry struct {
-	kind int8 // 0:small file, 1:large file 2:directory
-	file *os.File
-	info os.FileInfo
-	data []byte // content of small file
-	last time.Time
+	kind int8        // 0:small file, 1:large file 2:directory
+	file *os.File    // only for large file
+	info os.FileInfo // only for files, not directories
+	data []byte      // content of small file
+	last time.Time   // expire time
 }
 
 func (e *filesysEntry) isDir() bool   { return e.kind == 2 }
 func (e *filesysEntry) isSmall() bool { return e.kind == 0 }
-
-func (e *filesysEntry) closeFile() {
-	e.file.Close()
-}

@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -73,10 +74,13 @@ func (f *filesysFixture) run() { // goroutine
 			if entry.last.After(now) {
 				continue
 			}
+			if entry.isLarge() {
+				entry.decRef()
+			}
+			delete(f.entries, path)
 			if Debug(2) {
 				fmt.Printf("filesys entry deleted: %s\n", path)
 			}
-			delete(f.entries, path) // files we be closed automatically thanks to finalizers
 		}
 		f.rwMutex.Unlock()
 	}
@@ -87,6 +91,9 @@ func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {
 	defer f.rwMutex.RUnlock()
 
 	if entry, ok := f.entries[risky.WeakString(path)]; ok {
+		if entry.isLarge() {
+			entry.addRef()
+		}
 		return entry, nil
 	} else {
 		return nil, filesysNotExist
@@ -100,6 +107,9 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 	defer f.rwMutex.Unlock()
 
 	if entry, ok := f.entries[path]; ok {
+		if entry.isLarge() {
+			entry.addRef()
+		}
 		return entry, nil
 	}
 
@@ -115,7 +125,7 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 
 	entry := new(filesysEntry)
 	if info.IsDir() {
-		entry.kind = 2
+		entry.kind = filesysKindDir
 		file.Close()
 	} else if fileSize := info.Size(); fileSize <= f.smallFileSize {
 		data := make([]byte, fileSize)
@@ -123,14 +133,15 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 			file.Close()
 			return nil, err
 		}
-		entry.kind = 0
+		entry.kind = filesysKindSmall
 		entry.info = info
 		entry.data = data
 		file.Close()
 	} else { // large file
-		entry.kind = 1
+		entry.kind = filesysKindLarge
 		entry.file = file
 		entry.info = info
+		entry.nRef.Store(1) // current caller
 	}
 	entry.last = time.Now().Add(f.cacheDuration)
 	f.entries[path] = entry
@@ -140,12 +151,32 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 
 // filesysEntry
 type filesysEntry struct {
-	kind int8        // 0:small file, 1:large file 2:directory
-	file *os.File    // only for large file
-	info os.FileInfo // only for files, not directories
-	data []byte      // content of small file
-	last time.Time   // expire time
+	kind int8         // see filesysKindXXX
+	file *os.File     // only for large file
+	info os.FileInfo  // only for files, not directories
+	data []byte       // content of small file
+	last time.Time    // expire time
+	nRef atomic.Int64 // only for large file
 }
 
-func (e *filesysEntry) isDir() bool   { return e.kind == 2 }
-func (e *filesysEntry) isSmall() bool { return e.kind == 0 }
+const (
+	filesysKindDir = iota
+	filesysKindSmall
+	filesysKindLarge
+)
+
+func (e *filesysEntry) isDir() bool   { return e.kind == filesysKindDir }
+func (e *filesysEntry) isLarge() bool { return e.kind == filesysKindLarge }
+func (e *filesysEntry) isSmall() bool { return e.kind == filesysKindSmall }
+
+func (e *filesysEntry) addRef() {
+	e.nRef.Add(1)
+}
+func (e *filesysEntry) decRef() {
+	if e.nRef.Add(-1) < 0 {
+		if Debug(2) {
+			fmt.Printf("filesys large entry closed: %s\n", e.file.Name())
+		}
+		e.file.Close()
+	}
+}

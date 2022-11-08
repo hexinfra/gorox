@@ -178,6 +178,9 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		resp.SendBytes(nil)
 		return
 	}
+	if entry.isLarge() {
+		defer entry.decRef()
+	}
 
 	modTime := entry.info.ModTime().Unix()
 	etag, _ := resp.makeETagFrom(modTime, entry.info.Size()) // with ""

@@ -13,7 +13,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -55,13 +54,9 @@ func (f *filesysFixture) OnConfigure() {
 	// maxSmallFiles
 	f.ConfigureInt32("maxSmallFiles", &f.maxSmallFiles, func(value int32) bool { return value > 0 }, 1000)
 	// maxLargeFiles
-	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) bool { return value > 0 }, 200)
+	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) bool { return value > 0 }, 500)
 	// cacheDuration
-	var defaultDuration = 10 * time.Second
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" { // these operating systems are mainly used for developing
-		defaultDuration = time.Second
-	}
-	f.ConfigureDuration("cacheDuration", &f.cacheDuration, func(value time.Duration) bool { return value > 0 }, defaultDuration)
+	f.ConfigureDuration("cacheDuration", &f.cacheDuration, func(value time.Duration) bool { return value > 0 }, time.Second)
 }
 func (f *filesysFixture) OnPrepare() {
 }

@@ -38,7 +38,7 @@ type staticHandler struct {
 	enableCache bool              // ...
 	mimeTypes   map[string]string // ...
 	defaultType string            // ...
-	customRoot  bool              // true if webRoot is different from app.webRoot
+	useAppRoot  bool              // true if webRoot is same with app.webRoot
 }
 
 func (h *staticHandler) init(name string, stage *Stage, app *App) {
@@ -52,9 +52,6 @@ func (h *staticHandler) OnConfigure() {
 	if v, ok := h.Find("webRoot"); ok {
 		if dir, ok := v.String(); ok && dir != "" {
 			h.webRoot = dir
-			if dir != h.app.webRoot {
-				h.customRoot = true
-			}
 		} else {
 			UseExitln("invalid webRoot")
 		}
@@ -62,6 +59,14 @@ func (h *staticHandler) OnConfigure() {
 		UseExitln("webRoot is required for staticHandler")
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
+	h.useAppRoot = h.webRoot == h.app.webRoot
+	if Debug(1) {
+		if h.useAppRoot {
+			fmt.Printf("static=%s use app web root\n", h.Name())
+		} else {
+			fmt.Printf("static=%s NOT use app web root\n", h.Name())
+		}
+	}
 	// aliasTo
 	if v, ok := h.Find("aliasTo"); ok {
 		if fromTo, ok := v.StringListN(2); ok {
@@ -111,66 +116,54 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		return
 	}
 
-	var absPath []byte
-	if h.customRoot {
-		webRoot := h.webRoot
-		absPath = req.UnsafeMake(len(webRoot) + len(req.UnsafePath())) // TODO: alloc space for indexFile to avoid alloc again below
-		n := copy(absPath, webRoot)
-		copy(absPath[n:], req.UnsafePath())
-		if Debug(2) {
-			fmt.Printf("%v\n", absPath)
-		}
-	} else {
-		absPath = req.unsafeAbsPath()
+	var fullPath []byte
+	var pathSize int
+	if h.useAppRoot {
+		fullPath = req.unsafeAbsPath()
+		pathSize = len(fullPath)
+	} else { // custom web root
+		userPath := req.UnsafePath()
+		fullPath = req.UnsafeMake(len(h.webRoot) + len(userPath) + len(h.indexFile))
+		pathSize = copy(fullPath, h.webRoot)
+		pathSize += copy(fullPath[pathSize:], userPath)
 	}
-	isFile := absPath[len(absPath)-1] != '/'
-
-	var thePath []byte
-	if isFile && !h.customRoot {
-		thePath = absPath
-	} else if !isFile { // absPath ends with '/'
-		var n int
-		if h.customRoot {
-			path := req.UnsafePath()
-			thePath = req.UnsafeMake(len(h.webRoot) + len(path) + len(h.indexFile))
-			n = copy(thePath, h.webRoot)
-			n += copy(thePath[n:], path)
-			absPath = thePath[:n] // h.webRoot + path
-		} else {
-			thePath = req.UnsafeMake(len(absPath) + len(h.indexFile))
-			n = copy(thePath, absPath)
+	isFile := fullPath[pathSize-1] != '/'
+	var openPath []byte
+	if isFile {
+		openPath = fullPath[:pathSize]
+	} else { // is directory
+		if h.useAppRoot {
+			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
+			copy(openPath, fullPath)
+			copy(openPath[pathSize:], h.indexFile)
+			fullPath = openPath
+		} else { // custom web root
+			openPath = fullPath
 		}
-		copy(thePath[n:], h.indexFile)
-	} else { // custom root and regular file
-		path := req.UnsafePath()
-		thePath = req.UnsafeMake(len(h.webRoot) + len(path))
-		n := copy(thePath, h.webRoot)
-		copy(thePath[n:], path)
 	}
 
-	file, err := os.Open(risky.WeakString(thePath))
+	file, err := os.Open(risky.WeakString(openPath)) // DO NOT use risky.WeakString if file is to be stored outside of current stream lifetime!
 	if err != nil {
 		if !os.IsNotExist(err) {
 			h.app.Logf("open file error=%s\n", err.Error())
 			resp.SendInternalServerError(nil)
 		} else if isFile { // file not found
 			resp.SendNotFound(nil)
-		} else if h.autoIndex { // directory not found
-			if dir, err := os.Open(risky.WeakString(absPath)); err == nil {
-				h.listDir(dir, resp)
-				dir.Close()
-			} else if os.IsNotExist(err) {
+		} else if h.autoIndex { // index file not found, but auto index is turned on
+			if file, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
+				h.listDir(file, resp)
+				file.Close()
+			} else if !os.IsNotExist(err) {
+				h.app.Logf("open file error=%s\n", err.Error())
+				resp.SendInternalServerError(nil)
+			} else { // directory not found
 				resp.SendNotFound(nil)
-			} else {
-				// TODO
-				resp.SendInternalServerError([]byte(err.Error()))
 			}
 		} else { // not auto index
 			resp.SendForbidden(nil)
 		}
 		return
 	}
-
 	info, err := file.Stat()
 	if err != nil {
 		file.Close()
@@ -188,13 +181,12 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 
 	modTime := info.ModTime().Unix()
 	etag, _ := resp.makeETagFrom(modTime, info.Size()) // with ""
-
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
 		resp.SetLastModified(modTime)
 		resp.SetETagBytes(etag)
 		resp.SetAcceptBytesRange()
 		contentType := h.defaultType
-		filePath := risky.WeakString(thePath)
+		filePath := risky.WeakString(openPath)
 		if pDot := strings.LastIndex(filePath, "."); pDot >= 0 {
 			ext := filePath[pDot+1:]
 			if mimeType, ok := h.mimeTypes[ext]; ok {
@@ -210,6 +202,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 		}
 		resp.SendBytes(nil)
 	}
+
 	return
 }
 

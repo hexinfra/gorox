@@ -8,7 +8,9 @@
 package demo
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"time"
 )
 
 func init() {
@@ -37,8 +39,16 @@ func (o *demoOptware) OnConfigure() {
 func (o *demoOptware) OnPrepare() {
 }
 func (o *demoOptware) OnShutdown() {
+	o.SetShut()
 }
 
 func (o *demoOptware) Run() { // goroutine
-	// Do nothing.
+	for !o.IsShut() {
+		// Do nothing.
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Println("demo optware done")
+	}
+	o.stage.SubDone()
 }

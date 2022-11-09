@@ -148,9 +148,6 @@ func (n *unixNode) init(id int32, backend *UnixBackend) {
 
 func (n *unixNode) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *unixNode) dial() (*XConn, error) { // some protocols don't support or need connection reusing, just dial & close.

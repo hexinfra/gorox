@@ -127,9 +127,6 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 
 func (n *http3Node) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *http3Node) fetchConn() (*H3Conn, error) {

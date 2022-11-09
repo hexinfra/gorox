@@ -85,7 +85,6 @@ func (s *Stage) init() {
 	s.tcps = createTCPS(s)
 	s.udps = createUDPS(s)
 	s.unix = createUnix(s)
-	s.IncSub(10) // 10 fixtures
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
@@ -98,6 +97,8 @@ func (s *Stage) init() {
 	s.fixtures[signTCPS] = s.tcps
 	s.fixtures[signUDPS] = s.udps
 	s.fixtures[signUnix] = s.unix
+
+	s.IncSub(len(s.fixtures))
 
 	s.optwares = make(compDict[Optware])
 	s.backends = make(compDict[backend])
@@ -123,6 +124,7 @@ func (s *Stage) createOptware(sign string) Optware {
 	if s.Optware(sign) != nil {
 		UseExitf("conflicting optware with a same sign '%s'\n", sign)
 	}
+	s.IncSub(1)
 	optware := create(sign, s)
 	optware.setShell(optware)
 	s.optwares[sign] = optware
@@ -361,7 +363,7 @@ func (s *Stage) OnShutdown() {
 	s.tcpsRouters.walk((*TCPSRouter).OnShutdown)
 	s.quicRouters.walk((*QUICRouter).OnShutdown)
 	s.backends.walk(backend.OnShutdown)
-	s.optwares.walk(Optware.OnShutdown)
+	s.optwares.goWalk(Optware.OnShutdown)
 	s.fixtures.goWalk(fixture.OnShutdown)
 
 	s.WaitSubs()

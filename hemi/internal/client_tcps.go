@@ -165,9 +165,6 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 
 func (n *tcpsNode) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & close.

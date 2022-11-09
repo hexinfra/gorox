@@ -146,9 +146,6 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 
 func (n *quicNode) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *quicNode) dial() (*QConn, error) {

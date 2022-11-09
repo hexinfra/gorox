@@ -128,9 +128,6 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 
 func (n *http2Node) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *http2Node) fetchConn() (*H2Conn, error) {

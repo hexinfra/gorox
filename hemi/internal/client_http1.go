@@ -200,9 +200,6 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 
 func (n *http1Node) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *http1Node) fetchConn() (*H1Conn, error) {

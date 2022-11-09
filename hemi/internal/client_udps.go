@@ -141,9 +141,6 @@ func (n *udpsNode) init(id int32, backend *UDPSBackend) {
 
 func (n *udpsNode) checkHealth() {
 	// TODO
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func (n *udpsNode) dial() (*UConn, error) {

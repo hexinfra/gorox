@@ -44,11 +44,12 @@ func (j *cleanCronjob) OnShutdown() {
 }
 
 func (j *cleanCronjob) Run() { // goroutine
-	for !j.Shut() {
+	for !j.IsShut() {
 		// TODO
 		time.Sleep(time.Minute)
 	}
 	if Debug(1) {
 		fmt.Printf("cleanCronjob=%s shut\n", j.Name())
 	}
+	j.stage.SubDone()
 }

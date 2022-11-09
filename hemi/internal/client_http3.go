@@ -10,6 +10,7 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"net"
 	"sync"
@@ -56,9 +57,13 @@ func (f *HTTP3Outgate) OnShutdown() {
 }
 
 func (f *HTTP3Outgate) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Println("http3 done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *HTTP3Outgate) FetchConn(address string) (*H3Conn, error) {

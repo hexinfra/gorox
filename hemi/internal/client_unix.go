@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -63,7 +64,14 @@ func (f *UnixOutgate) OnShutdown() {
 }
 
 func (f *UnixOutgate) run() { // goroutine
-	// TODO
+	for !f.IsShut() {
+		// TODO
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Println("unix done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *UnixOutgate) Dial(address string) (*XConn, error) {

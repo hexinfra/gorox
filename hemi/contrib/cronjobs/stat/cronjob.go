@@ -44,11 +44,12 @@ func (j *statCronjob) OnShutdown() {
 }
 
 func (j *statCronjob) Run() { // goroutine
-	for !j.Shut() {
+	for !j.IsShut() {
 		// TODO
 		time.Sleep(time.Minute)
 	}
 	if Debug(1) {
 		fmt.Printf("statCronjob=%s shut\n", j.Name())
 	}
+	j.stage.SubDone()
 }

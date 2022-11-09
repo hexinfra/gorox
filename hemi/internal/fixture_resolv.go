@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -40,12 +41,17 @@ func (f *resolvFixture) OnConfigure() {
 func (f *resolvFixture) OnPrepare() {
 }
 func (f *resolvFixture) OnShutdown() {
+	f.SetShut()
 }
 
 func (f *resolvFixture) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Println("resolve done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *resolvFixture) Resolve(name string) (address string) {

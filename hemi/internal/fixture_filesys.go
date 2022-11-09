@@ -62,11 +62,11 @@ func (f *filesysFixture) OnConfigure() {
 func (f *filesysFixture) OnPrepare() {
 }
 func (f *filesysFixture) OnShutdown() {
-	// TODO
+	f.SetShut()
 }
 
 func (f *filesysFixture) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		time.Sleep(time.Second)
 		now := time.Now()
 		f.rwMutex.Lock()
@@ -84,6 +84,14 @@ func (f *filesysFixture) run() { // goroutine
 		}
 		f.rwMutex.Unlock()
 	}
+	f.rwMutex.Lock()
+	f.entries = nil
+	f.rwMutex.Unlock()
+
+	if Debug(2) {
+		fmt.Println("filesys done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {

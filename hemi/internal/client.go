@@ -64,6 +64,7 @@ func (c *client_) onConfigure() {
 func (c *client_) onPrepare() {
 }
 func (c *client_) onShutdown() {
+	c.SetShut()
 }
 
 func (c *client_) Stage() *Stage               { return c.stage }
@@ -86,6 +87,16 @@ type outgate_ struct {
 func (f *outgate_) init(name string, stage *Stage) {
 	f.client_.init(name, stage)
 	// other states
+}
+
+func (f *outgate_) onConfigure() {
+	f.client_.onConfigure()
+}
+func (f *outgate_) onPrepare() {
+	f.client_.onPrepare()
+}
+func (f *outgate_) onShutdown() {
+	f.client_.onShutdown()
 }
 
 // backend is a group of nodes.

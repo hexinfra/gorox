@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"sync"
 	"sync/atomic"
@@ -63,7 +64,14 @@ func (f *QUICOutgate) OnShutdown() {
 }
 
 func (f *QUICOutgate) run() { // goroutine
-	// TODO
+	for !f.IsShut() {
+		// TODO
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Println("quic done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *QUICOutgate) Dial(address string) (*QConn, error) {

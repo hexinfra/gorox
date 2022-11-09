@@ -9,6 +9,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"net"
@@ -66,7 +67,14 @@ func (f *TCPSOutgate) OnShutdown() {
 }
 
 func (f *TCPSOutgate) run() { // goroutine
-	// TODO
+	for !f.IsShut() {
+		// TODO
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Println("tcps done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *TCPSOutgate) Dial(address string, tlsMode bool) (*TConn, error) {

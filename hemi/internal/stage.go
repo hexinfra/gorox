@@ -85,6 +85,7 @@ func (s *Stage) init() {
 	s.tcps = createTCPS(s)
 	s.udps = createUDPS(s)
 	s.unix = createUnix(s)
+	s.IncSub(10) // 10 fixtures
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
@@ -237,6 +238,7 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	if s.Cronjob(sign) != nil {
 		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
 	}
+	s.IncSub(1)
 	cronjob := create(sign, s)
 	cronjob.setShell(cronjob)
 	s.cronjobs[sign] = cronjob
@@ -349,7 +351,7 @@ func (s *Stage) OnPrepare() {
 }
 func (s *Stage) OnShutdown() {
 	// sub components
-	s.cronjobs.walk(Cronjob.OnShutdown)
+	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.servers.walk(Server.OnShutdown)
 	s.svcs.walk((*Svc).OnShutdown)
 	s.apps.walk((*App).OnShutdown)
@@ -360,9 +362,14 @@ func (s *Stage) OnShutdown() {
 	s.quicRouters.walk((*QUICRouter).OnShutdown)
 	s.backends.walk(backend.OnShutdown)
 	s.optwares.walk(Optware.OnShutdown)
-	s.fixtures.walk(fixture.OnShutdown)
+	s.fixtures.goWalk(fixture.OnShutdown)
+
+	s.WaitSubs()
 
 	// TODO: shutdown s
+	if Debug(2) {
+		fmt.Println("stage shutdown")
+	}
 }
 
 func (s *Stage) StartTogether() { // one worker process mode
@@ -687,6 +694,9 @@ func (s *Stage) ProfBlock() {
 }
 
 func (s *Stage) Shutdown() {
-	s.Logln("stage shutdown")
+	s.OnShutdown()
+	if Debug(2) {
+		fmt.Println("stage: os.Exit(0)")
+	}
 	os.Exit(0)
 }

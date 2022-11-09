@@ -61,10 +61,14 @@ func (f *HTTP1Outgate) OnShutdown() {
 }
 
 func (f *HTTP1Outgate) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		// maintain?
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Println("http1 done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *HTTP1Outgate) FetchConn(address string, tlsMode bool) (*H1Conn, error) {

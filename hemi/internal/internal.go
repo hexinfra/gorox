@@ -167,12 +167,12 @@ func (c *Component_) setProp(name string, value Value) {
 	c.props[name] = value
 }
 
-func (c *Component_) SetShut()   { c.shut.Store(true) }
-func (c *Component_) Shut() bool { return c.shut.Load() }
+func (c *Component_) SetShut()     { c.shut.Store(true) }
+func (c *Component_) IsShut() bool { return c.shut.Load() }
 
-func (c *Component_) IncSub()   { c.shuts.Add(1) }
-func (c *Component_) WaitSubs() { c.shuts.Wait() }
-func (c *Component_) SubDone()  { c.shuts.Done() }
+func (c *Component_) IncSub(n int) { c.shuts.Add(n) }
+func (c *Component_) WaitSubs()    { c.shuts.Wait() }
+func (c *Component_) SubDone()     { c.shuts.Done() }
 
 // compList
 type compList[T Component] []T
@@ -182,6 +182,11 @@ func (list compList[T]) walk(method func(T)) {
 		method(component)
 	}
 }
+func (list compList[T]) goWalk(method func(T)) {
+	for _, component := range list {
+		go method(component)
+	}
+}
 
 // compDict
 type compDict[T Component] map[string]T
@@ -189,6 +194,11 @@ type compDict[T Component] map[string]T
 func (dict compDict[T]) walk(method func(T)) {
 	for _, component := range dict {
 		method(component)
+	}
+}
+func (dict compDict[T]) goWalk(method func(T)) {
+	for _, component := range dict {
+		go method(component)
 	}
 }
 

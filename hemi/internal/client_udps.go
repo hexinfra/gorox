@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -60,7 +61,14 @@ func (f *UDPSOutgate) OnShutdown() {
 }
 
 func (f *UDPSOutgate) run() { // goroutine
-	// TODO
+	for !f.IsShut() {
+		// TODO
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Println("udps done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*UConn, error) {

@@ -188,7 +188,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 			}
 		case worker := <-dieChan: // a worker process dies
 			// TODO: more details
-			if exitCode := worker.exitCode; exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
+			if code := worker.exitCode; code == codeCrash || code == codeStop || code == hemi.CodeBug || code == hemi.CodeUse || code == hemi.CodeEnv {
 				fmt.Println("worker critical error")
 				stop()
 			} else if now := time.Now(); now.Sub(worker.lastExit) > time.Second {

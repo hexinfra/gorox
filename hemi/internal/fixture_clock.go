@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -45,10 +46,11 @@ func (f *clockFixture) OnConfigure() {
 func (f *clockFixture) OnPrepare() {
 }
 func (f *clockFixture) OnShutdown() {
+	f.SetShut()
 }
 
 func (f *clockFixture) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		now := time.Now().UTC()
 		weekday := now.Weekday()       // weekday: 0-6
 		year, month, day := now.Date() // month: 1-12
@@ -71,6 +73,10 @@ func (f *clockFixture) run() { // goroutine
 		f.date.Store(date)
 		time.Sleep(f.resolution)
 	}
+	if Debug(2) {
+		fmt.Println("clock done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *clockFixture) writeDate(p []byte) {

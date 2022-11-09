@@ -10,6 +10,7 @@
 package internal
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -57,9 +58,13 @@ func (f *HTTP2Outgate) OnShutdown() {
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
-	for {
+	for !f.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Println("http2 done")
+	}
+	f.stage.SubDone()
 }
 
 func (f *HTTP2Outgate) FetchConn(address string, tlsMode bool) (*H2Conn, error) {

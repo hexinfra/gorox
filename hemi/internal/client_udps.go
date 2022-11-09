@@ -186,7 +186,7 @@ type UConn struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
-	node    *udpsNode       // belonging node if client is UDPSBackend
+	node    *udpsNode       // associated node if client is UDPSBackend
 	udpConn *net.UDPConn    // udp conn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)

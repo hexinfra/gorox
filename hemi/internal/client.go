@@ -223,7 +223,7 @@ type conn_ struct {
 	// Conn states (non-zeros)
 	next   conn      // the link
 	id     int64     // the conn id
-	client client    // belonging client
+	client client    // associated client
 	expire time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	lastRead  time.Time // deadline of last read operation

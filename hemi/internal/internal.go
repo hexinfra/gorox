@@ -91,10 +91,11 @@ type Component_ struct {
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
 	// States
-	name     string           // main, ...
-	info     any              // extra info about this component, used by config
-	props    map[string]Value // name=value, ...
-	shutting atomic.Bool      // is component shutting down?
+	name  string           // main, ...
+	info  any              // extra info about this component, used by config
+	props map[string]Value // name=value, ...
+	shut  atomic.Bool      // is component shutting down?
+	shuts sync.WaitGroup   // for shutting down sub compoments, if any
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -166,8 +167,12 @@ func (c *Component_) setProp(name string, value Value) {
 	c.props[name] = value
 }
 
-func (c *Component_) SetShutting()     { c.shutting.Store(true) }
-func (c *Component_) IsShutting() bool { return c.shutting.Load() }
+func (c *Component_) SetShut()   { c.shut.Store(true) }
+func (c *Component_) Shut() bool { return c.shut.Load() }
+
+func (c *Component_) IncSub()   { c.shuts.Add(1) }
+func (c *Component_) WaitSubs() { c.shuts.Wait() }
+func (c *Component_) SubDone()  { c.shuts.Done() }
 
 // compList
 type compList[T Component] []T

@@ -243,7 +243,6 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Filesys() *filesysFixture           { return s.filesys }
 func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
 func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
@@ -252,6 +251,7 @@ func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
 func (s *Stage) TCPS() *TCPSOutgate                 { return s.tcps }
 func (s *Stage) UDPS() *UDPSOutgate                 { return s.udps }
 func (s *Stage) Unix() *UnixOutgate                 { return s.unix }
+func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Optware(sign string) Optware        { return s.optwares[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
@@ -299,17 +299,17 @@ func (s *Stage) OnConfigure() {
 	}
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/stage.log")
-	baseDir := BaseDir()
+	tempDir := TempDir()
 	// cpuFile
-	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) bool { return value != "" }, baseDir+"/cpu.prof")
+	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) bool { return value != "" }, tempDir+"/cpu.prof")
 	// hepFile
-	s.ConfigureString("hepFile", &s.hepFile, func(value string) bool { return value != "" }, baseDir+"/hep.prof")
+	s.ConfigureString("hepFile", &s.hepFile, func(value string) bool { return value != "" }, tempDir+"/hep.prof")
 	// thrFile
-	s.ConfigureString("thrFile", &s.thrFile, func(value string) bool { return value != "" }, baseDir+"/thr.prof")
+	s.ConfigureString("thrFile", &s.thrFile, func(value string) bool { return value != "" }, tempDir+"/thr.prof")
 	// grtFile
-	s.ConfigureString("grtFile", &s.grtFile, func(value string) bool { return value != "" }, baseDir+"/grt.prof")
+	s.ConfigureString("grtFile", &s.grtFile, func(value string) bool { return value != "" }, tempDir+"/grt.prof")
 	// blkFile
-	s.ConfigureString("blkFile", &s.blkFile, func(value string) bool { return value != "" }, baseDir+"/blk.prof")
+	s.ConfigureString("blkFile", &s.blkFile, func(value string) bool { return value != "" }, tempDir+"/blk.prof")
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
@@ -326,9 +326,10 @@ func (s *Stage) OnConfigure() {
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
 func (s *Stage) OnPrepare() {
-	// logger
-	if err := os.MkdirAll(filepath.Dir(s.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
+	for _, file := range []string{s.logFile, s.cpuFile, s.hepFile, s.thrFile, s.grtFile, s.blkFile} {
+		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+			EnvExitln(err.Error())
+		}
 	}
 	//s.logger = newLogger(s.logFile, "") // dividing not needed
 
@@ -361,7 +362,7 @@ func (s *Stage) OnShutdown() {
 	s.optwares.walk(Optware.OnShutdown)
 	s.fixtures.walk(fixture.OnShutdown)
 
-	// TODO: shutdown stage
+	// TODO: shutdown s
 }
 
 func (s *Stage) StartTogether() { // one worker process mode
@@ -447,7 +448,7 @@ func (s *Stage) linkAppServers() {
 		serverNames := s.appServers[app.Name()]
 		if serverNames == nil {
 			if Debug(1) {
-				fmt.Printf("no server provided for app '%s'\n", app.name)
+				fmt.Printf("no server is provided for app '%s'\n", app.name)
 			}
 			continue
 		}
@@ -475,7 +476,7 @@ func (s *Stage) linkSvcServers() {
 		serverNames := s.svcServers[svc.Name()]
 		if serverNames == nil {
 			if Debug(1) {
-				fmt.Printf("no server provided for svc '%s'\n", svc.name)
+				fmt.Printf("no server is provided for svc '%s'\n", svc.name)
 			}
 			continue
 		}
@@ -622,10 +623,17 @@ func (s *Stage) prepare() (err error) {
 	return nil
 }
 
-func (s *Stage) Shutdown() {
-	// TODO
-	s.Logln("stage shutdown")
-	os.Exit(0)
+func (s *Stage) ID() int32     { return s.id }
+func (s *Stage) NumCPU() int32 { return s.numCPU }
+
+func (s *Stage) Log(str string) {
+	//s.logger.log(str)
+}
+func (s *Stage) Logln(str string) {
+	//s.logger.logln(str)
+}
+func (s *Stage) Logf(format string, args ...any) {
+	//s.logger.logf(format, args...)
 }
 
 func (s *Stage) ProfCPU() {
@@ -678,15 +686,7 @@ func (s *Stage) ProfBlock() {
 	runtime.SetBlockProfileRate(0)
 }
 
-func (s *Stage) ID() int32     { return s.id }
-func (s *Stage) NumCPU() int32 { return s.numCPU }
-
-func (s *Stage) Log(str string) {
-	//s.logger.log(str)
-}
-func (s *Stage) Logln(str string) {
-	//s.logger.logln(str)
-}
-func (s *Stage) Logf(format string, args ...any) {
-	//s.logger.logf(format, args...)
+func (s *Stage) Shutdown() {
+	s.Logln("stage shutdown")
+	os.Exit(0)
 }

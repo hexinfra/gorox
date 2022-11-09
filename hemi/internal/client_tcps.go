@@ -234,7 +234,7 @@ type TConn struct { // only exported to hemi
 	// Mixins
 	pConn_
 	// Conn states (non-zeros)
-	node    *tcpsNode       // belonging node if client is TCPSBackend
+	node    *tcpsNode       // associated node if client is TCPSBackend
 	netConn net.Conn        // TCP, TLS
 	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP
 	// Conn states (zeros)

@@ -8,6 +8,7 @@
 package stat
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -39,12 +40,15 @@ func (j *statCronjob) OnConfigure() {
 func (j *statCronjob) OnPrepare() {
 }
 func (j *statCronjob) OnShutdown() {
-	j.SetShutting()
+	j.SetShut()
 }
 
 func (j *statCronjob) Run() { // goroutine
-	// TODO
-	for !j.IsShutting() {
+	for !j.Shut() {
+		// TODO
 		time.Sleep(time.Minute)
+	}
+	if Debug(1) {
+		fmt.Printf("statCronjob=%s shut\n", j.Name())
 	}
 }

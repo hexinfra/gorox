@@ -14,7 +14,7 @@ import (
 // Controller_
 type Controller_ struct {
 	// Assocs
-	Site     *Site    // belonging site
+	Site     *Site    // associated site
 	Request  Request  // current request
 	Response Response // current response
 	// States

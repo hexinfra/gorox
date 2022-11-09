@@ -180,7 +180,7 @@ type QConn struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
-	node       *quicNode // belonging node if client is QUICBackend
+	node       *quicNode // associated node if client is QUICBackend
 	quicConn   *quix.Conn
 	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)

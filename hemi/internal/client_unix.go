@@ -180,7 +180,7 @@ type XConn struct { // only exported to hemi
 	// Mixins
 	pConn_
 	// Conn states (non-zeros)
-	node     *unixNode     // belonging node if client is UnixBackend
+	node     *unixNode     // associated node if client is UnixBackend
 	unixConn *net.UnixConn // unix conn
 	// Conn states (zeros)
 }

@@ -31,7 +31,7 @@ type exampleHandler struct {
 	Handler_
 	// Assocs
 	stage *Stage // current stage
-	app   *App   // belonging app
+	app   *App   // associated app
 	// States
 	example string // an example config entry
 }

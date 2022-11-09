@@ -146,6 +146,18 @@ func (a *App) OnConfigure() {
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 	// proxyOnly
 	a.ConfigureBool("proxyOnly", &a.proxyOnly, false)
+	if a.proxyOnly {
+		for _, handler := range a.handlers {
+			if !handler.IsProxy() {
+				UseExitln("cannot bind non-proxy handlers to a proxy-only app")
+			}
+		}
+		for _, socklet := range a.socklets {
+			if !socklet.IsProxy() {
+				UseExitln("cannot bind non-proxy socklets to a proxy-only app")
+			}
+		}
+	}
 	// withStater
 	if v, ok := a.Find("withStater"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -215,9 +227,6 @@ func (a *App) createHandler(sign string, name string) Handler {
 		UseExitln("unknown handler sign: " + sign)
 	}
 	handler := create(name, a.stage, a)
-	if a.proxyOnly && !handler.IsProxy() {
-		UseExitln("cannot bind non-proxy handlers to a proxy-only app")
-	}
 	handler.setShell(handler)
 	a.handlers[name] = handler
 	return handler
@@ -254,9 +263,6 @@ func (a *App) createSocklet(sign string, name string) Socklet {
 		UseExitln("unknown socklet sign: " + sign)
 	}
 	socklet := create(name, a.stage, a)
-	if a.proxyOnly && !socklet.IsProxy() {
-		UseExitln("cannot bind non-proxy socklets to a proxy-only app")
-	}
 	socklet.setShell(socklet)
 	a.socklets[name] = socklet
 	return socklet
@@ -272,10 +278,15 @@ func (a *App) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *App) Handler(name string) Handler { return a.handlers[name] }
-func (a *App) Reviser(name string) Reviser { return a.revisers[name] }
-func (a *App) Socklet(name string) Socklet { return a.socklets[name] }
-
+func (a *App) Handler(name string) Handler {
+	return a.handlers[name]
+}
+func (a *App) Reviser(name string) Reviser {
+	return a.revisers[name]
+}
+func (a *App) Socklet(name string) Socklet {
+	return a.socklets[name]
+}
 func (a *App) Rule(name string) *Rule {
 	for _, rule := range a.rules {
 		if rule.name == name {
@@ -676,10 +687,10 @@ type Rule struct {
 	// Mixins
 	Component_
 	// Assocs
-	app      *App      // belonging app
-	handlers []Handler // handlers in this rule
-	revisers []Reviser // revisers in this rule
-	socklets []Socklet // socklets in this rule
+	app      *App      // associated app
+	handlers []Handler // handlers in this rule. NOTICE: handlers are sub components of app, not rule
+	revisers []Reviser // revisers in this rule. NOTICE: revisers are sub components of app, not rule
+	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of app, not rule
 	// States
 	general    bool     // general match?
 	log        bool     // enable logging for this rule?

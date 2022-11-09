@@ -134,7 +134,7 @@ type case_[T Component, R _runner, F _filter] struct {
 	// Mixins
 	Component_
 	// Assocs
-	router  T   // belonging router
+	router  T   // associated router
 	runners []R // runners contained
 	filters []F // filters contained
 	// States

@@ -146,7 +146,7 @@ type http1Stream struct {
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *http1Conn // belonging conn
+	conn *http1Conn // associated conn
 	// Stream states (zeros)
 }
 

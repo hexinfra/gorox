@@ -26,7 +26,7 @@ func init() {
 	})
 }
 
-const signHTTP2 = "h2"
+const signHTTP2 = "http2"
 
 func createHTTP2(stage *Stage) *HTTP2Outgate {
 	http2 := new(HTTP2Outgate)
@@ -166,7 +166,7 @@ type H2Conn struct {
 	// Conn states (buffers)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *http2Node // belonging node
+	node    *http2Node // associated node
 	netConn net.Conn   // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)

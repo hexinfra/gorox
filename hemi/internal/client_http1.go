@@ -29,7 +29,7 @@ func init() {
 	})
 }
 
-const signHTTP1 = "h1"
+const signHTTP1 = "http1"
 
 func createHTTP1(stage *Stage) *HTTP1Outgate {
 	http1 := new(HTTP1Outgate)
@@ -288,7 +288,7 @@ type H1Conn struct {
 	// Conn states (buffers)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *http1Node      // belonging node if client is http backend
+	node     *http1Node      // associated node if client is http backend
 	netConn  net.Conn        // the connection (TCP/TLS)
 	rawConn  syscall.RawConn // used when netConn is TCP
 	keepConn bool            // keep the connection after current stream? true by default
@@ -323,7 +323,7 @@ type H1Stream struct {
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	conn *H1Conn // belonging conn
+	conn *H1Conn // associated conn
 	// Stream states (zeros)
 }
 

@@ -8,6 +8,7 @@
 package clean
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -39,12 +40,15 @@ func (j *cleanCronjob) OnConfigure() {
 func (j *cleanCronjob) OnPrepare() {
 }
 func (j *cleanCronjob) OnShutdown() {
-	j.SetShutting()
+	j.SetShut()
 }
 
 func (j *cleanCronjob) Run() { // goroutine
-	// TODO
-	for !j.IsShutting() {
+	for !j.Shut() {
+		// TODO
 		time.Sleep(time.Minute)
+	}
+	if Debug(1) {
+		fmt.Printf("cleanCronjob=%s shut\n", j.Name())
 	}
 }

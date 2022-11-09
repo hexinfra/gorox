@@ -44,6 +44,7 @@ func (s *Svc) OnPrepare() {
 	}
 }
 func (s *Svc) OnShutdown() {
+	// TODO: shutdown s
 }
 
 func (s *Svc) LinkGRPC(server GRPCServer) {

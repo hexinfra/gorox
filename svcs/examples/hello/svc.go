@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// This is an example svc showing how to use Gorox RPC server to host a svc.
+// This is a hello svc showing how to use Gorox RPC server to host a svc.
 
-package example
+package hello
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
@@ -13,7 +13,7 @@ import (
 
 func init() {
 	// Register svc initializer.
-	RegisterSvcInit("example", func(svc *Svc) error {
+	RegisterSvcInit("hello", func(svc *Svc) error {
 		/*
 			servers := svc.GRPCServers()
 			for _, server := range servers {

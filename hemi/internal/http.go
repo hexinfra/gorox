@@ -472,6 +472,12 @@ func (r *httpInMessage_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
 }
+func (r *httpInMessage_) HH(name string, defaultValue string) string {
+	if value, ok := r.Header(name); ok {
+		return value
+	}
+	return defaultValue
+}
 func (r *httpInMessage_) Header(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.headers, extraKindHeader)
 	return string(v), ok
@@ -731,6 +737,12 @@ func (r *httpInMessage_) hasTrailers() bool { // used by proxies
 func (r *httpInMessage_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
+}
+func (r *httpInMessage_) TT(name string, defaultValue string) string {
+	if value, ok := r.Trailer(name); ok {
+		return value
+	}
+	return defaultValue
 }
 func (r *httpInMessage_) Trailer(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.trailers, extraKindTrailer)

@@ -583,13 +583,19 @@ func (r *httpRequest_) Q(name string) string {
 	value, _ := r.Query(name)
 	return value
 }
-func (r *httpRequest_) Qint(name string, defaultValut int) int {
+func (r *httpRequest_) QQ(name string, defaultValue string) string {
+	if value, ok := r.Query(name); ok {
+		return value
+	}
+	return defaultValue
+}
+func (r *httpRequest_) Qint(name string, defaultValue int) int {
 	if value, ok := r.Query(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
 		}
 	}
-	return defaultValut
+	return defaultValue
 }
 func (r *httpRequest_) Query(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.queries, extraKindQuery)
@@ -1321,6 +1327,12 @@ func (r *httpRequest_) addCookie(cookie *pair) bool {
 func (r *httpRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
+}
+func (r *httpRequest_) CC(name string, defaultValue string) string {
+	if value, ok := r.Cookie(name); ok {
+		return value
+	}
+	return defaultValue
 }
 func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.cookies, extraKindCookie)
@@ -2086,6 +2098,12 @@ func (r *httpRequest_) addForm(form *pair) {
 func (r *httpRequest_) F(name string) string {
 	value, _ := r.Form(name)
 	return value
+}
+func (r *httpRequest_) FF(name string, defaultValue string) string {
+	if value, ok := r.Form(name); ok {
+		return value
+	}
+	return defaultValue
 }
 func (r *httpRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()

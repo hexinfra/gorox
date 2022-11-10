@@ -6,25 +6,28 @@
 package test
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi"
 )
 
 func (h *testHandler) GET_form_urlencoded(req Request, resp Response) {
-	resp.Send(`<form action="/form?a=bb" method="post">
+	resp.Send(`<form action="/form?a=aa&b=bb" method="post">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
 func (h *testHandler) GET_form_multipart(req Request, resp Response) {
-	resp.Send(`<form action="/form?a=bb" method="post" enctype="multipart/form-data">
+	resp.Send(`<form action="/form?a=aa&b=bb" method="post" enctype="multipart/form-data">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
 func (h *testHandler) POST_form(req Request, resp Response) {
-	resp.Push(req.Q("a"))
-	resp.Push(req.F("title"))
-	resp.Push(req.F("content"))
+	a := req.Q("a")
+	b := req.Q("b")
+	title := req.F("title")
+	content := req.F("content")
+	resp.Send(fmt.Sprintf("a=%s b=%s title=%s content=%s", a, b, title, content))
 }

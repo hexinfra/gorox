@@ -402,6 +402,7 @@ type Request interface {
 
 	QueryString() string // including '?' if query string exists
 	Q(name string) string
+	QQ(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
 	QueryList(name string) (list []string, ok bool)
@@ -411,6 +412,7 @@ type Request interface {
 	DelQuery(name string) (deleted bool)
 
 	H(name string) string
+	HH(name string, defaultValue string) string
 	Header(name string) (value string, ok bool)
 	HeaderList(name string) (list []string, ok bool)
 	Headers() (headers [][2]string)
@@ -427,6 +429,7 @@ type Request interface {
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
 
 	C(name string) string
+	CC(name string, defaultValue string) string
 	Cookie(name string) (value string, ok bool)
 	CookieList(name string) (list []string, ok bool)
 	Cookies() (cookies [][2]string)
@@ -439,6 +442,7 @@ type Request interface {
 	Content() string
 
 	F(name string) string
+	FF(name string, defaultValue string) string
 	Form(name string) (value string, ok bool)
 	FormList(name string) (list []string, ok bool)
 	Forms() (forms [][2]string)
@@ -451,6 +455,7 @@ type Request interface {
 	HasUpload(name string) bool
 
 	T(name string) string
+	TT(name string, defaultValue string) string
 	Trailer(name string) (value string, ok bool)
 	TrailerList(name string) (list []string, ok bool)
 	Trailers() (trailers [][2]string)

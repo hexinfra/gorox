@@ -138,6 +138,7 @@ func (s *Stage) createBackend(sign string, name string) backend {
 	if s.Backend(name) != nil {
 		UseExitf("conflicting backend with a same name '%s'\n", name)
 	}
+	s.IncSub(1)
 	backend := create(name, s)
 	backend.setShell(backend)
 	s.backends[name] = backend
@@ -362,7 +363,7 @@ func (s *Stage) OnShutdown() {
 	s.udpsRouters.walk((*UDPSRouter).OnShutdown)
 	s.tcpsRouters.walk((*TCPSRouter).OnShutdown)
 	s.quicRouters.walk((*QUICRouter).OnShutdown)
-	s.backends.walk(backend.OnShutdown)
+	s.backends.goWalk(backend.OnShutdown)
 	s.optwares.goWalk(Optware.OnShutdown)
 	s.fixtures.goWalk(fixture.OnShutdown)
 
@@ -696,9 +697,11 @@ func (s *Stage) ProfBlock() {
 }
 
 func (s *Stage) Shutdown() {
-	s.OnShutdown()
-	if Debug(2) {
-		fmt.Println("stage: os.Exit(0)")
+	if s.shut.CompareAndSwap(false, true) {
+		s.OnShutdown()
+		if Debug(2) {
+			fmt.Println("stage: os.Exit(0)")
+		}
+		os.Exit(0)
 	}
-	os.Exit(0)
 }

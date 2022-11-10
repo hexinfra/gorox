@@ -51,7 +51,7 @@ func leaderMain() {
 	go keepWorkers(base, file, msgChan)
 	<-msgChan // waiting for keepWorkers() to ensure all workers have started.
 
-	// Start admin
+	// Start admin interface
 	logger.WriteString("listen at: " + adminAddr + "\n")
 	admDoor, err := net.Listen("tcp", adminAddr) // admDoor is for receiving msgConns from control agent
 	if err != nil {
@@ -59,9 +59,8 @@ func leaderMain() {
 	}
 
 	var (
-		req  *msgx.Message
-		resp *msgx.Message
-		ok   bool
+		req *msgx.Message
+		ok  bool
 	)
 	for { // each admConn from control agent
 		admConn, err := admDoor.Accept() // admConn is connection between leader and control agent
@@ -97,18 +96,18 @@ func leaderMain() {
 				msgChan <- req
 			}
 		} else { // call
+			var resp *msgx.Message
 			// Some messages are calling leader only, hijack them.
 			if req.Comd == comdPing {
-				resp := msgx.NewMessage(comdPing, req.Flag, nil)
-				msgx.SendMessage(admConn, resp)
+				resp = msgx.NewMessage(comdPing, req.Flag, nil)
 			} else { // the rest messages are sent to keepWorkers().
 				msgChan <- req
 				resp = <-msgChan
 				if req.Comd == comdInfo {
 					resp.Set("leader", fmt.Sprintf("%d", os.Getpid()))
 				}
-				msgx.SendMessage(admConn, resp)
 			}
+			msgx.SendMessage(admConn, resp)
 		}
 	closeNext:
 		admConn.Close()
@@ -140,9 +139,20 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 		case req := <-msgChan: // a message arrives from leaderMain
 			if req.IsTell() {
 				switch req.Comd {
+				case comdQuit:
+					for _, worker := range workers {
+						if !worker.broken {
+							msgx.Tell(worker.msgPipe, req)
+						}
+					}
+					for i := 0; i < nwAlive; i++ {
+						<-dieChan
+					}
+					os.Exit(0)
 				case comdRework: // restart workers
-					newDieChan := make(chan *worker)
-					newWorkers := newWorkers(workMode, totalWorkers, base, file, newDieChan, pipeKey)
+					// Create new workers
+					dieChan2 := make(chan *worker)
+					workers2 := newWorkers(workMode, totalWorkers, base, file, dieChan2, pipeKey)
 					// Shutdown old workers
 					req.Comd = comdQuit
 					for _, worker := range workers {
@@ -156,7 +166,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 						}
 					}(dieChan, nwAlive)
 					// Use new workers
-					workers, dieChan = newWorkers, newDieChan
+					workers, dieChan = workers2, dieChan2
 				case comdCPU, comdHeap, comdThread, comdGoroutine, comdBlock: // profiling
 					for _, worker := range workers {
 						if !worker.broken {
@@ -169,9 +179,6 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 						if !worker.broken {
 							msgx.Tell(worker.msgPipe, req)
 						}
-					}
-					if req.Comd == comdQuit {
-						os.Exit(0)
 					}
 				}
 			} else { // call
@@ -193,7 +200,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 				}
 				msgChan <- resp
 			}
-		case worker := <-dieChan: // a worker process dies
+		case worker := <-dieChan: // a worker process dies unexpectedly
 			// TODO: more details
 			if code := worker.exitCode; code == codeCrash || code == codeStop || code == hemi.CodeBug || code == hemi.CodeUse || code == hemi.CodeEnv {
 				fmt.Println("worker critical error")
@@ -280,15 +287,15 @@ func (w *worker) start(base string, file string, dieChan chan *worker) {
 	tmpGate.Close() // opening duration is short
 
 	// Worker register
-	req, ok := msgx.RecvMessage(msgPipe)
-	if !ok || req.Get("pipeKey") != w.pipeKey || req.Get("workerID") != w.idString {
+	loginReq, ok := msgx.RecvMessage(msgPipe)
+	if !ok || loginReq.Get("pipeKey") != w.pipeKey || loginReq.Get("workerID") != w.idString {
 		crash("bad worker")
 	}
-	resp := msgx.NewMessage(req.Comd, req.Flag, map[string]string{
+	loginResp := msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"base": base,
 		"file": file,
 	})
-	msgx.SendMessage(msgPipe, resp)
+	msgx.SendMessage(msgPipe, loginResp)
 	w.msgPipe = msgPipe
 
 	// Register succeed, now tell worker process to start serve

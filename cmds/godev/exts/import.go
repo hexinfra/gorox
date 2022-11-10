@@ -17,7 +17,6 @@ import ( // all contrib components
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/favicon"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/fcgi"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/gatex"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/hostname"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/https"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/limit"

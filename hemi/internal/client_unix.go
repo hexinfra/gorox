@@ -113,10 +113,14 @@ func (b *UnixBackend) OnShutdown() {
 }
 
 func (b *UnixBackend) maintain() { // goroutine
-	// TODO: health check for all nodes
-	for {
-		time.Sleep(time.Second)
+	for _, node := range b.nodes {
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("unixBackend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *UnixBackend) Dial() (PConn, error) {
@@ -146,8 +150,15 @@ func (n *unixNode) init(id int32, backend *UnixBackend) {
 	n.backend = backend
 }
 
-func (n *unixNode) checkHealth() {
-	// TODO
+func (n *unixNode) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("unixNode=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *unixNode) dial() (*XConn, error) { // some protocols don't support or need connection reusing, just dial & close.
@@ -228,7 +239,6 @@ func (c *XConn) Read(p []byte) (n int, err error)          { return c.unixConn.R
 func (c *XConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.unixConn, p) }
 
 func (c *XConn) CloseWrite() error { return c.unixConn.CloseWrite() }
-func (c *XConn) CloseRead() error  { return c.unixConn.CloseRead() }
 
 func (c *XConn) Close() error { // only used by clients of dial
 	unixConn := c.unixConn

@@ -34,7 +34,9 @@ func createFilesys(stage *Stage) *filesysFixture {
 // filesysFixture
 type filesysFixture struct {
 	// Mixins
-	fixture_
+	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 	smallFileSize int64 // what size is considered as small file
 	maxSmallFiles int32 // max number of small files. for small files, contents are cached
@@ -45,7 +47,8 @@ type filesysFixture struct {
 }
 
 func (f *filesysFixture) init(stage *Stage) {
-	f.fixture_.init(signFilesys, stage)
+	f.SetName(signFilesys)
+	f.stage = stage
 	f.entries = make(map[string]*filesysEntry)
 }
 

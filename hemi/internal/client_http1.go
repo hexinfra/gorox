@@ -159,6 +159,7 @@ func (b *HTTP1Backend) OnConfigure() {
 		} else {
 			node.keepConns = 10
 		}
+		b.IncSub(1)
 		b.nodes = append(b.nodes, node)
 	}
 }
@@ -171,9 +172,13 @@ func (b *HTTP1Backend) OnShutdown() {
 
 func (b *HTTP1Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
-		node.checkHealth()
-		time.Sleep(time.Second)
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("http1Backend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *HTTP1Backend) FetchConn() (*H1Conn, error) {
@@ -198,8 +203,15 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.backend = backend
 }
 
-func (n *http1Node) checkHealth() {
-	// TODO
+func (n *http1Node) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("http1Node=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *http1Node) fetchConn() (*H1Conn, error) {

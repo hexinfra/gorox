@@ -150,7 +150,6 @@ type ( // core types
 type ( // core mixins
 	Component_ = internal.Component_
 
-	Optware_    = internal.Optware_
 	Stater_     = internal.Stater_
 	Cacher_     = internal.Cacher_
 	QUICRunner_ = internal.QUICRunner_

@@ -95,7 +95,7 @@ type Component_ struct {
 	info  any              // extra info about this component, used by config
 	props map[string]Value // name=value, ...
 	shut  atomic.Bool      // is component shutting down?
-	shuts sync.WaitGroup   // for shutting down sub compoments, if any
+	subs  sync.WaitGroup   // for shutting down sub compoments, if any
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -170,9 +170,9 @@ func (c *Component_) setProp(name string, value Value) {
 func (c *Component_) SetShut()     { c.shut.Store(true) }
 func (c *Component_) IsShut() bool { return c.shut.Load() }
 
-func (c *Component_) IncSub(n int) { c.shuts.Add(n) }
-func (c *Component_) WaitSubs()    { c.shuts.Wait() }
-func (c *Component_) SubDone()     { c.shuts.Done() }
+func (c *Component_) IncSub(n int) { c.subs.Add(n) }
+func (c *Component_) WaitSubs()    { c.subs.Wait() }
+func (c *Component_) SubDone()     { c.subs.Done() }
 
 // compList
 type compList[T Component] []T
@@ -317,19 +317,6 @@ type fixture interface {
 	run() // goroutine
 }
 
-// fixture_ is the mixin for all fixtures.
-type fixture_ struct {
-	// Mixins
-	Component_
-	// Assocs
-	stage *Stage // current stage
-}
-
-func (f *fixture_) init(name string, stage *Stage) {
-	f.SetName(name)
-	f.stage = stage
-}
-
 // Optware component.
 //
 // Optwares behave like fixtures except that they are optional
@@ -337,12 +324,6 @@ func (f *fixture_) init(name string, stage *Stage) {
 type Optware interface {
 	Component
 	Run() // goroutine
-}
-
-// Optware_ is the mixin for all optwares.
-type Optware_ struct {
-	// Mixins
-	Component_
 }
 
 // Stater component is the interface to storages of HTTP states. See RFC 6265.

@@ -38,7 +38,7 @@ type client_ struct {
 	readTimeout  time.Duration // ...
 	writeTimeout time.Duration // ...
 	aliveTimeout time.Duration // ...
-	connID       atomic.Int64
+	connID       atomic.Int64  // next conn id
 }
 
 func (c *client_) init(name string, stage *Stage) {
@@ -67,8 +67,9 @@ func (c *client_) onShutdown() {
 	c.SetShut()
 }
 
-func (c *client_) Stage() *Stage               { return c.stage }
-func (c *client_) TLSMode() bool               { return c.tlsMode }
+func (c *client_) Stage() *Stage { return c.stage }
+func (c *client_) TLSMode() bool { return c.tlsMode }
+
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
@@ -113,7 +114,7 @@ type backend_ struct {
 	balancer  string       // roundRobin, ipHash, random, ...
 	indexGet  func() int64 // ...
 	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
-	numNodes  int64        // ...
+	numNodes  int64        // num of nodes
 }
 
 func (b *backend_) init(name string, stage *Stage) {
@@ -167,7 +168,7 @@ var errNodeDown = errors.New("node is down")
 
 // node is a member of backend.
 type node interface {
-	// maybe detect?
+	maintain() // goroutine
 }
 
 // node_ is a mixin for backend nodes.

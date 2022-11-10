@@ -99,9 +99,13 @@ func (b *HTTP2Backend) OnShutdown() {
 
 func (b *HTTP2Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
-		node.checkHealth()
-		time.Sleep(time.Second)
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("http2Backend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
@@ -126,8 +130,15 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.backend = backend
 }
 
-func (n *http2Node) checkHealth() {
-	// TODO
+func (n *http2Node) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("http2Node=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *http2Node) fetchConn() (*H2Conn, error) {

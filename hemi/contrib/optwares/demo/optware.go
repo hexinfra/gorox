@@ -23,7 +23,7 @@ func init() {
 
 type demoOptware struct {
 	// Mixins
-	Optware_
+	Component_
 	// Assocs
 	stage *Stage
 	// States

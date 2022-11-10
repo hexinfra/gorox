@@ -98,9 +98,13 @@ func (b *HTTP3Backend) OnShutdown() {
 
 func (b *HTTP3Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
-		node.checkHealth()
-		time.Sleep(time.Second)
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("http3Backend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {
@@ -125,8 +129,15 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 	n.backend = backend
 }
 
-func (n *http3Node) checkHealth() {
-	// TODO
+func (n *http3Node) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("http3Node=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *http3Node) fetchConn() (*H3Conn, error) {

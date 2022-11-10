@@ -28,12 +28,15 @@ func createResolv(stage *Stage) *resolvFixture {
 // resolvFixture
 type resolvFixture struct {
 	// Mixins
-	fixture_
+	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 }
 
 func (f *resolvFixture) init(stage *Stage) {
-	f.fixture_.init(signResolv, stage)
+	f.SetName(signResolv)
+	f.stage = stage
 }
 
 func (f *resolvFixture) OnConfigure() {

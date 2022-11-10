@@ -130,10 +130,14 @@ func (b *TCPSBackend) OnShutdown() {
 }
 
 func (b *TCPSBackend) maintain() { // goroutine
-	// TODO: health check for all nodes
-	for {
-		time.Sleep(time.Second)
+	for _, node := range b.nodes {
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("tcpsBackend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *TCPSBackend) Dial() (PConn, error) {
@@ -163,11 +167,18 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 	n.backend = backend
 }
 
-func (n *tcpsNode) checkHealth() {
-	// TODO
+func (n *tcpsNode) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("tcpsNode=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
-func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & close.
+func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
@@ -292,8 +303,13 @@ func (c *TConn) Writev(vector *net.Buffers) (int64, error) { return vector.Write
 func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Read(p) }
 func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
 
-func (c *TConn) CloseWrite() error { return c.netConn.(*net.TCPConn).CloseWrite() }
-func (c *TConn) CloseRead() error  { return c.netConn.(*net.TCPConn).CloseRead() }
+func (c *TConn) CloseWrite() error {
+	if c.client.TLSMode() {
+		return c.netConn.(*tls.Conn).CloseWrite()
+	} else {
+		return c.netConn.(*net.TCPConn).CloseWrite()
+	}
+}
 
 func (c *TConn) Close() error { // only used by clients of dial
 	netConn := c.netConn

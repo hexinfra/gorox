@@ -107,10 +107,14 @@ func (b *UDPSBackend) OnShutdown() {
 }
 
 func (b *UDPSBackend) maintain() { // goroutine
-	// TODO: health check for all nodes
-	for {
-		time.Sleep(time.Second)
+	for _, node := range b.nodes {
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("udpsBackend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
@@ -139,8 +143,15 @@ func (n *udpsNode) init(id int32, backend *UDPSBackend) {
 	n.backend = backend
 }
 
-func (n *udpsNode) checkHealth() {
-	// TODO
+func (n *udpsNode) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("udpsNode=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *udpsNode) dial() (*UConn, error) {

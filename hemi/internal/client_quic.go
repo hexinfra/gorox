@@ -112,10 +112,14 @@ func (b *QUICBackend) OnShutdown() {
 }
 
 func (b *QUICBackend) maintain() { // goroutine
-	// TODO: health check for all nodes
-	for {
-		time.Sleep(time.Second)
+	for _, node := range b.nodes {
+		go node.maintain()
 	}
+	b.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("quicBackend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
 }
 
 func (b *QUICBackend) Dial() (*QConn, error) {
@@ -144,8 +148,15 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 	n.backend = backend
 }
 
-func (n *quicNode) checkHealth() {
-	// TODO
+func (n *quicNode) maintain() { // goroutine
+	// TODO: health check
+	for !n.backend.IsShut() {
+		time.Sleep(time.Second)
+	}
+	if Debug(2) {
+		fmt.Printf("quicNode=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 func (n *quicNode) dial() (*QConn, error) {

@@ -205,7 +205,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 			if code := worker.exitCode; code == codeCrash || code == codeStop || code == hemi.CodeBug || code == hemi.CodeUse || code == hemi.CodeEnv {
 				fmt.Println("worker critical error")
 				stop()
-			} else if now := time.Now(); now.Sub(worker.lastExit) > time.Second {
+			} else if now := time.Now(); now.Sub(worker.lastExit) > 1*time.Second {
 				worker.lastExit = now
 				worker.start(base, file, dieChan) // start again
 			} else { // worker has suffered too frequent crashes. mark it as broken.

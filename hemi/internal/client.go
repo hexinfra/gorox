@@ -20,8 +20,8 @@ import (
 type client interface {
 	Stage() *Stage
 	TLSMode() bool
-	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
 	AliveTimeout() time.Duration
 }
 
@@ -34,10 +34,10 @@ type client_ struct {
 	// States
 	tlsMode      bool          // use TLS?
 	tlsConfig    *tls.Config   // TLS config if TLS is enabled
-	dialTimeout  time.Duration // ...
-	readTimeout  time.Duration // ...
-	writeTimeout time.Duration // ...
-	aliveTimeout time.Duration // ...
+	dialTimeout  time.Duration // dial remote timeout
+	writeTimeout time.Duration // write operation timeout
+	readTimeout  time.Duration // read operation timeout
+	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 }
 
@@ -53,13 +53,13 @@ func (c *client_) onConfigure() {
 		c.tlsConfig = new(tls.Config)
 	}
 	// dialTimeout
-	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
-	// readTimeout
-	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 10*time.Second)
 	// writeTimeout
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	// readTimeout
+	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
 	// aliveTimeout
-	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 10*time.Second)
+	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
 }
 func (c *client_) onPrepare() {
 }
@@ -70,8 +70,8 @@ func (c *client_) onShutdown() {
 func (c *client_) Stage() *Stage { return c.stage }
 func (c *client_) TLSMode() bool { return c.tlsMode }
 
-func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
+func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
 func (c *client_) nextConnID() int64 {
@@ -238,8 +238,8 @@ type conn_ struct {
 	client client    // associated client
 	expire time.Time // when the conn is considered expired
 	// Conn states (zeros)
-	lastRead  time.Time // deadline of last read operation
 	lastWrite time.Time // deadline of last write operation
+	lastRead  time.Time // deadline of last read operation
 }
 
 func (c *conn_) onGet(id int64, client client) {
@@ -250,11 +250,13 @@ func (c *conn_) onGet(id int64, client client) {
 func (c *conn_) onPut() {
 	c.client = nil
 	c.expire = time.Time{}
-	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 }
 
-func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
+func (c *conn_) isAlive() bool {
+	return time.Now().Before(c.expire)
+}
 
 func (c *conn_) getNext() conn     { return c.next }
 func (c *conn_) setNext(next conn) { c.next = next }
@@ -270,10 +272,10 @@ type PBackend interface {
 // connection-oriented conn, supports TCPS and Unix.
 type PConn interface {
 	conn
-	Read(p []byte) (n int, err error)
-	ReadFull(p []byte) (n int, err error)
 	Write(p []byte) (n int, err error)
 	Writev(vector *net.Buffers) (int64, error)
+	Read(p []byte) (n int, err error)
+	ReadFull(p []byte) (n int, err error)
 	Close() error
 }
 

@@ -41,7 +41,7 @@ type filesysFixture struct {
 	smallFileSize int64 // what size is considered as small file
 	maxSmallFiles int32 // max number of small files. for small files, contents are cached
 	maxLargeFiles int32 // max number of large files. for large files, *os.File are cached
-	cacheDuration time.Duration
+	cacheTimeout  time.Duration
 	rwMutex       sync.RWMutex // protects entries below
 	entries       map[string]*filesysEntry
 }
@@ -59,8 +59,8 @@ func (f *filesysFixture) OnConfigure() {
 	f.ConfigureInt32("maxSmallFiles", &f.maxSmallFiles, func(value int32) bool { return value > 0 }, 1000)
 	// maxLargeFiles
 	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) bool { return value > 0 }, 500)
-	// cacheDuration
-	f.ConfigureDuration("cacheDuration", &f.cacheDuration, func(value time.Duration) bool { return value > 0 }, time.Second)
+	// cacheTimeout
+	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) bool { return value > 0 }, 1*time.Second)
 }
 func (f *filesysFixture) OnPrepare() {
 }
@@ -154,7 +154,7 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 		entry.info = info
 		entry.nRef.Store(1) // current caller
 	}
-	entry.last = time.Now().Add(f.cacheDuration)
+	entry.last = time.Now().Add(f.cacheTimeout)
 	f.entries[path] = entry
 
 	return entry, nil

@@ -590,7 +590,7 @@ type Handler_ struct {
 	// Mixins
 	Component_
 	// States
-	rShell reflect.Value
+	rShell reflect.Value // the shell handler
 	router Router
 }
 
@@ -600,22 +600,20 @@ func (h *Handler_) UseRouter(shell any, router Router) {
 }
 
 func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
-	if h.router == nil {
-		BugExitln("called Dispatch() without a router")
-	}
-	found := false
-	if handle := h.router.FindHandle(req); handle != nil {
-		handle(req, resp)
-		found = true
-	} else if name := h.router.CreateName(req); name != "" {
-		rMethod := h.rShell.MethodByName(name)
-		if rMethod.IsValid() {
-			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
+	if h.router != nil {
+		found := false
+		if handle := h.router.FindHandle(req); handle != nil {
+			handle(req, resp)
 			found = true
+		} else if name := h.router.CreateName(req); name != "" {
+			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
+				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
+				found = true
+			}
 		}
-	}
-	if found {
-		return
+		if found {
+			return
+		}
 	}
 	if notFound == nil {
 		resp.SendNotFound(nil)

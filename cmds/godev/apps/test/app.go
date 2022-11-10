@@ -50,7 +50,6 @@ func (h *testHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
-
 func (h *testHandler) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }

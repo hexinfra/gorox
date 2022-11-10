@@ -9,7 +9,7 @@ package en_us
 
 import (
 	"errors"
-	"github.com/hexinfra/gorox/apps/official/en_us/controller"
+	"github.com/hexinfra/gorox/apps/official/en_us/pack"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
 )
@@ -24,7 +24,7 @@ func init() {
 		if !ok {
 			return errors.New("handler in 'logic' rule is not Sitex handler")
 		}
-		sitex.RegisterSite("front", controller.Controller{})
+		sitex.RegisterSite("front", pack.Pack{})
 		return nil
 	})
 }

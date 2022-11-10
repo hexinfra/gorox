@@ -8,7 +8,7 @@ package board
 import (
 	"errors"
 	. "github.com/hexinfra/gorox/cmds/gocmc/admin"
-	"github.com/hexinfra/gorox/cmds/gocmc/board/controller"
+	"github.com/hexinfra/gorox/cmds/gocmc/board/pack"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
 )
@@ -28,7 +28,7 @@ func init() {
 		if !ok {
 			return errors.New("handler in 'logic' rule is not board handler")
 		}
-		board.RegisterSite("front", controller.Controller{})
+		board.RegisterSite("front", pack.Pack{})
 		return nil
 	})
 }

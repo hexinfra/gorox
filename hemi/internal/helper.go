@@ -251,64 +251,6 @@ type ider_ struct {
 func (i *ider_) ID() uint8      { return i.id }
 func (i *ider_) setID(id uint8) { i.id = id }
 
-// defaultRouter implements Router.
-type defaultRouter struct {
-	gets    map[string]Handle
-	posts   map[string]Handle
-	puts    map[string]Handle
-	deletes map[string]Handle
-}
-
-func NewDefaultRouter() *defaultRouter {
-	r := new(defaultRouter)
-	r.gets = make(map[string]Handle)
-	r.posts = make(map[string]Handle)
-	r.puts = make(map[string]Handle)
-	r.deletes = make(map[string]Handle)
-	return r
-}
-
-func (r *defaultRouter) GET(pattern string, handle Handle) {
-	r.gets[pattern] = handle
-}
-func (r *defaultRouter) POST(pattern string, handle Handle) {
-	r.posts[pattern] = handle
-}
-func (r *defaultRouter) PUT(pattern string, handle Handle) {
-	r.puts[pattern] = handle
-}
-func (r *defaultRouter) DELETE(pattern string, handle Handle) {
-	r.deletes[pattern] = handle
-}
-
-func (r *defaultRouter) FindHandle(req Request) Handle {
-	// TODO
-	if path := req.Path(); req.IsGET() {
-		return r.gets[path]
-	} else if req.IsPOST() {
-		return r.posts[path]
-	} else if req.IsPUT() {
-		return r.puts[path]
-	} else if req.IsDELETE() {
-		return r.deletes[path]
-	} else {
-		return nil
-	}
-}
-func (r *defaultRouter) CreateName(req Request) string {
-	method := req.UnsafeMethod()
-	path := req.UnsafePath() // always starts with '/'
-	name := req.UnsafeMake(len(method) + len(path))
-	n := copy(name, method)
-	copy(name[n:], path)
-	for i := n; i < len(name); i++ {
-		if name[i] == '/' {
-			name[i] = '_'
-		}
-	}
-	return risky.WeakString(name)
-}
-
 const ( // array kinds
 	arrayKindStock = iota // refers to stock buffer. must be 0
 	arrayKindPool         // got from sync.Pool

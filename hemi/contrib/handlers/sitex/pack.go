@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Controller.
+// Pack.
 
 package sitex
 
@@ -11,8 +11,8 @@ import (
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
-// Controller_
-type Controller_ struct {
+// Pack_
+type Pack_ struct {
 	// Assocs
 	Site     *Site    // associated site
 	Request  Request  // current request
@@ -25,25 +25,25 @@ type Controller_ struct {
 	viewArgs  map[string]value
 }
 
-func (c *Controller_) Init(site *Site, req Request, resp Response, method string, action string) {
-	c.Site = site
-	c.Request = req
-	c.Response = resp
-	c.method = method
-	c.action = action
+func (p *Pack_) Init(site *Site, req Request, resp Response, method string, action string) {
+	p.Site = site
+	p.Request = req
+	p.Response = resp
+	p.method = method
+	p.action = action
 }
 
-func (c *Controller_) ForwardTo(target Target) {
-	c.forwarded = true
-	c.forwardTo = target
+func (p *Pack_) ForwardTo(target Target) {
+	p.forwarded = true
+	p.forwardTo = target
 }
-func (c *Controller_) Set(k string, v any) {
-	if c.viewArgs == nil {
-		c.viewArgs = make(map[string]value)
+func (p *Pack_) Set(k string, v any) {
+	if p.viewArgs == nil {
+		p.viewArgs = make(map[string]value)
 	}
 	val := value{}
-	c.viewArgs[k] = val
+	p.viewArgs[k] = val
 }
-func (c *Controller_) Render() error {
+func (p *Pack_) Render() error {
 	return nil
 }

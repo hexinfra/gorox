@@ -3,28 +3,28 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package controller
+package pack
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
 )
 
-type Controller struct {
-	sitex.Controller_
+type Pack struct {
+	sitex.Pack_
 }
 
-func (c *Controller) OPTIONS_index(req Request, resp Response) {
+func (p *Pack) OPTIONS_index(req Request, resp Response) {
 	if req.IsAsteriskOptions() {
 		resp.Send("this is OPTIONS *")
 	} else {
 		resp.Send("this is OPTIONS / or OPTIONS /index")
 	}
 }
-func (c *Controller) GET_example(req Request, resp Response) { // GET /example
+func (p *Pack) GET_example(req Request, resp Response) { // GET /example
 	resp.Send("get example")
 }
-func (c *Controller) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
+func (p *Pack) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
 	resp.Push("foo")
 	resp.Push("bar")
 }

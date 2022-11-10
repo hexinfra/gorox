@@ -89,9 +89,9 @@ func (h *Sitex) OnPrepare() {
 func (h *Sitex) OnShutdown() {
 }
 
-func (h *Sitex) RegisterSite(name string, controller any) { // called on app init.
+func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.
 	if site, ok := h.sites[name]; ok {
-		site.controller = reflect.TypeOf(controller)
+		site.pack = reflect.TypeOf(pack)
 	} else {
 		BugExitf("unknown site: %s\n", name)
 	}
@@ -125,23 +125,23 @@ func (h *Sitex) Handle(req Request, resp Response) (next bool) {
 		page = strings.Replace(path, "/", "-", -1)
 	}
 
-	if site.controller == nil {
+	if site.pack == nil {
 		site.show(req, resp, page)
 		return
 	}
 
-	rController := reflect.New(site.controller)
+	rPack := reflect.New(site.pack)
 	rReq, rResp := reflect.ValueOf(req), reflect.ValueOf(resp)
-	rController.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(site), rReq, rResp, reflect.ValueOf(method), reflect.ValueOf(action)})
-	if fn := rController.MethodByName(method + "_" + action); fn.IsValid() {
-		if before := rController.MethodByName("BeforeAction"); before.IsValid() {
+	rPack.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(site), rReq, rResp, reflect.ValueOf(method), reflect.ValueOf(action)})
+	if fn := rPack.MethodByName(method + "_" + action); fn.IsValid() {
+		if before := rPack.MethodByName("BeforeAction"); before.IsValid() {
 			before.Call(nil)
 		}
 		fn.Call([]reflect.Value{rReq, rResp})
 		if !resp.IsSent() {
 			resp.SendBytes(nil)
 		}
-		if after := rController.MethodByName("AfterAction"); after.IsValid() {
+		if after := rPack.MethodByName("AfterAction"); after.IsValid() {
 			after.Call(nil)
 		}
 	} else {

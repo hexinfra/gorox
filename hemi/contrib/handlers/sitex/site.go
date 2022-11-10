@@ -16,9 +16,9 @@ import (
 
 // Site
 type Site struct {
-	hostnames  []string
-	viewDir    string
-	controller reflect.Type
+	hostnames []string
+	viewDir   string
+	pack      reflect.Type
 }
 
 func (s *Site) show(req Request, resp Response, page string) {

@@ -3,17 +3,17 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package controller
+package pack
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
 )
 
-type Controller struct {
-	sitex.Controller_
+type Pack struct {
+	sitex.Pack_
 }
 
-func (c *Controller) GET_example(req Request, resp Response) {
+func (p *Pack) GET_example(req Request, resp Response) {
 	resp.Send("example")
 }

@@ -41,7 +41,7 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewDefaultRouter() // you can write your own router type as long as it implements Router interface
+	r := NewDefaultRouter() // you can write your own router as long as it implements Router interface
 
 	r.GET("/", h.handleIndex)
 	r.POST("/foo", h.handleFoo)
@@ -61,8 +61,11 @@ func (h *exampleHandler) OnShutdown() {
 }
 
 func (h *exampleHandler) Handle(req Request, resp Response) (next bool) {
-	h.Dispatch(req, resp, nil)
+	h.Dispatch(req, resp, h.notFound)
 	return // request is handled, next = false
+}
+func (h *exampleHandler) notFound(req Request, resp Response) {
+	resp.Send("oops, not found!")
 }
 
 func (h *exampleHandler) handleIndex(req Request, resp Response) {

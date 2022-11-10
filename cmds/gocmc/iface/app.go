@@ -37,6 +37,9 @@ func (h *v1Handler) init(name string, stage *Stage, app *App) {
 	h.SetName(name)
 	h.stage = stage
 	h.app = app
+
+	r := NewDefaultRouter()
+	h.UseRouter(h, r)
 }
 
 func (h *v1Handler) OnConfigure() {
@@ -48,7 +51,11 @@ func (h *v1Handler) OnShutdown() {
 }
 
 func (h *v1Handler) Handle(req Request, resp Response) (next bool) {
+	h.Dispatch(req, resp, nil)
+	return
+}
+
+func (h *v1Handler) GET_(req Request, resp Response) {
 	text := fmt.Sprintf("%d\n", h.admin.NumConns())
 	resp.Send(text)
-	return
 }

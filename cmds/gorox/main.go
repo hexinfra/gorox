@@ -71,5 +71,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gorox", usage, manager.ProcModeGeneral, "127.0.0.1:9527")
+	manager.Main("gorox", usage, manager.ProcFlagGeneral, "127.0.0.1:9527")
 }

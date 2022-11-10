@@ -70,5 +70,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gocmc", usage, manager.ProcModeLimited, "127.0.0.1:9528")
+	manager.Main("gocmc", usage, manager.ProcFlagLimited, "127.0.0.1:9528")
 }

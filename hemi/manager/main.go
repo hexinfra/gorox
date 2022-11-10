@@ -25,13 +25,16 @@ import (
 	"strings"
 )
 
-const ( // proc modes
-	ProcModeGeneral = 0 // together mode and isolated mode are both allowed
-	ProcModeLimited = 1 // only together mode is allowed
-	ProcModeDevelop = 2 // force debugLevel = 2, singleMode = true
+const ( // proc flags
+	ProcFlagGeneral = 0 // together mode and isolated mode are both allowed
+	ProcFlagLimited = 1 // only together mode is allowed
+	ProcFlagDevelop = 2 // force debugLevel = 2, mode = together
 )
 
-var program string
+var (
+	program  string
+	procArgs = append([]string{system.ExePath}, os.Args[1:]...)
+)
 
 var ( // flags
 	debugLevel = flag.Int("debug", 0, "")
@@ -51,7 +54,7 @@ var ( // flags
 	daemonMode = flag.Bool("daemon", false, "")
 )
 
-func Main(name string, usage string, procMode int, addr string) {
+func Main(name string, usage string, procFlag int, addr string) {
 	if !system.Check() {
 		crash("current platform (os+arch) is not supported.")
 	}
@@ -70,16 +73,15 @@ func Main(name string, usage string, procMode int, addr string) {
 		flag.Parse()
 	}
 
-	if procMode == ProcModeLimited {
-		*multiple = 0
-	} else {
+	if procFlag == ProcFlagGeneral {
 		ncpu := runtime.NumCPU()
 		if *multiple > ncpu {
 			*multiple = ncpu
 		}
-		if procMode == ProcModeDevelop {
+	} else {
+		*multiple = 0
+		if procFlag == ProcFlagDevelop {
 			*debugLevel = 2
-			*singleMode = true
 		}
 	}
 
@@ -161,21 +163,6 @@ func serve() { // as leader or worker
 	}
 }
 
-var procArgs = append([]string{system.ExePath}, os.Args[1:]...)
-
-const ( // exit codes
-	codeCrash = 10
-	codeStop  = 11
-)
-
-func crash(s string) {
-	fmt.Fprintln(os.Stderr, s)
-	os.Exit(codeCrash)
-}
-func stop() {
-	os.Exit(codeStop)
-}
-
 func getConfig() (base string, file string) {
 	baseDir, config := *baseDir, *config
 	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
@@ -194,4 +181,17 @@ func getConfig() (base string, file string) {
 		base += "/"
 	}
 	return
+}
+
+const ( // exit codes
+	codeStop  = 10
+	codeCrash = 11
+)
+
+func stop() {
+	os.Exit(codeStop)
+}
+func crash(s string) {
+	fmt.Fprintln(os.Stderr, s)
+	os.Exit(codeCrash)
 }

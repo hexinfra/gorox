@@ -123,9 +123,16 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 
 	nwAlive := totalWorkers
 	dieChan := make(chan *worker) // all dead workers go through this channel
-	pipeKey := newPipeKey()
 
-	workers := makeWorkers(workMode, totalWorkers, base, file, dieChan, pipeKey)
+	rand.Seed(time.Now().UnixNano())
+	const chars = "0123456789"
+	keyBuffer := make([]byte, 32)
+	for i := 0; i < len(keyBuffer); i++ {
+		keyBuffer[i] = chars[rand.Intn(10)]
+	}
+	pipeKey := string(keyBuffer)
+
+	workers := newWorkers(workMode, totalWorkers, base, file, dieChan, pipeKey)
 	msgChan <- nil // reply to leaderMain that we have created the workers.
 
 	for { // each event from leaderMain and workers
@@ -135,7 +142,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 				switch req.Comd {
 				case comdRework: // restart workers
 					newDieChan := make(chan *worker)
-					newWorkers := makeWorkers(workMode, totalWorkers, base, file, newDieChan, pipeKey)
+					newWorkers := newWorkers(workMode, totalWorkers, base, file, newDieChan, pipeKey)
 					// Shutdown old workers
 					req.Comd = comdQuit
 					for _, worker := range workers {
@@ -206,26 +213,6 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 	}
 }
 
-func makeWorkers(workMode uint16, nWorkers int, base string, file string, dieChan chan *worker, pipeKey string) []*worker {
-	workers := make([]*worker, nWorkers)
-	for id := 0; id < nWorkers; id++ {
-		worker := newWorker(id, workMode, pipeKey)
-		worker.start(base, file, dieChan)
-		fmt.Fprintf(logger, "worker id=%d started\n", id)
-		workers[id] = worker
-	}
-	return workers
-}
-func newPipeKey() string {
-	rand.Seed(time.Now().UnixNano())
-	const chars = "0123456789"
-	pipeKey := make([]byte, 32)
-	for i := 0; i < len(pipeKey); i++ {
-		pipeKey[i] = chars[rand.Intn(10)]
-	}
-	return string(pipeKey)
-}
-
 // worker denotes a worker process used only in leader process
 type worker struct {
 	id       int    // 0, 1, ...
@@ -242,6 +229,16 @@ type worker struct {
 	broken   bool // can't relive again if broken
 }
 
+func newWorkers(workMode uint16, nWorkers int, base string, file string, dieChan chan *worker, pipeKey string) []*worker {
+	workers := make([]*worker, nWorkers)
+	for id := 0; id < nWorkers; id++ {
+		worker := newWorker(id, workMode, pipeKey)
+		worker.start(base, file, dieChan)
+		fmt.Fprintf(logger, "worker id=%d started\n", id)
+		workers[id] = worker
+	}
+	return workers
+}
 func newWorker(id int, workMode uint16, pipeKey string) *worker {
 	w := new(worker)
 	w.id = id
@@ -294,8 +291,8 @@ func (w *worker) start(base string, file string, dieChan chan *worker) {
 	msgx.SendMessage(msgPipe, resp)
 	w.msgPipe = msgPipe
 
-	// Tell worker process to start serve
-	msgx.Tell(w.msgPipe, msgx.NewMessage(comdRun, w.workMode, nil))
+	// Register succeed, now tell worker process to start serve
+	msgx.Tell(w.msgPipe, msgx.NewMessage(comdServe, w.workMode, nil))
 
 	// Watch process
 	go w.watch(dieChan)

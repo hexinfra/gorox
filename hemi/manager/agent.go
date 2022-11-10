@@ -25,7 +25,7 @@ func agentMain(action string) {
 }
 
 const ( // for tells
-	comdRun = iota // start server. this is in fact a fake command. must be 0
+	comdServe = iota // start server. this is in fact a fake command. must be 0
 	comdQuit
 	comdStop
 	comdReadmin

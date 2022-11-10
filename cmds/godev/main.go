@@ -54,6 +54,6 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		manager.Main("godev", usage, manager.ProcModeDevelop, "127.0.0.1:9526")
+		manager.Main("godev", usage, manager.ProcFlagDevelop, "127.0.0.1:9526")
 	}
 }

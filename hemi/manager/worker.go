@@ -32,6 +32,7 @@ const (
 var (
 	configBase   string
 	configFile   string
+	lastStage    *hemi.Stage // last stage
 	currentStage *hemi.Stage // current stage
 )
 
@@ -45,35 +46,42 @@ func workerMain(token string) {
 	if err != nil {
 		crash(err.Error())
 	}
+
 	// Contact leader process and register this worker
 	msgPipe, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
 		crash("dial leader failed: " + err.Error())
 	}
-	req := msgx.NewMessage(0, 0, map[string]string{
+	loginReq := msgx.NewMessage(0, 0, map[string]string{
 		"pipeKey":  parts[1],
 		"workerID": parts[2],
 	})
-	resp, ok := msgx.Call(msgPipe, req)
+	loginResp, ok := msgx.Call(msgPipe, loginReq)
 	if !ok {
 		crash("call leader failed")
 	}
+
 	// Register succeeded. Now start the initial stage
-	configBase = resp.Get("base")
-	configFile = resp.Get("file")
+	configBase = loginResp.Get("base")
+	configFile = loginResp.Get("file")
 	currentStage, err = hemi.ApplyFile(configBase, configFile)
 	if err != nil {
 		crash(err.Error())
 	}
 
-	defer stop()
 	for { // each message from leader process
 		req, ok := msgx.RecvMessage(msgPipe)
 		if !ok {
 			// Leader process must be gone.
-			return
+			break
 		}
-		if req.IsCall() {
+		if req.Comd == comdServe {
+			if req.Flag == workTogether {
+				currentStage.StartTogether()
+			} else {
+				currentStage.StartIsolated(int32(workerID))
+			}
+		} else if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
 				onCall(currentStage, req, resp)
@@ -81,20 +89,16 @@ func workerMain(token string) {
 				resp.Flag = 404
 			}
 			if !msgx.SendMessage(msgPipe, resp) {
-				return
+				break
 			}
-		} else { // tell
-			if req.Comd == comdRun {
-				if req.Flag == workTogether {
-					currentStage.StartTogether()
-				} else {
-					currentStage.StartIsolated(int32(workerID))
-				}
-			} else if onTell, ok := onTells[req.Comd]; ok {
-				onTell(currentStage, req)
-			}
+		} else if onTell, ok := onTells[req.Comd]; ok {
+			onTell(currentStage, req)
+		} else {
+			// Unknown tell command, ignore.
 		}
 	}
+
+	stop() // the loop is broken. simply stop worker
 }
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands

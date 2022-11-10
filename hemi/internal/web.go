@@ -628,12 +628,6 @@ func (h *Handler_) IsCache() bool { return false } // override this for cache ha
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Router performs request routing.
-type Router interface {
-	FindHandle(req Request) Handle
-	CreateName(req Request) string
-}
-
 // Reviser component revises the outgoing response.
 type Reviser interface {
 	Component

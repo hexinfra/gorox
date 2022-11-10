@@ -44,9 +44,9 @@ Constants
   Predefined string constants are:
 
     @baseDir : Containing directory of the gorox executable
-    @dataDir : Containing directory of the gorox run-time datum
     @logsDir : Containing directory of the gorox log files
     @tempDir : Containing directory of the gorox run-time files
+    @varsDir : Containing directory of the gorox run-time datum
 
 Variables
 --------------------

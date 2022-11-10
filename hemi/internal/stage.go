@@ -407,12 +407,12 @@ func (s *Stage) start() {
 	}
 	if Debug(1) {
 		fmt.Printf("baseDir=%s\n", BaseDir())
-		fmt.Printf("dataDir=%s\n", DataDir())
 		fmt.Printf("logsDir=%s\n", LogsDir())
 		fmt.Printf("tempDir=%s\n", TempDir())
+		fmt.Printf("varsDir=%s\n", VarsDir())
 	}
-	if BaseDir() == "" || DataDir() == "" || LogsDir() == "" || TempDir() == "" {
-		UseExitln("baseDir, dataDir, logsDir and tempDir must all be set")
+	if BaseDir() == "" || LogsDir() == "" || TempDir() == "" || VarsDir() == "" {
+		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
 	}
 	// Configure all components
 	if err := s.configure(); err != nil {

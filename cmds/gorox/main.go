@@ -53,9 +53,9 @@ OPTIONS
   -single             # run server in single mode. only a process is started
   -try                # try to run server with config
   -base   <path>      # base directory of the program
-  -data   <path>      # data directory to use
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
+  -vars   <path>      # vars directory to use
   -config <config>    # path or url to worker config file
   -log    <path>      # leader log file (default: gorox-leader.log in logs dir)
   -user   <user>      # user for worker(s) (default: nobody)

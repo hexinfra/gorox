@@ -34,15 +34,15 @@ var ( // core funcs
 
 	Debug   = internal.Debug
 	BaseDir = internal.BaseDir
-	DataDir = internal.DataDir
 	LogsDir = internal.LogsDir
 	TempDir = internal.TempDir
+	VarsDir = internal.VarsDir
 
 	SetDebug   = internal.SetDebug
 	SetBaseDir = internal.SetBaseDir
-	SetDataDir = internal.SetDataDir
 	SetLogsDir = internal.SetLogsDir
 	SetTempDir = internal.SetTempDir
+	SetVarsDir = internal.SetVarsDir
 
 	BugExitln = internal.BugExitln
 	BugExitf  = internal.BugExitf

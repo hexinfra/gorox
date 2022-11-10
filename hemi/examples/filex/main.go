@@ -51,9 +51,9 @@ func main() {
 	}
 
 	SetBaseDir(baseDir)
-	SetDataDir(baseDir + "/data")
 	SetLogsDir(baseDir + "/logs")
 	SetTempDir(baseDir + "/temp")
+	SetVarsDir(baseDir + "/vars")
 
 	stage, err := ApplyText(config)
 	if err != nil {

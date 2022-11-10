@@ -43,9 +43,9 @@ var ( // flags
 	singleMode = flag.Bool("single", false, "")
 	tryRun     = flag.Bool("try", false, "")
 	baseDir    = flag.String("base", "", "")
-	dataDir    = flag.String("data", "", "")
 	logsDir    = flag.String("logs", "", "")
 	tempDir    = flag.String("temp", "", "")
+	varsDir    = flag.String("vars", "", "")
 	config     = flag.String("config", "", "")
 	logFile    = flag.String("log", "", "")
 	userName   = flag.String("user", "nobody", "")
@@ -122,9 +122,9 @@ func serve() { // as leader or worker
 		*pDir = filepath.ToSlash(*pDir)
 		set(*pDir)
 	}
-	setDir(dataDir, "data", hemi.SetDataDir)
 	setDir(logsDir, "logs", hemi.SetLogsDir)
 	setDir(tempDir, "temp", hemi.SetTempDir)
+	setDir(varsDir, "vars", hemi.SetVarsDir)
 
 	if *singleMode { // run as foreground worker. for single mode
 		singleMain()

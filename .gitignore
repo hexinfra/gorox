@@ -18,10 +18,10 @@
 .DS_Store
 desktop.ini
 
-/data
+/dist
 /logs
 /temp
-/dist
+/vars
 /vendor
 
 /gomake

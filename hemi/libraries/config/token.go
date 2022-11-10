@@ -29,7 +29,7 @@ const ( // token list. if you change this list, change in tokenNames too.
 	// Word
 	TokenWord = 1 + iota // address, hostnames, ...
 	// Constants
-	TokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
+	TokenConstant // @baseDir, @logsDir, @tempDir, @varsDir
 	// Variables
 	TokenVariable // %method, %path, ...
 	// Operators

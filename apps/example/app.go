@@ -41,12 +41,12 @@ func (h *exampleHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	m := NewDefaultMapper() // you can write your own mapper type as long as it implements Mapper interface
+	r := NewDefaultRouter() // you can write your own router type as long as it implements Router interface
 
-	m.GET("/", h.handleIndex)
-	m.POST("/foo", h.handleFoo)
+	r.GET("/", h.handleIndex)
+	r.POST("/foo", h.handleFoo)
 
-	h.UseMapper(h, m) // equip handler with mapper so it can call handles automatically through Dispatch()
+	h.UseRouter(h, r) // equip handler with router so it can call handles automatically through Dispatch()
 }
 
 func (h *exampleHandler) OnConfigure() {

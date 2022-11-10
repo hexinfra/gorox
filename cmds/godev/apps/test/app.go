@@ -35,8 +35,8 @@ func (h *testHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	m := NewDefaultMapper()
-	h.UseMapper(h, m)
+	r := NewDefaultRouter()
+	h.UseRouter(h, r)
 }
 
 func (h *testHandler) OnConfigure() {

@@ -591,23 +591,23 @@ type Handler_ struct {
 	Component_
 	// States
 	rShell reflect.Value
-	mapper Mapper
+	router Router
 }
 
-func (h *Handler_) UseMapper(shell any, mapper Mapper) {
+func (h *Handler_) UseRouter(shell any, router Router) {
 	h.rShell = reflect.ValueOf(shell)
-	h.mapper = mapper
+	h.router = router
 }
 
 func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
-	if h.mapper == nil {
-		BugExitln("called Dispatch() without a mapper")
+	if h.router == nil {
+		BugExitln("called Dispatch() without a router")
 	}
 	found := false
-	if handle := h.mapper.FindHandle(req); handle != nil {
+	if handle := h.router.FindHandle(req); handle != nil {
 		handle(req, resp)
 		found = true
-	} else if name := h.mapper.CreateName(req); name != "" {
+	} else if name := h.router.CreateName(req); name != "" {
 		rMethod := h.rShell.MethodByName(name)
 		if rMethod.IsValid() {
 			rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
@@ -630,8 +630,8 @@ func (h *Handler_) IsCache() bool { return false } // override this for cache ha
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Mapper performs URL mapping.
-type Mapper interface {
+// Router performs request routing.
+type Router interface {
 	FindHandle(req Request) Handle
 	CreateName(req Request) string
 }

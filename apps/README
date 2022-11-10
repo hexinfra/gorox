@@ -1,7 +1,7 @@
 This directory holds apps of gorox, basically one app per directory.
 By default there are 4 apps:
 
-  example/           - An example app.
+  examples/hello/    - An example app.
   official/en_us/    - The official Gorox website in en_US.
   official/zh_cn/    - The official Gorox website in zh_CN.
   welcome/           - A static app that can be used as a default app.
@@ -17,4 +17,4 @@ To add a new app named "foo":
 In gorox, an http server (like httpxServer and http3Server) can host many apps,
 whereas an app can be bound to many http servers.
 
-For examples, see "example/" and "welcome/".
+For examples, see "examples/hello/" and "welcome/".

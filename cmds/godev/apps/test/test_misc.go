@@ -31,7 +31,3 @@ func (h *testHandler) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPT
 		}
 	}
 }
-
-func (h *testHandler) GET_querystring(req Request, resp Response) {
-	resp.Send(req.QueryString())
-}

@@ -48,6 +48,7 @@ Performance
     shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
 
   Change the parameters and/or target URL to match your need.
+
   Generally, the result is about 80% of nginx and slightly better than fasthttp.
 
 
@@ -106,5 +107,5 @@ Contributing
 
   Fork this repository and contribute your patch through Github Pull Requests.
 
-  By contributing to Gorox, you agree to release your code under the BSD License
-  that you can find in the LICENSE.md file.
+  By contributing to Gorox, you MUST agree to release your code under the BSD
+  License that you can find in the LICENSE.md file.

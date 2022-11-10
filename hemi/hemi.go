@@ -131,6 +131,7 @@ type ( // core types
 	App      = internal.App
 	Handler  = internal.Handler
 	Handle   = internal.Handle
+	Router   = internal.Router
 	Reviser  = internal.Reviser
 	Socklet  = internal.Socklet
 	Rule     = internal.Rule

@@ -74,12 +74,11 @@ func Main(name string, usage string, procFlag int, addr string) {
 	}
 
 	if procFlag == ProcFlagGeneral {
-		ncpu := runtime.NumCPU()
-		if *multiple > ncpu {
+		if ncpu := runtime.NumCPU(); *multiple > ncpu {
 			*multiple = ncpu
 		}
-	} else {
-		*multiple = 0
+	} else { // ProcFlagLimited or ProcFlagDevelop
+		*multiple = 0 // only one worker is allowed
 		if procFlag == ProcFlagDevelop {
 			*debugLevel = 2
 		}

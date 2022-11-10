@@ -39,13 +39,13 @@ const ( // comp list. if you change this list, change compNames too.
 	compFixture               // clock, filesys, ...
 	compOptware               // ...
 	compBackend               // TCPSBackend, HTTP1Backend, ...
-	compQUICRouter            // quicRouter
+	compQUICMesher            // quicMesher
 	compQUICRunner            // quicProxy, ...
 	compQUICFilter            // ...
-	compTCPSRouter            // tcpsRouter
+	compTCPSMesher            // tcpsMesher
 	compTCPSRunner            // tcpsProxy, ...
 	compTCPSFilter            // ...
-	compUDPSRouter            // udpsRouter
+	compUDPSMesher            // udpsMesher
 	compUDPSRunner            // udpsProxy, ...
 	compUDPSFilter            // ...
 	compCase                  // case
@@ -66,13 +66,13 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 	compFixture:    "fixture",    // dynamic
 	compOptware:    "optware",    // dynamic
 	compBackend:    "backend",    // dynamic
-	compQUICRouter: "quicRouter", // static
+	compQUICMesher: "quicMesher", // static
 	compQUICRunner: "quicRunner", // dynamic
 	compQUICFilter: "quicFilter", // dynamic
-	compTCPSRouter: "tcpsRouter", // static
+	compTCPSMesher: "tcpsMesher", // static
 	compTCPSRunner: "tcpsRunner", // dynamic
 	compTCPSFilter: "tcpsFilter", // dynamic
-	compUDPSRouter: "udpsRouter", // static
+	compUDPSMesher: "udpsMesher", // static
 	compUDPSRunner: "udpsRunner", // dynamic
 	compUDPSFilter: "udpsFilter", // dynamic
 	compCase:       "case",       // static
@@ -89,21 +89,21 @@ var compNames = [...]string{ // comp names. if you change this list, change comp
 }
 
 var varCodes = map[string]int16{ // predefined variables for config
-	// general conn vars. keep sync with router_quic.go, router_tcps.go, and router_udps.go
+	// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go
 	"srcHost": 0,
 	"srcPort": 1,
 
-	// general tcps & udps conn vars. keep sync with router_tcps.go and router_udps.go
+	// general tcps & udps conn vars. keep sync with mesher_tcps.go and mesher_udps.go
 	"transport": 2, // tcp/udp, tls/dtls
 
-	// quic conn vars. keep sync with quicConnVariables in router_quic.go
-	// quic stream vars. keep sync with quicConnVariables in router_quic.go
+	// quic conn vars. keep sync with quicConnVariables in mesher_quic.go
+	// quic stream vars. keep sync with quicConnVariables in mesher_quic.go
 
-	// tcps conn vars. keep sync with tcpsConnVariables in router_tcps.go
+	// tcps conn vars. keep sync with tcpsConnVariables in mesher_tcps.go
 	"serverName": 3,
 	"nextProto":  4,
 
-	// udps conn vars. keep sync with udpsConnVariables in router_udps.go
+	// udps conn vars. keep sync with udpsConnVariables in mesher_udps.go
 
 	// http request vars. keep sync with httpRequestVariables in server_http.go
 	"method":      0, // GET, POST, ...
@@ -120,9 +120,9 @@ var varCodes = map[string]int16{ // predefined variables for config
 
 var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
 	"stage":      compStage,
-	"quicRouter": compQUICRouter,
-	"tcpsRouter": compTCPSRouter,
-	"udpsRouter": compUDPSRouter,
+	"quicMesher": compQUICMesher,
+	"tcpsMesher": compTCPSMesher,
+	"udpsMesher": compUDPSMesher,
 	"case":       compCase,
 	"app":        compApp,
 	"rule":       compRule,
@@ -196,8 +196,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 				c.parseContainer0(compOptware, c.parseOptware, current.Text, stage)
 			case "backends":
 				c.parseContainer0(compBackend, c.parseBackend, current.Text, stage)
-			case "routers":
-				c.parseRouters(stage)
+			case "meshers":
+				c.parseMeshers(stage)
 			case "staters":
 				c.parseContainer0(compStater, c.parseStater, current.Text, stage)
 			case "cachers":
@@ -256,7 +256,7 @@ func parseComponent0[T Component](c *config, sign Token, stage *Stage, create fu
 	c.Forward()
 	c.parseAssigns(component)
 }
-func (c *config) parseRouters(stage *Stage) { // routers {}
+func (c *config) parseMeshers(stage *Stage) { // meshers {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -264,24 +264,24 @@ func (c *config) parseRouters(stage *Stage) { // routers {}
 			return
 		}
 		if current.Kind != TokenWord {
-			panic(errors.New("config error: only routers are allowed in routers"))
+			panic(errors.New("config error: only meshers are allowed in meshers"))
 		}
 		switch current.Info {
-		case compQUICRouter:
-			c.parseQUICRouter(stage)
-		case compTCPSRouter:
-			c.parseTCPSRouter(stage)
-		case compUDPSRouter:
-			c.parseUDPSRouter(stage)
+		case compQUICMesher:
+			c.parseQUICMesher(stage)
+		case compTCPSMesher:
+			c.parseTCPSMesher(stage)
+		case compUDPSMesher:
+			c.parseUDPSMesher(stage)
 		default:
-			panic(errors.New("config error: only quicRouter, tcpsRouter, and udpsRouter are allowed in routers"))
+			panic(errors.New("config error: only quicMesher, tcpsMesher, and udpsMesher are allowed in meshers"))
 		}
 	}
 }
-func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
-	routerName := c.ForwardExpect(TokenString)
-	router := stage.createQUICRouter(routerName.Text)
-	router.setParent(stage)
+func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
+	mesherName := c.ForwardExpect(TokenString)
+	mesher := stage.createQUICMesher(mesherName.Text)
+	mesher.setParent(stage)
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -289,34 +289,34 @@ func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
 			return
 		}
 		if current.Kind != TokenWord {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicRouter\n", current.Name(), current.Text, current.Line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.Name(), current.Text, current.Line))
 		}
 		if c.NextIs(TokenEqual) { // =
-			c.parseAssign(current, router)
+			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
 			case "runners":
-				parseContainer1(c, router, compQUICRunner, c.parseQUICRunner, current.Text)
+				parseContainer1(c, mesher, compQUICRunner, c.parseQUICRunner, current.Text)
 			case "filters":
-				parseContainer1(c, router, compQUICFilter, c.parseQUICFilter, current.Text)
+				parseContainer1(c, mesher, compQUICFilter, c.parseQUICFilter, current.Text)
 			case "cases":
-				parseCases(c, router, c.parseQUICCase)
+				parseCases(c, mesher, c.parseQUICCase)
 			default:
-				panic(fmt.Errorf("unknown container '%s' in quicRouter\n", current.Text))
+				panic(fmt.Errorf("unknown container '%s' in quicMesher\n", current.Text))
 			}
 		}
 	}
 }
-func (c *config) parseQUICRunner(sign Token, router *QUICRouter, kase *quicCase) { // qqqRunner <name> {}, qqqRunner {}
-	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
+func (c *config) parseQUICRunner(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqRunner <name> {}, qqqRunner {}
+	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseQUICFilter(sign Token, router *QUICRouter, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
-	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
+func (c *config) parseQUICFilter(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
+	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
-	routerName := c.ForwardExpect(TokenString)
-	router := stage.createTCPSRouter(routerName.Text)
-	router.setParent(stage)
+func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
+	mesherName := c.ForwardExpect(TokenString)
+	mesher := stage.createTCPSMesher(mesherName.Text)
+	mesher.setParent(stage)
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -324,34 +324,34 @@ func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
 			return
 		}
 		if current.Kind != TokenWord {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsRouter\n", current.Name(), current.Text, current.Line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.Name(), current.Text, current.Line))
 		}
 		if c.NextIs(TokenEqual) { // =
-			c.parseAssign(current, router)
+			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
 			case "runners":
-				parseContainer1(c, router, compTCPSRunner, c.parseTCPSRunner, current.Text)
+				parseContainer1(c, mesher, compTCPSRunner, c.parseTCPSRunner, current.Text)
 			case "filters":
-				parseContainer1(c, router, compTCPSFilter, c.parseTCPSFilter, current.Text)
+				parseContainer1(c, mesher, compTCPSFilter, c.parseTCPSFilter, current.Text)
 			case "cases":
-				parseCases(c, router, c.parseTCPSCase)
+				parseCases(c, mesher, c.parseTCPSCase)
 			default:
-				panic(fmt.Errorf("unknown container '%s' in tcpsRouter\n", current.Text))
+				panic(fmt.Errorf("unknown container '%s' in tcpsMesher\n", current.Text))
 			}
 		}
 	}
 }
-func (c *config) parseTCPSRunner(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttRunner <name> {}, tttRunner {}
-	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
+func (c *config) parseTCPSRunner(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttRunner <name> {}, tttRunner {}
+	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseTCPSFilter(sign Token, router *TCPSRouter, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
-	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
+func (c *config) parseTCPSFilter(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
+	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
 }
-func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
-	routerName := c.ForwardExpect(TokenString)
-	router := stage.createUDPSRouter(routerName.Text)
-	router.setParent(stage)
+func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
+	mesherName := c.ForwardExpect(TokenString)
+	mesher := stage.createUDPSMesher(mesherName.Text)
+	mesher.setParent(stage)
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -359,31 +359,31 @@ func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
 			return
 		}
 		if current.Kind != TokenWord {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsRouter\n", current.Name(), current.Text, current.Line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.Name(), current.Text, current.Line))
 		}
 		if c.NextIs(TokenEqual) { // =
-			c.parseAssign(current, router)
+			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
 			case "runners":
-				parseContainer1(c, router, compUDPSRunner, c.parseUDPSRunner, current.Text)
+				parseContainer1(c, mesher, compUDPSRunner, c.parseUDPSRunner, current.Text)
 			case "filters":
-				parseContainer1(c, router, compUDPSFilter, c.parseUDPSFilter, current.Text)
+				parseContainer1(c, mesher, compUDPSFilter, c.parseUDPSFilter, current.Text)
 			case "cases":
-				parseCases(c, router, c.parseUDPSCase)
+				parseCases(c, mesher, c.parseUDPSCase)
 			default:
-				panic(fmt.Errorf("unknown container '%s' in udpsRouter\n", current.Text))
+				panic(fmt.Errorf("unknown container '%s' in udpsMesher\n", current.Text))
 			}
 		}
 	}
 }
-func (c *config) parseUDPSRunner(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuRunner <name> {}, uuuRunner {}
-	parseComponent1(c, sign, router, router.createRunner, kase, kase.addRunner)
+func (c *config) parseUDPSRunner(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuRunner <name> {}, uuuRunner {}
+	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseUDPSFilter(sign Token, router *UDPSRouter, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
-	parseComponent1(c, sign, router, router.createFilter, kase, kase.addFilter)
+func (c *config) parseUDPSFilter(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
+	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
 }
-func parseContainer1[R Component, C any](c *config, router R, comp int16, parseComponent func(sign Token, router R, kase *C), compName string) { // runners, filters {}
+func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign Token, mesher M, kase *C), compName string) { // runners, filters {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -393,10 +393,10 @@ func parseContainer1[R Component, C any](c *config, router R, comp int16, parseC
 		if current.Kind != TokenWord || current.Info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
-		parseComponent(current, router, nil) // not in case
+		parseComponent(current, mesher, nil) // not in case
 	}
 }
-func parseComponent1[R Component, T Component, C any](c *config, sign Token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter
+func parseComponent1[M Component, T Component, C any](c *config, sign Token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text
@@ -405,14 +405,14 @@ func parseComponent1[R Component, T Component, C any](c *config, sign Token, rou
 		name = c.NewName()
 	}
 	component := create(sign.Text, name)
-	component.setParent(router)
+	component.setParent(mesher)
 	if kase != nil { // in case
 		assign(component)
 	}
 	c.parseAssigns(component)
 }
 
-func parseCases[T Component](c *config, router T, parseCase func(T)) { // cases {}
+func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -422,13 +422,13 @@ func parseCases[T Component](c *config, router T, parseCase func(T)) { // cases 
 		if current.Kind != TokenWord || current.Info != compCase {
 			panic(errors.New("config error: only cases are allowed in cases"))
 		}
-		parseCase(router)
+		parseCase(mesher)
 	}
 }
 
-func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.NewName()) // use a temp name by default
-	kase.setParent(router)
+func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase.setParent(mesher)
 	c.Forward()
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
@@ -451,15 +451,15 @@ func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compQUICFilter {
-			c.parseQUICFilter(current, router, kase)
+			c.parseQUICFilter(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}
 	}
 }
-func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.NewName()) // use a temp name by default
-	kase.setParent(router)
+func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase.setParent(mesher)
 	c.Forward()
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
@@ -482,15 +482,15 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compTCPSFilter {
-			c.parseTCPSFilter(current, router, kase)
+			c.parseTCPSFilter(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}
 	}
 }
-func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.NewName()) // use a temp name by default
-	kase.setParent(router)
+func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase.setParent(mesher)
 	c.Forward()
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
@@ -513,7 +513,7 @@ func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compUDPSFilter {
-			c.parseUDPSFilter(current, router, kase)
+			c.parseUDPSFilter(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}

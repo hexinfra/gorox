@@ -207,12 +207,12 @@ var ( // global maps, shared between stages
 	creatorsLock       sync.RWMutex
 	optwareCreators    = make(map[string]func(name string, stage *Stage) Optware) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
-	quicRunnerCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICRunner)
-	quicFilterCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICFilter)
-	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSRunner)
-	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSFilter)
-	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSRunner)
-	udpsFilterCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSFilter)
+	quicRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICRunner)
+	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
+	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner)
+	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
+	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner)
+	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
@@ -238,22 +238,22 @@ func RegisterOptware(sign string, create func(name string, stage *Stage) Optware
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
 	registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterQUICRunner(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICRunner) {
+func RegisterQUICRunner(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICRunner) {
 	registerComponent1(sign, compQUICRunner, quicRunnerCreators, create)
 }
-func RegisterQUICFilter(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICFilter) {
+func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
 	registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
 }
-func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSRunner) {
+func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner) {
 	registerComponent1(sign, compTCPSRunner, tcpsRunnerCreators, create)
 }
-func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSFilter) {
+func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
 	registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
 }
-func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSRunner) {
+func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner) {
 	registerComponent1(sign, compUDPSRunner, udpsRunnerCreators, create)
 }
-func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSFilter) {
+func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
 	registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
@@ -297,7 +297,7 @@ func registerComponent0[T Component](sign string, comp int16, creators map[strin
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
+func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {
@@ -373,7 +373,7 @@ type Centry struct {
 	trailers any
 }
 
-// office_ is a mixin for routers and servers.
+// office_ is a mixin for meshers and servers.
 type office_ struct {
 	// Mixins
 	Component_
@@ -428,7 +428,7 @@ func (o *office_) TLSMode() bool          { return o.tlsMode }
 func (o *office_) NumGates() int32        { return o.numGates }
 func (o *office_) MaxConnsPerGate() int32 { return o.maxConnsPerGate }
 
-// Gate_ is a mixin for router gates and server gates.
+// Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {
 	// Assocs
 	stage *Stage // current stage

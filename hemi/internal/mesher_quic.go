@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC service router.
+// QUIC service mesher.
 
 package internal
 
@@ -12,53 +12,53 @@ import (
 	"sync"
 )
 
-// QUICRouter
-type QUICRouter struct {
+// QUICMesher
+type QUICMesher struct {
 	// Mixins
-	router_[*QUICRouter, *quicGate, QUICRunner, QUICFilter, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICRunner, QUICFilter, *quicCase]
 }
 
-func (r *QUICRouter) init(name string, stage *Stage) {
-	r.router_.init(name, stage, quicRunnerCreators, quicFilterCreators)
+func (m *QUICMesher) init(name string, stage *Stage) {
+	m.mesher_.init(name, stage, quicRunnerCreators, quicFilterCreators)
 }
 
-func (r *QUICRouter) OnConfigure() {
-	r.router_.onConfigure()
+func (m *QUICMesher) OnConfigure() {
+	m.mesher_.onConfigure()
 
-	r.configureSubs()
+	m.configureSubs()
 }
-func (r *QUICRouter) OnPrepare() {
-	r.router_.onPrepare()
+func (m *QUICMesher) OnPrepare() {
+	m.mesher_.onPrepare()
 
-	r.prepareSubs()
+	m.prepareSubs()
 }
-func (r *QUICRouter) OnShutdown() {
-	r.shutdownSubs()
+func (m *QUICMesher) OnShutdown() {
+	m.shutdownSubs()
 
-	r.router_.onShutdown()
+	m.mesher_.onShutdown()
 }
 
-func (r *QUICRouter) createCase(name string) *quicCase {
+func (m *QUICMesher) createCase(name string) *quicCase {
 	/*
-		if r.Case(name) != nil {
+		if m.Case(name) != nil {
 			UseExitln("conflicting case with a same name")
 		}
 	*/
 	kase := new(quicCase)
-	kase.init(name, r)
+	kase.init(name, m)
 	kase.setShell(kase)
-	r.cases = append(r.cases, kase)
+	m.cases = append(m.cases, kase)
 	return kase
 }
 
-func (r *QUICRouter) serve() { // goroutine
-	for id := int32(0); id < r.numGates; id++ {
+func (m *QUICMesher) serve() { // goroutine
+	for id := int32(0); id < m.numGates; id++ {
 		gate := new(quicGate)
-		gate.init(r, id)
+		gate.init(m, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
+		m.gates = append(m.gates, gate)
 		go gate.serve()
 	}
 	select {}
@@ -69,14 +69,14 @@ type quicGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	router *QUICRouter
+	mesher *QUICMesher
 	// States
 	gate *quix.Gate
 }
 
-func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
-	g.router = router
+func (g *quicGate) init(mesher *QUICMesher, id int32) {
+	g.Gate_.Init(mesher.stage, id, mesher.address, mesher.maxConnsPerGate)
+	g.mesher = mesher
 }
 
 func (g *quicGate) open() error {
@@ -99,14 +99,14 @@ func (g *quicGate) justClose(quicConn *quix.Conn) {
 // poolQUICConn
 var poolQUICConn sync.Pool
 
-func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) *QUICConn {
+func getQUICConn(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) *QUICConn {
 	var conn *QUICConn
 	if x := poolQUICConn.Get(); x == nil {
 		conn = new(QUICConn)
 	} else {
 		conn = x.(*QUICConn)
 	}
-	conn.onGet(id, stage, router, gate, quicConn)
+	conn.onGet(id, stage, mesher, gate, quicConn)
 	return conn
 }
 func putQUICConn(conn *QUICConn) {
@@ -121,30 +121,30 @@ type QUICConn struct {
 	// Conn states (non-zeros)
 	id       int64
 	stage    *Stage // current stage
-	router   *QUICRouter
+	mesher   *QUICMesher
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
 	filters [32]uint8
 }
 
-func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) {
+func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
 	c.id = id
 	c.stage = stage
-	c.router = router
+	c.mesher = mesher
 	c.gate = gate
 	c.quicConn = quicConn
 }
 func (c *QUICConn) onPut() {
 	c.stage = nil
-	c.router = nil
+	c.mesher = nil
 	c.gate = nil
 	c.quicConn = nil
 	c.filters = [32]uint8{}
 }
 
 func (c *QUICConn) serve() { // goroutine
-	for _, kase := range c.router.cases {
+	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue
 		}
@@ -215,7 +215,7 @@ type QUICFilter_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICRouter, QUICRunner, QUICFilter]
+	case_[*QUICMesher, QUICRunner, QUICFilter]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }

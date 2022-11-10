@@ -105,17 +105,17 @@ type ( // core types
 	PBackend = internal.PBackend // TCPSBackend | UnixBackend
 	PConn    = internal.PConn    // TConn | XConn
 
-	QUICRouter = internal.QUICRouter
+	QUICMesher = internal.QUICMesher
 	QUICRunner = internal.QUICRunner
 	QUICFilter = internal.QUICFilter
 	QUICConn   = internal.QUICConn
 
-	TCPSRouter = internal.TCPSRouter
+	TCPSMesher = internal.TCPSMesher
 	TCPSRunner = internal.TCPSRunner
 	TCPSFilter = internal.TCPSFilter
 	TCPSConn   = internal.TCPSConn
 
-	UDPSRouter = internal.UDPSRouter
+	UDPSMesher = internal.UDPSMesher
 	UDPSRunner = internal.UDPSRunner
 	UDPSFilter = internal.UDPSFilter
 	UDPSConn   = internal.UDPSConn

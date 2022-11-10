@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSFilter("mysqlViewer", func(name string, stage *Stage, router *TCPSRouter) TCPSFilter {
+	RegisterTCPSFilter("mysqlViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
 		f := new(mysqlViewer)
-		f.init(name, stage, router)
+		f.init(name, stage, mesher)
 		return f
 	})
 }
@@ -25,14 +25,14 @@ type mysqlViewer struct {
 	TCPSFilter_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (f *mysqlViewer) init(name string, stage *Stage, router *TCPSRouter) {
+func (f *mysqlViewer) init(name string, stage *Stage, mesher *TCPSMesher) {
 	f.SetName(name)
 	f.stage = stage
-	f.router = router
+	f.mesher = mesher
 }
 
 func (f *mysqlViewer) OnConfigure() {

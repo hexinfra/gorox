@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS service router.
+// UDP/DTLS service mesher.
 
 package internal
 
@@ -13,54 +13,54 @@ import (
 	"syscall"
 )
 
-// UDPSRouter
-type UDPSRouter struct {
+// UDPSMesher
+type UDPSMesher struct {
 	// Mixins
-	router_[*UDPSRouter, *udpsGate, UDPSRunner, UDPSFilter, *udpsCase]
+	mesher_[*UDPSMesher, *udpsGate, UDPSRunner, UDPSFilter, *udpsCase]
 }
 
-func (r *UDPSRouter) init(name string, stage *Stage) {
-	r.router_.init(name, stage, udpsRunnerCreators, udpsFilterCreators)
+func (m *UDPSMesher) init(name string, stage *Stage) {
+	m.mesher_.init(name, stage, udpsRunnerCreators, udpsFilterCreators)
 }
 
-func (r *UDPSRouter) OnConfigure() {
-	r.router_.onConfigure()
+func (m *UDPSMesher) OnConfigure() {
+	m.mesher_.onConfigure()
 
-	r.configureSubs()
+	m.configureSubs()
 }
-func (r *UDPSRouter) OnPrepare() {
-	r.router_.onPrepare()
+func (m *UDPSMesher) OnPrepare() {
+	m.mesher_.onPrepare()
 
-	r.prepareSubs()
+	m.prepareSubs()
 }
-func (r *UDPSRouter) OnShutdown() {
-	r.shutdownSubs()
+func (m *UDPSMesher) OnShutdown() {
+	m.shutdownSubs()
 
-	r.router_.onShutdown()
+	m.mesher_.onShutdown()
 }
 
-func (r *UDPSRouter) createCase(name string) *udpsCase {
+func (m *UDPSMesher) createCase(name string) *udpsCase {
 	/*
-		if r.Case(name) != nil {
+		if m.Case(name) != nil {
 			UseExitln("conflicting case with a same name")
 		}
 	*/
 	kase := new(udpsCase)
-	kase.init(name, r)
+	kase.init(name, m)
 	kase.setShell(kase)
-	r.cases = append(r.cases, kase)
+	m.cases = append(m.cases, kase)
 	return kase
 }
 
-func (r *UDPSRouter) serve() { // goroutine
-	for id := int32(0); id < r.numGates; id++ {
+func (m *UDPSMesher) serve() { // goroutine
+	for id := int32(0); id < m.numGates; id++ {
 		gate := new(udpsGate)
-		gate.init(r, id)
+		gate.init(m, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
-		if r.tlsMode {
+		m.gates = append(m.gates, gate)
+		if m.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
@@ -74,17 +74,17 @@ type udpsGate struct {
 	// Mixins
 	// Assocs
 	stage  *Stage // current stage
-	router *UDPSRouter
+	mesher *UDPSMesher
 	// States
 	id      int32
 	address string
 }
 
-func (g *udpsGate) init(router *UDPSRouter, id int32) {
-	g.stage = router.stage
-	g.router = router
+func (g *udpsGate) init(mesher *UDPSMesher, id int32) {
+	g.stage = mesher.stage
+	g.mesher = mesher
 	g.id = id
-	g.address = router.address
+	g.address = mesher.address
 }
 
 func (g *udpsGate) open() error {
@@ -106,14 +106,14 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 // poolUDPSConn
 var poolUDPSConn sync.Pool
 
-func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+func getUDPSConn(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
 	var conn *UDPSConn
 	if x := poolUDPSConn.Get(); x == nil {
 		conn = new(UDPSConn)
 	} else {
 		conn = x.(*UDPSConn)
 	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
+	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
 	return conn
 }
 func putUDPSConn(conn *UDPSConn) {
@@ -128,31 +128,31 @@ type UDPSConn struct {
 	// Conn states (non-zeros)
 	id      int64
 	stage   *Stage // current stage
-	router  *UDPSRouter
+	mesher  *UDPSMesher
 	gate    *udpsGate
 	netConn *net.UDPConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
-func (c *UDPSConn) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
+func (c *UDPSConn) onGet(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
 	c.id = id
 	c.stage = stage
-	c.router = router
+	c.mesher = mesher
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *UDPSConn) onPut() {
 	c.stage = nil
-	c.router = nil
+	c.mesher = nil
 	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
 }
 
 func (c *UDPSConn) serve() { // goroutine
-	for _, kase := range c.router.cases {
+	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue
 		}
@@ -210,7 +210,7 @@ type UDPSFilter_ struct {
 // udpsCase
 type udpsCase struct {
 	// Mixins
-	case_[*UDPSRouter, UDPSRunner, UDPSFilter]
+	case_[*UDPSMesher, UDPSRunner, UDPSFilter]
 	// States
 	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
 }

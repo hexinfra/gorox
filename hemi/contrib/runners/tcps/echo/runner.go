@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSRunner("echoRunner", func(name string, stage *Stage, router *TCPSRouter) TCPSRunner {
+	RegisterTCPSRunner("echoRunner", func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner {
 		r := new(echoRunner)
-		r.init(name, stage, router)
+		r.init(name, stage, mesher)
 		return r
 	})
 }
@@ -25,14 +25,14 @@ type echoRunner struct {
 	TCPSRunner_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (r *echoRunner) init(name string, stage *Stage, router *TCPSRouter) {
+func (r *echoRunner) init(name string, stage *Stage, mesher *TCPSMesher) {
 	r.SetName(name)
 	r.stage = stage
-	r.router = router
+	r.mesher = mesher
 }
 
 func (r *echoRunner) OnConfigure() {

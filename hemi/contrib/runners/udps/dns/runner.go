@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterUDPSRunner("dnsRunner", func(name string, stage *Stage, router *UDPSRouter) UDPSRunner {
+	RegisterUDPSRunner("dnsRunner", func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner {
 		r := new(dnsRunner)
-		r.init(name, stage, router)
+		r.init(name, stage, mesher)
 		return r
 	})
 }
@@ -25,14 +25,14 @@ type dnsRunner struct {
 	UDPSRunner_
 	// Assocs
 	stage  *Stage
-	router *UDPSRouter
+	mesher *UDPSMesher
 	// States
 }
 
-func (r *dnsRunner) init(name string, stage *Stage, router *UDPSRouter) {
+func (r *dnsRunner) init(name string, stage *Stage, mesher *UDPSMesher) {
 	r.SetName(name)
 	r.stage = stage
-	r.router = router
+	r.mesher = mesher
 }
 
 func (r *dnsRunner) OnConfigure() {

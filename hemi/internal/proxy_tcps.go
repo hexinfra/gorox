@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterTCPSRunner("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSRunner {
+	RegisterTCPSRunner("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner {
 		r := new(tcpsProxy)
-		r.init(name, stage, router)
+		r.init(name, stage, mesher)
 		return r
 	})
 }
@@ -21,14 +21,14 @@ type tcpsProxy struct {
 	TCPSRunner_
 	proxy_
 	// Assocs
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (r *tcpsProxy) init(name string, stage *Stage, router *TCPSRouter) {
+func (r *tcpsProxy) init(name string, stage *Stage, mesher *TCPSMesher) {
 	r.SetName(name)
 	r.proxy_.init(stage)
-	r.router = router
+	r.mesher = mesher
 }
 
 func (r *tcpsProxy) OnConfigure() {

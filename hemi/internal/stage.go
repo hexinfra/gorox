@@ -67,7 +67,7 @@ type Stage struct {
 	grtFile    string
 	blkFile    string
 	together   bool
-	id         int32
+	workerId   int32
 	numCPU     int32
 	logger     *logger.Logger
 }
@@ -377,16 +377,16 @@ func (s *Stage) OnShutdown() {
 
 func (s *Stage) StartTogether() { // one worker process mode
 	s.together = true
-	s.id = 0
+	s.workerId = 0
 	s.numCPU = int32(runtime.NumCPU())
 	if Debug(1) {
 		fmt.Printf("mode=together numcpu=%d\n", s.numCPU)
 	}
 	s.start()
 }
-func (s *Stage) StartIsolated(id int32) { // many worker processes mode
+func (s *Stage) StartIsolated(workerId int32) { // many worker processes mode
 	s.together = false
-	s.id = id
+	s.workerId = workerId
 	s.numCPU = 1
 	runtime.GOMAXPROCS(1)
 	if Debug(1) {
@@ -633,8 +633,8 @@ func (s *Stage) prepare() (err error) {
 	return nil
 }
 
-func (s *Stage) ID() int32     { return s.id }
-func (s *Stage) NumCPU() int32 { return s.numCPU }
+func (s *Stage) WorkerID() int32 { return s.workerId }
+func (s *Stage) NumCPU() int32   { return s.numCPU }
 
 func (s *Stage) Log(str string) {
 	//s.logger.log(str)

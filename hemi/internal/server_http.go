@@ -260,7 +260,7 @@ func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }
 
 func (c *httpConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, seconds, c.counter.Add(1))
+	return makeTempName(p, int64(c.server.Stage().WorkerID()), c.id, seconds, c.counter.Add(1))
 }
 
 // httpStream_ is the mixin for http[1-3]Stream.

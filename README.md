@@ -39,12 +39,6 @@ Platforms
   Other platforms are not tested and probably don't work.
 
 
-Quickstart
-==========
-
-  See INSTALL.md file.
-
-
 Performance
 ===========
 
@@ -55,6 +49,12 @@ Performance
 
   Change the parameters and/or target URL to match your need.
   Generally, the result is about 80% of nginx and slightly better than fasthttp.
+
+
+Quickstart
+==========
+
+  See INSTALL.md file.
 
 
 Documentation

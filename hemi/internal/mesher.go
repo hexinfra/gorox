@@ -58,7 +58,7 @@ func (m *mesher_[M, G, R, F, C]) init(name string, stage *Stage, runnerCreators 
 func (m *mesher_[M, G, R, F, C]) onConfigure() {
 	m.office_.onConfigure()
 	// logFile
-	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/quic_"+m.name+".log")
+	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/mesh_"+m.name+".log")
 }
 func (m *mesher_[M, G, R, F, C]) configureSubs() {
 	m.runners.walk(R.OnConfigure)
@@ -72,6 +72,7 @@ func (m *mesher_[M, G, R, F, C]) onPrepare() {
 	if err := os.MkdirAll(filepath.Dir(m.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
 	}
+	//s.logger = newLogger()
 }
 func (m *mesher_[M, G, R, F, C]) prepareSubs() {
 	m.runners.walk(R.OnPrepare)

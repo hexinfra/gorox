@@ -12,6 +12,7 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/libraries/msgx"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -19,29 +20,29 @@ import (
 	"time"
 )
 
-var logger *os.File // used by leader only
+var logger *log.Logger // used by leader only
 
 // leaderMain is main() for leader process.
 func leaderMain() {
 	// Prepare logger
-	file := *logFile
-	if file == "" {
-		file = *logsDir + "/" + program + "-leader.log"
-	} else if !filepath.IsAbs(file) {
-		file = *baseDir + "/" + file
+	logFile := *logFile
+	if logFile == "" {
+		logFile = *logsDir + "/" + program + "-leader.log"
+	} else if !filepath.IsAbs(logFile) {
+		logFile = *baseDir + "/" + logFile
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(logFile), 0755); err != nil {
 		crash(err.Error())
 	}
-	osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+	osFile, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
 	if err != nil {
 		crash(err.Error())
 	}
-	logger = osFile
+	logger = log.New(osFile, "", log.Ldate|log.Ltime)
 
 	// Load config
 	base, file := getConfig()
-	logger.WriteString("parse config\n")
+	logger.Println("parse config")
 	if _, err := hemi.ApplyFile(base, file); err != nil {
 		crash("leader: " + err.Error())
 	}
@@ -52,7 +53,7 @@ func leaderMain() {
 	<-msgChan // waiting for keepWorkers() to ensure all workers have started.
 
 	// Start admin interface
-	logger.WriteString("listen at: " + adminAddr + "\n")
+	logger.Printf("listen at: %s\n", adminAddr)
 	admDoor, err := net.Listen("tcp", adminAddr) // admDoor is for receiving msgConns from control agent
 	if err != nil {
 		crash(err.Error())
@@ -77,7 +78,7 @@ func leaderMain() {
 		if req.IsTell() {
 			// Some messages are telling leader only, hijack them.
 			if req.Comd == comdStop {
-				logger.WriteString("received stop\n")
+				logger.Println("received stop")
 				stop() // worker(s) will stop immediately after the pipe is closed
 			} else if req.Comd == comdReadmin {
 				newAddr := req.Get("newAddr") // succeeding adminAddr
@@ -87,10 +88,10 @@ func leaderMain() {
 				if newDoor, err := net.Listen("tcp", newAddr); err == nil {
 					admDoor.Close()
 					admDoor = newDoor
-					fmt.Fprintf(logger, "readmin to %s\n", newAddr)
+					logger.Printf("readmin to %s\n", newAddr)
 					goto closeNext
 				} else {
-					fmt.Fprintf(logger, "readmin failed: %s\n", err.Error())
+					logger.Printf("readmin failed: %s\n", err.Error())
 				}
 			} else { // the rest messages are sent to keepWorkers().
 				msgChan <- req
@@ -212,7 +213,7 @@ func keepWorkers(base string, file string, msgChan chan *msgx.Message) { // goro
 				worker.broken = true
 				nwAlive--
 				if nwAlive == 0 {
-					logger.WriteString("all workers are broken!\n")
+					logger.Println("all workers are broken!")
 					stop()
 				}
 			}
@@ -241,7 +242,7 @@ func newWorkers(workMode uint16, nWorkers int, base string, file string, dieChan
 	for id := 0; id < nWorkers; id++ {
 		worker := newWorker(id, workMode, pipeKey)
 		worker.start(base, file, dieChan)
-		fmt.Fprintf(logger, "worker id=%d started\n", id)
+		logger.Printf("worker id=%d started\n", id)
 		workers[id] = worker
 	}
 	return workers

@@ -6,8 +6,8 @@
 // Manager implements leader-worker process model and its control agent.
 
 // Some terms:
-//   admDoor - Used by leader process, for receiving msgConns from control agent.
 //   admConn - control agent ----> leader admin
+//   admDoor - Used by leader process, for receiving admConns from control agent.
 //   msgChan - leaderMain() <---> keepWorker()
 //   dieChan - keepWorker() <---> worker
 //   cmdPipe - leader process <---> worker process

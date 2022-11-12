@@ -55,7 +55,7 @@ func leaderMain() {
 
 	// Start admin interface
 	logger.Printf("listen at: %s\n", adminAddr)
-	admDoor, err := net.Listen("tcp", adminAddr) // admDoor is for receiving msgConns from control agent
+	admDoor, err := net.Listen("tcp", adminAddr) // admDoor is for receiving admConns from control agent
 	if err != nil {
 		crash(err.Error())
 	}
@@ -130,18 +130,17 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 
 	worker := newWorker(pipeKey)
 	worker.start(base, file, dieChan)
-	// Reply to leaderMain that we have created the worker.
-	msgChan <- nil
+	msgChan <- nil // reply to leaderMain that we have created the worker.
 
 	for { // each event from worker and leaderMain
 		select {
 		case exitCode := <-dieChan: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				fmt.Println("worker critical error")
+				logger.Println("worker critical error")
 				stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
-				worker.cmdPipe.Close()
+				worker.free()
 				worker.lastDie = now
 				worker.start(base, file, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
@@ -152,7 +151,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 			if req.IsTell() {
 				switch req.Comd {
 				case comdQuit:
-					msgx.Tell(worker.cmdPipe, req)
+					worker.tell(req)
 					exitCode := <-dieChan
 					os.Exit(exitCode)
 				case comdRework: // restart worker
@@ -162,23 +161,17 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					worker2.start(base, file, dieChan2)
 					// Shutdown old worker
 					req.Comd = comdQuit
-					msgx.Tell(worker.cmdPipe, req)
-					worker.cmdPipe.Close()
+					worker.tell(req)
+					worker.free()
 					<-dieChan
 					close(dieChan)
 					// Use new worker
 					dieChan, worker = dieChan2, worker2
 				default: // tell worker
-					msgx.Tell(worker.cmdPipe, req)
+					worker.tell(req)
 				}
 			} else { // call
-				resp, ok := msgx.Call(worker.cmdPipe, req)
-				if !ok {
-					resp = msgx.NewMessage(req.Comd, 0, nil)
-					resp.Flag = 0xffff
-					resp.Set("worker", "failed")
-				}
-				msgChan <- resp
+				msgChan <- worker.call(req)
 			}
 		}
 	}
@@ -247,4 +240,21 @@ func (w *worker) wait(dieChan chan int) {
 		crash(err.Error())
 	}
 	dieChan <- stat.ExitCode()
+}
+
+func (w *worker) tell(req *msgx.Message) {
+	msgx.Tell(w.cmdPipe, req)
+}
+func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
+	resp, ok := msgx.Call(w.cmdPipe, req)
+	if !ok {
+		resp = msgx.NewMessage(req.Comd, 0, nil)
+		resp.Flag = 0xffff
+		resp.Set("worker", "failed")
+	}
+	return resp
+}
+
+func (w *worker) free() {
+	w.cmdPipe.Close()
 }

@@ -119,6 +119,55 @@ func (b *TCPSBackend) init(name string, stage *Stage) {
 
 func (b *TCPSBackend) OnConfigure() {
 	b.backend_.onConfigure()
+	// nodes
+	v, ok := b.Find("nodes")
+	if !ok {
+		UseExitln("nodes is required for backends")
+	}
+	vNodes, ok := v.List()
+	if !ok {
+		UseExitln("bad nodes")
+	}
+	for id, elem := range vNodes {
+		vNode, ok := elem.Dict()
+		if !ok {
+			UseExitln("node in nodes must be a dict")
+		}
+		node := new(tcpsNode)
+		node.init(int32(id), b)
+		// address
+		vAddress, ok := vNode["address"]
+		if !ok {
+			UseExitln("address is required in node")
+		}
+		if address, ok := vAddress.String(); ok && address != "" {
+			node.address = address
+		}
+		// weight
+		vWeight, ok := vNode["weight"]
+		if ok {
+			if weight, ok := vWeight.Int32(); ok && weight > 0 {
+				node.weight = weight
+			} else {
+				UseExitln("bad weight in node")
+			}
+		} else {
+			node.weight = 1
+		}
+		// keepConns
+		vKeepConns, ok := vNode["keepConns"]
+		if ok {
+			if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
+				node.keepConns = keepConns
+			} else {
+				UseExitln("bad keepConns in node")
+			}
+		} else {
+			node.keepConns = 10
+		}
+		b.IncSub(1)
+		b.nodes = append(b.nodes, node)
+	}
 	// maxStreamsPerConn
 	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }

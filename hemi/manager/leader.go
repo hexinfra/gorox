@@ -234,7 +234,7 @@ func (w *worker) start(base string, file string, dieChan chan int) {
 	w.cmdPipe = cmdPipe
 	go w.wait(dieChan)
 }
-func (w *worker) wait(dieChan chan int) {
+func (w *worker) wait(dieChan chan int) { // goroutine
 	stat, err := w.process.Wait()
 	if err != nil {
 		crash(err.Error())

@@ -43,7 +43,7 @@ func (h *helloHandler) init(name string, stage *Stage, app *App) {
 
 	r := NewSimpleRouter() // you can write your own router as long as it implements Router interface
 
-	r.GET("/", h.handleIndex)
+	r.GET("/", h.index)
 	r.POST("/foo", h.handleFoo)
 
 	h.UseRouter(h, r) // equip handler with router so it can call handles automatically through Dispatch()
@@ -53,12 +53,8 @@ func (h *helloHandler) OnConfigure() {
 	// example
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
-func (h *helloHandler) OnPrepare() {
-	// Prepare this handler if needed
-}
-func (h *helloHandler) OnShutdown() {
-	// Do something if needed when this handler is shutdown
-}
+func (h *helloHandler) OnPrepare()  {}
+func (h *helloHandler) OnShutdown() {}
 
 func (h *helloHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
@@ -68,7 +64,7 @@ func (h *helloHandler) notFound(req Request, resp Response) {
 	resp.Send("oops, not found!")
 }
 
-func (h *helloHandler) handleIndex(req Request, resp Response) {
+func (h *helloHandler) index(req Request, resp Response) {
 	resp.Send(h.example)
 }
 func (h *helloHandler) handleFoo(req Request, resp Response) {

@@ -11,8 +11,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -51,14 +51,14 @@ type httpServer_ struct {
 	exactSvcs           []*hostnameTo[*Svc] // like: ("example.com")
 	suffixSvcs          []*hostnameTo[*Svc] // like: ("*.example.com")
 	prefixSvcs          []*hostnameTo[*Svc] // like: ("www.example.*")
-	logFile             string              // ...
+	logFile             string              // httpServer's log file
+	logger              *log.Logger         // ...
 	maxStreamsPerConn   int32               // ...
 	recvRequestTimeout  time.Duration       // timeout for receiving head or part of content
 	sendResponseTimeout time.Duration       // timeout for sending head or part of content
 	hrpcMode            bool                // works as hrpc server and dispatches to svcs instead of apps?
 	enableTCPTun        bool                // allow CONNECT method?
 	enableUDPTun        bool                // allow upgrade: connect-udp?
-	logger              *logger.Logger
 }
 
 func (s *httpServer_) init(name string, stage *Stage) {
@@ -88,7 +88,11 @@ func (s *httpServer_) onPrepare() {
 	if err := os.MkdirAll(filepath.Dir(s.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
 	}
-	//s.logger = newLogger(s.logFile, "") // dividing not needed
+	logFile, err := os.OpenFile(s.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+	if err != nil {
+		EnvExitln(err.Error())
+	}
+	s.logger = log.New(logFile, "httpServer", log.Ldate|log.Ltime)
 }
 func (s *httpServer_) onShutdown() {
 	s.Server_.OnShutdown()
@@ -1277,7 +1281,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool {
 			state = 5
 		case 5: // expecting SP
 			if b != ' ' {
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie space"
+				r.headResult, r.headReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
 			cookie.hash = 0

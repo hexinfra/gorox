@@ -9,7 +9,7 @@ package internal
 
 import (
 	"bytes"
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -42,8 +42,8 @@ type mesher_[M Component, G _gate, R _runner, F _filter, C _case] struct {
 	filterCreators map[string]func(name string, stage *Stage, mesher M) F
 	filtersByID    [256]F // for fast searching. position 0 is not used
 	nFilters       uint8  // used number of filtersByID in this mesher
-	logFile        string
-	logger         *logger.Logger
+	logFile        string // mesher's log file
+	logger         *log.Logger
 }
 
 func (m *mesher_[M, G, R, F, C]) init(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, filterCreators map[string]func(string, *Stage, M) F) {
@@ -72,7 +72,11 @@ func (m *mesher_[M, G, R, F, C]) onPrepare() {
 	if err := os.MkdirAll(filepath.Dir(m.logFile), 0755); err != nil {
 		EnvExitln(err.Error())
 	}
-	//s.logger = newLogger()
+	logFile, err := os.OpenFile(m.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+	if err != nil {
+		EnvExitln(err.Error())
+	}
+	m.logger = log.New(logFile, "mesher", log.Ldate|log.Ltime)
 }
 func (m *mesher_[M, G, R, F, C]) prepareSubs() {
 	m.runners.walk(R.OnPrepare)

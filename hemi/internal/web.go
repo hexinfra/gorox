@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
 	"net"
 	"os"
 	"reflect"
@@ -38,7 +37,6 @@ type App struct {
 	file404              string            // 404 file path
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
-	errorLog             []string          // (file, rotate)
 	accessLog            []string          // (file, rotate)
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
@@ -49,8 +47,7 @@ type App struct {
 	exactHostnames       [][]byte          // like: ("example.com")
 	suffixHostnames      [][]byte          // like: ("*.example.com")
 	prefixHostnames      [][]byte          // like: ("www.example.*")
-	accessLogger         *logger.Logger    // app access logger
-	errorLogger          *logger.Logger    // app error logger
+	accessLogger         *logger           // app access logger
 	bytes404             []byte            // bytes of the default 404 file
 	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
 	nRevisers            uint8             // used number of revisersByID in this app
@@ -116,16 +113,6 @@ func (a *App) OnConfigure() {
 	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) bool { return value != "" }, "")
 	// tlsPrivateKey
 	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) bool { return value != "" }, "")
-	// errorLog
-	if v, ok := a.Find("errorLog"); ok {
-		if log, ok := v.StringListN(2); ok {
-			a.errorLog = log
-		} else {
-			UseExitln("invalid errorLog")
-		}
-	} else {
-		a.errorLog = nil
-	}
 	// accessLog
 	if v, ok := a.Find("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
@@ -178,9 +165,6 @@ func (a *App) OnConfigure() {
 	a.rules.walk((*Rule).OnConfigure)
 }
 func (a *App) OnPrepare() {
-	if a.errorLog != nil {
-		//a.errorLogger = newLogger(a.errorLog[0], a.errorLog[1])
-	}
 	if a.accessLog != nil {
 		//a.accessLogger = newLogger(a.accessLog[0], a.accessLog[1])
 	}

@@ -557,7 +557,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 	}
 
 	if r.input[r.pFore] != ' ' {
-		r.headResult, r.headReason = StatusBadRequest, "invalid space"
+		r.headResult, r.headReason = StatusBadRequest, "invalid SP"
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
 		return false

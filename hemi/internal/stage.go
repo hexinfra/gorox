@@ -9,7 +9,7 @@ package internal
 
 import (
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/logger"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -60,7 +60,8 @@ type Stage struct {
 	// States
 	appServers map[string][]string
 	svcServers map[string][]string
-	logFile    string
+	logFile    string // stage's log file
+	logger     *log.Logger
 	cpuFile    string
 	hepFile    string
 	thrFile    string
@@ -69,7 +70,6 @@ type Stage struct {
 	together   bool
 	workerId   int32
 	numCPU     int32
-	logger     *logger.Logger
 }
 
 func (s *Stage) init() {
@@ -336,7 +336,11 @@ func (s *Stage) OnPrepare() {
 			EnvExitln(err.Error())
 		}
 	}
-	//s.logger = newLogger(s.logFile, "") // dividing not needed
+	logFile, err := os.OpenFile(s.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+	if err != nil {
+		EnvExitln(err.Error())
+	}
+	s.logger = log.New(logFile, "stage", log.Ldate|log.Ltime)
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)

@@ -67,7 +67,6 @@ type Stage struct {
 	thrFile    string
 	grtFile    string
 	blkFile    string
-	together   bool
 	workerId   int32
 	numCPU     int32
 }
@@ -379,27 +378,10 @@ func (s *Stage) OnShutdown() {
 	}
 }
 
-func (s *Stage) StartTogether() { // one worker process mode
-	s.together = true
+func (s *Stage) Start() { // one worker process mode
 	s.workerId = 0
 	s.numCPU = int32(runtime.NumCPU())
-	if Debug(1) {
-		fmt.Printf("mode=together numcpu=%d\n", s.numCPU)
-	}
-	s.start()
-}
-func (s *Stage) StartIsolated(workerId int32) { // many worker processes mode
-	s.together = false
-	s.workerId = workerId
-	s.numCPU = 1
-	runtime.GOMAXPROCS(1)
-	if Debug(1) {
-		fmt.Println("mode=isolated numcpu=1")
-	}
-	s.start()
-}
 
-func (s *Stage) start() {
 	if Debug(2) {
 		fmt.Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
 		fmt.Printf("size of h1Conn = %d\n", unsafe.Sizeof(H1Conn{}))

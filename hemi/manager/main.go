@@ -8,9 +8,9 @@
 // Some terms:
 //   admDoor - Used by leader process, for receiving msgConns from control agent.
 //   admConn - control agent ----> leader admin
-//   msgChan - leaderMain() <---> keepWorkers()
-//   dieChan - keepWorkers() <---> worker
-//   msgPipe - leader process <---> worker process
+//   msgChan - leaderMain() <---> keepWorker()
+//   dieChan - keepWorker() <---> worker
+//   cmdPipe - leader process <---> worker process
 
 package manager
 
@@ -21,14 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-)
-
-const ( // proc flags
-	ProcFlagGeneral = 0 // together mode and isolated mode are both allowed
-	ProcFlagLimited = 1 // only together mode is allowed
-	ProcFlagDevelop = 2 // force debugLevel = 2, mode = together
 )
 
 var (
@@ -49,12 +42,10 @@ var ( // flags
 	config     = flag.String("config", "", "")
 	logFile    = flag.String("log", "", "")
 	userName   = flag.String("user", "nobody", "")
-	multiple   = flag.Int("multi", 0, "")
-	pinCPU     = flag.Bool("pin", false, "")
 	daemonMode = flag.Bool("daemon", false, "")
 )
 
-func Main(name string, usage string, procFlag int, addr string) {
+func Main(name string, usage string, devel bool, addr string) {
 	if !system.Check() {
 		crash("current platform (os+arch) is not supported.")
 	}
@@ -73,15 +64,8 @@ func Main(name string, usage string, procFlag int, addr string) {
 		flag.Parse()
 	}
 
-	if procFlag == ProcFlagGeneral {
-		if ncpu := runtime.NumCPU(); *multiple > ncpu {
-			*multiple = ncpu
-		}
-	} else { // ProcFlagLimited or ProcFlagDevelop
-		*multiple = 0 // only one worker is allowed
-		if procFlag == ProcFlagDevelop {
-			*debugLevel = 2
-		}
+	if devel {
+		*debugLevel = 2
 	}
 
 	if action == "help" {

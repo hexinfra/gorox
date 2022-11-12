@@ -3,14 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Worker process(es) of manager.
-
-// Currently we support two worker process modes: together mode and isolated mode.
-// Together mode has one worker process, with all threads and CPUs running on it.
-// Isolated mode has many worker processes, each of which has many threads and one CPU.
-// Users can choose one of the two modes.
-// The purpose of isolated mode is to support SO_ATTACH_REUSEPORT_CBPF in the future,
-// because Go's runtime doesn't allow us to control threads individually. This also affects cpu pinning.
+// Worker process of manager.
 
 package manager
 
@@ -20,13 +13,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/msgx"
 	"net"
 	"os"
-	"strconv"
 	"strings"
-)
-
-const (
-	workTogether uint16 = 0 // only one worker process
-	workIsolated uint16 = 1 // multiple worker processes
 )
 
 var (
@@ -36,27 +23,22 @@ var (
 	currentStage *hemi.Stage // current stage
 )
 
-// workerMain is main() for worker process(es).
+// workerMain is main() for worker process.
 func workerMain(token string) {
-	parts := strings.Split(token, "|") // ip:port|pipeKey|workerID
-	if len(parts) != 3 {
+	parts := strings.Split(token, "|") // ip:port|pipeKey
+	if len(parts) != 2 {
 		crash("bad token")
 	}
-	workerID, err := strconv.Atoi(parts[2])
-	if err != nil {
-		crash(err.Error())
-	}
 
-	// Contact leader process and register this worker
-	msgPipe, err := net.Dial("tcp", parts[0]) // ip:port
+	// Contact leader process and register worker
+	cmdPipe, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
 		crash("dial leader failed: " + err.Error())
 	}
 	loginReq := msgx.NewMessage(0, 0, map[string]string{
-		"pipeKey":  parts[1],
-		"workerID": parts[2],
+		"pipeKey": parts[1],
 	})
-	loginResp, ok := msgx.Call(msgPipe, loginReq)
+	loginResp, ok := msgx.Call(cmdPipe, loginReq)
 	if !ok {
 		crash("call leader failed")
 	}
@@ -70,17 +52,12 @@ func workerMain(token string) {
 	}
 
 	for { // each message from leader process
-		req, ok := msgx.RecvMessage(msgPipe)
-		if !ok {
-			// Leader process must be gone.
+		req, ok := msgx.RecvMessage(cmdPipe)
+		if !ok { // leader must be gone
 			break
 		}
 		if req.Comd == comdServe {
-			if req.Flag == workTogether {
-				currentStage.StartTogether()
-			} else {
-				currentStage.StartIsolated(int32(workerID))
-			}
+			currentStage.Start()
 		} else if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
@@ -88,7 +65,7 @@ func workerMain(token string) {
 			} else {
 				resp.Flag = 404
 			}
-			if !msgx.SendMessage(msgPipe, resp) {
+			if !msgx.SendMessage(cmdPipe, resp) { // leader must be gone
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {

@@ -60,7 +60,7 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	stage.StartTogether()
+	stage.Start()
 
 	select {}
 }

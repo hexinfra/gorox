@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Gorox Cluster Management Center/Console (leader & worker(s)) and its control agent.
+// Gorox Cluster Management Center/Console (leader & worker) and its control agent.
 
 package main
 
@@ -31,15 +31,15 @@ ACTION
   quit         # tell server to exit gracefully
   stop         # tell server to exit immediately
   readmin      # tell leader to re-listen its admin interface
-  rework       # tell leader to restart worker(s) gracefully
-  cpu          # tell a worker to perform cpu profiling
-  heap         # tell a worker to perform heap profiling
-  thread       # tell a worker to perform thread profiling
-  goroutine    # tell a worker to perform goroutine profiling
-  block        # tell a worker to perform block profiling
+  rework       # tell leader to restart worker gracefully
+  cpu          # tell worker to perform cpu profiling
+  heap         # tell worker to perform heap profiling
+  thread       # tell worker to perform thread profiling
+  goroutine    # tell worker to perform goroutine profiling
+  block        # tell worker to perform block profiling
   ping         # call ping of leader
-  info         # call info of leader and worker(s)
-  reconf       # call worker(s) to reconfigure
+  info         # call info of leader and worker
+  reconf       # call worker to reconfigure
   serve        # start as server
 
   Only one action is allowed at a time.
@@ -59,7 +59,7 @@ OPTIONS
   -vars   <path>      # vars directory to use
   -config <config>    # path or url to worker config file
   -log    <path>      # leader log file (default: gocmc-leader.log in logs dir)
-  -user   <user>      # user for worker(s) (default: nobody)
+  -user   <user>      # user for worker (default: nobody)
   -daemon             # run server as daemon (default: false)
 
   "-debug" applies for all actions.
@@ -70,5 +70,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gocmc", usage, manager.ProcFlagLimited, "127.0.0.1:9528")
+	manager.Main("gocmc", usage, false, "127.0.0.1:9528")
 }

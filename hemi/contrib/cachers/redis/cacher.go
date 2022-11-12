@@ -48,9 +48,9 @@ func (c *redisCacher) Maintain() { // goroutine
 	}
 }
 
-func (c *redisCacher) Set(key []byte, value *Centry) {
+func (c *redisCacher) Set(key []byte, value *Hobject) {
 }
-func (c *redisCacher) Get(key []byte) (value *Centry) {
+func (c *redisCacher) Get(key []byte) (value *Hobject) {
 	return
 }
 func (c *redisCacher) Del(key []byte) bool {

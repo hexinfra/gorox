@@ -55,9 +55,9 @@ func (c *localCacher) Maintain() { // goroutine
 	}
 }
 
-func (c *localCacher) Set(key []byte, value *Centry) {
+func (c *localCacher) Set(key []byte, value *Hobject) {
 }
-func (c *localCacher) Get(key []byte) (value *Centry) {
+func (c *localCacher) Get(key []byte) (value *Hobject) {
 	return
 }
 func (c *localCacher) Del(key []byte) bool {

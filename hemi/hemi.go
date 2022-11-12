@@ -123,8 +123,8 @@ type ( // core types
 	Stater  = internal.Stater
 	Session = internal.Session
 
-	Cacher = internal.Cacher
-	Centry = internal.Centry
+	Cacher  = internal.Cacher
+	Hobject = internal.Hobject
 
 	Block = internal.Block
 

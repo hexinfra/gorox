@@ -341,7 +341,7 @@ type Stater_ struct {
 	Component_
 }
 
-// Session is an HTTP session
+// Session is an HTTP session in stater
 type Session struct {
 	// TODO
 	sid  []byte
@@ -353,8 +353,8 @@ type Session struct {
 type Cacher interface {
 	Component
 	Maintain() // goroutine
-	Set(key []byte, value *Centry)
-	Get(key []byte) (value *Centry)
+	Set(key []byte, value *Hobject)
+	Get(key []byte) (value *Hobject)
 	Del(key []byte) bool
 }
 
@@ -364,8 +364,8 @@ type Cacher_ struct {
 	Component_
 }
 
-// Centry is an HTTP cache entry
-type Centry struct {
+// Hobject is an HTTP object in cacher
+type Hobject struct {
 	// TODO
 	uri      []byte
 	headers  any

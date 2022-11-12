@@ -41,7 +41,7 @@ func (h *helloHandler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewDefaultRouter() // you can write your own router as long as it implements Router interface
+	r := NewSimpleRouter() // you can write your own router as long as it implements Router interface
 
 	r.GET("/", h.handleIndex)
 	r.POST("/foo", h.handleFoo)

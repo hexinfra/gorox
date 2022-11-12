@@ -38,7 +38,7 @@ func (h *v1Handler) init(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewDefaultRouter()
+	r := NewSimpleRouter()
 	h.UseRouter(h, r)
 }
 

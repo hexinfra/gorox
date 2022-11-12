@@ -54,7 +54,7 @@ var ( // core funcs
 	ApplyFile = internal.ApplyFile
 	ApplyText = internal.ApplyText
 
-	NewDefaultRouter = internal.NewDefaultRouter
+	NewSimpleRouter = internal.NewSimpleRouter
 )
 
 type ( // core types

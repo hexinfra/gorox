@@ -17,17 +17,17 @@ type Router interface {
 	CreateName(req Request) string
 }
 
-// defaultRouter implements Router.
-type defaultRouter struct {
+// simpleRouter implements Router.
+type simpleRouter struct {
 	gets    map[string]Handle
 	posts   map[string]Handle
 	puts    map[string]Handle
 	deletes map[string]Handle
 }
 
-// NewDefaultRouter creates a default router.
-func NewDefaultRouter() *defaultRouter {
-	r := new(defaultRouter)
+// NewSimpleRouter creates a simpleRouter.
+func NewSimpleRouter() *simpleRouter {
+	r := new(simpleRouter)
 	r.gets = make(map[string]Handle)
 	r.posts = make(map[string]Handle)
 	r.puts = make(map[string]Handle)
@@ -35,20 +35,20 @@ func NewDefaultRouter() *defaultRouter {
 	return r
 }
 
-func (r *defaultRouter) GET(path string, handle Handle) {
+func (r *simpleRouter) GET(path string, handle Handle) {
 	r.gets[path] = handle
 }
-func (r *defaultRouter) POST(path string, handle Handle) {
+func (r *simpleRouter) POST(path string, handle Handle) {
 	r.posts[path] = handle
 }
-func (r *defaultRouter) PUT(path string, handle Handle) {
+func (r *simpleRouter) PUT(path string, handle Handle) {
 	r.puts[path] = handle
 }
-func (r *defaultRouter) DELETE(path string, handle Handle) {
+func (r *simpleRouter) DELETE(path string, handle Handle) {
 	r.deletes[path] = handle
 }
 
-func (r *defaultRouter) FindHandle(req Request) Handle {
+func (r *simpleRouter) FindHandle(req Request) Handle {
 	// TODO
 	if path := req.Path(); req.IsGET() {
 		return r.gets[path]
@@ -62,7 +62,7 @@ func (r *defaultRouter) FindHandle(req Request) Handle {
 		return nil
 	}
 }
-func (r *defaultRouter) CreateName(req Request) string {
+func (r *simpleRouter) CreateName(req Request) string {
 	method := req.UnsafeMethod()
 	path := req.UnsafePath() // always starts with '/'
 	name := req.UnsafeMake(len(method) + len(path))

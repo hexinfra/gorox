@@ -12,9 +12,9 @@ import (
 )
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/godev/apps/test"
+	_ "github.com/hexinfra/gorox/cmds/godev/apps"
 	_ "github.com/hexinfra/gorox/cmds/godev/exts"
-	_ "github.com/hexinfra/gorox/cmds/godev/svcs/test"
+	_ "github.com/hexinfra/gorox/cmds/godev/svcs"
 	"github.com/hexinfra/gorox/cmds/godev/test"
 )
 
@@ -56,6 +56,7 @@ OPTIONS
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9526)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9526)
   -single             # run server in single mode. only a process is started
+  -daemon             # run server as daemon (default: false)
   -try                # try to run server with config
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
@@ -64,7 +65,6 @@ OPTIONS
   -config <config>    # path or url to worker config file
   -log    <path>      # leader log file (default: godev-leader.log in logs dir)
   -user   <user>      # user for worker (default: nobody)
-  -daemon             # run server as daemon (default: false)
 
   "-target" applies for telling and calling actions only.
   "-admin" applies for "readmin" and "serve".

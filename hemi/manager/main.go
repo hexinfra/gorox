@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	program  string
+	progName string
 	procArgs = append([]string{system.ExePath}, os.Args[1:]...)
 )
 
@@ -49,7 +49,7 @@ func Main(name string, usage string, devel bool, addr string) {
 	if !system.Check() {
 		crash("current platform (os+arch) is not supported.")
 	}
-	program = name
+	progName = name
 
 	flag.Usage = func() {
 		fmt.Printf(usage, hemi.Version)
@@ -153,7 +153,7 @@ func getConfig() (base string, file string) {
 	} else {
 		if config == "" {
 			base = baseDir
-			file = "conf/" + program + ".conf"
+			file = "conf/" + progName + ".conf"
 		} else if filepath.IsAbs(config) { // /path/to/file.conf
 			base = filepath.Dir(config)
 			file = config

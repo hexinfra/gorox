@@ -28,7 +28,7 @@ func leaderMain() {
 	// Prepare leader's logger
 	logFile := *logFile
 	if logFile == "" {
-		logFile = *logsDir + "/" + program + "-leader.log"
+		logFile = *logsDir + "/" + progName + "-leader.log"
 	} else if !filepath.IsAbs(logFile) {
 		logFile = *baseDir + "/" + logFile
 	}

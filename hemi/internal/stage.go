@@ -686,8 +686,7 @@ func (s *Stage) Shutdown() {
 	if s.shut.CompareAndSwap(false, true) {
 		s.OnShutdown()
 		if Debug(2) {
-			fmt.Println("stage: os.Exit(0)")
+			fmt.Println("stage: shutdown.")
 		}
-		os.Exit(0)
 	}
 }

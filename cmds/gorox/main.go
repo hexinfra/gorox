@@ -26,18 +26,18 @@ ACTION
 
   help         # show this message
   version      # show version info
-  advise       # show platform advice
-  quit         # tell server to exit gracefully
+  advise       # show how to optimize current platform
   stop         # tell server to exit immediately
-  readmin      # tell leader to re-listen its admin interface
+  quit         # tell server to exit gracefully
   rework       # tell leader to restart worker gracefully
+  readmin      # tell leader to reopen its admin interface
   cpu          # tell worker to perform cpu profiling
   heap         # tell worker to perform heap profiling
   thread       # tell worker to perform thread profiling
   goroutine    # tell worker to perform goroutine profiling
   block        # tell worker to perform block profiling
   ping         # call ping of leader
-  info         # call info of leader and worker
+  info         # call info of server
   reconf       # call worker to reconfigure
   serve        # start as server
 
@@ -53,12 +53,12 @@ OPTIONS
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
   -try                # try to run server with config
+  -log    <path>      # leader log file (default: gorox-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
   -vars   <path>      # vars directory to use
   -config <config>    # path or url to worker config file
-  -log    <path>      # leader log file (default: gorox-leader.log in logs dir)
   -user   <user>      # user for worker (default: nobody)
 
   "-debug" applies for all actions.

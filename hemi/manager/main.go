@@ -5,13 +5,6 @@
 
 // Manager implements leader-worker process model and its control agent.
 
-// Some terms:
-//   admConn - control agent ----> leader admin
-//   admDoor - Used by leader process, for receiving admConns from control agent.
-//   msgChan - leaderMain() <---> keepWorker()
-//   dieChan - keepWorker() <---> worker
-//   cmdPipe - leader process <---> worker process
-
 package manager
 
 import (
@@ -30,19 +23,19 @@ var (
 )
 
 var ( // flags
-	debugLevel = flag.Int("debug", 0, "")
 	targetAddr string
 	adminAddr  string
+	debugLevel = flag.Int("debug", 0, "")
 	singleMode = flag.Bool("single", false, "")
+	daemonMode = flag.Bool("daemon", false, "")
 	tryRun     = flag.Bool("try", false, "")
+	logFile    = flag.String("log", "", "")
 	baseDir    = flag.String("base", "", "")
 	logsDir    = flag.String("logs", "", "")
 	tempDir    = flag.String("temp", "", "")
 	varsDir    = flag.String("vars", "", "")
 	config     = flag.String("config", "", "")
-	logFile    = flag.String("log", "", "")
 	userName   = flag.String("user", "nobody", "")
-	daemonMode = flag.Bool("daemon", false, "")
 )
 
 func Main(name string, usage string, devel bool, addr string) {
@@ -81,7 +74,7 @@ func Main(name string, usage string, devel bool, addr string) {
 	}
 }
 
-func serve() { // as leader or worker
+func serve() { // as single, leader, or worker
 	hemi.SetDebug(int32(*debugLevel))
 
 	// baseDir
@@ -110,14 +103,14 @@ func serve() { // as leader or worker
 	setDir(tempDir, "temp", hemi.SetTempDir)
 	setDir(varsDir, "vars", hemi.SetVarsDir)
 
-	if *singleMode { // run as foreground worker. for single mode
-		singleMain()
-	} else if *tryRun { // for testing config file
+	if *tryRun { // for testing config file
 		if _, err := hemi.ApplyFile(getConfig()); err != nil {
 			fmt.Println(err.Error())
 		} else {
 			fmt.Println("PASS")
 		}
+	} else if *singleMode { // run as single foreground process. for single mode
+		singleMain()
 	} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run (leader or worker) process as daemon
 		if token == "leader" { // run leader process as daemon
 			system.DaemonInit()

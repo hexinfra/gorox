@@ -5,6 +5,13 @@
 
 // Leader process of manager.
 
+// Some terms:
+//   admConn - control agent ----> leader admin
+//   admDoor - Used by leader process, for receiving admConns from control agent.
+//   msgChan - leaderMain() <---> keepWorker()
+//   dieChan - keepWorker() <---> worker
+//   cmdPipe - leader process <---> worker process
+
 package manager
 
 import (

@@ -26,10 +26,10 @@ func agentMain(action string) {
 
 const ( // for tells
 	comdServe = iota // start server. this is in fact a fake command. must be 0
-	comdQuit
 	comdStop
-	comdReadmin
+	comdQuit
 	comdRework
+	comdReadmin
 	comdCPU
 	comdHeap
 	comdThread
@@ -38,10 +38,10 @@ const ( // for tells
 )
 
 var tellActions = map[string]func(){
-	"quit":      tellQuit,
 	"stop":      tellStop,
-	"readmin":   tellReadmin,
+	"quit":      tellQuit,
 	"rework":    tellRework,
+	"readmin":   tellReadmin,
 	"cpu":       tellCPU,
 	"heap":      tellHeap,
 	"thread":    tellThread,
@@ -49,10 +49,10 @@ var tellActions = map[string]func(){
 	"block":     tellBlock,
 }
 
-func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
 func tellStop()      { _tellLeader(comdStop, 0, nil) }
-func tellReadmin()   { _tellLeader(comdReadmin, 0, map[string]string{"newAddr": adminAddr}) }
+func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
 func tellRework()    { _tellLeader(comdRework, 0, nil) }
+func tellReadmin()   { _tellLeader(comdReadmin, 0, map[string]string{"newAddr": adminAddr}) }
 func tellCPU()       { _tellLeader(comdCPU, 0, nil) }
 func tellHeap()      { _tellLeader(comdHeap, 0, nil) }
 func tellThread()    { _tellLeader(comdThread, 0, nil) }

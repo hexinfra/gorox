@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	configBase   string
-	configFile   string
+	configBase   string      // base string of config file
+	configFile   string      // config file path
 	lastStage    *hemi.Stage // last stage
 	currentStage *hemi.Stage // current stage
 )
@@ -38,19 +38,20 @@ func workerMain(token string) {
 	loginReq := msgx.NewMessage(0, 0, map[string]string{
 		"pipeKey": parts[1],
 	})
-	loginResp, ok := msgx.Call(cmdPipe, loginReq)
-	if !ok {
+	if loginResp, ok := msgx.Call(cmdPipe, loginReq); ok {
+		configBase = loginResp.Get("base")
+		configFile = loginResp.Get("file")
+	} else {
 		crash("call leader failed")
 	}
 
 	// Register succeeded. Now start the initial stage
-	configBase = loginResp.Get("base")
-	configFile = loginResp.Get("file")
 	currentStage, err = hemi.ApplyFile(configBase, configFile)
 	if err != nil {
 		crash(err.Error())
 	}
 
+	// Waiting for leader's commands.
 	for { // each message from leader process
 		req, ok := msgx.RecvMessage(cmdPipe)
 		if !ok { // leader must be gone
@@ -80,19 +81,16 @@ func workerMain(token string) {
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
 	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("pid", fmt.Sprintf("%d", os.Getpid()))
+		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
 	},
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		/*
-			newStage, err := hemi.ApplyFile(configBase, configFile)
-			if err != nil {
-				resp.Set("result", "false")
-				return
-			}
-			currentStage = newStage
+		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
+			newStage.Start()
 			stage.Shutdown()
-		*/
-		resp.Set("result", "true")
+			currentStage = newStage
+		} else {
+			resp.Set("result", "false")
+		}
 	},
 }
 

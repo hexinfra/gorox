@@ -1,1 +1,1 @@
-Redis cacher stores cached responses in Redis servers.
+Redis cacher stores cached hobjects in Redis servers.

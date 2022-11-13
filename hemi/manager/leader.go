@@ -7,7 +7,7 @@
 
 // Some terms:
 //   admConn - control agent ----> leader admin
-//   admDoor - Used by leader process, for receiving admConns from control agent.
+//   admGate - Used by leader process, for receiving admConns from control agent.
 //   msgChan - leaderMain() <---> keepWorker()
 //   dieChan - keepWorker() <---> worker
 //   cmdPipe - leader process <---> worker process
@@ -62,7 +62,7 @@ func leaderMain() {
 
 	// Start admin interface
 	logger.Printf("listen at: %s\n", adminAddr)
-	admDoor, err := net.Listen("tcp", adminAddr) // admDoor is for receiving admConns from control agent
+	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control agent
 	if err != nil {
 		crash(err.Error())
 	}
@@ -71,7 +71,7 @@ func leaderMain() {
 		ok  bool
 	)
 	for { // each admConn from control agent
-		admConn, err := admDoor.Accept() // admConn is connection between leader and control agent
+		admConn, err := admGate.Accept() // admConn is connection between leader and control agent
 		if err != nil {
 			logger.Println(err.Error())
 			continue
@@ -94,9 +94,9 @@ func leaderMain() {
 				if newAddr == "" {
 					goto closeNext
 				}
-				if newDoor, err := net.Listen("tcp", newAddr); err == nil {
-					admDoor.Close()
-					admDoor = newDoor
+				if newGate, err := net.Listen("tcp", newAddr); err == nil {
+					admGate.Close()
+					admGate = newGate
 					logger.Printf("readmin to %s\n", newAddr)
 					goto closeNext
 				} else {

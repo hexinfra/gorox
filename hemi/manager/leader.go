@@ -7,9 +7,9 @@
 
 // Some terms:
 //   admConn - control agent ----> leader admin
-//   admGate - Used by leader process, for receiving admConns from control agent.
+//   admGate - Used by leader process, for receiving admConns from control agent
 //   msgChan - leaderMain() <---> keepWorker()
-//   deadWay - keepWorker() <---> worker
+//   deadWay - keepWorker() <---- worker
 //   cmdPipe - leader process <---> worker process
 
 package manager
@@ -58,7 +58,7 @@ func leaderMain() {
 	// Start the worker
 	msgChan := make(chan *msgx.Message) // msgChan is the channel between leaderMain() and keepWorker()
 	go keepWorker(base, file, msgChan)
-	<-msgChan // waiting for keepWorker() to ensure worker is started.
+	<-msgChan // wait for keepWorker() to ensure worker is started.
 
 	// Start admin interface
 	logger.Printf("listen at: %s\n", adminAddr)
@@ -84,6 +84,7 @@ func leaderMain() {
 		if !ok {
 			goto closeNext
 		}
+		logger.Printf("received: %v\n", req)
 		if req.IsTell() {
 			// Some messages are telling leader only, hijack them.
 			if req.Comd == comdStop {
@@ -102,7 +103,7 @@ func leaderMain() {
 				} else {
 					logger.Printf("reopen failed: %s\n", err.Error())
 				}
-			} else { // the rest messages are sent to keepWorker().
+			} else { // other messages are sent to keepWorker().
 				msgChan <- req
 			}
 		} else { // call
@@ -110,12 +111,10 @@ func leaderMain() {
 			// Some messages are calling leader only, hijack them.
 			if req.Comd == comdPing {
 				resp = msgx.NewMessage(comdPing, req.Flag, nil)
-			} else { // the rest messages are sent to keepWorker().
+				resp.Set(fmt.Sprintf("leader=%d", os.Getpid()), "pong")
+			} else { // other messages are sent to keepWorker().
 				msgChan <- req
 				resp = <-msgChan
-				if req.Comd == comdInfo {
-					resp.Set("leader", fmt.Sprintf("%d", os.Getpid()))
-				}
 			}
 			msgx.SendMessage(admConn, resp)
 		}
@@ -147,7 +146,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 				logger.Println("worker critical error")
 				stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
-				worker.free()
+				worker.reset()
 				worker.lastDie = now
 				worker.start(base, file, deadWay) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
@@ -169,7 +168,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					// Shutdown old worker
 					req.Comd = comdQuit
 					worker.tell(req)
-					worker.free()
+					worker.reset()
 					<-deadWay
 					close(deadWay)
 					// Use new worker
@@ -234,10 +233,7 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	})
 	msgx.SendMessage(cmdPipe, loginResp)
 
-	// Register succeed, now tell worker process to start serve
-	msgx.Tell(cmdPipe, msgx.NewMessage(comdServe, 0, nil))
-
-	// Save pipe and start waiting
+	// Register succeed, save pipe and start waiting
 	w.cmdPipe = cmdPipe
 	go w.watch(deadWay)
 }
@@ -262,6 +258,6 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 	return resp
 }
 
-func (w *worker) free() {
+func (w *worker) reset() {
 	w.cmdPipe.Close()
 }

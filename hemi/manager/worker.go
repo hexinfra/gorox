@@ -50,8 +50,9 @@ func workerMain(token string) {
 	if err != nil {
 		crash(err.Error())
 	}
+	currentStage.Start()
 
-	// Waiting for leader's commands.
+	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
 		req, ok := msgx.RecvMessage(cmdPipe)
 		if !ok { // leader must be gone
@@ -67,8 +68,6 @@ func workerMain(token string) {
 			if !msgx.SendMessage(cmdPipe, resp) { // leader must be gone
 				break
 			}
-		} else if req.Comd == comdServe {
-			currentStage.Start()
 		} else if onTell, ok := onTells[req.Comd]; ok {
 			onTell(currentStage, req)
 		} else {
@@ -92,6 +91,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 	},
 	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
+		resp.Set("foo", "bar") // TODO: other infos
 	},
 }
 

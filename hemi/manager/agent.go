@@ -94,7 +94,9 @@ func callReconf() {
 }
 func callPing() {
 	if resp, ok := _callLeader(comdPing, 0, nil); ok && resp.Comd == comdPing && resp.Flag == 0 {
-		fmt.Printf("call leader at %s: pong\n", targetAddr)
+		for name, value := range resp.Args {
+			fmt.Printf("%s: %s\n", name, value)
+		}
 	} else {
 		fmt.Printf("call leader at %s: failed!\n", targetAddr)
 	}
@@ -102,7 +104,7 @@ func callPing() {
 func callInfo() {
 	if resp, ok := _callLeader(comdInfo, 0, nil); ok {
 		for name, value := range resp.Args {
-			fmt.Printf("%s=%s\n", name, value)
+			fmt.Printf("%s: %s\n", name, value)
 		}
 	} else {
 		fmt.Printf("call leader at %s: failed!\n", targetAddr)

@@ -40,6 +40,7 @@ func (r *dnsRunner) OnConfigure() {
 func (r *dnsRunner) OnPrepare() {
 }
 func (r *dnsRunner) OnShutdown() {
+	r.mesher.SubDone()
 }
 
 func (r *dnsRunner) Process(conn *UDPSConn) (next bool) {

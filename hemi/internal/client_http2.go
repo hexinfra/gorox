@@ -99,6 +99,7 @@ func (b *HTTP2Backend) OnShutdown() {
 
 func (b *HTTP2Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
+		b.IncSub(1)
 		go node.maintain()
 	}
 	b.WaitSubs()

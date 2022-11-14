@@ -40,6 +40,7 @@ func (f *mysqlViewer) OnConfigure() {
 func (f *mysqlViewer) OnPrepare() {
 }
 func (f *mysqlViewer) OnShutdown() {
+	f.mesher.SubDone()
 }
 
 func (f *mysqlViewer) OnInput(conn *TCPSConn, kind int8) {

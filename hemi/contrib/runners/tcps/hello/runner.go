@@ -40,6 +40,7 @@ func (r *helloRunner) OnConfigure() {
 func (r *helloRunner) OnPrepare() {
 }
 func (r *helloRunner) OnShutdown() {
+	r.mesher.SubDone()
 }
 
 func (r *helloRunner) Process(conn *TCPSConn) (next bool) {

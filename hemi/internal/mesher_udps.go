@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"syscall"
@@ -34,6 +35,7 @@ func (m *UDPSMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *UDPSMesher) OnShutdown() {
+	m.SetShut()
 	m.shutdownSubs()
 
 	m.mesher_.onShutdown()
@@ -48,6 +50,7 @@ func (m *UDPSMesher) createCase(name string) *udpsCase {
 	kase := new(udpsCase)
 	kase.init(name, m)
 	kase.setShell(kase)
+	m.IncSub(1)
 	m.cases = append(m.cases, kase)
 	return kase
 }
@@ -59,6 +62,7 @@ func (m *UDPSMesher) serve() { // goroutine
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
+		m.IncSub(1)
 		m.gates = append(m.gates, gate)
 		if m.tlsMode {
 			go gate.serveTLS()
@@ -66,7 +70,11 @@ func (m *UDPSMesher) serve() { // goroutine
 			go gate.serveUDP()
 		}
 	}
-	select {}
+	m.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("udpsMesher=%s done\n", m.Name())
+	}
+	m.stage.SubDone()
 }
 
 // udpsGate
@@ -91,12 +99,18 @@ func (g *udpsGate) open() error {
 	// TODO
 	return nil
 }
+func (g *udpsGate) shut() error {
+	// TODO
+	return nil
+}
 
 func (g *udpsGate) serveUDP() { // goroutine
 	// TODO
+	g.mesher.SubDone()
 }
 func (g *udpsGate) serveTLS() { // goroutine
 	// TODO
+	g.mesher.SubDone()
 }
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {

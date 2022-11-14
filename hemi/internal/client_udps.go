@@ -108,6 +108,7 @@ func (b *UDPSBackend) OnShutdown() {
 
 func (b *UDPSBackend) maintain() { // goroutine
 	for _, node := range b.nodes {
+		b.IncSub(1)
 		go node.maintain()
 	}
 	b.WaitSubs()

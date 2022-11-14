@@ -147,6 +147,7 @@ func (s *Stage) createQUICMesher(name string) *QUICMesher {
 	if s.QUICMesher(name) != nil {
 		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
 	}
+	s.IncSub(1)
 	mesher := new(QUICMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
@@ -157,6 +158,7 @@ func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
 	if s.TCPSMesher(name) != nil {
 		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
 	}
+	s.IncSub(1)
 	mesher := new(TCPSMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
@@ -167,6 +169,7 @@ func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
 	if s.UDPSMesher(name) != nil {
 		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
 	}
+	s.IncSub(1)
 	mesher := new(UDPSMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
@@ -363,9 +366,9 @@ func (s *Stage) OnShutdown() {
 	s.apps.walk((*App).OnShutdown)
 	s.cachers.walk(Cacher.OnShutdown)
 	s.staters.walk(Stater.OnShutdown)
-	s.udpsMeshers.walk((*UDPSMesher).OnShutdown)
-	s.tcpsMeshers.walk((*TCPSMesher).OnShutdown)
-	s.quicMeshers.walk((*QUICMesher).OnShutdown)
+	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
+	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
+	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
 	s.backends.goWalk(backend.OnShutdown)
 	s.optwares.goWalk(Optware.OnShutdown)
 	s.fixtures.goWalk(fixture.OnShutdown)

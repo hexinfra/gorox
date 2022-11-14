@@ -165,7 +165,6 @@ func (b *TCPSBackend) OnConfigure() {
 		} else {
 			node.keepConns = 10
 		}
-		b.IncSub(1)
 		b.nodes = append(b.nodes, node)
 	}
 	// maxStreamsPerConn
@@ -180,6 +179,7 @@ func (b *TCPSBackend) OnShutdown() {
 
 func (b *TCPSBackend) maintain() { // goroutine
 	for _, node := range b.nodes {
+		b.IncSub(1)
 		go node.maintain()
 	}
 	b.WaitSubs()

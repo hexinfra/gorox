@@ -159,7 +159,6 @@ func (b *HTTP1Backend) OnConfigure() {
 		} else {
 			node.keepConns = 10
 		}
-		b.IncSub(1)
 		b.nodes = append(b.nodes, node)
 	}
 }
@@ -172,6 +171,7 @@ func (b *HTTP1Backend) OnShutdown() {
 
 func (b *HTTP1Backend) maintain() { // goroutine
 	for _, node := range b.nodes {
+		b.IncSub(1)
 		go node.maintain()
 	}
 	b.WaitSubs()

@@ -15,8 +15,12 @@ import (
 	"path/filepath"
 )
 
+type _mesher interface {
+	Component
+}
 type _gate interface {
 	open() error
+	shut() error
 }
 type _runner interface {
 	Component
@@ -30,7 +34,7 @@ type _case interface {
 }
 
 // mesher_ is the mixin for all meshers.
-type mesher_[M Component, G _gate, R _runner, F _filter, C _case] struct {
+type mesher_[M _mesher, G _gate, R _runner, F _filter, C _case] struct {
 	// Mixins
 	office_
 	// Assocs
@@ -86,13 +90,16 @@ func (m *mesher_[M, G, R, F, C]) prepareSubs() {
 }
 
 func (m *mesher_[M, G, R, F, C]) onShutdown() {
-	m.office_.onShutdown()
 	if Debug(2) {
 		fmt.Printf("mesher=%s close log file\n", m.Name())
 	}
 	m.logger.Writer().(*os.File).Close()
+	m.office_.onShutdown()
 }
 func (m *mesher_[M, G, R, F, C]) shutdownSubs() {
+	for _, gate := range m.gates {
+		gate.shut()
+	}
 	m.cases.walk(C.OnShutdown)
 	m.filters.walk(F.OnShutdown)
 	m.runners.walk(R.OnShutdown)
@@ -108,6 +115,7 @@ func (m *mesher_[M, G, R, F, C]) createRunner(sign string, name string) R {
 	if !ok {
 		UseExitln("unknown runner sign: " + sign)
 	}
+	m.IncSub(1)
 	runner := create(name, m.stage, m.shell.(M))
 	runner.setShell(runner)
 	m.runners[name] = runner
@@ -126,6 +134,7 @@ func (m *mesher_[M, G, R, F, C]) createFilter(sign string, name string) F {
 	if !ok {
 		UseExitln("unknown filter sign: " + sign)
 	}
+	m.IncSub(1)
 	filter := create(name, m.stage, m.shell.(M))
 	filter.setShell(filter)
 	filter.setID(m.nFilters)
@@ -140,7 +149,7 @@ func (m *mesher_[M, G, R, F, C]) filterByID(id uint8) F { // for fast searching
 }
 
 // case_ is a mixin.
-type case_[M Component, R _runner, F _filter] struct {
+type case_[M _mesher, R _runner, F _filter] struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -175,6 +184,7 @@ func (c *case_[M, R, F]) OnConfigure() {
 func (c *case_[M, R, F]) OnPrepare() {
 }
 func (c *case_[M, R, F]) OnShutdown() {
+	c.mesher.SubDone()
 }
 
 func (c *case_[M, R, F]) addRunner(runner R) {

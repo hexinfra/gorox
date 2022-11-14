@@ -40,6 +40,7 @@ func (f *redisViewer) OnConfigure() {
 func (f *redisViewer) OnPrepare() {
 }
 func (f *redisViewer) OnShutdown() {
+	f.mesher.SubDone()
 }
 
 func (f *redisViewer) OnInput(conn *TCPSConn, kind int8) {

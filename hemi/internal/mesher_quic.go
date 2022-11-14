@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"sync"
 )
@@ -33,6 +34,7 @@ func (m *QUICMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *QUICMesher) OnShutdown() {
+	m.SetShut()
 	m.shutdownSubs()
 
 	m.mesher_.onShutdown()
@@ -47,6 +49,7 @@ func (m *QUICMesher) createCase(name string) *quicCase {
 	kase := new(quicCase)
 	kase.init(name, m)
 	kase.setShell(kase)
+	m.IncSub(1)
 	m.cases = append(m.cases, kase)
 	return kase
 }
@@ -58,10 +61,15 @@ func (m *QUICMesher) serve() { // goroutine
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
+		m.IncSub(1)
 		m.gates = append(m.gates, gate)
 		go gate.serve()
 	}
-	select {}
+	m.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("quicMesher=%s done\n", m.Name())
+	}
+	m.stage.SubDone()
 }
 
 // quicGate
@@ -83,9 +91,14 @@ func (g *quicGate) open() error {
 	// TODO
 	return nil
 }
+func (g *quicGate) shut() error {
+	// TODO
+	return nil
+}
 
 func (g *quicGate) serve() { // goroutine
 	// TODO
+	g.mesher.SubDone()
 }
 
 func (g *quicGate) onConnectionClosed() {

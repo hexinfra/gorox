@@ -113,6 +113,7 @@ func (b *QUICBackend) OnShutdown() {
 
 func (b *QUICBackend) maintain() { // goroutine
 	for _, node := range b.nodes {
+		b.IncSub(1)
 		go node.maintain()
 	}
 	b.WaitSubs()

@@ -38,6 +38,7 @@ func (m *TCPSMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *TCPSMesher) OnShutdown() {
+	m.SetShut()
 	m.shutdownSubs()
 
 	m.mesher_.onShutdown()
@@ -52,6 +53,7 @@ func (m *TCPSMesher) createCase(name string) *tcpsCase {
 	kase := new(tcpsCase)
 	kase.init(name, m)
 	kase.setShell(kase)
+	m.IncSub(1)
 	m.cases = append(m.cases, kase)
 	return kase
 }
@@ -63,6 +65,7 @@ func (m *TCPSMesher) serve() { // goroutine
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
+		m.IncSub(1)
 		m.gates = append(m.gates, gate)
 		if m.tlsMode {
 			go gate.serveTLS()
@@ -70,7 +73,11 @@ func (m *TCPSMesher) serve() { // goroutine
 			go gate.serveTCP()
 		}
 	}
-	select {}
+	m.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("tcpsMesher=%s done\n", m.Name())
+	}
+	m.stage.SubDone()
 }
 
 // tcpsGate
@@ -99,14 +106,20 @@ func (g *tcpsGate) open() error {
 	}
 	return err
 }
+func (g *tcpsGate) shut() error {
+	return g.listener.Close()
+}
 
 func (g *tcpsGate) serveTCP() { // goroutine
-	mesher := g.mesher
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			continue
+			if g.mesher.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
@@ -116,7 +129,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				tcpConn.Close()
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, mesher, g, tcpConn, rawConn)
+			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
 			if Debug(1) {
 				fmt.Printf("%+v\n", tcpsConn)
 			}
@@ -124,29 +137,36 @@ func (g *tcpsGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.mesher.SubDone()
 }
 func (g *tcpsGate) serveTLS() { // goroutine
-	mesher := g.mesher
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			continue
+			if g.mesher.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			tlsConn := tls.Server(tcpConn, mesher.tlsConfig)
+			tlsConn := tls.Server(tcpConn, g.mesher.tlsConfig)
 			// TODO: set deadline
 			if err := tlsConn.Handshake(); err != nil {
 				tlsConn.Close()
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, mesher, g, tlsConn, nil)
+			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
 			go tcpsConn.serve() // tcpsConn is put to pool in serve()
 			connID++
 		}
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.mesher.SubDone()
 }
 
 func (g *tcpsGate) onConnectionClosed() {

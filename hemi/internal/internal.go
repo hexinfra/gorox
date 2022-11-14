@@ -78,6 +78,8 @@ type Component interface {
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
 
+	SubDone()
+
 	setShell(shell Component)
 	setParent(parent Component)
 	getParent() Component

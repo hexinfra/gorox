@@ -40,6 +40,7 @@ func (r *echoRunner) OnConfigure() {
 func (r *echoRunner) OnPrepare() {
 }
 func (r *echoRunner) OnShutdown() {
+	r.mesher.SubDone()
 }
 
 func (r *echoRunner) Process(conn *TCPSConn) (next bool) {

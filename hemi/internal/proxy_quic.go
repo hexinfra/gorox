@@ -39,6 +39,7 @@ func (r *quicProxy) OnPrepare() {
 }
 func (r *quicProxy) OnShutdown() {
 	r.proxy_.onShutdown(r)
+	r.mesher.SubDone()
 }
 
 func (r *quicProxy) Process(conn *QUICConn, stream *QUICStream) (next bool) {

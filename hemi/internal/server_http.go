@@ -97,7 +97,10 @@ func (s *httpServer_) onPrepare() {
 func (s *httpServer_) onShutdown() {
 	s.Server_.OnShutdown()
 	// closing gates and their conns
-	// finally s.logger.Close()
+	if Debug(2) {
+		fmt.Printf("httpServer=%s close log file\n", s.Name())
+	}
+	s.logger.Writer().(*os.File).Close()
 }
 
 func (s *httpServer_) linkApp(app *App) {

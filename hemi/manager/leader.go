@@ -9,7 +9,7 @@
 //   admConn - control agent ----> leader admin
 //   admGate - Used by leader process, for receiving admConns from control agent.
 //   msgChan - leaderMain() <---> keepWorker()
-//   dieChan - keepWorker() <---> worker
+//   deadWay - keepWorker() <---> worker
 //   cmdPipe - leader process <---> worker process
 
 package manager
@@ -89,7 +89,7 @@ func leaderMain() {
 			if req.Comd == comdStop {
 				logger.Println("received stop")
 				stop() // worker will stop immediately after the pipe is closed
-			} else if req.Comd == comdReadmin {
+			} else if req.Comd == comdReopen {
 				newAddr := req.Get("newAddr") // succeeding adminAddr
 				if newAddr == "" {
 					goto closeNext
@@ -97,10 +97,10 @@ func leaderMain() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					admGate.Close()
 					admGate = newGate
-					logger.Printf("readmin to %s\n", newAddr)
+					logger.Printf("reopen to %s\n", newAddr)
 					goto closeNext
 				} else {
-					logger.Printf("readmin failed: %s\n", err.Error())
+					logger.Printf("reopen failed: %s\n", err.Error())
 				}
 			} else { // the rest messages are sent to keepWorker().
 				msgChan <- req
@@ -125,7 +125,7 @@ func leaderMain() {
 }
 
 func keepWorker(base string, file string, msgChan chan *msgx.Message) { // goroutine
-	dieChan := make(chan int) // dead worker go through this channel
+	deadWay := make(chan int) // dead worker go through this channel
 
 	rand.Seed(time.Now().UnixNano())
 	const chars = "0123456789"
@@ -136,12 +136,12 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 	pipeKey := string(keyBuffer)
 
 	worker := newWorker(pipeKey)
-	worker.start(base, file, dieChan)
+	worker.start(base, file, deadWay)
 	msgChan <- nil // reply to leaderMain that we have created the worker.
 
 	for { // each event from worker and leaderMain
 		select {
-		case exitCode := <-dieChan: // worker process dies unexpectedly
+		case exitCode := <-deadWay: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
 				logger.Println("worker critical error")
@@ -149,7 +149,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
 				worker.free()
 				worker.lastDie = now
-				worker.start(base, file, dieChan) // start again
+				worker.start(base, file, deadWay) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
 				logger.Println("worker is broken!")
 				stop()
@@ -159,21 +159,21 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 				switch req.Comd {
 				case comdQuit:
 					worker.tell(req)
-					exitCode := <-dieChan
+					exitCode := <-deadWay
 					os.Exit(exitCode)
 				case comdRework: // restart worker
 					// Create new worker
-					dieChan2 := make(chan int)
+					deadWay2 := make(chan int)
 					worker2 := newWorker(pipeKey)
-					worker2.start(base, file, dieChan2)
+					worker2.start(base, file, deadWay2)
 					// Shutdown old worker
 					req.Comd = comdQuit
 					worker.tell(req)
 					worker.free()
-					<-dieChan
-					close(dieChan)
+					<-deadWay
+					close(deadWay)
 					// Use new worker
-					dieChan, worker = dieChan2, worker2
+					deadWay, worker = deadWay2, worker2
 				default: // tell worker
 					worker.tell(req)
 				}
@@ -198,7 +198,7 @@ func newWorker(pipeKey string) *worker {
 	return w
 }
 
-func (w *worker) start(base string, file string, dieChan chan int) {
+func (w *worker) start(base string, file string, deadWay chan int) {
 	// Open temporary gate
 	tmpGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
 	if err != nil {
@@ -239,14 +239,14 @@ func (w *worker) start(base string, file string, dieChan chan int) {
 
 	// Save pipe and start waiting
 	w.cmdPipe = cmdPipe
-	go w.wait(dieChan)
+	go w.watch(deadWay)
 }
-func (w *worker) wait(dieChan chan int) { // goroutine
+func (w *worker) watch(deadWay chan int) { // goroutine
 	stat, err := w.process.Wait()
 	if err != nil {
 		crash(err.Error())
 	}
-	dieChan <- stat.ExitCode()
+	deadWay <- stat.ExitCode()
 }
 
 func (w *worker) tell(req *msgx.Message) {

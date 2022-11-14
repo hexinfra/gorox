@@ -57,9 +57,7 @@ func workerMain(token string) {
 		if !ok { // leader must be gone
 			break
 		}
-		if req.Comd == comdServe {
-			currentStage.Start()
-		} else if req.IsCall() {
+		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
 				onCall(currentStage, req, resp)
@@ -69,6 +67,8 @@ func workerMain(token string) {
 			if !msgx.SendMessage(cmdPipe, resp) { // leader must be gone
 				break
 			}
+		} else if req.Comd == comdServe {
+			currentStage.Start()
 		} else if onTell, ok := onTells[req.Comd]; ok {
 			onTell(currentStage, req)
 		} else {
@@ -80,17 +80,18 @@ func workerMain(token string) {
 }
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
-	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
-	},
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
 			newStage.Start()
 			stage.Shutdown()
 			currentStage = newStage
+			resp.Flag = 0
 		} else {
-			resp.Set("result", "false")
+			resp.Flag = 1
 		}
+	},
+	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
+		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
 	},
 }
 

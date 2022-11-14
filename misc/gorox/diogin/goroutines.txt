@@ -1,6 +1,6 @@
 leader 进程
 
-  leaderMain() 和 keepWorker() 并发，还有 worker.wait() 并发
+  leaderMain() 和 keepWorker() 并发，还有 worker.watch() 并发
 
 worker 进程
 

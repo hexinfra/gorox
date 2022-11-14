@@ -26,9 +26,9 @@ var ( // flags
 	targetAddr string
 	adminAddr  string
 	debugLevel = flag.Int("debug", 0, "")
+	tryRun     = flag.Bool("try", false, "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")
-	tryRun     = flag.Bool("try", false, "")
 	logFile    = flag.String("log", "", "")
 	baseDir    = flag.String("base", "", "")
 	logsDir    = flag.String("logs", "", "")

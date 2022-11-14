@@ -374,8 +374,9 @@ func (s *Stage) OnShutdown() {
 
 	// TODO: shutdown s
 	if Debug(2) {
-		fmt.Println("stage shutdown")
+		fmt.Println("stage close log file")
 	}
+	s.logger.Writer().(*os.File).Close()
 }
 
 func (s *Stage) Start() { // one worker process mode

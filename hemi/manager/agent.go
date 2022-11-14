@@ -25,11 +25,11 @@ func agentMain(action string) {
 }
 
 const ( // for tells
-	comdServe = iota // start server. this is in fact a fake command. must be 0
+	comdServe = iota // start server. no tell action bound to this comd. must be 0
 	comdStop
 	comdQuit
 	comdRework
-	comdReadmin
+	comdReopen
 	comdCPU
 	comdHeap
 	comdThread
@@ -41,7 +41,7 @@ var tellActions = map[string]func(){
 	"stop":      tellStop,
 	"quit":      tellQuit,
 	"rework":    tellRework,
-	"readmin":   tellReadmin,
+	"reopen":    tellReopen,
 	"cpu":       tellCPU,
 	"heap":      tellHeap,
 	"thread":    tellThread,
@@ -52,7 +52,7 @@ var tellActions = map[string]func(){
 func tellStop()      { _tellLeader(comdStop, 0, nil) }
 func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
 func tellRework()    { _tellLeader(comdRework, 0, nil) }
-func tellReadmin()   { _tellLeader(comdReadmin, 0, map[string]string{"newAddr": adminAddr}) }
+func tellReopen()    { _tellLeader(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
 func tellCPU()       { _tellLeader(comdCPU, 0, nil) }
 func tellHeap()      { _tellLeader(comdHeap, 0, nil) }
 func tellThread()    { _tellLeader(comdThread, 0, nil) }
@@ -74,17 +74,24 @@ func _tellLeader(comd uint8, flag uint16, args map[string]string) {
 }
 
 const ( // for calls
-	comdPing = iota // must be 0
+	comdReconf = iota // must be 0
+	comdPing
 	comdInfo
-	comdReconf
 )
 
 var callActions = map[string]func(){
+	"reconf": callReconf,
 	"ping":   callPing,
 	"info":   callInfo,
-	"reconf": callReconf,
 }
 
+func callReconf() {
+	if resp, ok := _callLeader(comdReconf, 0, nil); ok {
+		fmt.Printf("flag=%d\n", resp.Flag)
+	} else {
+		fmt.Printf("call leader at %s: failed!\n", targetAddr)
+	}
+}
 func callPing() {
 	if resp, ok := _callLeader(comdPing, 0, nil); ok && resp.Comd == comdPing && resp.Flag == 0 {
 		fmt.Printf("call leader at %s: pong\n", targetAddr)
@@ -94,15 +101,6 @@ func callPing() {
 }
 func callInfo() {
 	if resp, ok := _callLeader(comdInfo, 0, nil); ok {
-		for name, value := range resp.Args {
-			fmt.Printf("%s=%s\n", name, value)
-		}
-	} else {
-		fmt.Printf("call leader at %s: failed!\n", targetAddr)
-	}
-}
-func callReconf() {
-	if resp, ok := _callLeader(comdReconf, 0, nil); ok {
 		for name, value := range resp.Args {
 			fmt.Printf("%s=%s\n", name, value)
 		}

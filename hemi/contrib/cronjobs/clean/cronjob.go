@@ -31,7 +31,7 @@ type cleanCronjob struct {
 }
 
 func (j *cleanCronjob) init(name string, stage *Stage) {
-	j.InitComp(name)
+	j.CompInit(name)
 	j.stage = stage
 }
 

@@ -26,7 +26,7 @@ type udpsProxy struct {
 }
 
 func (r *udpsProxy) init(name string, stage *Stage, mesher *UDPSMesher) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.proxy_.init(stage)
 	r.mesher = mesher
 }

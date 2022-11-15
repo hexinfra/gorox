@@ -30,7 +30,7 @@ type helloRunner struct {
 }
 
 func (r *helloRunner) init(name string, stage *Stage, mesher *TCPSMesher) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.stage = stage
 	r.mesher = mesher
 }

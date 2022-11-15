@@ -32,7 +32,7 @@ type wrapReviser struct {
 }
 
 func (r *wrapReviser) init(name string, stage *Stage, app *App) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.stage = stage
 	r.app = app
 }

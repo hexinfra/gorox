@@ -32,7 +32,7 @@ type hostnameHandler struct {
 }
 
 func (h *hostnameHandler) init(name string, stage *Stage, app *App) {
-	h.InitComp(name)
+	h.CompInit(name)
 	h.stage = stage
 	h.app = app
 }

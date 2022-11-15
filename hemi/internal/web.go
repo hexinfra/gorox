@@ -55,7 +55,7 @@ type App struct {
 }
 
 func (a *App) init(name string, stage *Stage) {
-	a.InitComp(name)
+	a.CompInit(name)
 	a.stage = stage
 	a.handlers = make(compDict[Handler])
 	a.revisers = make(compDict[Reviser])
@@ -695,7 +695,7 @@ type Rule struct {
 }
 
 func (r *Rule) init(name string, app *App) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.app = app
 }
 

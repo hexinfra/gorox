@@ -32,7 +32,7 @@ type ssiReviser struct {
 }
 
 func (r *ssiReviser) init(name string, stage *Stage, app *App) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.stage = stage
 	r.app = app
 }

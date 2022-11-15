@@ -31,7 +31,7 @@ type statCronjob struct {
 }
 
 func (j *statCronjob) init(name string, stage *Stage) {
-	j.InitComp(name)
+	j.CompInit(name)
 	j.stage = stage
 }
 

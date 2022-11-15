@@ -33,7 +33,7 @@ type localStater struct {
 }
 
 func (s *localStater) init(name string, stage *Stage) {
-	s.InitComp(name)
+	s.CompInit(name)
 	s.stage = stage
 }
 

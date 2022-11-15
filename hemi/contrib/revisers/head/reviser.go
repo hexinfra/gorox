@@ -33,7 +33,7 @@ type headReviser struct {
 }
 
 func (r *headReviser) init(name string, stage *Stage, app *App) {
-	r.InitComp(name)
+	r.CompInit(name)
 	r.stage = stage
 	r.app = app
 }

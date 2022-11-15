@@ -72,7 +72,7 @@ type Component interface {
 	OnPrepare()
 	OnShutdown()
 
-	InitComp(name string)
+	CompInit(name string)
 
 	SetName(name string)
 	Name() string
@@ -102,7 +102,7 @@ type Component_ struct {
 	subs  sync.WaitGroup   // for shutting down sub compoments, if any
 }
 
-func (c *Component_) InitComp(name string) {
+func (c *Component_) CompInit(name string) {
 	c.name = name
 	c.props = make(map[string]Value)
 }
@@ -392,7 +392,7 @@ type office_ struct {
 }
 
 func (o *office_) init(name string, stage *Stage) {
-	o.InitComp(name)
+	o.CompInit(name)
 	o.stage = stage
 }
 

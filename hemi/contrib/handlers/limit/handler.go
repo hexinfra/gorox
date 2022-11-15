@@ -30,7 +30,7 @@ type limitHandler struct {
 }
 
 func (h *limitHandler) init(name string, stage *Stage, app *App) {
-	h.InitComp(name)
+	h.CompInit(name)
 	h.stage = stage
 	h.app = app
 }

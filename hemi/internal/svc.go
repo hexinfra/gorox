@@ -28,7 +28,7 @@ type Svc struct {
 }
 
 func (s *Svc) init(name string, stage *Stage) {
-	s.InitComp(name)
+	s.CompInit(name)
 	s.stage = stage
 }
 

@@ -72,7 +72,7 @@ type Stage struct {
 }
 
 func (s *Stage) init() {
-	s.InitComp("stage")
+	s.CompInit("stage")
 
 	s.clock = createClock(s)
 	s.filesys = createFilesys(s)

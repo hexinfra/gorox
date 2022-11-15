@@ -47,7 +47,7 @@ type filesysFixture struct {
 }
 
 func (f *filesysFixture) init(stage *Stage) {
-	f.SetName(signFilesys)
+	f.InitComp(signFilesys)
 	f.stage = stage
 	f.entries = make(map[string]*filesysEntry)
 }

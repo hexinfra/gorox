@@ -32,7 +32,7 @@ type redisStater struct {
 }
 
 func (s *redisStater) init(name string, stage *Stage) {
-	s.SetName(name)
+	s.InitComp(name)
 	s.stage = stage
 }
 

@@ -168,7 +168,7 @@ type case_[M _mesher, R _runner, F _filter] struct {
 }
 
 func (c *case_[M, R, F]) init(name string, mesher M) {
-	c.SetName(name)
+	c.InitComp(name)
 	c.mesher = mesher
 }
 

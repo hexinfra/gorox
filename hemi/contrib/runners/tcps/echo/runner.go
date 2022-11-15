@@ -30,7 +30,7 @@ type echoRunner struct {
 }
 
 func (r *echoRunner) init(name string, stage *Stage, mesher *TCPSMesher) {
-	r.SetName(name)
+	r.InitComp(name)
 	r.stage = stage
 	r.mesher = mesher
 }

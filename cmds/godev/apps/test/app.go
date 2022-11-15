@@ -31,7 +31,7 @@ type testHandler struct {
 }
 
 func (h *testHandler) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.InitComp(name)
 	h.stage = stage
 	h.app = app
 

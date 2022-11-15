@@ -30,7 +30,7 @@ type dnsRunner struct {
 }
 
 func (r *dnsRunner) init(name string, stage *Stage, mesher *UDPSMesher) {
-	r.SetName(name)
+	r.InitComp(name)
 	r.stage = stage
 	r.mesher = mesher
 }

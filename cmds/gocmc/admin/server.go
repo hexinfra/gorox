@@ -36,7 +36,7 @@ type AdminServer struct {
 }
 
 func (s *AdminServer) init(name string, stage *Stage) {
-	s.SetName(name)
+	s.InitComp(name)
 	s.stage = stage
 	s.conns = make(map[int64]*adminConn)
 }

@@ -72,6 +72,8 @@ type Component interface {
 	OnPrepare()
 	OnShutdown()
 
+	InitComp(name string)
+
 	SetName(name string)
 	Name() string
 
@@ -98,6 +100,11 @@ type Component_ struct {
 	props map[string]Value // name=value, ...
 	shut  atomic.Bool      // is component shutting down?
 	subs  sync.WaitGroup   // for shutting down sub compoments, if any
+}
+
+func (c *Component_) InitComp(name string) {
+	c.name = name
+	c.props = make(map[string]Value)
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -158,16 +165,11 @@ func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value)
 	}
 }
 
-func (c *Component_) setShell(shell Component)   { c.shell = shell }
-func (c *Component_) setParent(parent Component) { c.parent = parent }
-func (c *Component_) getParent() Component       { return c.parent }
-func (c *Component_) setInfo(info any)           { c.info = info }
-func (c *Component_) setProp(name string, value Value) {
-	if c.props == nil {
-		c.props = make(map[string]Value)
-	}
-	c.props[name] = value
-}
+func (c *Component_) setShell(shell Component)         { c.shell = shell }
+func (c *Component_) setParent(parent Component)       { c.parent = parent }
+func (c *Component_) getParent() Component             { return c.parent }
+func (c *Component_) setInfo(info any)                 { c.info = info }
+func (c *Component_) setProp(name string, value Value) { c.props[name] = value }
 
 func (c *Component_) SetShut()     { c.shut.Store(true) }
 func (c *Component_) IsShut() bool { return c.shut.Load() }
@@ -390,7 +392,7 @@ type office_ struct {
 }
 
 func (o *office_) init(name string, stage *Stage) {
-	o.SetName(name)
+	o.InitComp(name)
 	o.stage = stage
 }
 

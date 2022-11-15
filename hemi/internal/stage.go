@@ -72,7 +72,7 @@ type Stage struct {
 }
 
 func (s *Stage) init() {
-	s.SetName("stage")
+	s.InitComp("stage")
 
 	s.clock = createClock(s)
 	s.filesys = createFilesys(s)
@@ -429,7 +429,7 @@ func (s *Stage) Start() { // one worker process mode
 	if err := s.prepare(); err != nil {
 		EnvExitln(err.Error())
 	}
-	// Setup running environment
+	// Init running environment
 	if err := os.Chdir(BaseDir()); err != nil {
 		EnvExitln(err.Error())
 	}

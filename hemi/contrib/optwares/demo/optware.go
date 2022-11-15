@@ -30,7 +30,7 @@ type demoOptware struct {
 }
 
 func (o *demoOptware) init(name string, stage *Stage) {
-	o.SetName(name)
+	o.InitComp(name)
 	o.stage = stage
 }
 

@@ -37,7 +37,7 @@ type helloHandler struct {
 }
 
 func (h *helloHandler) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.InitComp(name)
 	h.stage = stage
 	h.app = app
 

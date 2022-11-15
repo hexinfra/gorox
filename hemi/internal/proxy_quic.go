@@ -26,7 +26,7 @@ type quicProxy struct {
 }
 
 func (r *quicProxy) init(name string, stage *Stage, mesher *QUICMesher) {
-	r.SetName(name)
+	r.InitComp(name)
 	r.proxy_.init(stage)
 	r.mesher = mesher
 }

@@ -32,7 +32,7 @@ type redisCacher struct {
 }
 
 func (c *redisCacher) init(name string, stage *Stage) {
-	c.SetName(name)
+	c.InitComp(name)
 	c.stage = stage
 }
 

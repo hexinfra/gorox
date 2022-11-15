@@ -30,7 +30,7 @@ type helloSocklet struct {
 }
 
 func (s *helloSocklet) init(name string, stage *Stage, app *App) {
-	s.SetName(name)
+	s.InitComp(name)
 	s.stage = stage
 	s.app = app
 }

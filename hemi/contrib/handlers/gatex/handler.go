@@ -30,7 +30,7 @@ type gatex struct {
 }
 
 func (h *gatex) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.InitComp(name)
 	h.stage = stage
 	h.app = app
 }

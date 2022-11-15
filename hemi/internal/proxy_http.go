@@ -25,7 +25,7 @@ type httpProxy_ struct {
 }
 
 func (h *httpProxy_) init(name string, stage *Stage, app *App) {
-	h.SetName(name)
+	h.InitComp(name)
 	h.proxy_.init(stage)
 	h.app = app
 }
@@ -84,7 +84,7 @@ type sockProxy_ struct {
 }
 
 func (s *sockProxy_) init(name string, stage *Stage, app *App) {
-	s.SetName(name)
+	s.InitComp(name)
 	s.proxy_.init(stage)
 	s.app = app
 }

@@ -48,7 +48,7 @@ func (s *httpxServer) init(name string, stage *Stage) {
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.onConfigure()
+	s.httpServer_.onConfigure()
 	var forceScheme string
 	// forceScheme
 	s.ConfigureString("forceScheme", &forceScheme, func(value string) bool {
@@ -67,7 +67,7 @@ func (s *httpxServer) OnConfigure() {
 	s.ConfigureBool("h2cMode", &s.h2cMode, false)
 }
 func (s *httpxServer) OnPrepare() {
-	s.onPrepare()
+	s.httpServer_.onPrepare()
 	if s.tlsMode {
 		var nextProtos []string
 		if s.enableHTTP2 {
@@ -81,7 +81,11 @@ func (s *httpxServer) OnPrepare() {
 	}
 }
 func (s *httpxServer) OnShutdown() {
-	s.onShutdown()
+	s.SetShut()
+	for _, gate := range s.gates {
+		gate.shut()
+	}
+	s.httpServer_.onShutdown()
 }
 
 func (s *httpxServer) Serve() { // goroutine
@@ -92,13 +96,18 @@ func (s *httpxServer) Serve() { // goroutine
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
+		s.IncSub(1)
 		if s.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
 		}
 	}
-	select {}
+	s.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("httpxServer=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 // httpxGate is a gate of HTTP/1 and HTTP/2 server.
@@ -131,6 +140,10 @@ func (g *httpxGate) open() error {
 	return err
 }
 
+func (g *httpxGate) shut() error {
+	return g.listener.Close()
+}
+
 func (g *httpxGate) serveTCP() { // goroutine
 	getHTTPConn := getHTTP1Conn
 	if g.server.h2cMode {
@@ -139,9 +152,13 @@ func (g *httpxGate) serveTCP() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
-		if err != nil { // TODO: handle shutdown
-			g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-			continue
+		if err != nil {
+			if g.server.IsShut() {
+				break
+			} else {
+				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
@@ -157,14 +174,20 @@ func (g *httpxGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.server.SubDone()
 }
 func (g *httpxGate) serveTLS() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
-		if err != nil { // TODO: handle shutdown
-			g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-			continue
+		if err != nil {
+			if g.server.IsShut() {
+				break
+			} else {
+				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
@@ -185,10 +208,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-}
-
-func (g *httpxGate) shutdown() {
-	// TODO
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.server.SubDone()
 }
 
 func (g *httpxGate) onConnectionClosed() {

@@ -209,7 +209,7 @@ func (s *httpServer_) Logf(format string, args ...any) {
 
 // httpGate is the interface for *httpxGate and *http3Gate.
 type httpGate interface {
-	shutdown()
+	shut() error
 }
 
 // httpGate_ is the mixin for httpxGate and http3Gate.

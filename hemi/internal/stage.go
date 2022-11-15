@@ -235,6 +235,7 @@ func (s *Stage) createServer(sign string, name string) Server {
 	server := create(name, s)
 	server.setShell(server)
 	s.servers[name] = server
+	s.IncSub(1)
 	return server
 }
 func (s *Stage) createCronjob(sign string) Cronjob {
@@ -367,7 +368,7 @@ func (s *Stage) OnShutdown() {
 
 	// sub components
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
-	s.servers.walk(Server.OnShutdown)
+	s.servers.goWalk(Server.OnShutdown)
 	s.svcs.walk((*Svc).OnShutdown)
 	s.apps.walk((*App).OnShutdown)
 	s.cachers.goWalk(Cacher.OnShutdown)

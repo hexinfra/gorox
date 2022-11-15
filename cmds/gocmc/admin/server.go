@@ -28,6 +28,7 @@ type AdminServer struct {
 	Component_
 	// Assocs
 	stage *Stage
+	gate  *net.TCPListener
 	// States
 	address string
 	mutex   sync.Mutex
@@ -59,6 +60,8 @@ func (s *AdminServer) OnConfigure() {
 func (s *AdminServer) OnPrepare() {
 }
 func (s *AdminServer) OnShutdown() {
+	s.SetShut()
+	s.gate.Close()
 }
 
 func (s *AdminServer) Serve() { // goroutine
@@ -70,11 +73,16 @@ func (s *AdminServer) Serve() { // goroutine
 	if err != nil {
 		EnvExitln(err.Error())
 	}
+	s.gate = gate
 	connID := int64(0)
 	for {
-		tcpConn, err := gate.AcceptTCP()
+		tcpConn, err := s.gate.AcceptTCP()
 		if err != nil {
-			continue
+			if s.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		conn := new(adminConn)
 		conn.init(s.stage, s, connID, tcpConn)
@@ -82,6 +90,11 @@ func (s *AdminServer) Serve() { // goroutine
 		go conn.serve()
 		connID++
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	if Debug(2) {
+		fmt.Printf("adminServer=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 func (s *AdminServer) NumConns() int {

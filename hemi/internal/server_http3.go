@@ -11,6 +11,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"net"
 	"sync"
@@ -38,13 +39,17 @@ func (s *http3Server) init(name string, stage *Stage) {
 }
 
 func (s *http3Server) OnConfigure() {
-	s.onConfigure()
+	s.httpServer_.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
-	s.onPrepare()
+	s.httpServer_.onPrepare()
 }
 func (s *http3Server) OnShutdown() {
-	s.onShutdown()
+	s.SetShut()
+	for _, gate := range s.gates {
+		gate.shut()
+	}
+	s.httpServer_.onShutdown()
 }
 
 func (s *http3Server) Serve() { // goroutine
@@ -55,9 +60,14 @@ func (s *http3Server) Serve() { // goroutine
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
+		s.IncSub(1)
 		go gate.serve()
 	}
-	select {}
+	s.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("http3Server=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 // http3Gate is a gate of HTTP/3 server.
@@ -84,13 +94,20 @@ func (g *http3Gate) open() error {
 	return nil
 }
 
+func (g *http3Gate) shut() error {
+	return g.gate.Close()
+}
+
 func (g *http3Gate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		quicConn, err := g.gate.Accept()
-		if err != nil { // TODO: shutdown
-			// TODO: log
-			continue
+		if err != nil {
+			if g.server.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(quicConn)
@@ -100,10 +117,8 @@ func (g *http3Gate) serve() { // goroutine
 			connID++
 		}
 	}
-}
-
-func (g *http3Gate) shutdown() {
-	// TODO
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.server.SubDone()
 }
 
 func (g *http3Gate) onConnectionClosed() {

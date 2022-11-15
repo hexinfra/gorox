@@ -9,6 +9,7 @@ package echo
 
 import (
 	"context"
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
@@ -44,6 +45,10 @@ func (s *echoServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 func (s *echoServer) OnShutdown() {
+	s.SetShut()
+	for _, gate := range s.gates {
+		gate.shut()
+	}
 	s.Server_.OnShutdown()
 }
 
@@ -55,9 +60,14 @@ func (s *echoServer) Serve() { // goroutine
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
+		s.IncSub(1)
 		go gate.serve()
 	}
-	select {}
+	s.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("echoServer=%s done\n", s.Name())
+	}
+	s.Stage().SubDone()
 }
 
 // echoGate
@@ -86,13 +96,20 @@ func (g *echoGate) open() error {
 	}
 	return err
 }
+func (g *echoGate) shut() error {
+	return g.listener.Close()
+}
 
 func (g *echoGate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			continue
+			if g.server.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
@@ -102,6 +119,8 @@ func (g *echoGate) serve() { // goroutine
 			connID++
 		}
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.server.SubDone()
 }
 
 func (g *echoGate) onConnectionClosed() {

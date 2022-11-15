@@ -9,6 +9,7 @@ package socks
 
 import (
 	"context"
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
@@ -44,6 +45,10 @@ func (s *socksServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 func (s *socksServer) OnShutdown() {
+	s.SetShut()
+	for _, gate := range s.gates {
+		gate.shut()
+	}
 	s.Server_.OnShutdown()
 }
 
@@ -55,9 +60,14 @@ func (s *socksServer) Serve() { // goroutine
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
+		s.IncSub(1)
 		go gate.serve()
 	}
-	select {}
+	s.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("socksServer=%s done\n", s.Name())
+	}
+	s.Stage().SubDone()
 }
 
 // socksGate
@@ -86,13 +96,20 @@ func (g *socksGate) open() error {
 	}
 	return err
 }
+func (g *socksGate) shut() error {
+	return g.listener.Close()
+}
 
 func (g *socksGate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			continue
+			if g.server.IsShut() {
+				break
+			} else {
+				continue
+			}
 		}
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
@@ -102,6 +119,8 @@ func (g *socksGate) serve() { // goroutine
 			connID++
 		}
 	}
+	// TODO: waiting for all connections end. Use sync.Cond?
+	g.server.SubDone()
 }
 
 func (g *socksGate) onConnectionClosed() {

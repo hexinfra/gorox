@@ -67,7 +67,7 @@ type Stage struct {
 	thrFile    string
 	grtFile    string
 	blkFile    string
-	workerId   int32
+	id         int32
 	numCPU     int32
 }
 
@@ -123,10 +123,10 @@ func (s *Stage) createOptware(sign string) Optware {
 	if s.Optware(sign) != nil {
 		UseExitf("conflicting optware with a same sign '%s'\n", sign)
 	}
-	s.IncSub(1)
 	optware := create(sign, s)
 	optware.setShell(optware)
 	s.optwares[sign] = optware
+	s.IncSub(1)
 	return optware
 }
 func (s *Stage) createBackend(sign string, name string) backend {
@@ -137,43 +137,43 @@ func (s *Stage) createBackend(sign string, name string) backend {
 	if s.Backend(name) != nil {
 		UseExitf("conflicting backend with a same name '%s'\n", name)
 	}
-	s.IncSub(1)
 	backend := create(name, s)
 	backend.setShell(backend)
 	s.backends[name] = backend
+	s.IncSub(1)
 	return backend
 }
 func (s *Stage) createQUICMesher(name string) *QUICMesher {
 	if s.QUICMesher(name) != nil {
 		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
 	}
-	s.IncSub(1)
 	mesher := new(QUICMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.quicMeshers[name] = mesher
+	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
 	if s.TCPSMesher(name) != nil {
 		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
 	}
-	s.IncSub(1)
 	mesher := new(TCPSMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.tcpsMeshers[name] = mesher
+	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
 	if s.UDPSMesher(name) != nil {
 		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
 	}
-	s.IncSub(1)
 	mesher := new(UDPSMesher)
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.udpsMeshers[name] = mesher
+	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createStater(sign string, name string) Stater {
@@ -187,6 +187,7 @@ func (s *Stage) createStater(sign string, name string) Stater {
 	stater := create(name, s)
 	stater.setShell(stater)
 	s.staters[name] = stater
+	s.IncSub(1)
 	return stater
 }
 func (s *Stage) createCacher(sign string, name string) Cacher {
@@ -200,6 +201,7 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	cacher := create(name, s)
 	cacher.setShell(cacher)
 	s.cachers[name] = cacher
+	s.IncSub(1)
 	return cacher
 }
 func (s *Stage) createApp(name string) *App {
@@ -243,10 +245,10 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	if s.Cronjob(sign) != nil {
 		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
 	}
-	s.IncSub(1)
 	cronjob := create(sign, s)
 	cronjob.setShell(cronjob)
 	s.cronjobs[sign] = cronjob
+	s.IncSub(1)
 	return cronjob
 }
 
@@ -359,13 +361,17 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 func (s *Stage) OnShutdown() {
+	if Debug(2) {
+		fmt.Println("stage shutdown start!!")
+	}
+
 	// sub components
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.servers.walk(Server.OnShutdown)
 	s.svcs.walk((*Svc).OnShutdown)
 	s.apps.walk((*App).OnShutdown)
-	s.cachers.walk(Cacher.OnShutdown)
-	s.staters.walk(Stater.OnShutdown)
+	s.cachers.goWalk(Cacher.OnShutdown)
+	s.staters.goWalk(Stater.OnShutdown)
 	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
 	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
 	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
@@ -383,7 +389,7 @@ func (s *Stage) OnShutdown() {
 }
 
 func (s *Stage) Start() { // one worker process mode
-	s.workerId = 0
+	s.id = 0
 	s.numCPU = int32(runtime.NumCPU())
 
 	if Debug(2) {
@@ -623,8 +629,8 @@ func (s *Stage) prepare() (err error) {
 	return nil
 }
 
-func (s *Stage) WorkerID() int32 { return s.workerId }
-func (s *Stage) NumCPU() int32   { return s.numCPU }
+func (s *Stage) ID() int32     { return s.id }
+func (s *Stage) NumCPU() int32 { return s.numCPU }
 
 func (s *Stage) Log(str string) {
 	//s.logger.log(str)

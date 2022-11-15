@@ -97,9 +97,6 @@ func (m *mesher_[M, G, R, F, C]) onShutdown() {
 	m.office_.onShutdown()
 }
 func (m *mesher_[M, G, R, F, C]) shutdownSubs() {
-	for _, gate := range m.gates {
-		gate.shut()
-	}
 	m.cases.walk(C.OnShutdown)
 	m.filters.walk(F.OnShutdown)
 	m.runners.walk(R.OnShutdown)
@@ -115,10 +112,10 @@ func (m *mesher_[M, G, R, F, C]) createRunner(sign string, name string) R {
 	if !ok {
 		UseExitln("unknown runner sign: " + sign)
 	}
-	m.IncSub(1)
 	runner := create(name, m.stage, m.shell.(M))
 	runner.setShell(runner)
 	m.runners[name] = runner
+	m.IncSub(1)
 	return runner
 }
 func (m *mesher_[M, G, R, F, C]) createFilter(sign string, name string) F {
@@ -134,14 +131,22 @@ func (m *mesher_[M, G, R, F, C]) createFilter(sign string, name string) F {
 	if !ok {
 		UseExitln("unknown filter sign: " + sign)
 	}
-	m.IncSub(1)
 	filter := create(name, m.stage, m.shell.(M))
 	filter.setShell(filter)
 	filter.setID(m.nFilters)
 	m.filters[name] = filter
+	m.IncSub(1)
 	m.filtersByID[m.nFilters] = filter
 	m.nFilters++
 	return filter
+}
+func (m *mesher_[M, G, R, F, C]) hasCase(name string) bool {
+	for _, kase := range m.cases {
+		if kase.Name() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *mesher_[M, G, R, F, C]) filterByID(id uint8) F { // for fast searching

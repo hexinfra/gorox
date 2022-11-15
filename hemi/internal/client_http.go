@@ -143,7 +143,7 @@ func (c *hConn_) isBroken() bool { return c.broken.Load() }
 func (c *hConn_) markBroken()    { c.broken.Store(true) }
 
 func (c *hConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().WorkerID()), c.id, seconds, c.counter.Add(1))
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, seconds, c.counter.Add(1))
 }
 
 // hStream_ is the mixin for H[1-3]Stream.

@@ -29,32 +29,33 @@ func (m *TCPSMesher) init(name string, stage *Stage) {
 
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
-
+	// TODO: configure m
 	m.configureSubs()
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
-
+	// TODO: prepare m
 	m.prepareSubs()
 }
 func (m *TCPSMesher) OnShutdown() {
 	m.SetShut()
+	for _, gate := range m.gates {
+		gate.shut()
+	}
 	m.shutdownSubs()
-
+	// TODO: shutdown m
 	m.mesher_.onShutdown()
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {
-	/*
-		if m.Case(name) != nil {
-			UseExitln("conflicting case with a same name")
-		}
-	*/
+	if m.hasCase(name) {
+		UseExitln("conflicting case with a same name")
+	}
 	kase := new(tcpsCase)
 	kase.init(name, m)
 	kase.setShell(kase)
-	m.IncSub(1)
 	m.cases = append(m.cases, kase)
+	m.IncSub(1)
 	return kase
 }
 
@@ -65,8 +66,8 @@ func (m *TCPSMesher) serve() { // goroutine
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		m.IncSub(1)
 		m.gates = append(m.gates, gate)
+		m.IncSub(1)
 		if m.tlsMode {
 			go gate.serveTLS()
 		} else {

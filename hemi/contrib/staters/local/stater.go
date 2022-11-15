@@ -8,6 +8,7 @@
 package local
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"time"
@@ -47,12 +48,17 @@ func (s *localStater) OnPrepare() {
 	}
 }
 func (s *localStater) OnShutdown() {
+	s.SetShut()
 }
 
 func (s *localStater) Maintain() { // goroutine
-	for {
+	for !s.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Printf("localStater=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 func (s *localStater) Set(sid []byte, session *Session) {

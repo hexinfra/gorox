@@ -8,6 +8,7 @@
 package local
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"time"
@@ -47,12 +48,17 @@ func (c *localCacher) OnPrepare() {
 	}
 }
 func (c *localCacher) OnShutdown() {
+	c.SetShut()
 }
 
 func (c *localCacher) Maintain() { // goroutine
-	for {
+	for !c.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Printf("localCacher=%s done\n", c.Name())
+	}
+	c.stage.SubDone()
 }
 
 func (c *localCacher) Set(key []byte, value *Hobject) {

@@ -8,6 +8,7 @@
 package redis
 
 import (
+	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -40,12 +41,17 @@ func (s *redisStater) OnConfigure() {
 func (s *redisStater) OnPrepare() {
 }
 func (s *redisStater) OnShutdown() {
+	s.SetShut()
 }
 
 func (s *redisStater) Maintain() { // goroutine
-	for {
+	for !s.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Printf("redisStater=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 func (s *redisStater) Set(sid []byte, session *Session) {

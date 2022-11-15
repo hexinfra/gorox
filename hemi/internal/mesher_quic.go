@@ -25,32 +25,33 @@ func (m *QUICMesher) init(name string, stage *Stage) {
 
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
-
+	// TODO: configure m
 	m.configureSubs()
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
-
+	// TODO: prepare m
 	m.prepareSubs()
 }
 func (m *QUICMesher) OnShutdown() {
+	for _, gate := range m.gates {
+		gate.shut()
+	}
 	m.SetShut()
 	m.shutdownSubs()
-
+	// TODO: shutdown m
 	m.mesher_.onShutdown()
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
-	/*
-		if m.Case(name) != nil {
-			UseExitln("conflicting case with a same name")
-		}
-	*/
+	if m.hasCase(name) {
+		UseExitln("conflicting case with a same name")
+	}
 	kase := new(quicCase)
 	kase.init(name, m)
 	kase.setShell(kase)
-	m.IncSub(1)
 	m.cases = append(m.cases, kase)
+	m.IncSub(1)
 	return kase
 }
 
@@ -61,8 +62,8 @@ func (m *QUICMesher) serve() { // goroutine
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		m.IncSub(1)
 		m.gates = append(m.gates, gate)
+		m.IncSub(1)
 		go gate.serve()
 	}
 	m.WaitSubs()

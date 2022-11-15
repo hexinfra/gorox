@@ -68,22 +68,21 @@ func exitf(exitCode int, prefix, format string, args ...any) {
 
 // Component is the interface for all components.
 type Component interface {
-	OnConfigure()
-	OnPrepare()
-	OnShutdown()
-
 	CompInit(name string)
 
 	SetName(name string)
 	Name() string
 
+	OnConfigure()
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
-
 	ConfigureBool(name string, prop *bool, defaultValue bool)
 	ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32)
 	ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string)
 
+	OnPrepare()
+
+	OnShutdown()
 	SubDone()
 
 	setShell(shell Component)
@@ -100,8 +99,8 @@ type Component_ struct {
 	parent Component // the parent component, used by config
 	// States
 	name  string           // main, ...
-	info  any              // extra info about this component, used by config
 	props map[string]Value // name=value, ...
+	info  any              // extra info about this component, used by config
 	shut  atomic.Bool      // is component shutting down?
 	subs  sync.WaitGroup   // for shutting down sub compoments, if any
 }
@@ -169,18 +168,18 @@ func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value)
 	}
 }
 
-func (c *Component_) setShell(shell Component)         { c.shell = shell }
-func (c *Component_) setParent(parent Component)       { c.parent = parent }
-func (c *Component_) getParent() Component             { return c.parent }
-func (c *Component_) setInfo(info any)                 { c.info = info }
-func (c *Component_) setProp(name string, value Value) { c.props[name] = value }
-
 func (c *Component_) SetShut()     { c.shut.Store(true) }
 func (c *Component_) IsShut() bool { return c.shut.Load() }
 
 func (c *Component_) IncSub(n int) { c.subs.Add(n) }
 func (c *Component_) WaitSubs()    { c.subs.Wait() }
 func (c *Component_) SubDone()     { c.subs.Done() }
+
+func (c *Component_) setShell(shell Component)         { c.shell = shell }
+func (c *Component_) setParent(parent Component)       { c.parent = parent }
+func (c *Component_) getParent() Component             { return c.parent }
+func (c *Component_) setInfo(info any)                 { c.info = info }
+func (c *Component_) setProp(name string, value Value) { c.props[name] = value }
 
 // compList
 type compList[T Component] []T
@@ -332,53 +331,6 @@ type fixture interface {
 type Optware interface {
 	Component
 	Run() // goroutine
-}
-
-// Stater component is the interface to storages of HTTP states. See RFC 6265.
-type Stater interface {
-	Component
-	Maintain() // goroutine
-	Set(sid []byte, session *Session)
-	Get(sid []byte) (session *Session)
-	Del(sid []byte) bool
-}
-
-// Stater_
-type Stater_ struct {
-	// Mixins
-	Component_
-}
-
-// Session is an HTTP session in stater
-type Session struct {
-	// TODO
-	sid  []byte
-	role int8
-	data any
-}
-
-// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
-type Cacher interface {
-	Component
-	Maintain() // goroutine
-	Set(key []byte, value *Hobject)
-	Get(key []byte) (value *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_
-type Cacher_ struct {
-	// Mixins
-	Component_
-}
-
-// Hobject is an HTTP object in cacher
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
 }
 
 // office_ is a mixin for meshers and servers.

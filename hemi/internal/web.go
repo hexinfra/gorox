@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// App and related components.
+// Web related components.
 
 package internal
 
@@ -18,6 +18,53 @@ import (
 	"sync"
 	"time"
 )
+
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // goroutine
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session in stater
+type Session struct {
+	// TODO
+	sid  []byte
+	role int8
+	data any
+}
+
+// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
+type Cacher interface {
+	Component
+	Maintain() // goroutine
+	Set(key []byte, value *Hobject)
+	Get(key []byte) (value *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_
+type Cacher_ struct {
+	// Mixins
+	Component_
+}
+
+// Hobject is an HTTP object in cacher
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}
 
 // App is the application.
 type App struct {

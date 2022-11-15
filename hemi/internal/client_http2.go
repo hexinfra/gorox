@@ -88,7 +88,7 @@ func (b *HTTP2Backend) init(name string, stage *Stage) {
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.httpBackend_.onConfigure()
+	b.httpBackend_.onConfigure(b)
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.httpBackend_.onPrepare(len(b.nodes))

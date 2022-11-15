@@ -15,12 +15,6 @@ import (
 	"time"
 )
 
-// quicClient is the interface for QUICOutgate and QUICBackend.
-type quicClient interface {
-	client
-	streamHolder
-}
-
 func init() {
 	registerFixture(signQUIC)
 	registerBackend("quicBackend", func(name string, stage *Stage) backend {
@@ -28,6 +22,36 @@ func init() {
 		b.init(name, stage)
 		return b
 	})
+}
+
+// quicClient is the interface for QUICOutgate and QUICBackend.
+type quicClient interface {
+	client
+	streamHolder
+}
+
+// quicClient_
+type quicClient_ struct {
+	// Mixins
+	client_
+	streamHolder_
+	// States
+}
+
+func (c *quicClient_) init(name string, stage *Stage) {
+	c.client_.init(name, stage)
+}
+
+func (c *quicClient_) onConfigure() {
+	c.client_.onConfigure()
+	// maxStreamsPerConn
+	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+}
+func (c *quicClient_) onPrepare() {
+	c.client_.onPrepare()
+}
+func (c *quicClient_) onShutdown() {
+	c.client_.onShutdown()
 }
 
 const signQUIC = "quic"
@@ -42,25 +66,22 @@ func createQUIC(stage *Stage) *QUICOutgate {
 // QUICOutgate component.
 type QUICOutgate struct {
 	// Mixins
-	outgate_
-	streamHolder_
+	quicClient_
 	// States
 }
 
 func (f *QUICOutgate) init(stage *Stage) {
-	f.outgate_.init(signQUIC, stage)
+	f.quicClient_.init(signQUIC, stage)
 }
 
 func (f *QUICOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
-	// maxStreamsPerConn
-	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	f.quicClient_.onConfigure()
 }
 func (f *QUICOutgate) OnPrepare() {
-	f.outgate_.onPrepare()
+	f.quicClient_.onPrepare()
 }
 func (f *QUICOutgate) OnShutdown() {
-	f.outgate_.onShutdown()
+	f.quicClient_.onShutdown()
 }
 
 func (f *QUICOutgate) run() { // goroutine
@@ -88,27 +109,29 @@ func (f *QUICOutgate) StoreConn(conn *QConn) {
 // QUICBackend component.
 type QUICBackend struct {
 	// Mixins
-	backend_
-	streamHolder_
+	quicClient_
+	loadBalancer_
 	// States
 	healthCheck any         // TODO
 	nodes       []*quicNode // nodes of backend
 }
 
 func (b *QUICBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.quicClient_.init(name, stage)
+	b.loadBalancer_.init()
 }
 
 func (b *QUICBackend) OnConfigure() {
-	b.backend_.onConfigure()
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	b.quicClient_.onConfigure()
+	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUICBackend) OnPrepare() {
-	b.backend_.onPrepare(len(b.nodes))
+	b.quicClient_.onPrepare()
+	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *QUICBackend) OnShutdown() {
-	b.backend_.onShutdown()
+	b.quicClient_.onShutdown()
+	b.loadBalancer_.onShutdown()
 }
 
 func (b *QUICBackend) maintain() { // goroutine

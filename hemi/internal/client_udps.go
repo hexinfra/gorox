@@ -16,11 +16,6 @@ import (
 	"time"
 )
 
-// udpsClient is the interface for UDPSOutgate and UDPSBackend.
-type udpsClient interface {
-	client
-}
-
 func init() {
 	registerFixture(signUDPS)
 	registerBackend("udpsBackend", func(name string, stage *Stage) backend {
@@ -28,6 +23,32 @@ func init() {
 		b.init(name, stage)
 		return b
 	})
+}
+
+// udpsClient is the interface for UDPSOutgate and UDPSBackend.
+type udpsClient interface {
+	client
+}
+
+// udpsClient_
+type udpsClient_ struct {
+	// Mixins
+	client_
+	// States
+}
+
+func (c *udpsClient_) init(name string, stage *Stage) {
+	c.client_.init(name, stage)
+}
+
+func (c *udpsClient_) onConfigure() {
+	c.client_.onConfigure()
+}
+func (c *udpsClient_) onPrepare() {
+	c.client_.onPrepare()
+}
+func (c *udpsClient_) onShutdown() {
+	c.client_.onShutdown()
 }
 
 const signUDPS = "udps"
@@ -42,22 +63,22 @@ func createUDPS(stage *Stage) *UDPSOutgate {
 // UDPSOutgate component.
 type UDPSOutgate struct {
 	// Mixins
-	outgate_
+	udpsClient_
 	// States
 }
 
 func (f *UDPSOutgate) init(stage *Stage) {
-	f.outgate_.init(signUDPS, stage)
+	f.udpsClient_.init(signUDPS, stage)
 }
 
 func (f *UDPSOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
+	f.udpsClient_.onConfigure()
 }
 func (f *UDPSOutgate) OnPrepare() {
-	f.outgate_.onPrepare()
+	f.udpsClient_.onPrepare()
 }
 func (f *UDPSOutgate) OnShutdown() {
-	f.outgate_.onShutdown()
+	f.udpsClient_.onShutdown()
 }
 
 func (f *UDPSOutgate) run() { // goroutine
@@ -86,24 +107,29 @@ func (f *UDPSOutgate) StoreConn(conn *UConn) {
 // UDPSBackend component.
 type UDPSBackend struct {
 	// Mixins
-	backend_
+	udpsClient_
+	loadBalancer_
 	// States
 	healthCheck any         // TODO
 	nodes       []*udpsNode // nodes of backend
 }
 
 func (b *UDPSBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.udpsClient_.init(name, stage)
+	b.loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
-	b.backend_.onConfigure()
+	b.udpsClient_.onConfigure()
+	b.loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
-	b.backend_.onPrepare(len(b.nodes))
+	b.udpsClient_.onPrepare()
+	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *UDPSBackend) OnShutdown() {
-	b.backend_.onShutdown()
+	b.udpsClient_.onShutdown()
+	b.loadBalancer_.onShutdown()
 }
 
 func (b *UDPSBackend) maintain() { // goroutine

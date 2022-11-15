@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 )
 
 // poolBlock
@@ -236,6 +237,58 @@ type streamHolder_ struct {
 }
 
 func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
+
+// loadBalancer_
+type loadBalancer_ struct {
+	// States
+	balancer  string       // roundRobin, ipHash, random, ...
+	indexGet  func() int64 // ...
+	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
+	numNodes  int64        // num of nodes
+}
+
+func (b *loadBalancer_) init() {
+	b.nodeIndex.Store(-1)
+}
+
+func (b *loadBalancer_) onConfigure(c Component) {
+	// balancer
+	c.ConfigureString("balancer", &b.balancer, func(value string) bool {
+		return value == "roundRobin" || value == "ipHash" || value == "random"
+	}, "roundRobin")
+}
+func (b *loadBalancer_) onPrepare(numNodes int) {
+	switch b.balancer {
+	case "roundRobin":
+		b.indexGet = b.getIndexByRoundRobin
+	case "ipHash":
+		b.indexGet = b.getIndexByIPHash
+	case "random":
+		b.indexGet = b.getIndexByRandom
+	default:
+		BugExitln("this should not happen")
+	}
+	b.numNodes = int64(numNodes)
+}
+func (b *loadBalancer_) onShutdown() {
+}
+
+func (b *loadBalancer_) getIndex() int64 {
+	return b.indexGet()
+}
+
+func (b *loadBalancer_) getIndexByRoundRobin() int64 {
+	index := b.nodeIndex.Add(1)
+	return index % b.numNodes
+}
+func (b *loadBalancer_) getIndexByIPHash() int64 {
+	// TODO
+	return 0
+}
+func (b *loadBalancer_) getIndexByRandom() int64 {
+	// TODO
+	return 0
+}
 
 // ider
 type ider interface {

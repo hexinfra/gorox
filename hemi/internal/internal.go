@@ -80,6 +80,10 @@ type Component interface {
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
 
+	ConfigureBool(name string, prop *bool, defaultValue bool)
+	ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32)
+	ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string)
+
 	SubDone()
 
 	setShell(shell Component)

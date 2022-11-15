@@ -112,7 +112,7 @@ func (b *HTTP1Backend) init(name string, stage *Stage) {
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.httpBackend_.onConfigure()
+	b.httpBackend_.onConfigure(b)
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {

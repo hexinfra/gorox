@@ -25,7 +25,7 @@ type client interface {
 	AliveTimeout() time.Duration
 }
 
-// client_ is a mixin shared by outgate_ and backend_.
+// client_ is a mixin shared by outgates and backends.
 type client_ struct {
 	// Mixins
 	Component_
@@ -78,93 +78,11 @@ func (c *client_) nextConnID() int64 {
 	return c.connID.Add(1)
 }
 
-// outgate_ is a mixin for outgates.
-type outgate_ struct {
-	// Mixins
-	client_
-	// States
-}
-
-func (f *outgate_) init(name string, stage *Stage) {
-	f.client_.init(name, stage)
-	// other states
-}
-
-func (f *outgate_) onConfigure() {
-	f.client_.onConfigure()
-}
-func (f *outgate_) onPrepare() {
-	f.client_.onPrepare()
-}
-func (f *outgate_) onShutdown() {
-	f.client_.onShutdown()
-}
-
 // backend is a group of nodes.
 type backend interface {
 	Component
 	maintain() // goroutine
 }
-
-// backend_ is a mixin for backends.
-type backend_ struct {
-	// Mixins
-	client_
-	// States
-	balancer  string       // roundRobin, ipHash, random, ...
-	indexGet  func() int64 // ...
-	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
-	numNodes  int64        // num of nodes
-}
-
-func (b *backend_) init(name string, stage *Stage) {
-	b.client_.init(name, stage)
-	b.nodeIndex.Store(-1)
-}
-
-func (b *backend_) onConfigure() {
-	b.client_.onConfigure()
-	// balancer
-	b.ConfigureString("balancer", &b.balancer, func(value string) bool {
-		return value == "roundRobin" || value == "ipHash" || value == "random"
-	}, "roundRobin")
-}
-func (b *backend_) onPrepare(numNodes int) {
-	b.client_.onPrepare()
-	switch b.balancer {
-	case "roundRobin":
-		b.indexGet = b.getIndexByRoundRobin
-	case "ipHash":
-		b.indexGet = b.getIndexByIPHash
-	case "random":
-		b.indexGet = b.getIndexByRandom
-	default:
-		BugExitln("this should not happen")
-	}
-	b.numNodes = int64(numNodes)
-}
-func (b *backend_) onShutdown() {
-	b.client_.onShutdown()
-}
-
-func (b *backend_) getIndex() int64 {
-	return b.indexGet()
-}
-
-func (b *backend_) getIndexByRoundRobin() int64 {
-	index := b.nodeIndex.Add(1)
-	return index % b.numNodes
-}
-func (b *backend_) getIndexByIPHash() int64 {
-	// TODO
-	return 0
-}
-func (b *backend_) getIndexByRandom() int64 {
-	// TODO
-	return 0
-}
-
-var errNodeDown = errors.New("node is down")
 
 // node is a member of backend.
 type node interface {
@@ -221,6 +139,8 @@ func (n *node_) pushConn(conn conn) {
 	}
 	list.size++
 }
+
+var errNodeDown = errors.New("node is down")
 
 // conn is the client conns.
 type conn interface {

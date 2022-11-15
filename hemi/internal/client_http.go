@@ -23,10 +23,30 @@ type httpClient interface {
 // httpClient_ is a mixin for httpOutgate_ and httpBackend_.
 type httpClient_ struct {
 	// Mixins
+	client_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxContentSize int64
+}
+
+func (c *httpClient_) init(name string, stage *Stage) {
+	c.client_.init(name, stage)
+}
+
+func (c *httpClient_) onConfigure(clientName string) {
+	c.client_.onConfigure()
+	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	// saveContentFilesDir
+	c.ConfigureString("saveContentFilesDir", &c.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.name)
+	// maxContentSize
+	c.ConfigureInt64("maxContentSize", &c.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+}
+func (c *httpClient_) onPrepare() {
+	c.client_.onPrepare()
+}
+func (c *httpClient_) onShutdown() {
+	c.client_.onShutdown()
 }
 
 func (c *httpClient_) MaxContentSize() int64 { return c.maxContentSize }
@@ -34,60 +54,51 @@ func (c *httpClient_) MaxContentSize() int64 { return c.maxContentSize }
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
 	// Mixins
-	outgate_
 	httpClient_
 	// States
 }
 
 func (f *httpOutgate_) init(name string, stage *Stage) {
-	f.outgate_.init(name, stage)
+	f.httpClient_.init(name, stage)
 }
 
 func (f *httpOutgate_) onConfigure() {
-	f.outgate_.onConfigure()
-	// maxStreamsPerConn
-	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
-	// saveContentFilesDir
-	f.ConfigureString("saveContentFilesDir", &f.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/outgates/"+f.name)
-	// maxContentSize
-	f.ConfigureInt64("maxContentSize", &f.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	f.httpClient_.onConfigure("outgates")
 }
 func (f *httpOutgate_) onPrepare() {
-	f.outgate_.onPrepare()
+	f.httpClient_.onPrepare()
 	f.makeContentFilesDir(0755)
 }
 func (f *httpOutgate_) onShutdown() {
-	f.outgate_.onShutdown()
+	f.httpClient_.onShutdown()
 }
 
 // httpBackend_ is the mixin for HTTP[1-3]Backend.
 type httpBackend_ struct {
 	// Mixins
-	backend_
 	httpClient_
+	loadBalancer_
 	// States
 	healthCheck any // TODO
 }
 
 func (b *httpBackend_) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.httpClient_.init(name, stage)
+	b.loadBalancer_.init()
 }
 
-func (b *httpBackend_) onConfigure() {
-	b.backend_.onConfigure()
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
-	// saveContentFilesDir
-	b.ConfigureString("saveContentFilesDir", &b.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/backends/"+b.name)
-	// maxContentSize
-	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+func (b *httpBackend_) onConfigure(c Component) {
+	b.httpClient_.onConfigure("backends")
+	b.loadBalancer_.onConfigure(c)
 }
 func (b *httpBackend_) onPrepare(numNodes int) {
-	b.backend_.onPrepare(numNodes)
+	b.httpClient_.onPrepare()
+	b.loadBalancer_.onPrepare(numNodes)
 	b.makeContentFilesDir(0755)
 }
 func (b *httpBackend_) onShutdown() {
-	b.backend_.onShutdown()
+	b.httpClient_.onShutdown()
+	b.loadBalancer_.onShutdown()
 }
 
 // httpNode_ is the mixin for http[1-3]Node.

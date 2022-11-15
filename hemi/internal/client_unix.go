@@ -15,12 +15,6 @@ import (
 	"time"
 )
 
-// unixClient is the interface for UnixOutgate and UnixBackend.
-type unixClient interface {
-	client
-	streamHolder
-}
-
 func init() {
 	registerFixture(signUnix)
 	registerBackend("unixBackend", func(name string, stage *Stage) backend {
@@ -28,6 +22,36 @@ func init() {
 		b.init(name, stage)
 		return b
 	})
+}
+
+// unixClient is the interface for UnixOutgate and UnixBackend.
+type unixClient interface {
+	client
+	streamHolder
+}
+
+// unixClient_
+type unixClient_ struct {
+	// Mixins
+	client_
+	streamHolder_
+	// States
+}
+
+func (c *unixClient_) init(name string, stage *Stage) {
+	c.client_.init(name, stage)
+}
+
+func (c *unixClient_) onConfigure() {
+	c.client_.onConfigure()
+	// maxStreamsPerConn
+	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+}
+func (c *unixClient_) onPrepare() {
+	c.client_.onPrepare()
+}
+func (c *unixClient_) onShutdown() {
+	c.client_.onShutdown()
 }
 
 const signUnix = "unix"
@@ -42,25 +66,22 @@ func createUnix(stage *Stage) *UnixOutgate {
 // UnixOutgate component.
 type UnixOutgate struct {
 	// Mixins
-	outgate_
-	streamHolder_
+	unixClient_
 	// States
 }
 
 func (f *UnixOutgate) init(stage *Stage) {
-	f.outgate_.init(signUnix, stage)
+	f.unixClient_.init(signUnix, stage)
 }
 
 func (f *UnixOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
-	// maxStreamsPerConn
-	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	f.unixClient_.onConfigure()
 }
 func (f *UnixOutgate) OnPrepare() {
-	f.outgate_.onPrepare()
+	f.unixClient_.onPrepare()
 }
 func (f *UnixOutgate) OnShutdown() {
-	f.outgate_.onShutdown()
+	f.unixClient_.onShutdown()
 }
 
 func (f *UnixOutgate) run() { // goroutine
@@ -89,27 +110,29 @@ func (f *UnixOutgate) StoreConn(conn *XConn) {
 // UnixBackend component.
 type UnixBackend struct {
 	// Mixins
-	backend_
-	streamHolder_
+	unixClient_
+	loadBalancer_
 	// States
 	healthCheck any         // TODO
 	nodes       []*unixNode // nodes of backend
 }
 
 func (b *UnixBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.unixClient_.init(name, stage)
+	b.loadBalancer_.init()
 }
 
 func (b *UnixBackend) OnConfigure() {
-	b.backend_.onConfigure()
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	b.unixClient_.onConfigure()
+	b.loadBalancer_.onConfigure(b)
 }
 func (b *UnixBackend) OnPrepare() {
-	b.backend_.onPrepare(len(b.nodes))
+	b.unixClient_.onPrepare()
+	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *UnixBackend) OnShutdown() {
-	b.backend_.onShutdown()
+	b.unixClient_.onShutdown()
+	b.loadBalancer_.onShutdown()
 }
 
 func (b *UnixBackend) maintain() { // goroutine

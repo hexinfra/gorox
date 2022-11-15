@@ -18,12 +18,6 @@ import (
 	"time"
 )
 
-// tcpsClient is the interface for TCPSOutgate and TCPSBackend.
-type tcpsClient interface {
-	client
-	streamHolder
-}
-
 func init() {
 	registerFixture(signTCPS)
 	registerBackend("tcpsBackend", func(name string, stage *Stage) backend {
@@ -31,6 +25,36 @@ func init() {
 		b.init(name, stage)
 		return b
 	})
+}
+
+// tcpsClient is the interface for TCPSOutgate and TCPSBackend.
+type tcpsClient interface {
+	client
+	streamHolder
+}
+
+// tcpsClient_
+type tcpsClient_ struct {
+	// Mixins
+	client_
+	streamHolder_
+	// States
+}
+
+func (c *tcpsClient_) init(name string, stage *Stage) {
+	c.client_.init(name, stage)
+}
+
+func (c *tcpsClient_) onConfigure() {
+	c.client_.onConfigure()
+	// maxStreamsPerConn
+	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+}
+func (c *tcpsClient_) onPrepare() {
+	c.client_.onPrepare()
+}
+func (c *tcpsClient_) onShutdown() {
+	c.client_.onShutdown()
 }
 
 const signTCPS = "tcps"
@@ -45,25 +69,22 @@ func createTCPS(stage *Stage) *TCPSOutgate {
 // TCPSOutgate component.
 type TCPSOutgate struct {
 	// Mixins
-	outgate_
-	streamHolder_
+	tcpsClient_
 	// States
 }
 
 func (f *TCPSOutgate) init(stage *Stage) {
-	f.outgate_.init(signTCPS, stage)
+	f.tcpsClient_.init(signTCPS, stage)
 }
 
 func (f *TCPSOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
-	// maxStreamsPerConn
-	f.ConfigureInt32("maxStreamsPerConn", &f.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	f.tcpsClient_.onConfigure()
 }
 func (f *TCPSOutgate) OnPrepare() {
-	f.outgate_.onPrepare()
+	f.tcpsClient_.onPrepare()
 }
 func (f *TCPSOutgate) OnShutdown() {
-	f.outgate_.onShutdown()
+	f.tcpsClient_.onShutdown()
 }
 
 func (f *TCPSOutgate) run() { // goroutine
@@ -106,19 +127,21 @@ func (f *TCPSOutgate) StoreConn(conn *TConn) {
 // TCPSBackend component.
 type TCPSBackend struct {
 	// Mixins
-	backend_
-	streamHolder_
+	tcpsClient_
+	loadBalancer_
 	// States
 	healthCheck any         // TODO
 	nodes       []*tcpsNode // nodes of backend
 }
 
 func (b *TCPSBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.tcpsClient_.init(name, stage)
+	b.loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
-	b.backend_.onConfigure()
+	b.tcpsClient_.onConfigure()
+	b.loadBalancer_.onConfigure(b)
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -167,14 +190,14 @@ func (b *TCPSBackend) OnConfigure() {
 		}
 		b.nodes = append(b.nodes, node)
 	}
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
 func (b *TCPSBackend) OnPrepare() {
-	b.backend_.onPrepare(len(b.nodes))
+	b.tcpsClient_.onPrepare()
+	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *TCPSBackend) OnShutdown() {
-	b.backend_.onShutdown()
+	b.tcpsClient_.onShutdown()
+	b.loadBalancer_.onShutdown()
 }
 
 func (b *TCPSBackend) maintain() { // goroutine

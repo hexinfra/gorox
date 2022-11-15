@@ -113,8 +113,8 @@ type UnixBackend struct {
 	unixClient_
 	loadBalancer_
 	// States
-	healthCheck any         // TODO
-	nodes       []*unixNode // nodes of backend
+	health any         // TODO
+	nodes  []*unixNode // nodes of backend
 }
 
 func (b *UnixBackend) init(name string, stage *Stage) {

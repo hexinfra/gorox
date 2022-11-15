@@ -215,15 +215,15 @@ type contentSaver_ struct {
 	saveContentFilesDir string
 }
 
-func (cs *contentSaver_) makeContentFilesDir(perm os.FileMode) {
-	if err := os.MkdirAll(cs.saveContentFilesDir, perm); err != nil {
+func (s *contentSaver_) makeContentFilesDir(perm os.FileMode) {
+	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
 		EnvExitln(err.Error())
 	}
-	if cs.saveContentFilesDir[len(cs.saveContentFilesDir)-1] != '/' {
-		cs.saveContentFilesDir += "/"
+	if s.saveContentFilesDir[len(s.saveContentFilesDir)-1] != '/' {
+		s.saveContentFilesDir += "/"
 	}
 }
-func (cs *contentSaver_) SaveContentFilesDir() string { return cs.saveContentFilesDir }
+func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir }
 
 // streamHolder
 type streamHolder interface {

@@ -112,8 +112,8 @@ type QUICBackend struct {
 	quicClient_
 	loadBalancer_
 	// States
-	healthCheck any         // TODO
-	nodes       []*quicNode // nodes of backend
+	health any         // TODO
+	nodes  []*quicNode // nodes of backend
 }
 
 func (b *QUICBackend) init(name string, stage *Stage) {

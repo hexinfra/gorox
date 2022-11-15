@@ -130,8 +130,8 @@ type TCPSBackend struct {
 	tcpsClient_
 	loadBalancer_
 	// States
-	healthCheck any         // TODO
-	nodes       []*tcpsNode // nodes of backend
+	health any         // TODO
+	nodes  []*tcpsNode // nodes of backend
 }
 
 func (b *TCPSBackend) init(name string, stage *Stage) {

@@ -110,8 +110,8 @@ type UDPSBackend struct {
 	udpsClient_
 	loadBalancer_
 	// States
-	healthCheck any         // TODO
-	nodes       []*udpsNode // nodes of backend
+	health any         // TODO
+	nodes  []*udpsNode // nodes of backend
 }
 
 func (b *UDPSBackend) init(name string, stage *Stage) {

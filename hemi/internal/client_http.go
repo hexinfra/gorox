@@ -79,7 +79,7 @@ type httpBackend_ struct {
 	httpClient_
 	loadBalancer_
 	// States
-	healthCheck any // TODO
+	health any // TODO
 }
 
 func (b *httpBackend_) init(name string, stage *Stage) {

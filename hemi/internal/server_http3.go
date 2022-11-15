@@ -93,7 +93,6 @@ func (g *http3Gate) open() error {
 	g.gate = gate
 	return nil
 }
-
 func (g *http3Gate) shut() error {
 	return g.gate.Close()
 }

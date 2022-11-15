@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -44,7 +45,7 @@ func (s *Svc) OnPrepare() {
 	}
 }
 func (s *Svc) OnShutdown() {
-	// TODO: shutdown s
+	s.SetShut()
 }
 
 func (s *Svc) LinkGRPC(server GRPCServer) {
@@ -58,9 +59,13 @@ func (s *Svc) linkHRPC(server httpServer) {
 
 func (s *Svc) maintain() { // goroutine
 	// TODO
-	for {
+	for !s.IsShut() {
 		time.Sleep(time.Second)
 	}
+	if Debug(2) {
+		fmt.Printf("svc=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 
 func (s *Svc) dispatchHRPC() {

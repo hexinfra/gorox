@@ -139,7 +139,6 @@ func (g *httpxGate) open() error {
 	}
 	return err
 }
-
 func (g *httpxGate) shut() error {
 	return g.listener.Close()
 }

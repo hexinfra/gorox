@@ -222,6 +222,7 @@ func (s *Stage) createSvc(name string) *Svc {
 	svc.init(name, s)
 	svc.setShell(svc)
 	s.svcs[name] = svc
+	s.IncSub(1)
 	return svc
 }
 func (s *Stage) createServer(sign string, name string) Server {
@@ -369,7 +370,7 @@ func (s *Stage) OnShutdown() {
 	// sub components
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.servers.goWalk(Server.OnShutdown)
-	s.svcs.walk((*Svc).OnShutdown)
+	s.svcs.goWalk((*Svc).OnShutdown)
 	s.apps.walk((*App).OnShutdown)
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)

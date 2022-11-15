@@ -40,6 +40,7 @@ func (h *gatex) OnConfigure() {
 func (h *gatex) OnPrepare() {
 }
 func (h *gatex) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *gatex) Handle(req Request, resp Response) (next bool) {

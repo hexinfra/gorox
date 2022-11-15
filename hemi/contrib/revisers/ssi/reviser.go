@@ -44,6 +44,7 @@ func (r *ssiReviser) OnConfigure() {
 func (r *ssiReviser) OnPrepare() {
 }
 func (r *ssiReviser) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *ssiReviser) Rank() int8 { return r.rank }

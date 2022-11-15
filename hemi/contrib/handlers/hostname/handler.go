@@ -54,6 +54,7 @@ func (h *hostnameHandler) OnConfigure() {
 func (h *hostnameHandler) OnPrepare() {
 }
 func (h *hostnameHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *hostnameHandler) Handle(req Request, resp Response) (next bool) {

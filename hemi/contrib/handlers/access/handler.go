@@ -40,6 +40,7 @@ func (h *accessHandler) OnConfigure() {
 func (h *accessHandler) OnPrepare() {
 }
 func (h *accessHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *accessHandler) Handle(req Request, resp Response) (next bool) {

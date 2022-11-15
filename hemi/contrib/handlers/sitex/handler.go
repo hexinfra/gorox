@@ -87,6 +87,7 @@ func (h *Sitex) OnConfigure() {
 func (h *Sitex) OnPrepare() {
 }
 func (h *Sitex) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.

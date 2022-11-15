@@ -49,6 +49,7 @@ func (h *v1Handler) OnPrepare() {
 }
 func (h *v1Handler) OnShutdown() {
 	h.admin = nil
+	h.app.SubDone()
 }
 
 func (h *v1Handler) Handle(req Request, resp Response) (next bool) {

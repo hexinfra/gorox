@@ -40,6 +40,7 @@ func (h *refererHandler) OnConfigure() {
 func (h *refererHandler) OnPrepare() {
 }
 func (h *refererHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *refererHandler) Handle(req Request, resp Response) (next bool) {

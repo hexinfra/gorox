@@ -82,6 +82,7 @@ func (h *fcgiProxy) OnConfigure() {
 func (h *fcgiProxy) OnPrepare() {
 }
 func (h *fcgiProxy) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }

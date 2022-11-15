@@ -44,6 +44,7 @@ func (r *wrapReviser) OnConfigure() {
 func (r *wrapReviser) OnPrepare() {
 }
 func (r *wrapReviser) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *wrapReviser) Rank() int8 { return r.rank }

@@ -58,8 +58,6 @@ type Stage struct {
 	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by sign
 	// States
-	appServers map[string][]string
-	svcServers map[string][]string
 	logFile    string // stage's log file
 	logger     *log.Logger
 	cpuFile    string
@@ -67,6 +65,8 @@ type Stage struct {
 	thrFile    string
 	grtFile    string
 	blkFile    string
+	appServers map[string][]string
+	svcServers map[string][]string
 	id         int32
 	numCPU     int32
 }
@@ -212,6 +212,7 @@ func (s *Stage) createApp(name string) *App {
 	app.init(name, s)
 	app.setShell(app)
 	s.apps[name] = app
+	s.IncSub(1)
 	return app
 }
 func (s *Stage) createSvc(name string) *Svc {
@@ -371,7 +372,7 @@ func (s *Stage) OnShutdown() {
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.servers.goWalk(Server.OnShutdown)
 	s.svcs.goWalk((*Svc).OnShutdown)
-	s.apps.walk((*App).OnShutdown)
+	s.apps.goWalk((*App).OnShutdown)
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
 	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
@@ -446,6 +447,14 @@ func (s *Stage) Start() { // one worker process mode
 
 	// TODO: change user here
 	s.Logln("stage is ready to serve.")
+}
+func (s *Stage) Shutdown() {
+	if s.shut.CompareAndSwap(false, true) {
+		s.OnShutdown()
+		if Debug(2) {
+			fmt.Println("stage: shutdown.")
+		}
+	}
 }
 
 func (s *Stage) linkAppServers() {
@@ -692,13 +701,4 @@ func (s *Stage) ProfBlock() {
 	time.Sleep(5 * time.Second)
 	pprof.Lookup("block").WriteTo(file, 1)
 	runtime.SetBlockProfileRate(0)
-}
-
-func (s *Stage) Shutdown() {
-	if s.shut.CompareAndSwap(false, true) {
-		s.OnShutdown()
-		if Debug(2) {
-			fmt.Println("stage: shutdown.")
-		}
-	}
 }

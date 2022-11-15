@@ -50,6 +50,7 @@ func (r *gzipReviser) OnConfigure() {
 func (r *gzipReviser) OnPrepare() {
 }
 func (r *gzipReviser) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *gzipReviser) Rank() int8 { return RankGzip }

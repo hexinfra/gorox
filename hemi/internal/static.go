@@ -105,6 +105,7 @@ func (h *staticHandler) OnPrepare() {
 	}
 }
 func (h *staticHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *staticHandler) Handle(req Request, resp Response) (next bool) {

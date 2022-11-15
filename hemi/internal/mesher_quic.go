@@ -34,10 +34,10 @@ func (m *QUICMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *QUICMesher) OnShutdown() {
+	m.SetShut()
 	for _, gate := range m.gates {
 		gate.shut()
 	}
-	m.SetShut()
 	m.shutdownSubs()
 	// TODO: shutdown m
 	m.mesher_.onShutdown()

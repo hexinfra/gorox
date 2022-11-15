@@ -44,6 +44,7 @@ func (r *replaceReviser) OnConfigure() {
 func (r *replaceReviser) OnPrepare() {
 }
 func (r *replaceReviser) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *replaceReviser) Rank() int8 { return r.rank }

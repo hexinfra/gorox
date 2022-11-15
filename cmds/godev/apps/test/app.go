@@ -44,6 +44,7 @@ func (h *testHandler) OnConfigure() {
 func (h *testHandler) OnPrepare() {
 }
 func (h *testHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *testHandler) Handle(req Request, resp Response) (next bool) {

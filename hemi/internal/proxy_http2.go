@@ -39,6 +39,7 @@ func (h *http2Proxy) OnPrepare() {
 }
 func (h *http2Proxy) OnShutdown() {
 	h.httpProxy_.onShutdown(h)
+	h.app.SubDone()
 }
 
 func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -65,6 +66,7 @@ func (s *sock2Proxy) OnPrepare() {
 }
 func (s *sock2Proxy) OnShutdown() {
 	s.sockProxy_.onShutdown(s)
+	s.app.SubDone()
 }
 
 func (s *sock2Proxy) Serve(req Request, sock Socket) { // currently reverse only

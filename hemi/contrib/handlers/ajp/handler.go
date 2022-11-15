@@ -72,6 +72,7 @@ func (h *ajpProxy) OnConfigure() {
 func (h *ajpProxy) OnPrepare() {
 }
 func (h *ajpProxy) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *ajpProxy) IsProxy() bool { return true }

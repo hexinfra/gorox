@@ -53,8 +53,11 @@ func (h *helloHandler) OnConfigure() {
 	// example
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
-func (h *helloHandler) OnPrepare()  {}
-func (h *helloHandler) OnShutdown() {}
+func (h *helloHandler) OnPrepare() {
+}
+func (h *helloHandler) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *helloHandler) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)

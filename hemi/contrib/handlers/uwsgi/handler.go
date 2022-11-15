@@ -74,6 +74,7 @@ func (h *uwsgiProxy) OnConfigure() {
 func (h *uwsgiProxy) OnPrepare() {
 }
 func (h *uwsgiProxy) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *uwsgiProxy) IsProxy() bool { return true }

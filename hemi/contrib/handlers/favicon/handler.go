@@ -40,6 +40,7 @@ func (h *faviconHandler) OnConfigure() {
 func (h *faviconHandler) OnPrepare() {
 }
 func (h *faviconHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *faviconHandler) Handle(req Request, resp Response) (next bool) {

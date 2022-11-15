@@ -46,6 +46,7 @@ func (h *httpsHandler) OnConfigure() {
 func (h *httpsHandler) OnPrepare() {
 }
 func (h *httpsHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *httpsHandler) Handle(req Request, resp Response) (next bool) {

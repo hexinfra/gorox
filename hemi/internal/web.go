@@ -10,6 +10,7 @@ package internal
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -191,6 +192,8 @@ func (a *App) OnPrepare() {
 	}
 }
 func (a *App) OnShutdown() {
+	a.SetShut()
+
 	// sub components
 	a.rules.walk((*Rule).OnShutdown)
 	a.socklets.walk(Socklet.OnShutdown)
@@ -213,6 +216,7 @@ func (a *App) createHandler(sign string, name string) Handler {
 	handler := create(name, a.stage, a)
 	handler.setShell(handler)
 	a.handlers[name] = handler
+	a.IncSub(1)
 	return handler
 }
 func (a *App) createReviser(sign string, name string) Reviser {
@@ -232,6 +236,7 @@ func (a *App) createReviser(sign string, name string) Reviser {
 	reviser.setShell(reviser)
 	reviser.setID(a.nRevisers)
 	a.revisers[name] = reviser
+	a.IncSub(1)
 	a.revisersByID[a.nRevisers] = reviser
 	a.nRevisers++
 	return reviser
@@ -249,6 +254,7 @@ func (a *App) createSocklet(sign string, name string) Socklet {
 	socklet := create(name, a.stage, a)
 	socklet.setShell(socklet)
 	a.socklets[name] = socklet
+	a.IncSub(1)
 	return socklet
 }
 func (a *App) createRule(name string) *Rule {
@@ -259,6 +265,7 @@ func (a *App) createRule(name string) *Rule {
 	rule.init(name, a)
 	rule.setShell(rule)
 	a.rules = append(a.rules, rule)
+	a.IncSub(1)
 	return rule
 }
 
@@ -311,9 +318,14 @@ func (a *App) linkServer(server httpServer) {
 
 func (a *App) maintain() { // goroutine
 	// TODO
-	for {
+	for !a.IsShut() {
 		time.Sleep(time.Second)
 	}
+	a.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("app=%s done\n", a.Name())
+	}
+	a.stage.SubDone()
 }
 
 func (a *App) reviserByID(id uint8) Reviser { // for fast searching
@@ -781,6 +793,7 @@ func (r *Rule) OnConfigure() {
 func (r *Rule) OnPrepare() {
 }
 func (r *Rule) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *Rule) addHandler(handler Handler) {

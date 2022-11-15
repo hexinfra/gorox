@@ -40,6 +40,7 @@ func (h *rewriteHandler) OnConfigure() {
 func (h *rewriteHandler) OnPrepare() {
 }
 func (h *rewriteHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *rewriteHandler) Handle(req Request, resp Response) (next bool) {

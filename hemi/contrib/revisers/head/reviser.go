@@ -47,6 +47,7 @@ func (r *headReviser) OnConfigure() {
 func (r *headReviser) OnPrepare() {
 }
 func (r *headReviser) OnShutdown() {
+	r.app.SubDone()
 }
 
 func (r *headReviser) Rank() int8 { return RankHead }

@@ -40,6 +40,7 @@ func (h *limitHandler) OnConfigure() {
 func (h *limitHandler) OnPrepare() {
 }
 func (h *limitHandler) OnShutdown() {
+	h.app.SubDone()
 }
 
 func (h *limitHandler) Handle(req Request, resp Response) (next bool) {

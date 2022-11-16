@@ -38,7 +38,6 @@ func (r *tcpsProxy) OnPrepare() {
 	r.proxy_.onPrepare()
 }
 func (r *tcpsProxy) OnShutdown() {
-	r.proxy_.onShutdown()
 	r.mesher.SubDone()
 }
 

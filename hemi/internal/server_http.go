@@ -94,14 +94,6 @@ func (s *httpServer_) onPrepare() {
 	}
 	s.logger = log.New(logFile, "httpServer", log.Ldate|log.Ltime)
 }
-func (s *httpServer_) onShutdown() {
-	s.Server_.OnShutdown()
-	// closing gates and their conns
-	if Debug(2) {
-		fmt.Printf("httpServer=%s close log file\n", s.Name())
-	}
-	s.logger.Writer().(*os.File).Close()
-}
 
 func (s *httpServer_) linkApp(app *App) {
 	if s.tlsConfig != nil {

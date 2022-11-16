@@ -45,9 +45,6 @@ func (c *httpClient_) onConfigure(clientName string) {
 func (c *httpClient_) onPrepare() {
 	c.client_.onPrepare()
 }
-func (c *httpClient_) onShutdown() {
-	c.client_.onShutdown()
-}
 
 func (c *httpClient_) MaxContentSize() int64 { return c.maxContentSize }
 
@@ -68,9 +65,6 @@ func (f *httpOutgate_) onConfigure() {
 func (f *httpOutgate_) onPrepare() {
 	f.httpClient_.onPrepare()
 	f.makeContentFilesDir(0755)
-}
-func (f *httpOutgate_) onShutdown() {
-	f.httpClient_.onShutdown()
 }
 
 // httpBackend_ is the mixin for HTTP[1-3]Backend.
@@ -95,10 +89,6 @@ func (b *httpBackend_) onPrepare(numNodes int) {
 	b.httpClient_.onPrepare()
 	b.loadBalancer_.onPrepare(numNodes)
 	b.makeContentFilesDir(0755)
-}
-func (b *httpBackend_) onShutdown() {
-	b.httpClient_.onShutdown()
-	b.loadBalancer_.onShutdown()
 }
 
 // httpNode_ is the mixin for http[1-3]Node.

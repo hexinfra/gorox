@@ -239,15 +239,13 @@ func (a *App) OnPrepare() {
 	}
 }
 func (a *App) OnShutdown() {
-	a.Shutdown()
-
 	// sub components
 	a.rules.walk((*Rule).OnShutdown)
 	a.socklets.walk(Socklet.OnShutdown)
 	a.revisers.walk(Reviser.OnShutdown)
 	a.handlers.walk(Handler.OnShutdown)
 
-	// TODO: shutdown a
+	a.Shutdown()
 }
 
 func (a *App) createHandler(sign string, name string) Handler {
@@ -367,7 +365,8 @@ func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {
 		// TODO
 	})
-	a.WaitSubs()
+	a.WaitSubs() // handlers, socklets, revisers, rules
+	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("app=%s done\n", a.Name())
 	}

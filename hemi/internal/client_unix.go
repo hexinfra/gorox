@@ -50,9 +50,6 @@ func (c *unixClient_) onConfigure() {
 func (c *unixClient_) onPrepare() {
 	c.client_.onPrepare()
 }
-func (c *unixClient_) onShutdown() {
-	c.client_.onShutdown()
-}
 
 const signUnix = "unix"
 
@@ -81,7 +78,7 @@ func (f *UnixOutgate) OnPrepare() {
 	f.unixClient_.onPrepare()
 }
 func (f *UnixOutgate) OnShutdown() {
-	f.unixClient_.onShutdown()
+	f.Shutdown()
 }
 
 func (f *UnixOutgate) run() { // goroutine
@@ -130,19 +127,18 @@ func (b *UnixBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *UnixBackend) OnShutdown() {
-	b.unixClient_.onShutdown()
-	b.loadBalancer_.onShutdown()
+	b.Shutdown()
 }
 
 func (b *UnixBackend) maintain() { // goroutine
-	shutdown := make(chan struct{})
+	shut := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shutdown)
+		go node.maintain(shut)
 	}
 	<-b.Shut
-	close(shutdown)
-	b.WaitSubs()
+	close(shut)
+	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("unixBackend=%s done\n", b.Name())
 	}
@@ -176,8 +172,8 @@ func (n *unixNode) init(id int32, backend *UnixBackend) {
 	n.backend = backend
 }
 
-func (n *unixNode) maintain(shutdown chan struct{}) { // goroutine
-	Loop(time.Second, shutdown, func(now time.Time) {
+func (n *unixNode) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	if Debug(2) {

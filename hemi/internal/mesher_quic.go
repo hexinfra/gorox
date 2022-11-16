@@ -10,6 +10,7 @@ package internal
 import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
+	"os"
 	"sync"
 )
 
@@ -26,20 +27,18 @@ func (m *QUICMesher) init(name string, stage *Stage) {
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs()
+	m.configureSubs() // runners, filters, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs()
+	m.prepareSubs() // runners, filters, cases
 }
 func (m *QUICMesher) OnShutdown() {
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}
-	m.shutdownSubs()
-	// TODO: shutdown m
-	m.mesher_.onShutdown()
+	m.shutdownSubs() // runners, filters, cases
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -65,7 +64,8 @@ func (m *QUICMesher) serve() { // goroutine
 		m.IncSub(1)
 		go gate.serve()
 	}
-	m.WaitSubs()
+	m.WaitSubs() // gates
+	m.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("quicMesher=%s done\n", m.Name())
 	}

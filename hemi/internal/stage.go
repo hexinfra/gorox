@@ -30,7 +30,7 @@ func createStage() *Stage {
 //
 // A worker process may have many stages in its lifetime, especially
 // when new configuration is applied, a new stage is created, or the
-// old one is told to shutdown.
+// old one is told to grace.
 type Stage struct {
 	// Mixins
 	Component_
@@ -382,7 +382,7 @@ func (s *Stage) OnShutdown() {
 	s.optwares.goWalk(Optware.OnShutdown)
 	s.fixtures.goWalk(fixture.OnShutdown)
 
-	s.WaitSubs()
+	s.WaitSubs() // direct subs of stage
 
 	// TODO: shutdown s
 	if Debug(2) {
@@ -452,13 +452,13 @@ func (s *Stage) Grace() {
 	// TODO: guard reentry
 	s.OnShutdown()
 	if Debug(2) {
-		fmt.Println("stage: shutdown.")
+		fmt.Println("stage: graced.")
 	}
 	/*
 		if s.shut.CompareAndSwap(false, true) {
 			s.OnShutdown()
 			if Debug(2) {
-				fmt.Println("stage: shutdown.")
+				fmt.Println("stage: graced.")
 			}
 		}
 	*/

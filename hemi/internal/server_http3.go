@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"net"
+	"os"
 	"sync"
 	"time"
 )
@@ -48,7 +49,6 @@ func (s *http3Server) OnShutdown() {
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}
-	s.httpServer_.onShutdown()
 }
 
 func (s *http3Server) Serve() { // goroutine
@@ -62,7 +62,8 @@ func (s *http3Server) Serve() { // goroutine
 		s.IncSub(1)
 		go gate.serve()
 	}
-	s.WaitSubs()
+	s.WaitSubs() // gates
+	s.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("http3Server=%s done\n", s.Name())
 	}

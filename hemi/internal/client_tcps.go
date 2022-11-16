@@ -53,9 +53,6 @@ func (c *tcpsClient_) onConfigure() {
 func (c *tcpsClient_) onPrepare() {
 	c.client_.onPrepare()
 }
-func (c *tcpsClient_) onShutdown() {
-	c.client_.onShutdown()
-}
 
 const signTCPS = "tcps"
 
@@ -84,7 +81,7 @@ func (f *TCPSOutgate) OnPrepare() {
 	f.tcpsClient_.onPrepare()
 }
 func (f *TCPSOutgate) OnShutdown() {
-	f.tcpsClient_.onShutdown()
+	f.Shutdown()
 }
 
 func (f *TCPSOutgate) run() { // goroutine
@@ -195,19 +192,18 @@ func (b *TCPSBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *TCPSBackend) OnShutdown() {
-	b.tcpsClient_.onShutdown()
-	b.loadBalancer_.onShutdown()
+	b.Shutdown()
 }
 
 func (b *TCPSBackend) maintain() { // goroutine
-	shutdown := make(chan struct{})
+	shut := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shutdown)
+		go node.maintain(shut)
 	}
 	<-b.Shut
-	close(shutdown)
-	b.WaitSubs()
+	close(shut)
+	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("tcpsBackend=%s done\n", b.Name())
 	}
@@ -241,8 +237,8 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 	n.backend = backend
 }
 
-func (n *tcpsNode) maintain(shutdown chan struct{}) { // goroutine
-	Loop(time.Second, shutdown, func(now time.Time) {
+func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	if Debug(2) {

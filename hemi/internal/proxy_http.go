@@ -66,9 +66,6 @@ func (h *httpProxy_) onConfigure(c Component) {
 func (h *httpProxy_) onPrepare() {
 	h.proxy_.onPrepare()
 }
-func (h *httpProxy_) onShutdown() {
-	h.proxy_.onShutdown()
-}
 
 func (h *httpProxy_) IsProxy() bool { return true }
 func (h *httpProxy_) IsCache() bool { return h.cacher != nil }
@@ -97,9 +94,6 @@ func (s *sockProxy_) onConfigure(c Component) {
 }
 func (s *sockProxy_) onPrepare() {
 	s.proxy_.onPrepare()
-}
-func (s *sockProxy_) onShutdown() {
-	s.proxy_.onShutdown()
 }
 
 func (s *sockProxy_) IsProxy() bool { return true }

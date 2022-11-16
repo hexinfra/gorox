@@ -47,9 +47,6 @@ func (c *udpsClient_) onConfigure() {
 func (c *udpsClient_) onPrepare() {
 	c.client_.onPrepare()
 }
-func (c *udpsClient_) onShutdown() {
-	c.client_.onShutdown()
-}
 
 const signUDPS = "udps"
 
@@ -78,7 +75,7 @@ func (f *UDPSOutgate) OnPrepare() {
 	f.udpsClient_.onPrepare()
 }
 func (f *UDPSOutgate) OnShutdown() {
-	f.udpsClient_.onShutdown()
+	f.Shutdown()
 }
 
 func (f *UDPSOutgate) run() { // goroutine
@@ -127,19 +124,18 @@ func (b *UDPSBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *UDPSBackend) OnShutdown() {
-	b.udpsClient_.onShutdown()
-	b.loadBalancer_.onShutdown()
+	b.Shutdown()
 }
 
 func (b *UDPSBackend) maintain() { // goroutine
-	shutdown := make(chan struct{})
+	shut := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shutdown)
+		go node.maintain(shut)
 	}
 	<-b.Shut
-	close(shutdown)
-	b.WaitSubs()
+	close(shut)
+	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("udpsBackend=%s done\n", b.Name())
 	}
@@ -172,8 +168,8 @@ func (n *udpsNode) init(id int32, backend *UDPSBackend) {
 	n.backend = backend
 }
 
-func (n *udpsNode) maintain(shutdown chan struct{}) { // goroutine
-	Loop(time.Second, shutdown, func(now time.Time) {
+func (n *udpsNode) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	if Debug(2) {

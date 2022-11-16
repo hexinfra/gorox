@@ -39,9 +39,6 @@ func (s *Server_) OnConfigure() {
 func (s *Server_) OnPrepare() {
 	s.office_.onPrepare()
 }
-func (s *Server_) OnShutdown() {
-	s.office_.onShutdown()
-}
 
 func (s *Server_) ColonPort() string      { return s.colonPort }
 func (s *Server_) ColonPortBytes() []byte { return s.colonPortBytes }

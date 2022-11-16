@@ -10,6 +10,7 @@ package internal
 import (
 	"fmt"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -28,20 +29,18 @@ func (m *UDPSMesher) init(name string, stage *Stage) {
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs()
+	m.configureSubs() // runners, filters, cases
 }
 func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs()
+	m.prepareSubs() // runners, filters, cases
 }
 func (m *UDPSMesher) OnShutdown() {
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}
-	m.shutdownSubs()
-	// TODO: shutdown m
-	m.mesher_.onShutdown()
+	m.shutdownSubs() // runners, filters, cases
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {
@@ -71,7 +70,8 @@ func (m *UDPSMesher) serve() { // goroutine
 			go gate.serveUDP()
 		}
 	}
-	m.WaitSubs()
+	m.WaitSubs() // gates
+	m.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("udpsMesher=%s done\n", m.Name())
 	}

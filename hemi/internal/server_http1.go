@@ -18,6 +18,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -84,7 +85,6 @@ func (s *httpxServer) OnShutdown() {
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}
-	s.httpServer_.onShutdown()
 }
 
 func (s *httpxServer) Serve() { // goroutine
@@ -102,7 +102,8 @@ func (s *httpxServer) Serve() { // goroutine
 			go gate.serveTCP()
 		}
 	}
-	s.WaitSubs()
+	s.WaitSubs() // gates
+	s.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("httpxServer=%s done\n", s.Name())
 	}

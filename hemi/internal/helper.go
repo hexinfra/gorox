@@ -284,8 +284,6 @@ func (b *loadBalancer_) onPrepare(numNodes int) {
 	}
 	b.numNodes = int64(numNodes)
 }
-func (b *loadBalancer_) onShutdown() {
-}
 
 func (b *loadBalancer_) getIndex() int64 {
 	return b.indexGet()

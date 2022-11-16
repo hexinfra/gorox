@@ -165,7 +165,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					deadWay2 := make(chan int)
 					worker2 := newWorker(pipeKey)
 					worker2.start(base, file, deadWay2)
-					// Shutdown old worker
+					// Grace old worker
 					req.Comd = comdQuit
 					worker.tell(req)
 					worker.reset()

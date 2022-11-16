@@ -54,7 +54,7 @@ func (f *HTTP2Outgate) OnPrepare() {
 	f.httpOutgate_.onPrepare()
 }
 func (f *HTTP2Outgate) OnShutdown() {
-	f.httpOutgate_.onShutdown()
+	f.Shutdown()
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
@@ -94,18 +94,18 @@ func (b *HTTP2Backend) OnPrepare() {
 	b.httpBackend_.onPrepare(len(b.nodes))
 }
 func (b *HTTP2Backend) OnShutdown() {
-	b.httpBackend_.onShutdown()
+	b.Shutdown()
 }
 
 func (b *HTTP2Backend) maintain() { // goroutine
-	shutdown := make(chan struct{})
+	shut := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shutdown)
+		go node.maintain(shut)
 	}
 	<-b.Shut
-	close(shutdown)
-	b.WaitSubs()
+	close(shut)
+	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("http2Backend=%s done\n", b.Name())
 	}
@@ -134,8 +134,8 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.backend = backend
 }
 
-func (n *http2Node) maintain(shutdown chan struct{}) { // goroutine
-	Loop(time.Second, shutdown, func(now time.Time) {
+func (n *http2Node) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	if Debug(2) {

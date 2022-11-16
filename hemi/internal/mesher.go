@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -89,13 +88,6 @@ func (m *mesher_[M, G, R, F, C]) prepareSubs() {
 	m.cases.walk(C.OnPrepare)
 }
 
-func (m *mesher_[M, G, R, F, C]) onShutdown() {
-	if Debug(2) {
-		fmt.Printf("mesher=%s close log file\n", m.Name())
-	}
-	m.logger.Writer().(*os.File).Close()
-	m.office_.onShutdown()
-}
 func (m *mesher_[M, G, R, F, C]) shutdownSubs() {
 	m.cases.walk(C.OnShutdown)
 	m.filters.walk(F.OnShutdown)

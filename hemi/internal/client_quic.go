@@ -50,9 +50,6 @@ func (c *quicClient_) onConfigure() {
 func (c *quicClient_) onPrepare() {
 	c.client_.onPrepare()
 }
-func (c *quicClient_) onShutdown() {
-	c.client_.onShutdown()
-}
 
 const signQUIC = "quic"
 
@@ -81,7 +78,7 @@ func (f *QUICOutgate) OnPrepare() {
 	f.quicClient_.onPrepare()
 }
 func (f *QUICOutgate) OnShutdown() {
-	f.quicClient_.onShutdown()
+	f.Shutdown()
 }
 
 func (f *QUICOutgate) run() { // goroutine
@@ -129,19 +126,18 @@ func (b *QUICBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 func (b *QUICBackend) OnShutdown() {
-	b.quicClient_.onShutdown()
-	b.loadBalancer_.onShutdown()
+	b.Shutdown()
 }
 
 func (b *QUICBackend) maintain() { // goroutine
-	shutdown := make(chan struct{})
+	shut := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shutdown)
+		go node.maintain(shut)
 	}
 	<-b.Shut
-	close(shutdown)
-	b.WaitSubs()
+	close(shut)
+	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("quicBackend=%s done\n", b.Name())
 	}
@@ -174,8 +170,8 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 	n.backend = backend
 }
 
-func (n *quicNode) maintain(shutdown chan struct{}) { // goroutine
-	Loop(time.Second, shutdown, func(now time.Time) {
+func (n *quicNode) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	if Debug(2) {

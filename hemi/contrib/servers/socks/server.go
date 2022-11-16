@@ -48,7 +48,6 @@ func (s *socksServer) OnShutdown() {
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}
-	s.Server_.OnShutdown()
 }
 
 func (s *socksServer) Serve() { // goroutine
@@ -62,7 +61,7 @@ func (s *socksServer) Serve() { // goroutine
 		s.IncSub(1)
 		go gate.serve()
 	}
-	s.WaitSubs()
+	s.WaitSubs() // gates
 	if Debug(2) {
 		fmt.Printf("socksServer=%s done\n", s.Name())
 	}

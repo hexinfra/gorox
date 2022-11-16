@@ -63,9 +63,6 @@ func (c *client_) onConfigure() {
 }
 func (c *client_) onPrepare() {
 }
-func (c *client_) onShutdown() {
-	c.Shutdown()
-}
 
 func (c *client_) Stage() *Stage { return c.stage }
 func (c *client_) TLSMode() bool { return c.tlsMode }

@@ -53,8 +53,15 @@ type Component interface {
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
 	ConfigureBool(name string, prop *bool, defaultValue bool)
+	ConfigureInt64(name string, prop *int64, check func(value int64) bool, defaultValue int64)
 	ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32)
+	ConfigureInt16(name string, prop *int16, check func(value int16) bool, defaultValue int16)
+	ConfigureInt8(name string, prop *int8, check func(value int8) bool, defaultValue int8)
+	ConfigureInt(name string, prop *int, check func(value int) bool, defaultValue int)
 	ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string)
+	ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration)
+	ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string)
+	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string)
 
 	OnPrepare()
 
@@ -379,8 +386,6 @@ func (o *office_) onConfigure() {
 }
 func (o *office_) onPrepare() {
 }
-func (o *office_) onShutdown() {
-}
 
 func (o *office_) Stage() *Stage          { return o.stage }
 func (o *office_) Address() string        { return o.address }
@@ -459,8 +464,6 @@ func (p *proxy_) onConfigure(c Component) {
 	}
 }
 func (p *proxy_) onPrepare() {
-}
-func (p *proxy_) onShutdown() {
 }
 
 // Cronjob component

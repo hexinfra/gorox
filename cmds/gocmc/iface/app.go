@@ -48,7 +48,6 @@ func (h *v1Handler) OnPrepare() {
 	h.admin = h.stage.Server("cli").(*AdminServer)
 }
 func (h *v1Handler) OnShutdown() {
-	h.admin = nil
 	h.app.SubDone()
 }
 

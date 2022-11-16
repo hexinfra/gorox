@@ -107,7 +107,6 @@ func (m *mesher_[M, G, R, F, C]) createRunner(sign string, name string) R {
 	runner := create(name, m.stage, m.shell.(M))
 	runner.setShell(runner)
 	m.runners[name] = runner
-	m.IncSub(1)
 	return runner
 }
 func (m *mesher_[M, G, R, F, C]) createFilter(sign string, name string) F {
@@ -127,7 +126,6 @@ func (m *mesher_[M, G, R, F, C]) createFilter(sign string, name string) F {
 	filter.setShell(filter)
 	filter.setID(m.nFilters)
 	m.filters[name] = filter
-	m.IncSub(1)
 	m.filtersByID[m.nFilters] = filter
 	m.nFilters++
 	return filter

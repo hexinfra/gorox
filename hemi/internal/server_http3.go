@@ -47,6 +47,7 @@ func (s *http3Server) OnPrepare() {
 }
 
 func (s *http3Server) OnShutdown() {
+	// We don't use s.Shutdown() here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

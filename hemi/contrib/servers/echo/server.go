@@ -46,6 +46,7 @@ func (s *echoServer) OnPrepare() {
 }
 
 func (s *echoServer) OnShutdown() {
+	// We don't use s.Shutdown() here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

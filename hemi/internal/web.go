@@ -240,12 +240,6 @@ func (a *App) OnPrepare() {
 }
 
 func (a *App) OnShutdown() {
-	// sub components
-	a.rules.walk((*Rule).OnShutdown)
-	a.socklets.walk(Socklet.OnShutdown)
-	a.revisers.walk(Reviser.OnShutdown)
-	a.handlers.walk(Handler.OnShutdown)
-
 	a.Shutdown()
 }
 
@@ -262,7 +256,6 @@ func (a *App) createHandler(sign string, name string) Handler {
 	handler := create(name, a.stage, a)
 	handler.setShell(handler)
 	a.handlers[name] = handler
-	a.IncSub(1)
 	return handler
 }
 func (a *App) createReviser(sign string, name string) Reviser {
@@ -282,7 +275,6 @@ func (a *App) createReviser(sign string, name string) Reviser {
 	reviser.setShell(reviser)
 	reviser.setID(a.nRevisers)
 	a.revisers[name] = reviser
-	a.IncSub(1)
 	a.revisersByID[a.nRevisers] = reviser
 	a.nRevisers++
 	return reviser
@@ -300,7 +292,6 @@ func (a *App) createSocklet(sign string, name string) Socklet {
 	socklet := create(name, a.stage, a)
 	socklet.setShell(socklet)
 	a.socklets[name] = socklet
-	a.IncSub(1)
 	return socklet
 }
 func (a *App) createRule(name string) *Rule {
@@ -311,7 +302,6 @@ func (a *App) createRule(name string) *Rule {
 	rule.init(name, a)
 	rule.setShell(rule)
 	a.rules = append(a.rules, rule)
-	a.IncSub(1)
 	return rule
 }
 
@@ -366,6 +356,11 @@ func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {
 		// TODO
 	})
+	a.IncSub(len(a.handlers) + len(a.socklets) + len(a.revisers) + len(a.rules))
+	a.rules.goWalk((*Rule).OnShutdown)
+	a.socklets.goWalk(Socklet.OnShutdown)
+	a.revisers.goWalk(Reviser.OnShutdown)
+	a.handlers.goWalk(Handler.OnShutdown)
 	a.WaitSubs() // handlers, socklets, revisers, rules
 	// TODO: close access log file
 	if Debug(2) {

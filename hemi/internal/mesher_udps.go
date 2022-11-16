@@ -38,10 +38,10 @@ func (m *UDPSMesher) OnPrepare() {
 }
 
 func (m *UDPSMesher) OnShutdown() {
+	// We don't use m.Shutdown() here.
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}
-	m.shutdownSubs() // runners, filters, cases
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {
@@ -52,7 +52,6 @@ func (m *UDPSMesher) createCase(name string) *udpsCase {
 	kase.init(name, m)
 	kase.setShell(kase)
 	m.cases = append(m.cases, kase)
-	m.IncSub(1)
 	return kase
 }
 
@@ -72,6 +71,9 @@ func (m *UDPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
+	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
+	m.shutdownSubs()
+	m.WaitSubs() // runners, filters, cases
 	m.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("udpsMesher=%s done\n", m.Name())

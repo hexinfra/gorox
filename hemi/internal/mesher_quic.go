@@ -36,10 +36,10 @@ func (m *QUICMesher) OnPrepare() {
 }
 
 func (m *QUICMesher) OnShutdown() {
+	// We don't use m.Shutdown() here.
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}
-	m.shutdownSubs() // runners, filters, cases
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -50,7 +50,6 @@ func (m *QUICMesher) createCase(name string) *quicCase {
 	kase.init(name, m)
 	kase.setShell(kase)
 	m.cases = append(m.cases, kase)
-	m.IncSub(1)
 	return kase
 }
 
@@ -66,6 +65,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
+	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
+	m.shutdownSubs()
+	m.WaitSubs() // runners, filters, cases
 	m.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("quicMesher=%s done\n", m.Name())

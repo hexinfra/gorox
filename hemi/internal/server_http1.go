@@ -83,6 +83,7 @@ func (s *httpxServer) OnPrepare() {
 }
 
 func (s *httpxServer) OnShutdown() {
+	// We don't use s.Shutdown() here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

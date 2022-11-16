@@ -81,9 +81,8 @@ func (s *httpxServer) OnPrepare() {
 	}
 }
 func (s *httpxServer) OnShutdown() {
-	s.SetShut()
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	s.httpServer_.onShutdown()
 }
@@ -139,7 +138,8 @@ func (g *httpxGate) open() error {
 	}
 	return err
 }
-func (g *httpxGate) shut() error {
+func (g *httpxGate) shutdown() error {
+	g.SetShutdown()
 	return g.listener.Close()
 }
 
@@ -152,7 +152,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.server.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
@@ -181,7 +181,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.server.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)

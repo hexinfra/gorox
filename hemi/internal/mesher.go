@@ -20,7 +20,7 @@ type _mesher interface {
 }
 type _gate interface {
 	open() error
-	shut() error
+	shutdown() error
 }
 type _runner interface {
 	Component

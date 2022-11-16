@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -35,9 +36,8 @@ func (m *UDPSMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *UDPSMesher) OnShutdown() {
-	m.SetShut()
 	for _, gate := range m.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	m.shutdownSubs()
 	// TODO: shutdown m
@@ -87,6 +87,7 @@ type udpsGate struct {
 	// States
 	id      int32
 	address string
+	shut    atomic.Bool
 }
 
 func (g *udpsGate) init(mesher *UDPSMesher, id int32) {
@@ -100,17 +101,20 @@ func (g *udpsGate) open() error {
 	// TODO
 	return nil
 }
-func (g *udpsGate) shut() error {
+func (g *udpsGate) shutdown() error {
+	g.shut.Store(true)
 	// TODO
 	return nil
 }
 
 func (g *udpsGate) serveUDP() { // goroutine
 	// TODO
+	// use g.shut.Load()
 	g.mesher.SubDone()
 }
 func (g *udpsGate) serveTLS() { // goroutine
 	// TODO
+	// use g.shut.Load()
 	g.mesher.SubDone()
 }
 

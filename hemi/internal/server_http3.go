@@ -45,9 +45,8 @@ func (s *http3Server) OnPrepare() {
 	s.httpServer_.onPrepare()
 }
 func (s *http3Server) OnShutdown() {
-	s.SetShut()
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	s.httpServer_.onShutdown()
 }
@@ -93,7 +92,8 @@ func (g *http3Gate) open() error {
 	g.gate = gate
 	return nil
 }
-func (g *http3Gate) shut() error {
+func (g *http3Gate) shutdown() error {
+	g.SetShutdown()
 	return g.gate.Close()
 }
 
@@ -102,7 +102,7 @@ func (g *http3Gate) serve() { // goroutine
 	for {
 		quicConn, err := g.gate.Accept()
 		if err != nil {
-			if g.server.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				continue

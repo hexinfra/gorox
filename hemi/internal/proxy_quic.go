@@ -35,10 +35,10 @@ func (r *quicProxy) OnConfigure() {
 	r.proxy_.onConfigure(r)
 }
 func (r *quicProxy) OnPrepare() {
-	r.proxy_.onPrepare(r)
+	r.proxy_.onPrepare()
 }
 func (r *quicProxy) OnShutdown() {
-	r.proxy_.onShutdown(r)
+	r.proxy_.onShutdown()
 	r.mesher.SubDone()
 }
 

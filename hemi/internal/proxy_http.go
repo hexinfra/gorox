@@ -63,11 +63,11 @@ func (h *httpProxy_) onConfigure(c Component) {
 		h.delResponseHeaders = append(h.delResponseHeaders, []byte(header))
 	}
 }
-func (h *httpProxy_) onPrepare(c Component) {
-	h.proxy_.onPrepare(c)
+func (h *httpProxy_) onPrepare() {
+	h.proxy_.onPrepare()
 }
-func (h *httpProxy_) onShutdown(c Component) {
-	h.proxy_.onShutdown(c)
+func (h *httpProxy_) onShutdown() {
+	h.proxy_.onShutdown()
 }
 
 func (h *httpProxy_) IsProxy() bool { return true }
@@ -95,9 +95,11 @@ func (s *sockProxy_) onConfigure(c Component) {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }
-func (s *sockProxy_) onPrepare(c Component) {
+func (s *sockProxy_) onPrepare() {
+	s.proxy_.onPrepare()
 }
-func (s *sockProxy_) onShutdown(c Component) {
+func (s *sockProxy_) onShutdown() {
+	s.proxy_.onShutdown()
 }
 
 func (s *sockProxy_) IsProxy() bool { return true }

@@ -11,6 +11,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -30,9 +31,10 @@ type AdminServer struct {
 	stage *Stage
 	gate  *net.TCPListener
 	// States
-	address string
-	mutex   sync.Mutex
-	conns   map[int64]*adminConn
+	address  string
+	shutdown atomic.Bool
+	mutex    sync.Mutex
+	conns    map[int64]*adminConn
 }
 
 func (s *AdminServer) init(name string, stage *Stage) {
@@ -60,7 +62,7 @@ func (s *AdminServer) OnConfigure() {
 func (s *AdminServer) OnPrepare() {
 }
 func (s *AdminServer) OnShutdown() {
-	s.SetShut()
+	s.shutdown.Store(true)
 	s.gate.Close()
 }
 
@@ -78,7 +80,7 @@ func (s *AdminServer) Serve() { // goroutine
 	for {
 		tcpConn, err := s.gate.AcceptTCP()
 		if err != nil {
-			if s.IsShut() {
+			if s.shutdown.Load() {
 				break
 			} else {
 				continue

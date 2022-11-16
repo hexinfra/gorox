@@ -38,9 +38,8 @@ func (m *TCPSMesher) OnPrepare() {
 	m.prepareSubs()
 }
 func (m *TCPSMesher) OnShutdown() {
-	m.SetShut()
 	for _, gate := range m.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	m.shutdownSubs()
 	// TODO: shutdown m
@@ -107,7 +106,8 @@ func (g *tcpsGate) open() error {
 	}
 	return err
 }
-func (g *tcpsGate) shut() error {
+func (g *tcpsGate) shutdown() error {
+	g.SetShutdown()
 	return g.listener.Close()
 }
 
@@ -116,7 +116,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.mesher.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				continue
@@ -146,7 +146,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.mesher.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				continue

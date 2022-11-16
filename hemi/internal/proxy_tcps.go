@@ -35,10 +35,10 @@ func (r *tcpsProxy) OnConfigure() {
 	r.proxy_.onConfigure(r)
 }
 func (r *tcpsProxy) OnPrepare() {
-	r.proxy_.onPrepare(r)
+	r.proxy_.onPrepare()
 }
 func (r *tcpsProxy) OnShutdown() {
-	r.proxy_.onShutdown(r)
+	r.proxy_.onShutdown()
 	r.mesher.SubDone()
 }
 

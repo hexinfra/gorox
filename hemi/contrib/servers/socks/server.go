@@ -45,9 +45,8 @@ func (s *socksServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 func (s *socksServer) OnShutdown() {
-	s.SetShut()
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	s.Server_.OnShutdown()
 }
@@ -96,7 +95,8 @@ func (g *socksGate) open() error {
 	}
 	return err
 }
-func (g *socksGate) shut() error {
+func (g *socksGate) shutdown() error {
+	g.SetShutdown()
 	return g.listener.Close()
 }
 
@@ -105,7 +105,7 @@ func (g *socksGate) serve() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.server.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				continue

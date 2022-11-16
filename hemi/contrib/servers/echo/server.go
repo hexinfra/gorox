@@ -45,9 +45,8 @@ func (s *echoServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 func (s *echoServer) OnShutdown() {
-	s.SetShut()
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.shutdown()
 	}
 	s.Server_.OnShutdown()
 }
@@ -96,7 +95,8 @@ func (g *echoGate) open() error {
 	}
 	return err
 }
-func (g *echoGate) shut() error {
+func (g *echoGate) shutdown() error {
+	g.SetShutdown()
 	return g.listener.Close()
 }
 
@@ -105,7 +105,7 @@ func (g *echoGate) serve() { // goroutine
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
-			if g.server.IsShut() {
+			if g.IsShutdown() {
 				break
 			} else {
 				continue

@@ -35,10 +35,10 @@ func (r *udpsProxy) OnConfigure() {
 	r.proxy_.onConfigure(r)
 }
 func (r *udpsProxy) OnPrepare() {
-	r.proxy_.onPrepare(r)
+	r.proxy_.onPrepare()
 }
 func (r *udpsProxy) OnShutdown() {
-	r.proxy_.onShutdown(r)
+	r.proxy_.onShutdown()
 	r.mesher.SubDone()
 }
 

@@ -395,6 +395,7 @@ type Gate_ struct {
 	// States
 	id       int32
 	address  string
+	shut     atomic.Bool
 	maxConns int32
 	numConns atomic.Int32 // TODO: false sharing
 }
@@ -409,6 +410,9 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 
 func (g *Gate_) Stage() *Stage   { return g.stage }
 func (g *Gate_) Address() string { return g.address }
+
+func (g *Gate_) SetShutdown()     { g.shut.Store(true) }
+func (g *Gate_) IsShutdown() bool { return g.shut.Load() }
 
 func (g *Gate_) DecConns() int32 { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool {
@@ -454,9 +458,9 @@ func (p *proxy_) onConfigure(c Component) {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (p *proxy_) onPrepare(c Component) {
+func (p *proxy_) onPrepare() {
 }
-func (p *proxy_) onShutdown(c Component) {
+func (p *proxy_) onShutdown() {
 }
 
 // Cronjob component

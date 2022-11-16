@@ -58,9 +58,9 @@ func (f *HTTP2Outgate) OnShutdown() {
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
-	for !f.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, f.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Println("http2 done")
 	}
@@ -98,10 +98,13 @@ func (b *HTTP2Backend) OnShutdown() {
 }
 
 func (b *HTTP2Backend) maintain() { // goroutine
+	shutdown := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain()
+		go node.maintain(shutdown)
 	}
+	<-b.Shut
+	close(shutdown)
 	b.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("http2Backend=%s done\n", b.Name())
@@ -131,11 +134,10 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.backend = backend
 }
 
-func (n *http2Node) maintain() { // goroutine
-	// TODO: health check
-	for !n.backend.IsShut() {
-		time.Sleep(time.Second)
-	}
+func (n *http2Node) maintain(shutdown chan struct{}) { // goroutine
+	Loop(time.Second, shutdown, func(now time.Time) {
+		// TODO: health check
+	})
 	if Debug(2) {
 		fmt.Printf("http2Node=%d done\n", n.id)
 	}

@@ -85,10 +85,9 @@ func (f *QUICOutgate) OnShutdown() {
 }
 
 func (f *QUICOutgate) run() { // goroutine
-	for !f.IsShut() {
+	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
-		time.Sleep(time.Second)
-	}
+	})
 	if Debug(2) {
 		fmt.Println("quic done")
 	}
@@ -135,10 +134,13 @@ func (b *QUICBackend) OnShutdown() {
 }
 
 func (b *QUICBackend) maintain() { // goroutine
+	shutdown := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain()
+		go node.maintain(shutdown)
 	}
+	<-b.Shut
+	close(shutdown)
 	b.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("quicBackend=%s done\n", b.Name())
@@ -172,11 +174,10 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 	n.backend = backend
 }
 
-func (n *quicNode) maintain() { // goroutine
-	// TODO: health check
-	for !n.backend.IsShut() {
-		time.Sleep(time.Second)
-	}
+func (n *quicNode) maintain(shutdown chan struct{}) { // goroutine
+	Loop(time.Second, shutdown, func(now time.Time) {
+		// TODO: health check
+	})
 	if Debug(2) {
 		fmt.Printf("quicNode=%d done\n", n.id)
 	}

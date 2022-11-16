@@ -49,12 +49,12 @@ func (f *clockFixture) OnConfigure() {
 func (f *clockFixture) OnPrepare() {
 }
 func (f *clockFixture) OnShutdown() {
-	f.SetShut()
+	f.Shutdown()
 }
 
 func (f *clockFixture) run() { // goroutine
-	for !f.IsShut() {
-		now := time.Now().UTC()
+	Loop(f.resolution, f.Shut, func(now time.Time) {
+		now = now.UTC()
 		weekday := now.Weekday()       // weekday: 0-6
 		year, month, day := now.Date() // month: 1-12
 		hour, minute, second := now.Clock()
@@ -74,8 +74,7 @@ func (f *clockFixture) run() { // goroutine
 		date |= int64(day/10) << 12
 		date |= int64(weekday) << 8
 		f.date.Store(date)
-		time.Sleep(f.resolution)
-	}
+	})
 	if Debug(2) {
 		fmt.Println("clock done")
 	}

@@ -48,13 +48,13 @@ func (c *localCacher) OnPrepare() {
 	}
 }
 func (c *localCacher) OnShutdown() {
-	c.SetShut()
+	c.Shutdown()
 }
 
 func (c *localCacher) Maintain() { // goroutine
-	for !c.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, c.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Printf("localCacher=%s done\n", c.Name())
 	}

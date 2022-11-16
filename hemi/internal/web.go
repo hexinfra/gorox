@@ -239,7 +239,7 @@ func (a *App) OnPrepare() {
 	}
 }
 func (a *App) OnShutdown() {
-	a.SetShut()
+	a.Shutdown()
 
 	// sub components
 	a.rules.walk((*Rule).OnShutdown)
@@ -364,10 +364,9 @@ func (a *App) linkServer(server httpServer) {
 }
 
 func (a *App) maintain() { // goroutine
-	// TODO
-	for !a.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, a.Shut, func(now time.Time) {
+		// TODO
+	})
 	a.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("app=%s done\n", a.Name())

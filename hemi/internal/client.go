@@ -64,7 +64,7 @@ func (c *client_) onConfigure() {
 func (c *client_) onPrepare() {
 }
 func (c *client_) onShutdown() {
-	c.SetShut()
+	c.Shutdown()
 }
 
 func (c *client_) Stage() *Stage { return c.stage }

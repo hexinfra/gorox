@@ -48,13 +48,13 @@ func (s *localStater) OnPrepare() {
 	}
 }
 func (s *localStater) OnShutdown() {
-	s.SetShut()
+	s.Shutdown()
 }
 
 func (s *localStater) Maintain() { // goroutine
-	for !s.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, s.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Printf("localStater=%s done\n", s.Name())
 	}

@@ -448,13 +448,20 @@ func (s *Stage) Start() { // one worker process mode
 	// TODO: change user here
 	s.Logln("stage is ready to serve.")
 }
-func (s *Stage) Shutdown() {
-	if s.shut.CompareAndSwap(false, true) {
-		s.OnShutdown()
-		if Debug(2) {
-			fmt.Println("stage: shutdown.")
-		}
+func (s *Stage) Grace() {
+	// TODO: guard reentry
+	s.OnShutdown()
+	if Debug(2) {
+		fmt.Println("stage: shutdown.")
 	}
+	/*
+		if s.shut.CompareAndSwap(false, true) {
+			s.OnShutdown()
+			if Debug(2) {
+				fmt.Println("stage: shutdown.")
+			}
+		}
+	*/
 }
 
 func (s *Stage) linkAppServers() {

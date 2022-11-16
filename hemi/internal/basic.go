@@ -42,30 +42,6 @@ func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // 
 func SetTempDir(dir string) { _tempOnce.Do(func() { _tempDir.Store(dir) }) } // only once
 func SetVarsDir(dir string) { _varsOnce.Do(func() { _varsDir.Store(dir) }) } // only once
 
-const ( // exit codes. keep sync with ../hemi.go
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(args ...any) { exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any) { exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any) { exitln(CodeEnv, "[ENV] ", args...) }
-
-func BugExitf(format string, args ...any) { exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { exitf(CodeEnv, "[ENV] ", format, args...) }
-
-func exitln(exitCode int, prefix string, args ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
-	os.Exit(exitCode)
-}
-func exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
-	os.Exit(exitCode)
-}
-
 // Component is the interface for all components.
 type Component interface {
 	CompInit(name string)
@@ -99,15 +75,16 @@ type Component_ struct {
 	parent Component // the parent component, used by config
 	// States
 	name  string           // main, ...
-	props map[string]Value // name=value, ...
+	props map[string]Value // name1=value1, ...
 	info  any              // extra info about this component, used by config
-	shut  atomic.Bool      // is component shutting down?
+	Shut  chan struct{}    // notify component to shutdown
 	subs  sync.WaitGroup   // for shutting down sub compoments, if any
 }
 
 func (c *Component_) CompInit(name string) {
 	c.name = name
 	c.props = make(map[string]Value)
+	c.Shut = make(chan struct{})
 }
 
 func (c *Component_) SetName(name string) { c.name = name }
@@ -168,8 +145,7 @@ func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value)
 	}
 }
 
-func (c *Component_) SetShut()     { c.shut.Store(true) }
-func (c *Component_) IsShut() bool { return c.shut.Load() }
+func (c *Component_) Shutdown() { c.Shut <- struct{}{} }
 
 func (c *Component_) IncSub(n int) { c.subs.Add(n) }
 func (c *Component_) WaitSubs()    { c.subs.Wait() }
@@ -314,6 +290,30 @@ func registerComponent1[T Component, C Component](sign string, comp int16, creat
 	signComp(sign, comp)
 }
 
+const ( // exit codes. keep sync with ../hemi.go
+	CodeBug = 20
+	CodeUse = 21
+	CodeEnv = 22
+)
+
+func BugExitln(args ...any) { exitln(CodeBug, "[BUG] ", args...) }
+func UseExitln(args ...any) { exitln(CodeUse, "[USE] ", args...) }
+func EnvExitln(args ...any) { exitln(CodeEnv, "[ENV] ", args...) }
+
+func BugExitf(format string, args ...any) { exitf(CodeBug, "[BUG] ", format, args...) }
+func UseExitf(format string, args ...any) { exitf(CodeUse, "[USE] ", format, args...) }
+func EnvExitf(format string, args ...any) { exitf(CodeEnv, "[ENV] ", format, args...) }
+
+func exitln(exitCode int, prefix string, args ...any) {
+	fmt.Fprint(os.Stderr, prefix)
+	fmt.Fprintln(os.Stderr, args...)
+	os.Exit(exitCode)
+}
+func exitf(exitCode int, prefix, format string, args ...any) {
+	fmt.Fprintf(os.Stderr, prefix+format, args...)
+	os.Exit(exitCode)
+}
+
 // fixture component.
 //
 // Fixtures only exist in internal, and are created by stage.
@@ -411,7 +411,7 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 func (g *Gate_) Stage() *Stage   { return g.stage }
 func (g *Gate_) Address() string { return g.address }
 
-func (g *Gate_) SetShutdown()     { g.shut.Store(true) }
+func (g *Gate_) Shutdown()        { g.shut.Store(true) }
 func (g *Gate_) IsShutdown() bool { return g.shut.Load() }
 
 func (g *Gate_) DecConns() int32 { return g.numConns.Add(-1) }

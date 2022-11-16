@@ -85,10 +85,9 @@ func (f *UnixOutgate) OnShutdown() {
 }
 
 func (f *UnixOutgate) run() { // goroutine
-	for !f.IsShut() {
+	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
-		time.Sleep(time.Second)
-	}
+	})
 	if Debug(2) {
 		fmt.Println("unix done")
 	}
@@ -136,10 +135,13 @@ func (b *UnixBackend) OnShutdown() {
 }
 
 func (b *UnixBackend) maintain() { // goroutine
+	shutdown := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain()
+		go node.maintain(shutdown)
 	}
+	<-b.Shut
+	close(shutdown)
 	b.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("unixBackend=%s done\n", b.Name())
@@ -174,11 +176,10 @@ func (n *unixNode) init(id int32, backend *UnixBackend) {
 	n.backend = backend
 }
 
-func (n *unixNode) maintain() { // goroutine
-	// TODO: health check
-	for !n.backend.IsShut() {
-		time.Sleep(time.Second)
-	}
+func (n *unixNode) maintain(shutdown chan struct{}) { // goroutine
+	Loop(time.Second, shutdown, func(now time.Time) {
+		// TODO: health check
+	})
 	if Debug(2) {
 		fmt.Printf("unixNode=%d done\n", n.id)
 	}

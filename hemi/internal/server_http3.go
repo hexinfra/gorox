@@ -93,7 +93,7 @@ func (g *http3Gate) open() error {
 	return nil
 }
 func (g *http3Gate) shutdown() error {
-	g.SetShutdown()
+	g.Gate_.Shutdown()
 	return g.gate.Close()
 }
 
@@ -274,7 +274,7 @@ func (s *http3Stream) onEnd() { // for zeros
 	s.http3Stream0 = http3Stream0{}
 }
 
-func (s *http3Stream) execute() {
+func (s *http3Stream) execute() { // goroutine
 	// do
 	putHTTP3Stream(s)
 }

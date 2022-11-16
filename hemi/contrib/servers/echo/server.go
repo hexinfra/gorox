@@ -96,7 +96,7 @@ func (g *echoGate) open() error {
 	return err
 }
 func (g *echoGate) shutdown() error {
-	g.SetShutdown()
+	g.Gate_.Shutdown()
 	return g.listener.Close()
 }
 

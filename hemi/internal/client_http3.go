@@ -57,9 +57,9 @@ func (f *HTTP3Outgate) OnShutdown() {
 }
 
 func (f *HTTP3Outgate) run() { // goroutine
-	for !f.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, f.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Println("http3 done")
 	}
@@ -97,10 +97,13 @@ func (b *HTTP3Backend) OnShutdown() {
 }
 
 func (b *HTTP3Backend) maintain() { // goroutine
+	shutdown := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain()
+		go node.maintain(shutdown)
 	}
+	<-b.Shut
+	close(shutdown)
 	b.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("http3Backend=%s done\n", b.Name())
@@ -130,11 +133,10 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 	n.backend = backend
 }
 
-func (n *http3Node) maintain() { // goroutine
-	// TODO: health check
-	for !n.backend.IsShut() {
-		time.Sleep(time.Second)
-	}
+func (n *http3Node) maintain(shutdown chan struct{}) { // goroutine
+	Loop(time.Second, shutdown, func(now time.Time) {
+		// TODO: health check
+	})
 	if Debug(2) {
 		fmt.Printf("http3Node=%d done\n", n.id)
 	}

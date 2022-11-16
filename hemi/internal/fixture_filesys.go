@@ -65,13 +65,11 @@ func (f *filesysFixture) OnConfigure() {
 func (f *filesysFixture) OnPrepare() {
 }
 func (f *filesysFixture) OnShutdown() {
-	f.SetShut()
+	f.Shutdown()
 }
 
 func (f *filesysFixture) run() { // goroutine
-	for !f.IsShut() {
-		time.Sleep(time.Second)
-		now := time.Now()
+	Loop(time.Second, f.Shut, func(now time.Time) {
 		f.rwMutex.Lock()
 		for path, entry := range f.entries {
 			if entry.last.After(now) {
@@ -86,7 +84,7 @@ func (f *filesysFixture) run() { // goroutine
 			}
 		}
 		f.rwMutex.Unlock()
-	}
+	})
 	f.rwMutex.Lock()
 	f.entries = nil
 	f.rwMutex.Unlock()

@@ -31,10 +31,10 @@ type AdminServer struct {
 	stage *Stage
 	gate  *net.TCPListener
 	// States
-	address  string
-	shutdown atomic.Bool
-	mutex    sync.Mutex
-	conns    map[int64]*adminConn
+	address string
+	shut    atomic.Bool
+	mutex   sync.Mutex
+	conns   map[int64]*adminConn
 }
 
 func (s *AdminServer) init(name string, stage *Stage) {
@@ -62,7 +62,7 @@ func (s *AdminServer) OnConfigure() {
 func (s *AdminServer) OnPrepare() {
 }
 func (s *AdminServer) OnShutdown() {
-	s.shutdown.Store(true)
+	s.shut.Store(true)
 	s.gate.Close()
 }
 
@@ -80,7 +80,7 @@ func (s *AdminServer) Serve() { // goroutine
 	for {
 		tcpConn, err := s.gate.AcceptTCP()
 		if err != nil {
-			if s.shutdown.Load() {
+			if s.shut.Load() {
 				break
 			} else {
 				continue

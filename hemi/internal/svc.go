@@ -45,7 +45,7 @@ func (s *Svc) OnPrepare() {
 	}
 }
 func (s *Svc) OnShutdown() {
-	s.SetShut()
+	s.Shutdown()
 }
 
 func (s *Svc) LinkGRPC(server GRPCServer) {
@@ -58,10 +58,9 @@ func (s *Svc) linkHRPC(server httpServer) {
 }
 
 func (s *Svc) maintain() { // goroutine
-	// TODO
-	for !s.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, s.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Printf("svc=%s done\n", s.Name())
 	}

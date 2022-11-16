@@ -41,13 +41,13 @@ func (c *redisCacher) OnConfigure() {
 func (c *redisCacher) OnPrepare() {
 }
 func (c *redisCacher) OnShutdown() {
-	c.SetShut()
+	c.Shutdown()
 }
 
 func (c *redisCacher) Maintain() { // goroutine
-	for !c.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, c.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Printf("redisCacher=%s done\n", c.Name())
 	}

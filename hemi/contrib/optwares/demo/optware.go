@@ -39,16 +39,15 @@ func (o *demoOptware) OnConfigure() {
 func (o *demoOptware) OnPrepare() {
 }
 func (o *demoOptware) OnShutdown() {
-	o.SetShut()
+	o.Shutdown()
 }
 
 func (o *demoOptware) Run() { // goroutine
-	for !o.IsShut() {
-		// Do nothing.
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, o.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
-		fmt.Println("demo optware done")
+		fmt.Printf("demoOptware=%s done\n", o.Name())
 	}
 	o.stage.SubDone()
 }

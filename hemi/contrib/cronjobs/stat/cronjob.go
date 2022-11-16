@@ -40,16 +40,15 @@ func (j *statCronjob) OnConfigure() {
 func (j *statCronjob) OnPrepare() {
 }
 func (j *statCronjob) OnShutdown() {
-	j.SetShut()
+	j.Shutdown()
 }
 
 func (j *statCronjob) Run() { // goroutine
-	for !j.IsShut() {
+	Loop(time.Minute, j.Shut, func(now time.Time) {
 		// TODO
-		time.Sleep(time.Minute)
-	}
-	if Debug(1) {
-		fmt.Printf("statCronjob=%s shut\n", j.Name())
+	})
+	if Debug(2) {
+		fmt.Printf("statCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()
 }

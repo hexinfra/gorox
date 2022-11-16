@@ -16,7 +16,21 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 )
+
+func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-shut:
+			return
+		case now := <-ticker.C:
+			fn(now)
+		}
+	}
+}
 
 // poolBlock
 var poolBlock sync.Pool

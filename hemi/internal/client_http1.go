@@ -61,10 +61,9 @@ func (f *HTTP1Outgate) OnShutdown() {
 }
 
 func (f *HTTP1Outgate) run() { // goroutine
-	for !f.IsShut() {
-		// maintain?
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, f.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Println("http1 done")
 	}
@@ -170,10 +169,13 @@ func (b *HTTP1Backend) OnShutdown() {
 }
 
 func (b *HTTP1Backend) maintain() { // goroutine
+	shutdown := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain()
+		go node.maintain(shutdown)
 	}
+	<-b.Shut
+	close(shutdown)
 	b.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("http1Backend=%s done\n", b.Name())
@@ -203,11 +205,10 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.backend = backend
 }
 
-func (n *http1Node) maintain() { // goroutine
-	// TODO: health check
-	for !n.backend.IsShut() {
-		time.Sleep(time.Second)
-	}
+func (n *http1Node) maintain(shutdown chan struct{}) { // goroutine
+	Loop(time.Second, shutdown, func(now time.Time) {
+		// TODO: health check
+	})
 	if Debug(2) {
 		fmt.Printf("http1Node=%d done\n", n.id)
 	}

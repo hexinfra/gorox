@@ -44,13 +44,13 @@ func (f *resolvFixture) OnConfigure() {
 func (f *resolvFixture) OnPrepare() {
 }
 func (f *resolvFixture) OnShutdown() {
-	f.SetShut()
+	f.Shutdown()
 }
 
 func (f *resolvFixture) run() { // goroutine
-	for !f.IsShut() {
-		time.Sleep(time.Second)
-	}
+	Loop(time.Second, f.Shut, func(now time.Time) {
+		// TODO
+	})
 	if Debug(2) {
 		fmt.Println("resolve done")
 	}

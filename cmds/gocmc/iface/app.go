@@ -47,6 +47,7 @@ func (h *v1Handler) OnConfigure() {
 func (h *v1Handler) OnPrepare() {
 	h.admin = h.stage.Server("cli").(*AdminServer)
 }
+
 func (h *v1Handler) OnShutdown() {
 	h.app.SubDone()
 }

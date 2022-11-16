@@ -39,6 +39,7 @@ func (h *refererHandler) OnConfigure() {
 }
 func (h *refererHandler) OnPrepare() {
 }
+
 func (h *refererHandler) OnShutdown() {
 	h.app.SubDone()
 }

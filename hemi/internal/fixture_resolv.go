@@ -43,6 +43,7 @@ func (f *resolvFixture) OnConfigure() {
 }
 func (f *resolvFixture) OnPrepare() {
 }
+
 func (f *resolvFixture) OnShutdown() {
 	f.Shutdown()
 }

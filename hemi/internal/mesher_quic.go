@@ -34,6 +34,7 @@ func (m *QUICMesher) OnPrepare() {
 	// TODO: prepare m
 	m.prepareSubs() // runners, filters, cases
 }
+
 func (m *QUICMesher) OnShutdown() {
 	for _, gate := range m.gates {
 		gate.shutdown()

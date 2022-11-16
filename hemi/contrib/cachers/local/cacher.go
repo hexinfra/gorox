@@ -47,6 +47,7 @@ func (c *localCacher) OnPrepare() {
 		EnvExitln(err.Error())
 	}
 }
+
 func (c *localCacher) OnShutdown() {
 	c.Shutdown()
 }

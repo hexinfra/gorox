@@ -41,6 +41,7 @@ func (h *http1Proxy) OnConfigure() {
 func (h *http1Proxy) OnPrepare() {
 	h.httpProxy_.onPrepare()
 }
+
 func (h *http1Proxy) OnShutdown() {
 	h.app.SubDone()
 }
@@ -212,6 +213,7 @@ func (s *sock1Proxy) OnConfigure() {
 func (s *sock1Proxy) OnPrepare() {
 	s.sockProxy_.onPrepare()
 }
+
 func (s *sock1Proxy) OnShutdown() {
 	s.app.SubDone()
 }

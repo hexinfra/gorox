@@ -39,6 +39,7 @@ func (j *cleanCronjob) OnConfigure() {
 }
 func (j *cleanCronjob) OnPrepare() {
 }
+
 func (j *cleanCronjob) OnShutdown() {
 	j.Shutdown()
 }

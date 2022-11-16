@@ -49,6 +49,7 @@ func (r *gzipReviser) OnConfigure() {
 }
 func (r *gzipReviser) OnPrepare() {
 }
+
 func (r *gzipReviser) OnShutdown() {
 	r.app.SubDone()
 }

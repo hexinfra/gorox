@@ -39,6 +39,7 @@ func (f *mysqlViewer) OnConfigure() {
 }
 func (f *mysqlViewer) OnPrepare() {
 }
+
 func (f *mysqlViewer) OnShutdown() {
 	f.mesher.SubDone()
 }

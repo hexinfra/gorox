@@ -39,6 +39,7 @@ func (r *echoRunner) OnConfigure() {
 }
 func (r *echoRunner) OnPrepare() {
 }
+
 func (r *echoRunner) OnShutdown() {
 	r.mesher.SubDone()
 }

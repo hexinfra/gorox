@@ -43,6 +43,7 @@ func (r *replaceReviser) OnConfigure() {
 }
 func (r *replaceReviser) OnPrepare() {
 }
+
 func (r *replaceReviser) OnShutdown() {
 	r.app.SubDone()
 }

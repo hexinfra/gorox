@@ -39,6 +39,7 @@ func (h *accessHandler) OnConfigure() {
 }
 func (h *accessHandler) OnPrepare() {
 }
+
 func (h *accessHandler) OnShutdown() {
 	h.app.SubDone()
 }

@@ -104,6 +104,7 @@ func (h *staticHandler) OnPrepare() {
 		EnvExitln("indexFile must be a regular file")
 	}
 }
+
 func (h *staticHandler) OnShutdown() {
 	h.app.SubDone()
 }

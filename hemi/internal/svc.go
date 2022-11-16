@@ -44,6 +44,7 @@ func (s *Svc) OnPrepare() {
 		}
 	}
 }
+
 func (s *Svc) OnShutdown() {
 	s.Shutdown()
 }

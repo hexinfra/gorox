@@ -80,6 +80,7 @@ func (f *TCPSOutgate) OnConfigure() {
 func (f *TCPSOutgate) OnPrepare() {
 	f.tcpsClient_.onPrepare()
 }
+
 func (f *TCPSOutgate) OnShutdown() {
 	f.Shutdown()
 }
@@ -191,6 +192,7 @@ func (b *TCPSBackend) OnPrepare() {
 	b.tcpsClient_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
+
 func (b *TCPSBackend) OnShutdown() {
 	b.Shutdown()
 }

@@ -40,6 +40,7 @@ func (s *redisStater) OnConfigure() {
 }
 func (s *redisStater) OnPrepare() {
 }
+
 func (s *redisStater) OnShutdown() {
 	s.Shutdown()
 }

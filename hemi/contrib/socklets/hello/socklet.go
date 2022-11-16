@@ -39,6 +39,7 @@ func (s *helloSocklet) OnConfigure() {
 }
 func (s *helloSocklet) OnPrepare() {
 }
+
 func (s *helloSocklet) OnShutdown() {
 	s.app.SubDone()
 }

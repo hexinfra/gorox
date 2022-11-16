@@ -39,6 +39,7 @@ func (j *statCronjob) OnConfigure() {
 }
 func (j *statCronjob) OnPrepare() {
 }
+
 func (j *statCronjob) OnShutdown() {
 	j.Shutdown()
 }

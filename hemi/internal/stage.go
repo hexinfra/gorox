@@ -363,6 +363,7 @@ func (s *Stage) OnPrepare() {
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
+
 func (s *Stage) OnShutdown() {
 	if Debug(2) {
 		fmt.Println("stage shutdown start!!")

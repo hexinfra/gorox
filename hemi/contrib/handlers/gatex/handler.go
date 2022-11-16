@@ -39,6 +39,7 @@ func (h *gatex) OnConfigure() {
 }
 func (h *gatex) OnPrepare() {
 }
+
 func (h *gatex) OnShutdown() {
 	h.app.SubDone()
 }

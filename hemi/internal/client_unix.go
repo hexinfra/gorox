@@ -77,6 +77,7 @@ func (f *UnixOutgate) OnConfigure() {
 func (f *UnixOutgate) OnPrepare() {
 	f.unixClient_.onPrepare()
 }
+
 func (f *UnixOutgate) OnShutdown() {
 	f.Shutdown()
 }
@@ -126,6 +127,7 @@ func (b *UnixBackend) OnPrepare() {
 	b.unixClient_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
+
 func (b *UnixBackend) OnShutdown() {
 	b.Shutdown()
 }

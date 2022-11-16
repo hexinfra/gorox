@@ -86,6 +86,7 @@ func (h *Sitex) OnConfigure() {
 }
 func (h *Sitex) OnPrepare() {
 }
+
 func (h *Sitex) OnShutdown() {
 	h.app.SubDone()
 }

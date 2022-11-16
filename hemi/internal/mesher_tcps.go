@@ -38,6 +38,7 @@ func (m *TCPSMesher) OnPrepare() {
 	// TODO: prepare m
 	m.prepareSubs() // runners, filters, cases
 }
+
 func (m *TCPSMesher) OnShutdown() {
 	for _, gate := range m.gates {
 		gate.shutdown()

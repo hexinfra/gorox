@@ -81,6 +81,7 @@ func (s *httpxServer) OnPrepare() {
 		s.h2cMode = false
 	}
 }
+
 func (s *httpxServer) OnShutdown() {
 	for _, gate := range s.gates {
 		gate.shutdown()

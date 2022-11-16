@@ -38,6 +38,7 @@ func (o *demoOptware) OnConfigure() {
 }
 func (o *demoOptware) OnPrepare() {
 }
+
 func (o *demoOptware) OnShutdown() {
 	o.Shutdown()
 }

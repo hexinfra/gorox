@@ -74,6 +74,7 @@ func (f *UDPSOutgate) OnConfigure() {
 func (f *UDPSOutgate) OnPrepare() {
 	f.udpsClient_.onPrepare()
 }
+
 func (f *UDPSOutgate) OnShutdown() {
 	f.Shutdown()
 }
@@ -123,6 +124,7 @@ func (b *UDPSBackend) OnPrepare() {
 	b.udpsClient_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
+
 func (b *UDPSBackend) OnShutdown() {
 	b.Shutdown()
 }

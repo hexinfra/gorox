@@ -47,6 +47,7 @@ func (s *localStater) OnPrepare() {
 		EnvExitln(err.Error())
 	}
 }
+
 func (s *localStater) OnShutdown() {
 	s.Shutdown()
 }

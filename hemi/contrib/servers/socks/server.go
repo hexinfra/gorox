@@ -44,6 +44,7 @@ func (s *socksServer) OnConfigure() {
 func (s *socksServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
+
 func (s *socksServer) OnShutdown() {
 	for _, gate := range s.gates {
 		gate.shutdown()

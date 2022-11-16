@@ -45,6 +45,7 @@ func (h *httpsHandler) OnConfigure() {
 }
 func (h *httpsHandler) OnPrepare() {
 }
+
 func (h *httpsHandler) OnShutdown() {
 	h.app.SubDone()
 }

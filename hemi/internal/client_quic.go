@@ -77,6 +77,7 @@ func (f *QUICOutgate) OnConfigure() {
 func (f *QUICOutgate) OnPrepare() {
 	f.quicClient_.onPrepare()
 }
+
 func (f *QUICOutgate) OnShutdown() {
 	f.Shutdown()
 }
@@ -125,6 +126,7 @@ func (b *QUICBackend) OnPrepare() {
 	b.quicClient_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
+
 func (b *QUICBackend) OnShutdown() {
 	b.Shutdown()
 }

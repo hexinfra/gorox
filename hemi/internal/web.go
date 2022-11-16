@@ -238,6 +238,7 @@ func (a *App) OnPrepare() {
 		}
 	}
 }
+
 func (a *App) OnShutdown() {
 	// sub components
 	a.rules.walk((*Rule).OnShutdown)
@@ -837,6 +838,7 @@ func (r *Rule) OnConfigure() {
 }
 func (r *Rule) OnPrepare() {
 }
+
 func (r *Rule) OnShutdown() {
 	r.app.SubDone()
 }

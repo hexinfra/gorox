@@ -56,6 +56,7 @@ func (f *HTTP1Outgate) OnConfigure() {
 func (f *HTTP1Outgate) OnPrepare() {
 	f.httpOutgate_.onPrepare()
 }
+
 func (f *HTTP1Outgate) OnShutdown() {
 	f.Shutdown()
 }
@@ -164,6 +165,7 @@ func (b *HTTP1Backend) OnConfigure() {
 func (b *HTTP1Backend) OnPrepare() {
 	b.httpBackend_.onPrepare(len(b.nodes))
 }
+
 func (b *HTTP1Backend) OnShutdown() {
 	b.Shutdown()
 }

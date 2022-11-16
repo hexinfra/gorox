@@ -48,6 +48,7 @@ func (f *clockFixture) OnConfigure() {
 }
 func (f *clockFixture) OnPrepare() {
 }
+
 func (f *clockFixture) OnShutdown() {
 	f.Shutdown()
 }

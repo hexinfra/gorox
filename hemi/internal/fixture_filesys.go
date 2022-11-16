@@ -64,6 +64,7 @@ func (f *filesysFixture) OnConfigure() {
 }
 func (f *filesysFixture) OnPrepare() {
 }
+
 func (f *filesysFixture) OnShutdown() {
 	f.Shutdown()
 }

@@ -55,6 +55,7 @@ func (h *helloHandler) OnConfigure() {
 }
 func (h *helloHandler) OnPrepare() {
 }
+
 func (h *helloHandler) OnShutdown() {
 	h.app.SubDone()
 }

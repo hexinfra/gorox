@@ -40,6 +40,7 @@ func (c *redisCacher) OnConfigure() {
 }
 func (c *redisCacher) OnPrepare() {
 }
+
 func (c *redisCacher) OnShutdown() {
 	c.Shutdown()
 }

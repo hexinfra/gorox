@@ -61,6 +61,7 @@ func (s *AdminServer) OnConfigure() {
 }
 func (s *AdminServer) OnPrepare() {
 }
+
 func (s *AdminServer) OnShutdown() {
 	s.shut.Store(true)
 	s.gate.Close()

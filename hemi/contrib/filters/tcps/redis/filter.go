@@ -39,6 +39,7 @@ func (f *redisViewer) OnConfigure() {
 }
 func (f *redisViewer) OnPrepare() {
 }
+
 func (f *redisViewer) OnShutdown() {
 	f.mesher.SubDone()
 }

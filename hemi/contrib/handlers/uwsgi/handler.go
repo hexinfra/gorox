@@ -73,6 +73,7 @@ func (h *uwsgiProxy) OnConfigure() {
 }
 func (h *uwsgiProxy) OnPrepare() {
 }
+
 func (h *uwsgiProxy) OnShutdown() {
 	h.app.SubDone()
 }

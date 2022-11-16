@@ -46,6 +46,7 @@ func (r *headReviser) OnConfigure() {
 }
 func (r *headReviser) OnPrepare() {
 }
+
 func (r *headReviser) OnShutdown() {
 	r.app.SubDone()
 }

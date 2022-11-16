@@ -93,8 +93,7 @@ func (g *quicGate) open() error {
 }
 func (g *quicGate) shutdown() error {
 	g.Gate_.Shutdown()
-	// TODO
-	return nil
+	return g.gate.Close()
 }
 
 func (g *quicGate) serve() { // goroutine

@@ -30,7 +30,7 @@ func createStage() *Stage {
 //
 // A worker process may have many stages in its lifetime, especially
 // when new configuration is applied, a new stage is created, or the
-// old one is told to grace.
+// old one is told to quit.
 type Stage struct {
 	// Mixins
 	Component_
@@ -448,7 +448,7 @@ func (s *Stage) Start() { // one worker process mode
 	// TODO: change user here
 	s.Logln("stage is ready to serve.")
 }
-func (s *Stage) Grace() {
+func (s *Stage) Quit() {
 	// TODO: guard reentry
 	s.OnShutdown()
 	if Debug(2) {

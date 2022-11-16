@@ -117,7 +117,7 @@ type httpxGate struct {
 	// Assocs
 	server *httpxServer
 	// States
-	listener *net.TCPListener
+	gate *net.TCPListener
 }
 
 func (g *httpxGate) init(server *httpxServer, id int32) {
@@ -133,15 +133,15 @@ func (g *httpxGate) open() error {
 		}
 		return system.SetDeferAccept(rawConn)
 	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.address)
+	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
 	if err == nil {
-		g.listener = listener.(*net.TCPListener)
+		g.gate = gate.(*net.TCPListener)
 	}
 	return err
 }
 func (g *httpxGate) shutdown() error {
 	g.Gate_.Shutdown()
-	return g.listener.Close()
+	return g.gate.Close()
 }
 
 func (g *httpxGate) serveTCP() { // goroutine
@@ -151,7 +151,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 	}
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
 			if g.IsShutdown() {
 				break
@@ -180,7 +180,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 func (g *httpxGate) serveTLS() { // goroutine
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
 			if g.IsShutdown() {
 				break

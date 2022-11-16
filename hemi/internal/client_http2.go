@@ -123,14 +123,14 @@ func (b *HTTP2Backend) StoreConn(conn *H2Conn) {
 // http2Node
 type http2Node struct {
 	// Mixins
-	httpNode_
+	node_
 	// Assocs
 	backend *HTTP2Backend
 	// States
 }
 
 func (n *http2Node) init(id int32, backend *HTTP2Backend) {
-	n.httpNode_.init(id)
+	n.node_.init(id)
 	n.backend = backend
 }
 

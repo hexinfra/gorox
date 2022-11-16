@@ -194,14 +194,14 @@ func (b *HTTP1Backend) StoreConn(conn *H1Conn) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Mixins
-	httpNode_
+	node_
 	// Assocs
 	backend *HTTP1Backend
 	// States
 }
 
 func (n *http1Node) init(id int32, backend *HTTP1Backend) {
-	n.httpNode_.init(id)
+	n.node_.init(id)
 	n.backend = backend
 }
 

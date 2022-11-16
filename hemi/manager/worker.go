@@ -82,7 +82,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
 			newStage.Start()
-			stage.Grace()
+			stage.Quit()
 			currentStage = newStage
 			resp.Flag = 0
 		} else {
@@ -97,7 +97,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 
 var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell commands
 	comdQuit: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.Grace()
+		stage.Quit()
 		os.Exit(0)
 	},
 	comdCPU: func(stage *hemi.Stage, req *msgx.Message) {

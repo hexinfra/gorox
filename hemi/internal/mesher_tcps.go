@@ -87,7 +87,7 @@ type tcpsGate struct {
 	// Assocs
 	mesher *TCPSMesher
 	// States
-	listener *net.TCPListener
+	gate *net.TCPListener
 }
 
 func (g *tcpsGate) init(mesher *TCPSMesher, id int32) {
@@ -100,21 +100,21 @@ func (g *tcpsGate) open() error {
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
 	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.address)
+	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
 	if err == nil {
-		g.listener = listener.(*net.TCPListener)
+		g.gate = gate.(*net.TCPListener)
 	}
 	return err
 }
 func (g *tcpsGate) shutdown() error {
 	g.Gate_.Shutdown()
-	return g.listener.Close()
+	return g.gate.Close()
 }
 
 func (g *tcpsGate) serveTCP() { // goroutine
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
 			if g.IsShutdown() {
 				break
@@ -144,7 +144,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 func (g *tcpsGate) serveTLS() { // goroutine
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
 			if g.IsShutdown() {
 				break

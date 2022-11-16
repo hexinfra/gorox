@@ -75,7 +75,7 @@ type socksGate struct {
 	// Assocs
 	server *socksServer
 	// States
-	listener *net.TCPListener
+	gate *net.TCPListener
 }
 
 func (g *socksGate) init(server *socksServer, id int32) {
@@ -88,21 +88,21 @@ func (g *socksGate) open() error {
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
 	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
+	gate, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
 	if err == nil {
-		g.listener = listener.(*net.TCPListener)
+		g.gate = gate.(*net.TCPListener)
 	}
 	return err
 }
 func (g *socksGate) shutdown() error {
 	g.Gate_.Shutdown()
-	return g.listener.Close()
+	return g.gate.Close()
 }
 
 func (g *socksGate) serve() { // goroutine
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
 			if g.IsShutdown() {
 				break

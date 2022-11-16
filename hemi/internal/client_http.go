@@ -91,18 +91,6 @@ func (b *httpBackend_) onPrepare(numNodes int) {
 	b.makeContentFilesDir(0755)
 }
 
-// httpNode_ is the mixin for http[1-3]Node.
-type httpNode_ struct {
-	// Mixins
-	node_
-	// States
-	//something related to http?
-}
-
-func (n *httpNode_) init(id int32) {
-	n.node_.init(id)
-}
-
 // hConn is the interface for *H[1-3]Conn.
 type hConn interface {
 	getClient() httpClient

@@ -12,6 +12,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"os"
 	"sync"
+	"time"
 )
 
 // QUICMesher
@@ -101,6 +102,9 @@ func (g *quicGate) shutdown() error {
 
 func (g *quicGate) serve() { // goroutine
 	// TODO
+	for !g.IsShutdown() {
+		time.Sleep(time.Second)
+	}
 	g.mesher.SubDone()
 }
 

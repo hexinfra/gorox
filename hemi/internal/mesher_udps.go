@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 // UDPSMesher
@@ -111,13 +112,15 @@ func (g *udpsGate) shutdown() error {
 }
 
 func (g *udpsGate) serveUDP() { // goroutine
-	// TODO
-	// use g.shut.Load()
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
 	g.mesher.SubDone()
 }
 func (g *udpsGate) serveTLS() { // goroutine
-	// TODO
-	// use g.shut.Load()
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
 	g.mesher.SubDone()
 }
 

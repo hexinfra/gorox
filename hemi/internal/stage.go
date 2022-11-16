@@ -97,8 +97,6 @@ func (s *Stage) init() {
 	s.fixtures[signUDPS] = s.udps
 	s.fixtures[signUnix] = s.unix
 
-	s.IncSub(len(s.fixtures))
-
 	s.optwares = make(compDict[Optware])
 	s.backends = make(compDict[backend])
 	s.quicMeshers = make(compDict[*QUICMesher])
@@ -126,7 +124,6 @@ func (s *Stage) createOptware(sign string) Optware {
 	optware := create(sign, s)
 	optware.setShell(optware)
 	s.optwares[sign] = optware
-	s.IncSub(1)
 	return optware
 }
 func (s *Stage) createBackend(sign string, name string) backend {
@@ -140,7 +137,6 @@ func (s *Stage) createBackend(sign string, name string) backend {
 	backend := create(name, s)
 	backend.setShell(backend)
 	s.backends[name] = backend
-	s.IncSub(1)
 	return backend
 }
 func (s *Stage) createQUICMesher(name string) *QUICMesher {
@@ -151,7 +147,6 @@ func (s *Stage) createQUICMesher(name string) *QUICMesher {
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.quicMeshers[name] = mesher
-	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
@@ -162,7 +157,6 @@ func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.tcpsMeshers[name] = mesher
-	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
@@ -173,7 +167,6 @@ func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
 	mesher.init(name, s)
 	mesher.setShell(mesher)
 	s.udpsMeshers[name] = mesher
-	s.IncSub(1)
 	return mesher
 }
 func (s *Stage) createStater(sign string, name string) Stater {
@@ -187,7 +180,6 @@ func (s *Stage) createStater(sign string, name string) Stater {
 	stater := create(name, s)
 	stater.setShell(stater)
 	s.staters[name] = stater
-	s.IncSub(1)
 	return stater
 }
 func (s *Stage) createCacher(sign string, name string) Cacher {
@@ -201,7 +193,6 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	cacher := create(name, s)
 	cacher.setShell(cacher)
 	s.cachers[name] = cacher
-	s.IncSub(1)
 	return cacher
 }
 func (s *Stage) createApp(name string) *App {
@@ -212,7 +203,6 @@ func (s *Stage) createApp(name string) *App {
 	app.init(name, s)
 	app.setShell(app)
 	s.apps[name] = app
-	s.IncSub(1)
 	return app
 }
 func (s *Stage) createSvc(name string) *Svc {
@@ -223,7 +213,6 @@ func (s *Stage) createSvc(name string) *Svc {
 	svc.init(name, s)
 	svc.setShell(svc)
 	s.svcs[name] = svc
-	s.IncSub(1)
 	return svc
 }
 func (s *Stage) createServer(sign string, name string) Server {
@@ -237,7 +226,6 @@ func (s *Stage) createServer(sign string, name string) Server {
 	server := create(name, s)
 	server.setShell(server)
 	s.servers[name] = server
-	s.IncSub(1)
 	return server
 }
 func (s *Stage) createCronjob(sign string) Cronjob {
@@ -251,7 +239,6 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	cronjob := create(sign, s)
 	cronjob.setShell(cronjob)
 	s.cronjobs[sign] = cronjob
-	s.IncSub(1)
 	return cronjob
 }
 
@@ -369,21 +356,41 @@ func (s *Stage) OnShutdown() {
 		fmt.Println("stage shutdown start!!")
 	}
 
-	// sub components
+	s.IncSub(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.svcs) + len(s.apps))
 	s.svcs.goWalk((*Svc).OnShutdown)
 	s.apps.goWalk((*App).OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.cachers) + len(s.staters))
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
 	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
 	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
 	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
-	s.backends.goWalk(backend.OnShutdown)
-	s.optwares.goWalk(Optware.OnShutdown)
-	s.fixtures.goWalk(fixture.OnShutdown)
+	s.WaitSubs()
 
-	s.WaitSubs() // direct subs of stage
+	s.IncSub(len(s.backends))
+	s.backends.goWalk(backend.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.optwares))
+	s.optwares.goWalk(Optware.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.fixtures))
+	s.fixtures.goWalk(fixture.OnShutdown)
+	s.WaitSubs()
 
 	// TODO: shutdown s
 	if Debug(2) {

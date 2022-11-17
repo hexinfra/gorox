@@ -170,7 +170,6 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					worker.tell(req)
 					worker.reset()
 					<-deadWay
-					close(deadWay)
 					// Use new worker
 					deadWay, worker = deadWay2, worker2
 				default: // tell worker

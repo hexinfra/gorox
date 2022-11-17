@@ -11,7 +11,7 @@ import (
 var config = `
 stage {
     apps {
-        app "filex" {
+        app "filer" {
             hostnames = ("*")
             webRoot   = @baseDir
             rules {
@@ -27,7 +27,7 @@ stage {
         }
     }
     appServers = [
-        "filex": ("main"),
+        "filer": ("main"),
     ]
     svcs {}
     svcServers = []

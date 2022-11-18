@@ -93,7 +93,6 @@ func (f *filesysFixture) run() { // goroutine
 	if Debug(2) {
 		fmt.Println("filesys done")
 	}
-	f.stage.SubDone()
 }
 
 func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {

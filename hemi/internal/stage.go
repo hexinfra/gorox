@@ -388,9 +388,19 @@ func (s *Stage) OnShutdown() {
 	s.optwares.goWalk(Optware.OnShutdown)
 	s.WaitSubs()
 
-	s.IncSub(len(s.fixtures))
-	s.fixtures.goWalk(fixture.OnShutdown)
+	s.IncSub(7)
+	go s.http1.OnShutdown()
+	go s.http2.OnShutdown()
+	go s.http3.OnShutdown()
+	go s.quic.OnShutdown()
+	go s.tcps.OnShutdown()
+	go s.udps.OnShutdown()
+	go s.unix.OnShutdown()
 	s.WaitSubs()
+
+	s.filesys.OnShutdown()
+	s.resolv.OnShutdown()
+	s.clock.OnShutdown()
 
 	// TODO: shutdown s
 	if Debug(2) {

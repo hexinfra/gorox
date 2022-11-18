@@ -33,22 +33,18 @@ type quicClient interface {
 // quicClient_
 type quicClient_ struct {
 	// Mixins
-	client_
 	streamHolder_
 	// States
 }
 
-func (c *quicClient_) init(name string, stage *Stage) {
-	c.client_.init(name, stage)
+func (m *quicClient_) init() {
 }
 
-func (c *quicClient_) onConfigure() {
-	c.client_.onConfigure()
+func (m *quicClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (c *quicClient_) onPrepare() {
-	c.client_.onPrepare()
+func (m *quicClient_) onPrepare(c Component) {
 }
 
 const signQUIC = "quic"
@@ -63,19 +59,23 @@ func createQUIC(stage *Stage) *QUICOutgate {
 // QUICOutgate component.
 type QUICOutgate struct {
 	// Mixins
+	client_
 	quicClient_
 	// States
 }
 
 func (f *QUICOutgate) init(stage *Stage) {
-	f.quicClient_.init(signQUIC, stage)
+	f.client_.init(signQUIC, stage)
+	f.quicClient_.init()
 }
 
 func (f *QUICOutgate) OnConfigure() {
-	f.quicClient_.onConfigure()
+	f.client_.onConfigure()
+	f.quicClient_.onConfigure(f)
 }
 func (f *QUICOutgate) OnPrepare() {
-	f.quicClient_.onPrepare()
+	f.client_.onPrepare()
+	f.quicClient_.onPrepare(f)
 }
 
 func (f *QUICOutgate) OnShutdown() {
@@ -106,24 +106,27 @@ func (f *QUICOutgate) StoreConn(conn *QConn) {
 // QUICBackend component.
 type QUICBackend struct {
 	// Mixins
+	backend_[*quicNode]
 	quicClient_
 	loadBalancer_
 	// States
-	health any         // TODO
-	nodes  []*quicNode // nodes of backend
+	health any // TODO
 }
 
 func (b *QUICBackend) init(name string, stage *Stage) {
-	b.quicClient_.init(name, stage)
+	b.backend_.init(name, stage)
+	b.quicClient_.init()
 	b.loadBalancer_.init()
 }
 
 func (b *QUICBackend) OnConfigure() {
-	b.quicClient_.onConfigure()
+	b.backend_.onConfigure()
+	b.quicClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUICBackend) OnPrepare() {
-	b.quicClient_.onPrepare()
+	b.backend_.onPrepare()
+	b.quicClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -131,20 +134,7 @@ func (b *QUICBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *QUICBackend) maintain() { // goroutine
-	shut := make(chan struct{})
-	for _, node := range b.nodes {
-		b.IncSub(1)
-		go node.maintain(shut)
-	}
-	<-b.Shut
-	close(shut)
-	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("quicBackend=%s done\n", b.Name())
-	}
-	b.stage.SubDone()
-}
+func (b *QUICBackend) createNode() node { return new(quicNode) }
 
 func (b *QUICBackend) Dial() (*QConn, error) {
 	// TODO

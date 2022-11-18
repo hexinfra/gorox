@@ -23,30 +23,26 @@ type httpClient interface {
 // httpClient_ is a mixin for httpOutgate_ and httpBackend_.
 type httpClient_ struct {
 	// Mixins
-	client_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxContentSize int64
 }
 
-func (c *httpClient_) init(name string, stage *Stage) {
-	c.client_.init(name, stage)
+func (m *httpClient_) init() {
 }
 
-func (c *httpClient_) onConfigure(clientName string) {
-	c.client_.onConfigure()
-	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+func (m *httpClient_) onConfigure(c Component, clientName string) {
+	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 	// saveContentFilesDir
-	c.ConfigureString("saveContentFilesDir", &c.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.name)
+	c.ConfigureString("saveContentFilesDir", &m.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.Name())
 	// maxContentSize
-	c.ConfigureInt64("maxContentSize", &c.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	c.ConfigureInt64("maxContentSize", &m.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
-func (c *httpClient_) onPrepare() {
-	c.client_.onPrepare()
+func (m *httpClient_) onPrepare(c Component) {
 }
 
-func (c *httpClient_) MaxContentSize() int64 { return c.maxContentSize }
+func (m *httpClient_) MaxContentSize() int64 { return m.maxContentSize }
 
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
@@ -55,15 +51,15 @@ type httpOutgate_ struct {
 	// States
 }
 
-func (f *httpOutgate_) init(name string, stage *Stage) {
-	f.httpClient_.init(name, stage)
+func (f *httpOutgate_) init() {
+	f.httpClient_.init()
 }
 
-func (f *httpOutgate_) onConfigure() {
-	f.httpClient_.onConfigure("outgates")
+func (f *httpOutgate_) onConfigure(c Component) {
+	f.httpClient_.onConfigure(c, "outgates")
 }
-func (f *httpOutgate_) onPrepare() {
-	f.httpClient_.onPrepare()
+func (f *httpOutgate_) onPrepare(c Component) {
+	f.httpClient_.onPrepare(c)
 	f.makeContentFilesDir(0755)
 }
 
@@ -76,17 +72,17 @@ type httpBackend_ struct {
 	health any // TODO
 }
 
-func (b *httpBackend_) init(name string, stage *Stage) {
-	b.httpClient_.init(name, stage)
+func (b *httpBackend_) init() {
+	b.httpClient_.init()
 	b.loadBalancer_.init()
 }
 
 func (b *httpBackend_) onConfigure(c Component) {
-	b.httpClient_.onConfigure("backends")
+	b.httpClient_.onConfigure(c, "backends")
 	b.loadBalancer_.onConfigure(c)
 }
-func (b *httpBackend_) onPrepare(numNodes int) {
-	b.httpClient_.onPrepare()
+func (b *httpBackend_) onPrepare(c Component, numNodes int) {
+	b.httpClient_.onPrepare(c)
 	b.loadBalancer_.onPrepare(numNodes)
 	b.makeContentFilesDir(0755)
 }

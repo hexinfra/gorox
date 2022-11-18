@@ -39,19 +39,23 @@ func createHTTP2(stage *Stage) *HTTP2Outgate {
 // HTTP2Outgate
 type HTTP2Outgate struct {
 	// Mixins
+	client_
 	httpOutgate_
 	// States
 }
 
 func (f *HTTP2Outgate) init(stage *Stage) {
-	f.httpOutgate_.init(signHTTP2, stage)
+	f.client_.init(signHTTP2, stage)
+	f.httpOutgate_.init()
 }
 
 func (f *HTTP2Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure()
+	f.client_.onConfigure()
+	f.httpOutgate_.onConfigure(f)
 }
 func (f *HTTP2Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare()
+	f.client_.onPrepare()
+	f.httpOutgate_.onPrepare(f)
 }
 
 func (f *HTTP2Outgate) OnShutdown() {
@@ -79,40 +83,30 @@ func (f *HTTP2Outgate) StoreConn(conn *H2Conn) {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Mixins
+	backend_[*http2Node]
 	httpBackend_
 	// States
-	nodes []*http2Node
 }
 
 func (b *HTTP2Backend) init(name string, stage *Stage) {
-	b.httpBackend_.init(name, stage)
+	b.backend_.init(name, stage)
+	b.httpBackend_.init()
 }
 
 func (b *HTTP2Backend) OnConfigure() {
+	b.backend_.onConfigure()
 	b.httpBackend_.onConfigure(b)
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.httpBackend_.onPrepare(len(b.nodes))
+	b.backend_.onPrepare()
+	b.httpBackend_.onPrepare(b, len(b.nodes))
 }
 
 func (b *HTTP2Backend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *HTTP2Backend) maintain() { // goroutine
-	shut := make(chan struct{})
-	for _, node := range b.nodes {
-		b.IncSub(1)
-		go node.maintain(shut)
-	}
-	<-b.Shut
-	close(shut)
-	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("http2Backend=%s done\n", b.Name())
-	}
-	b.stage.SubDone()
-}
+func (b *HTTP2Backend) createNode() node { return new(http2Node) }
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
 	node := b.nodes[b.getIndex()]

@@ -10,6 +10,7 @@ package internal
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -81,9 +82,44 @@ type backend interface {
 	maintain() // goroutine
 }
 
+// backend_
+type backend_[N node] struct {
+	// Mixins
+	client_
+	// Assocs
+	nodes []N
+	// States
+}
+
+func (b *backend_[N]) init(name string, stage *Stage) {
+	b.client_.init(name, stage)
+}
+
+func (b *backend_[N]) onConfigure() {
+	b.client_.onConfigure()
+}
+func (b *backend_[N]) onPrepare() {
+	b.client_.onPrepare()
+}
+
+func (b *backend_[N]) maintain() { // goroutine
+	shut := make(chan struct{})
+	for _, node := range b.nodes {
+		b.IncSub(1)
+		go node.maintain(shut)
+	}
+	<-b.Shut
+	close(shut)
+	b.WaitSubs() // nodes
+	if Debug(2) {
+		fmt.Printf("backend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
+}
+
 // node is a member of backend.
 type node interface {
-	maintain() // goroutine
+	maintain(shut chan struct{}) // goroutine
 }
 
 // node_ is a mixin for backend nodes.

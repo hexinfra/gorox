@@ -33,22 +33,18 @@ type unixClient interface {
 // unixClient_
 type unixClient_ struct {
 	// Mixins
-	client_
 	streamHolder_
 	// States
 }
 
-func (c *unixClient_) init(name string, stage *Stage) {
-	c.client_.init(name, stage)
+func (m *unixClient_) init() {
 }
 
-func (c *unixClient_) onConfigure() {
-	c.client_.onConfigure()
+func (m *unixClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (c *unixClient_) onPrepare() {
-	c.client_.onPrepare()
+func (m *unixClient_) onPrepare(c Component) {
 }
 
 const signUnix = "unix"
@@ -63,19 +59,23 @@ func createUnix(stage *Stage) *UnixOutgate {
 // UnixOutgate component.
 type UnixOutgate struct {
 	// Mixins
+	client_
 	unixClient_
 	// States
 }
 
 func (f *UnixOutgate) init(stage *Stage) {
-	f.unixClient_.init(signUnix, stage)
+	f.client_.init(signUnix, stage)
+	f.unixClient_.init()
 }
 
 func (f *UnixOutgate) OnConfigure() {
-	f.unixClient_.onConfigure()
+	f.client_.onConfigure()
+	f.unixClient_.onConfigure(f)
 }
 func (f *UnixOutgate) OnPrepare() {
-	f.unixClient_.onPrepare()
+	f.client_.onPrepare()
+	f.unixClient_.onPrepare(f)
 }
 
 func (f *UnixOutgate) OnShutdown() {
@@ -107,24 +107,27 @@ func (f *UnixOutgate) StoreConn(conn *XConn) {
 // UnixBackend component.
 type UnixBackend struct {
 	// Mixins
+	backend_[*unixNode]
 	unixClient_
 	loadBalancer_
 	// States
-	health any         // TODO
-	nodes  []*unixNode // nodes of backend
+	health any // TODO
 }
 
 func (b *UnixBackend) init(name string, stage *Stage) {
-	b.unixClient_.init(name, stage)
+	b.backend_.init(name, stage)
+	b.unixClient_.init()
 	b.loadBalancer_.init()
 }
 
 func (b *UnixBackend) OnConfigure() {
-	b.unixClient_.onConfigure()
+	b.backend_.onConfigure()
+	b.unixClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *UnixBackend) OnPrepare() {
-	b.unixClient_.onPrepare()
+	b.backend_.onPrepare()
+	b.unixClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -132,20 +135,7 @@ func (b *UnixBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *UnixBackend) maintain() { // goroutine
-	shut := make(chan struct{})
-	for _, node := range b.nodes {
-		b.IncSub(1)
-		go node.maintain(shut)
-	}
-	<-b.Shut
-	close(shut)
-	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("unixBackend=%s done\n", b.Name())
-	}
-	b.stage.SubDone()
-}
+func (b *UnixBackend) createNode() node { return new(unixNode) }
 
 func (b *UnixBackend) Dial() (PConn, error) {
 	node := b.nodes[b.getIndex()]

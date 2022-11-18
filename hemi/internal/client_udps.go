@@ -33,19 +33,15 @@ type udpsClient interface {
 // udpsClient_
 type udpsClient_ struct {
 	// Mixins
-	client_
 	// States
 }
 
-func (c *udpsClient_) init(name string, stage *Stage) {
-	c.client_.init(name, stage)
+func (m *udpsClient_) init() {
 }
 
-func (c *udpsClient_) onConfigure() {
-	c.client_.onConfigure()
+func (m *udpsClient_) onConfigure(c Component) {
 }
-func (c *udpsClient_) onPrepare() {
-	c.client_.onPrepare()
+func (m *udpsClient_) onPrepare(c Component) {
 }
 
 const signUDPS = "udps"
@@ -60,19 +56,23 @@ func createUDPS(stage *Stage) *UDPSOutgate {
 // UDPSOutgate component.
 type UDPSOutgate struct {
 	// Mixins
+	client_
 	udpsClient_
 	// States
 }
 
 func (f *UDPSOutgate) init(stage *Stage) {
-	f.udpsClient_.init(signUDPS, stage)
+	f.client_.init(signUDPS, stage)
+	f.udpsClient_.init()
 }
 
 func (f *UDPSOutgate) OnConfigure() {
-	f.udpsClient_.onConfigure()
+	f.client_.onConfigure()
+	f.udpsClient_.onConfigure(f)
 }
 func (f *UDPSOutgate) OnPrepare() {
-	f.udpsClient_.onPrepare()
+	f.client_.onConfigure()
+	f.udpsClient_.onPrepare(f)
 }
 
 func (f *UDPSOutgate) OnShutdown() {
@@ -104,24 +104,27 @@ func (f *UDPSOutgate) StoreConn(conn *UConn) {
 // UDPSBackend component.
 type UDPSBackend struct {
 	// Mixins
+	backend_[*udpsNode]
 	udpsClient_
 	loadBalancer_
 	// States
-	health any         // TODO
-	nodes  []*udpsNode // nodes of backend
+	health any // TODO
 }
 
 func (b *UDPSBackend) init(name string, stage *Stage) {
-	b.udpsClient_.init(name, stage)
+	b.backend_.init(name, stage)
+	b.udpsClient_.init()
 	b.loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
-	b.udpsClient_.onConfigure()
+	b.backend_.onConfigure()
+	b.udpsClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
-	b.udpsClient_.onPrepare()
+	b.backend_.onPrepare()
+	b.udpsClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -129,20 +132,7 @@ func (b *UDPSBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *UDPSBackend) maintain() { // goroutine
-	shut := make(chan struct{})
-	for _, node := range b.nodes {
-		b.IncSub(1)
-		go node.maintain(shut)
-	}
-	<-b.Shut
-	close(shut)
-	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("udpsBackend=%s done\n", b.Name())
-	}
-	b.stage.SubDone()
-}
+func (b *UDPSBackend) createNode() node { return new(udpsNode) }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
 	node := b.nodes[b.getIndex()]

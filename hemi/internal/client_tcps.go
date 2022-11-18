@@ -36,22 +36,18 @@ type tcpsClient interface {
 // tcpsClient_
 type tcpsClient_ struct {
 	// Mixins
-	client_
 	streamHolder_
 	// States
 }
 
-func (c *tcpsClient_) init(name string, stage *Stage) {
-	c.client_.init(name, stage)
+func (m *tcpsClient_) init() {
 }
 
-func (c *tcpsClient_) onConfigure() {
-	c.client_.onConfigure()
+func (m *tcpsClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &c.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (c *tcpsClient_) onPrepare() {
-	c.client_.onPrepare()
+func (m *tcpsClient_) onPrepare(c Component) {
 }
 
 const signTCPS = "tcps"
@@ -66,19 +62,23 @@ func createTCPS(stage *Stage) *TCPSOutgate {
 // TCPSOutgate component.
 type TCPSOutgate struct {
 	// Mixins
+	client_
 	tcpsClient_
 	// States
 }
 
 func (f *TCPSOutgate) init(stage *Stage) {
-	f.tcpsClient_.init(signTCPS, stage)
+	f.client_.init(signTCPS, stage)
+	f.tcpsClient_.init()
 }
 
 func (f *TCPSOutgate) OnConfigure() {
-	f.tcpsClient_.onConfigure()
+	f.client_.onConfigure()
+	f.tcpsClient_.onConfigure(f)
 }
 func (f *TCPSOutgate) OnPrepare() {
-	f.tcpsClient_.onPrepare()
+	f.client_.onPrepare()
+	f.tcpsClient_.onPrepare(f)
 }
 
 func (f *TCPSOutgate) OnShutdown() {
@@ -124,20 +124,22 @@ func (f *TCPSOutgate) StoreConn(conn *TConn) {
 // TCPSBackend component.
 type TCPSBackend struct {
 	// Mixins
+	backend_[*tcpsNode]
 	tcpsClient_
 	loadBalancer_
 	// States
-	health any         // TODO
-	nodes  []*tcpsNode // nodes of backend
+	health any // TODO
 }
 
 func (b *TCPSBackend) init(name string, stage *Stage) {
-	b.tcpsClient_.init(name, stage)
+	b.backend_.init(name, stage)
+	b.tcpsClient_.init()
 	b.loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
-	b.tcpsClient_.onConfigure()
+	b.backend_.onConfigure()
+	b.tcpsClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 	// nodes
 	v, ok := b.Find("nodes")
@@ -153,7 +155,7 @@ func (b *TCPSBackend) OnConfigure() {
 		if !ok {
 			UseExitln("node in nodes must be a dict")
 		}
-		node := new(tcpsNode)
+		node := b.createNode().(*tcpsNode)
 		node.init(int32(id), b)
 		// address
 		vAddress, ok := vNode["address"]
@@ -189,7 +191,8 @@ func (b *TCPSBackend) OnConfigure() {
 	}
 }
 func (b *TCPSBackend) OnPrepare() {
-	b.tcpsClient_.onPrepare()
+	b.backend_.onPrepare()
+	b.tcpsClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -197,20 +200,7 @@ func (b *TCPSBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *TCPSBackend) maintain() { // goroutine
-	shut := make(chan struct{})
-	for _, node := range b.nodes {
-		b.IncSub(1)
-		go node.maintain(shut)
-	}
-	<-b.Shut
-	close(shut)
-	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("tcpsBackend=%s done\n", b.Name())
-	}
-	b.stage.SubDone()
-}
+func (b *TCPSBackend) createNode() node { return new(tcpsNode) }
 
 func (b *TCPSBackend) Dial() (PConn, error) {
 	node := b.nodes[b.getIndex()]

@@ -433,7 +433,7 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
 			if caseName := c.Current().Text; caseName != "" {
-				kase.SetName(caseName) // change name
+				kase.setName(caseName) // change name
 			}
 			c.Forward()
 		}
@@ -464,7 +464,7 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
 			if caseName := c.Current().Text; caseName != "" {
-				kase.SetName(caseName) // change name
+				kase.setName(caseName) // change name
 			}
 			c.Forward()
 		}
@@ -495,7 +495,7 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
 			if caseName := c.Current().Text; caseName != "" {
-				kase.SetName(caseName) // change name
+				kase.setName(caseName) // change name
 			}
 			c.Forward()
 		}
@@ -655,7 +655,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 	if !c.CurrentIs(TokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
 		if c.CurrentIs(TokenString) { // rule <name> {}, rule <name> <cond> {}
 			if ruleName := c.Current().Text; ruleName != "" {
-				rule.SetName(ruleName) // change name
+				rule.setName(ruleName) // change name
 			}
 			c.Forward()
 		}

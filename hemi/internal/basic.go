@@ -46,7 +46,6 @@ func SetVarsDir(dir string) { _varsOnce.Do(func() { _varsDir.Store(dir) }) } // 
 type Component interface {
 	CompInit(name string)
 
-	SetName(name string)
 	Name() string
 
 	OnConfigure()
@@ -68,6 +67,7 @@ type Component interface {
 	OnShutdown()
 	SubDone()
 
+	setName(name string)
 	setShell(shell Component)
 	setParent(parent Component)
 	getParent() Component
@@ -94,8 +94,7 @@ func (c *Component_) CompInit(name string) {
 	c.Shut = make(chan struct{})
 }
 
-func (c *Component_) SetName(name string) { c.name = name }
-func (c *Component_) Name() string        { return c.name }
+func (c *Component_) Name() string { return c.name }
 
 func (c *Component_) Find(name string) (value Value, ok bool) {
 	for component := c.shell; component != nil; component = component.getParent() {
@@ -158,6 +157,7 @@ func (c *Component_) IncSub(n int) { c.subs.Add(n) }
 func (c *Component_) WaitSubs()    { c.subs.Wait() }
 func (c *Component_) SubDone()     { c.subs.Done() }
 
+func (c *Component_) setName(name string)              { c.name = name }
 func (c *Component_) setShell(shell Component)         { c.shell = shell }
 func (c *Component_) setParent(parent Component)       { c.parent = parent }
 func (c *Component_) getParent() Component             { return c.parent }

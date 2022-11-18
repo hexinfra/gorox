@@ -29,20 +29,20 @@ type httpClient_ struct {
 	maxContentSize int64
 }
 
-func (m *httpClient_) init() {
+func (h *httpClient_) init() {
 }
 
-func (m *httpClient_) onConfigure(c Component, clientName string) {
-	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+func (h *httpClient_) onConfigure(c Component, clientName string) {
+	c.ConfigureInt32("maxStreamsPerConn", &h.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 	// saveContentFilesDir
-	c.ConfigureString("saveContentFilesDir", &m.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.Name())
+	c.ConfigureString("saveContentFilesDir", &h.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.Name())
 	// maxContentSize
-	c.ConfigureInt64("maxContentSize", &m.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	c.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
-func (m *httpClient_) onPrepare(c Component) {
+func (h *httpClient_) onPrepare(c Component) {
 }
 
-func (m *httpClient_) MaxContentSize() int64 { return m.maxContentSize }
+func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
 
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {

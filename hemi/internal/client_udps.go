@@ -36,12 +36,12 @@ type udpsClient_ struct {
 	// States
 }
 
-func (m *udpsClient_) init() {
+func (u *udpsClient_) init() {
 }
 
-func (m *udpsClient_) onConfigure(c Component) {
+func (u *udpsClient_) onConfigure(c Component) {
 }
-func (m *udpsClient_) onPrepare(c Component) {
+func (u *udpsClient_) onPrepare(c Component) {
 }
 
 const signUDPS = "udps"

@@ -37,14 +37,14 @@ type unixClient_ struct {
 	// States
 }
 
-func (m *unixClient_) init() {
+func (u *unixClient_) init() {
 }
 
-func (m *unixClient_) onConfigure(c Component) {
+func (u *unixClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &u.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (m *unixClient_) onPrepare(c Component) {
+func (u *unixClient_) onPrepare(c Component) {
 }
 
 const signUnix = "unix"

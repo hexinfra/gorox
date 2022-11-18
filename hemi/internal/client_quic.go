@@ -37,14 +37,14 @@ type quicClient_ struct {
 	// States
 }
 
-func (m *quicClient_) init() {
+func (q *quicClient_) init() {
 }
 
-func (m *quicClient_) onConfigure(c Component) {
+func (q *quicClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &q.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (m *quicClient_) onPrepare(c Component) {
+func (q *quicClient_) onPrepare(c Component) {
 }
 
 const signQUIC = "quic"

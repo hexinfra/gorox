@@ -40,14 +40,14 @@ type tcpsClient_ struct {
 	// States
 }
 
-func (m *tcpsClient_) init() {
+func (t *tcpsClient_) init() {
 }
 
-func (m *tcpsClient_) onConfigure(c Component) {
+func (t *tcpsClient_) onConfigure(c Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &m.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	c.ConfigureInt32("maxStreamsPerConn", &t.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (m *tcpsClient_) onPrepare(c Component) {
+func (t *tcpsClient_) onPrepare(c Component) {
 }
 
 const signTCPS = "tcps"

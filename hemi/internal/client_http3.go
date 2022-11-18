@@ -88,7 +88,7 @@ type HTTP3Backend struct {
 }
 
 func (b *HTTP3Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.httpBackend_.init()
 }
 
@@ -105,7 +105,11 @@ func (b *HTTP3Backend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *HTTP3Backend) createNode() node { return new(http3Node) }
+func (b *HTTP3Backend) createNode(id int32) *http3Node {
+	n := new(http3Node)
+	n.init(id, b)
+	return n
+}
 
 func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {
 	node := b.nodes[b.getIndex()]

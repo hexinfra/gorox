@@ -115,7 +115,7 @@ type UnixBackend struct {
 }
 
 func (b *UnixBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.unixClient_.init()
 	b.loadBalancer_.init()
 }
@@ -135,7 +135,11 @@ func (b *UnixBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *UnixBackend) createNode() node { return new(unixNode) }
+func (b *UnixBackend) createNode(id int32) *unixNode {
+	n := new(unixNode)
+	n.init(id, b)
+	return n
+}
 
 func (b *UnixBackend) Dial() (PConn, error) {
 	node := b.nodes[b.getIndex()]

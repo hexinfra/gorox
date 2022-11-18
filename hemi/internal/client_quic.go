@@ -114,7 +114,7 @@ type QUICBackend struct {
 }
 
 func (b *QUICBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.quicClient_.init()
 	b.loadBalancer_.init()
 }
@@ -134,7 +134,11 @@ func (b *QUICBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *QUICBackend) createNode() node { return new(quicNode) }
+func (b *QUICBackend) createNode(id int32) *quicNode {
+	n := new(quicNode)
+	n.init(id, b)
+	return n
+}
 
 func (b *QUICBackend) Dial() (*QConn, error) {
 	// TODO

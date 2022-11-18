@@ -89,7 +89,7 @@ type HTTP2Backend struct {
 }
 
 func (b *HTTP2Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.httpBackend_.init()
 }
 
@@ -106,7 +106,11 @@ func (b *HTTP2Backend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *HTTP2Backend) createNode() node { return new(http2Node) }
+func (b *HTTP2Backend) createNode(id int32) *http2Node {
+	n := new(http2Node)
+	n.init(id, b)
+	return n
+}
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
 	node := b.nodes[b.getIndex()]

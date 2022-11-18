@@ -112,7 +112,7 @@ type UDPSBackend struct {
 }
 
 func (b *UDPSBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.udpsClient_.init()
 	b.loadBalancer_.init()
 }
@@ -132,7 +132,11 @@ func (b *UDPSBackend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *UDPSBackend) createNode() node { return new(udpsNode) }
+func (b *UDPSBackend) createNode(id int32) *udpsNode {
+	n := new(udpsNode)
+	n.init(id, b)
+	return n
+}
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
 	node := b.nodes[b.getIndex()]

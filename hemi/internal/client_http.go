@@ -83,8 +83,8 @@ func (b *httpBackend_) onConfigure(c Component) {
 }
 func (b *httpBackend_) onPrepare(c Component, numNodes int) {
 	b.httpClient_.onPrepare(c)
-	b.loadBalancer_.onPrepare(numNodes)
 	b.makeContentFilesDir(0755)
+	b.loadBalancer_.onPrepare(numNodes)
 }
 
 // hConn is the interface for *H[1-3]Conn.

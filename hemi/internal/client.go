@@ -87,16 +87,67 @@ type backend_[N node] struct {
 	// Mixins
 	client_
 	// Assocs
+	shell interface {
+		createNode(id int32) N
+	}
 	nodes []N
 	// States
 }
 
-func (b *backend_[N]) init(name string, stage *Stage) {
+func (b *backend_[N]) init(name string, stage *Stage, shell interface{ createNode(id int32) N }) {
 	b.client_.init(name, stage)
+	b.shell = shell
 }
 
 func (b *backend_[N]) onConfigure() {
 	b.client_.onConfigure()
+	// nodes
+	v, ok := b.Find("nodes")
+	if !ok {
+		UseExitln("nodes is required for backends")
+	}
+	vNodes, ok := v.List()
+	if !ok {
+		UseExitln("bad nodes")
+	}
+	for id, elem := range vNodes {
+		vNode, ok := elem.Dict()
+		if !ok {
+			UseExitln("node in nodes must be a dict")
+		}
+		node := b.shell.createNode(int32(id))
+		// address
+		vAddress, ok := vNode["address"]
+		if !ok {
+			UseExitln("address is required in node")
+		}
+		if address, ok := vAddress.String(); ok && address != "" {
+			node.setAddress(address)
+		}
+		// weight
+		vWeight, ok := vNode["weight"]
+		if ok {
+			if weight, ok := vWeight.Int32(); ok && weight > 0 {
+				node.setWeight(weight)
+			} else {
+				UseExitln("bad weight in node")
+			}
+		} else {
+			node.setWeight(1)
+		}
+		// keepConns
+		vKeepConns, ok := vNode["keepConns"]
+		if ok {
+			if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
+				node.setKeepConns(keepConns)
+			} else {
+				UseExitln("bad keepConns in node")
+			}
+		} else {
+			node.setKeepConns(10)
+		}
+		b.nodes = append(b.nodes, node)
+	}
 }
 func (b *backend_[N]) onPrepare() {
 	b.client_.onPrepare()
@@ -119,6 +170,9 @@ func (b *backend_[N]) maintain() { // goroutine
 
 // node is a member of backend.
 type node interface {
+	setAddress(address string)
+	setWeight(weight int32)
+	setKeepConns(keepConns int32)
 	maintain(shut chan struct{}) // goroutine
 }
 
@@ -141,6 +195,10 @@ type node_ struct {
 func (n *node_) init(id int32) {
 	n.id = id
 }
+
+func (n *node_) setAddress(address string)    { n.address = address }
+func (n *node_) setWeight(weight int32)       { n.weight = weight }
+func (n *node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
 
 func (n *node_) markDown()    { n.down.Store(true) }
 func (n *node_) markUp()      { n.down.Store(false) }

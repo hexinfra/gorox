@@ -112,61 +112,13 @@ type HTTP1Backend struct {
 }
 
 func (b *HTTP1Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage)
+	b.backend_.init(name, stage, b)
 	b.httpBackend_.init()
 }
 
 func (b *HTTP1Backend) OnConfigure() {
 	b.backend_.onConfigure()
 	b.httpBackend_.onConfigure(b)
-	// nodes
-	v, ok := b.Find("nodes")
-	if !ok {
-		UseExitln("nodes is required for backends")
-	}
-	vNodes, ok := v.List()
-	if !ok {
-		UseExitln("bad nodes")
-	}
-	for id, elem := range vNodes {
-		vNode, ok := elem.Dict()
-		if !ok {
-			UseExitln("node in nodes must be a dict")
-		}
-		node := new(http1Node)
-		node.init(int32(id), b)
-		// address
-		vAddress, ok := vNode["address"]
-		if !ok {
-			UseExitln("address is required in node")
-		}
-		if address, ok := vAddress.String(); ok && address != "" {
-			node.address = address
-		}
-		// weight
-		vWeight, ok := vNode["weight"]
-		if ok {
-			if weight, ok := vWeight.Int32(); ok && weight > 0 {
-				node.weight = weight
-			} else {
-				UseExitln("bad weight in node")
-			}
-		} else {
-			node.weight = 1
-		}
-		// keepConns
-		vKeepConns, ok := vNode["keepConns"]
-		if ok {
-			if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
-				node.keepConns = keepConns
-			} else {
-				UseExitln("bad keepConns in node")
-			}
-		} else {
-			node.keepConns = 10
-		}
-		b.nodes = append(b.nodes, node)
-	}
 }
 func (b *HTTP1Backend) OnPrepare() {
 	b.backend_.onPrepare()
@@ -177,7 +129,11 @@ func (b *HTTP1Backend) OnShutdown() {
 	b.Shutdown()
 }
 
-func (b *HTTP1Backend) createNode() node { return new(http1Node) }
+func (b *HTTP1Backend) createNode(id int32) *http1Node {
+	n := new(http1Node)
+	n.init(id, b)
+	return n
+}
 
 func (b *HTTP1Backend) FetchConn() (*H1Conn, error) {
 	node := b.nodes[b.getIndex()]

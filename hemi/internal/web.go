@@ -46,8 +46,8 @@ type Session struct {
 type Cacher interface {
 	Component
 	Maintain() // goroutine
-	Set(key []byte, value *Hobject)
-	Get(key []byte) (value *Hobject)
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
 	Del(key []byte) bool
 }
 

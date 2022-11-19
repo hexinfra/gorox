@@ -62,9 +62,9 @@ func (c *localCacher) Maintain() { // goroutine
 	c.stage.SubDone()
 }
 
-func (c *localCacher) Set(key []byte, value *Hobject) {
+func (c *localCacher) Set(key []byte, hobject *Hobject) {
 }
-func (c *localCacher) Get(key []byte) (value *Hobject) {
+func (c *localCacher) Get(key []byte) (hobject *Hobject) {
 	return
 }
 func (c *localCacher) Del(key []byte) bool {

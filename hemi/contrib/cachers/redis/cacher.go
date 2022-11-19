@@ -55,9 +55,9 @@ func (c *redisCacher) Maintain() { // goroutine
 	c.stage.SubDone()
 }
 
-func (c *redisCacher) Set(key []byte, value *Hobject) {
+func (c *redisCacher) Set(key []byte, hobject *Hobject) {
 }
-func (c *redisCacher) Get(key []byte) (value *Hobject) {
+func (c *redisCacher) Get(key []byte) (hobject *Hobject) {
 	return
 }
 func (c *redisCacher) Del(key []byte) bool {

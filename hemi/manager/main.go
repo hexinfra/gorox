@@ -146,10 +146,10 @@ func getConfig() (base string, file string) {
 			file = "conf/" + progName + ".conf"
 		} else if filepath.IsAbs(config) { // /path/to/file.conf
 			base = filepath.Dir(config)
-			file = config
+			file = filepath.Base(config)
 		} else { // path/to/file.conf
 			base = baseDir
-			file = baseDir + "/" + config
+			file = config
 		}
 		base += "/"
 	}

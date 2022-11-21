@@ -277,8 +277,6 @@ func (s *Stage) OnConfigure() {
 			}
 			s.appServers[app] = servers
 		}
-	} else {
-		UseExitln("appServers is required for stage")
 	}
 	// svcServers
 	if v, ok := s.Find("svcServers"); ok {
@@ -293,8 +291,6 @@ func (s *Stage) OnConfigure() {
 			}
 			s.svcServers[svc] = servers
 		}
-	} else {
-		UseExitln("svcServers is required for stage")
 	}
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/stage.log")
@@ -487,8 +483,8 @@ func (s *Stage) linkAppServers() {
 		fmt.Println("link apps to http servers")
 	}
 	for _, app := range s.apps {
-		serverNames := s.appServers[app.Name()]
-		if serverNames == nil {
+		serverNames, ok := s.appServers[app.Name()]
+		if !ok {
 			if Debug(1) {
 				fmt.Printf("no server is provided for app '%s'\n", app.name)
 			}
@@ -515,8 +511,8 @@ func (s *Stage) linkSvcServers() {
 		fmt.Println("link svcs to http servers")
 	}
 	for _, svc := range s.svcs {
-		serverNames := s.svcServers[svc.Name()]
-		if serverNames == nil {
+		serverNames, ok := s.svcServers[svc.Name()]
+		if !ok {
 			if Debug(1) {
 				fmt.Printf("no server is provided for svc '%s'\n", svc.name)
 			}

@@ -23,9 +23,9 @@ var (
 )
 
 var ( // flags
+	debugLevel int
 	targetAddr string
 	adminAddr  string
-	debugLevel = flag.Int("debug", 0, "")
 	tryRun     = flag.Bool("try", false, "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")
@@ -38,7 +38,7 @@ var ( // flags
 	userName   = flag.String("user", "nobody", "")
 )
 
-func Main(name string, usage string, devel bool, addr string) {
+func Main(name string, usage string, level int, addr string) {
 	if !system.Check() {
 		crash("current platform (os+arch) is not supported.")
 	}
@@ -47,6 +47,7 @@ func Main(name string, usage string, devel bool, addr string) {
 	flag.Usage = func() {
 		fmt.Printf(usage, hemi.Version)
 	}
+	flag.IntVar(&debugLevel, "debug", level, "")
 	flag.StringVar(&targetAddr, "target", addr, "")
 	flag.StringVar(&adminAddr, "admin", addr, "")
 	action := "serve"
@@ -55,10 +56,6 @@ func Main(name string, usage string, devel bool, addr string) {
 		flag.CommandLine.Parse(os.Args[2:])
 	} else {
 		flag.Parse()
-	}
-
-	if devel {
-		*debugLevel = 2
 	}
 
 	if action == "help" {
@@ -75,7 +72,7 @@ func Main(name string, usage string, devel bool, addr string) {
 }
 
 func serve() { // as single, leader, or worker
-	hemi.SetDebug(int32(*debugLevel))
+	hemi.SetDebug(int32(debugLevel))
 
 	// baseDir
 	if *baseDir == "" {

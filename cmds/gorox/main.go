@@ -69,5 +69,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gorox", usage, false, "127.0.0.1:9527")
+	manager.Main("gorox", usage, 0, "127.0.0.1:9527")
 }

@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		manager.Main("godev", usage, true, "127.0.0.1:9526")
+		manager.Main("godev", usage, 2, "127.0.0.1:9526")
 	}
 }

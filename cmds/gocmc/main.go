@@ -70,5 +70,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gocmc", usage, false, "127.0.0.1:9528")
+	manager.Main("gocmc", usage, 0, "127.0.0.1:9528")
 }

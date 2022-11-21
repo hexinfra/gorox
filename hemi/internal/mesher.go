@@ -62,7 +62,7 @@ func (m *mesher_[M, G, R, F, C]) init(name string, stage *Stage, runnerCreators 
 func (m *mesher_[M, G, R, F, C]) onConfigure() {
 	m.office_.onConfigure()
 	// logFile
-	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/mesh_"+m.name+".log")
+	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/mesh-"+m.name+".log")
 }
 func (m *mesher_[M, G, R, F, C]) configureSubs() {
 	m.runners.walk(R.OnConfigure)

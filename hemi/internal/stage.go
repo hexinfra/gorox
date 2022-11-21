@@ -293,7 +293,7 @@ func (s *Stage) OnConfigure() {
 		}
 	}
 	// logFile
-	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/stage.log")
+	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/worker.log")
 	tempDir := TempDir()
 	// cpuFile
 	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) bool { return value != "" }, tempDir+"/cpu.prof")

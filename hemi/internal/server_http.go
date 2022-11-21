@@ -68,7 +68,7 @@ func (s *httpServer_) init(name string, stage *Stage) {
 func (s *httpServer_) onConfigure() {
 	s.Server_.OnConfigure()
 	// logFile
-	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/http_"+s.name+".log")
+	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/http-"+s.name+".log")
 	// maxStreamsPerConn
 	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, 0) // 0 means infinite
 	// recvRequestTimeout

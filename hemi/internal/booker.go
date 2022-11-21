@@ -3,10 +3,10 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Access logger.
+// Booker logs client transactions.
 
 package internal
 
-// logger
-type logger struct {
+// booker
+type booker struct {
 }

@@ -86,6 +86,7 @@ type App struct {
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            []string          // (file, rotate)
+	booker               *booker           // app access booker
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
 	settings             map[string]string // app settings defined and used by users
@@ -95,7 +96,6 @@ type App struct {
 	exactHostnames       [][]byte          // like: ("example.com")
 	suffixHostnames      [][]byte          // like: ("*.example.com")
 	prefixHostnames      [][]byte          // like: ("www.example.*")
-	accessLogger         *logger           // app access logger
 	bytes404             []byte            // bytes of the default 404 file
 	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
 	nRevisers            uint8             // used number of revisersByID in this app
@@ -214,7 +214,7 @@ func (a *App) OnConfigure() {
 }
 func (a *App) OnPrepare() {
 	if a.accessLog != nil {
-		//a.accessLogger = newLogger(a.accessLog[0], a.accessLog[1])
+		//a.booker = newBooker(a.accessLog[0], a.accessLog[1])
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
@@ -343,8 +343,8 @@ func (a *App) Logln(s string) {
 }
 func (a *App) Logf(format string, args ...any) {
 	// TODO
-	if a.accessLogger != nil {
-		//a.accessLogger.logf(format, args...)
+	if a.booker != nil {
+		//a.booker.logf(format, args...)
 	}
 }
 
@@ -383,8 +383,8 @@ func (a *App) dispatchHandler(req Request, resp Response) {
 			continue
 		}
 		if processed := rule.executeNormal(req, resp); processed {
-			if rule.log && a.accessLogger != nil {
-				//a.accessLogger.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
+			if rule.log && a.booker != nil {
+				//a.booker.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
 		}

@@ -162,6 +162,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -176,7 +177,10 @@ func (g *httpxGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("httpxGate=%d TCP done\n", g.id)
+	}
 	g.server.SubDone()
 }
 func (g *httpxGate) serveTLS() { // goroutine
@@ -191,6 +195,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -210,13 +215,16 @@ func (g *httpxGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("httpxGate=%d TLS done\n", g.id)
+	}
 	g.server.SubDone()
 }
 
 func (g *httpxGate) onConnectionClosed() {
 	g.DecConns()
-	// TODO: if there are no active connections and the gate is shutdown, tell httpxServer.
+	g.SubDone()
 }
 func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()

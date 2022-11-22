@@ -218,8 +218,19 @@ type hostnameTo[T Component] struct {
 	target   T
 }
 
+// waiter_
+type waiter_ struct {
+	subs sync.WaitGroup
+}
+
+func (w *waiter_) IncSub(n int) { w.subs.Add(n) }
+func (w *waiter_) WaitSubs()    { w.subs.Wait() }
+func (w *waiter_) SubDone()     { w.subs.Done() }
+
 // Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {
+	// Mixins
+	waiter_
 	// Assocs
 	stage *Stage // current stage
 	// States
@@ -244,12 +255,8 @@ func (g *Gate_) Address() string { return g.address }
 func (g *Gate_) SetShut()     { g.shut.Store(true) }
 func (g *Gate_) IsShut() bool { return g.shut.Load() }
 
-func (g *Gate_) DecConns() int32 {
-	return g.numConns.Add(-1)
-}
-func (g *Gate_) ReachLimit() bool {
-	return g.numConns.Add(1) > g.maxConns
-}
+func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 // contentSaver
 type contentSaver interface {

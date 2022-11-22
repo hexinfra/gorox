@@ -77,6 +77,8 @@ type Component interface {
 
 // Component_ is the mixin for all components.
 type Component_ struct {
+	// Mixins
+	waiter_
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
@@ -85,7 +87,6 @@ type Component_ struct {
 	props map[string]Value // name1=value1, ...
 	info  any              // extra info about this component, used by config
 	Shut  chan struct{}    // notify component to shutdown
-	subs  sync.WaitGroup   // for shutting down sub compoments, if any
 }
 
 func (c *Component_) CompInit(name string) {
@@ -152,10 +153,6 @@ func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value)
 }
 
 func (c *Component_) Shutdown() { c.Shut <- struct{}{} }
-
-func (c *Component_) IncSub(n int) { c.subs.Add(n) }
-func (c *Component_) WaitSubs()    { c.subs.Wait() }
-func (c *Component_) SubDone()     { c.subs.Done() }
 
 func (c *Component_) setName(name string)              { c.name = name }
 func (c *Component_) setShell(shell Component)         { c.shell = shell }

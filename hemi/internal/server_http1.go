@@ -445,7 +445,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 	conn.usedStreams.Add(1)
-	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 {
+	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit
 	}
 

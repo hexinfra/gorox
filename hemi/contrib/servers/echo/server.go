@@ -97,7 +97,7 @@ func (g *echoGate) open() error {
 	return err
 }
 func (g *echoGate) shutdown() error {
-	g.Gate_.Shutdown()
+	g.Gate_.SetShut()
 	return g.gate.Close()
 }
 
@@ -106,7 +106,7 @@ func (g *echoGate) serve() { // goroutine
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				continue

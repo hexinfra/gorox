@@ -75,7 +75,7 @@ func (s *http3Server) Serve() { // goroutine
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Mixins
-	httpGate_
+	Gate_
 	// Assocs
 	server *http3Server
 	// States
@@ -83,7 +83,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
-	g.httpGate_.init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -96,7 +96,7 @@ func (g *http3Gate) open() error {
 	return nil
 }
 func (g *http3Gate) shutdown() error {
-	g.Gate_.Shutdown()
+	g.Gate_.SetShut()
 	return g.gate.Close()
 }
 
@@ -105,7 +105,7 @@ func (g *http3Gate) serve() { // goroutine
 	for {
 		quicConn, err := g.gate.Accept()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				continue

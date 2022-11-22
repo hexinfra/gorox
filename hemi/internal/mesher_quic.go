@@ -96,13 +96,13 @@ func (g *quicGate) open() error {
 	return nil
 }
 func (g *quicGate) shutdown() error {
-	g.Gate_.Shutdown()
+	g.Gate_.SetShut()
 	return g.gate.Close()
 }
 
 func (g *quicGate) serve() { // goroutine
 	// TODO
-	for !g.IsShutdown() {
+	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
 	g.mesher.SubDone()

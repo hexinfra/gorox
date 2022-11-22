@@ -110,7 +110,7 @@ func (g *tcpsGate) open() error {
 	return err
 }
 func (g *tcpsGate) shutdown() error {
-	g.Gate_.Shutdown()
+	g.Gate_.SetShut()
 	return g.gate.Close()
 }
 
@@ -119,7 +119,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				continue
@@ -149,7 +149,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				continue

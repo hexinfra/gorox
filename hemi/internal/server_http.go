@@ -204,18 +204,6 @@ type httpGate interface {
 	shutdown() error
 }
 
-// httpGate_ is the mixin for httpxGate and http3Gate.
-type httpGate_ struct {
-	// Mixins
-	Gate_
-	// Assocs
-	// States
-}
-
-func (g *httpGate_) init(stage *Stage, id int32, address string, maxConns int32) {
-	g.Gate_.Init(stage, id, address, maxConns)
-}
-
 // httpConn is the interface for *http[1-3]Conn.
 type httpConn interface {
 	serve() // goroutine

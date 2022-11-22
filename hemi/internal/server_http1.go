@@ -115,7 +115,7 @@ func (s *httpxServer) Serve() { // goroutine
 // httpxGate is a gate of HTTP/1 and HTTP/2 server.
 type httpxGate struct {
 	// Mixins
-	httpGate_
+	Gate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -123,7 +123,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(server *httpxServer, id int32) {
-	g.httpGate_.init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -142,7 +142,7 @@ func (g *httpxGate) open() error {
 	return err
 }
 func (g *httpxGate) shutdown() error {
-	g.Gate_.Shutdown()
+	g.Gate_.SetShut()
 	return g.gate.Close()
 }
 
@@ -155,7 +155,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
@@ -184,7 +184,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
 		if err != nil {
-			if g.IsShutdown() {
+			if g.IsShut() {
 				break
 			} else {
 				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)

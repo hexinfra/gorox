@@ -756,48 +756,34 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 		if sizeLeft := block.size - nRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
-		nr, err := block.file.ReadAt(buffer[:readSize], nRead)
-		nRead += int64(nr)
+		n, err := block.file.ReadAt(buffer[:readSize], nRead)
+		nRead += int64(n)
 		if err != nil && nRead != block.size {
 			r.stream.markBroken()
 			return err
 		}
-		nWritten := 0
-	write:
 		if err = r._prepareWrite(); err != nil {
 			r.stream.markBroken()
 			return err
 		}
-		var nw int
 		if chunked {
-			// TODO(diogin): the number calculation is incorrect
-			/*
-				sizeBuffer := r.stream.smallStack()
-				n := i64ToHex(int64(nr-nWritten), sizeBuffer)
-				sizeBuffer[n] = '\r'
-				sizeBuffer[n+1] = '\n'
-				n += 2
-				r.vector = r.fixedVector[0:3]
-				r.vector[0] = sizeBuffer[:n]
-				r.vector[1] = buffer[nWritten:nr]
-				r.vector[2] = sizeBuffer[n-2 : n]
-				nn, ee := r.stream.writev(&r.vector)
-				nw = int(nn)
-				err = ee
-			*/
+			sizeBuffer := r.stream.smallStack()
+			k := i64ToHex(int64(n), sizeBuffer)
+			sizeBuffer[k] = '\r'
+			sizeBuffer[k+1] = '\n'
+			k += 2
+			r.vector = r.fixedVector[0:3]
+			r.vector[0] = sizeBuffer[:k]
+			r.vector[1] = buffer[:n]
+			r.vector[2] = sizeBuffer[k-2 : k]
+			_, err = r.stream.writev(&r.vector)
 		} else {
-			nw, err = r.stream.write(buffer[nWritten:nr])
+			_, err = r.stream.write(buffer[0:n])
 		}
-		nWritten += nw
 		if err == nil && (r.maxSendSeconds > 0 && time.Now().Unix()-r.sendTime >= r.maxSendSeconds) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {
-			// TODO: how to handle TLS properly?
-			// After a Write() has timed out, the TLS state is corrupt and all future writes will return the same error.
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() && nw > 0 && !r.stream.getHolder().TLSMode() {
-				goto write // continue write
-			}
 			r.stream.markBroken()
 			return err
 		}
@@ -829,16 +815,11 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 			r.stream.markBroken()
 			return err
 		}
-		n, err := r.stream.writev(vector)
+		_, err := r.stream.writev(vector)
 		if err == nil && (r.maxSendSeconds > 0 && time.Now().Unix()-r.sendTime >= r.maxSendSeconds) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {
-			// TODO: how to handle TLS properly?
-			// After a Write() has timed out, the TLS state is corrupt and all future writes will return the same error.
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() && n > 0 && !r.stream.getHolder().TLSMode() {
-				continue
-			}
 			r.stream.markBroken()
 			return err
 		}

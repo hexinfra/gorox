@@ -37,9 +37,15 @@ type Stater_ struct {
 // Session is an HTTP session in stater
 type Session struct {
 	// TODO
-	sid  []byte
-	role int8
-	data any
+	sid    [40]byte // session id
+	secret [40]byte // secret
+	role   int8     // 0: default, >0: app defined values
+	device int8     // terminal device type
+	state1 int8     // app defined state1
+	state2 int8     // app defined state2
+	state3 int32    // app defined state3
+	expire int64    // unix stamp
+	states map[string]string
 }
 
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.

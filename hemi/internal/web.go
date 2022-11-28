@@ -37,16 +37,24 @@ type Stater_ struct {
 // Session is an HTTP session in stater
 type Session struct {
 	// TODO
-	sid    [40]byte // session id
-	secret [40]byte // secret
-	role   int8     // 0: default, >0: app defined values
-	device int8     // terminal device type
+	ID     [40]byte // session id
+	Secret [40]byte // secret
+	Role   int8     // 0: default, >0: app defined values
+	Device int8     // terminal device type
 	state1 int8     // app defined state1
 	state2 int8     // app defined state2
 	state3 int32    // app defined state3
 	expire int64    // unix stamp
 	states map[string]string
 }
+
+func (s *Session) init() {
+	s.states = make(map[string]string)
+}
+
+func (s *Session) Get(name string) string        { return s.states[name] }
+func (s *Session) Set(name string, value string) { s.states[name] = value }
+func (s *Session) Del(name string)               { delete(s.states, name) }
 
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {

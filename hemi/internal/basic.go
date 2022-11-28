@@ -69,7 +69,7 @@ func exitf(exitCode int, prefix, format string, args ...any) {
 var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	optwareCreators    = make(map[string]func(name string, stage *Stage) Optware) // indexed by sign, same below.
+	optwareCreators    = make(map[string]func(sign string, stage *Stage) Optware) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICRunner)
 	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
@@ -83,7 +83,7 @@ var ( // global maps, shared between stages
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
+	cronjobCreators    = make(map[string]func(sign string, stage *Stage) Cronjob)
 	initsLock          sync.RWMutex
 	appInits           = make(map[string]func(app *App) error) // indexed by app name.
 	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
@@ -96,7 +96,7 @@ func registerFixture(sign string) {
 	fixtureSigns[sign] = true
 	signComp(sign, compFixture)
 }
-func RegisterOptware(sign string, create func(name string, stage *Stage) Optware) {
+func RegisterOptware(sign string, create func(sign string, stage *Stage) Optware) {
 	registerComponent0(sign, compOptware, optwareCreators, create)
 }
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
@@ -148,7 +148,7 @@ func RegisterSvcInit(name string, init func(svc *Svc) error) {
 func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
 	registerComponent0(sign, compServer, serverCreators, create)
 }
-func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
+func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
 	registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 

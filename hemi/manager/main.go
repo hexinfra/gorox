@@ -67,13 +67,12 @@ func Main(name string, usage string, level int, addr string) {
 	} else if action != "serve" { // as control agent
 		agentMain(action)
 	} else { // run as server
+		hemi.SetDebug(int32(debugLevel))
 		serve()
 	}
 }
 
 func serve() { // as single, leader, or worker
-	hemi.SetDebug(int32(debugLevel))
-
 	// baseDir
 	if *baseDir == "" {
 		*baseDir = system.ExeDir

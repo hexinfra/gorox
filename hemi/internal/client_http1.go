@@ -75,8 +75,7 @@ func (f *HTTP1Outgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *HTTP1Outgate) FetchConn(address string, tlsMode bool) (*H1Conn, error) {
-	// TODO: takeConn
+func (f *HTTP1Outgate) Dial(address string, tlsMode bool) (*H1Conn, error) {
 	netConn, err := net.DialTimeout("tcp", address, f.dialTimeout)
 	if err != nil {
 		return nil, err
@@ -92,14 +91,6 @@ func (f *HTTP1Outgate) FetchConn(address string, tlsMode bool) (*H1Conn, error) 
 			return nil, err
 		}
 		return getH1Conn(connID, f, nil, netConn, rawConn), nil
-	}
-}
-func (f *HTTP1Outgate) StoreConn(conn *H1Conn) {
-	if conn.isBroken() || !conn.isAlive() {
-		conn.closeConn()
-		putH1Conn(conn)
-	} else {
-		// TODO: pushConn
 	}
 }
 

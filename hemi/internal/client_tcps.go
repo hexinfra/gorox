@@ -113,13 +113,6 @@ func (f *TCPSOutgate) Dial(address string, tlsMode bool) (*TConn, error) {
 		return getTConn(connID, f, nil, netConn, rawConn), nil
 	}
 }
-func (f *TCPSOutgate) FetchConn(address string, tlsMode bool) (*TConn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *TCPSOutgate) StoreConn(conn *TConn) {
-	// TODO
-}
 
 // TCPSBackend component.
 type TCPSBackend struct {

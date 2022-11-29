@@ -23,6 +23,7 @@ desktop.ini
 /vars
 /vendor
 
+/demake
 /gomake
 /goben
 /gocmc

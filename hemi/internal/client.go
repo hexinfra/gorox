@@ -87,16 +87,16 @@ type backend_[N node] struct {
 	// Mixins
 	client_
 	// Assocs
-	shell interface {
+	creator interface {
 		createNode(id int32) N
 	}
 	nodes []N
 	// States
 }
 
-func (b *backend_[N]) onCreate(name string, stage *Stage, shell interface{ createNode(id int32) N }) {
+func (b *backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
 	b.client_.onCreate(name, stage)
-	b.shell = shell
+	b.creator = creator
 }
 
 func (b *backend_[N]) onConfigure() {
@@ -115,7 +115,7 @@ func (b *backend_[N]) onConfigure() {
 		if !ok {
 			UseExitln("node in nodes must be a dict")
 		}
-		node := b.shell.createNode(int32(id))
+		node := b.creator.createNode(int32(id))
 		// address
 		vAddress, ok := vNode["address"]
 		if !ok {

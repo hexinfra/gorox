@@ -10,7 +10,7 @@ import (
 	. "github.com/hexinfra/gorox/cmds/gocmc/admin"
 	"github.com/hexinfra/gorox/cmds/gocmc/board/pack"
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
 )
 
 func init() {

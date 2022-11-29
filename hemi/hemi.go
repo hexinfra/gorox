@@ -8,7 +8,7 @@
 package hemi
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/contrib" // preloaded components
+	_ "github.com/hexinfra/gorox/hemi/standard" // preloaded components
 	"github.com/hexinfra/gorox/hemi/internal"
 )
 

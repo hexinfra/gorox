@@ -8,19 +8,19 @@
 package exts
 
 import ( // import contribs here.
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
-	_ "github.com/hexinfra/gorox/hemi/contrib/filters/tcps/mysql"
-	_ "github.com/hexinfra/gorox/hemi/contrib/filters/tcps/redis"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/gatex"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/referer"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlers/sitex"
-	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/replace"
-	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/wrap"
-	_ "github.com/hexinfra/gorox/hemi/contrib/runners/tcps/echo"
-	_ "github.com/hexinfra/gorox/hemi/contrib/runners/udps/dns"
-	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
-	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"
+	_ "github.com/hexinfra/gorox/hemi/standard/cachers/redis"
+	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/stat"
+	_ "github.com/hexinfra/gorox/hemi/standard/filters/tcps/mysql"
+	_ "github.com/hexinfra/gorox/hemi/standard/filters/tcps/redis"
+	_ "github.com/hexinfra/gorox/hemi/standard/handlers/gatex"
+	_ "github.com/hexinfra/gorox/hemi/standard/handlers/referer"
+	_ "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
+	_ "github.com/hexinfra/gorox/hemi/standard/revisers/replace"
+	_ "github.com/hexinfra/gorox/hemi/standard/revisers/wrap"
+	_ "github.com/hexinfra/gorox/hemi/standard/runners/tcps/echo"
+	_ "github.com/hexinfra/gorox/hemi/standard/runners/udps/dns"
+	_ "github.com/hexinfra/gorox/hemi/standard/servers/socks"
+	_ "github.com/hexinfra/gorox/hemi/standard/staters/redis"
 )
 
 import ( // import vendor exts here.

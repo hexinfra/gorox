@@ -8,7 +8,7 @@
 package ssi
 
 import (
-	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
 

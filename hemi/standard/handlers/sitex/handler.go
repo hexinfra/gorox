@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterHandler("sitex", func(name string, stage *Stage, app *App) Handler {
 		h := new(Sitex)
-		h.Init(name, stage, app)
+		h.OnCreate(name, stage, app)
 		return h
 	})
 }
@@ -34,7 +34,7 @@ type Sitex struct {
 	hostnameSites map[string]*Site // hostname -> site, for routing
 }
 
-func (h *Sitex) Init(name string, stage *Stage, app *App) {
+func (h *Sitex) OnCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

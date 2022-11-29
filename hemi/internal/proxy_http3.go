@@ -10,12 +10,12 @@ package internal
 func init() {
 	RegisterHandler("http3Proxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(http3Proxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	RegisterSocklet("sock3Proxy", func(name string, stage *Stage, app *App) Socklet {
 		s := new(sock3Proxy)
-		s.init(name, stage, app)
+		s.onCreate(name, stage, app)
 		return s
 	})
 }
@@ -27,8 +27,8 @@ type http3Proxy struct {
 	// States
 }
 
-func (h *http3Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app)
+func (h *http3Proxy) onCreate(name string, stage *Stage, app *App) {
+	h.httpProxy_.onCreate(name, stage, app)
 }
 
 func (h *http3Proxy) OnConfigure() {
@@ -54,8 +54,8 @@ type sock3Proxy struct {
 	// States
 }
 
-func (s *sock3Proxy) init(name string, stage *Stage, app *App) {
-	s.sockProxy_.init(name, stage, app)
+func (s *sock3Proxy) onCreate(name string, stage *Stage, app *App) {
+	s.sockProxy_.onCreate(name, stage, app)
 }
 
 func (s *sock3Proxy) OnConfigure() {

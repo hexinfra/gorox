@@ -21,8 +21,8 @@ type QUICMesher struct {
 	mesher_[*QUICMesher, *quicGate, QUICRunner, QUICFilter, *quicCase]
 }
 
-func (m *QUICMesher) init(name string, stage *Stage) {
-	m.mesher_.init(name, stage, quicRunnerCreators, quicFilterCreators)
+func (m *QUICMesher) onCreate(name string, stage *Stage) {
+	m.mesher_.onCreate(name, stage, quicRunnerCreators, quicFilterCreators)
 }
 
 func (m *QUICMesher) OnConfigure() {
@@ -48,7 +48,7 @@ func (m *QUICMesher) createCase(name string) *quicCase {
 		UseExitln("conflicting case with a same name")
 	}
 	kase := new(quicCase)
-	kase.init(name, m)
+	kase.onCreate(name, m)
 	kase.setShell(kase)
 	m.cases = append(m.cases, kase)
 	return kase

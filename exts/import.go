@@ -7,7 +7,7 @@
 
 package exts
 
-import ( // import contribs here.
+import ( // import standard components here.
 	_ "github.com/hexinfra/gorox/hemi/standard/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/standard/filters/tcps/mysql"

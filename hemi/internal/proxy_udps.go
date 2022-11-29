@@ -10,7 +10,7 @@ package internal
 func init() {
 	RegisterUDPSRunner("udpsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner {
 		r := new(udpsProxy)
-		r.init(name, stage, mesher)
+		r.onCreate(name, stage, mesher)
 		return r
 	})
 }
@@ -25,9 +25,9 @@ type udpsProxy struct {
 	// States
 }
 
-func (r *udpsProxy) init(name string, stage *Stage, mesher *UDPSMesher) {
+func (r *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	r.CompInit(name)
-	r.proxy_.init(stage)
+	r.proxy_.onCreate(stage)
 	r.mesher = mesher
 }
 

@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterTCPSFilter("mysqlViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
 		f := new(mysqlViewer)
-		f.init(name, stage, mesher)
+		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
@@ -29,7 +29,7 @@ type mysqlViewer struct {
 	// States
 }
 
-func (f *mysqlViewer) init(name string, stage *Stage, mesher *TCPSMesher) {
+func (f *mysqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	f.CompInit(name)
 	f.stage = stage
 	f.mesher = mesher

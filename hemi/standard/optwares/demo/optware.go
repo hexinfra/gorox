@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterOptware("demo", func(name string, stage *Stage) Optware {
 		o := new(demoOptware)
-		o.init(name, stage)
+		o.onCreate(name, stage)
 		return o
 	})
 }
@@ -29,7 +29,7 @@ type demoOptware struct {
 	// States
 }
 
-func (o *demoOptware) init(name string, stage *Stage) {
+func (o *demoOptware) onCreate(name string, stage *Stage) {
 	o.CompInit(name)
 	o.stage = stage
 }

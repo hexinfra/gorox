@@ -50,8 +50,8 @@ type mesher_[M _mesher, G _gate, R _runner, F _filter, C _case] struct {
 	logger         *log.Logger
 }
 
-func (m *mesher_[M, G, R, F, C]) init(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, filterCreators map[string]func(string, *Stage, M) F) {
-	m.office_.init(name, stage)
+func (m *mesher_[M, G, R, F, C]) onCreate(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, filterCreators map[string]func(string, *Stage, M) F) {
+	m.office_.onCreate(name, stage)
 	m.runners = make(compDict[R])
 	m.filters = make(compDict[F])
 	m.runnerCreators = runnerCreators
@@ -157,7 +157,7 @@ type case_[M _mesher, R _runner, F _filter] struct {
 	patterns [][]byte
 }
 
-func (c *case_[M, R, F]) init(name string, mesher M) {
+func (c *case_[M, R, F]) onCreate(name string, mesher M) {
 	c.CompInit(name)
 	c.mesher = mesher
 }

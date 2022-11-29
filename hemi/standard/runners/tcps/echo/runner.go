@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterTCPSRunner("echoRunner", func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner {
 		r := new(echoRunner)
-		r.init(name, stage, mesher)
+		r.onCreate(name, stage, mesher)
 		return r
 	})
 }
@@ -29,7 +29,7 @@ type echoRunner struct {
 	// States
 }
 
-func (r *echoRunner) init(name string, stage *Stage, mesher *TCPSMesher) {
+func (r *echoRunner) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	r.CompInit(name)
 	r.stage = stage
 	r.mesher = mesher

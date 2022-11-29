@@ -14,12 +14,12 @@ import (
 func init() {
 	RegisterHandler("http1Proxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(http1Proxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	RegisterSocklet("sock1Proxy", func(name string, stage *Stage, app *App) Socklet {
 		s := new(sock1Proxy)
-		s.init(name, stage, app)
+		s.onCreate(name, stage, app)
 		return s
 	})
 }
@@ -31,8 +31,8 @@ type http1Proxy struct {
 	// States
 }
 
-func (h *http1Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app)
+func (h *http1Proxy) onCreate(name string, stage *Stage, app *App) {
+	h.httpProxy_.onCreate(name, stage, app)
 }
 
 func (h *http1Proxy) OnConfigure() {
@@ -203,8 +203,8 @@ type sock1Proxy struct {
 	// States
 }
 
-func (s *sock1Proxy) init(name string, stage *Stage, app *App) {
-	s.sockProxy_.init(name, stage, app)
+func (s *sock1Proxy) onCreate(name string, stage *Stage, app *App) {
+	s.sockProxy_.onCreate(name, stage, app)
 }
 
 func (s *sock1Proxy) OnConfigure() {

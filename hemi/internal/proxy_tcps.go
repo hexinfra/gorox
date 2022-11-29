@@ -10,7 +10,7 @@ package internal
 func init() {
 	RegisterTCPSRunner("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner {
 		r := new(tcpsProxy)
-		r.init(name, stage, mesher)
+		r.onCreate(name, stage, mesher)
 		return r
 	})
 }
@@ -25,9 +25,9 @@ type tcpsProxy struct {
 	// States
 }
 
-func (r *tcpsProxy) init(name string, stage *Stage, mesher *TCPSMesher) {
+func (r *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	r.CompInit(name)
-	r.proxy_.init(stage)
+	r.proxy_.onCreate(stage)
 	r.mesher = mesher
 }
 

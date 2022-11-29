@@ -61,8 +61,8 @@ type httpServer_ struct {
 	enableUDPTun        bool                // allow upgrade: connect-udp?
 }
 
-func (s *httpServer_) init(name string, stage *Stage) {
-	s.Server_.Init(name, stage)
+func (s *httpServer_) onCreate(name string, stage *Stage) {
+	s.Server_.OnCreate(name, stage)
 }
 
 func (s *httpServer_) onConfigure() {

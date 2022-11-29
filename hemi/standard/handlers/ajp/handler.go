@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("ajpProxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(ajpProxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -33,7 +33,7 @@ type ajpProxy struct {
 	bufferServerContent bool // server content is buffered anyway?
 }
 
-func (h *ajpProxy) init(name string, stage *Stage, app *App) {
+func (h *ajpProxy) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

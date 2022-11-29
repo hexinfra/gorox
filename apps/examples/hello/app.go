@@ -15,7 +15,7 @@ func init() {
 	// Register additional handlers for your app.
 	RegisterHandler("helloHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(helloHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	// Register initializer for your app.
@@ -36,7 +36,7 @@ type helloHandler struct {
 	example string // an example config entry
 }
 
-func (h *helloHandler) init(name string, stage *Stage, app *App) {
+func (h *helloHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

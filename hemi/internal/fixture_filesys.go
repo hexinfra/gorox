@@ -26,7 +26,7 @@ const signFilesys = "filesys"
 
 func createFilesys(stage *Stage) *filesysFixture {
 	filesys := new(filesysFixture)
-	filesys.init(stage)
+	filesys.onCreate(stage)
 	filesys.setShell(filesys)
 	return filesys
 }
@@ -46,7 +46,7 @@ type filesysFixture struct {
 	entries       map[string]*filesysEntry
 }
 
-func (f *filesysFixture) init(stage *Stage) {
+func (f *filesysFixture) onCreate(stage *Stage) {
 	f.CompInit(signFilesys)
 	f.stage = stage
 	f.entries = make(map[string]*filesysEntry)

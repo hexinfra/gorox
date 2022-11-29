@@ -8,14 +8,14 @@
 package head
 
 import (
-	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {
 	RegisterReviser("headReviser", func(name string, stage *Stage, app *App) Reviser {
 		r := new(headReviser)
-		r.init(name, stage, app)
+		r.onCreate(name, stage, app)
 		return r
 	})
 }
@@ -32,7 +32,7 @@ type headReviser struct {
 	delHeaders []string
 }
 
-func (r *headReviser) init(name string, stage *Stage, app *App) {
+func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
 	r.CompInit(name)
 	r.stage = stage
 	r.app = app

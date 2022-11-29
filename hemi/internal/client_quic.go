@@ -19,7 +19,7 @@ func init() {
 	registerFixture(signQUIC)
 	registerBackend("quicBackend", func(name string, stage *Stage) backend {
 		b := new(QUICBackend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -37,7 +37,7 @@ type quicClient_ struct {
 	// States
 }
 
-func (q *quicClient_) init() {
+func (q *quicClient_) onCreate() {
 }
 
 func (q *quicClient_) onConfigure(c Component) {
@@ -51,7 +51,7 @@ const signQUIC = "quic"
 
 func createQUIC(stage *Stage) *QUICOutgate {
 	quic := new(QUICOutgate)
-	quic.init(stage)
+	quic.onCreate(stage)
 	quic.setShell(quic)
 	return quic
 }
@@ -64,9 +64,9 @@ type QUICOutgate struct {
 	// States
 }
 
-func (f *QUICOutgate) init(stage *Stage) {
-	f.client_.init(signQUIC, stage)
-	f.quicClient_.init()
+func (f *QUICOutgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signQUIC, stage)
+	f.quicClient_.onCreate()
 }
 
 func (f *QUICOutgate) OnConfigure() {
@@ -113,9 +113,9 @@ type QUICBackend struct {
 	health any // TODO
 }
 
-func (b *QUICBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.quicClient_.init()
+func (b *QUICBackend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.quicClient_.onCreate()
 	b.loadBalancer_.init()
 }
 

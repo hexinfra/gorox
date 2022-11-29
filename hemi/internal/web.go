@@ -115,7 +115,7 @@ type App struct {
 	nRevisers            uint8             // used number of revisersByID in this app
 }
 
-func (a *App) init(name string, stage *Stage) {
+func (a *App) onCreate(name string, stage *Stage) {
 	a.CompInit(name)
 	a.stage = stage
 	a.handlers = make(compDict[Handler])
@@ -313,7 +313,7 @@ func (a *App) createRule(name string) *Rule {
 		UseExitln("conflicting rule with a same name")
 	}
 	rule := new(Rule)
-	rule.init(name, a)
+	rule.onCreate(name, a)
 	rule.setShell(rule)
 	a.rules = append(a.rules, rule)
 	return rule
@@ -749,7 +749,7 @@ type Rule struct {
 	matcher    func(rule *Rule, req Request, value []byte) bool
 }
 
-func (r *Rule) init(name string, app *App) {
+func (r *Rule) onCreate(name string, app *App) {
 	r.CompInit(name)
 	r.app = app
 }

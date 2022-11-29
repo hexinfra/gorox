@@ -24,7 +24,7 @@ func init() {
 	registerFixture(signHTTP1)
 	registerBackend("http1Backend", func(name string, stage *Stage) backend {
 		b := new(HTTP1Backend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -33,7 +33,7 @@ const signHTTP1 = "http1"
 
 func createHTTP1(stage *Stage) *HTTP1Outgate {
 	http1 := new(HTTP1Outgate)
-	http1.init(stage)
+	http1.onCreate(stage)
 	http1.setShell(http1)
 	return http1
 }
@@ -47,9 +47,9 @@ type HTTP1Outgate struct {
 	conns any // TODO
 }
 
-func (f *HTTP1Outgate) init(stage *Stage) {
-	f.client_.init(signHTTP1, stage)
-	f.httpOutgate_.init()
+func (f *HTTP1Outgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signHTTP1, stage)
+	f.httpOutgate_.onCreate()
 }
 
 func (f *HTTP1Outgate) OnConfigure() {
@@ -111,9 +111,9 @@ type HTTP1Backend struct {
 	// States
 }
 
-func (b *HTTP1Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.httpBackend_.init()
+func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.httpBackend_.onCreate()
 }
 
 func (b *HTTP1Backend) OnConfigure() {

@@ -20,7 +20,7 @@ const signResolv = "resolv"
 
 func createResolv(stage *Stage) *resolvFixture {
 	resolv := new(resolvFixture)
-	resolv.init(stage)
+	resolv.onCreate(stage)
 	resolv.setShell(resolv)
 	return resolv
 }
@@ -34,7 +34,7 @@ type resolvFixture struct {
 	// States
 }
 
-func (f *resolvFixture) init(stage *Stage) {
+func (f *resolvFixture) onCreate(stage *Stage) {
 	f.CompInit(signResolv)
 	f.stage = stage
 }

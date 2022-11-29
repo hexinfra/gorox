@@ -29,7 +29,7 @@ type httpClient_ struct {
 	maxContentSize int64
 }
 
-func (h *httpClient_) init() {
+func (h *httpClient_) onCreate() {
 }
 
 func (h *httpClient_) onConfigure(c Component, clientName string) {
@@ -51,8 +51,8 @@ type httpOutgate_ struct {
 	// States
 }
 
-func (f *httpOutgate_) init() {
-	f.httpClient_.init()
+func (f *httpOutgate_) onCreate() {
+	f.httpClient_.onCreate()
 }
 
 func (f *httpOutgate_) onConfigure(c Component) {
@@ -72,8 +72,8 @@ type httpBackend_ struct {
 	health any // TODO
 }
 
-func (b *httpBackend_) init() {
-	b.httpClient_.init()
+func (b *httpBackend_) onCreate() {
+	b.httpClient_.onCreate()
 	b.loadBalancer_.init()
 }
 

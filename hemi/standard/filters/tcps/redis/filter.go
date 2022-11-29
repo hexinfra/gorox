@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterTCPSFilter("redisViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
 		f := new(redisViewer)
-		f.init(name, stage, mesher)
+		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
@@ -29,7 +29,7 @@ type redisViewer struct {
 	// States
 }
 
-func (f *redisViewer) init(name string, stage *Stage, mesher *TCPSMesher) {
+func (f *redisViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	f.CompInit(name)
 	f.stage = stage
 	f.mesher = mesher

@@ -17,7 +17,7 @@ import (
 func init() {
 	RegisterStater("localStater", func(name string, stage *Stage) Stater {
 		s := new(localStater)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -32,7 +32,7 @@ type localStater struct {
 	stateDir string // /path/to/dir
 }
 
-func (s *localStater) init(name string, stage *Stage) {
+func (s *localStater) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }

@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("refererHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(refererHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -29,7 +29,7 @@ type refererHandler struct {
 	// States
 }
 
-func (h *refererHandler) init(name string, stage *Stage, app *App) {
+func (h *refererHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

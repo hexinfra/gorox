@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("uwsgiProxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(uwsgiProxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -33,7 +33,7 @@ type uwsgiProxy struct {
 	bufferServerContent bool // server content is buffered anyway?
 }
 
-func (h *uwsgiProxy) init(name string, stage *Stage, app *App) {
+func (h *uwsgiProxy) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

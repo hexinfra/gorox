@@ -8,8 +8,8 @@
 package hemi
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/standard" // preloaded components
 	"github.com/hexinfra/gorox/hemi/internal"
+	_ "github.com/hexinfra/gorox/hemi/standard" // preloaded components
 )
 
 const Version = "0.1.0-dev"

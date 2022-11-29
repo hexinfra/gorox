@@ -22,7 +22,7 @@ func init() {
 	registerFixture(signHTTP2)
 	registerBackend("http2Backend", func(name string, stage *Stage) backend {
 		b := new(HTTP2Backend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -31,7 +31,7 @@ const signHTTP2 = "http2"
 
 func createHTTP2(stage *Stage) *HTTP2Outgate {
 	http2 := new(HTTP2Outgate)
-	http2.init(stage)
+	http2.onCreate(stage)
 	http2.setShell(http2)
 	return http2
 }
@@ -44,9 +44,9 @@ type HTTP2Outgate struct {
 	// States
 }
 
-func (f *HTTP2Outgate) init(stage *Stage) {
-	f.client_.init(signHTTP2, stage)
-	f.httpOutgate_.init()
+func (f *HTTP2Outgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signHTTP2, stage)
+	f.httpOutgate_.onCreate()
 }
 
 func (f *HTTP2Outgate) OnConfigure() {
@@ -88,9 +88,9 @@ type HTTP2Backend struct {
 	// States
 }
 
-func (b *HTTP2Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.httpBackend_.init()
+func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.httpBackend_.onCreate()
 }
 
 func (b *HTTP2Backend) OnConfigure() {

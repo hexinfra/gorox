@@ -171,7 +171,7 @@ func (dict compDict[T]) goWalk(method func(T)) {
 // createStage creates a new stage which runs alongside existing stage.
 func createStage() *Stage {
 	stage := new(Stage)
-	stage.init()
+	stage.onCreate()
 	stage.setShell(stage)
 	return stage
 }
@@ -221,7 +221,7 @@ type Stage struct {
 	numCPU     int32
 }
 
-func (s *Stage) init() {
+func (s *Stage) onCreate() {
 	s.CompInit("stage")
 
 	s.clock = createClock(s)
@@ -294,7 +294,7 @@ func (s *Stage) createQUICMesher(name string) *QUICMesher {
 		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
 	}
 	mesher := new(QUICMesher)
-	mesher.init(name, s)
+	mesher.onCreate(name, s)
 	mesher.setShell(mesher)
 	s.quicMeshers[name] = mesher
 	return mesher
@@ -304,7 +304,7 @@ func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
 		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
 	}
 	mesher := new(TCPSMesher)
-	mesher.init(name, s)
+	mesher.onCreate(name, s)
 	mesher.setShell(mesher)
 	s.tcpsMeshers[name] = mesher
 	return mesher
@@ -314,7 +314,7 @@ func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
 		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
 	}
 	mesher := new(UDPSMesher)
-	mesher.init(name, s)
+	mesher.onCreate(name, s)
 	mesher.setShell(mesher)
 	s.udpsMeshers[name] = mesher
 	return mesher
@@ -350,7 +350,7 @@ func (s *Stage) createApp(name string) *App {
 		UseExitf("conflicting app with a same name '%s'\n", name)
 	}
 	app := new(App)
-	app.init(name, s)
+	app.onCreate(name, s)
 	app.setShell(app)
 	s.apps[name] = app
 	return app
@@ -360,7 +360,7 @@ func (s *Stage) createSvc(name string) *Svc {
 		UseExitf("conflicting svc with a same name '%s'\n", name)
 	}
 	svc := new(Svc)
-	svc.init(name, s)
+	svc.onCreate(name, s)
 	svc.setShell(svc)
 	s.svcs[name] = svc
 	return svc
@@ -907,7 +907,7 @@ type office_ struct {
 	tlsConfig       *tls.Config // set if is tls mode
 }
 
-func (o *office_) init(name string, stage *Stage) {
+func (o *office_) onCreate(name string, stage *Stage) {
 	o.CompInit(name)
 	o.stage = stage
 }

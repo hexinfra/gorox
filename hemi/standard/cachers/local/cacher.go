@@ -17,7 +17,7 @@ import (
 func init() {
 	RegisterCacher("localCacher", func(name string, stage *Stage) Cacher {
 		c := new(localCacher)
-		c.init(name, stage)
+		c.onCreate(name, stage)
 		return c
 	})
 }
@@ -32,7 +32,7 @@ type localCacher struct {
 	cacheDir string // /path/to/dir
 }
 
-func (c *localCacher) init(name string, stage *Stage) {
+func (c *localCacher) onCreate(name string, stage *Stage) {
 	c.CompInit(name)
 	c.stage = stage
 }

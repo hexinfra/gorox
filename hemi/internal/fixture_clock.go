@@ -21,7 +21,7 @@ const signClock = "clock"
 
 func createClock(stage *Stage) *clockFixture {
 	clock := new(clockFixture)
-	clock.init(stage)
+	clock.onCreate(stage)
 	clock.setShell(clock)
 	return clock
 }
@@ -37,7 +37,7 @@ type clockFixture struct {
 	date       atomic.Int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit
 }
 
-func (f *clockFixture) init(stage *Stage) {
+func (f *clockFixture) onCreate(stage *Stage) {
 	f.CompInit(signClock)
 	f.stage = stage
 	f.resolution = 100 * time.Millisecond

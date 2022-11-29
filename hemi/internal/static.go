@@ -18,7 +18,7 @@ import (
 func init() {
 	RegisterHandler("static", func(name string, stage *Stage, app *App) Handler {
 		h := new(staticHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -40,7 +40,7 @@ type staticHandler struct {
 	useAppRoot  bool              // true if webRoot is same with app.webRoot
 }
 
-func (h *staticHandler) init(name string, stage *Stage, app *App) {
+func (h *staticHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

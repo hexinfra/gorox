@@ -27,7 +27,7 @@ import (
 func init() {
 	RegisterServer("httpxServer", func(name string, stage *Stage) Server {
 		s := new(httpxServer)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -43,8 +43,8 @@ type httpxServer struct {
 	h2cMode      bool // if true, TCP runs HTTP/2 only. TLS is not affected. requires enableHTTP2
 }
 
-func (s *httpxServer) init(name string, stage *Stage) {
-	s.httpServer_.init(name, stage)
+func (s *httpxServer) onCreate(name string, stage *Stage) {
+	s.httpServer_.onCreate(name, stage)
 	s.forceScheme = -1 // not force
 }
 

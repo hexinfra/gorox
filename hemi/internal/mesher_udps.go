@@ -23,8 +23,8 @@ type UDPSMesher struct {
 	mesher_[*UDPSMesher, *udpsGate, UDPSRunner, UDPSFilter, *udpsCase]
 }
 
-func (m *UDPSMesher) init(name string, stage *Stage) {
-	m.mesher_.init(name, stage, udpsRunnerCreators, udpsFilterCreators)
+func (m *UDPSMesher) onCreate(name string, stage *Stage) {
+	m.mesher_.onCreate(name, stage, udpsRunnerCreators, udpsFilterCreators)
 }
 
 func (m *UDPSMesher) OnConfigure() {
@@ -50,7 +50,7 @@ func (m *UDPSMesher) createCase(name string) *udpsCase {
 		UseExitln("conflicting case with a same name")
 	}
 	kase := new(udpsCase)
-	kase.init(name, m)
+	kase.onCreate(name, m)
 	kase.setShell(kase)
 	m.cases = append(m.cases, kase)
 	return kase

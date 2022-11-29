@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterUDPSRunner("dnsRunner", func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner {
 		r := new(dnsRunner)
-		r.init(name, stage, mesher)
+		r.onCreate(name, stage, mesher)
 		return r
 	})
 }
@@ -29,7 +29,7 @@ type dnsRunner struct {
 	// States
 }
 
-func (r *dnsRunner) init(name string, stage *Stage, mesher *UDPSMesher) {
+func (r *dnsRunner) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	r.CompInit(name)
 	r.stage = stage
 	r.mesher = mesher

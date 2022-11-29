@@ -22,7 +22,7 @@ import (
 func init() {
 	RegisterServer("http3Server", func(name string, stage *Stage) Server {
 		s := new(http3Server)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -34,8 +34,8 @@ type http3Server struct {
 	// States
 }
 
-func (s *http3Server) init(name string, stage *Stage) {
-	s.httpServer_.init(name, stage)
+func (s *http3Server) onCreate(name string, stage *Stage) {
+	s.httpServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
 }
 

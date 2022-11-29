@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterHandler("boardHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(boardHandler)
-		h.Init(name, stage, app)
+		h.OnCreate(name, stage, app)
 		return h
 	})
 	RegisterAppInit("board", func(app *App) error {

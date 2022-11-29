@@ -27,7 +27,7 @@ type Svc struct {
 	prefixHostnames [][]byte // like: ("www.example.*")
 }
 
-func (s *Svc) init(name string, stage *Stage) {
+func (s *Svc) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }

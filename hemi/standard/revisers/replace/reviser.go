@@ -8,14 +8,14 @@
 package replace
 
 import (
-	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {
 	RegisterReviser("replaceReviser", func(name string, stage *Stage, app *App) Reviser {
 		r := new(replaceReviser)
-		r.init(name, stage, app)
+		r.onCreate(name, stage, app)
 		return r
 	})
 }
@@ -31,7 +31,7 @@ type replaceReviser struct {
 	rank int8
 }
 
-func (r *replaceReviser) init(name string, stage *Stage, app *App) {
+func (r *replaceReviser) onCreate(name string, stage *Stage, app *App) {
 	r.CompInit(name)
 	r.stage = stage
 	r.app = app

@@ -24,9 +24,9 @@ type httpProxy_ struct {
 	addResponseHeaders  [][2][]byte // headers appended to server response
 }
 
-func (h *httpProxy_) init(name string, stage *Stage, app *App) {
+func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
-	h.proxy_.init(stage)
+	h.proxy_.onCreate(stage)
 	h.app = app
 }
 
@@ -80,9 +80,9 @@ type sockProxy_ struct {
 	// States
 }
 
-func (s *sockProxy_) init(name string, stage *Stage, app *App) {
+func (s *sockProxy_) onCreate(name string, stage *Stage, app *App) {
 	s.CompInit(name)
-	s.proxy_.init(stage)
+	s.proxy_.onCreate(stage)
 	s.app = app
 }
 

@@ -19,7 +19,7 @@ func init() {
 	registerFixture(signUnix)
 	registerBackend("unixBackend", func(name string, stage *Stage) backend {
 		b := new(UnixBackend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -37,7 +37,7 @@ type unixClient_ struct {
 	// States
 }
 
-func (u *unixClient_) init() {
+func (u *unixClient_) onCreate() {
 }
 
 func (u *unixClient_) onConfigure(c Component) {
@@ -51,7 +51,7 @@ const signUnix = "unix"
 
 func createUnix(stage *Stage) *UnixOutgate {
 	unix := new(UnixOutgate)
-	unix.init(stage)
+	unix.onCreate(stage)
 	unix.setShell(unix)
 	return unix
 }
@@ -64,9 +64,9 @@ type UnixOutgate struct {
 	// States
 }
 
-func (f *UnixOutgate) init(stage *Stage) {
-	f.client_.init(signUnix, stage)
-	f.unixClient_.init()
+func (f *UnixOutgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signUnix, stage)
+	f.unixClient_.onCreate()
 }
 
 func (f *UnixOutgate) OnConfigure() {
@@ -114,9 +114,9 @@ type UnixBackend struct {
 	health any // TODO
 }
 
-func (b *UnixBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.unixClient_.init()
+func (b *UnixBackend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.unixClient_.onCreate()
 	b.loadBalancer_.init()
 }
 

@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("gatex", func(name string, stage *Stage, app *App) Handler {
 		h := new(gatex)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -29,7 +29,7 @@ type gatex struct {
 	// States
 }
 
-func (h *gatex) init(name string, stage *Stage, app *App) {
+func (h *gatex) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

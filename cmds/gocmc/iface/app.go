@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("v1Handler", func(name string, stage *Stage, app *App) Handler {
 		h := new(v1Handler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	RegisterAppInit("iface", func(app *App) error {
@@ -33,7 +33,7 @@ type v1Handler struct {
 	// States
 }
 
-func (h *v1Handler) init(name string, stage *Stage, app *App) {
+func (h *v1Handler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

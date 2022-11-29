@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterCronjob("cleanCronjob", func(name string, stage *Stage) Cronjob {
 		j := new(cleanCronjob)
-		j.init(name, stage)
+		j.onCreate(name, stage)
 		return j
 	})
 }
@@ -30,7 +30,7 @@ type cleanCronjob struct {
 	// States
 }
 
-func (j *cleanCronjob) init(name string, stage *Stage) {
+func (j *cleanCronjob) onCreate(name string, stage *Stage) {
 	j.CompInit(name)
 	j.stage = stage
 }

@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("rewriteHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(rewriteHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -29,7 +29,7 @@ type rewriteHandler struct {
 	// States
 }
 
-func (h *rewriteHandler) init(name string, stage *Stage, app *App) {
+func (h *rewriteHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

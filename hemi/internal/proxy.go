@@ -16,7 +16,7 @@ type proxy_ struct {
 	proxyMode string // forward, reverse
 }
 
-func (p *proxy_) init(stage *Stage) {
+func (p *proxy_) onCreate(stage *Stage) {
 	p.stage = stage
 }
 

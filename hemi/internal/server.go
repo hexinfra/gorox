@@ -26,8 +26,8 @@ type Server_ struct {
 	colonPortBytes []byte // like: []byte(":9876")
 }
 
-func (s *Server_) Init(name string, stage *Stage) {
-	s.office_.init(name, stage)
+func (s *Server_) OnCreate(name string, stage *Stage) {
+	s.office_.onCreate(name, stage)
 }
 
 func (s *Server_) OnConfigure() {

@@ -42,7 +42,7 @@ type client_ struct {
 	connID       atomic.Int64  // next conn id
 }
 
-func (c *client_) init(name string, stage *Stage) {
+func (c *client_) onCreate(name string, stage *Stage) {
 	c.CompInit(name)
 	c.stage = stage
 }
@@ -94,8 +94,8 @@ type backend_[N node] struct {
 	// States
 }
 
-func (b *backend_[N]) init(name string, stage *Stage, shell interface{ createNode(id int32) N }) {
-	b.client_.init(name, stage)
+func (b *backend_[N]) onCreate(name string, stage *Stage, shell interface{ createNode(id int32) N }) {
+	b.client_.onCreate(name, stage)
 	b.shell = shell
 }
 

@@ -8,14 +8,14 @@
 package ssi
 
 import (
-	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {
 	RegisterReviser("ssiReviser", func(name string, stage *Stage, app *App) Reviser {
 		r := new(ssiReviser)
-		r.init(name, stage, app)
+		r.onCreate(name, stage, app)
 		return r
 	})
 }
@@ -31,7 +31,7 @@ type ssiReviser struct {
 	rank int8
 }
 
-func (r *ssiReviser) init(name string, stage *Stage, app *App) {
+func (r *ssiReviser) onCreate(name string, stage *Stage, app *App) {
 	r.CompInit(name)
 	r.stage = stage
 	r.app = app

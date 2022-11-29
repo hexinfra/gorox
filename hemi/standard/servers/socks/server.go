@@ -20,7 +20,7 @@ import (
 func init() {
 	RegisterServer("socksServer", func(name string, stage *Stage) Server {
 		s := new(socksServer)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -34,8 +34,8 @@ type socksServer struct {
 	gates []*socksGate
 }
 
-func (s *socksServer) init(name string, stage *Stage) {
-	s.Server_.Init(name, stage)
+func (s *socksServer) onCreate(name string, stage *Stage) {
+	s.Server_.OnCreate(name, stage)
 }
 
 func (s *socksServer) OnConfigure() {

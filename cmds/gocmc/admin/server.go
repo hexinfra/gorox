@@ -18,7 +18,7 @@ import (
 func init() {
 	RegisterServer("adminServer", func(name string, stage *Stage) Server {
 		s := new(AdminServer)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -37,7 +37,7 @@ type AdminServer struct {
 	conns   map[int64]*adminConn
 }
 
-func (s *AdminServer) init(name string, stage *Stage) {
+func (s *AdminServer) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 	s.conns = make(map[int64]*adminConn)

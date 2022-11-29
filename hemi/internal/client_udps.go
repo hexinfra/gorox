@@ -20,7 +20,7 @@ func init() {
 	registerFixture(signUDPS)
 	registerBackend("udpsBackend", func(name string, stage *Stage) backend {
 		b := new(UDPSBackend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -36,7 +36,7 @@ type udpsClient_ struct {
 	// States
 }
 
-func (u *udpsClient_) init() {
+func (u *udpsClient_) onCreate() {
 }
 
 func (u *udpsClient_) onConfigure(c Component) {
@@ -48,7 +48,7 @@ const signUDPS = "udps"
 
 func createUDPS(stage *Stage) *UDPSOutgate {
 	udps := new(UDPSOutgate)
-	udps.init(stage)
+	udps.onCreate(stage)
 	udps.setShell(udps)
 	return udps
 }
@@ -61,9 +61,9 @@ type UDPSOutgate struct {
 	// States
 }
 
-func (f *UDPSOutgate) init(stage *Stage) {
-	f.client_.init(signUDPS, stage)
-	f.udpsClient_.init()
+func (f *UDPSOutgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signUDPS, stage)
+	f.udpsClient_.onCreate()
 }
 
 func (f *UDPSOutgate) OnConfigure() {
@@ -111,9 +111,9 @@ type UDPSBackend struct {
 	health any // TODO
 }
 
-func (b *UDPSBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.udpsClient_.init()
+func (b *UDPSBackend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.udpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
 

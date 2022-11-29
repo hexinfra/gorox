@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("limitHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(limitHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -29,7 +29,7 @@ type limitHandler struct {
 	// States
 }
 
-func (h *limitHandler) init(name string, stage *Stage, app *App) {
+func (h *limitHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

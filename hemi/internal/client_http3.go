@@ -21,7 +21,7 @@ func init() {
 	registerFixture(signHTTP3)
 	registerBackend("http3Backend", func(name string, stage *Stage) backend {
 		b := new(HTTP3Backend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -30,7 +30,7 @@ const signHTTP3 = "http3"
 
 func createHTTP3(stage *Stage) *HTTP3Outgate {
 	http3 := new(HTTP3Outgate)
-	http3.init(stage)
+	http3.onCreate(stage)
 	http3.setShell(http3)
 	return http3
 }
@@ -43,9 +43,9 @@ type HTTP3Outgate struct {
 	// States
 }
 
-func (f *HTTP3Outgate) init(stage *Stage) {
-	f.client_.init(signHTTP3, stage)
-	f.httpOutgate_.init()
+func (f *HTTP3Outgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signHTTP3, stage)
+	f.httpOutgate_.onCreate()
 }
 
 func (f *HTTP3Outgate) OnConfigure() {
@@ -87,9 +87,9 @@ type HTTP3Backend struct {
 	// States
 }
 
-func (b *HTTP3Backend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.httpBackend_.init()
+func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.httpBackend_.onCreate()
 }
 
 func (b *HTTP3Backend) OnConfigure() {

@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("httpsHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(httpsHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -31,7 +31,7 @@ type httpsHandler struct {
 	authority string
 }
 
-func (h *httpsHandler) init(name string, stage *Stage, app *App) {
+func (h *httpsHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

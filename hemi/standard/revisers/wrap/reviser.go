@@ -8,14 +8,14 @@
 package wrap
 
 import (
-	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {
 	RegisterReviser("wrapReviser", func(name string, stage *Stage, app *App) Reviser {
 		r := new(wrapReviser)
-		r.init(name, stage, app)
+		r.onCreate(name, stage, app)
 		return r
 	})
 }
@@ -31,7 +31,7 @@ type wrapReviser struct {
 	rank int8
 }
 
-func (r *wrapReviser) init(name string, stage *Stage, app *App) {
+func (r *wrapReviser) onCreate(name string, stage *Stage, app *App) {
 	r.CompInit(name)
 	r.stage = stage
 	r.app = app

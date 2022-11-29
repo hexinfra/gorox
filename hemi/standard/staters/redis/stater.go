@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterStater("redisStater", func(name string, stage *Stage) Stater {
 		s := new(redisStater)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -31,7 +31,7 @@ type redisStater struct {
 	nodes []string
 }
 
-func (s *redisStater) init(name string, stage *Stage) {
+func (s *redisStater) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }

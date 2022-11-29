@@ -16,7 +16,7 @@ import (
 func init() {
 	RegisterCacher("redisCacher", func(name string, stage *Stage) Cacher {
 		c := new(redisCacher)
-		c.init(name, stage)
+		c.onCreate(name, stage)
 		return c
 	})
 }
@@ -31,7 +31,7 @@ type redisCacher struct {
 	nodes []string
 }
 
-func (c *redisCacher) init(name string, stage *Stage) {
+func (c *redisCacher) onCreate(name string, stage *Stage) {
 	c.CompInit(name)
 	c.stage = stage
 }

@@ -10,12 +10,12 @@ package internal
 func init() {
 	RegisterHandler("http2Proxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(http2Proxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	RegisterSocklet("sock2Proxy", func(name string, stage *Stage, app *App) Socklet {
 		s := new(sock2Proxy)
-		s.init(name, stage, app)
+		s.onCreate(name, stage, app)
 		return s
 	})
 }
@@ -27,8 +27,8 @@ type http2Proxy struct {
 	// States
 }
 
-func (h *http2Proxy) init(name string, stage *Stage, app *App) {
-	h.httpProxy_.init(name, stage, app)
+func (h *http2Proxy) onCreate(name string, stage *Stage, app *App) {
+	h.httpProxy_.onCreate(name, stage, app)
 }
 
 func (h *http2Proxy) OnConfigure() {
@@ -54,8 +54,8 @@ type sock2Proxy struct {
 	// States
 }
 
-func (s *sock2Proxy) init(name string, stage *Stage, app *App) {
-	s.sockProxy_.init(name, stage, app)
+func (s *sock2Proxy) onCreate(name string, stage *Stage, app *App) {
+	s.sockProxy_.onCreate(name, stage, app)
 }
 
 func (s *sock2Proxy) OnConfigure() {

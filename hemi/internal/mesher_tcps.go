@@ -24,8 +24,8 @@ type TCPSMesher struct {
 	mesher_[*TCPSMesher, *tcpsGate, TCPSRunner, TCPSFilter, *tcpsCase]
 }
 
-func (m *TCPSMesher) init(name string, stage *Stage) {
-	m.mesher_.init(name, stage, tcpsRunnerCreators, tcpsFilterCreators)
+func (m *TCPSMesher) onCreate(name string, stage *Stage) {
+	m.mesher_.onCreate(name, stage, tcpsRunnerCreators, tcpsFilterCreators)
 }
 
 func (m *TCPSMesher) OnConfigure() {
@@ -51,7 +51,7 @@ func (m *TCPSMesher) createCase(name string) *tcpsCase {
 		UseExitln("conflicting case with a same name")
 	}
 	kase := new(tcpsCase)
-	kase.init(name, m)
+	kase.onCreate(name, m)
 	kase.setShell(kase)
 	m.cases = append(m.cases, kase)
 	return kase

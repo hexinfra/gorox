@@ -12,7 +12,7 @@ import (
 func init() {
 	RegisterHandler("testHandler", func(name string, stage *Stage, app *App) Handler {
 		h := new(testHandler)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 	RegisterAppInit("test", func(app *App) error {
@@ -30,7 +30,7 @@ type testHandler struct {
 	// States
 }
 
-func (h *testHandler) init(name string, stage *Stage, app *App) {
+func (h *testHandler) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

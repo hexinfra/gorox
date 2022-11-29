@@ -20,7 +20,7 @@ import (
 func init() {
 	RegisterServer("echoServer", func(name string, stage *Stage) Server {
 		s := new(echoServer)
-		s.init(name, stage)
+		s.onCreate(name, stage)
 		return s
 	})
 }
@@ -34,8 +34,8 @@ type echoServer struct {
 	gates []*echoGate
 }
 
-func (s *echoServer) init(name string, stage *Stage) {
-	s.Server_.Init(name, stage)
+func (s *echoServer) onCreate(name string, stage *Stage) {
+	s.Server_.OnCreate(name, stage)
 }
 
 func (s *echoServer) OnConfigure() {

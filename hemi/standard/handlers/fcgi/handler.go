@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterHandler("fcgiProxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(fcgiProxy)
-		h.init(name, stage, app)
+		h.onCreate(name, stage, app)
 		return h
 	})
 }
@@ -35,7 +35,7 @@ type fcgiProxy struct {
 	keepConn            bool   // instructs FCGI server to keep conn?
 }
 
-func (h *fcgiProxy) init(name string, stage *Stage, app *App) {
+func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app

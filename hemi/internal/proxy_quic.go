@@ -10,7 +10,7 @@ package internal
 func init() {
 	RegisterQUICRunner("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICRunner {
 		r := new(quicProxy)
-		r.init(name, stage, mesher)
+		r.onCreate(name, stage, mesher)
 		return r
 	})
 }
@@ -25,9 +25,9 @@ type quicProxy struct {
 	// States
 }
 
-func (r *quicProxy) init(name string, stage *Stage, mesher *QUICMesher) {
+func (r *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	r.CompInit(name)
-	r.proxy_.init(stage)
+	r.proxy_.onCreate(stage)
 	r.mesher = mesher
 }
 

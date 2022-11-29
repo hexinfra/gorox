@@ -22,7 +22,7 @@ func init() {
 	registerFixture(signTCPS)
 	registerBackend("tcpsBackend", func(name string, stage *Stage) backend {
 		b := new(TCPSBackend)
-		b.init(name, stage)
+		b.onCreate(name, stage)
 		return b
 	})
 }
@@ -40,7 +40,7 @@ type tcpsClient_ struct {
 	// States
 }
 
-func (t *tcpsClient_) init() {
+func (t *tcpsClient_) onCreate() {
 }
 
 func (t *tcpsClient_) onConfigure(c Component) {
@@ -54,7 +54,7 @@ const signTCPS = "tcps"
 
 func createTCPS(stage *Stage) *TCPSOutgate {
 	tcps := new(TCPSOutgate)
-	tcps.init(stage)
+	tcps.onCreate(stage)
 	tcps.setShell(tcps)
 	return tcps
 }
@@ -67,9 +67,9 @@ type TCPSOutgate struct {
 	// States
 }
 
-func (f *TCPSOutgate) init(stage *Stage) {
-	f.client_.init(signTCPS, stage)
-	f.tcpsClient_.init()
+func (f *TCPSOutgate) onCreate(stage *Stage) {
+	f.client_.onCreate(signTCPS, stage)
+	f.tcpsClient_.onCreate()
 }
 
 func (f *TCPSOutgate) OnConfigure() {
@@ -131,9 +131,9 @@ type TCPSBackend struct {
 	health any // TODO
 }
 
-func (b *TCPSBackend) init(name string, stage *Stage) {
-	b.backend_.init(name, stage, b)
-	b.tcpsClient_.init()
+func (b *TCPSBackend) onCreate(name string, stage *Stage) {
+	b.backend_.onCreate(name, stage, b)
+	b.tcpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
 

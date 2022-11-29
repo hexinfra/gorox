@@ -50,7 +50,7 @@ func leaderMain() {
 
 	// Load worker's config
 	base, file := getConfig()
-	logger.Println("parse config")
+	logger.Printf("parse worker config: base=%s file=%s\n", base, file)
 	if _, err := hemi.ApplyFile(base, file); err != nil {
 		crash("leader: " + err.Error())
 	}
@@ -59,9 +59,10 @@ func leaderMain() {
 	msgChan := make(chan *msgx.Message) // msgChan is the channel between leaderMain() and keepWorker()
 	go keepWorker(base, file, msgChan)
 	<-msgChan // wait for keepWorker() to ensure worker is started.
+	logger.Println("worker process started")
 
 	// Start admin interface
-	logger.Printf("listen at: %s\n", adminAddr)
+	logger.Printf("open admin interface: %s\n", adminAddr)
 	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control agent
 	if err != nil {
 		crash(err.Error())
@@ -84,7 +85,7 @@ func leaderMain() {
 		if !ok {
 			goto closeNext
 		}
-		logger.Printf("received: %v\n", req)
+		logger.Printf("received from agent: %v\n", req)
 		if req.IsTell() {
 			// Some messages are telling leader only, hijack them.
 			if req.Comd == comdStop {
@@ -116,6 +117,7 @@ func leaderMain() {
 				msgChan <- req
 				resp = <-msgChan
 			}
+			logger.Printf("send response: %v\n", resp)
 			msgx.SendMessage(admConn, resp)
 		}
 	closeNext:

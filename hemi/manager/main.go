@@ -106,7 +106,12 @@ func serve() { // as single, leader, or worker
 			fmt.Println("PASS")
 		}
 	} else if *singleMode { // run as single foreground process. for single mode
-		singleMain()
+		if stage, err := hemi.ApplyFile(getConfig()); err == nil {
+			stage.Start()
+			select {}
+		} else {
+			fmt.Println(err.Error())
+		}
 	} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run (leader or worker) process as daemon
 		if token == "leader" { // run leader process as daemon
 			system.DaemonInit()

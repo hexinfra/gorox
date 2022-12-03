@@ -112,12 +112,11 @@ func serve() { // as single, leader, or worker
 		} else {
 			fmt.Println(err.Error())
 		}
-	} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run (leader or worker) process as daemon
-		if token == "leader" { // run leader process as daemon
+	} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
+		if token == "leader" {
 			system.DaemonInit()
 			leaderMain()
-		} else { // run worker process as daemon
-			// Don't system.DaemonInit() here, as it causes bugs on Windows, under which no stderr outputs are shown
+		} else {
 			workerMain(token)
 		}
 	} else if *daemonMode { // start the leader daemon and exit

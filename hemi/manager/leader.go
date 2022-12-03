@@ -208,7 +208,7 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, procArgs, &os.ProcAttr{
 		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.pipeKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit
 		Sys:   system.DaemonSysAttr(),
 	})
 	if err != nil {

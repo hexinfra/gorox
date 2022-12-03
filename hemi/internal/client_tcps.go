@@ -10,7 +10,6 @@ package internal
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"net"
 	"sync"
@@ -284,11 +283,6 @@ func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }
 
-func (c *TConn) SetBuffered(buffered bool) {
-	if !c.client.TLSMode() { // we can only call rawConn on TCP.
-		system.SetBuffered(c.rawConn, buffered)
-	}
-}
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {

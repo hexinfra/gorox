@@ -159,8 +159,8 @@ func (b *backend_[N]) maintain() { // goroutine
 		b.IncSub(1)
 		go node.maintain(shut)
 	}
-	<-b.Shut
-	close(shut)
+	<-b.Shut     // waiting for shut signal
+	close(shut)  // notify all nodes
 	b.WaitSubs() // nodes
 	if Debug(2) {
 		fmt.Printf("backend=%s done\n", b.Name())

@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -945,6 +946,37 @@ func (o *office_) Address() string        { return o.address }
 func (o *office_) TLSMode() bool          { return o.tlsMode }
 func (o *office_) NumGates() int32        { return o.numGates }
 func (o *office_) MaxConnsPerGate() int32 { return o.maxConnsPerGate }
+
+// Gate_ is a mixin for mesher gates and server gates.
+type Gate_ struct {
+	// Mixins
+	waiter_
+	// Assocs
+	stage *Stage // current stage
+	// States
+	id       int32
+	address  string
+	shut     atomic.Bool
+	maxConns int32
+	numConns atomic.Int32 // TODO: false sharing
+}
+
+func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
+	g.stage = stage
+	g.id = id
+	g.address = address
+	g.maxConns = maxConns
+	g.numConns.Store(0)
+}
+
+func (g *Gate_) Stage() *Stage   { return g.stage }
+func (g *Gate_) Address() string { return g.address }
+
+func (g *Gate_) SetShut()     { g.shut.Store(true) }
+func (g *Gate_) IsShut() bool { return g.shut.Load() }
+
+func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 // Cronjob component
 type Cronjob interface {

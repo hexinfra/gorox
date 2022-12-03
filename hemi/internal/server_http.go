@@ -23,6 +23,8 @@ import (
 // httpServer is the interface for *httpxServer and *http3Server.
 type httpServer interface {
 	Server
+	streamHolder
+
 	Stage() *Stage
 	TLSMode() bool
 	ColonPortBytes() []byte
@@ -32,7 +34,6 @@ type httpServer interface {
 	linkSvc(svc *Svc)
 	findSvc(hostname []byte) *Svc
 
-	MaxStreamsPerConn() int32
 	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
 }
@@ -41,6 +42,7 @@ type httpServer interface {
 type httpServer_ struct {
 	// Mixins
 	Server_
+	streamHolder_
 	// Assocs
 	gates      []httpGate
 	defaultApp *App
@@ -53,7 +55,6 @@ type httpServer_ struct {
 	prefixSvcs          []*hostnameTo[*Svc] // like: ("www.example.*")
 	logFile             string              // httpServer's log file
 	logger              *log.Logger         // ...
-	maxStreamsPerConn   int32               // ...
 	recvRequestTimeout  time.Duration       // timeout for receiving head or part of content
 	sendResponseTimeout time.Duration       // timeout for sending head or part of content
 	hrpcMode            bool                // works as hrpc server and dispatches to svcs instead of apps?
@@ -185,7 +186,6 @@ func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
-func (s *httpServer_) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 func (s *httpServer_) ReadTimeout() time.Duration  { return s.recvRequestTimeout }
 func (s *httpServer_) WriteTimeout() time.Duration { return s.sendResponseTimeout }
 

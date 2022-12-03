@@ -29,8 +29,6 @@ stage {
     appServers = [
         "filer": ("main"),
     ]
-    svcs {}
-    svcServers = []
     servers {
         httpxServer "main" {
             address = ":3080"

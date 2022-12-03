@@ -33,6 +33,7 @@ func (h *httpClient_) onCreate() {
 }
 
 func (h *httpClient_) onConfigure(c Component, clientName string) {
+	// maxStreamsPerConn
 	c.ConfigureInt32("maxStreamsPerConn", &h.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 	// saveContentFilesDir
 	c.ConfigureString("saveContentFilesDir", &h.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.Name())

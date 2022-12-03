@@ -110,28 +110,3 @@ Contributing
   By contributing to Gorox, you MUST agree to release your code under the BSD
   License that you can find in the LICENSE.md file.
 
-
-Roadmap
-=======
-
-  * [TODO] fetch config through url.
-  * [TODO] shutdown support.
-  * [TODO] mesher system design and implementation.
-  * [TODO] fcgi handler.
-  * [TODO] websocket support.
-  * [TODO] gzip reviser.
-  * [TODO] http/2 support.
-  * [TODO] http/3 support.
-  * [TODO] http cache support.
-  * [TODO] web mvc framework. needs a strong standard like jakarta servlet.
-  * [TODO] documentation.
-  * [TODO] official sites.
-  * [TODO] filesys cache.
-  * [TODO] logging.
-  * [TODO] gocmc design and implementation.
-  * [TODO] goben design and implementation.
-  * [TODO] svc support.
-  * [TODO] more unit tests.
-  * [TODO] black/white box tests.
-  * [TODO] ...
-

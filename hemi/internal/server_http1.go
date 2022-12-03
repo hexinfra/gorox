@@ -202,7 +202,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 			tlsConn := tls.Server(tcpConn, g.server.tlsConfig)
 			// TODO: set deadline
 			if err := tlsConn.Handshake(); err != nil {
-				tlsConn.Close()
+				g.justClose(tcpConn)
 				continue
 			}
 			connState := tlsConn.ConnectionState()

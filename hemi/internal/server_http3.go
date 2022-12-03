@@ -111,6 +111,7 @@ func (g *http3Gate) serve() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(quicConn)
 		} else {
@@ -119,13 +120,16 @@ func (g *http3Gate) serve() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("http3Gate=%d done\n", g.id)
+	}
 	g.server.SubDone()
 }
 
 func (g *http3Gate) onConnectionClosed() {
 	g.DecConns()
-	// TODO: if there are no active connections and the gate is shutdown, tell http3Server.
+	g.SubDone()
 }
 func (g *http3Gate) justClose(quicConn *quix.Conn) {
 	quicConn.Close()

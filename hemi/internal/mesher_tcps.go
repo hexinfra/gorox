@@ -125,6 +125,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -141,7 +142,10 @@ func (g *tcpsGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("tcpsGate=%d TCP done\n", g.id)
+	}
 	g.mesher.SubDone()
 }
 func (g *tcpsGate) serveTLS() { // goroutine
@@ -155,6 +159,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -169,12 +174,16 @@ func (g *tcpsGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs()
+	if Debug(2) {
+		fmt.Printf("tcpsGate=%d TLS done\n", g.id)
+	}
 	g.mesher.SubDone()
 }
 
 func (g *tcpsGate) onConnectionClosed() {
 	g.DecConns()
+	g.SubDone()
 }
 func (g *tcpsGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()

@@ -59,7 +59,6 @@ OPTIONS
   -temp   <path>      # temp directory to use
   -vars   <path>      # vars directory to use
   -config <config>    # path or url to worker config file
-  -user   <user>      # user for worker (default: nobody)
 
   "-debug" applies for all actions.
   "-target" applies for telling and calling actions only.

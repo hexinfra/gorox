@@ -556,7 +556,7 @@ func (s *Stage) OnShutdown() {
 	s.logger.Writer().(*os.File).Close()
 }
 
-func (s *Stage) Start() { // one worker process mode
+func (s *Stage) Start() {
 	s.id = 0
 	s.numCPU = int32(runtime.NumCPU())
 
@@ -610,7 +610,6 @@ func (s *Stage) Start() { // one worker process mode
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Run()
 
-	// TODO: change user here
 	s.Logln("stage is ready to serve.")
 }
 func (s *Stage) Quit() {

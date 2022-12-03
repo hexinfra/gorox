@@ -35,7 +35,6 @@ var ( // flags
 	tempDir    = flag.String("temp", "", "")
 	varsDir    = flag.String("vars", "", "")
 	config     = flag.String("config", "", "")
-	userName   = flag.String("user", "nobody", "")
 )
 
 func Main(name string, usage string, level int, addr string) {

@@ -31,7 +31,7 @@ ACTION
   serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
-  reconf       # call worker to reconfigure
+  reconf       # tell worker to reconfigure
   rework       # tell leader to restart worker gracefully
   reopen       # tell leader to reopen its admin interface
   ping         # call ping of leader

@@ -58,7 +58,7 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	stage.Start()
+	stage.Start(0)
 
 	select {}
 }

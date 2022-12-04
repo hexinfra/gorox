@@ -106,7 +106,7 @@ func serve() { // as single, leader, or worker
 		}
 	} else if *singleMode { // run as single foreground process. for single mode
 		if stage, err := hemi.ApplyFile(getConfig()); err == nil {
-			stage.Start()
+			stage.Start(0)
 			select {}
 		} else {
 			fmt.Println(err.Error())

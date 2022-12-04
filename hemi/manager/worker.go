@@ -50,7 +50,7 @@ func workerMain(token string) {
 	if err != nil {
 		crash(err.Error())
 	}
-	currentStage.Start()
+	currentStage.Start(0)
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
@@ -79,16 +79,6 @@ func workerMain(token string) {
 }
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
-	comdReconf: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
-			newStage.Start()
-			stage.Quit()
-			currentStage = newStage
-			resp.Flag = 0
-		} else {
-			resp.Flag = 1
-		}
-	},
 	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
 		resp.Set("foo", "bar") // TODO: other infos
@@ -99,6 +89,14 @@ var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell comm
 	comdQuit: func(stage *hemi.Stage, req *msgx.Message) {
 		stage.Quit()
 		os.Exit(0)
+	},
+	comdReconf: func(stage *hemi.Stage, req *msgx.Message) {
+		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
+			id := stage.ID() + 1
+			newStage.Start(id)
+			currentStage = newStage
+			stage.Quit()
+		}
 	},
 	comdCPU: func(stage *hemi.Stage, req *msgx.Message) {
 		stage.ProfCPU()

@@ -30,6 +30,7 @@ const ( // for tells
 	comdQuit
 	comdRework
 	comdReopen
+	comdReconf
 	comdCPU
 	comdHeap
 	comdThread
@@ -42,6 +43,7 @@ var tellActions = map[string]func(){
 	"quit":      tellQuit,
 	"rework":    tellRework,
 	"reopen":    tellReopen,
+	"reconf":    tellReconf,
 	"cpu":       tellCPU,
 	"heap":      tellHeap,
 	"thread":    tellThread,
@@ -53,6 +55,7 @@ func tellStop()      { _tellLeader(comdStop, 0, nil) }
 func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
 func tellRework()    { _tellLeader(comdRework, 0, nil) }
 func tellReopen()    { _tellLeader(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
+func tellReconf()    { _tellLeader(comdReconf, 0, nil) }
 func tellCPU()       { _tellLeader(comdCPU, 0, nil) }
 func tellHeap()      { _tellLeader(comdHeap, 0, nil) }
 func tellThread()    { _tellLeader(comdThread, 0, nil) }
@@ -74,24 +77,15 @@ func _tellLeader(comd uint8, flag uint16, args map[string]string) {
 }
 
 const ( // for calls
-	comdReconf = iota // must be 0
-	comdPing
+	comdPing = iota // must be 0
 	comdInfo
 )
 
 var callActions = map[string]func(){
-	"reconf": callReconf,
-	"ping":   callPing,
-	"info":   callInfo,
+	"ping": callPing,
+	"info": callInfo,
 }
 
-func callReconf() {
-	if resp, ok := _callLeader(comdReconf, 0, nil); ok {
-		fmt.Printf("flag=%d\n", resp.Flag)
-	} else {
-		fmt.Printf("call leader at %s: failed!\n", targetAddr)
-	}
-}
 func callPing() {
 	if resp, ok := _callLeader(comdPing, 0, nil); ok && resp.Comd == comdPing && resp.Flag == 0 {
 		for name, value := range resp.Args {

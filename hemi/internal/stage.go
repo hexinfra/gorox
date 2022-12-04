@@ -500,7 +500,7 @@ func (s *Stage) OnPrepare() {
 
 func (s *Stage) OnShutdown() {
 	if Debug(2) {
-		fmt.Println("stage shutdown start!!")
+		fmt.Printf("stage id=%d shutdown start!!\n", s.id)
 	}
 
 	s.IncSub(len(s.cronjobs))
@@ -556,8 +556,8 @@ func (s *Stage) OnShutdown() {
 	s.logger.Writer().(*os.File).Close()
 }
 
-func (s *Stage) Start() {
-	s.id = 0
+func (s *Stage) Start(id int32) {
+	s.id = id
 	s.numCPU = int32(runtime.NumCPU())
 
 	if Debug(2) {
@@ -570,6 +570,8 @@ func (s *Stage) Start() {
 		fmt.Printf("size of Block = %d\n", unsafe.Sizeof(Block{}))
 	}
 	if Debug(1) {
+		fmt.Printf("stageID=%d\n", s.id)
+		fmt.Printf("numCPU=%d\n", s.numCPU)
 		fmt.Printf("baseDir=%s\n", BaseDir())
 		fmt.Printf("logsDir=%s\n", LogsDir())
 		fmt.Printf("tempDir=%s\n", TempDir())
@@ -616,7 +618,7 @@ func (s *Stage) Quit() {
 	// TODO: guard reentry
 	s.OnShutdown()
 	if Debug(2) {
-		fmt.Println("stage: graced.")
+		fmt.Printf("stage id=%d: graced.\n", s.id)
 	}
 	/*
 		if s.shut.CompareAndSwap(false, true) {

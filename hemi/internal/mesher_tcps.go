@@ -181,13 +181,13 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	g.mesher.SubDone()
 }
 
-func (g *tcpsGate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 func (g *tcpsGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
+}
+func (g *tcpsGate) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // poolTCPSConn

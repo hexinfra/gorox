@@ -108,12 +108,12 @@ func (g *quicGate) serve() { // goroutine
 	g.mesher.SubDone()
 }
 
-func (g *quicGate) onConnectionClosed() {
-	g.DecConns()
-}
 func (g *quicGate) justClose(quicConn *quix.Conn) {
 	quicConn.Close()
 	g.onConnectionClosed()
+}
+func (g *quicGate) onConnectionClosed() {
+	g.DecConns()
 }
 
 // poolQUICConn

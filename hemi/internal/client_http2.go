@@ -138,6 +138,7 @@ func (n *http2Node) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	// TODO: wait for all conns
 	if Debug(2) {
 		fmt.Printf("http2Node=%d done\n", n.id)
 	}

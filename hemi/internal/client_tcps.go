@@ -181,6 +181,7 @@ func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	n.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("tcpsNode=%d done\n", n.id)
 	}
@@ -219,21 +220,28 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 		if tConn.isAlive() && !tConn.reachLimit() && !down {
 			return tConn, nil
 		}
-		tConn.closeConn()
-		putTConn(tConn)
+		n.closeConn(tConn)
 	}
 	if down {
 		return nil, errNodeDown
 	}
-	return n.dial()
+	tConn, err := n.dial()
+	if err == nil {
+		n.IncSub(1)
+	}
+	return tConn, err
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.isBroken() || n.isDown() || !tConn.isAlive() {
-		tConn.closeConn()
-		putTConn(tConn)
+		n.closeConn(tConn)
 	} else {
 		n.pushConn(tConn)
 	}
+}
+func (n *tcpsNode) closeConn(tConn *TConn) {
+	tConn.closeConn()
+	putTConn(tConn)
+	n.SubDone()
 }
 
 // poolTConn

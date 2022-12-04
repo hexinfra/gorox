@@ -222,13 +222,13 @@ func (g *httpxGate) serveTLS() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *httpxGate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
+}
+func (g *httpxGate) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.

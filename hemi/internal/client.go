@@ -51,7 +51,9 @@ func (c *client_) onConfigure() {
 	// tlsMode
 	c.ConfigureBool("tlsMode", &c.tlsMode, false)
 	if c.tlsMode {
-		c.tlsConfig = new(tls.Config)
+		c.tlsConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
 	}
 	// dialTimeout
 	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 10*time.Second)

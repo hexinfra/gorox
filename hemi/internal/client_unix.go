@@ -172,6 +172,7 @@ func (n *unixNode) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	// TODO: wait for all conns
 	if Debug(2) {
 		fmt.Printf("unixNode=%d done\n", n.id)
 	}

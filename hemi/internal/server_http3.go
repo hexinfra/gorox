@@ -127,13 +127,13 @@ func (g *http3Gate) serve() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *http3Gate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 func (g *http3Gate) justClose(quicConn *quix.Conn) {
 	quicConn.Close()
 	g.onConnectionClosed()
+}
+func (g *http3Gate) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.

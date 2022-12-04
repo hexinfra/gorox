@@ -152,6 +152,7 @@ func (n *http1Node) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	n.WaitSubs()
 	if Debug(2) {
 		fmt.Printf("http1Node=%d done\n", n.id)
 	}
@@ -166,8 +167,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		if hConn.isAlive() && !hConn.reachLimit() && !down {
 			return hConn, nil
 		}
-		hConn.closeConn()
-		putH1Conn(hConn)
+		n.closeConn(hConn)
 	}
 	if down {
 		return nil, errNodeDown
@@ -186,6 +186,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 			tlsConn.Close()
 			return nil, err
 		}
+		n.IncSub(1)
 		return getH1Conn(connID, n.backend, n, tlsConn, nil), nil
 	} else {
 		rawConn, err := netConn.(*net.TCPConn).SyscallConn()
@@ -193,6 +194,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 			netConn.Close()
 			return nil, err
 		}
+		n.IncSub(1)
 		return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
 	}
 }
@@ -201,14 +203,18 @@ func (n *http1Node) storeConn(hConn *H1Conn) {
 		if Debug(2) {
 			fmt.Printf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
 		}
-		hConn.closeConn()
-		putH1Conn(hConn)
+		n.closeConn(hConn)
 	} else {
 		if Debug(2) {
 			fmt.Printf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
 	}
+}
+func (n *http1Node) closeConn(hConn *H1Conn) {
+	hConn.closeConn()
+	putH1Conn(hConn)
+	n.SubDone()
 }
 
 // poolH1Conn is the client-side HTTP/1 connection pool.

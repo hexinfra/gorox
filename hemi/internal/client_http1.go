@@ -82,7 +82,7 @@ func (f *HTTP1Outgate) Dial(address string, tlsMode bool) (*H1Conn, error) {
 	}
 	connID := f.nextConnID()
 	if tlsMode {
-		tlsConn := tls.Client(netConn, f.tlsConfig) // TODO: tlsConfig
+		tlsConn := tls.Client(netConn, f.tlsConfig)
 		return getH1Conn(connID, f, nil, tlsConn, nil), nil
 	} else {
 		rawConn, err := netConn.(*net.TCPConn).SyscallConn()

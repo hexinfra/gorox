@@ -101,7 +101,7 @@ func (f *TCPSOutgate) Dial(address string, tlsMode bool) (*TConn, error) {
 	}
 	connID := f.nextConnID()
 	if tlsMode {
-		tlsConn := tls.Client(netConn, nil)
+		tlsConn := tls.Client(netConn, f.tlsConfig)
 		return getTConn(connID, f, nil, tlsConn, nil), nil
 	} else {
 		rawConn, err := netConn.(*net.TCPConn).SyscallConn()

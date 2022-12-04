@@ -36,6 +36,7 @@ const ( // for tells
 	comdThread
 	comdGoroutine
 	comdBlock
+	comdGC
 )
 
 var tellActions = map[string]func(){
@@ -49,6 +50,7 @@ var tellActions = map[string]func(){
 	"thread":    tellThread,
 	"goroutine": tellGoroutine,
 	"block":     tellBlock,
+	"gc":        tellGC,
 }
 
 func tellStop()      { _tellLeader(comdStop, 0, nil) }
@@ -61,6 +63,7 @@ func tellHeap()      { _tellLeader(comdHeap, 0, nil) }
 func tellThread()    { _tellLeader(comdThread, 0, nil) }
 func tellGoroutine() { _tellLeader(comdGoroutine, 0, nil) }
 func tellBlock()     { _tellLeader(comdBlock, 0, nil) }
+func tellGC()        { _tellLeader(comdGC, 0, nil) }
 
 func _tellLeader(comd uint8, flag uint16, args map[string]string) {
 	admConn, err := net.Dial("tcp", targetAddr)

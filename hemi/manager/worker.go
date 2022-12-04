@@ -13,6 +13,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/msgx"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -112,5 +113,8 @@ var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell comm
 	},
 	comdBlock: func(stage *hemi.Stage, req *msgx.Message) {
 		stage.ProfBlock()
+	},
+	comdGC: func(stage *hemi.Stage, req *msgx.Message) {
+		runtime.GC()
 	},
 }

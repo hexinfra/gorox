@@ -79,6 +79,7 @@ func (f *clockFixture) run() { // goroutine
 	if Debug(2) {
 		fmt.Println("clock done")
 	}
+	f.stage.SubDone()
 }
 
 func (f *clockFixture) writeDate(p []byte) {

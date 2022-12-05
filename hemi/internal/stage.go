@@ -394,9 +394,17 @@ func (s *Stage) OnShutdown() {
 	go s.unix.OnShutdown()
 	s.WaitSubs()
 
+	s.IncSub(1)
 	s.filesys.OnShutdown()
+	s.WaitSubs()
+
+	s.IncSub(1)
 	s.resolv.OnShutdown()
+	s.WaitSubs()
+
+	s.IncSub(1)
 	s.clock.OnShutdown()
+	s.WaitSubs()
 
 	// TODO: shutdown s
 	if Debug(2) {
@@ -461,22 +469,13 @@ func (s *Stage) Start(id int32) {
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Run()
 
-	s.Logln("stage is ready to serve.")
+	s.Logf("stage=%d is ready to serve.\n", s.id)
 }
 func (s *Stage) Quit() {
-	// TODO: guard reentry
 	s.OnShutdown()
 	if Debug(2) {
 		fmt.Printf("stage id=%d: graced.\n", s.id)
 	}
-	/*
-		if s.shut.CompareAndSwap(false, true) {
-			s.OnShutdown()
-			if Debug(2) {
-				fmt.Println("stage: graced.")
-			}
-		}
-	*/
 }
 
 func (s *Stage) linkAppServers() {
@@ -666,13 +665,13 @@ func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
 
 func (s *Stage) Log(str string) {
-	//s.logger.log(str)
+	s.logger.Print(str)
 }
 func (s *Stage) Logln(str string) {
-	//s.logger.logln(str)
+	s.logger.Println(str)
 }
 func (s *Stage) Logf(format string, args ...any) {
-	//s.logger.logf(format, args...)
+	s.logger.Printf(format, args...)
 }
 
 func (s *Stage) ProfCPU() {

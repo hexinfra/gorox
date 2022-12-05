@@ -55,6 +55,7 @@ func (f *resolvFixture) run() { // goroutine
 	if Debug(2) {
 		fmt.Println("resolve done")
 	}
+	f.stage.SubDone()
 }
 
 func (f *resolvFixture) Resolve(name string) (address string) {

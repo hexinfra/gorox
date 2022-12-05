@@ -14,7 +14,7 @@ Roadmap
   * [TODO] documentation.
   * [TODO] official sites.
   * [TODO] filesys cache.
-  * [TODO] logging.
+  * [TODO] booking.
   * [TODO] gocmc design and implementation.
   * [TODO] goben design and implementation.
   * [TODO] svc support.

@@ -59,6 +59,9 @@ func workerMain(token string) {
 		if !ok { // leader must be gone
 			break
 		}
+		if hemi.Debug(2) {
+			fmt.Printf("worker received req=%v\n", req)
+		}
 		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
@@ -88,7 +91,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 
 var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell commands
 	comdQuit: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.Quit()
+		stage.Quit() // blocking
 		os.Exit(0)
 	},
 	comdReconf: func(stage *hemi.Stage, req *msgx.Message) {

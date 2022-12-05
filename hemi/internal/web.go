@@ -397,7 +397,7 @@ func (a *App) dispatchHandler(req Request, resp Response) {
 			continue
 		}
 		if processed := rule.executeNormal(req, resp); processed {
-			if rule.log && a.booker != nil {
+			if rule.book && a.booker != nil {
 				//a.booker.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
@@ -741,7 +741,7 @@ type Rule struct {
 	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of app, not rule
 	// States
 	general    bool     // general match?
-	log        bool     // enable logging for this rule?
+	book       bool     // enable booking for this rule?
 	returnCode int16    // ...
 	returnText []byte   // ...
 	varCode    int16    // the variable code
@@ -776,8 +776,8 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 
-	// log
-	r.ConfigureBool("log", &r.log, true)
+	// book
+	r.ConfigureBool("book", &r.book, true)
 
 	// returnCode
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) bool { return value >= 200 && value < 1000 }, 0)

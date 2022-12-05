@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"crypto/tls"
 	"fmt"
 	. "github.com/hexinfra/gorox/hemi/libraries/config"
 	"log"
@@ -16,8 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"strings"
-	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -894,90 +891,6 @@ type Optware interface {
 	Component
 	Run() // goroutine
 }
-
-// office_ is a mixin for meshers and servers.
-type office_ struct {
-	// Mixins
-	Component_
-	// Assocs
-	stage *Stage // current stage
-	// States
-	address         string      // hostname:port
-	tlsMode         bool        // tls mode?
-	numGates        int32       // number of gates
-	maxConnsPerGate int32       // max concurrent connections allowed per gate
-	tlsConfig       *tls.Config // set if is tls mode
-}
-
-func (o *office_) onCreate(name string, stage *Stage) {
-	o.CompInit(name)
-	o.stage = stage
-}
-
-func (o *office_) onConfigure() {
-	// address
-	if v, ok := o.Find("address"); ok {
-		if address, ok := v.String(); ok {
-			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
-				UseExitln("bad address: " + address)
-			} else {
-				o.address = address
-			}
-		} else {
-			UseExitln("address should be of string type")
-		}
-	} else {
-		UseExitln("address is required for servers")
-	}
-	// tlsMode
-	o.ConfigureBool("tlsMode", &o.tlsMode, false)
-	if o.tlsMode {
-		o.tlsConfig = new(tls.Config)
-	}
-	// numGates
-	o.ConfigureInt32("numGates", &o.numGates, func(value int32) bool { return value > 0 }, o.stage.NumCPU())
-	// maxConnsPerGate
-	o.ConfigureInt32("maxConnsPerGate", &o.maxConnsPerGate, func(value int32) bool { return value > 0 }, 100000)
-}
-func (o *office_) onPrepare() {
-}
-
-func (o *office_) Stage() *Stage          { return o.stage }
-func (o *office_) Address() string        { return o.address }
-func (o *office_) TLSMode() bool          { return o.tlsMode }
-func (o *office_) NumGates() int32        { return o.numGates }
-func (o *office_) MaxConnsPerGate() int32 { return o.maxConnsPerGate }
-
-// Gate_ is a mixin for mesher gates and server gates.
-type Gate_ struct {
-	// Mixins
-	waiter_
-	// Assocs
-	stage *Stage // current stage
-	// States
-	id       int32
-	address  string
-	shut     atomic.Bool
-	maxConns int32
-	numConns atomic.Int32 // TODO: false sharing
-}
-
-func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
-	g.stage = stage
-	g.id = id
-	g.address = address
-	g.maxConns = maxConns
-	g.numConns.Store(0)
-}
-
-func (g *Gate_) Stage() *Stage   { return g.stage }
-func (g *Gate_) Address() string { return g.address }
-
-func (g *Gate_) SetShut()     { g.shut.Store(true) }
-func (g *Gate_) IsShut() bool { return g.shut.Load() }
-
-func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
-func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 // Cronjob component
 type Cronjob interface {

@@ -22,6 +22,19 @@ func (w *waiter_) IncSub(n int) { w.subs.Add(n) }
 func (w *waiter_) WaitSubs()    { w.subs.Wait() }
 func (w *waiter_) SubDone()     { w.subs.Done() }
 
+// streamHolder
+type streamHolder interface {
+	MaxStreamsPerConn() int32
+}
+
+// streamHolder_ is a mixin.
+type streamHolder_ struct {
+	// States
+	maxStreamsPerConn int32 // max streams of one conn
+}
+
+func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
+
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
@@ -42,19 +55,6 @@ func (s *contentSaver_) makeContentFilesDir(perm os.FileMode) {
 	}
 }
 func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir }
-
-// streamHolder
-type streamHolder interface {
-	MaxStreamsPerConn() int32
-}
-
-// streamHolder_ is a mixin.
-type streamHolder_ struct {
-	// States
-	maxStreamsPerConn int32 // max streams of one conn
-}
-
-func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
 
 // loadBalancer_
 type loadBalancer_ struct {

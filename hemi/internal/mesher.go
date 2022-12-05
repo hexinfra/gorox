@@ -35,7 +35,7 @@ type _case interface {
 // mesher_ is the mixin for all meshers.
 type mesher_[M _mesher, G _gate, R _runner, F _filter, C _case] struct {
 	// Mixins
-	office_
+	Server_
 	// Assocs
 	gates   []G         // gates opened
 	runners compDict[R] // defined runners. indexed by name
@@ -51,7 +51,7 @@ type mesher_[M _mesher, G _gate, R _runner, F _filter, C _case] struct {
 }
 
 func (m *mesher_[M, G, R, F, C]) onCreate(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, filterCreators map[string]func(string, *Stage, M) F) {
-	m.office_.onCreate(name, stage)
+	m.Server_.OnCreate(name, stage)
 	m.runners = make(compDict[R])
 	m.filters = make(compDict[F])
 	m.runnerCreators = runnerCreators
@@ -60,7 +60,7 @@ func (m *mesher_[M, G, R, F, C]) onCreate(name string, stage *Stage, runnerCreat
 }
 
 func (m *mesher_[M, G, R, F, C]) onConfigure() {
-	m.office_.onConfigure()
+	m.Server_.OnConfigure()
 	// logFile
 	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/mesh-"+m.name+".log")
 }
@@ -71,7 +71,7 @@ func (m *mesher_[M, G, R, F, C]) configureSubs() {
 }
 
 func (m *mesher_[M, G, R, F, C]) onPrepare() {
-	m.office_.onPrepare()
+	m.Server_.OnPrepare()
 	// logger
 	if err := os.MkdirAll(filepath.Dir(m.logFile), 0755); err != nil {
 		EnvExitln(err.Error())

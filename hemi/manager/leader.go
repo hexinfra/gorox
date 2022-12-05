@@ -140,21 +140,8 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 	worker.start(base, file, deadWay)
 	msgChan <- nil // reply to leaderMain that we have created the worker.
 
-	for { // each event from worker and leaderMain
+	for { // each event from leaderMain and worker
 		select {
-		case exitCode := <-deadWay: // worker process dies unexpectedly
-			// TODO: more details
-			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				logger.Println("worker critical error")
-				stop()
-			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
-				worker.reset()
-				worker.lastDie = now
-				worker.start(base, file, deadWay) // start again
-			} else { // worker has suffered too frequent crashes, unable to serve!
-				logger.Println("worker is broken!")
-				stop()
-			}
 		case req := <-msgChan: // a message arrives from leaderMain
 			if req.IsTell() {
 				switch req.Comd {
@@ -179,6 +166,19 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 				}
 			} else { // call
 				msgChan <- worker.call(req)
+			}
+		case exitCode := <-deadWay: // worker process dies unexpectedly
+			// TODO: more details
+			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
+				logger.Println("worker critical error")
+				stop()
+			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
+				worker.reset()
+				worker.lastDie = now
+				worker.start(base, file, deadWay) // start again
+			} else { // worker has suffered too frequent crashes, unable to serve!
+				logger.Println("worker is broken!")
+				stop()
 			}
 		}
 	}

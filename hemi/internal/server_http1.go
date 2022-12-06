@@ -140,7 +140,7 @@ func (g *httpxGate) open() error {
 	return err
 }
 func (g *httpxGate) shutdown() error {
-	g.Gate_.SetShut()
+	g.Gate_.MarkShut()
 	return g.gate.Close()
 }
 

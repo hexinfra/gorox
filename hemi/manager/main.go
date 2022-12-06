@@ -26,6 +26,7 @@ var ( // flags
 	debugLevel int
 	targetAddr string
 	adminAddr  string
+	gocmcAddr  = flag.String("gocmc", "", "")
 	tryRun     = flag.Bool("try", false, "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")

@@ -94,7 +94,7 @@ func (g *http3Gate) open() error {
 	return nil
 }
 func (g *http3Gate) shutdown() error {
-	g.Gate_.SetShut()
+	g.Gate_.MarkShut()
 	return g.gate.Close()
 }
 

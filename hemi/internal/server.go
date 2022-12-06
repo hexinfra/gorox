@@ -104,7 +104,7 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 func (g *Gate_) Stage() *Stage   { return g.stage }
 func (g *Gate_) Address() string { return g.address }
 
-func (g *Gate_) SetShut()     { g.shut.Store(true) }
+func (g *Gate_) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_) IsShut() bool { return g.shut.Load() }
 
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }

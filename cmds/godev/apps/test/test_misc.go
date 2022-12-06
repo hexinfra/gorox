@@ -31,3 +31,10 @@ func (h *testHandler) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPT
 		}
 	}
 }
+func (h *testHandler) GET_json(req Request, resp Response) {
+	user := struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}{"jack", 25}
+	resp.SendJSON(user)
+}

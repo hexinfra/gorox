@@ -588,6 +588,7 @@ type Response interface {
 
 	Send(content string) error
 	SendBytes(content []byte) error
+	SendJSON(content any) error
 	SendFile(contentPath string) error
 
 	SendBadRequest(content []byte) error

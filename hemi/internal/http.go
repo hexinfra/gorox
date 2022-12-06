@@ -55,6 +55,7 @@ package internal
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
@@ -1222,6 +1223,14 @@ func (r *httpOutMessage_) Send(content string) error {
 }
 func (r *httpOutMessage_) SendBytes(content []byte) error {
 	return r.sendBlob(content)
+}
+func (r *httpOutMessage_) SendJSON(content any) error {
+	// TODO: optimize
+	data, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	return r.SendBytes(data)
 }
 func (r *httpOutMessage_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)

@@ -50,6 +50,7 @@ OPTIONS
   -debug  <level>     # debug level (default: 0, means disable. max: 2)
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9527)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9527)
+  -gocmc  <addr>      # gocmc address to join. if set, "-admin" will be ignored
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)

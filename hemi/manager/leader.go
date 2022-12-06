@@ -48,6 +48,14 @@ func leaderMain() {
 	}
 	logger = log.New(osFile, "", log.Ldate|log.Ltime)
 
+	if *gocmcAddr == "" {
+		adminServer()
+	} else {
+		gocmcClient()
+	}
+}
+
+func adminServer() {
 	// Load worker's config
 	base, file := getConfig()
 	logger.Printf("parse worker config: base=%s file=%s\n", base, file)
@@ -61,7 +69,6 @@ func leaderMain() {
 	<-msgChan // wait for keepWorker() to ensure worker is started.
 	logger.Println("worker process started")
 
-	// Start admin interface
 	logger.Printf("open admin interface: %s\n", adminAddr)
 	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control agent
 	if err != nil {
@@ -123,6 +130,10 @@ func leaderMain() {
 	closeNext:
 		admConn.Close()
 	}
+}
+func gocmcClient() {
+	// TODO
+	fmt.Println("TODO")
 }
 
 func keepWorker(base string, file string, msgChan chan *msgx.Message) { // goroutine

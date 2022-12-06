@@ -426,6 +426,10 @@ func (r *region) free() {
 	}
 }
 
+// booker
+type booker struct {
+}
+
 const ( // units
 	K = 1 << 10
 	M = 1 << 20

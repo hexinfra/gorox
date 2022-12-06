@@ -7,7 +7,7 @@ package board
 
 import (
 	"errors"
-	. "github.com/hexinfra/gorox/cmds/gocmc/admin"
+	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	"github.com/hexinfra/gorox/cmds/gocmc/board/pack"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
@@ -38,11 +38,11 @@ type boardHandler struct {
 	// Mixins
 	Sitex
 	// Assocs
-	admin *AdminServer
+	rocks *RocksServer
 	// States
 }
 
 func (h *boardHandler) OnPrepare() {
 	h.Sitex.OnPrepare()
-	h.admin = h.Stage().Server("cli").(*AdminServer)
+	h.rocks = h.Stage().Server("cli").(*RocksServer)
 }

@@ -7,7 +7,7 @@ package iface
 
 import (
 	"fmt"
-	. "github.com/hexinfra/gorox/cmds/gocmc/admin"
+	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	. "github.com/hexinfra/gorox/hemi"
 )
 
@@ -29,7 +29,7 @@ type v1Handler struct {
 	// Assocs
 	stage *Stage
 	app   *App
-	admin *AdminServer
+	rocks *RocksServer
 	// States
 }
 
@@ -45,7 +45,7 @@ func (h *v1Handler) onCreate(name string, stage *Stage, app *App) {
 func (h *v1Handler) OnConfigure() {
 }
 func (h *v1Handler) OnPrepare() {
-	h.admin = h.stage.Server("cli").(*AdminServer)
+	h.rocks = h.stage.Server("cli").(*RocksServer)
 }
 
 func (h *v1Handler) OnShutdown() {
@@ -58,6 +58,6 @@ func (h *v1Handler) Handle(req Request, resp Response) (next bool) {
 }
 
 func (h *v1Handler) GET_(req Request, resp Response) {
-	text := fmt.Sprintf("%d\n", h.admin.NumConns())
+	text := fmt.Sprintf("%d\n", h.rocks.NumConns())
 	resp.Send(text)
 }

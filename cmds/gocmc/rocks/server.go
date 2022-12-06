@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package admin
+package rocks
 
 import (
 	"fmt"
@@ -16,15 +16,15 @@ import (
 )
 
 func init() {
-	RegisterServer("adminServer", func(name string, stage *Stage) Server {
-		s := new(AdminServer)
+	RegisterServer("rocksServer", func(name string, stage *Stage) Server {
+		s := new(RocksServer)
 		s.onCreate(name, stage)
 		return s
 	})
 }
 
-// AdminServer
-type AdminServer struct {
+// RocksServer
+type RocksServer struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -34,16 +34,16 @@ type AdminServer struct {
 	address string
 	shut    atomic.Bool
 	mutex   sync.Mutex
-	conns   map[int64]*adminConn
+	conns   map[int64]*rockConn
 }
 
-func (s *AdminServer) onCreate(name string, stage *Stage) {
+func (s *RocksServer) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
-	s.conns = make(map[int64]*adminConn)
+	s.conns = make(map[int64]*rockConn)
 }
 
-func (s *AdminServer) OnConfigure() {
+func (s *RocksServer) OnConfigure() {
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
@@ -59,15 +59,15 @@ func (s *AdminServer) OnConfigure() {
 		UseExitln("address is required for server")
 	}
 }
-func (s *AdminServer) OnPrepare() {
+func (s *RocksServer) OnPrepare() {
 }
 
-func (s *AdminServer) OnShutdown() {
+func (s *RocksServer) OnShutdown() {
 	s.shut.Store(true)
 	s.gate.Close()
 }
 
-func (s *AdminServer) Serve() { // goroutine
+func (s *RocksServer) Serve() { // goroutine
 	addr, err := net.ResolveTCPAddr("tcp", s.address)
 	if err != nil {
 		EnvExitln(err.Error())
@@ -87,7 +87,7 @@ func (s *AdminServer) Serve() { // goroutine
 				continue
 			}
 		}
-		conn := new(adminConn)
+		conn := new(rockConn)
 		conn.init(s.stage, s, connID, tcpConn)
 		s.addConn(conn)
 		go conn.serve()
@@ -95,45 +95,45 @@ func (s *AdminServer) Serve() { // goroutine
 	}
 	// TODO: waiting for all connections end. Use sync.Cond?
 	if Debug(2) {
-		fmt.Printf("adminServer=%s done\n", s.Name())
+		fmt.Printf("rocksServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
 
-func (s *AdminServer) NumConns() int {
+func (s *RocksServer) NumConns() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return len(s.conns)
 }
-func (s *AdminServer) addConn(conn *adminConn) {
+func (s *RocksServer) addConn(conn *rockConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.conns[conn.id] = conn
 }
-func (s *AdminServer) delConn(conn *adminConn) {
+func (s *RocksServer) delConn(conn *rockConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	delete(s.conns, conn.id)
 }
 
-// adminConn
-type adminConn struct {
+// rockConn
+type rockConn struct {
 	// Assocs
 	stage  *Stage
-	server *AdminServer
+	server *RocksServer
 	// States
 	id      int64
 	tcpConn *net.TCPConn
 }
 
-func (c *adminConn) init(stage *Stage, server *AdminServer, id int64, tcpConn *net.TCPConn) {
+func (c *rockConn) init(stage *Stage, server *RocksServer, id int64, tcpConn *net.TCPConn) {
 	c.stage = stage
 	c.server = server
 	c.id = id
 	c.tcpConn = tcpConn
 }
 
-func (c *adminConn) serve() { // goroutine
+func (c *rockConn) serve() { // goroutine
 	defer c.closeConn()
 	for i := 0; i < 10; i++ {
 		fmt.Fprintf(c.tcpConn, "id=%d\n", c.id)
@@ -141,7 +141,7 @@ func (c *adminConn) serve() { // goroutine
 	}
 }
 
-func (c *adminConn) closeConn() {
+func (c *rockConn) closeConn() {
 	c.tcpConn.Close()
 	c.server.delConn(c)
 }

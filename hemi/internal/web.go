@@ -1043,12 +1043,9 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 			// TODO: other general checks against origin server
 		}
 	}
-	// Hook revisers on request. When receiving request content, these revisers will be executed.
+	// Hook revisers on request and response. When receiving or sending content, these revisers will be executed.
 	for _, reviser := range r.revisers {
 		req.hookReviser(reviser)
-	}
-	// Hook revisers on response. When sending response content, these revisers will be executed.
-	for _, reviser := range r.revisers {
 		resp.hookReviser(reviser)
 	}
 	// Execute handlers

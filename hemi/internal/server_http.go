@@ -12,9 +12,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -53,8 +51,6 @@ type httpServer_ struct {
 	exactSvcs           []*hostnameTo[*Svc] // like: ("example.com")
 	suffixSvcs          []*hostnameTo[*Svc] // like: ("*.example.com")
 	prefixSvcs          []*hostnameTo[*Svc] // like: ("www.example.*")
-	logFile             string              // httpServer's log file
-	logger              *log.Logger         // ...
 	recvRequestTimeout  time.Duration       // timeout for receiving head or part of content
 	sendResponseTimeout time.Duration       // timeout for sending head or part of content
 	hrpcMode            bool                // works as hrpc server and dispatches to svcs instead of apps?
@@ -68,8 +64,6 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_) onConfigure() {
 	s.Server_.OnConfigure()
-	// logFile
-	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/http-"+s.name+".log")
 	// maxStreamsPerConn
 	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, 0) // 0 means infinite
 	// recvRequestTimeout
@@ -85,15 +79,6 @@ func (s *httpServer_) onConfigure() {
 }
 func (s *httpServer_) onPrepare() {
 	s.Server_.OnPrepare()
-	// logger
-	if err := os.MkdirAll(filepath.Dir(s.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
-	}
-	logFile, err := os.OpenFile(s.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-	if err != nil {
-		EnvExitln(err.Error())
-	}
-	s.logger = log.New(logFile, "httpServer", log.Ldate|log.Ltime)
 }
 
 func (s *httpServer_) linkApp(app *App) {

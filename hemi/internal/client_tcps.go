@@ -181,7 +181,7 @@ func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
-	n.WaitSubs()
+	n.WaitSubs() // conns
 	if Debug(2) {
 		fmt.Printf("tcpsNode=%d done\n", n.id)
 	}

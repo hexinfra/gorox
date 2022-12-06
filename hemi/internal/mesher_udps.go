@@ -10,7 +10,6 @@ package internal
 import (
 	"fmt"
 	"net"
-	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -75,7 +74,7 @@ func (m *UDPSMesher) serve() { // goroutine
 	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
 	m.shutdownSubs()
 	m.WaitSubs() // runners, filters, cases
-	m.logger.Writer().(*os.File).Close()
+	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("udpsMesher=%s done\n", m.Name())
 	}

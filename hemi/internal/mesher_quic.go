@@ -10,7 +10,6 @@ package internal
 import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
-	"os"
 	"sync"
 	"time"
 )
@@ -69,7 +68,7 @@ func (m *QUICMesher) serve() { // goroutine
 	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
 	m.shutdownSubs()
 	m.WaitSubs() // runners, filters, cases
-	m.logger.Writer().(*os.File).Close()
+	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("quicMesher=%s done\n", m.Name())
 	}

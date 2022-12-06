@@ -18,7 +18,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -105,7 +104,6 @@ func (s *httpxServer) Serve() { // goroutine
 		}
 	}
 	s.WaitSubs() // gates
-	s.logger.Writer().(*os.File).Close()
 	if Debug(2) {
 		fmt.Printf("httpxServer=%s done\n", s.Name())
 	}
@@ -177,7 +175,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs()
+	g.WaitSubs() // conns
 	if Debug(2) {
 		fmt.Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -215,7 +213,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs()
+	g.WaitSubs() // conns
 	if Debug(2) {
 		fmt.Printf("httpxGate=%d TLS done\n", g.id)
 	}

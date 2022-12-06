@@ -9,9 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"log"
-	"os"
-	"path/filepath"
 )
 
 type _mesher interface {
@@ -44,10 +41,10 @@ type mesher_[M _mesher, G _gate, R _runner, F _filter, C _case] struct {
 	// States
 	runnerCreators map[string]func(name string, stage *Stage, mesher M) R
 	filterCreators map[string]func(name string, stage *Stage, mesher M) F
-	filtersByID    [256]F // for fast searching. position 0 is not used
-	nFilters       uint8  // used number of filtersByID in this mesher
-	logFile        string // mesher's log file
-	logger         *log.Logger
+	accessLog      []string // (file, rotate)
+	booker         *booker  // mesher access booker
+	filtersByID    [256]F   // for fast searching. position 0 is not used
+	nFilters       uint8    // used number of filtersByID in this mesher
 }
 
 func (m *mesher_[M, G, R, F, C]) onCreate(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, filterCreators map[string]func(string, *Stage, M) F) {
@@ -61,8 +58,16 @@ func (m *mesher_[M, G, R, F, C]) onCreate(name string, stage *Stage, runnerCreat
 
 func (m *mesher_[M, G, R, F, C]) onConfigure() {
 	m.Server_.OnConfigure()
-	// logFile
-	m.ConfigureString("logFile", &m.logFile, func(value string) bool { return value != "" }, LogsDir()+"/mesh-"+m.name+".log")
+	// accessLog
+	if v, ok := m.Find("accessLog"); ok {
+		if log, ok := v.StringListN(2); ok {
+			m.accessLog = log
+		} else {
+			UseExitln("invalid accessLog")
+		}
+	} else {
+		m.accessLog = nil
+	}
 }
 func (m *mesher_[M, G, R, F, C]) configureSubs() {
 	m.runners.walk(R.OnConfigure)
@@ -72,15 +77,9 @@ func (m *mesher_[M, G, R, F, C]) configureSubs() {
 
 func (m *mesher_[M, G, R, F, C]) onPrepare() {
 	m.Server_.OnPrepare()
-	// logger
-	if err := os.MkdirAll(filepath.Dir(m.logFile), 0755); err != nil {
-		EnvExitln(err.Error())
+	if m.accessLog != nil {
+		//m.booker = newBooker(m.accessLog[0], m.accessLog[1])
 	}
-	logFile, err := os.OpenFile(m.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-	if err != nil {
-		EnvExitln(err.Error())
-	}
-	m.logger = log.New(logFile, "mesher", log.Ldate|log.Ltime)
 }
 func (m *mesher_[M, G, R, F, C]) prepareSubs() {
 	m.runners.walk(R.OnPrepare)

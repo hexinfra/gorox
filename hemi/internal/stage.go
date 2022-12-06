@@ -113,156 +113,6 @@ func (s *Stage) onCreate() {
 	s.svcServers = make(map[string][]string)
 }
 
-func (s *Stage) createOptware(sign string) Optware {
-	create, ok := optwareCreators[sign]
-	if !ok {
-		UseExitln("unknown optware type: " + sign)
-	}
-	if s.Optware(sign) != nil {
-		UseExitf("conflicting optware with a same sign '%s'\n", sign)
-	}
-	optware := create(sign, s)
-	optware.setShell(optware)
-	s.optwares[sign] = optware
-	return optware
-}
-func (s *Stage) createBackend(sign string, name string) backend {
-	create, ok := backendCreators[sign]
-	if !ok {
-		UseExitln("unknown backend type: " + sign)
-	}
-	if s.Backend(name) != nil {
-		UseExitf("conflicting backend with a same name '%s'\n", name)
-	}
-	backend := create(name, s)
-	backend.setShell(backend)
-	s.backends[name] = backend
-	return backend
-}
-func (s *Stage) createQUICMesher(name string) *QUICMesher {
-	if s.QUICMesher(name) != nil {
-		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
-	}
-	mesher := new(QUICMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.quicMeshers[name] = mesher
-	return mesher
-}
-func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
-	if s.TCPSMesher(name) != nil {
-		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
-	}
-	mesher := new(TCPSMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.tcpsMeshers[name] = mesher
-	return mesher
-}
-func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
-	if s.UDPSMesher(name) != nil {
-		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
-	}
-	mesher := new(UDPSMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.udpsMeshers[name] = mesher
-	return mesher
-}
-func (s *Stage) createStater(sign string, name string) Stater {
-	create, ok := staterCreators[sign]
-	if !ok {
-		UseExitln("unknown stater type: " + sign)
-	}
-	if s.Stater(name) != nil {
-		UseExitf("conflicting stater with a same name '%s'\n", name)
-	}
-	stater := create(name, s)
-	stater.setShell(stater)
-	s.staters[name] = stater
-	return stater
-}
-func (s *Stage) createCacher(sign string, name string) Cacher {
-	create, ok := cacherCreators[sign]
-	if !ok {
-		UseExitln("unknown cacher type: " + sign)
-	}
-	if s.Cacher(name) != nil {
-		UseExitf("conflicting cacher with a same name '%s'\n", name)
-	}
-	cacher := create(name, s)
-	cacher.setShell(cacher)
-	s.cachers[name] = cacher
-	return cacher
-}
-func (s *Stage) createApp(name string) *App {
-	if s.App(name) != nil {
-		UseExitf("conflicting app with a same name '%s'\n", name)
-	}
-	app := new(App)
-	app.onCreate(name, s)
-	app.setShell(app)
-	s.apps[name] = app
-	return app
-}
-func (s *Stage) createSvc(name string) *Svc {
-	if s.Svc(name) != nil {
-		UseExitf("conflicting svc with a same name '%s'\n", name)
-	}
-	svc := new(Svc)
-	svc.onCreate(name, s)
-	svc.setShell(svc)
-	s.svcs[name] = svc
-	return svc
-}
-func (s *Stage) createServer(sign string, name string) Server {
-	create, ok := serverCreators[sign]
-	if !ok {
-		UseExitln("unknown server type: " + sign)
-	}
-	if s.Server(name) != nil {
-		UseExitf("conflicting server with a same name '%s'\n", name)
-	}
-	server := create(name, s)
-	server.setShell(server)
-	s.servers[name] = server
-	return server
-}
-func (s *Stage) createCronjob(sign string) Cronjob {
-	create, ok := cronjobCreators[sign]
-	if !ok {
-		UseExitln("unknown cronjob type: " + sign)
-	}
-	if s.Cronjob(sign) != nil {
-		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
-	}
-	cronjob := create(sign, s)
-	cronjob.setShell(cronjob)
-	s.cronjobs[sign] = cronjob
-	return cronjob
-}
-
-func (s *Stage) Filesys() *filesysFixture           { return s.filesys }
-func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
-func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
-func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
-func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
-func (s *Stage) TCPS() *TCPSOutgate                 { return s.tcps }
-func (s *Stage) UDPS() *UDPSOutgate                 { return s.udps }
-func (s *Stage) Unix() *UnixOutgate                 { return s.unix }
-func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Optware(sign string) Optware        { return s.optwares[sign] }
-func (s *Stage) Backend(name string) backend        { return s.backends[name] }
-func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
-func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
-func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
-func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
-func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) App(name string) *App               { return s.apps[name] }
-func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
-func (s *Stage) Server(name string) Server          { return s.servers[name] }
-func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
-
 func (s *Stage) OnConfigure() {
 	// appServers
 	if v, ok := s.Find("appServers"); ok {
@@ -412,6 +262,156 @@ func (s *Stage) OnShutdown() {
 	}
 	s.logger.Writer().(*os.File).Close()
 }
+
+func (s *Stage) createOptware(sign string) Optware {
+	create, ok := optwareCreators[sign]
+	if !ok {
+		UseExitln("unknown optware type: " + sign)
+	}
+	if s.Optware(sign) != nil {
+		UseExitf("conflicting optware with a same sign '%s'\n", sign)
+	}
+	optware := create(sign, s)
+	optware.setShell(optware)
+	s.optwares[sign] = optware
+	return optware
+}
+func (s *Stage) createBackend(sign string, name string) backend {
+	create, ok := backendCreators[sign]
+	if !ok {
+		UseExitln("unknown backend type: " + sign)
+	}
+	if s.Backend(name) != nil {
+		UseExitf("conflicting backend with a same name '%s'\n", name)
+	}
+	backend := create(name, s)
+	backend.setShell(backend)
+	s.backends[name] = backend
+	return backend
+}
+func (s *Stage) createQUICMesher(name string) *QUICMesher {
+	if s.QUICMesher(name) != nil {
+		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
+	}
+	mesher := new(QUICMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.quicMeshers[name] = mesher
+	return mesher
+}
+func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
+	if s.TCPSMesher(name) != nil {
+		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
+	}
+	mesher := new(TCPSMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.tcpsMeshers[name] = mesher
+	return mesher
+}
+func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
+	if s.UDPSMesher(name) != nil {
+		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
+	}
+	mesher := new(UDPSMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.udpsMeshers[name] = mesher
+	return mesher
+}
+func (s *Stage) createStater(sign string, name string) Stater {
+	create, ok := staterCreators[sign]
+	if !ok {
+		UseExitln("unknown stater type: " + sign)
+	}
+	if s.Stater(name) != nil {
+		UseExitf("conflicting stater with a same name '%s'\n", name)
+	}
+	stater := create(name, s)
+	stater.setShell(stater)
+	s.staters[name] = stater
+	return stater
+}
+func (s *Stage) createCacher(sign string, name string) Cacher {
+	create, ok := cacherCreators[sign]
+	if !ok {
+		UseExitln("unknown cacher type: " + sign)
+	}
+	if s.Cacher(name) != nil {
+		UseExitf("conflicting cacher with a same name '%s'\n", name)
+	}
+	cacher := create(name, s)
+	cacher.setShell(cacher)
+	s.cachers[name] = cacher
+	return cacher
+}
+func (s *Stage) createApp(name string) *App {
+	if s.App(name) != nil {
+		UseExitf("conflicting app with a same name '%s'\n", name)
+	}
+	app := new(App)
+	app.onCreate(name, s)
+	app.setShell(app)
+	s.apps[name] = app
+	return app
+}
+func (s *Stage) createSvc(name string) *Svc {
+	if s.Svc(name) != nil {
+		UseExitf("conflicting svc with a same name '%s'\n", name)
+	}
+	svc := new(Svc)
+	svc.onCreate(name, s)
+	svc.setShell(svc)
+	s.svcs[name] = svc
+	return svc
+}
+func (s *Stage) createServer(sign string, name string) Server {
+	create, ok := serverCreators[sign]
+	if !ok {
+		UseExitln("unknown server type: " + sign)
+	}
+	if s.Server(name) != nil {
+		UseExitf("conflicting server with a same name '%s'\n", name)
+	}
+	server := create(name, s)
+	server.setShell(server)
+	s.servers[name] = server
+	return server
+}
+func (s *Stage) createCronjob(sign string) Cronjob {
+	create, ok := cronjobCreators[sign]
+	if !ok {
+		UseExitln("unknown cronjob type: " + sign)
+	}
+	if s.Cronjob(sign) != nil {
+		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
+	}
+	cronjob := create(sign, s)
+	cronjob.setShell(cronjob)
+	s.cronjobs[sign] = cronjob
+	return cronjob
+}
+
+func (s *Stage) Filesys() *filesysFixture           { return s.filesys }
+func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
+func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
+func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
+func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
+func (s *Stage) TCPS() *TCPSOutgate                 { return s.tcps }
+func (s *Stage) UDPS() *UDPSOutgate                 { return s.udps }
+func (s *Stage) Unix() *UnixOutgate                 { return s.unix }
+func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
+func (s *Stage) Optware(sign string) Optware        { return s.optwares[sign] }
+func (s *Stage) Backend(name string) backend        { return s.backends[name] }
+func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
+func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
+func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
+func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
+func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
+func (s *Stage) App(name string) *App               { return s.apps[name] }
+func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
+func (s *Stage) Server(name string) Server          { return s.servers[name] }
+func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
 
 func (s *Stage) Start(id int32) {
 	s.id = id

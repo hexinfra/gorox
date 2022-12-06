@@ -152,7 +152,7 @@ func (n *http1Node) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
-	n.WaitSubs()
+	n.WaitSubs() // conns
 	if Debug(2) {
 		fmt.Printf("http1Node=%d done\n", n.id)
 	}

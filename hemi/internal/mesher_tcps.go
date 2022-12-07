@@ -374,34 +374,34 @@ var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []b
 	"!~": (*tcpsCase).notRegexpMatch,
 }
 
-func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
 	return c.case_.equalMatch(value)
 }
-func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
 	return c.case_.prefixMatch(value)
 }
-func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *tcpsCase) wildcardMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) wildcardMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
 	return c.case_.wildcardMatch(value)
 }
-func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
-func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
 	return c.case_.notEqualMatch(value)
 }
-func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
 	return c.case_.notPrefixMatch(value)
 }
-func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
 }
-func (c *tcpsCase) notWildcardMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) notWildcardMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
 	return c.case_.notWildcardMatch(value)
 }
-func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool {
+func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)
 }
 

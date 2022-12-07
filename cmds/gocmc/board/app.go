@@ -7,8 +7,8 @@ package board
 
 import (
 	"errors"
-	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	"github.com/hexinfra/gorox/cmds/gocmc/board/pack"
+	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
 )

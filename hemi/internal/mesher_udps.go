@@ -271,34 +271,34 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 	"!~": (*udpsCase).notRegexpMatch,
 }
 
-func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
 	return c.case_.equalMatch(value)
 }
-func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= patterns
 	return c.case_.prefixMatch(value)
 }
-func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *udpsCase) wildcardMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) wildcardMatch(conn *UDPSConn, value []byte) bool { // value *= patterns
 	return c.case_.wildcardMatch(value)
 }
-func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
-func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool { // value != patterns
 	return c.case_.notEqualMatch(value)
 }
-func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value !^ patterns
 	return c.case_.notPrefixMatch(value)
 }
-func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
 }
-func (c *udpsCase) notWildcardMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) notWildcardMatch(conn *UDPSConn, value []byte) bool { // value !* patterns
 	return c.case_.notWildcardMatch(value)
 }
-func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool {
+func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)
 }
 

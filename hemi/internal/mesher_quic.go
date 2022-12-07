@@ -271,34 +271,34 @@ var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []b
 	"!~": (*quicCase).notRegexpMatch,
 }
 
-func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool { // value == patterns
 	return c.case_.equalMatch(value)
 }
-func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool { // value ^= patterns
 	return c.case_.prefixMatch(value)
 }
-func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *quicCase) wildcardMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) wildcardMatch(conn *QUICConn, value []byte) bool { // value *= patterns
 	return c.case_.wildcardMatch(value)
 }
-func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
-func (c *quicCase) notEqualMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) notEqualMatch(conn *QUICConn, value []byte) bool { // value != patterns
 	return c.case_.notEqualMatch(value)
 }
-func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool { // value !^ patterns
 	return c.case_.notPrefixMatch(value)
 }
-func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
 }
-func (c *quicCase) notWildcardMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) notWildcardMatch(conn *QUICConn, value []byte) bool { // value !* patterns
 	return c.case_.notWildcardMatch(value)
 }
-func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool {
+func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)
 }
 

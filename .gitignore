@@ -7,6 +7,7 @@
 *.so
 *.dylib
 *.out
+*.err
 *.log
 *.test
 *.prof

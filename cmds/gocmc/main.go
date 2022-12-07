@@ -8,9 +8,9 @@
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	_ "github.com/hexinfra/gorox/cmds/gocmc/board"
 	_ "github.com/hexinfra/gorox/cmds/gocmc/iface"
+	_ "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	_ "github.com/hexinfra/gorox/cmds/gocmc/store"
 )
 

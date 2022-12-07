@@ -11,8 +11,11 @@ import (
 	"io"
 )
 
+// msg: mode(1) | comd(1) | flag(2) | nArgs(1) | size(3) | args(...arg)
+// arg: nameSize(1) | valueSize(3) | name(nameSize) | value(valueSize)
+
 // Message
-type Message struct { // mode(1) | comd(1) | flag(2) | nArgs(1) | size(3)
+type Message struct {
 	Mode uint8  // 0:tell 1:call
 	Comd uint8  // 0-255, allow max 256 commands
 	Flag uint16 // 0-65535

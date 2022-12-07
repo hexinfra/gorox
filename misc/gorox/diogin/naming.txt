@@ -43,8 +43,8 @@ COMPONENTS
 MEMORY
 ======
 
-  r.arena
-  -------
+  r.region
+  --------
 
     Region-based memory management, for a stream
 

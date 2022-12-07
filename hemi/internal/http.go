@@ -101,20 +101,20 @@ type stream_ struct {
 	stockStack [64]byte // a (fake) stack buffer to workaround Go's conservative escape analysis. WARNING: used this as a temp stack scoped memory!
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	arena region // a region-based memory pool
+	region region // a region-based memory pool
 	// Stream states (zeros)
 	httpMode int8 // http mode of current stream. see httpModeXXX
 }
 
 func (s *stream_) onUse() { // for non-zeros
-	s.arena.init()
+	s.region.init()
 	s.httpMode = httpModeNormal
 }
 func (s *stream_) onEnd() { // for zeros
-	s.arena.free()
+	s.region.free()
 }
 
-func (s *stream_) unsafeMake(size int) []byte { return s.arena.alloc(size) }
+func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
 
 // httpInMessage is a Request or response.

@@ -218,7 +218,7 @@ type TCPSConn struct {
 	gate    *tcpsGate
 	netConn net.Conn
 	rawConn syscall.RawConn
-	arena   region
+	region  region
 	// Conn states (zeros)
 	tcpsConn0
 }
@@ -234,7 +234,7 @@ func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsG
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.arena.init()
+	c.region.init()
 }
 func (c *TCPSConn) onPut() {
 	c.stage = nil
@@ -242,7 +242,7 @@ func (c *TCPSConn) onPut() {
 	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.arena.free()
+	c.region.free()
 	c.tcpsConn0 = tcpsConn0{}
 }
 

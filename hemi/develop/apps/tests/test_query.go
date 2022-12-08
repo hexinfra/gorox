@@ -3,15 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package test
+package tests
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *testHandler) GET_useragent(req Request, resp Response) {
-	resp.Send(req.UserAgent())
-}
-func (h *testHandler) GET_authority(req Request, resp Response) {
-	resp.SendBytes(req.UnsafeAuthority())
+func (h *testHandler) GET_querystring(req Request, resp Response) {
+	resp.Send(req.QueryString())
 }

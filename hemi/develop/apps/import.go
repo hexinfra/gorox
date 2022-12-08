@@ -8,5 +8,5 @@
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/test"
+	_ "github.com/hexinfra/gorox/hemi/develop/apps/tests"
 )

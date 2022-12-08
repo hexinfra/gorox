@@ -29,7 +29,9 @@ desktop.ini
 /gocmc
 /gorox
 
-/hemi/develop/develop
 /hemi/develop/logs
 /hemi/develop/temp
 /hemi/develop/vars
+
+/hemi/develop/demake
+/hemi/develop/godev

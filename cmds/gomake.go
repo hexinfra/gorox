@@ -37,9 +37,8 @@ TARGET
   Specify cmd name as TARGET. If TARGET is empty, the default target is gorox.
   Some special targets are:
 
-  b        # build goben, for convenience
-  c        # build gocmc, for convenience
-  d        # build godev, for convenience
+  b        # build cmds/goben, for convenience
+  c        # build cmds/gocmc, for convenience
   all      # build all cmds in the directory
   clean    # clean binaries, logs, and temp files
   dist     # make distribution
@@ -88,8 +87,6 @@ func main() {
 			build("goben", "cmds/goben")
 		case "c":
 			build("gocmc", "cmds/gocmc")
-		case "d":
-			build("godev", "cmds/godev")
 		case "":
 			build("gorox", "cmds/gorox")
 		case "all":

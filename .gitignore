@@ -24,9 +24,12 @@ desktop.ini
 /vars
 /vendor
 
-/demake
 /gomake
 /goben
 /gocmc
-/godev
 /gorox
+
+/hemi/develop/develop
+/hemi/develop/logs
+/hemi/develop/temp
+/hemi/develop/vars

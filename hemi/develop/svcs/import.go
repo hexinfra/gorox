@@ -8,5 +8,5 @@
 package svcs
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/godev/svcs/test"
+	_ "github.com/hexinfra/gorox/hemi/develop/svcs/test"
 )

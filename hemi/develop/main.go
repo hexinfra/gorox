@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Godev server (leader & worker) and its control agent.
+// Develop server (leader & worker) and its control agent.
 
 package main
 
@@ -12,19 +12,19 @@ import (
 )
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/godev/apps"
-	_ "github.com/hexinfra/gorox/cmds/godev/exts"
-	_ "github.com/hexinfra/gorox/cmds/godev/svcs"
-	"github.com/hexinfra/gorox/cmds/godev/test"
+	_ "github.com/hexinfra/gorox/hemi/develop/apps"
+	_ "github.com/hexinfra/gorox/hemi/develop/exts"
+	_ "github.com/hexinfra/gorox/hemi/develop/svcs"
+	"github.com/hexinfra/gorox/hemi/develop/test"
 )
 
 import "github.com/hexinfra/gorox/hemi/manager"
 
 const usage = `
-Godev (%s)
+Develop (%s)
 ================================================================================
 
-  godev [ACTION] [OPTIONS]
+  develop [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -59,7 +59,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: godev-leader.log in logs dir)
+  -log    <path>      # leader log file (default: develop-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		manager.Main("godev", usage, 2, "127.0.0.1:9526")
+		manager.Main("develop", usage, 2, "127.0.0.1:9526")
 	}
 }

@@ -48,7 +48,7 @@ func ignoringEINTRIO(fn func(fd int, p []byte) (int, error), fd int, p []byte) (
 }
 
 func Check() bool {
-	if runtime.GOARCH != "amd64" || runtime.GOARCH != "arm64" {
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
 		return false
 	}
 	major, minor := kernelVersion()

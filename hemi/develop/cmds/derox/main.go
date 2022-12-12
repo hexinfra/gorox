@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Godev server (leader & worker) and its control agent.
+// Derox server (leader & worker) and its control agent.
 
 package main
 
@@ -21,10 +21,10 @@ import (
 import "github.com/hexinfra/gorox/hemi/manager"
 
 const usage = `
-Godev (%s)
+Derox (%s)
 ================================================================================
 
-  godev [ACTION] [OPTIONS]
+  derox [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -59,7 +59,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: godev-leader.log in logs dir)
+  -log    <path>      # leader log file (default: derox-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		manager.Main("godev", usage, 2, "127.0.0.1:9526")
+		manager.Main("derox", usage, 2, "127.0.0.1:9526")
 	}
 }

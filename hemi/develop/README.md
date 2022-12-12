@@ -11,7 +11,7 @@ Build
 
     shell> go build cmds/demake.go
 
-  Then you can use demake to build godev:
+  Then you can use demake to build derox:
 
     shell> ./demake
 

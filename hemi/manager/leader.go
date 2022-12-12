@@ -6,11 +6,12 @@
 // Leader process of manager.
 
 // Some terms:
-//   admConn - control agent ----> leader admin
 //   admGate - Used by leader process, for receiving admConns from control agent
-//   msgChan - leaderMain() <---> keepWorker()
-//   deadWay - keepWorker() <---- worker
+//   admConn - control agent ----> adminServer()
+//   msgChan - adminServer()/gocmcClient() <---> keepWorker()
+//   deadWay - keepWorker() <---- worker.wait()
 //   cmdPipe - leader process <---> worker process
+//   cmcConn - leader gocmcClient <---> gocmc
 
 package manager
 

@@ -34,7 +34,7 @@ OPTIONS
 TARGET
 ------
 
-  Specify cmd name as TARGET. If TARGET is empty, the default target is godev.
+  Specify cmd name as TARGET. If TARGET is empty, the default target is derox.
   Some special targets are:
 
   all      # build all cmds in the directory
@@ -79,7 +79,7 @@ func main() {
 		}
 		switch target {
 		case "":
-			build("godev", "cmds/godev")
+			build("derox", "cmds/derox")
 		case "all":
 			cmds, err := os.ReadDir("cmds")
 			if err != nil {

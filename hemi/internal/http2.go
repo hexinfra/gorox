@@ -95,9 +95,9 @@ func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
 }
 
 const ( // HTTP/2 sizes and limits
-	http2FrameMaxSize     = _16K // for both client and server
-	http2MaxTableSize     = _4K  // for both client and server
-	http2MaxActiveStreams = 127  // for both client and server
+	http2FrameMaxSize     = 64000 // for both of our HTTP/2 client and HTTP/2 server
+	http2MaxTableSize     = _4K   // for both of our HTTP/2 client and HTTP/2 server
+	http2MaxActiveStreams = 127   // for both of our HTTP/2 client and HTTP/2 server
 )
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0

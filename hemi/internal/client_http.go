@@ -241,6 +241,9 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 			return false
 		}
 	}
+	if contentType := req.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {
+		return false
+	}
 	// copy critical headers from req
 	req.delCriticalHeaders()
 	if req.IsAbsoluteForm() {
@@ -252,7 +255,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 			return false
 		}
 	}
-	// copy remaining headers
+	// copy remaining headers from req
 	if !req.walkHeaders(func(name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
 	}, false) {

@@ -586,6 +586,9 @@ func (r *httpInMessage_) addHeader(header *pair) bool {
 func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, extraKindHeader)
 }
+func (r *httpInMessage_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, r.delHeader)
+}
 func (r *httpInMessage_) walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool { // used by proxies
 	return r._walkFields(r.headers, extraKindHeader, fn, withConnection)
 }
@@ -777,6 +780,9 @@ func (r *httpInMessage_) addTrailer(trailer *pair) {
 func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, extraKindTrailer)
 }
+func (r *httpInMessage_) delHopTrailers() { // used by proxies
+	r._delHopFields(r.trailers, r.delTrailer)
+}
 func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool { // used by proxies
 	return r._walkFields(r.trailers, extraKindTrailer, fn, withConnection)
 }
@@ -887,13 +893,6 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 
 func (r *httpInMessage_) delPrime(i uint8) {
 	r.primes[i].zero()
-}
-
-func (r *httpInMessage_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
-}
-func (r *httpInMessage_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, r.delTrailer)
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {

@@ -154,7 +154,7 @@ type http2Settings struct {
 	maxHeaderListSize    uint32 // 0x6
 }
 
-var http2InitialSettings = http2Settings{ // default settings of client, not server
+var http2InitialSettings = http2Settings{ // default settings of remote peer
 	headerTableSize:      _4K,
 	enablePush:           true,
 	maxConcurrentStreams: 100,

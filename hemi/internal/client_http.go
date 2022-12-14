@@ -236,8 +236,10 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		return false
 	}
 	req.delHopHeaders()
-	if req.AcceptTrailers() {
-		// TODO
+	if req.AcceptTrailers() { // te: trailers
+		if !r.shell.addHeader(httpBytesTE, httpBytesTrailers) {
+			return false
+		}
 	}
 	// copy critical headers from req
 	req.delCriticalHeaders()

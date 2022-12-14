@@ -191,9 +191,17 @@ var http3StaticTable = [...]pair{ // 99*16B=1584B. DO NOT CHANGE THIS
 	98: {1513, pairPlaceStatic3, 15, 1443, text{1462, 1472}},
 }
 
+// http3TableEntry is a dynamic table entry.
+type http3TableEntry struct { // 8 bytes
+	nameFrom  uint16
+	nameEdge  uint16 // nameEdge - nameFrom <= 255
+	valueEdge uint16
+	totalSize uint16 // nameSize + valueSize + 32
+}
+
 // http3DynamicTable
 type http3DynamicTable struct {
-	entries [124]httpTableEntry
+	entries [124]http3TableEntry
 	content [_4K]byte
 }
 

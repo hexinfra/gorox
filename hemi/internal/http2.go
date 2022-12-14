@@ -288,6 +288,14 @@ func http2IsStaticIndex(index uint32) bool  { return index <= 61 }
 func http2GetStaticPair(index uint32) *pair { return &http2StaticTable[index] }
 func http2DynamicIndex(index uint32) uint32 { return index - 62 }
 
+// http2TableEntry is a dynamic table entry.
+type http2TableEntry struct { // 8 bytes
+	nameFrom  uint16
+	nameEdge  uint16 // nameEdge - nameFrom <= 255
+	valueEdge uint16
+	totalSize uint16 // nameSize + valueSize + 32
+}
+
 // http2DynamicTable
 type http2DynamicTable struct {
 	maxSize  uint32 // <= http2MaxTableSize
@@ -296,7 +304,7 @@ type http2DynamicTable struct {
 	nEntries uint32 // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124
 	oldest   uint32 // evict from oldest
 	newest   uint32 // append to newest
-	entries  [124]httpTableEntry
+	entries  [124]http2TableEntry
 	content  [http2MaxTableSize - 32]byte
 }
 
@@ -338,7 +346,7 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 		t._evictOne()
 	}
 	t.freeSize -= wantSize
-	var entry httpTableEntry
+	var entry http2TableEntry
 	if t.nEntries > 0 {
 		entry.nameFrom = t.entries[t.newest].valueEdge
 		if t.newest++; t.newest == t.eEntries {

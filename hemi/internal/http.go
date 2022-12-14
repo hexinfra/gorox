@@ -1914,11 +1914,3 @@ var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for
 		{0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0},
 	},
 }
-
-// httpTableEntry is a dynamic table entry.
-type httpTableEntry struct { // 8 bytes
-	nameFrom  uint16
-	nameEdge  uint16 // nameEdge - nameFrom <= 255
-	valueEdge uint16
-	totalSize uint16 // nameSize + valueSize + 32
-}

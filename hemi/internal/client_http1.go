@@ -586,9 +586,9 @@ func (r *H1Response) _cleanInput() {
 		}
 		return
 	}
-	// content exists (identity or chunked)
+	// content exists (sized or chunked)
 	r.imme.set(r.pFore, r.inputEdge)
-	if r.contentSize >= 0 { // identity mode
+	if r.contentSize >= 0 { // sized mode
 		if immeSize := int64(r.imme.size()); immeSize >= r.contentSize {
 			r.contentReceived = true
 			if immeSize > r.contentSize { // still has data

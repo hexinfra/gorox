@@ -692,14 +692,14 @@ type Reviser interface {
 
 	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
 
-	BeforeRecv(req Request, resp Response) // for identity content
+	BeforeRecv(req Request, resp Response) // for sized content
 
 	BeforePull(req Request, resp Response) // for chunked content
 	FinishPull(req Request, resp Response) // for chunked content
 
 	Change(req Request, resp Response, chain Chain) Chain
 
-	BeforeSend(req Request, resp Response) // for identity content
+	BeforeSend(req Request, resp Response) // for sized content
 
 	BeforePush(req Request, resp Response) // for chunked content
 	FinishPush(req Request, resp Response) // for chunked content

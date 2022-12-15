@@ -787,6 +787,80 @@ func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, w
 	return r._walkFields(r.trailers, extraKindTrailer, fn, withConnection)
 }
 
+func (r *httpInMessage_) arrayPush(b byte) {
+	r.array[r.arrayEdge] = b
+	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
+		r._growArray(1)
+	}
+}
+func (r *httpInMessage_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->...->1G)
+	edge := r.arrayEdge + size
+	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
+		return false
+	}
+	if edge <= int32(cap(r.array)) {
+		return true
+	}
+	arrayKind := r.arrayKind
+	var array []byte
+	if edge <= _64K1 { // (stock, 64K1]
+		r.arrayKind = arrayKindPool
+		array = GetNK(int64(edge))
+	} else { // > _64K1
+		r.arrayKind = arrayKindMake
+		if edge <= _128K {
+			array = make([]byte, _128K)
+		} else if edge <= _256K {
+			array = make([]byte, _256K)
+		} else if edge <= _512K {
+			array = make([]byte, _512K)
+		} else if edge <= _1M {
+			array = make([]byte, _1M)
+		} else if edge <= _2M {
+			array = make([]byte, _2M)
+		} else if edge <= _4M {
+			array = make([]byte, _4M)
+		} else if edge <= _8M {
+			array = make([]byte, _8M)
+		} else if edge <= _16M {
+			array = make([]byte, _16M)
+		} else if edge <= _32M {
+			array = make([]byte, _32M)
+		} else if edge <= _64M {
+			array = make([]byte, _64M)
+		} else if edge <= _128M {
+			array = make([]byte, _128M)
+		} else if edge <= _256M {
+			array = make([]byte, _256M)
+		} else if edge <= _512M {
+			array = make([]byte, _512M)
+		} else { // <= _1G
+			array = make([]byte, _1G)
+		}
+	}
+	copy(array, r.array[0:r.arrayEdge])
+	if arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = array
+	return true
+}
+func (r *httpInMessage_) _getPlace(pair *pair) []byte {
+	var place []byte
+	if pair.inPlace(pairPlaceInput) {
+		place = r.input
+	} else if pair.inPlace(pairPlaceArray) {
+		place = r.array
+	} else if pair.inPlace(pairPlaceStatic2) {
+		place = http2BytesStatic
+	} else if pair.inPlace(pairPlaceStatic3) {
+		place = http3BytesStatic
+	} else {
+		BugExitln("unknown place")
+	}
+	return place
+}
+
 func (r *httpInMessage_) UnsafeMake(size int) []byte {
 	return r.stream.unsafeMake(size)
 }
@@ -890,84 +964,8 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 	}
 	return
 }
-
 func (r *httpInMessage_) delPrime(i uint8) {
 	r.primes[i].zero()
-}
-
-func (r *httpInMessage_) arrayPush(b byte) {
-	r.array[r.arrayEdge] = b
-	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
-		r._growArray(1)
-	}
-}
-
-func (r *httpInMessage_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->...->1G)
-	edge := r.arrayEdge + size
-	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
-		return false
-	}
-	if edge <= int32(cap(r.array)) {
-		return true
-	}
-	arrayKind := r.arrayKind
-	var array []byte
-	if edge <= _64K1 { // (stock, 64K1]
-		r.arrayKind = arrayKindPool
-		array = GetNK(int64(edge))
-	} else { // > _64K1
-		r.arrayKind = arrayKindMake
-		if edge <= _128K {
-			array = make([]byte, _128K)
-		} else if edge <= _256K {
-			array = make([]byte, _256K)
-		} else if edge <= _512K {
-			array = make([]byte, _512K)
-		} else if edge <= _1M {
-			array = make([]byte, _1M)
-		} else if edge <= _2M {
-			array = make([]byte, _2M)
-		} else if edge <= _4M {
-			array = make([]byte, _4M)
-		} else if edge <= _8M {
-			array = make([]byte, _8M)
-		} else if edge <= _16M {
-			array = make([]byte, _16M)
-		} else if edge <= _32M {
-			array = make([]byte, _32M)
-		} else if edge <= _64M {
-			array = make([]byte, _64M)
-		} else if edge <= _128M {
-			array = make([]byte, _128M)
-		} else if edge <= _256M {
-			array = make([]byte, _256M)
-		} else if edge <= _512M {
-			array = make([]byte, _512M)
-		} else { // <= _1G
-			array = make([]byte, _1G)
-		}
-	}
-	copy(array, r.array[0:r.arrayEdge])
-	if arrayKind == arrayKindPool {
-		PutNK(r.array)
-	}
-	r.array = array
-	return true
-}
-func (r *httpInMessage_) _getPlace(pair *pair) []byte {
-	var place []byte
-	if pair.inPlace(pairPlaceInput) {
-		place = r.input
-	} else if pair.inPlace(pairPlaceArray) {
-		place = r.array
-	} else if pair.inPlace(pairPlaceStatic2) {
-		place = http2BytesStatic
-	} else if pair.inPlace(pairPlaceStatic3) {
-		place = http3BytesStatic
-	} else {
-		BugExitln("unknown place")
-	}
-	return place
 }
 
 func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, hash uint16)) {

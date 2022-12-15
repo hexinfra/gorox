@@ -374,11 +374,6 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
-		/*
-			if r.app != nil && edge > r.app.maxMemoryContentSize {
-				return false
-			}
-		*/
 		if !r._growArray(int32(len(p))) {
 			return false
 		}

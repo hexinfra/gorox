@@ -190,7 +190,7 @@ func getConfig() (c config) {
 	return
 }
 
-const ( // comp list. if you change this list, change compNames too.
+const ( // comp list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, filesys, resolv, http1, http2, http3, quic, tcps, udps, unix
 	compOptware               // ...
@@ -216,33 +216,6 @@ const ( // comp list. if you change this list, change compNames too.
 	compServer                // httpxServer, echoServer, ...
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
-
-var compNames = [...]string{ // comp names. if you change this list, change comp list too.
-	compStage:      "stage",      // static
-	compFixture:    "fixture",    // dynamic
-	compOptware:    "optware",    // dynamic
-	compBackend:    "backend",    // dynamic
-	compQUICMesher: "quicMesher", // static
-	compQUICRunner: "quicRunner", // dynamic
-	compQUICFilter: "quicFilter", // dynamic
-	compTCPSMesher: "tcpsMesher", // static
-	compTCPSRunner: "tcpsRunner", // dynamic
-	compTCPSFilter: "tcpsFilter", // dynamic
-	compUDPSMesher: "udpsMesher", // static
-	compUDPSRunner: "udpsRunner", // dynamic
-	compUDPSFilter: "udpsFilter", // dynamic
-	compCase:       "case",       // static
-	compStater:     "stater",     // dynamic
-	compCacher:     "cacher",     // dynamic
-	compApp:        "app",        // static
-	compHandler:    "handler",    // dynamic
-	compReviser:    "reviser",    // dynamic
-	compSocklet:    "socklet",    // dynamic
-	compRule:       "rule",       // static
-	compSvc:        "svc",        // static
-	compServer:     "server",     // dynamic
-	compCronjob:    "cronjob",    // dynamic
-}
 
 var varCodes = map[string]int16{ // predefined variables for config
 	// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go

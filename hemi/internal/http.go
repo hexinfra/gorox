@@ -122,10 +122,10 @@ type httpInMessage interface {
 	ContentSize() int64
 	UnsafeContent() []byte
 	arrayCopy(p []byte) bool
-	useHeader(header *pair) bool
+	applyHeader(header *pair) bool
 	readContent() (p []byte, err error)
 	hasTrailers() bool
-	useTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair) bool
 	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
 	getSaveContentFilesDir() string
 }

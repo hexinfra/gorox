@@ -494,6 +494,7 @@ type Request interface {
 
 	F(name string) string
 	FF(name string, defaultValue string) string
+	Fint(name string, defaultValue int) int
 	Form(name string) (value string, ok bool)
 	FormList(name string) (list []string, ok bool)
 	Forms() (forms [][2]string)
@@ -540,7 +541,7 @@ type Request interface {
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
-	useHeader(header *pair) bool
+	applyHeader(header *pair) bool
 	delHost()
 	delCriticalHeaders()
 	delHopHeaders()
@@ -551,7 +552,7 @@ type Request interface {
 	readContent() (p []byte, err error)
 	hasTrailers() bool
 	delHopTrailers()
-	useTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair) bool
 	getSaveContentFilesDir() string
 	hookReviser(reviser Reviser)
 	unsafeVariable(index int16) []byte

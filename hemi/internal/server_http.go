@@ -399,12 +399,8 @@ func (r *httpRequest_) IsPOST() bool         { return r.methodCode == MethodPOST
 func (r *httpRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *httpRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
 
-func (r *httpRequest_) IsAsteriskOptions() bool { // used by proxies
-	return r.asteriskOptions
-}
-func (r *httpRequest_) IsAbsoluteForm() bool { // used by proxies
-	return r.targetForm == httpTargetAbsolute
-}
+func (r *httpRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
+func (r *httpRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 
 func (r *httpRequest_) Authority() string       { return string(r.UnsafeAuthority()) }
 func (r *httpRequest_) UnsafeAuthority() []byte { return r.input[r.authority.from:r.authority.edge] }
@@ -593,7 +589,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, extraKindQuery)
 }
 
-func (r *httpRequest_) useHeader(header *pair) bool {
+func (r *httpRequest_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpMultipleRequestHeaderTable[httpMultipleRequestHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpMultipleRequestHeaderBytes[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
@@ -2077,6 +2073,14 @@ func (r *httpRequest_) FF(name string, defaultValue string) string {
 	}
 	return defaultValue
 }
+func (r *httpRequest_) Fint(name string, defaultValue int) int {
+	if value, ok := r.Form(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
+	}
+	return defaultValue
+}
 func (r *httpRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
 	v, ok := r.getPair(name, 0, r.forms, extraKindNoExtra)
@@ -2176,7 +2180,7 @@ func (r *httpRequest_) UnsafeContent() []byte {
 func (r *httpRequest_) App() *App { return r.app }
 func (r *httpRequest_) Svc() *Svc { return r.svc }
 
-func (r *httpRequest_) useTrailer(trailer *pair) bool {
+func (r *httpRequest_) applyTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true

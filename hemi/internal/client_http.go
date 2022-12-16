@@ -384,7 +384,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 
 func (r *hResponse_) Status() int16 { return r.status }
 
-func (r *hResponse_) useHeader(header *pair) bool {
+func (r *hResponse_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpMultipleResponseHeaderTable[httpMultipleResponseHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpMultipleResponseHeaderBytes[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
@@ -618,7 +618,7 @@ func (r *hResponse_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *hResponse_) useTrailer(trailer *pair) bool {
+func (r *hResponse_) applyTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true

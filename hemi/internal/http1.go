@@ -162,8 +162,8 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 			header.value.zero()
 		}
 
-		// Header is received in general algorithm. Now use it
-		if !r.shell.useHeader(header) {
+		// Header is received in general algorithm. Now apply it
+		if !r.shell.applyHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -481,8 +481,8 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 		}
 		trailer.value.set(fore, r.arrayEdge)
 
-		// Trailer is received in general algorithm. Now use it
-		if !r.shell.useTrailer(trailer) {
+		// Trailer is received in general algorithm. Now apply it
+		if !r.shell.applyTrailer(trailer) {
 			return false
 		}
 		// Trailer is successfully received. Skip '\n'

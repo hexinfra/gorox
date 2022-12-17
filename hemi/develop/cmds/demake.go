@@ -60,7 +60,7 @@ func main() {
 		clean()
 	default: // build
 		if *fmt_ {
-			cmd := exec.Command("gofmt", "-w", ".")
+			cmd := exec.Command("gofmt", "-w", "..")
 			if out, _ := cmd.CombinedOutput(); len(out) > 0 {
 				fmt.Println(string(out))
 				return

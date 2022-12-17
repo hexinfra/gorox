@@ -185,7 +185,7 @@ func (c *QUICConn) unsafeVariable(index int16) []byte {
 }
 
 // quicConnVariables
-var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
+var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in basic.go
 	// TODO
 }
 
@@ -203,7 +203,7 @@ func (s *QUICStream) Read(p []byte) (n int, err error) {
 }
 
 // quicStreamVariables
-var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
+var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in basic.go
 	// TODO
 }
 

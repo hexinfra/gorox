@@ -67,9 +67,8 @@ func (c *client_) onConfigure() {
 func (c *client_) onPrepare() {
 }
 
-func (c *client_) Stage() *Stage { return c.stage }
-func (c *client_) TLSMode() bool { return c.tlsMode }
-
+func (c *client_) Stage() *Stage               { return c.stage }
+func (c *client_) TLSMode() bool               { return c.tlsMode }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }

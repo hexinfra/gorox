@@ -597,7 +597,7 @@ func (r *httpInMessage_) SetMaxRecvSeconds(seconds int64) {
 	r.maxRecvSeconds = seconds
 }
 
-func (r *httpInMessage_) loadContent() { // into memory. [0, r.app.maxMemoryContentSize]
+func (r *httpInMessage_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.content already.
 		return
@@ -607,7 +607,7 @@ func (r *httpInMessage_) loadContent() { // into memory. [0, r.app.maxMemoryCont
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentBlob = content                 // real content is r.contentBlob[:r.sizeReceived]
 		r.contentBlobKind = httpContentBlobPool // the returned content is got from pool. put back onEnd
-	case TempFile: // [0, r.app.maxMemoryContentSize]. case happens when sized content > 64K1, or content is chunked.
+	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is chunked.
 		tempFile := content.(*os.File)
 		if r.sizeReceived > 0 { // chunked content may has 0 size, exclude that.
 			if r.sizeReceived <= _64K1 {

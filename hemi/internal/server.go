@@ -11,12 +11,19 @@ import (
 	"crypto/tls"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 // Server component.
 type Server interface {
 	Component
 	Serve() // goroutine
+
+	Stage() *Stage
+	ColonPortBytes() []byte
+	TLSMode() bool
+	ReadTimeout() time.Duration
+	WriteTimeout() time.Duration
 }
 
 // Server_ is the mixin for all servers.
@@ -26,13 +33,15 @@ type Server_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	address         string      // hostname:port
-	colonPort       string      // like: ":9876"
-	colonPortBytes  []byte      // like: []byte(":9876")
-	tlsMode         bool        // tls mode?
-	numGates        int32       // number of gates
-	maxConnsPerGate int32       // max concurrent connections allowed per gate
-	tlsConfig       *tls.Config // set if is tls mode
+	address         string        // hostname:port
+	colonPort       string        // like: ":9876"
+	colonPortBytes  []byte        // like: []byte(":9876")
+	tlsMode         bool          // tls mode?
+	tlsConfig       *tls.Config   // set if is tls mode
+	readTimeout     time.Duration // read() timeout
+	writeTimeout    time.Duration // write() timeout
+	numGates        int32         // number of gates
+	maxConnsPerGate int32         // max concurrent connections allowed per gate
 }
 
 func (s *Server_) OnCreate(name string, stage *Stage) {
@@ -63,6 +72,10 @@ func (s *Server_) OnConfigure() {
 	if s.tlsMode {
 		s.tlsConfig = new(tls.Config)
 	}
+	// readTimeout
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	// writeTimeout
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 	// numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) bool { return value > 0 }, s.stage.NumCPU())
 	// maxConnsPerGate
@@ -71,13 +84,15 @@ func (s *Server_) OnConfigure() {
 func (s *Server_) OnPrepare() {
 }
 
-func (s *Server_) Stage() *Stage          { return s.stage }
-func (s *Server_) Address() string        { return s.address }
-func (s *Server_) ColonPort() string      { return s.colonPort }
-func (s *Server_) ColonPortBytes() []byte { return s.colonPortBytes }
-func (s *Server_) TLSMode() bool          { return s.tlsMode }
-func (s *Server_) NumGates() int32        { return s.numGates }
-func (s *Server_) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
+func (s *Server_) Stage() *Stage               { return s.stage }
+func (s *Server_) Address() string             { return s.address }
+func (s *Server_) ColonPort() string           { return s.colonPort }
+func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
+func (s *Server_) TLSMode() bool               { return s.tlsMode }
+func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
+func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
+func (s *Server_) NumGates() int32             { return s.numGates }
+func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 
 // Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {

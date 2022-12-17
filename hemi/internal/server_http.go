@@ -23,17 +23,10 @@ type httpServer interface {
 	Server
 	streamHolder
 
-	Stage() *Stage
-	TLSMode() bool
-	ColonPortBytes() []byte
-
 	linkApp(app *App)
 	findApp(hostname []byte) *App
 	linkSvc(svc *Svc)
 	findSvc(hostname []byte) *Svc
-
-	ReadTimeout() time.Duration
-	WriteTimeout() time.Duration
 }
 
 // httpServer_ is a mixin for httpxServer and http3Server.
@@ -45,17 +38,15 @@ type httpServer_ struct {
 	gates      []httpGate
 	defaultApp *App
 	// States
-	exactApps           []*hostnameTo[*App] // like: ("example.com")
-	suffixApps          []*hostnameTo[*App] // like: ("*.example.com")
-	prefixApps          []*hostnameTo[*App] // like: ("www.example.*")
-	exactSvcs           []*hostnameTo[*Svc] // like: ("example.com")
-	suffixSvcs          []*hostnameTo[*Svc] // like: ("*.example.com")
-	prefixSvcs          []*hostnameTo[*Svc] // like: ("www.example.*")
-	recvRequestTimeout  time.Duration       // timeout for receiving head or part of content
-	sendResponseTimeout time.Duration       // timeout for sending head or part of content
-	hrpcMode            bool                // works as hrpc server and dispatches to svcs instead of apps?
-	enableTCPTun        bool                // allow CONNECT method?
-	enableUDPTun        bool                // allow upgrade: connect-udp?
+	exactApps    []*hostnameTo[*App] // like: ("example.com")
+	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
+	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
+	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
+	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
+	enableTCPTun bool                // allow CONNECT method?
+	enableUDPTun bool                // allow upgrade: connect-udp?
 }
 
 func (s *httpServer_) onCreate(name string, stage *Stage) {
@@ -66,10 +57,6 @@ func (s *httpServer_) onConfigure() {
 	s.Server_.OnConfigure()
 	// maxStreamsPerConn
 	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, 0) // 0 means infinite
-	// recvRequestTimeout
-	s.ConfigureDuration("recvRequestTimeout", &s.recvRequestTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
-	// sendResponseTimeout
-	s.ConfigureDuration("sendResponseTimeout", &s.sendResponseTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 	// hrpcMode
 	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// enableTCPTun
@@ -170,9 +157,6 @@ func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	}
 	return nil
 }
-
-func (s *httpServer_) ReadTimeout() time.Duration  { return s.recvRequestTimeout }
-func (s *httpServer_) WriteTimeout() time.Duration { return s.sendResponseTimeout }
 
 func (s *httpServer_) Log(str string) {
 	//s.logger.log(str)

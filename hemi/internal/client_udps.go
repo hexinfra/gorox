@@ -277,4 +277,4 @@ func (c *UConn) Close() error { // only used by clients of dial
 	return udpConn.Close()
 }
 
-func (c *UConn) closeConn() { c.udpConn.Close() } // used by clients other than dial
+func (c *UConn) closeConn() { c.udpConn.Close() } // used by codes other than dial

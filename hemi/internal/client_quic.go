@@ -306,10 +306,35 @@ func (s *QStream) Read(p []byte) (n int, err error) {
 // poolQOneway
 var poolQOneway sync.Pool
 
+func getQOneway(conn *QConn, quicOneway *quix.Oneway) *QOneway {
+	var oneway *QOneway
+	if x := poolQOneway.Get(); x == nil {
+		oneway = new(QOneway)
+	} else {
+		oneway = x.(*QOneway)
+	}
+	oneway.onUse(conn, quicOneway)
+	return oneway
+}
+func putQOneway(oneway *QOneway) {
+	oneway.onEnd()
+	poolQOneway.Put(oneway)
+}
+
 // QOneway is a unidirectional stream of QConn.
 type QOneway struct {
 	// TODO
-	oneway *quix.Oneway
+	conn       *QConn
+	quicOneway *quix.Oneway
+}
+
+func (s *QOneway) onUse(conn *QConn, quicOneway *quix.Oneway) {
+	s.conn = conn
+	s.quicOneway = quicOneway
+}
+func (s *QOneway) onEnd() {
+	s.conn = nil
+	s.quicOneway = nil
 }
 
 func (s *QOneway) Write(p []byte) (n int, err error) {

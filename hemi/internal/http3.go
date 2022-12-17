@@ -83,6 +83,8 @@ func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
 	return nil
 }
 
+// HTTP/3 protocol elements.
+
 const ( // HTTP/3 sizes and limits
 	http3MaxActiveStreams = 127
 	http3MaxTableSize     = _4K

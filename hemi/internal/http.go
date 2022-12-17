@@ -1407,6 +1407,8 @@ var ( // http outgoing message errors
 	httpAddTrailerFailed = errors.New("add trailer failed")
 )
 
+// General HTTP protocol elements.
+
 const ( // version codes. keep sync with ../hemi.go
 	Version1_0 = 0 // must be 0
 	Version1_1 = 1
@@ -1912,3 +1914,76 @@ var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for
 		{0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0},
 	},
 }
+
+var ( // forbidden response fields
+	httpForbiddenResponseFields = [5]struct { // TODO: perfect hashing
+		hash uint16
+		name []byte
+	}{
+		0: {httpHashConnection, httpBytesConnection},
+		1: {httpHashContentLength, httpBytesContentLength},
+		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
+		3: {httpHashContentType, httpBytesContentType},
+		4: {httpHashSetCookie, httpBytesSetCookie},
+	}
+	httpIsForbiddenResponseField = func(hash uint16, name []byte) bool {
+		// TODO: perfect hashing
+		for _, field := range httpForbiddenResponseFields {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
+		}
+		return false
+	}
+)
+
+var ( // forbidden request fields
+	httpForbiddenRequestFields = [3]struct { // TODO: perfect hashing
+		hash uint16
+		name []byte
+	}{
+		0: {httpHashConnection, httpBytesConnection},
+		1: {httpHashContentLength, httpBytesContentLength},
+		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
+	}
+	httpIsForbiddenRequestField = func(hash uint16, name []byte) bool {
+		// TODO: perfect hashing
+		for _, field := range httpForbiddenRequestFields {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
+		}
+		return false
+	}
+)
+
+var httpErrorPages = func() map[int16][]byte {
+	const template = `<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="utf-8">
+<title>%d %s</title>
+<style type="text/css">
+body{text-align:center;}
+header{font-size:72pt;}
+main{font-size:36pt;}
+footer{padding:20px;}
+</style>
+</head>
+<body>
+	<header>%d</header>
+	<main>%s</main>
+	<footer>Powered by Gorox</footer>
+</body>
+</html>`
+	pages := make(map[int16][]byte)
+	for status, control := range http1Controls {
+		if status < 400 || control == nil {
+			continue
+		}
+		phrase := control[len("HTTP/1.1 XXX ") : len(control)-2]
+		pages[int16(status)] = []byte(fmt.Sprintf(template, status, phrase, status, phrase))
+	}
+	return pages
+}()

@@ -94,6 +94,8 @@ func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
 	return nil
 }
 
+// HTTP/2 protocol elements.
+
 const ( // HTTP/2 sizes and limits
 	http2FrameMaxSize     = 64000 // for both of our HTTP/2 client and HTTP/2 server
 	http2MaxTableSize     = _4K   // for both of our HTTP/2 client and HTTP/2 server

@@ -278,26 +278,6 @@ func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
 	return httpIsForbiddenRequestField(hash, name)
 }
 
-var ( // forbidden request fields
-	httpForbiddenRequestFields = [3]struct { // TODO: perfect hashing
-		hash uint16
-		name []byte
-	}{
-		0: {httpHashConnection, httpBytesConnection},
-		1: {httpHashContentLength, httpBytesContentLength},
-		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-	}
-	httpIsForbiddenRequestField = func(hash uint16, name []byte) bool {
-		// TODO: perfect hashing
-		for _, field := range httpForbiddenRequestFields {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-		return false
-	}
-)
-
 // response is the client-side HTTP response and interface for *H[1-3]Response.
 type response interface {
 	Status() int16

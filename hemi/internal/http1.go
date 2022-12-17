@@ -827,6 +827,8 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 	}
 }
 
+// HTTP/1 protocol elements.
+
 var ( // HTTP/1 byteses
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
 	http1BytesTransferChunked      = []byte("transfer-encoding: chunked\r\n")

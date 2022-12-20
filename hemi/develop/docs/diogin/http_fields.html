@@ -52,6 +52,8 @@
 					<td>包含合法的请求方法。</td></tr>
 			<tr><td>:path</td>                <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>request-target = origin-form / absolute-form / authority-form / asterisk-form</td>
 					<td>参见 request-target。包含“?”，如果带查询字符串的话。This pseudo-header field MUST NOT be empty for "http" or "https" URIs; "http" or "https" URIs that do not contain a path component MUST include a value of '/'. The exceptions to this rule are: 1) an OPTIONS request for an "http" or "https" URI that does not include a path component; these MUST include a ":path" pseudo-header field with a value of '*' (see Section 7.1 of [HTTP]); 2) CONNECT requests (Section 8.5), where the ":path" pseudo-header field is omitted.</td></tr>
+			<tr><td>:protocol</td>            <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
 			<tr><td>:scheme</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>"http" / "https"</td>
 					<td>TODO</td></tr>
 			<tr><td>accept</td>               <td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td>
@@ -107,6 +109,10 @@
 					<td>TODO</td></tr>
 			<tr><td>alt-svc</td>              <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
 					<td>TODO</td></tr>
+			<tr><td>cache-status</td>         <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>cdn-cache-control</td>    <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
 			<tr><td>content-disposition</td>  <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
 					<td>TODO</td></tr>
 			<tr><td>etag</td>                 <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>ETag = [ weak ] opaque-tag</td>
@@ -118,6 +124,8 @@
 			<tr><td>location</td>             <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Location = URI-reference</td>
 					<td>TODO</td></tr>
 			<tr><td>proxy-authenticate</td>   <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
+					<td>TODO</td></tr>
+			<tr><td>proxy-status</td>         <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
 					<td>TODO</td></tr>
 			<tr><td>retry-after</td>          <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
 					<td>TODO</td></tr>

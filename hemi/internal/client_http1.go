@@ -415,6 +415,35 @@ func (r *H1Request) fixedHeaders() []byte {
 	return http1BytesFixedRequestHeaders
 }
 
+func (r *H1Request) copyCookies(req Request) bool { // used by proxies
+	size := len(httpBytesCookie) + len(httpBytesColonSpace) // `cookie: `
+	req.forCookies(func(name []byte, value []byte) bool {
+		size += len(name) + 1 + len(value) + 2 // `name=value; `
+		return true
+	})
+	if from, _, ok := r.growHeader(size); ok {
+		from += copy(r.fields[from:], httpBytesCookie)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		req.forCookies(func(name []byte, value []byte) bool {
+			from += copy(r.fields[from:], name)
+			r.fields[from] = '='
+			from++
+			from += copy(r.fields[from:], value)
+			r.fields[from] = ';'
+			r.fields[from+1] = ' '
+			from += 2
+			return true
+		})
+		r.fields[from-2] = '\r'
+		r.fields[from-1] = '\n'
+		return true
+	} else {
+		return false
+	}
+}
+
 func (r *H1Request) sendChain(chain Chain) error {
 	return r.sendChain1(chain)
 }
@@ -438,12 +467,12 @@ func (r *H1Request) passBytes(p []byte) error {
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	if r.contentSize != -1 && !r.forbidFraming {
-		if r.contentSize != -2 { // content-length: 12345
+		if r.contentSize == -2 { // transfer-encoding: chunked
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
+		} else { // content-length: 12345
 			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
-		} else { // transfer-encoding: chunked
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		}
 		// content-type: text/html; charset=utf-8
 		if !r.contentTypeAdded {

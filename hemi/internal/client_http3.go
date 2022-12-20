@@ -355,6 +355,11 @@ func (r *H3Request) fixedHeaders() []byte {
 	return nil
 }
 
+func (r *H3Request) copyCookies(req Request) bool { // used by proxies
+	// TODO: one by one?
+	return true
+}
+
 func (r *H3Request) sendChain(chain Chain) error {
 	// TODO
 	return nil

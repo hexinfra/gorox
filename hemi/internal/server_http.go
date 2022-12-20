@@ -230,13 +230,13 @@ type httpStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *httpStream_) doTCPTun() {
+func (s *httpStream_) execTCPTun() {
 	// TODO
 }
-func (s *httpStream_) doUDPTun() {
+func (s *httpStream_) execUDPTun() {
 	// TODO
 }
-func (s *httpStream_) doSocket() {
+func (s *httpStream_) execSocket() {
 	// TODO
 }
 
@@ -273,7 +273,7 @@ type Request interface {
 
 	QueryString() string // including '?' if query string exists
 	Q(name string) string
-	QQ(name string, defaultValue string) string
+	Qstr(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
 	QueryList(name string) (list []string, ok bool)
@@ -283,7 +283,7 @@ type Request interface {
 	DelQuery(name string) (deleted bool)
 
 	H(name string) string
-	HH(name string, defaultValue string) string
+	Hstr(name string, defaultValue string) string
 	Header(name string) (value string, ok bool)
 	HeaderList(name string) (list []string, ok bool)
 	Headers() (headers [][2]string)
@@ -300,10 +300,11 @@ type Request interface {
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
 
 	C(name string) string
-	CC(name string, defaultValue string) string
+	Cstr(name string, defaultValue string) string
 	Cookie(name string) (value string, ok bool)
 	CookieList(name string) (list []string, ok bool)
 	Cookies() (cookies [][2]string)
+	HasCookies() bool
 	HasCookie(name string) bool
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
@@ -313,7 +314,7 @@ type Request interface {
 	Content() string
 
 	F(name string) string
-	FF(name string, defaultValue string) string
+	Fstr(name string, defaultValue string) string
 	Fint(name string, defaultValue int) int
 	Form(name string) (value string, ok bool)
 	FormList(name string) (list []string, ok bool)
@@ -327,7 +328,7 @@ type Request interface {
 	HasUpload(name string) bool
 
 	T(name string) string
-	TT(name string, defaultValue string) string
+	Tstr(name string, defaultValue string) string
 	Trailer(name string) (value string, ok bool)
 	TrailerList(name string) (list []string, ok bool)
 	Trailers() (trailers [][2]string)
@@ -362,11 +363,12 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	applyHeader(header *pair) bool
-	delHost()
+	forCookies(fn func(name []byte, value []byte) bool) bool
 	delCriticalHeaders()
+	delHost()
 	delHopHeaders()
-	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	recvContent(retain bool) any
 	holdContent() any
 	readContent() (p []byte, err error)
@@ -674,7 +676,7 @@ func (r *httpRequest_) Q(name string) string {
 	value, _ := r.Query(name)
 	return value
 }
-func (r *httpRequest_) QQ(name string, defaultValue string) string {
+func (r *httpRequest_) Qstr(name string, defaultValue string) string {
 	if value, ok := r.Query(name); ok {
 		return value
 	}
@@ -1298,7 +1300,22 @@ func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []nav
 		}
 	}
 }
-func (r *httpRequest_) parseCookie(cookieString text) bool {
+
+func (r *httpRequest_) UserAgent() string {
+	return string(r.UnsafeUserAgent())
+}
+func (r *httpRequest_) UnsafeUserAgent() []byte {
+	if r.indexes.userAgent == 0 {
+		return nil
+	}
+	vAgent := r.primes[r.indexes.userAgent].value
+	return r.input[vAgent.from:vAgent.edge]
+}
+func (r *httpRequest_) AcceptTrailers() bool {
+	return r.acceptTrailers
+}
+
+func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-header = "Cookie:" OWS cookie-string OWS
 	// cookie-string = cookie-pair *( ";" SP cookie-pair )
 	// cookie-pair = token "=" cookie-value
@@ -1391,22 +1408,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool {
 	}
 	return true
 }
-
-func (r *httpRequest_) UserAgent() string {
-	return string(r.UnsafeUserAgent())
-}
-func (r *httpRequest_) UnsafeUserAgent() []byte {
-	if r.indexes.userAgent == 0 {
-		return nil
-	}
-	vAgent := r.primes[r.indexes.userAgent].value
-	return r.input[vAgent.from:vAgent.edge]
-}
-func (r *httpRequest_) AcceptTrailers() bool {
-	return r.acceptTrailers
-}
-
-func (r *httpRequest_) addCookie(cookie *pair) bool {
+func (r *httpRequest_) addCookie(cookie *pair) bool { // cookie: xxx
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1419,7 +1421,7 @@ func (r *httpRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
 }
-func (r *httpRequest_) CC(name string, defaultValue string) string {
+func (r *httpRequest_) Cstr(name string, defaultValue string) string {
 	if value, ok := r.Cookie(name); ok {
 		return value
 	}
@@ -1437,6 +1439,12 @@ func (r *httpRequest_) CookieList(name string) (list []string, ok bool) {
 }
 func (r *httpRequest_) Cookies() (cookies [][2]string) {
 	return r.getPairs(r.cookies, extraKindCookie)
+}
+func (r *httpRequest_) HasCookies() bool {
+	return r.hasPairs(r.cookies, extraKindCookie)
+}
+func (r *httpRequest_) forCookies(fn func(name []byte, value []byte) bool) bool {
+	return r.forPairs(r.cookies, extraKindCookie, fn)
 }
 func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, extraKindCookie)
@@ -1626,7 +1634,7 @@ func (r *httpRequest_) checkHead() bool {
 		}
 	}
 	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies
+		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
 		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
 		for i := cookies.from; i < cookies.edge; i++ {
 			prime := &r.primes[i]
@@ -1642,8 +1650,8 @@ func (r *httpRequest_) checkHead() bool {
 }
 
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	r.delPrime(r.iContentType)
 	r.delPrime(r.iContentLength)
+	r.delPrime(r.iContentType)
 }
 func (r *httpRequest_) delHost() { // used by proxies
 	r.delPrime(r.indexes.host) // zero safe
@@ -2190,7 +2198,7 @@ func (r *httpRequest_) F(name string) string {
 	value, _ := r.Form(name)
 	return value
 }
-func (r *httpRequest_) FF(name string, defaultValue string) string {
+func (r *httpRequest_) Fstr(name string, defaultValue string) string {
 	if value, ok := r.Form(name); ok {
 		return value
 	}
@@ -2428,8 +2436,8 @@ type httpResponse0_ struct { // for fast reset, entirely
 	nETag              int8      // etag is at r.etag[:r.nETag]
 	acceptBytesRange   bool      // accept-ranges: bytes?
 	dateCopied         bool      // is date header copied?
-	lastModifiedCopied bool      // ...
-	etagCopied         bool      // ...
+	lastModifiedCopied bool      // is last-modified header copied?
+	etagCopied         bool      // is etag header copied?
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
@@ -2640,6 +2648,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
 	resp.delHopHeaders()
+
 	// copy critical headers from resp
 	if date := resp.unsafeDate(); date != nil && !r.copyHeader(&r.dateCopied, httpBytesDate, date) {
 		return false
@@ -2654,10 +2663,11 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 		return false
 	}
 	resp.delCriticalHeaders()
+
 	// copy remaining headers
 	if !resp.walkHeaders(func(name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
-	}, false) {
+	}, true) { // for proxy
 		return false
 	}
 	return true

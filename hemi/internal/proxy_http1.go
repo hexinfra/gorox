@@ -106,7 +106,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if err1 == nil && hasTrailers {
 			if !req.walkTrailers(func(name []byte, value []byte) bool {
 				return req1.addTrailer(name, value)
-			}, false) {
+			}, true) { // for proxy
 				stream1.markBroken()
 				err1 = httpAddTrailerFailed
 			} else if err1 = req1.finishChunked(); err1 != nil {
@@ -185,7 +185,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		} else if hasTrailers1 {
 			if !resp1.walkTrailers(func(name []byte, value []byte) bool {
 				return resp.addTrailer(name, value)
-			}, false) {
+			}, true) { // for proxy
 				return
 			}
 		}

@@ -126,7 +126,7 @@ type httpInMessage interface {
 	readContent() (p []byte, err error)
 	hasTrailers() bool
 	applyTrailer(trailer *pair) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	getSaveContentFilesDir() string
 }
 
@@ -473,7 +473,7 @@ func (r *httpInMessage_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
 }
-func (r *httpInMessage_) HH(name string, defaultValue string) string {
+func (r *httpInMessage_) Hstr(name string, defaultValue string) string {
 	if value, ok := r.Header(name); ok {
 		return value
 	}
@@ -589,8 +589,8 @@ func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
 }
-func (r *httpInMessage_) walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool { // used by proxies
-	return r._walkFields(r.headers, extraKindHeader, fn, withConnection)
+func (r *httpInMessage_) walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
+	return r._walkFields(r.headers, extraKindHeader, fn, forProxy)
 }
 
 func (r *httpInMessage_) SetMaxRecvSeconds(seconds int64) {
@@ -742,7 +742,7 @@ func (r *httpInMessage_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
 }
-func (r *httpInMessage_) TT(name string, defaultValue string) string {
+func (r *httpInMessage_) Tstr(name string, defaultValue string) string {
 	if value, ok := r.Trailer(name); ok {
 		return value
 	}
@@ -783,8 +783,8 @@ func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, r.delTrailer)
 }
-func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool { // used by proxies
-	return r._walkFields(r.trailers, extraKindTrailer, fn, withConnection)
+func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
+	return r._walkFields(r.trailers, extraKindTrailer, fn, forProxy)
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {
@@ -937,6 +937,38 @@ func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 	}
 	return all
 }
+func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(name []byte, value []byte) bool) bool {
+	for i := primes.from; i < primes.edge; i++ {
+		prime := &r.primes[i]
+		p := r._getPlace(prime)
+		if !fn(prime.nameAt(p), prime.valueAt(p)) {
+			return false
+		}
+	}
+	if extraKind != extraKindNoExtra {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.isKind(extraKind) {
+				if !fn(extra.nameAt(r.array), extra.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+func (r *httpInMessage_) hasPairs(primes zone, extraKind uint8) bool {
+	if primes.notEmpty() {
+		return true
+	}
+	if extraKind != extraKindNoExtra {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.isKind(extraKind) {
+				return true
+			}
+		}
+	}
+	return false
+}
 func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKind uint8) (deleted bool) {
 	if name != "" {
 		if hash == 0 {
@@ -997,7 +1029,7 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 		// Note: we don't remove pair ("connection: xxx") itself, since we simply skip it when acting as a proxy.
 	}
 }
-func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name []byte, value []byte) bool, withConnection bool) bool {
+func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name []byte, value []byte) bool, forProxy bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		field := &r.primes[i]
 		if field.hash == 0 {
@@ -1005,20 +1037,30 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 		}
 		p := r._getPlace(field)
 		fieldName := field.nameAt(p)
-		if !withConnection && field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
-			continue
+		if forProxy {
+			if field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
+				continue
+			}
+			if field.hash == httpHashCookie && bytes.Equal(fieldName, httpBytesCookie) {
+				continue
+			}
 		}
 		if !fn(fieldName, field.valueAt(p)) {
 			return false
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
-		if extra := &r.extras[i]; extra.isKind(extraKind) {
-			fieldName := extra.nameAt(r.array)
-			if !withConnection && extra.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
-				continue
+		if field := &r.extras[i]; field.isKind(extraKind) {
+			fieldName := field.nameAt(r.array)
+			if forProxy {
+				if field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
+					continue
+				}
+				if field.hash == httpHashCookie && bytes.Equal(fieldName, httpBytesCookie) {
+					continue
+				}
 			}
-			if !fn(fieldName, extra.valueAt(r.array)) {
+			if !fn(fieldName, field.valueAt(r.array)) {
 				return false
 			}
 		}
@@ -1377,7 +1419,7 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 	if in.hasTrailers() { // added trailers will be written eventually by upper code.
 		if !in.walkTrailers(func(name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
-		}, false) {
+		}, true) { // for proxy
 			return httpAddTrailerFailed
 		}
 	}
@@ -1915,7 +1957,7 @@ var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for
 	},
 }
 
-var ( // forbidden response fields
+var ( // forbidden httpResponse_ fields
 	httpForbiddenResponseFields = [5]struct { // TODO: perfect hashing
 		hash uint16
 		name []byte
@@ -1937,14 +1979,16 @@ var ( // forbidden response fields
 	}
 )
 
-var ( // forbidden request fields
-	httpForbiddenRequestFields = [3]struct { // TODO: perfect hashing
+var ( // forbidden hRequest_ fields
+	httpForbiddenRequestFields = [5]struct { // TODO: perfect hashing
 		hash uint16
 		name []byte
 	}{
 		0: {httpHashConnection, httpBytesConnection},
 		1: {httpHashContentLength, httpBytesContentLength},
 		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
+		3: {httpHashContentType, httpBytesContentType},
+		4: {httpHashCookie, httpBytesCookie},
 	}
 	httpIsForbiddenRequestField = func(hash uint16, name []byte) bool {
 		// TODO: perfect hashing

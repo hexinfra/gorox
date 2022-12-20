@@ -157,6 +157,7 @@ type request interface {
 	Response() response
 	setControl(method []byte, uri []byte, hasContent bool) bool
 	addHeader(name []byte, value []byte) bool
+	copyCookies(req Request) bool
 }
 
 // hRequest_ is the mixin for H[1-3]Request.
@@ -166,14 +167,13 @@ type hRequest_ struct {
 	// Assocs
 	response response // the corresponding response
 	// Stream states (buffers)
-	stockCookies [4]nava
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	cookies []nava // hold cookies->r.array? [<r.stockCookies>/?]
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
+	cookieCopied bool // is cookie header copied?
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
@@ -185,11 +185,6 @@ func (r *hRequest_) onEnd() { // for zeros
 }
 
 func (r *hRequest_) Response() response { return r.response }
-
-func (r *hRequest_) addCookie(name []byte, value []byte) bool {
-	// TODO: to r.array?
-	return false
-}
 
 func (r *hRequest_) send() error {
 	return r.shell.sendChain(r.content)
@@ -236,6 +231,8 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		return false
 	}
 	req.delHopHeaders()
+
+	// copy critical headers from req
 	if req.AcceptTrailers() { // te: trailers
 		if !r.shell.addHeader(httpBytesTE, httpBytesTrailers) {
 			return false
@@ -244,8 +241,8 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	if contentType := req.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {
 		return false
 	}
-	// copy critical headers from req
 	req.delCriticalHeaders()
+
 	if req.IsAbsoluteForm() {
 		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
 		// field (if any) and instead replace it with the host information of the request-target. A proxy that forwards such a request
@@ -258,7 +255,10 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	// copy remaining headers from req
 	if !req.walkHeaders(func(name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
-	}, false) {
+	}, true) { // for proxy
+		return false
+	}
+	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
 		return false
 	}
 	return true
@@ -290,8 +290,8 @@ type response interface {
 	delCriticalHeaders()
 	delHopHeaders()
 	delHopTrailers()
-	walkHeaders(fn func(name []byte, value []byte) bool, withConnection bool) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, withConnection bool) bool
+	walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	recvContent(retain bool) any
 	readContent() (p []byte, err error)
 }
@@ -341,7 +341,7 @@ func (r *hResponse_) onUse() { // for non-zeros
 }
 func (r *hResponse_) onEnd() { // for zeros
 	if cap(r.cookies) != cap(r.stockCookies) {
-		// put
+		// put?
 		r.cookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
@@ -500,6 +500,16 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	return true
 }
 
+func (r *hResponse_) parseCookie(cookieString text) bool { // set-cookie: xxx
+	// TODO
+	return false
+}
+func (r *hResponse_) addCookie(cookie *cookie) bool { // set-cookie: xxx
+	// TODO
+	r.headResult = StatusRequestHeaderFieldsTooLarge
+	return false
+}
+
 func (r *hResponse_) checkHead() bool {
 	// Resolve r.keepAlive
 	if r.keepAlive == -1 { // no connection header
@@ -543,17 +553,6 @@ func (r *hResponse_) checkHead() bool {
 	return true
 }
 
-func (r *hResponse_) parseCookie(cookieString text) bool {
-	// TODO
-	return false
-}
-
-func (r *hResponse_) addCookie(cookie *cookie) bool {
-	// TODO
-	r.headResult = StatusRequestHeaderFieldsTooLarge
-	return false
-}
-
 func (r *hResponse_) unsafeDate() []byte { // used by proxies
 	if r.indexes.date == 0 {
 		return nil
@@ -580,8 +579,8 @@ func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrime(r.indexes.date)
 	r.delPrime(r.indexes.lastModified)
 	r.delPrime(r.indexes.etag)
-	r.delPrime(r.iContentType)
 	r.delPrime(r.iContentLength)
+	r.delPrime(r.iContentType)
 }
 
 func (r *hResponse_) HasContent() bool {

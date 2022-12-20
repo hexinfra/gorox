@@ -378,7 +378,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
 		s.httpMode = httpModeTCPTun
-		s.conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
+		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
 		return
 	}
 
@@ -416,7 +416,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		}
 		s.serveSocket()
 		s.httpMode = httpModeSocket
-		s.conn.keepConn = false // hijacked, so must close conn after s.serveSocket()
+		conn.keepConn = false // hijacked, so must close conn after s.serveSocket()
 		return
 	}
 
@@ -488,19 +488,22 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 func (s *http1Stream) serveTCPTun() { // CONNECT method
 	// TODO(diogin): implementation
 	// NOTICE: use idle timeout
-	s.onEnd()
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
+	s.onEnd()
 }
 func (s *http1Stream) serveUDPTun() { // upgrade: connect-udp
 	// TODO(diogin): implementation (RFC 9298)
+	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
+	s.conn.closeConn()
+	s.onEnd()
 }
 func (s *http1Stream) serveSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455)
 	// NOTICE: use idle timeout or clear read timeout
-	s.onEnd()
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
+	s.onEnd()
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandler(req, resp)
@@ -1192,7 +1195,7 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 	if !resp.walkHeaders(func(name []byte, value []byte) bool {
 		return r.addHeader(name, value)
-	}, false) {
+	}, true) { // for proxy
 		return false
 	}
 	r.vector = r.fixedVector[0:3]

@@ -203,7 +203,7 @@ func (c *UDPSConn) unsafeVariable(index int16) []byte {
 }
 
 // udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in basic.go
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
 	// TODO
 }
 

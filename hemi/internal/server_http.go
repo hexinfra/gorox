@@ -2330,7 +2330,7 @@ func (r *httpRequest_) unsafeVariable(index int16) []byte {
 	return httpRequestVariables[index](r)
 }
 
-var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with varCodes in basic.go
+var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with varCodes in config.go
 	(*httpRequest_).UnsafeMethod,      // method
 	(*httpRequest_).UnsafeScheme,      // scheme
 	(*httpRequest_).UnsafeAuthority,   // authority

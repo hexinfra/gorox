@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Basic internal facilities.
+// Configuration.
 
 package internal
 
@@ -11,165 +11,9 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/hexinfra/gorox/hemi/libraries/config"
-	"os"
 	"strconv"
-	"sync"
-	"sync/atomic"
 	"time"
 )
-
-var ( // global variables shared between stages
-	_debug    atomic.Int32 // debug level
-	_baseOnce sync.Once    // protects _baseDir
-	_baseDir  atomic.Value // directory of the executable
-	_logsOnce sync.Once    // protects _logsDir
-	_logsDir  atomic.Value // directory of the log files
-	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the run-time files
-	_varsOnce sync.Once    // protects _varsDir
-	_varsDir  atomic.Value // directory of the run-time datum
-)
-
-func Debug(level int32) bool { return _debug.Load() >= level }
-func BaseDir() string        { return _baseDir.Load().(string) }
-func LogsDir() string        { return _logsDir.Load().(string) }
-func TempDir() string        { return _tempDir.Load().(string) }
-func VarsDir() string        { return _varsDir.Load().(string) }
-
-func SetDebug(level int32)  { _debug.Store(level) }
-func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once
-func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // only once
-func SetTempDir(dir string) { _tempOnce.Do(func() { _tempDir.Store(dir) }) } // only once
-func SetVarsDir(dir string) { _varsOnce.Do(func() { _varsDir.Store(dir) }) } // only once
-
-const ( // exit codes. keep sync with ../hemi.go
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(args ...any) { exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any) { exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any) { exitln(CodeEnv, "[ENV] ", args...) }
-
-func BugExitf(format string, args ...any) { exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { exitf(CodeEnv, "[ENV] ", format, args...) }
-
-func exitln(exitCode int, prefix string, args ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
-	os.Exit(exitCode)
-}
-func exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
-	os.Exit(exitCode)
-}
-
-var ( // global maps, shared between stages
-	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
-	creatorsLock       sync.RWMutex
-	optwareCreators    = make(map[string]func(sign string, stage *Stage) Optware) // indexed by sign, same below.
-	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
-	quicRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICRunner)
-	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
-	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner)
-	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
-	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner)
-	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
-	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
-	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
-	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
-	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
-	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
-	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(sign string, stage *Stage) Cronjob)
-	initsLock          sync.RWMutex
-	appInits           = make(map[string]func(app *App) error) // indexed by app name.
-	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
-)
-
-func registerFixture(sign string) {
-	if _, ok := fixtureSigns[sign]; ok {
-		BugExitln("fixture sign conflicted")
-	}
-	fixtureSigns[sign] = true
-	signComp(sign, compFixture)
-}
-func RegisterOptware(sign string, create func(sign string, stage *Stage) Optware) {
-	registerComponent0(sign, compOptware, optwareCreators, create)
-}
-func registerBackend(sign string, create func(name string, stage *Stage) backend) {
-	registerComponent0(sign, compBackend, backendCreators, create)
-}
-func RegisterQUICRunner(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICRunner) {
-	registerComponent1(sign, compQUICRunner, quicRunnerCreators, create)
-}
-func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
-	registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
-}
-func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner) {
-	registerComponent1(sign, compTCPSRunner, tcpsRunnerCreators, create)
-}
-func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
-	registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
-}
-func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner) {
-	registerComponent1(sign, compUDPSRunner, udpsRunnerCreators, create)
-}
-func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
-	registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
-}
-func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
-	registerComponent0(sign, compStater, staterCreators, create)
-}
-func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
-	registerComponent0(sign, compCacher, cacherCreators, create)
-}
-func RegisterHandler(sign string, create func(name string, stage *Stage, app *App) Handler) {
-	registerComponent1(sign, compHandler, handlerCreators, create)
-}
-func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
-	registerComponent1(sign, compReviser, reviserCreators, create)
-}
-func RegisterSocklet(sign string, create func(name string, stage *Stage, app *App) Socklet) {
-	registerComponent1(sign, compSocklet, sockletCreators, create)
-}
-func RegisterAppInit(name string, init func(app *App) error) {
-	initsLock.Lock()
-	appInits[name] = init
-	initsLock.Unlock()
-}
-func RegisterSvcInit(name string, init func(svc *Svc) error) {
-	initsLock.Lock()
-	svcInits[name] = init
-	initsLock.Unlock()
-}
-func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
-	registerComponent0(sign, compServer, serverCreators, create)
-}
-func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
-	registerComponent0(sign, compCronjob, cronjobCreators, create)
-}
-
-func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, backend, stater, cacher, server, cronjob
-	creatorsLock.Lock()
-	defer creatorsLock.Unlock()
-	if _, ok := creators[sign]; ok {
-		BugExitln("component0 sign conflicted")
-	}
-	creators[sign] = create
-	signComp(sign, comp)
-}
-func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
-	creatorsLock.Lock()
-	defer creatorsLock.Unlock()
-	if _, ok := creators[sign]; ok {
-		BugExitln("component1 sign conflicted")
-	}
-	creators[sign] = create
-	signComp(sign, comp)
-}
 
 func ApplyText(text string) (*Stage, error) {
 	c := getConfig()

@@ -9,8 +9,113 @@ package internal
 
 import (
 	. "github.com/hexinfra/gorox/hemi/libraries/config"
+	"sync"
 	"time"
 )
+
+var ( // global maps, shared between stages
+	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+	creatorsLock       sync.RWMutex
+	optwareCreators    = make(map[string]func(sign string, stage *Stage) Optware) // indexed by sign, same below.
+	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
+	quicRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICRunner)
+	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
+	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner)
+	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
+	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner)
+	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
+	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
+	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
+	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
+	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
+	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
+	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
+	cronjobCreators    = make(map[string]func(sign string, stage *Stage) Cronjob)
+	initsLock          sync.RWMutex
+	appInits           = make(map[string]func(app *App) error) // indexed by app name.
+	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
+)
+
+func registerFixture(sign string) {
+	if _, ok := fixtureSigns[sign]; ok {
+		BugExitln("fixture sign conflicted")
+	}
+	fixtureSigns[sign] = true
+	signComp(sign, compFixture)
+}
+func RegisterOptware(sign string, create func(sign string, stage *Stage) Optware) {
+	registerComponent0(sign, compOptware, optwareCreators, create)
+}
+func registerBackend(sign string, create func(name string, stage *Stage) backend) {
+	registerComponent0(sign, compBackend, backendCreators, create)
+}
+func RegisterQUICRunner(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICRunner) {
+	registerComponent1(sign, compQUICRunner, quicRunnerCreators, create)
+}
+func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
+	registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
+}
+func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner) {
+	registerComponent1(sign, compTCPSRunner, tcpsRunnerCreators, create)
+}
+func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
+	registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
+}
+func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner) {
+	registerComponent1(sign, compUDPSRunner, udpsRunnerCreators, create)
+}
+func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
+	registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
+}
+func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
+	registerComponent0(sign, compStater, staterCreators, create)
+}
+func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
+	registerComponent0(sign, compCacher, cacherCreators, create)
+}
+func RegisterHandler(sign string, create func(name string, stage *Stage, app *App) Handler) {
+	registerComponent1(sign, compHandler, handlerCreators, create)
+}
+func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
+	registerComponent1(sign, compReviser, reviserCreators, create)
+}
+func RegisterSocklet(sign string, create func(name string, stage *Stage, app *App) Socklet) {
+	registerComponent1(sign, compSocklet, sockletCreators, create)
+}
+func RegisterAppInit(name string, init func(app *App) error) {
+	initsLock.Lock()
+	appInits[name] = init
+	initsLock.Unlock()
+}
+func RegisterSvcInit(name string, init func(svc *Svc) error) {
+	initsLock.Lock()
+	svcInits[name] = init
+	initsLock.Unlock()
+}
+func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
+	registerComponent0(sign, compServer, serverCreators, create)
+}
+func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
+	registerComponent0(sign, compCronjob, cronjobCreators, create)
+}
+func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // optware, backend, stater, cacher, server, cronjob
+	creatorsLock.Lock()
+	defer creatorsLock.Unlock()
+	if _, ok := creators[sign]; ok {
+		BugExitln("component0 sign conflicted")
+	}
+	creators[sign] = create
+	signComp(sign, comp)
+}
+func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
+	creatorsLock.Lock()
+	defer creatorsLock.Unlock()
+	if _, ok := creators[sign]; ok {
+		BugExitln("component1 sign conflicted")
+	}
+	creators[sign] = create
+	signComp(sign, comp)
+}
 
 // Component is the interface for all components.
 type Component interface {

@@ -51,6 +51,12 @@ var (
 )
 
 func main() {
+	_, err := os.Stat("hemi")
+	if err != nil {
+		fmt.Println("please use demake.")
+		return
+	}
+
 	flag.Usage = func() {
 		fmt.Println(usage)
 	}

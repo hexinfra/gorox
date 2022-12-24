@@ -50,6 +50,12 @@ var (
 )
 
 func main() {
+	_, err := os.Stat("hemi")
+	if err == nil {
+		fmt.Println("please use gomake.")
+		return
+	}
+
 	flag.Usage = func() {
 		fmt.Println(usage)
 	}

@@ -730,19 +730,6 @@ func stringTrim(s string, b byte) string {
 	}
 	return s[:i+1]
 }
-func stringCheck(name string) (hash uint16, ok bool) {
-	if name == "" {
-		return 0, false
-	}
-	for i := 0; i < len(name); i++ {
-		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
-			hash += uint16(b)
-		} else {
-			return 0, false
-		}
-	}
-	return hash, true
-}
 func stringHash(s string) uint16 {
 	hash := uint16(0)
 	for i := 0; i < len(s); i++ {

@@ -117,7 +117,7 @@ func (s *stream_) onEnd() { // for zeros
 func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
 
-// httpInMessage is a Request or response.
+// httpInMessage is a Request or response, used as shell by httpInMessage_.
 type httpInMessage interface {
 	ContentSize() int64
 	UnsafeContent() []byte
@@ -1099,7 +1099,7 @@ var ( // http incoming message errors
 	httpReadTooSlow = errors.New("read too slow")
 )
 
-// httpOutMessage is a Response or request.
+// httpOutMessage is a Response or request, used as shell by httpOutMessage_.
 type httpOutMessage interface {
 	control() []byte
 	header(name []byte) (value []byte, ok bool)

@@ -1301,6 +1301,7 @@ func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []nav
 	}
 }
 
+func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
 func (r *httpRequest_) UserAgent() string {
 	return string(r.UnsafeUserAgent())
 }
@@ -1310,9 +1311,6 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	}
 	vAgent := r.primes[r.indexes.userAgent].value
 	return r.input[vAgent.from:vAgent.edge]
-}
-func (r *httpRequest_) AcceptTrailers() bool {
-	return r.acceptTrailers
 }
 
 func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
@@ -2693,13 +2691,13 @@ func (r *httpResponse_) finishChunked() error {
 	return resp.finalizeChunked()
 }
 
+func (r *httpResponse_) isForbiddenField(hash uint16, name []byte) bool {
+	return httpIsForbiddenResponseField(hash, name)
+}
+
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-}
-
-func (r *httpResponse_) isForbiddenField(hash uint16, name []byte) bool {
-	return httpIsForbiddenResponseField(hash, name)
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

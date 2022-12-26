@@ -121,15 +121,15 @@ func (c *hConn_) onPut() {
 
 func (c *hConn_) getClient() httpClient { return c.client.(httpClient) }
 
-func (c *hConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
-}
-
 func (c *hConn_) isBroken() bool { return c.broken.Load() }
 func (c *hConn_) markBroken()    { c.broken.Store(true) }
 
 func (c *hConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, seconds, c.counter.Add(1))
+}
+
+func (c *hConn_) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
 }
 
 // hStream_ is the mixin for H[1-3]Stream.
@@ -301,10 +301,10 @@ type hResponse_ struct {
 	// Mixins
 	httpInMessage_
 	// Stream states (buffers)
-	stockCookies [4]cookie // for r.cookies
+	stockSetCookies [4]setCookie // for r.setCookies
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	cookies []cookie // hold cookies->r.input. [<r.stockCookies>/?]
+	setCookies []setCookie // hold setCookies->r.input. [<r.stockSetCookies>/?]
 	// Stream states (zeros)
 	hResponse0_ // all values must be zero by default in this struct!
 }
@@ -337,12 +337,12 @@ type hResponse0_ struct { // for fast reset, entirely
 
 func (r *hResponse_) onUse() { // for non-zeros
 	r.httpInMessage_.onUse(true)
-	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
+	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
 }
 func (r *hResponse_) onEnd() { // for zeros
-	if cap(r.cookies) != cap(r.stockCookies) {
+	if cap(r.setCookies) != cap(r.stockSetCookies) {
 		// put?
-		r.cookies = nil
+		r.setCookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
 	r.httpInMessage_.onEnd()
@@ -500,11 +500,33 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	return true
 }
 
-func (r *hResponse_) parseCookie(cookieString text) bool { // set-cookie: xxx
+func (r *hResponse_) unsafeDate() []byte { // used by proxies
+	if r.indexes.date == 0 {
+		return nil
+	}
+	vDate := r.primes[r.indexes.date].value
+	return r.input[vDate.from:vDate.edge]
+}
+func (r *hResponse_) unsafeLastModified() []byte { // used by proxies
+	if r.indexes.lastModified == 0 {
+		return nil
+	}
+	vDate := r.primes[r.indexes.lastModified].value
+	return r.input[vDate.from:vDate.edge]
+}
+func (r *hResponse_) unsafeETag() []byte { // used by proxies
+	if r.indexes.etag == 0 {
+		return nil
+	}
+	vETag := r.primes[r.indexes.etag].value
+	return r.input[vETag.from:vETag.edge]
+}
+
+func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 	// TODO
 	return false
 }
-func (r *hResponse_) addCookie(cookie *cookie) bool { // set-cookie: xxx
+func (r *hResponse_) addSetCookie(setCookie *setCookie) bool {
 	// TODO
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
@@ -553,27 +575,6 @@ func (r *hResponse_) checkHead() bool {
 	return true
 }
 
-func (r *hResponse_) unsafeDate() []byte { // used by proxies
-	if r.indexes.date == 0 {
-		return nil
-	}
-	vDate := r.primes[r.indexes.date].value
-	return r.input[vDate.from:vDate.edge]
-}
-func (r *hResponse_) unsafeLastModified() []byte { // used by proxies
-	if r.indexes.lastModified == 0 {
-		return nil
-	}
-	vDate := r.primes[r.indexes.lastModified].value
-	return r.input[vDate.from:vDate.edge]
-}
-func (r *hResponse_) unsafeETag() []byte { // used by proxies
-	if r.indexes.etag == 0 {
-		return nil
-	}
-	vETag := r.primes[r.indexes.etag].value
-	return r.input[vETag.from:vETag.edge]
-}
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
 	r.delPrime(r.indexes.server)
 	r.delPrime(r.indexes.date)
@@ -607,8 +608,8 @@ func (r *hResponse_) getSaveContentFilesDir() string {
 	return r.stream.getHolder().(httpClient).SaveContentFilesDir() // must ends with '/'
 }
 
-// cookie is a cookie received from server.
-type cookie struct { // 24 bytes. refers to r.input
+// setCookie is a "set-cookie" received from server.
+type setCookie struct { // 24 bytes. refers to r.input
 	nameFrom     int16
 	valueFrom    int16
 	valueEdge    int16

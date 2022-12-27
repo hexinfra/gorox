@@ -7,6 +7,10 @@
 
 package internal
 
+import (
+	"fmt"
+)
+
 func init() {
 	RegisterHandler("http2Proxy", func(name string, stage *Stage, app *App) Handler {
 		h := new(http2Proxy)
@@ -43,7 +47,147 @@ func (h *http2Proxy) OnShutdown() {
 }
 
 func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
-	// TODO(diogin): Implementation
+	var (
+		content  any
+		content2 any
+		err2     error
+		conn2    *H2Conn
+	)
+
+	hasContent := req.HasContent()
+	if hasContent && h.bufferClientContent { // including size 0
+		content = req.holdContent()
+		if content == nil {
+			resp.SetStatus(StatusBadRequest)
+			resp.SendBytes(nil)
+			return
+		}
+	}
+
+	if h.proxyMode == "forward" {
+		outgate2 := h.stage.http2
+		conn2, err2 = outgate2.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
+		if err2 != nil {
+			if Debug(1) {
+				fmt.Println(err2.Error())
+			}
+			resp.SendBadGateway(nil)
+			return
+		}
+		defer conn2.closeConn() // TODO
+	} else { // reverse
+		backend2 := h.backend.(*HTTP2Backend)
+		conn2, err2 = backend2.FetchConn()
+		if err2 != nil {
+			if Debug(1) {
+				fmt.Println(err2.Error())
+			}
+			resp.SendBadGateway(nil)
+			return
+		}
+		defer backend2.StoreConn(conn2)
+	}
+
+	stream2 := conn2.FetchStream()
+	stream2.onUse(conn2, 123) // TODO
+	defer func() {
+		stream2.onEnd()
+		conn2.StoreStream(stream2)
+	}()
+
+	// TODO: use stream2.forwardProxy() or stream2.reverseProxy()
+
+	req2 := stream2.Request()
+	if !req2.copyHead(req) {
+		stream2.markBroken()
+		resp.SendBadGateway(nil)
+		return
+	}
+	hasTrailers := req.hasTrailers()
+	if !hasContent || h.bufferClientContent {
+		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, TempFile
+		if err2 == nil && hasTrailers {
+			if !req.walkTrailers(func(name []byte, value []byte) bool {
+				return req2.addTrailer(name, value)
+			}, true) { // for proxy
+				stream2.markBroken()
+				err2 = httpAddTrailerFailed
+			} else if err2 = req2.finishChunked(); err2 != nil {
+				stream2.markBroken()
+			}
+		} else if hasTrailers {
+			stream2.markBroken()
+		}
+	} else if err2 = req2.pass(req); err2 != nil {
+		stream2.markBroken()
+	} else if req2.contentSize == -2 { // write last chunk and trailers (if exist)
+		if err2 = req2.finishChunked(); err2 != nil {
+			stream2.markBroken()
+		}
+	}
+	if err2 != nil {
+		resp.SendBadGateway(nil)
+		return
+	}
+
+	resp2 := stream2.Response()
+	for { // until we found a non-1xx status (>= 200)
+		//resp2.recvHead()
+		if resp2.headResult != StatusOK || resp2.Status() == StatusSwitchingProtocols { // websocket is not served in handlers.
+			stream2.markBroken()
+			resp.SendBadGateway(nil)
+			return
+		}
+		if resp2.Status() >= StatusOK {
+			break
+		}
+		// We got 1xx
+		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
+		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
+		// need not forward the corresponding 100 (Continue) response(s).
+		if !resp.pass1xx(resp2) {
+			stream2.markBroken()
+			return
+		}
+		resp2.onEnd()
+		resp2.onUse()
+	}
+
+	hasContent2 := false
+	if req.MethodCode() != MethodHEAD {
+		hasContent2 = resp2.HasContent()
+	}
+	if hasContent2 && h.bufferServerContent { // including size 0
+		content2 = resp2.holdContent()
+		if content2 == nil {
+			// stream1 is marked as broken
+			resp.SendBadGateway(nil)
+			return
+		}
+	}
+
+	if !resp.copyHead(resp2) {
+		stream2.markBroken()
+		return
+	}
+	hasTrailers2 := resp2.hasTrailers()
+	if !hasContent2 || h.bufferServerContent {
+		if resp.post(content2, hasTrailers2) != nil { // nil (no content), []byte, TempFile
+			if hasTrailers2 {
+				stream2.markBroken()
+			}
+			return
+		} else if hasTrailers2 {
+			if !resp2.walkTrailers(func(name []byte, value []byte) bool {
+				return resp.addTrailer(name, value)
+			}, true) { // for proxy
+				return
+			}
+		}
+	} else if err := resp.pass(resp2); err != nil {
+		stream2.markBroken()
+		return
+	}
 	return
 }
 

@@ -1380,7 +1380,9 @@ func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) 
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
-		chunk.Close()
+		if shut {
+			chunk.Close()
+		}
 		return nil
 	}
 	chunk_ := GetBlock()

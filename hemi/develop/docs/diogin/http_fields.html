@@ -32,11 +32,11 @@
 
 		<h2>请求字段</h2>
 		<table class="request">
-			<tr><th width="200px">字段名称</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">定义</th></tr>
+			<tr><th>字段名称</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th><th>定义</th></tr>
 			<tr><td>:authority</td>           <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>authority = host [ ":" port ]</td>
 					<td><a href="https://www.rfc-editor.org/rfc/rfc9113.html#name-request-pseudo-header-field">RFC 9113</a></td></tr>
 			<tr><td>:method</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>method = token</td>
-					<td>包含合法的请求方法。</td></tr>
+					<td>TODO</td></tr>
 			<tr><td>:path</td>                <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>request-target = origin-form / absolute-form / authority-form / asterisk-form</td>
 					<td>TODO</td></tr>
 			<tr><td>:protocol</td>            <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
@@ -45,22 +45,22 @@
 					<td>TODO</td></tr>
 			<tr><td>accept</td>               <td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td>
 					<td>TODO</td></tr>
-			<tr><td>accept-encoding</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Encoding  = #( codings [ weight ] )</td>
+			<tr><td>accept-encoding</td>      <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Encoding  = #( codings [ weight ] )</td>
 					<td>TODO</td></tr>
-			<tr><td>accept-language</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
-					<td>TODO</td></tr>
-			<tr><td>authorization</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
-					<td>TODO</td></tr>
-			<tr><td>cache-control</td>        <td>?</td><td>+</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
-					<td>TODO</td></tr>
+			<tr><td>accept-language</td>      <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Language = #( language-range [ weight ] )</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-accept-language">RFC 9110</a></td></tr>
+			<tr><td>authorization</td>        <td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Authorization = credentials</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#field.authorization">RFC 9110</a></td></tr>
+			<tr><td>cache-control</td>        <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Cache-Control = #cache-directive</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9111.html#name-cache-control">RFC 9111</a></td></tr>
 			<tr><td>connection</td>           <td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #connection-option</td>
-					<td>TODO</td></tr>
-			<tr><td>content-encoding</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Encoding = #content-coding</td>
-					<td>TODO</td></tr>
-			<tr><td>content-language</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
-					<td>TODO</td></tr>
-			<tr><td>content-length</td>       <td>✗</td><td>1</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>?</td>
-					<td>TODO</td></tr>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-connection">RFC 9110</a></td></tr>
+			<tr><td>content-encoding</td>     <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Encoding = #content-coding</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-content-encoding">RFC 9110</a></td></tr>
+			<tr><td>content-language</td>     <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Language = #language-tag</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-content-language">RFC 9110</a></td></tr>
+			<tr><td>content-length</td>       <td>✗</td><td>1</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Content-Length = 1*DIGIT</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length">RFC 9110</a></td></tr>
 			<tr><td>content-location</td>     <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Location = absolute-URI / partial-URI</td>
 					<td>TODO</td></tr>
 			<tr><td>content-range</td>        <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Range = range-unit SP ( range-resp / unsatisfied-range )</td>
@@ -73,8 +73,8 @@
 					<td>TODO</td></tr>
 			<tr><td>expect</td>               <td>✗</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>Expect = #expectation</td>
 					<td>TODO</td></tr>
-			<tr><td>forwarded</td>            <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td>
-					<td>TODO</td></tr>
+			<tr><td>forwarded</td>            <td>?</td><td>+</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Forwarded = 1#forwarded-element</td>
+					<td><a href="https://www.rfc-editor.org/rfc/rfc7239.html#page-4">RFC 7239</a></td></tr>
 			<tr><td>host</td>                 <td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Host = uri-host [ ":" port ]</td>
 					<td>TODO</td></tr>
 			<tr><td>if-match</td>             <td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Match = "*" / #entity-tag</td>
@@ -118,7 +118,7 @@
 
 		<h2>响应字段</h2>
 		<table class="response">
-			<tr><th width="200px">字段名称</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th width="300px">格式</th><th width="400px">定义</th></tr>
+			<tr><th>字段名称</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th><th>定义</th></tr>
 			<tr><td>:status</td>              <td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>status-code = 3DIGIT</td>
 					<td>TODO</td></tr>
 			<tr><td>accept-encoding</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Encoding  = #( codings [ weight ] )</td>

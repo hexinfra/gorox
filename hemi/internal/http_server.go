@@ -769,8 +769,8 @@ var ( // perfect hash table for multiple request headers
 		12: {httpHashTransferEncoding, 164, 181, true, (*httpRequest_).checkTransferEncoding}, // Transfer-Encoding = 1#transfer-coding
 		13: {httpHashTrailer, 156, 163, true, nil},                                            // Trailer = 1#field-name
 		14: {httpHashAcceptCharset, 7, 21, true, nil},                                         // Accept-Charset = 1#( ( charset / "*" ) [ weight ] )
-		15: {httpHashIfMatch, 123, 131, true, (*httpRequest_).checkIfMatch},                   // If-Match = "*" / 1#entity-tag
-		16: {httpHashIfNoneMatch, 132, 145, true, (*httpRequest_).checkIfNoneMatch},           // If-None-Match = "*" / 1#entity-tag
+		15: {httpHashIfMatch, 123, 131, false, (*httpRequest_).checkIfMatch},                  // If-Match = "*" / #entity-tag
+		16: {httpHashIfNoneMatch, 132, 145, false, (*httpRequest_).checkIfNoneMatch},          // If-None-Match = "*" / #entity-tag
 	}
 	httpMultipleRequestHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
 )
@@ -867,11 +867,11 @@ func (r *httpRequest_) checkAcceptEncoding(from uint8, edge uint8) bool {
 	return true
 }
 func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
-	// If-Match = "*" / 1#entity-tag
+	// If-Match = "*" / #entity-tag
 	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
 }
 func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool {
-	// If-None-Match = "*" / 1#entity-tag
+	// If-None-Match = "*" / #entity-tag
 	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
 }
 func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {

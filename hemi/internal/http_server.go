@@ -838,7 +838,7 @@ func (r *httpRequest_) checkAcceptEncoding(from uint8, edge uint8) bool {
 	// codings         = content-coding / "identity" / "*"
 	// content-coding  = token
 	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) {
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
 			break
 		}
 		vText := r.primes[i].value

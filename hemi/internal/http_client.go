@@ -264,7 +264,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	return true
 }
 func (r *hRequest_) pass(req httpInMessage) error { // used by proxies.
-	return r.doPass(req, false)
+	return r.doPass(req, false) // no revisers in client side
 }
 
 func (r *hRequest_) finishChunked() error {
@@ -332,6 +332,7 @@ type hResponse0_ struct { // for fast reset, entirely
 		expires      uint8 // expires header ->r.input
 		etag         uint8 // etag header ->r.input
 		acceptRanges uint8 // accept-ranges header ->r.input
+		location     uint8 // location header ->r.input
 	}
 }
 
@@ -488,7 +489,7 @@ func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.lastModifiedTime)
 }
 func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
-	// TODO
+	r.indexes.location = index
 	return true
 }
 func (r *hResponse_) checkServer(header *pair, index uint8) bool {
@@ -496,8 +497,23 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
-	// TODO
-	return true
+	// set-cookie-header = "Set-Cookie:" SP set-cookie-string
+	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
+	// cookie-pair = token "=" cookie-value
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / extension-av
+	// expires-av = "Expires=" sane-cookie-date
+	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
+	// domain-av = "Domain=" domain-value
+	// path-av = "Path=" path-value
+	// secure-av = "Secure"
+	// httponly-av = "HttpOnly"
+	// extension-av = <any CHAR except CTLs or ";">
+
+	// TODO: append to r.setCookies
+	r.headResult = StatusRequestHeaderFieldsTooLarge
+	return false
 }
 
 func (r *hResponse_) unsafeDate() []byte { // used by proxies
@@ -520,16 +536,6 @@ func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	}
 	vETag := r.primes[r.indexes.etag].value
 	return r.input[vETag.from:vETag.edge]
-}
-
-func (r *hResponse_) parseSetCookie(setCookieString text) bool {
-	// TODO
-	return false
-}
-func (r *hResponse_) addSetCookie(setCookie *setCookie) bool {
-	// TODO
-	r.headResult = StatusRequestHeaderFieldsTooLarge
-	return false
 }
 
 func (r *hResponse_) checkHead() bool {

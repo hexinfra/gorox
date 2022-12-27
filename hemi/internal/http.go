@@ -43,7 +43,7 @@ httpOutMessage_  | stream                   httpInMessage_ | stream
 NOTE:
 
   * messages are composed of control, headers, [content, [trailers]].
-  * control plus headers are called head, and it must be small.
+  * control & headers is called head, and it must be small.
   * contents, if exist (perhaps of zero size), may be large/small, sized/chunked.
   * trailers must be small, and only exist when contents exist and are chunked.
   * incoming messages need parsing.
@@ -1674,6 +1674,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	httpHashAuthority = 1059 // :authority
 	httpHashMethod    = 699  // :method
 	httpHashPath      = 487  // :path
+	httpHashProtocol  = 940  // :protocol
 	httpHashScheme    = 687  // :scheme
 	httpHashStatus    = 734  // :status
 	// General fields
@@ -1729,6 +1730,7 @@ var ( // byteses of http fields.
 	httpBytesAuthority = []byte(":authority")
 	httpBytesMethod    = []byte(":method")
 	httpBytesPath      = []byte(":path")
+	httpBytesProtocol  = []byte(":protocol")
 	httpBytesScheme    = []byte(":scheme")
 	httpBytesStatus    = []byte(":status")
 	// General fields

@@ -814,7 +814,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 					}
 					query.value.from = r.arrayEdge
 					state = 3
-				} else if httpPchar[b] == 1 || b == '?' {
+				} else if httpPchar[b] >= 1 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}
@@ -835,7 +835,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 					query.hash = 0 // reset hash for next query
 					query.nameFrom = r.arrayEdge
 					state = 2
-				} else if httpPchar[b] == 1 || b == '?' {
+				} else if httpPchar[b] >= 1 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}

@@ -1772,7 +1772,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 				}
 				form.value.from = r.arrayEdge
 				state = 3
-			} else if httpPchar[b] == 1 || b == '?' {
+			} else if httpPchar[b] >= 1 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
@@ -1792,7 +1792,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 				form.hash = 0 // reset hash for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
-			} else if httpPchar[b] == 1 || b == '?' {
+			} else if httpPchar[b] >= 1 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}

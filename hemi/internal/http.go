@@ -79,8 +79,8 @@ type stream interface {
 
 	peerAddr() net.Addr
 
+	smallStack() []byte
 	unsafeMake(size int) []byte
-	smallStack() []byte // a 64 bytes buffer
 	makeTempName(p []byte, seconds int64) (from int, edge int)
 
 	setReadDeadline(deadline time.Time) error
@@ -98,7 +98,7 @@ type stream interface {
 // stream is the trait for httpStream_ and hStream_.
 type stream_ struct {
 	// Stream states (buffers)
-	stockStack [64]byte // a (fake) stack buffer to workaround Go's conservative escape analysis. WARNING: used this as a temp stack scoped memory!
+	stockStack [256]byte // a (fake) stack buffer to workaround Go's conservative escape analysis. WARNING: used this as a temp stack scoped memory!
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	region region // a region-based memory pool
@@ -114,8 +114,8 @@ func (s *stream_) onEnd() { // for zeros
 	s.region.free()
 }
 
-func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
+func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 
 // httpInMessage is a Request or response, used as shell by httpInMessage_.
 type httpInMessage interface {
@@ -136,10 +136,10 @@ type httpInMessage_ struct {
 	stream stream        // the stream to which the message belongs
 	shell  httpInMessage // *http[1-3]Request or *H[1-3]Response
 	// Stream states (buffers)
-	stockInput  [_2K]byte // for r.input
-	stockArray  [_1K]byte // for r.array
-	stockPrimes [76]pair  // for r.primes
-	stockExtras [2]pair   // for r.extras
+	stockInput  [1536]byte // for r.input
+	stockArray  [1024]byte // for r.array
+	stockPrimes [76]pair   // for r.primes
+	stockExtras [2]pair    // for r.extras
 	// Stream states (controlled)
 	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
@@ -1228,13 +1228,13 @@ func (r *httpOutMessage_) AddHeaderByBytes(name []byte, value string) bool {
 	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
-	if hash, ok := bytesCheck(name); ok && !r.shell.isForbiddenField(hash, name) {
+	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isForbiddenField(hash, lower) {
 		for _, b := range value { // to prevent response splitting
 			if b == '\r' || b == '\n' {
 				return false
 			}
 		}
-		return r.shell.addHeader(name, value)
+		return r.shell.addHeader(lower, value)
 	} else {
 		return false
 	}
@@ -1242,12 +1242,43 @@ func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool 
 func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
 }
-func (r *httpOutMessage_) DelHeaderByBytes(name []byte) (ok bool) {
-	if hash, ok := bytesCheck(name); ok && !r.shell.isForbiddenField(hash, name) {
-		return r.shell.delHeader(name)
+func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
+	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isForbiddenField(hash, lower) {
+		return r.shell.delHeader(lower)
 	} else {
 		return false
 	}
+}
+func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) {
+	n := len(name)
+	if n == 0 || n > 255 {
+		return 0, false, nil
+	}
+	allLower := true
+	for i := 0; i < n; i++ {
+		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
+			hash += uint16(b)
+		} else {
+			hash = 0
+			allLower = false
+			break
+		}
+	}
+	if allLower {
+		return hash, true, name
+	}
+	stack := r.stream.smallStack()
+	for i := 0; i < n; i++ {
+		b := name[i]
+		if b >= 'A' && b <= 'Z' {
+			b += 0x20 // to lower
+		} else if !(b >= 'a' && b <= 'z' || b == '-') {
+			return 0, false, nil
+		}
+		hash += uint16(b)
+		stack[i] = b
+	}
+	return hash, true, stack[:n]
 }
 
 func (r *httpOutMessage_) IsSent() bool {

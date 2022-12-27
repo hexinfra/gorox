@@ -28,7 +28,7 @@ func (r *httpInMessage_) _growHead1() bool { // HTTP/1 is not a binary protocol,
 			}
 			return false
 		}
-		// r.input size is not 16K. We can use a larger input (stock -> 4K -> 16K)
+		// r.input size is not 16K. We switch to a larger input (stock -> 4K -> 16K)
 		var input []byte
 		stockSize := int32(cap(r.stockInput))
 		if inputSize == stockSize {
@@ -791,7 +791,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 }
 func (r *httpOutMessage_) _writeBlob1(block *Block, chunked bool) error { // blob
 	if chunked { // HTTP/1.1
-		sizeBuffer := r.stream.smallStack() // 64 bytes is enough for chunk size
+		sizeBuffer := r.stream.smallStack() // stack is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
 		sizeBuffer[n+1] = '\n'

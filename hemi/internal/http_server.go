@@ -2029,7 +2029,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 								r.stream.markBroken()
 								return
 							}
-							tempName := r.stream.smallStack() // 64 bytes is enough for tempName
+							tempName := r.stream.smallStack() // stack is enough for tempName
 							from, edge := r.stream.makeTempName(tempName, r.receiveTime)
 							if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
 								r.stream.markBroken()

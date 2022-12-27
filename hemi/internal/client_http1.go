@@ -470,7 +470,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		if r.contentSize == -2 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else { // content-length: 12345
-			lengthBuffer := r.stream.smallStack() // 64 bytes is enough for length
+			lengthBuffer := r.stream.smallStack() // stack is enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
 		}

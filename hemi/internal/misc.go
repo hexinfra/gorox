@@ -674,19 +674,6 @@ func bytesTrimRight(p []byte, b byte) []byte {
 	}
 	return p[:i+1]
 }
-func bytesCheck(name []byte) (hash uint16, ok bool) {
-	if len(name) == 0 {
-		return 0, false
-	}
-	for i := 0; i < len(name); i++ {
-		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
-			hash += uint16(b)
-		} else {
-			return 0, false
-		}
-	}
-	return hash, true
-}
 func bytesHash(p []byte) uint16 {
 	hash := uint16(0)
 	for _, b := range p {

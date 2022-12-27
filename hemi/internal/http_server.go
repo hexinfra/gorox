@@ -1339,7 +1339,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 				}
 				cookie.value.from = p + 1
 				state = 1
-			} else if httpTchar[b] == 1 {
+			} else if httpTchar[b] != 0 {
 				cookie.hash += uint16(b)
 			} else {
 				r.headResult, r.headReason = StatusBadRequest, "invalid cookie name"
@@ -1937,12 +1937,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			r.pBack = r.pFore // now r.formBuffer is used for receiving field-name and onward
 			for {             // field name
 				b := r.formBuffer[r.pFore]
-				if b == ':' {
-					break
-				}
-				if b >= 'A' && b <= 'Z' {
+				if t := httpTchar[b]; t == 1 {
+					// Fast path, do nothing
+				} else if t == 2 { // A-Z
 					r.formBuffer[r.pFore] = b + 0x20 // to lower
-				} else if httpTchar[b] == 0 {
+				} else if b == ':' {
+					break
+				} else {
 					r.stream.markBroken()
 					return
 				}

@@ -638,7 +638,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 	// token = 1*tchar
 	hash := uint16(0)
 	for {
-		if b := r.input[r.pFore]; httpTchar[b] == 1 {
+		if b := r.input[r.pFore]; httpTchar[b] != 0 {
 			hash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
 				return false

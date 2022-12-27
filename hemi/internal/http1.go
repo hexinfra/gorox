@@ -84,13 +84,11 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
-			if b >= 'a' && b <= 'z' {
+			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
-			} else if b >= 'A' && b <= 'Z' {
+			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
 				r.input[r.pFore] = b
-			} else if httpTchar[b] == 1 {
-				// Do nothing
 			} else if b == ':' {
 				break
 			} else {
@@ -404,13 +402,11 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 		r.pBack = r.pFore // for field-name
 		for {
 			b := r.bodyBuffer[r.pFore]
-			if b >= 'a' && b <= 'z' {
+			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
-			} else if b >= 'A' && b <= 'Z' {
+			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
 				r.bodyBuffer[r.pFore] = b
-			} else if httpTchar[b] == 1 {
-				// Do nothing
 			} else if b == ':' {
 				break
 			} else {

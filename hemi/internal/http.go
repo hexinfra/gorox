@@ -233,6 +233,7 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	}
 
 	r.headReason = ""
+
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked content
 			// Use bytes over received in r.bodyBuffer as new r.input.
@@ -255,6 +256,7 @@ func (r *httpInMessage_) onEnd() { // for zeros
 		PutNK(r.contentBlob)
 	}
 	r.contentBlob = nil
+
 	if r.contentHeld != nil {
 		r.contentHeld.Close()
 		os.Remove(r.contentHeld.Name())
@@ -304,8 +306,8 @@ func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bo
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	if len(r.extras) == cap(r.extras) {
-		if cap(r.extras) == cap(r.stockExtras) { // full
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) == cap(r.stockExtras) { // stock
 			r.extras = get255Pairs()
 			r.extras = append(r.extras, r.stockExtras[:]...)
 		} else { // too many extras!
@@ -1162,7 +1164,7 @@ type httpOutMessage_ struct {
 	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
-	edges [128]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers
+	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers
 	// Stream states (non-zeros)
 	fields      []byte // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
 	contentSize int64  // -1: not set, -2: chunked encoding, >=0: size
@@ -1176,8 +1178,8 @@ type httpOutMessage_ struct {
 type httpOutMessage0_ struct { // for fast reset, entirely
 	maxSendSeconds   int64  // max seconds to send message
 	sendTime         int64  // unix timestamp in seconds when first send operation is performed
-	fieldsEdge       uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
 	controlEdge      uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
+	fieldsEdge       uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
 	nHeaders         uint8  // num of added headers, <= 255
 	nTrailers        uint8  // num of added trailers, <= 255
 	forbidContent    bool   // forbid content?
@@ -1422,17 +1424,6 @@ func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) 
 	return r.shell.push(chunk_)
 }
 
-func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {
-	if *copied {
-		return true
-	}
-	if r.shell.addHeader(name, value) {
-		*copied = true
-		return true
-	} else {
-		return false
-	}
-}
 func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
 	if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
@@ -1489,6 +1480,17 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 		}
 	}
 	return nil
+}
+func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {
+	if *copied {
+		return true
+	}
+	if r.shell.addHeader(name, value) {
+		*copied = true
+		return true
+	} else {
+		return false
+	}
 }
 
 func (r *httpOutMessage_) unsafeMake(size int) []byte {

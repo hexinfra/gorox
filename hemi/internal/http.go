@@ -462,8 +462,7 @@ func (r *httpInMessage_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
 	}
-	vType := r.primes[r.iContentType].value
-	return r.input[vType.from:vType.edge]
+	return r.primes[r.iContentType].valueAt(r.input)
 }
 
 func (r *httpInMessage_) H(name string) string {

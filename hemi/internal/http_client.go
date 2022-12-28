@@ -502,14 +502,17 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / extension-av
+	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
 	// expires-av = "Expires=" sane-cookie-date
 	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
 	// domain-av = "Domain=" domain-value
 	// path-av = "Path=" path-value
 	// secure-av = "Secure"
 	// httponly-av = "HttpOnly"
+	// samesite-av = "SameSite=" samesite-value
 	// extension-av = <any CHAR except CTLs or ";">
+	//var cookie setCookie
+	//setCookieString := header.value
 
 	// TODO: append to r.setCookies
 	r.headResult = StatusRequestHeaderFieldsTooLarge
@@ -520,31 +523,29 @@ func (r *hResponse_) unsafeDate() []byte { // used by proxies
 	if r.indexes.date == 0 {
 		return nil
 	}
-	vDate := r.primes[r.indexes.date].value
-	return r.input[vDate.from:vDate.edge]
+	return r.primes[r.indexes.date].valueAt(r.input)
 }
 func (r *hResponse_) unsafeLastModified() []byte { // used by proxies
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
-	vDate := r.primes[r.indexes.lastModified].value
-	return r.input[vDate.from:vDate.edge]
+	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 func (r *hResponse_) unsafeETag() []byte { // used by proxies
 	if r.indexes.etag == 0 {
 		return nil
 	}
-	vETag := r.primes[r.indexes.etag].value
-	return r.input[vETag.from:vETag.edge]
+	return r.primes[r.indexes.etag].valueAt(r.input)
 }
 
 func (r *hResponse_) checkHead() bool {
 	// Resolve r.keepAlive
 	if r.keepAlive == -1 { // no connection header
-		if r.versionCode == Version1_1 {
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		} else {
+		switch r.versionCode {
+		case Version1_0:
 			r.keepAlive = 0 // default is close for HTTP/1.0
+		case Version1_1:
+			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	}
 	// Resolve r.contentSize
@@ -616,16 +617,16 @@ func (r *hResponse_) getSaveContentFilesDir() string {
 
 // setCookie is a "set-cookie" received from server.
 type setCookie struct { // 24 bytes. refers to r.input
-	nameFrom     int16
-	valueFrom    int16
+	nameFrom     int16 // foo
+	valueFrom    int16 // bar
 	valueEdge    int16
-	expireFrom   int16
-	maxAgeFrom   int16
-	domainFrom   int16
-	pathFrom     int16
-	sameSiteFrom int16
-	secure       bool
-	httpOnly     bool
+	expireFrom   int16 // Expires=Wed, 09 Jun 2021 10:18:14 GMT
+	maxAgeFrom   int16 // Max-Age=123
+	domainFrom   int16 // Domain=example.com
+	pathFrom     int16 // Path=/abc
+	sameSiteFrom int16 // SameSite=Lax
+	secure       bool  // Secure
+	httpOnly     bool  // HttpOnly
 	nameSize     uint8
 	expireSize   uint8
 	maxAgeSize   uint8

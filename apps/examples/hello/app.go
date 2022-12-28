@@ -83,3 +83,8 @@ func (h *helloHandler) GET_abc(req Request, resp Response) {
 func (h *helloHandler) POST_def(req Request, resp Response) {
 	resp.Send("this is POST /def")
 }
+func (h *helloHandler) GET_cookie(req Request, resp Response) {
+	var cookie Cookie
+	cookie.Set("name1", "value1")
+	resp.AddCookie(&cookie)
+}

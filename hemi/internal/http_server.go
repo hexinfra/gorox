@@ -937,12 +937,13 @@ var ( // perfect hash table for critical request headers
 )
 
 func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool {
-	if r.indexes.userAgent != 0 {
+	if r.indexes.userAgent == 0 {
+		r.indexes.userAgent = index
+		return true
+	} else {
 		r.headResult, r.headReason = StatusBadRequest, "duplicated user-agent"
 		return false
 	}
-	r.indexes.userAgent = index
-	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
 	// cookie-header = "Cookie:" OWS cookie-string OWS
@@ -1306,8 +1307,7 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
 	}
-	vAgent := r.primes[r.indexes.userAgent].value
-	return r.input[vAgent.from:vAgent.edge]
+	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
 
 func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
@@ -1319,7 +1319,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	var (
 		state  = 0
-		cookie pair
+		cookie pair // TODO: confirm not escape
 	)
 	cookie.setPlace(pairPlaceInput) // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
@@ -1460,7 +1460,12 @@ func (r *httpRequest_) checkHead() bool {
 	// duplicate header fields that would impact request processing.
 
 	// Basic checks against versions
-	if r.versionCode == Version1_1 {
+	switch r.versionCode {
+	case Version1_0:
+		if r.keepAlive == -1 { // no connection header
+			r.keepAlive = 0 // default is close for HTTP/1.0
+		}
+	case Version1_1:
 		if r.indexes.host == 0 {
 			// RFC 7230 (section 5.4):
 			// A client MUST send a Host header field in all HTTP/1.1 request messages.
@@ -1470,8 +1475,6 @@ func (r *httpRequest_) checkHead() bool {
 		if r.keepAlive == -1 { // no connection header
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
-	} else if r.keepAlive == -1 { // Version1_0 and no connection header
-		r.keepAlive = 0 // default is close for HTTP/1.0
 	}
 
 	// Resolve r.contentSize
@@ -1632,11 +1635,11 @@ func (r *httpRequest_) checkHead() bool {
 		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
 		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
 		for i := cookies.from; i < cookies.edge; i++ {
-			prime := &r.primes[i]
-			if prime.hash != httpHashCookie || !prime.nameEqualBytes(r.input, httpBytesCookie) { // cookies may not be consecutive
+			cookie := &r.primes[i]
+			if cookie.hash != httpHashCookie || !cookie.nameEqualBytes(r.input, httpBytesCookie) { // cookies may not be consecutive
 				continue
 			}
-			if !r.parseCookie(prime.value) {
+			if !r.parseCookie(cookie.value) {
 				return false
 			}
 		}

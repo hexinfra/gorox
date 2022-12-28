@@ -500,7 +500,7 @@ func (r *H1Response) recvHead() { // control + headers
 		r.headResult = -1
 		return
 	}
-	if !r._growHead1() || !r._recvControl() || !r._recvHeaders1() || !r.checkHead() {
+	if !r.growHead1() || !r.recvControl() || !r.recvHeaders1() || !r.checkHead() {
 		// r.headResult is set.
 		return
 	}
@@ -509,7 +509,7 @@ func (r *H1Response) recvHead() { // control + headers
 		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
+func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
 	if have := r.inputEdge - r.pFore; have >= 9 {
@@ -521,7 +521,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		// r.inputEdge at "TTP/1.X " -> after ' '
 		r.pFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -538,7 +538,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 	if r.input[r.pFore] != ' ' {
 		r.headResult, r.headReason = StatusBadRequest, "invalid SP"
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -549,7 +549,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
 		return false
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -559,7 +559,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
 		return false
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -569,7 +569,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
 		return false
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -577,7 +577,7 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
 		return false
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -586,13 +586,13 @@ func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ r
 		if b := r.input[r.pFore]; b == '\n' {
 			break
 		}
-		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 

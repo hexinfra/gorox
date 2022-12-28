@@ -618,11 +618,11 @@ func (r *http1Request) recvHead() { // control + headers
 		r.headResult = -1
 		return
 	}
-	if r.inputEdge == 0 && !r._growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
+	if r.inputEdge == 0 && !r.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
 		// r.headResult is set.
 		return
 	}
-	if !r._recvControl() || !r._recvHeaders1() || !r.checkHead() {
+	if !r.recvControl() || !r.recvHeaders1() || !r.checkHead() {
 		// r.headResult is set.
 		return
 	}
@@ -631,7 +631,7 @@ func (r *http1Request) recvHead() { // control + headers
 		fmt.Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
+func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-version CRLF
 	r.pBack, r.pFore = 0, 0
 
 	// method = token
@@ -640,7 +640,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 	for {
 		if b := r.input[r.pFore]; httpTchar[b] != 0 {
 			hash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		} else if b == ' ' {
@@ -658,7 +658,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 	r.method.set(r.pBack, r.pFore)
 	r.recognizeMethod(r.input[r.pBack:r.pFore], hash)
 	// Skip SP after method
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -690,7 +690,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 					r.headResult, r.headReason = StatusBadRequest, "bad scheme"
 					return false
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
@@ -703,7 +703,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 				return false
 			}
 			// Skip ':'
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			if r.input[r.pFore] != '/' {
@@ -711,7 +711,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			if r.input[r.pFore] != '/' {
@@ -719,7 +719,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			// authority = host [ ":" port ]
@@ -731,7 +731,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 				} else if b == '/' || b == ' ' {
 					break
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
@@ -867,7 +867,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 					state >>= 4 // restore last state
 				}
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -904,7 +904,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 			return false
 		}
 		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
-		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 		r.asteriskOptions = true
@@ -935,7 +935,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 			} else if b == ' ' {
 				break
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -954,7 +954,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 
 beforeVersion: // r.pFore is at ' '.
 	// Skip SP before HTTP-version
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -971,7 +971,7 @@ beforeVersion: // r.pFore is at ' '.
 		// r.inputEdge at "TTP/1.X\n" -> after EOL
 		r.pFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -985,7 +985,7 @@ beforeVersion: // r.pFore is at ' '.
 		return false
 	}
 	if r.input[r.pFore] == '\r' {
-		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
@@ -995,7 +995,7 @@ beforeVersion: // r.pFore is at ' '.
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 

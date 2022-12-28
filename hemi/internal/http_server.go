@@ -1718,7 +1718,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		return
 	}
 	var (
-		state = 2 // to be consistent with r._recvControl() in HTTP/1
+		state = 2 // to be consistent with r.recvControl() in HTTP/1
 		octet byte
 		form  pair
 	)

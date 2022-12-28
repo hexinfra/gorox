@@ -18,7 +18,7 @@ import (
 
 // http1InMessage_ is used by http1Request and H1Response.
 
-func (r *httpInMessage_) _growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
 			if r.receiving == httpSectionControl {
@@ -53,7 +53,7 @@ func (r *httpInMessage_) _growHead1() bool { // HTTP/1 is not a binary protocol,
 	}
 	return false
 }
-func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
 	header := &r.field
@@ -64,7 +64,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		// End of headers?
 		if b := r.input[r.pFore]; b == '\r' {
 			// Skip '\r'
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			if r.input[r.pFore] != '\n' {
@@ -96,7 +96,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 				return false
 			}
 			header.hash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -106,13 +106,13 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		}
 		header.nameFrom, header.nameSize = r.pBack, uint8(r.pFore-r.pBack)
 		// Skip ':'
-		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 
 		// Skip OWS before field-value (and OWS after field-value, if field-value is empty)
 		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
-			if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -126,12 +126,12 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
 			if b := r.input[r.pFore]; httpVchar[b] == 1 {
-				if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 				if r.input[r.pFore] != '\n' {
@@ -167,7 +167,7 @@ func (r *httpInMessage_) _recvHeaders1() bool { // *( field-name ":" OWS field-v
 		}
 
 		// Header is successfully received. Skip '\n'
-		if r.pFore++; r.pFore == r.inputEdge && !r._growHead1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 		// r.pFore is now at the next header or end of headers.
@@ -228,13 +228,13 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		r.chunkEdge = int32(copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyBuffer
 		r.imme.zero()
 	}
-	if r.chunkEdge == 0 && !r._growChunked1() { // r.bodyBuffer is empty. must fill
+	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyBuffer is empty. must fill
 		goto badRecv
 	}
 	switch r.chunkSize { // size left in receiving current chunk
 	case -2: // got chunk-data. needs CRLF or LF
 		if r.bodyBuffer[r.cFore] == '\r' {
-			if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 				goto badRecv
 			}
 		}
@@ -244,7 +244,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			goto badRecv
 		}
 		// Skip '\n'
-		if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 			goto badRecv
 		}
 		fallthrough
@@ -264,7 +264,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			}
 			chunkSize <<= 4
 			chunkSize += int64(b)
-			if r.cFore++; r.cFore-r.cBack >= 16 || (r.cFore == r.chunkEdge && !r._growChunked1()) {
+			if r.cFore++; r.cFore-r.cBack >= 16 || (r.cFore == r.chunkEdge && !r.growChunked1()) {
 				goto badRecv
 			}
 		}
@@ -273,13 +273,13 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		}
 		if b := r.bodyBuffer[r.cFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
 			for r.bodyBuffer[r.cFore] != '\n' {
-				if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 					goto badRecv
 				}
 			}
 		} else if b == '\r' {
 			// Skip '\r'
-			if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 				goto badRecv
 			}
 		}
@@ -294,7 +294,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			goto badRecv
 		}
 		// Skip '\n' at the end of chunk-size [chunk-ext] CRLF
-		if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 			goto badRecv
 		}
 		// Last chunk?
@@ -302,7 +302,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			// last-chunk trailer-section CRLF
 			if r.bodyBuffer[r.cFore] == '\r' {
 				// Skip '\r'
-				if r.cFore++; r.cFore == r.chunkEdge && !r._growChunked1() {
+				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 					goto badRecv
 				}
 				if r.bodyBuffer[r.cFore] != '\n' {
@@ -310,10 +310,10 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 				}
 			} else if r.bodyBuffer[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r._recvTrailers1() {
+				if !r.recvTrailers1() {
 					goto badRecv
 				}
-				// r._recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
+				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
 			r.cFore++ // now the whole chunked content is received and r.cFore is immediately after chunked content.
@@ -331,7 +331,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		// Not last chunk, now r.cFore is at the beginning of chunk-data CRLF
 		fallthrough
 	default: // r.chunkSize > 0, receiving chunk-data CRLF
-		r.cBack = 0 // so _growChunked1() works correctly
+		r.cBack = 0 // so growChunked1() works correctly
 		from := int(r.cFore)
 		var dataEdge int32
 		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
@@ -375,7 +375,7 @@ badRecv:
 	return nil, http1ReadBadChunk
 }
 
-func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-line CRLF)
+func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyBuffer, r.bodyBuffer[r.cFore:r.chunkEdge]) // slide to start
 	r.chunkEdge -= r.cFore
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyBuffer will not slide, so the whole trailers must fit in r.bodyBuffer.
@@ -388,7 +388,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 	for {
 		if b := r.bodyBuffer[r.pFore]; b == '\r' {
 			// Skip '\r'
-			if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 			if r.bodyBuffer[r.pFore] != '\n' {
@@ -413,7 +413,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 				return false
 			}
 			trailer.hash += uint16(b)
-			if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
@@ -422,23 +422,23 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 		}
 		trailer.nameFrom, trailer.nameSize = r.pBack, uint8(r.pFore-r.pBack)
 		// Skip ':'
-		if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
 		for r.bodyBuffer[r.pFore] == ' ' || r.bodyBuffer[r.pFore] == '\t' {
-			if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
 		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyBuffer[r.pFore]; httpVchar[b] == 1 {
-				if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
 				if r.bodyBuffer[r.pFore] != '\n' {
@@ -482,7 +482,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 			return false
 		}
 		// Trailer is successfully received. Skip '\n'
-		if r.pFore++; r.pFore == r.chunkEdge && !r._growChunked1() {
+		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
 		// r.pFore is now at the next trailer or end of trailers.
@@ -490,7 +490,7 @@ func (r *httpInMessage_) _recvTrailers1() bool { // trailer-section = *( field-l
 	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true
 }
-func (r *httpInMessage_) _growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyBuffer)) && r.cBack == 0 { // r.bodyBuffer is full and we can't slide
 		return false
 	}

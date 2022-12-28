@@ -31,10 +31,14 @@ type RocksServer struct {
 	stage *Stage
 	gate  *net.TCPListener
 	// States
-	address string
-	shut    atomic.Bool
-	mutex   sync.Mutex
-	conns   map[int64]*rockConn
+	address        string
+	colonPort      string
+	colonPortBytes []byte
+	readTimeout    time.Duration
+	writeTimeout   time.Duration
+	shut           atomic.Bool
+	mutex          sync.Mutex
+	conns          map[int64]*rockConn
 }
 
 func (s *RocksServer) onCreate(name string, stage *Stage) {
@@ -58,6 +62,13 @@ func (s *RocksServer) OnConfigure() {
 	} else {
 		UseExitln("address is required for server")
 	}
+	p := strings.IndexByte(s.address, ':')
+	s.colonPort = s.address[:p]
+	s.colonPortBytes = []byte(s.colonPort)
+	// readTimeout
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	// writeTimeout
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 }
 func (s *RocksServer) OnPrepare() {
 }
@@ -100,6 +111,12 @@ func (s *RocksServer) Serve() { // goroutine
 	s.stage.SubDone()
 }
 
+func (s *RocksServer) Stage() *Stage               { return s.stage }
+func (s *RocksServer) ColonPort() string           { return s.colonPort }
+func (s *RocksServer) ColonPortBytes() []byte      { return s.colonPortBytes }
+func (s *RocksServer) TLSMode() bool               { return false }
+func (s *RocksServer) ReadTimeout() time.Duration  { return s.readTimeout }
+func (s *RocksServer) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *RocksServer) NumConns() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

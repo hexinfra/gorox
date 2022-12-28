@@ -20,6 +20,7 @@ type Server interface {
 	Serve() // goroutine
 
 	Stage() *Stage
+	ColonPort() string
 	ColonPortBytes() []byte
 	TLSMode() bool
 	ReadTimeout() time.Duration

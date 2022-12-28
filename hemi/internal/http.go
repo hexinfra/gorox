@@ -133,7 +133,7 @@ type httpInMessage interface {
 // httpInMessage_ is a trait for httpRequest_ and hResponse_.
 type httpInMessage_ struct {
 	// Assocs
-	stream stream        // the stream to which the message belongs
+	stream stream        // *http[1-3]Stream or *H[1-3]Stream
 	shell  httpInMessage // *http[1-3]Request or *H[1-3]Response
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
@@ -143,14 +143,15 @@ type httpInMessage_ struct {
 	// Stream states (controlled)
 	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
+	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
 	input       []byte // bytes of incoming messages (for HTTP/1) or message heads (for HTTP/2 & HTTP/3). [<r.stockInput>/4K/16K]
 	array       []byte // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
 	extras      []pair // hold extra queries, headers, cookies, and trailers. always refers to r.array. [<r.stockExtras>/255]
 	contentSize int64  // info of content. >=0: content-length, -1: no content, -2: chunked content
-	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	asResponse  bool   // treat message as response?
+	keepAlive   int8   // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	headResult  int16  // result of receiving message head. values are same as http status for convenience
 	// Stream states (zeros)
 	headReason      string   // the reason of head result
@@ -158,7 +159,7 @@ type httpInMessage_ struct {
 	inputEdge       int32    // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
 	bodyBuffer      []byte   // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	contentBlob     []byte   // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentHeld     *os.File // used by holdContent(), if content is TempFile. will be freed on stream ends
+	contentHeld     *os.File // used by holdContent(), if content is TempFile. will be closed on stream ends
 	httpInMessage0_          // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
@@ -170,15 +171,18 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	imme            text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	headers         zone  // raw headers ->r.input
 	options         zone  // connection options ->r.input
-	receiving       int8  // currently receiving. see httpSectionXXX
 	versionCode     uint8 // Version1_0, Version1_1, Version2, Version3
 	nContentCodings int8  // num of content-encoding flags, controls r.contentCodings
+	nAcceptCodings  int8  // num of accept-encoding flags
 	arrayKind       int8  // kind of current r.array. see arrayKindXXX
 	arrayEdge       int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	iContentLength  uint8 // content-length header ->r.input
-	iContentType    uint8 // content-type header ->r.input
+	iContentLength  uint8 // content-length header in r.primes->r.input
+	iContentType    uint8 // content-type header in r.primes->r.input
+	acceptGzip      bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli    bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	receiving       int8  // currently receiving. see httpSectionXXX
 	upgradeSocket   bool  // upgrade: websocket?
-	contentReceived bool  // is content received? if message has no content, is is always received
+	contentReceived bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	maxRecvSeconds  int64 // max seconds to recv message content
 	maxContentSize  int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
@@ -193,7 +197,7 @@ type httpInMessage0_ struct { // for fast reset, entirely
 }
 
 func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
-	if r.versionCode >= Version2 || asResponse {
+	if r.versionCode >= Version2 || asResponse { // for HTTP/2 and HTTP/3, r.versionCode is explicitly set in streams
 		r.input = r.stockInput[:]
 	} else {
 		// HTTP/1 requests support pipelining, so r.input and r.inputEdge are not reset here.
@@ -202,8 +206,8 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.contentSize = -1
-	r.keepAlive = -1
 	r.asResponse = asResponse
+	r.keepAlive = -1
 	r.headResult = StatusOK
 }
 func (r *httpInMessage_) onEnd() { // for zeros
@@ -392,6 +396,38 @@ func (r *httpInMessage_) checkContentEncoding(from uint8, edge uint8) bool {
 		}
 		r.contentCodings[r.nContentCodings] = coding
 		r.nContentCodings++
+	}
+	return true
+}
+func (r *httpInMessage_) checkAcceptEncoding(from uint8, edge uint8) bool {
+	// Accept-Encoding = #( codings [ weight ] )
+	// codings         = content-coding / "identity" / "*"
+	// content-coding  = token
+	for i := from; i < edge; i++ {
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
+			break
+		}
+		value := r.primes[i].valueAt(r.input)
+		bytesToLower(value)
+		var coding uint8
+		if bytes.HasPrefix(value, httpBytesGzip) {
+			r.acceptGzip = true
+			coding = httpCodingGzip
+		} else if bytes.HasPrefix(value, httpBytesBrotli) {
+			r.acceptBrotli = true
+			coding = httpCodingBrotli
+		} else if bytes.HasPrefix(value, httpBytesDeflate) {
+			coding = httpCodingDeflate
+		} else if bytes.HasPrefix(value, httpBytesCompress) {
+			coding = httpCodingCompress
+		} else if bytes.Equal(value, httpBytesIdentity) {
+			coding = httpCodingIdentity
+		} else {
+			// Empty or unknown content-coding, ignored
+			continue
+		}
+		r.acceptCodings[r.nAcceptCodings] = coding
+		r.nAcceptCodings++
 	}
 	return true
 }

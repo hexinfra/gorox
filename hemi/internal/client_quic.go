@@ -238,12 +238,12 @@ func (c *QConn) onPut() {
 
 func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
 
+func (c *QConn) isBroken() bool { return c.broken.Load() }
+func (c *QConn) markBroken()    { c.broken.Store(true) }
+
 func (c *QConn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams
 }
-
-func (c *QConn) isBroken() bool { return c.broken.Load() }
-func (c *QConn) markBroken()    { c.broken.Store(true) }
 
 func (c *QConn) FetchStream() *QStream {
 	// TODO

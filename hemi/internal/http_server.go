@@ -387,8 +387,7 @@ type httpRequest_ struct {
 	// Stream states (buffers)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
-	acceptCodings [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
-	ranges        [2]span  // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
+	ranges [2]span // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
@@ -416,7 +415,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 	queries          zone     // decoded queries -> r.array
 	cookies          zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
 	forms            zone     // decoded forms -> r.array
-	nAcceptCodings   int8     // num of accept-encoding flags
+	asteriskOptions  bool     // OPTIONS *?
 	nRanges          int8     // num of ranges
 	boundary         text     // boundary param of "multipart/form-data" if exists -> r.input
 	ifRangeTime      int64    // parsed unix timestamp of if-range if is http-date format
@@ -426,11 +425,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 	ifNoneMatch      int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	ifMatches        zone     // the zone of if-match in r.primes
 	ifNoneMatches    zone     // the zone of if-none-match in r.primes
-	acceptGzip       bool     // does client accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli     bool     // does client accept brotli content coding? i.e. accept-encoding: gzip, br
 	expectContinue   bool     // expect: 100-continue?
 	acceptTrailers   bool     // does client accept trailers? i.e. te: trailers, gzip
-	asteriskOptions  bool     // OPTIONS *?
 	cacheControl     struct { // the cache-control info
 		noCache      bool  // no-cache directive in cache-control
 		noStore      bool  // no-store directive in cache-control
@@ -828,38 +824,6 @@ func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
-	}
-	return true
-}
-func (r *httpRequest_) checkAcceptEncoding(from uint8, edge uint8) bool {
-	// Accept-Encoding = #( codings [ weight ] )
-	// codings         = content-coding / "identity" / "*"
-	// content-coding  = token
-	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
-			break
-		}
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		var coding uint8
-		if bytes.HasPrefix(value, httpBytesGzip) {
-			r.acceptGzip = true
-			coding = httpCodingGzip
-		} else if bytes.HasPrefix(value, httpBytesBrotli) {
-			r.acceptBrotli = true
-			coding = httpCodingBrotli
-		} else if bytes.HasPrefix(value, httpBytesDeflate) {
-			coding = httpCodingDeflate
-		} else if bytes.HasPrefix(value, httpBytesCompress) {
-			coding = httpCodingCompress
-		} else if bytes.Equal(value, httpBytesIdentity) {
-			coding = httpCodingIdentity
-		} else {
-			// Empty or unknown content-coding, ignored
-			continue
-		}
-		r.acceptCodings[r.nAcceptCodings] = coding
-		r.nAcceptCodings++
 	}
 	return true
 }

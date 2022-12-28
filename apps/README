@@ -1,5 +1,5 @@
-This directory holds apps of gorox, basically one app per directory.
-By default there are 4 apps:
+This directory holds web applications of gorox, basically one app per directory.
+Default apps are:
 
   examples/hello/    - An example app.
   official/en_us/    - The official Gorox website in en_US.

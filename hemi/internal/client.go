@@ -316,12 +316,12 @@ func (c *pConn_) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *pConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.maxStreams
-}
-
 func (c *pConn_) isBroken() bool {
 	return c.writeBroken.Load() || c.readBroken.Load()
 }
 func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }
+
+func (c *pConn_) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.maxStreams
+}

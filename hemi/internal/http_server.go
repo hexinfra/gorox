@@ -790,8 +790,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 		// protocol-name    = token
 		// protocol-version = token
 		for i := from; i < edge; i++ {
-			vText := r.primes[i].value
-			value := r.input[vText.from:vText.edge]
+			value := r.primes[i].valueAt(r.input)
 			bytesToLower(value)
 			if bytes.Equal(value, httpBytesWebSocket) {
 				r.upgradeSocket = true
@@ -813,8 +812,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
-		vText := r.primes[i].value
-		value := r.input[vText.from:vText.edge]
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		if bytes.Equal(value, httpBytesTrailers) {
 			r.acceptTrailers = true
@@ -841,8 +839,7 @@ func (r *httpRequest_) checkAcceptEncoding(from uint8, edge uint8) bool {
 		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
 			break
 		}
-		vText := r.primes[i].value
-		value := r.input[vText.from:vText.edge]
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
 		if bytes.HasPrefix(value, httpBytesGzip) {

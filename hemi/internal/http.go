@@ -325,8 +325,7 @@ func (r *httpInMessage_) checkConnection(from uint8, edge uint8) bool {
 	// Connection        = 1#connection-option
 	// connection-option = token
 	for i := from; i < edge; i++ {
-		vText := r.primes[i].value
-		value := r.input[vText.from:vText.edge]
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value) // connection options are case-insensitive.
 		if bytes.Equal(value, httpBytesClose) {
 			// Furthermore, the header field-name "Close" has been registered as
@@ -348,8 +347,7 @@ func (r *httpInMessage_) checkTransferEncoding(from uint8, edge uint8) bool {
 	// Transfer-Encoding = 1#transfer-coding
 	// transfer-coding   = "chunked" / "compress" / "deflate" / "gzip"
 	for i := from; i < edge; i++ {
-		vText := r.primes[i].value
-		value := r.input[vText.from:vText.edge]
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		if bytes.Equal(value, httpBytesChunked) {
 			r.transferChunked = true
@@ -371,8 +369,7 @@ func (r *httpInMessage_) checkContentEncoding(from uint8, edge uint8) bool {
 			r.headResult, r.headReason = StatusBadRequest, "too many codings in content-encoding"
 			return false
 		}
-		vText := r.primes[i].value
-		value := r.input[vText.from:vText.edge]
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
 		if bytes.Equal(value, httpBytesGzip) {

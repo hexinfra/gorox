@@ -95,6 +95,13 @@ func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *Server_) NumGates() int32             { return s.numGates }
 func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 
+// Gate is the interface for all gates.
+type Gate interface {
+	ID() int32
+	IsShut() bool
+	shutdown() error
+}
+
 // Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {
 	// Mixins
@@ -118,6 +125,7 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 }
 
 func (g *Gate_) Stage() *Stage   { return g.stage }
+func (g *Gate_) ID() int32       { return g.id }
 func (g *Gate_) Address() string { return g.address }
 
 func (g *Gate_) MarkShut()    { g.shut.Store(true) }

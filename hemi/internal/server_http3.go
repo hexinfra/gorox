@@ -73,7 +73,7 @@ func (s *http3Server) Serve() { // goroutine
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Mixins
-	Gate_
+	httpGate_
 	// Assocs
 	server *http3Server
 	// States
@@ -81,7 +81,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
-	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.httpGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -94,7 +94,7 @@ func (g *http3Gate) open() error {
 	return nil
 }
 func (g *http3Gate) shutdown() error {
-	g.Gate_.MarkShut()
+	g.MarkShut()
 	return g.gate.Close()
 }
 
@@ -129,10 +129,6 @@ func (g *http3Gate) justClose(quicConn *quix.Conn) {
 	quicConn.Close()
 	g.onConnectionClosed()
 }
-func (g *http3Gate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
@@ -159,7 +155,6 @@ type http3Conn struct {
 	// Conn states (buffers)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate     *http3Gate        // the gate to which the conn belongs
 	quicConn *quix.Conn        // the quic conn
 	inputs   *http3Inputs      // ...
 	table    http3DynamicTable // ...
@@ -174,8 +169,7 @@ type http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicConn *quix.Conn) {
-	c.httpConn_.onGet(id, server)
-	c.gate = gate
+	c.httpConn_.onGet(id, server, gate)
 	c.quicConn = quicConn
 	if c.inputs == nil {
 		c.allocInputs()
@@ -183,7 +177,6 @@ func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicCo
 }
 func (c *http3Conn) onPut() {
 	c.httpConn_.onPut()
-	c.gate = nil
 	c.quicConn = nil
 	// c.inputs is reserved
 	// c.table is reserved

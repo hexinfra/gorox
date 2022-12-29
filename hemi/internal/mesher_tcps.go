@@ -109,7 +109,7 @@ func (g *tcpsGate) open() error {
 	return err
 }
 func (g *tcpsGate) shutdown() error {
-	g.Gate_.MarkShut()
+	g.MarkShut()
 	return g.gate.Close()
 }
 

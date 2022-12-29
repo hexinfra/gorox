@@ -161,7 +161,19 @@ func (s *httpServer_) findSvc(hostname []byte) *Svc {
 
 // httpGate is the interface for *httpxGate and *http3Gate.
 type httpGate interface {
-	shutdown() error
+	Gate
+	onConnectionClosed()
+}
+
+// httpGate_ is the mixin for httpxGate and http3Gate.
+type httpGate_ struct {
+	// Mixins
+	Gate_
+}
+
+func (g *httpGate_) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // httpConn is the interface for *http[1-3]Conn.
@@ -180,6 +192,7 @@ type httpConn_ struct {
 	// Conn states (non-zeros)
 	id     int64      // the conn id
 	server httpServer // the server to which the conn belongs
+	gate   httpGate   // the gate to which the conn belongs
 	// Conn states (zeros)
 	lastRead    time.Time    // deadline of last read operation
 	lastWrite   time.Time    // deadline of last write operation
@@ -188,11 +201,13 @@ type httpConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *httpConn_) onGet(id int64, server httpServer) {
+func (c *httpConn_) onGet(id int64, server httpServer, gate httpGate) {
 	c.id = id
 	c.server = server
+	c.gate = gate
 }
 func (c *httpConn_) onPut() {
+	c.gate = nil
 	c.server = nil
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
@@ -202,6 +217,7 @@ func (c *httpConn_) onPut() {
 }
 
 func (c *httpConn_) getServer() httpServer { return c.server }
+func (c *httpConn_) getGate() httpGate     { return c.gate }
 
 func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }

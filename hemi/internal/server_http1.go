@@ -113,7 +113,7 @@ func (s *httpxServer) Serve() { // goroutine
 // httpxGate is a gate of HTTP/1 and HTTP/2 server.
 type httpxGate struct {
 	// Mixins
-	Gate_
+	httpGate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -121,7 +121,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(server *httpxServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.httpGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -140,7 +140,7 @@ func (g *httpxGate) open() error {
 	return err
 }
 func (g *httpxGate) shutdown() error {
-	g.Gate_.MarkShut()
+	g.MarkShut()
 	return g.gate.Close()
 }
 
@@ -224,10 +224,6 @@ func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
 }
-func (g *httpxGate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
@@ -263,7 +259,6 @@ type http1Conn struct {
 	// Conn states (buffers)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate      *httpxGate      // the gate to which the conn belongs
 	netConn   net.Conn        // the connection (TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
 	keepConn  bool            // keep the connection after current stream? true by default
@@ -272,17 +267,15 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, server)
+	c.httpConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
-	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.keepConn = true
 	c.closeSafe = true
 }
 func (c *http1Conn) onPut() {
-	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
 	req := &c.stream.request
@@ -519,7 +512,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
 	if Debug(2) {
-		fmt.Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.id, conn.id, s.request.headResult)
+		fmt.Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
 	status := req.headResult

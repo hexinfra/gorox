@@ -95,7 +95,7 @@ func (g *quicGate) open() error {
 	return nil
 }
 func (g *quicGate) shutdown() error {
-	g.Gate_.MarkShut()
+	g.MarkShut()
 	return g.gate.Close()
 }
 

@@ -46,7 +46,6 @@ type http2Conn struct {
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
 	// Conn states (non-zeros)
-	gate           *httpxGate          // the gate to which the conn belongs
 	netConn        net.Conn            // the connection (TCP/TLS)
 	rawConn        syscall.RawConn     // for syscall. only usable when netConn is TCP
 	inputs         *http2Inputs        // http2Inputs in use, for receiving incoming frames
@@ -82,8 +81,7 @@ type http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, server)
-	c.gate = gate
+	c.httpConn_.onGet(id, server, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.inputs == nil {
@@ -102,7 +100,6 @@ func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netCon
 }
 func (c *http2Conn) onPut() {
 	c.httpConn_.onPut()
-	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
 	// c.inputs is reserved

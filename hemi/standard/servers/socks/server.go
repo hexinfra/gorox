@@ -97,7 +97,7 @@ func (g *socksGate) open() error {
 	return err
 }
 func (g *socksGate) shutdown() error {
-	g.Gate_.MarkShut()
+	g.MarkShut()
 	return g.gate.Close()
 }
 

@@ -474,23 +474,6 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.httpInMessage_.onEnd()
 }
 
-func (r *httpRequest_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
-		}
-		if r.app != nil && edge > r.app.maxMemoryContentSize {
-			return false
-		}
-		if !r._growArray(int32(len(p))) {
-			return false
-		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
-	}
-	return true
-}
-
 func (r *httpRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *httpRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
 func (r *httpRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
@@ -1406,6 +1389,86 @@ func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, extraKindCookie)
 }
 
+func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
+	// Get etag without ""
+	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
+		etag = etag[1 : n-1]
+	}
+	// See RFC 9110 (section 13.2.2).
+	if asOrigin { // proxies ignore these tests.
+		if r.ifMatch != 0 && !r.testIfMatch(etag) {
+			return StatusPreconditionFailed, false
+		}
+		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r.testIfUnmodifiedSince(modTime) {
+			return StatusPreconditionFailed, false
+		}
+	}
+	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
+	if r.ifNoneMatch != 0 && !r.testIfNoneMatch(etag) {
+		if getOrHead {
+			return StatusNotModified, false
+		} else {
+			return StatusPreconditionFailed, false
+		}
+	}
+	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r.testIfModifiedSince(modTime) {
+		return StatusNotModified, false
+	}
+	return StatusOK, true
+}
+func (r *httpRequest_) testIfMatch(etag []byte) (pass bool) {
+	if r.ifMatch == -1 { // *
+		return true
+	}
+	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
+		header := &r.primes[i]
+		if header.hash != httpHashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
+			continue
+		}
+		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
+			return true
+		}
+	}
+	return false
+}
+func (r *httpRequest_) testIfNoneMatch(etag []byte) (pass bool) {
+	if r.ifNoneMatch == -1 { // *
+		return false
+	}
+	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
+		header := &r.primes[i]
+		if header.hash != httpHashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
+			continue
+		}
+		if bytes.Equal(header.valueAt(r.input), etag) {
+			return false
+		}
+	}
+	return true
+}
+func (r *httpRequest_) testIfModifiedSince(modTime int64) (pass bool) {
+	return modTime > r.ifModifiedTime
+}
+func (r *httpRequest_) testIfUnmodifiedSince(modTime int64) (pass bool) {
+	return modTime <= r.ifUnmodifiedTime
+}
+
+func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
+	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
+		if (r.ifRangeTime == 0 && r.testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r.testIfRangeTime(modTime)) {
+			return true // StatusPartialContent
+		}
+	}
+	return false // StatusOK
+}
+func (r *httpRequest_) testIfRangeETag(etag []byte) (pass bool) {
+	ifRange := &r.primes[r.indexes.ifRange]
+	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
+}
+func (r *httpRequest_) testIfRangeTime(modTime int64) (pass bool) {
+	return r.ifRangeTime == modTime
+}
+
 func (r *httpRequest_) checkHead() bool {
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
 	// apply a request to the target resource until the entire request
@@ -1607,86 +1670,6 @@ func (r *httpRequest_) delCriticalHeaders() { // used by proxies
 }
 func (r *httpRequest_) delHost() { // used by proxies
 	r.delPrime(r.indexes.host) // zero safe
-}
-
-func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
-	// Get etag without ""
-	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
-		etag = etag[1 : n-1]
-	}
-	// See RFC 9110 (section 13.2.2).
-	if asOrigin { // proxies ignore these tests.
-		if r.ifMatch != 0 && !r.testIfMatch(etag) {
-			return StatusPreconditionFailed, false
-		}
-		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r.testIfUnmodifiedSince(modTime) {
-			return StatusPreconditionFailed, false
-		}
-	}
-	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 && !r.testIfNoneMatch(etag) {
-		if getOrHead {
-			return StatusNotModified, false
-		} else {
-			return StatusPreconditionFailed, false
-		}
-	}
-	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r.testIfModifiedSince(modTime) {
-		return StatusNotModified, false
-	}
-	return StatusOK, true
-}
-func (r *httpRequest_) testIfMatch(etag []byte) (pass bool) {
-	if r.ifMatch == -1 { // *
-		return true
-	}
-	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != httpHashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
-			continue
-		}
-		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
-			return true
-		}
-	}
-	return false
-}
-func (r *httpRequest_) testIfNoneMatch(etag []byte) (pass bool) {
-	if r.ifNoneMatch == -1 { // *
-		return false
-	}
-	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != httpHashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
-			continue
-		}
-		if bytes.Equal(header.valueAt(r.input), etag) {
-			return false
-		}
-	}
-	return true
-}
-func (r *httpRequest_) testIfModifiedSince(modTime int64) (pass bool) {
-	return modTime > r.ifModifiedTime
-}
-func (r *httpRequest_) testIfUnmodifiedSince(modTime int64) (pass bool) {
-	return modTime <= r.ifUnmodifiedTime
-}
-
-func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
-	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.ifRangeTime == 0 && r.testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r.testIfRangeTime(modTime)) {
-			return true // StatusPartialContent
-		}
-	}
-	return false // StatusOK
-}
-func (r *httpRequest_) testIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange]
-	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
-}
-func (r *httpRequest_) testIfRangeTime(modTime int64) (pass bool) {
-	return r.ifRangeTime == modTime
 }
 
 func (r *httpRequest_) parseHTMLForm() {
@@ -2261,12 +2244,29 @@ func (r *httpRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *httpRequest_) App() *App { return r.app }
-func (r *httpRequest_) Svc() *Svc { return r.svc }
-
 func (r *httpRequest_) applyTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
+	return true
+}
+
+func (r *httpRequest_) App() *App { return r.app }
+func (r *httpRequest_) Svc() *Svc { return r.svc }
+
+func (r *httpRequest_) arrayCopy(p []byte) bool {
+	if len(p) > 0 {
+		edge := r.arrayEdge + int32(len(p))
+		if edge < r.arrayEdge { // overflow
+			return false
+		}
+		if r.app != nil && edge > r.app.maxMemoryContentSize {
+			return false
+		}
+		if !r._growArray(int32(len(p))) {
+			return false
+		}
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
+	}
 	return true
 }
 

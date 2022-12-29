@@ -66,6 +66,11 @@ func (r *httpOutMessage_) pushChain2(chain Chain) error {
 	// TODO
 	return nil
 }
+
+func (r *httpOutMessage_) trailer2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
 func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false

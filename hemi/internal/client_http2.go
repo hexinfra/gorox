@@ -401,6 +401,10 @@ func (r *H2Request) pushChain(chain Chain) error {
 	// TODO
 	return nil
 }
+
+func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer2(name)
+}
 func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }

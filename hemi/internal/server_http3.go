@@ -428,9 +428,12 @@ func (r *http3Response) pushHeaders() error {
 func (r *http3Response) pushChain(chain Chain) error {
 	return r.pushChain3(chain)
 }
+
+func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer3(name)
+}
 func (r *http3Response) addTrailer(name []byte, value []byte) bool {
-	// TODO
-	return false
+	return r.addTrailer3(name, value)
 }
 
 func (r *http3Response) pass1xx(resp response) bool { // used by proxies

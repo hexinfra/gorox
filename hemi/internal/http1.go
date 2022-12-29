@@ -666,6 +666,21 @@ func (r *httpOutMessage_) pushChain1(chain Chain, chunked bool) error {
 	}
 	return nil
 }
+
+func (r *httpOutMessage_) trailer1(name []byte) (value []byte, ok bool) {
+	if r.nTrailers > 0 && len(name) > 0 {
+		from := uint16(0)
+		for i := uint8(0); i < r.nTrailers; i++ {
+			edge := r.edges[i]
+			trailer := r.fields[from:edge]
+			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
+				return trailer[p+len(httpBytesColonSpace) : len(trailer)-len(httpBytesCRLF)], true
+			}
+			from = edge
+		}
+	}
+	return
+}
 func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false

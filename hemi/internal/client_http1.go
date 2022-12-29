@@ -454,6 +454,10 @@ func (r *H1Request) pushHeaders() error {
 func (r *H1Request) pushChain(chain Chain) error {
 	return r.pushChain1(chain, true)
 }
+
+func (r *H1Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer1(name)
+}
 func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }

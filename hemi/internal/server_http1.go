@@ -1183,6 +1183,10 @@ func (r *http1Response) pushHeaders() error { // headers are sent immediately up
 func (r *http1Response) pushChain(chain Chain) error {
 	return r.pushChain1(chain, r.request.VersionCode() == Version1_1)
 }
+
+func (r *http1Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer1(name)
+}
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_0 { // HTTP/1.0 doesn't support trailer.
 		return true

@@ -349,20 +349,6 @@ func (r *hResponse_) onEnd() { // for zeros
 	r.httpInMessage_.onEnd()
 }
 
-func (r *hResponse_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
-		}
-		if !r._growArray(int32(len(p))) {
-			return false
-		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
-	}
-	return true
-}
-
 func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) applyHeader(header *pair) bool {
@@ -625,6 +611,20 @@ func (r *hResponse_) UnsafeContent() []byte {
 func (r *hResponse_) applyTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
+	return true
+}
+
+func (r *hResponse_) arrayCopy(p []byte) bool {
+	if len(p) > 0 {
+		edge := r.arrayEdge + int32(len(p))
+		if edge < r.arrayEdge { // overflow
+			return false
+		}
+		if !r._growArray(int32(len(p))) {
+			return false
+		}
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
+	}
 	return true
 }
 

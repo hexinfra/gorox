@@ -373,6 +373,10 @@ func (r *H3Request) pushChain(chain Chain) error {
 	// TODO
 	return nil
 }
+
+func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer3(name)
+}
 func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }

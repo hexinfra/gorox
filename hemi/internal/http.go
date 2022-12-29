@@ -273,51 +273,6 @@ func (r *httpInMessage_) VersionCode() uint8    { return r.versionCode }
 func (r *httpInMessage_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpInMessage_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
-func (r *httpInMessage_) addPrime(prime *pair) (edge uint8, ok bool) {
-	if len(r.primes) == cap(r.primes) {
-		if cap(r.primes) == cap(r.stockPrimes) { // full
-			r.primes = get255Pairs()
-			r.primes = append(r.primes, r.stockPrimes[:]...)
-		} else { // overflow
-			return 0, false
-		}
-	}
-	r.primes = append(r.primes, *prime)
-	return uint8(len(r.primes)), true
-}
-func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bool {
-	nameSize := int32(len(name))
-	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
-		return false
-	}
-	totalSize := nameSize + int32(len(value))
-	if totalSize < 0 {
-		return false
-	}
-	if !r._growArray(totalSize) {
-		return false
-	}
-	var extra pair
-	extra.setKind(extraKind)
-	extra.hash = stringHash(name)
-	extra.nameSize = uint8(nameSize)
-	extra.nameFrom = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.value.from = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.value.edge = r.arrayEdge
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) == cap(r.stockExtras) { // stock
-			r.extras = get255Pairs()
-			r.extras = append(r.extras, r.stockExtras[:]...)
-		} else { // too many extras!
-			return false
-		}
-	}
-	r.extras = append(r.extras, extra)
-	return true
-}
-
 func (r *httpInMessage_) checkConnection(from uint8, edge uint8) bool {
 	if r.versionCode >= Version2 {
 		r.headResult, r.headReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
@@ -901,6 +856,50 @@ func (r *httpInMessage_) _getPlace(pair *pair) []byte {
 	return place
 }
 
+func (r *httpInMessage_) addPrime(prime *pair) (edge uint8, ok bool) {
+	if len(r.primes) == cap(r.primes) {
+		if cap(r.primes) == cap(r.stockPrimes) { // full
+			r.primes = get255Pairs()
+			r.primes = append(r.primes, r.stockPrimes[:]...)
+		} else { // overflow
+			return 0, false
+		}
+	}
+	r.primes = append(r.primes, *prime)
+	return uint8(len(r.primes)), true
+}
+func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bool {
+	nameSize := int32(len(name))
+	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
+		return false
+	}
+	totalSize := nameSize + int32(len(value))
+	if totalSize < 0 {
+		return false
+	}
+	if !r._growArray(totalSize) {
+		return false
+	}
+	var extra pair
+	extra.setKind(extraKind)
+	extra.hash = stringHash(name)
+	extra.nameSize = uint8(nameSize)
+	extra.nameFrom = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+	extra.value.edge = r.arrayEdge
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) == cap(r.stockExtras) { // stock
+			r.extras = get255Pairs()
+			r.extras = append(r.extras, r.stockExtras[:]...)
+		} else { // too many extras!
+			return false
+		}
+	}
+	r.extras = append(r.extras, extra)
+	return true
+}
 func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
 	if name != "" {
 		if hash == 0 {
@@ -1147,6 +1146,7 @@ type httpOutMessage interface {
 	pushHeaders() error
 	push(chunk *Block) error
 	pushChain(chain Chain) error
+	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	passHeaders() error
 	passBytes(p []byte) error
@@ -1385,6 +1385,10 @@ func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) 
 	return r.shell.push(chunk_)
 }
 
+func (r *httpOutMessage_) Trailer(name string) (value string, ok bool) {
+	v, ok := r.shell.trailer(risky.ConstBytes(name))
+	return string(v), ok
+}
 func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytesByBytes(risky.ConstBytes(name), risky.ConstBytes(value))
 }

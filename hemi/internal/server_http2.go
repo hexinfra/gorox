@@ -1020,9 +1020,12 @@ func (r *http2Response) pushHeaders() error {
 func (r *http2Response) pushChain(chain Chain) error {
 	return r.pushChain2(chain)
 }
+
+func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailer2(name)
+}
 func (r *http2Response) addTrailer(name []byte, value []byte) bool {
-	// TODO
-	return false
+	return r.addTrailer2(name, value)
 }
 
 func (r *http2Response) pass1xx(resp response) bool { // used by proxies

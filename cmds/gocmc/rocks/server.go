@@ -38,13 +38,13 @@ type RocksServer struct {
 	writeTimeout   time.Duration
 	shut           atomic.Bool
 	mutex          sync.Mutex
-	conns          map[int64]*rockConn
+	conns          map[int64]*goroxConn
 }
 
 func (s *RocksServer) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
-	s.conns = make(map[int64]*rockConn)
+	s.conns = make(map[int64]*goroxConn)
 }
 
 func (s *RocksServer) OnConfigure() {
@@ -98,7 +98,7 @@ func (s *RocksServer) Serve() { // goroutine
 				continue
 			}
 		}
-		conn := new(rockConn)
+		conn := new(goroxConn)
 		conn.init(s.stage, s, connID, tcpConn)
 		s.addConn(conn)
 		go conn.serve()
@@ -117,24 +117,25 @@ func (s *RocksServer) ColonPortBytes() []byte      { return s.colonPortBytes }
 func (s *RocksServer) TLSMode() bool               { return false }
 func (s *RocksServer) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *RocksServer) WriteTimeout() time.Duration { return s.writeTimeout }
+
 func (s *RocksServer) NumConns() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return len(s.conns)
 }
-func (s *RocksServer) addConn(conn *rockConn) {
+func (s *RocksServer) addConn(conn *goroxConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.conns[conn.id] = conn
 }
-func (s *RocksServer) delConn(conn *rockConn) {
+func (s *RocksServer) delConn(conn *goroxConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	delete(s.conns, conn.id)
 }
 
-// rockConn
-type rockConn struct {
+// goroxConn
+type goroxConn struct {
 	// Assocs
 	stage  *Stage
 	server *RocksServer
@@ -143,14 +144,14 @@ type rockConn struct {
 	tcpConn *net.TCPConn
 }
 
-func (c *rockConn) init(stage *Stage, server *RocksServer, id int64, tcpConn *net.TCPConn) {
+func (c *goroxConn) init(stage *Stage, server *RocksServer, id int64, tcpConn *net.TCPConn) {
 	c.stage = stage
 	c.server = server
 	c.id = id
 	c.tcpConn = tcpConn
 }
 
-func (c *rockConn) serve() { // goroutine
+func (c *goroxConn) serve() { // goroutine
 	defer c.closeConn()
 	for i := 0; i < 10; i++ {
 		fmt.Fprintf(c.tcpConn, "id=%d\n", c.id)
@@ -158,7 +159,7 @@ func (c *rockConn) serve() { // goroutine
 	}
 }
 
-func (c *rockConn) closeConn() {
+func (c *goroxConn) closeConn() {
 	c.tcpConn.Close()
 	c.server.delConn(c)
 }

@@ -156,7 +156,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 			if g.IsShut() {
 				break
 			} else {
-				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 		}
@@ -167,7 +167,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 			rawConn, err := tcpConn.SyscallConn()
 			if err != nil {
 				tcpConn.Close()
-				g.server.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
@@ -189,7 +189,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 			if g.IsShut() {
 				break
 			} else {
-				g.server.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 		}

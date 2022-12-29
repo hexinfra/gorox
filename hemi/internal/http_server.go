@@ -159,16 +159,6 @@ func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
-func (s *httpServer_) Log(str string) {
-	//s.logger.log(str)
-}
-func (s *httpServer_) Logln(str string) {
-	//s.logger.logln(str)
-}
-func (s *httpServer_) Logf(format string, args ...any) {
-	//s.logger.logf(format, args...)
-}
-
 // httpGate is the interface for *httpxGate and *http3Gate.
 type httpGate interface {
 	shutdown() error

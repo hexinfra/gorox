@@ -840,21 +840,6 @@ func (r *httpInMessage_) _growArray(size int32) bool { // stock->4K->16K->64K1->
 	r.array = array
 	return true
 }
-func (r *httpInMessage_) _getPlace(pair *pair) []byte {
-	var place []byte
-	if pair.inPlace(pairPlaceInput) {
-		place = r.input
-	} else if pair.inPlace(pairPlaceArray) {
-		place = r.array
-	} else if pair.inPlace(pairPlaceStatic2) {
-		place = http2BytesStatic
-	} else if pair.inPlace(pairPlaceStatic3) {
-		place = http3BytesStatic
-	} else {
-		BugExitln("unknown place")
-	}
-	return place
-}
 
 func (r *httpInMessage_) addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) {
@@ -867,6 +852,9 @@ func (r *httpInMessage_) addPrime(prime *pair) (edge uint8, ok bool) {
 	}
 	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
+}
+func (r *httpInMessage_) delPrime(i uint8) {
+	r.primes[i].zero()
 }
 func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bool {
 	nameSize := int32(len(name))
@@ -1028,8 +1016,20 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 	}
 	return
 }
-func (r *httpInMessage_) delPrime(i uint8) {
-	r.primes[i].zero()
+func (r *httpInMessage_) _getPlace(pair *pair) []byte {
+	var place []byte
+	if pair.inPlace(pairPlaceInput) {
+		place = r.input
+	} else if pair.inPlace(pairPlaceArray) {
+		place = r.array
+	} else if pair.inPlace(pairPlaceStatic2) {
+		place = http2BytesStatic
+	} else if pair.inPlace(pairPlaceStatic3) {
+		place = http3BytesStatic
+	} else {
+		BugExitln("unknown place")
+	}
+	return place
 }
 
 func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, hash uint16)) {

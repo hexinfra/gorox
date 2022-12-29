@@ -2517,7 +2517,6 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain(r.content)
 }
-
 func (r *httpResponse_) send() error {
 	curChain := r.content
 	resp := r.shell.(Response)

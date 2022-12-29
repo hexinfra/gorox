@@ -374,8 +374,7 @@ func (r *H3Request) pushChain(chain Chain) error {
 	return nil
 }
 func (r *H3Request) addTrailer(name []byte, value []byte) bool {
-	// TODO
-	return false
+	return r.addTrailer3(name, value)
 }
 
 func (r *H3Request) passHeaders() error {

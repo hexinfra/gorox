@@ -631,6 +631,16 @@ func (r *httpInMessage_) SetMaxRecvSeconds(seconds int64) {
 	r.maxRecvSeconds = seconds
 }
 
+func (r *httpInMessage_) Content() string {
+	return string(r.shell.UnsafeContent())
+}
+func (r *httpInMessage_) unsafeContent() []byte {
+	r.loadContent()
+	if r.stream.isBroken() {
+		return nil
+	}
+	return r.contentBlob[0:r.sizeReceived]
+}
 func (r *httpInMessage_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.content already.
@@ -758,17 +768,6 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 	return nil
 }
 
-func (r *httpInMessage_) Content() string {
-	return string(r.shell.UnsafeContent())
-}
-func (r *httpInMessage_) unsafeContent() []byte {
-	r.loadContent()
-	if r.stream.isBroken() {
-		return nil
-	}
-	return r.contentBlob[0:r.sizeReceived]
-}
-
 func (r *httpInMessage_) hasTrailers() bool { // used by proxies
 	return r.trailers.notEmpty()
 }
@@ -819,6 +818,13 @@ func (r *httpInMessage_) delHopTrailers() { // used by proxies
 }
 func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
 	return r._walkFields(r.trailers, extraKindTrailer, fn, forProxy)
+}
+
+func (r *httpInMessage_) UnsafeMake(size int) []byte {
+	return r.stream.unsafeMake(size)
+}
+func (r *httpInMessage_) PeerAddr() net.Addr {
+	return r.stream.peerAddr()
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {
@@ -893,13 +899,6 @@ func (r *httpInMessage_) _getPlace(pair *pair) []byte {
 		BugExitln("unknown place")
 	}
 	return place
-}
-
-func (r *httpInMessage_) UnsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
-}
-func (r *httpInMessage_) PeerAddr() net.Addr {
-	return r.stream.peerAddr()
 }
 
 func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
@@ -1205,42 +1204,6 @@ func (r *httpOutMessage_) onEnd() { // for zeros
 	r.httpOutMessage0_ = httpOutMessage0_{}
 }
 
-func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
-	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
-		return
-	}
-	return r._growFields(size)
-}
-func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
-	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
-		return
-	}
-	return r._growFields(size)
-}
-func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time
-	if size <= 0 || size > _16K { // size allowed: (0, 16K]
-		BugExitln("invalid size in _growFields")
-	}
-	from = int(r.fieldsEdge)
-	ceil := r.fieldsEdge + uint16(size)
-	tail := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
-	if ceil < r.fieldsEdge || tail > _16K || tail < ceil {
-		// Overflow
-		return
-	}
-	if tail > uint16(cap(r.fields)) { // tail <= _16K
-		fields := GetNK(int64(tail)) // 4K/16K
-		copy(fields, r.fields[0:r.fieldsEdge])
-		if cap(r.fields) != cap(r.stockFields) {
-			PutNK(r.fields)
-		}
-		r.fields = fields
-	}
-	r.fieldsEdge = ceil
-	edge, ok = int(r.fieldsEdge), true
-	return
-}
-
 func (r *httpOutMessage_) AddContentType(contentType string) bool {
 	return r.addContentType(risky.ConstBytes(contentType))
 }
@@ -1314,6 +1277,12 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	}
 	return hash, true, stack[:n]
 }
+func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
+	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
+		return
+	}
+	return r._growFields(size)
+}
 
 func (r *httpOutMessage_) IsSent() bool {
 	return r.isSent
@@ -1348,7 +1317,6 @@ func (r *httpOutMessage_) SendFile(contentPath string) error {
 	}
 	return r.sendFile(file, info, true)
 }
-
 func (r *httpOutMessage_) checkSend() error {
 	if r.isSent {
 		return httpAlreadySent
@@ -1391,13 +1359,6 @@ func (r *httpOutMessage_) PushFile(chunkPath string) error {
 	}
 	return r.pushFile(file, info, true)
 }
-func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
-	if !r.isSent { // trailers must be set after headers & content are sent
-		return false
-	}
-	return r.shell.addTrailer(risky.ConstBytes(name), risky.ConstBytes(value))
-}
-
 func (r *httpOutMessage_) pushBlob(chunk []byte) error {
 	if err := r.shell.checkPush(); err != nil {
 		return err
@@ -1422,6 +1383,28 @@ func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) 
 	chunk_ := GetBlock()
 	chunk_.SetFile(chunk, info, shut)
 	return r.shell.push(chunk_)
+}
+
+func (r *httpOutMessage_) AddTrailer(name string, value string) bool {
+	return r.AddTrailerBytesByBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+}
+func (r *httpOutMessage_) AddTrailerBytes(name string, value []byte) bool {
+	return r.AddTrailerBytesByBytes(risky.ConstBytes(name), value)
+}
+func (r *httpOutMessage_) AddTrailerByBytes(name []byte, value string) bool {
+	return r.AddTrailerBytesByBytes(name, risky.ConstBytes(value))
+}
+func (r *httpOutMessage_) AddTrailerBytesByBytes(name []byte, value []byte) bool {
+	if !r.isSent { // trailers must be set after headers & content are sent
+		return false
+	}
+	return r.shell.addTrailer(name, value)
+}
+func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
+	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
+		return
+	}
+	return r._growFields(size)
 }
 
 func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
@@ -1495,6 +1478,30 @@ func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bo
 
 func (r *httpOutMessage_) unsafeMake(size int) []byte {
 	return r.stream.unsafeMake(size)
+}
+
+func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time
+	if size <= 0 || size > _16K { // size allowed: (0, 16K]
+		BugExitln("invalid size in _growFields")
+	}
+	from = int(r.fieldsEdge)
+	ceil := r.fieldsEdge + uint16(size)
+	tail := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
+	if ceil < r.fieldsEdge || tail > _16K || tail < ceil {
+		// Overflow
+		return
+	}
+	if tail > uint16(cap(r.fields)) { // tail <= _16K
+		fields := GetNK(int64(tail)) // 4K/16K
+		copy(fields, r.fields[0:r.fieldsEdge])
+		if cap(r.fields) != cap(r.stockFields) {
+			PutNK(r.fields)
+		}
+		r.fields = fields
+	}
+	r.fieldsEdge = ceil
+	edge, ok = int(r.fieldsEdge), true
+	return
 }
 
 func (r *httpOutMessage_) _prepareWrite() error {

@@ -2342,7 +2342,11 @@ type Response interface {
 	Push(chunk string) error
 	PushBytes(chunk []byte) error
 	PushFile(chunkPath string) error
+
 	AddTrailer(name string, value string) bool
+	AddTrailerBytes(name string, value []byte) bool
+	AddTrailerByBytes(name []byte, value string) bool
+	AddTrailerBytesByBytes(name []byte, value []byte) bool
 
 	// Internal only
 	addHeader(name []byte, value []byte) bool

@@ -402,8 +402,7 @@ func (r *H2Request) pushChain(chain Chain) error {
 	return nil
 }
 func (r *H2Request) addTrailer(name []byte, value []byte) bool {
-	// TODO
-	return false
+	return r.addTrailer2(name, value)
 }
 
 func (r *H2Request) passHeaders() error {

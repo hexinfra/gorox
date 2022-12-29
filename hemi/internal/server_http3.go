@@ -137,7 +137,7 @@ func (g *http3Gate) onConnectionClosed() {
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, server httpServer, gate *http3Gate, quicConn *quix.Conn) *http3Conn {
+func getHTTP3Conn(id int64, server *http3Server, gate *http3Gate, quicConn *quix.Conn) *http3Conn {
 	var conn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		conn = new(http3Conn)
@@ -173,7 +173,7 @@ type http3Conn0 struct { // for fast reset, entirely
 	pFore      uint32 // incoming frame part (header or payload) ends at c.inputs.buf[c.pFore]
 }
 
-func (c *http3Conn) onGet(id int64, server httpServer, gate *http3Gate, quicConn *quix.Conn) {
+func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicConn *quix.Conn) {
 	c.httpConn_.onGet(id, server)
 	c.gate = gate
 	c.quicConn = quicConn

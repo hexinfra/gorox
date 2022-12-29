@@ -232,7 +232,7 @@ func (g *httpxGate) onConnectionClosed() {
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server httpServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
+func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
 	var conn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		conn = new(http1Conn)
@@ -271,7 +271,7 @@ type http1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn) onGet(id int64, server httpServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *http1Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.httpConn_.onGet(id, server)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience

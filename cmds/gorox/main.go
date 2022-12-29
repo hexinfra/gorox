@@ -8,9 +8,14 @@
 package main
 
 import (
+	"os"
+)
+
+import (
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
 	_ "github.com/hexinfra/gorox/svcs"
+	"github.com/hexinfra/gorox/test"
 )
 
 import "github.com/hexinfra/gorox/hemi/manager"
@@ -27,6 +32,7 @@ ACTION
   help         # show this message
   version      # show version info
   advise       # show how to optimize current platform
+  test         # run as tester
   serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
@@ -69,5 +75,9 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gorox", usage, 0, "127.0.0.1:9527")
+	if len(os.Args) >= 2 && os.Args[1] == "test" {
+		test.Main()
+	} else {
+		manager.Main("gorox", usage, 0, "127.0.0.1:9527")
+	}
 }

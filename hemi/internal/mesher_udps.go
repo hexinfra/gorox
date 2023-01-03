@@ -19,22 +19,22 @@ import (
 // UDPSMesher
 type UDPSMesher struct {
 	// Mixins
-	mesher_[*UDPSMesher, *udpsGate, UDPSRunner, UDPSEditor, *udpsCase]
+	mesher_[*UDPSMesher, *udpsGate, UDPSDealet, UDPSEditor, *udpsCase]
 }
 
 func (m *UDPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, udpsRunnerCreators, udpsEditorCreators)
+	m.mesher_.onCreate(name, stage, udpsDealetCreators, udpsEditorCreators)
 }
 
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // runners, editors, cases
+	m.configureSubs() // dealets, editors, cases
 }
 func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // runners, editors, cases
+	m.prepareSubs() // dealets, editors, cases
 }
 
 func (m *UDPSMesher) OnShutdown() {
@@ -71,9 +71,9 @@ func (m *UDPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.runners) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // runners, editors, cases
+	m.WaitSubs() // dealets, editors, cases
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("udpsMesher=%s done\n", m.Name())
@@ -207,14 +207,14 @@ var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes 
 	// TODO
 }
 
-// UDPSRunner
-type UDPSRunner interface {
+// UDPSDealet
+type UDPSDealet interface {
 	Component
 	Process(conn *UDPSConn) (next bool)
 }
 
-// UDPSRunner_
-type UDPSRunner_ struct {
+// UDPSDealet_
+type UDPSDealet_ struct {
 	Component_
 }
 
@@ -234,7 +234,7 @@ type UDPSEditor_ struct {
 // udpsCase
 type udpsCase struct {
 	// Mixins
-	case_[*UDPSMesher, UDPSRunner, UDPSEditor]
+	case_[*UDPSMesher, UDPSDealet, UDPSEditor]
 	// States
 	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
 }

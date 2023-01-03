@@ -3,46 +3,46 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS proxy runner implementation.
+// TCP/TLS proxy dealet implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSRunner("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner {
-		r := new(tcpsProxy)
-		r.onCreate(name, stage, mesher)
-		return r
+	RegisterTCPSDealet("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet {
+		d := new(tcpsProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
 // tcpsProxy passes TCP/TLS connections to another TCP/TLS server.
 type tcpsProxy struct {
 	// Mixins
-	TCPSRunner_
+	TCPSDealet_
 	proxy_
 	// Assocs
 	mesher *TCPSMesher
 	// States
 }
 
-func (r *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	r.CompInit(name)
-	r.proxy_.onCreate(stage)
-	r.mesher = mesher
+func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+	d.CompInit(name)
+	d.proxy_.onCreate(stage)
+	d.mesher = mesher
 }
 
-func (r *tcpsProxy) OnConfigure() {
-	r.proxy_.onConfigure(r)
+func (d *tcpsProxy) OnConfigure() {
+	d.proxy_.onConfigure(d)
 }
-func (r *tcpsProxy) OnPrepare() {
-	r.proxy_.onPrepare()
-}
-
-func (r *tcpsProxy) OnShutdown() {
-	r.mesher.SubDone()
+func (d *tcpsProxy) OnPrepare() {
+	d.proxy_.onPrepare()
 }
 
-func (r *tcpsProxy) Process(conn *TCPSConn) (next bool) {
+func (d *tcpsProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
+
+func (d *tcpsProxy) Process(conn *TCPSConn) (next bool) {
 	// TODO
 	return
 }

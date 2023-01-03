@@ -3,46 +3,46 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC proxy runner implementation.
+// QUIC proxy dealet implementation.
 
 package internal
 
 func init() {
-	RegisterQUICRunner("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICRunner {
-		r := new(quicProxy)
-		r.onCreate(name, stage, mesher)
-		return r
+	RegisterQUICDealet("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealet {
+		d := new(quicProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
 // quicProxy passes QUIC connections to another QUIC server.
 type quicProxy struct {
 	// Mixins
-	QUICRunner_
+	QUICDealet_
 	proxy_
 	// Assocs
 	mesher *QUICMesher
 	// States
 }
 
-func (r *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
-	r.CompInit(name)
-	r.proxy_.onCreate(stage)
-	r.mesher = mesher
+func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+	d.CompInit(name)
+	d.proxy_.onCreate(stage)
+	d.mesher = mesher
 }
 
-func (r *quicProxy) OnConfigure() {
-	r.proxy_.onConfigure(r)
+func (d *quicProxy) OnConfigure() {
+	d.proxy_.onConfigure(d)
 }
-func (r *quicProxy) OnPrepare() {
-	r.proxy_.onPrepare()
-}
-
-func (r *quicProxy) OnShutdown() {
-	r.mesher.SubDone()
+func (d *quicProxy) OnPrepare() {
+	d.proxy_.onPrepare()
 }
 
-func (r *quicProxy) Process(conn *QUICConn, stream *QUICStream) (next bool) {
+func (d *quicProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
+
+func (d *quicProxy) Process(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

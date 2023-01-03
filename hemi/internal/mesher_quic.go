@@ -17,22 +17,22 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICRunner, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealet, QUICEditor, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicRunnerCreators, quicEditorCreators)
+	m.mesher_.onCreate(name, stage, quicDealetCreators, quicEditorCreators)
 }
 
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // runners, editors, cases
+	m.configureSubs() // dealets, editors, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // runners, editors, cases
+	m.prepareSubs() // dealets, editors, cases
 }
 
 func (m *QUICMesher) OnShutdown() {
@@ -65,9 +65,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.runners) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // runners, editors, cases
+	m.WaitSubs() // dealets, editors, cases
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("quicMesher=%s done\n", m.Name())
@@ -207,14 +207,14 @@ var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCo
 	// TODO
 }
 
-// QUICRunner
-type QUICRunner interface {
+// QUICDealet
+type QUICDealet interface {
 	Component
 	Process(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
-// QUICRunner_
-type QUICRunner_ struct {
+// QUICDealet_
+type QUICDealet_ struct {
 	Component_
 }
 
@@ -234,7 +234,7 @@ type QUICEditor_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICRunner, QUICEditor]
+	case_[*QUICMesher, QUICDealet, QUICEditor]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }

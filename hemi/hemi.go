@@ -16,11 +16,11 @@ const Version = "0.1.0-dev"
 
 var ( // core funcs
 	RegisterOptware    = internal.RegisterOptware
-	RegisterQUICRunner = internal.RegisterQUICRunner
+	RegisterQUICDealet = internal.RegisterQUICDealet
 	RegisterQUICEditor = internal.RegisterQUICEditor
-	RegisterTCPSRunner = internal.RegisterTCPSRunner
+	RegisterTCPSDealet = internal.RegisterTCPSDealet
 	RegisterTCPSEditor = internal.RegisterTCPSEditor
-	RegisterUDPSRunner = internal.RegisterUDPSRunner
+	RegisterUDPSDealet = internal.RegisterUDPSDealet
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
 	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
@@ -106,17 +106,17 @@ type ( // core types
 	PConn    = internal.PConn    // TConn | XConn
 
 	QUICMesher = internal.QUICMesher
-	QUICRunner = internal.QUICRunner
+	QUICDealet = internal.QUICDealet
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
 
 	TCPSMesher = internal.TCPSMesher
-	TCPSRunner = internal.TCPSRunner
+	TCPSDealet = internal.TCPSDealet
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
 
 	UDPSMesher = internal.UDPSMesher
-	UDPSRunner = internal.UDPSRunner
+	UDPSDealet = internal.UDPSDealet
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
@@ -153,11 +153,11 @@ type ( // core mixins
 
 	Stater_     = internal.Stater_
 	Cacher_     = internal.Cacher_
-	QUICRunner_ = internal.QUICRunner_
+	QUICDealet_ = internal.QUICDealet_
 	QUICEditor_ = internal.QUICEditor_
-	TCPSRunner_ = internal.TCPSRunner_
+	TCPSDealet_ = internal.TCPSDealet_
 	TCPSEditor_ = internal.TCPSEditor_
-	UDPSRunner_ = internal.UDPSRunner_
+	UDPSDealet_ = internal.UDPSDealet_
 	UDPSEditor_ = internal.UDPSEditor_
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_

@@ -20,22 +20,22 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSRunner, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSDealet, TCPSEditor, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsRunnerCreators, tcpsEditorCreators)
+	m.mesher_.onCreate(name, stage, tcpsDealetCreators, tcpsEditorCreators)
 }
 
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // runners, editors, cases
+	m.configureSubs() // dealets, editors, cases
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // runners, editors, cases
+	m.prepareSubs() // dealets, editors, cases
 }
 
 func (m *TCPSMesher) OnShutdown() {
@@ -72,9 +72,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.runners) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // runners, editors, cases
+	m.WaitSubs() // dealets, editors, cases
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("tcpsMesher=%s done\n", m.Name())
@@ -306,14 +306,14 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	nil, // nextProto
 }
 
-// TCPSRunner
-type TCPSRunner interface {
+// TCPSDealet
+type TCPSDealet interface {
 	Component
 	Process(conn *TCPSConn) (next bool)
 }
 
-// TCPSRunner_
-type TCPSRunner_ struct {
+// TCPSDealet_
+type TCPSDealet_ struct {
 	// Mixins
 	Component_
 	// States
@@ -337,7 +337,7 @@ type TCPSEditor_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSRunner, TCPSEditor]
+	case_[*TCPSMesher, TCPSDealet, TCPSEditor]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -409,8 +409,8 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 	for _, editor := range c.editors {
 		conn.hookEditor(editor)
 	}
-	for _, runner := range c.runners {
-		if next := runner.Process(conn); !next {
+	for _, dealet := range c.dealets {
+		if next := dealet.Process(conn); !next {
 			return true
 		}
 	}

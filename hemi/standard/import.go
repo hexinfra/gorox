@@ -10,6 +10,7 @@ package standard
 import (
 	_ "github.com/hexinfra/gorox/hemi/standard/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/clean"
+	_ "github.com/hexinfra/gorox/hemi/standard/dealets/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/ajp"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/favicon"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/fcgi"
@@ -21,7 +22,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/standard/optwares/demo"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/head"
-	_ "github.com/hexinfra/gorox/hemi/standard/runners/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/standard/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/staters/local"

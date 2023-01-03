@@ -25,7 +25,7 @@ COMPONENTS
     optware (...)
     backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
     mesher (tcpsMesher, udpsMesher, quicMesher)
-      runner (...)
+      dealet (...)
       editor (...)
       case [*]
     stater (localStater, redisStater, ...)

@@ -18,7 +18,7 @@ type _gate interface {
 	open() error
 	shutdown() error
 }
-type _runner interface {
+type _dealet interface {
 	Component
 }
 type _editor interface {
@@ -30,16 +30,16 @@ type _case interface {
 }
 
 // mesher_ is the mixin for all meshers.
-type mesher_[M _mesher, G _gate, R _runner, E _editor, C _case] struct {
+type mesher_[M _mesher, G _gate, R _dealet, E _editor, C _case] struct {
 	// Mixins
 	Server_
 	// Assocs
 	gates   []G         // gates opened
-	runners compDict[R] // defined runners. indexed by name
+	dealets compDict[R] // defined dealets. indexed by name
 	editors compDict[E] // defined editors. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	runnerCreators map[string]func(name string, stage *Stage, mesher M) R
+	dealetCreators map[string]func(name string, stage *Stage, mesher M) R
 	editorCreators map[string]func(name string, stage *Stage, mesher M) E
 	accessLog      []string // (file, rotate)
 	booker         *booker  // mesher access booker
@@ -47,11 +47,11 @@ type mesher_[M _mesher, G _gate, R _runner, E _editor, C _case] struct {
 	nEditors       uint8    // used number of editorsByID in this mesher
 }
 
-func (m *mesher_[M, G, R, E, C]) onCreate(name string, stage *Stage, runnerCreators map[string]func(string, *Stage, M) R, editorCreators map[string]func(string, *Stage, M) E) {
+func (m *mesher_[M, G, R, E, C]) onCreate(name string, stage *Stage, dealetCreators map[string]func(string, *Stage, M) R, editorCreators map[string]func(string, *Stage, M) E) {
 	m.Server_.OnCreate(name, stage)
-	m.runners = make(compDict[R])
+	m.dealets = make(compDict[R])
 	m.editors = make(compDict[E])
-	m.runnerCreators = runnerCreators
+	m.dealetCreators = dealetCreators
 	m.editorCreators = editorCreators
 	m.nEditors = 1 // position 0 is not used
 }
@@ -70,7 +70,7 @@ func (m *mesher_[M, G, R, E, C]) onConfigure() {
 	}
 }
 func (m *mesher_[M, G, R, E, C]) configureSubs() {
-	m.runners.walk(R.OnConfigure)
+	m.dealets.walk(R.OnConfigure)
 	m.editors.walk(E.OnConfigure)
 	m.cases.walk(C.OnConfigure)
 }
@@ -82,7 +82,7 @@ func (m *mesher_[M, G, R, E, C]) onPrepare() {
 	}
 }
 func (m *mesher_[M, G, R, E, C]) prepareSubs() {
-	m.runners.walk(R.OnPrepare)
+	m.dealets.walk(R.OnPrepare)
 	m.editors.walk(E.OnPrepare)
 	m.cases.walk(C.OnPrepare)
 }
@@ -90,23 +90,23 @@ func (m *mesher_[M, G, R, E, C]) prepareSubs() {
 func (m *mesher_[M, G, R, E, C]) shutdownSubs() {
 	m.cases.walk(C.OnShutdown)
 	m.editors.walk(E.OnShutdown)
-	m.runners.walk(R.OnShutdown)
+	m.dealets.walk(R.OnShutdown)
 }
 
-func (m *mesher_[M, G, R, E, C]) createRunner(sign string, name string) R {
-	if _, ok := m.runners[name]; ok {
-		UseExitln("conflicting runner with a same name in mesher")
+func (m *mesher_[M, G, R, E, C]) createDealet(sign string, name string) R {
+	if _, ok := m.dealets[name]; ok {
+		UseExitln("conflicting dealet with a same name in mesher")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := m.runnerCreators[sign]
+	create, ok := m.dealetCreators[sign]
 	if !ok {
-		UseExitln("unknown runner sign: " + sign)
+		UseExitln("unknown dealet sign: " + sign)
 	}
-	runner := create(name, m.stage, m.shell.(M))
-	runner.setShell(runner)
-	m.runners[name] = runner
-	return runner
+	dealet := create(name, m.stage, m.shell.(M))
+	dealet.setShell(dealet)
+	m.dealets[name] = dealet
+	return dealet
 }
 func (m *mesher_[M, G, R, E, C]) createEditor(sign string, name string) E {
 	if m.nEditors == 255 {
@@ -143,12 +143,12 @@ func (m *mesher_[M, G, R, E, C]) editorByID(id uint8) E { // for fast searching
 }
 
 // case_ is a mixin.
-type case_[M _mesher, R _runner, E _editor] struct {
+type case_[M _mesher, R _dealet, E _editor] struct {
 	// Mixins
 	Component_
 	// Assocs
 	mesher  M   // associated mesher
-	runners []R // runners contained
+	dealets []R // dealets contained
 	editors []E // editors contained
 	// States
 	general  bool  // general match?
@@ -182,8 +182,8 @@ func (c *case_[M, R, E]) OnShutdown() {
 	c.mesher.SubDone()
 }
 
-func (c *case_[M, R, E]) addRunner(runner R) {
-	c.runners = append(c.runners, runner)
+func (c *case_[M, R, E]) addDealet(dealet R) {
+	c.dealets = append(c.dealets, dealet)
 }
 func (c *case_[M, R, E]) addEditor(editor E) {
 	c.editors = append(c.editors, editor)

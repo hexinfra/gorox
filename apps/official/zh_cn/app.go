@@ -11,18 +11,18 @@ import (
 	"errors"
 	"github.com/hexinfra/gorox/apps/official/zh_cn/pack"
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 func init() {
 	RegisterAppInit("zh_cn", func(app *App) error {
-		logic := app.Handler("logic")
+		logic := app.Handlet("logic")
 		if logic == nil {
-			return errors.New("no handler named 'logic' in app config file")
+			return errors.New("no handlet named 'logic' in app config file")
 		}
-		sitex, ok := logic.(*Sitex) // must be Sitex handler.
+		sitex, ok := logic.(*Sitex) // must be Sitex handlet.
 		if !ok {
-			return errors.New("handler in 'logic' rule is not Sitex handler")
+			return errors.New("handlet in 'logic' rule is not Sitex handlet")
 		}
 		sitex.RegisterSite("front", pack.Pack{})
 		return nil

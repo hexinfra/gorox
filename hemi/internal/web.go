@@ -88,7 +88,7 @@ type App struct {
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this app
 	servers  []httpServer      // linked http servers. may be empty
-	handlers compDict[Handler] // defined handlers. indexed by name
+	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
 	rules    compList[*Rule]   // defined rules. the order must be kept, so we use list. TODO: use ordered map?
@@ -117,7 +117,7 @@ type App struct {
 func (a *App) onCreate(name string, stage *Stage) {
 	a.CompInit(name)
 	a.stage = stage
-	a.handlers = make(compDict[Handler])
+	a.handlets = make(compDict[Handlet])
 	a.revisers = make(compDict[Reviser])
 	a.socklets = make(compDict[Socklet])
 	a.nRevisers = 1 // position 0 is not used
@@ -195,9 +195,9 @@ func (a *App) OnConfigure() {
 	// proxyOnly
 	a.ConfigureBool("proxyOnly", &a.proxyOnly, false)
 	if a.proxyOnly {
-		for _, handler := range a.handlers {
-			if !handler.IsProxy() {
-				UseExitln("cannot bind non-proxy handlers to a proxy-only app")
+		for _, handlet := range a.handlets {
+			if !handlet.IsProxy() {
+				UseExitln("cannot bind non-proxy handlets to a proxy-only app")
 			}
 		}
 		for _, socklet := range a.socklets {
@@ -220,7 +220,7 @@ func (a *App) OnConfigure() {
 	}
 
 	// sub components
-	a.handlers.walk(Handler.OnConfigure)
+	a.handlets.walk(Handlet.OnConfigure)
 	a.revisers.walk(Reviser.OnConfigure)
 	a.socklets.walk(Socklet.OnConfigure)
 	a.rules.walk((*Rule).OnConfigure)
@@ -237,7 +237,7 @@ func (a *App) OnPrepare() {
 	a.makeContentFilesDir(0755)
 
 	// sub components
-	a.handlers.walk(Handler.OnPrepare)
+	a.handlets.walk(Handlet.OnPrepare)
 	a.revisers.walk(Reviser.OnPrepare)
 	a.socklets.walk(Socklet.OnPrepare)
 	a.rules.walk((*Rule).OnPrepare)
@@ -256,20 +256,20 @@ func (a *App) OnShutdown() {
 	a.Shutdown()
 }
 
-func (a *App) createHandler(sign string, name string) Handler {
-	if a.Handler(name) != nil {
-		UseExitln("conflicting handler with a same name in app")
+func (a *App) createHandlet(sign string, name string) Handlet {
+	if a.Handlet(name) != nil {
+		UseExitln("conflicting handlet with a same name in app")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := handlerCreators[sign]
+	create, ok := handletCreators[sign]
 	if !ok {
-		UseExitln("unknown handler sign: " + sign)
+		UseExitln("unknown handlet sign: " + sign)
 	}
-	handler := create(name, a.stage, a)
-	handler.setShell(handler)
-	a.handlers[name] = handler
-	return handler
+	handlet := create(name, a.stage, a)
+	handlet.setShell(handlet)
+	a.handlets[name] = handlet
+	return handlet
 }
 func (a *App) createReviser(sign string, name string) Reviser {
 	if a.nRevisers == 255 {
@@ -318,8 +318,8 @@ func (a *App) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *App) Handler(name string) Handler {
-	return a.handlers[name]
+func (a *App) Handlet(name string) Handlet {
+	return a.handlets[name]
 }
 func (a *App) Reviser(name string) Reviser {
 	return a.revisers[name]
@@ -369,12 +369,12 @@ func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {
 		// TODO
 	})
-	a.IncSub(len(a.handlers) + len(a.socklets) + len(a.revisers) + len(a.rules))
+	a.IncSub(len(a.handlets) + len(a.socklets) + len(a.revisers) + len(a.rules))
 	a.rules.goWalk((*Rule).OnShutdown)
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
-	a.handlers.goWalk(Handler.OnShutdown)
-	a.WaitSubs() // handlers, socklets, revisers, rules
+	a.handlets.goWalk(Handlet.OnShutdown)
+	a.WaitSubs() // handlets, socklets, revisers, rules
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("app=%s done\n", a.Name())
@@ -386,7 +386,7 @@ func (a *App) reviserByID(id uint8) Reviser { // for fast searching
 	return a.revisersByID[id]
 }
 
-func (a *App) dispatchHandler(req Request, resp Response) {
+func (a *App) dispatchHandlet(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
@@ -419,29 +419,29 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 	sock.Close()
 }
 
-// Handler component handles the incoming request and gives an outgoing response if the request is handled.
-type Handler interface {
+// Handlet component handles the incoming request and gives an outgoing response if the request is handled.
+type Handlet interface {
 	Component
 	IsProxy() bool // proxies and origins are different, we must differentiate them
 	IsCache() bool // caches and proxies are different, we must differentiate them
 	Handle(req Request, resp Response) (next bool)
 }
 
-// Handler_ is the mixin for all handlers.
-type Handler_ struct {
+// Handlet_ is the mixin for all handlets.
+type Handlet_ struct {
 	// Mixins
 	Component_
 	// States
-	rShell reflect.Value // the shell handler
+	rShell reflect.Value // the shell handlet
 	router Router
 }
 
-func (h *Handler_) UseRouter(shell any, router Router) {
+func (h *Handlet_) UseRouter(shell any, router Router) {
 	h.rShell = reflect.ValueOf(shell)
 	h.router = router
 }
 
-func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
+func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	if h.router != nil {
 		found := false
 		if handle := h.router.FindHandle(req); handle != nil {
@@ -464,8 +464,8 @@ func (h *Handler_) Dispatch(req Request, resp Response, notFound Handle) {
 	}
 }
 
-func (h *Handler_) IsProxy() bool { return false } // override this for proxy handlers
-func (h *Handler_) IsCache() bool { return false } // override this for cache handlers
+func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
+func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
 
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
@@ -522,7 +522,7 @@ type Rule struct {
 	Component_
 	// Assocs
 	app      *App      // associated app
-	handlers []Handler // handlers in this rule. NOTICE: handlers are sub components of app, not rule
+	handlets []Handlet // handlets in this rule. NOTICE: handlets are sub components of app, not rule
 	revisers []Reviser // revisers in this rule. NOTICE: revisers are sub components of app, not rule
 	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of app, not rule
 	// States
@@ -573,24 +573,24 @@ func (r *Rule) OnConfigure() {
 	r.ConfigureString("returnText", &returnText, nil, "")
 	r.returnText = []byte(returnText)
 
-	// handlers
-	if v, ok := r.Find("handlers"); ok {
+	// handlets
+	if v, ok := r.Find("handlets"); ok {
 		if len(r.socklets) > 0 {
-			UseExitln("cannot mix handlers and socklets in a rule")
+			UseExitln("cannot mix handlets and socklets in a rule")
 		}
-		if len(r.handlers) > 0 {
-			UseExitln("specifying handlers is not allowed while there are literal handlers")
+		if len(r.handlets) > 0 {
+			UseExitln("specifying handlets is not allowed while there are literal handlets")
 		}
 		if names, ok := v.StringList(); ok {
 			for _, name := range names {
-				if handler := r.app.Handler(name); handler != nil {
-					r.handlers = append(r.handlers, handler)
+				if handlet := r.app.Handlet(name); handlet != nil {
+					r.handlets = append(r.handlets, handlet)
 				} else {
-					UseExitf("handler '%s' does not exist\n", name)
+					UseExitf("handlet '%s' does not exist\n", name)
 				}
 			}
 		} else {
-			UseExitln("invalid handler names")
+			UseExitln("invalid handlet names")
 		}
 	}
 	// revisers
@@ -612,8 +612,8 @@ func (r *Rule) OnConfigure() {
 	}
 	// socklets
 	if v, ok := r.Find("socklets"); ok {
-		if len(r.handlers) > 0 {
-			UseExitln("cannot mix socklets and handlers in a rule")
+		if len(r.handlets) > 0 {
+			UseExitln("cannot mix socklets and handlets in a rule")
 		}
 		if len(r.socklets) > 0 {
 			UseExitln("specifying socklets is not allowed while there are literal socklets")
@@ -638,8 +638,8 @@ func (r *Rule) OnShutdown() {
 	r.app.SubDone()
 }
 
-func (r *Rule) addHandler(handler Handler) {
-	r.handlers = append(r.handlers, handler)
+func (r *Rule) addHandlet(handlet Handlet) {
+	r.handlets = append(r.handlets, handlet)
 }
 func (r *Rule) addReviser(reviser Reviser) {
 	r.revisers = append(r.revisers, reviser)
@@ -793,15 +793,15 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 		return true
 	}
 
-	if len(r.handlers) > 0 { // there are handlers in this rule, so we check against origin server or proxy server here.
+	if len(r.handlets) > 0 { // there are handlets in this rule, so we check against origin server or proxy server here.
 		toOrigin := true
-		for _, handler := range r.handlers {
-			if handler.IsProxy() { // request to proxy server. checks against proxy server
+		for _, handlet := range r.handlets {
+			if handlet.IsProxy() { // request to proxy server. checks against proxy server
 				toOrigin = false
 				if req.VersionCode() == Version1_0 {
 					resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 				}
-				if handler.IsCache() { // request to proxy cache. checks against proxy cache
+				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
 					// Add checks here.
 				}
 				break
@@ -834,9 +834,9 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 		req.hookReviser(reviser)
 		resp.hookReviser(reviser)
 	}
-	// Execute handlers
-	for _, handler := range r.handlers {
-		if next := handler.Handle(req, resp); !next {
+	// Execute handlets
+	for _, handlet := range r.handlets {
+		if next := handlet.Handle(req, resp); !next {
 			return true
 		}
 	}

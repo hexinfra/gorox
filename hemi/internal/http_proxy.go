@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General HTTP proxy handler and WebSocket proxy socklet implementation.
+// General HTTP proxy handlet and WebSocket proxy socklet implementation.
 
 package internal
 
 // httpProxy_ is the mixin for http1Proxy, http2Proxy, http3Proxy.
 type httpProxy_ struct {
 	// Mixins
-	Handler_
+	Handlet_
 	proxy_
 	// Assocs
 	app    *App   // the app to which the proxy belongs

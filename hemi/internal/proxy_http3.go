@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/3 proxy handler and WebSocket/3 proxy socklet implementation.
+// HTTP/3 proxy handlet and WebSocket/3 proxy socklet implementation.
 
 package internal
 
 func init() {
-	RegisterHandler("http3Proxy", func(name string, stage *Stage, app *App) Handler {
+	RegisterHandlet("http3Proxy", func(name string, stage *Stage, app *App) Handlet {
 		h := new(http3Proxy)
 		h.onCreate(name, stage, app)
 		return h
@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// http3Proxy handler passes requests to backend HTTP/3 servers and cache responses.
+// http3Proxy handlet passes requests to backend HTTP/3 servers and cache responses.
 type http3Proxy struct {
 	// Mixins
 	httpProxy_

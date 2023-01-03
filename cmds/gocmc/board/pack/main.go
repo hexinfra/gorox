@@ -7,7 +7,7 @@ package pack
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
+	"github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 type Pack struct {

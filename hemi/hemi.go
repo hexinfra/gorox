@@ -25,7 +25,7 @@ var ( // core funcs
 	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
 	RegisterAppInit    = internal.RegisterAppInit
-	RegisterHandler    = internal.RegisterHandler
+	RegisterHandlet    = internal.RegisterHandlet
 	RegisterReviser    = internal.RegisterReviser
 	RegisterSocklet    = internal.RegisterSocklet
 	RegisterSvcInit    = internal.RegisterSvcInit
@@ -129,7 +129,7 @@ type ( // core types
 	Block = internal.Block
 
 	App      = internal.App
-	Handler  = internal.Handler
+	Handlet  = internal.Handlet
 	Handle   = internal.Handle
 	Router   = internal.Router
 	Reviser  = internal.Reviser
@@ -161,7 +161,7 @@ type ( // core mixins
 	UDPSFilter_ = internal.UDPSFilter_
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_
-	Handler_    = internal.Handler_
+	Handlet_    = internal.Handlet_
 	Reviser_    = internal.Reviser_
 	Socklet_    = internal.Socklet_
 	Cronjob_    = internal.Cronjob_

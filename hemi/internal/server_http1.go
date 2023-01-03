@@ -499,7 +499,7 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 	s.onEnd()
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
-	app.dispatchHandler(req, resp)
+	app.dispatchHandlet(req, resp)
 	if !resp.isSent { // only happens on sized content.
 		resp.sendChain(resp.content)
 	} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)

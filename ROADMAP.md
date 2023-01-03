@@ -4,7 +4,7 @@ Roadmap
   * [TODO] fetch config through url.
   * [TODO] shutdown support.
   * [TODO] mesher system design and implementation.
-  * [TODO] fcgi handler.
+  * [TODO] fcgi handlet.
   * [TODO] websocket support.
   * [TODO] gzip reviser.
   * [TODO] http/2 support.

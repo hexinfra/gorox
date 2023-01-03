@@ -26,7 +26,7 @@ var ( // global maps, shared between stages
 	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
-	handlerCreators    = make(map[string]func(name string, stage *Stage, app *App) Handler)
+	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
@@ -73,8 +73,8 @@ func RegisterStater(sign string, create func(name string, stage *Stage) Stater) 
 func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
 	registerComponent0(sign, compCacher, cacherCreators, create)
 }
-func RegisterHandler(sign string, create func(name string, stage *Stage, app *App) Handler) {
-	registerComponent1(sign, compHandler, handlerCreators, create)
+func RegisterHandlet(sign string, create func(name string, stage *Stage, app *App) Handlet) {
+	registerComponent1(sign, compHandlet, handletCreators, create)
 }
 func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
 	registerComponent1(sign, compReviser, reviserCreators, create)
@@ -107,7 +107,7 @@ func registerComponent0[T Component](sign string, comp int16, creators map[strin
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handler, reviser, socklet
+func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {

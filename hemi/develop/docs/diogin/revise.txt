@@ -1,4 +1,4 @@
-如果在 handler 里判断 req.TestConditions() 通过，直接走特殊流程（304，426等）。
+如果在 handlet 里判断 req.TestConditions() 通过，直接走特殊流程（304，426等）。
 如果未通过，需要走普通流程。在最后一个 reviser 执行完毕，即将输出前，可以再判断一次。
 
 但是如果内容是 chunked 直出，就没办法判断了。

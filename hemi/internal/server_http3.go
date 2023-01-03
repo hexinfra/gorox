@@ -301,7 +301,7 @@ func (s *http3Stream) serveSocket() { // see RFC 9220
 }
 func (s *http3Stream) serveNormal(app *App, req *http3Request, resp *http3Response) { // request & response
 	// TODO
-	app.dispatchHandler(req, resp)
+	app.dispatchHandlet(req, resp)
 }
 func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { // 4xx & 5xx
 	// TODO

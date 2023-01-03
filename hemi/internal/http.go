@@ -22,7 +22,7 @@ httpInMessage_  | stream                    httpOutMessage_ | stream
                            \           /
                 \           \         /
       1/2/3      \           \       /            1/2/3
-   [httpServer]  [Handler]  [httpProxy]        [httpClient]
+   [httpServer]  [Handlet]  [httpProxy]        [httpClient]
       1/2/3      /           /       \            1/2/3
                 /           /         \
                            /           \

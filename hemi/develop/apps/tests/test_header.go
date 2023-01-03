@@ -9,9 +9,9 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *testHandler) GET_useragent(req Request, resp Response) {
+func (h *testHandlet) GET_useragent(req Request, resp Response) {
 	resp.Send(req.UserAgent())
 }
-func (h *testHandler) GET_authority(req Request, resp Response) {
+func (h *testHandlet) GET_authority(req Request, resp Response) {
 	resp.SendBytes(req.UnsafeAuthority())
 }

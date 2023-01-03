@@ -891,7 +891,7 @@ func (s *http2Stream) serveSocket() { // see RFC 8441
 }
 func (s *http2Stream) serveNormal(app *App, req *http2Request, resp *http2Response) { // request & response
 	// TODO
-	app.dispatchHandler(req, resp)
+	app.dispatchHandlet(req, resp)
 }
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO

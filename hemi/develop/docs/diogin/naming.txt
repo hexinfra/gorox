@@ -31,7 +31,7 @@ COMPONENTS
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)
     app [*]
-      handler (hello, static, ...)
+      handlet (hello, static, ...)
       reviser (gzip, header, ...)
       socklet (hello, ...)
       rule [*]

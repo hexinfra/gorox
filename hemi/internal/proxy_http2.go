@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/2 proxy handler and WebSocket/2 proxy socklet implementation.
+// HTTP/2 proxy handlet and WebSocket/2 proxy socklet implementation.
 
 package internal
 
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterHandler("http2Proxy", func(name string, stage *Stage, app *App) Handler {
+	RegisterHandlet("http2Proxy", func(name string, stage *Stage, app *App) Handlet {
 		h := new(http2Proxy)
 		h.onCreate(name, stage, app)
 		return h
@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// http2Proxy handler passes requests to backend HTTP/2 servers and cache responses.
+// http2Proxy handlet passes requests to backend HTTP/2 servers and cache responses.
 type http2Proxy struct {
 	// Mixins
 	httpProxy_
@@ -133,7 +133,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	resp2 := stream2.Response()
 	for { // until we found a non-1xx status (>= 200)
 		//resp2.recvHead()
-		if resp2.headResult != StatusOK || resp2.Status() == StatusSwitchingProtocols { // websocket is not served in handlers.
+		if resp2.headResult != StatusOK || resp2.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
 			stream2.markBroken()
 			resp.SendBadGateway(nil)
 			return

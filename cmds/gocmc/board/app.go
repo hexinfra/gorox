@@ -10,31 +10,31 @@ import (
 	"github.com/hexinfra/gorox/cmds/gocmc/board/pack"
 	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/standard/handlers/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 func init() {
-	RegisterHandler("boardHandler", func(name string, stage *Stage, app *App) Handler {
-		h := new(boardHandler)
+	RegisterHandlet("boardHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(boardHandlet)
 		h.OnCreate(name, stage, app)
 		return h
 	})
 	RegisterAppInit("board", func(app *App) error {
-		logic := app.Handler("logic")
+		logic := app.Handlet("logic")
 		if logic == nil {
-			return errors.New("no handler named 'logic' in app config file")
+			return errors.New("no handlet named 'logic' in app config file")
 		}
-		board, ok := logic.(*boardHandler) // must be board handler.
+		board, ok := logic.(*boardHandlet) // must be board handlet.
 		if !ok {
-			return errors.New("handler in 'logic' rule is not board handler")
+			return errors.New("handlet in 'logic' rule is not board handlet")
 		}
 		board.RegisterSite("front", pack.Pack{})
 		return nil
 	})
 }
 
-// boardHandler
-type boardHandler struct {
+// boardHandlet
+type boardHandlet struct {
 	// Mixins
 	Sitex
 	// Assocs
@@ -42,7 +42,7 @@ type boardHandler struct {
 	// States
 }
 
-func (h *boardHandler) OnPrepare() {
+func (h *boardHandlet) OnPrepare() {
 	h.Sitex.OnPrepare()
 	h.rocks = h.Stage().Server("cli").(*RocksServer)
 }

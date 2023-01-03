@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (h *testHandler) GET_cookie_set(req Request, resp Response) {
+func (h *testHandlet) GET_cookie_set(req Request, resp Response) {
 	cookie1 := new(Cookie)
 	cookie1.Set("hello", "wo r,ld")
 	cookie1.SetMaxAge(99)
@@ -25,7 +25,7 @@ func (h *testHandler) GET_cookie_set(req Request, resp Response) {
 
 	resp.SendBytes(nil)
 }
-func (h *testHandler) GET_cookies(req Request, resp Response) {
+func (h *testHandlet) GET_cookies(req Request, resp Response) {
 	resp.Push(req.C("hello"))
 	resp.Push(req.C("world"))
 }

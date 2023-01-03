@@ -16,7 +16,7 @@ stage {
             webRoot   = @baseDir
             rules {
                 rule %path == "/favicon.ico" {
-                    faviconHandler {}
+                    faviconHandlet {}
                 }
                 rule {
                     static {

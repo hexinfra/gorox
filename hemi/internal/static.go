@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Static handlers serve requests to local file system.
+// Static handlets serve requests to local file system.
 
 package internal
 
@@ -16,17 +16,17 @@ import (
 )
 
 func init() {
-	RegisterHandler("static", func(name string, stage *Stage, app *App) Handler {
-		h := new(staticHandler)
+	RegisterHandlet("static", func(name string, stage *Stage, app *App) Handlet {
+		h := new(staticHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// staticHandler
-type staticHandler struct {
+// staticHandlet
+type staticHandlet struct {
 	// Mixins
-	Handler_
+	Handlet_
 	// Assocs
 	stage *Stage // current stage
 	app   *App
@@ -40,13 +40,13 @@ type staticHandler struct {
 	useAppRoot  bool              // true if webRoot is same with app.webRoot
 }
 
-func (h *staticHandler) onCreate(name string, stage *Stage, app *App) {
+func (h *staticHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app
 }
 
-func (h *staticHandler) OnConfigure() {
+func (h *staticHandlet) OnConfigure() {
 	// webRoot
 	if v, ok := h.Find("webRoot"); ok {
 		if dir, ok := v.String(); ok && dir != "" {
@@ -55,7 +55,7 @@ func (h *staticHandler) OnConfigure() {
 			UseExitln("invalid webRoot")
 		}
 	} else {
-		UseExitln("webRoot is required for staticHandler")
+		UseExitln("webRoot is required for staticHandlet")
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
 	h.useAppRoot = h.webRoot == h.app.webRoot
@@ -99,17 +99,17 @@ func (h *staticHandler) OnConfigure() {
 	// defaultType
 	h.ConfigureString("defaultType", &h.defaultType, func(value string) bool { return value != "" }, "application/octet-stream")
 }
-func (h *staticHandler) OnPrepare() {
+func (h *staticHandlet) OnPrepare() {
 	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
 		EnvExitln("indexFile must be a regular file")
 	}
 }
 
-func (h *staticHandler) OnShutdown() {
+func (h *staticHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
+func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	if req.MethodCode()&(MethodGET|MethodHEAD) == 0 {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
 		return
@@ -221,7 +221,7 @@ func (h *staticHandler) Handle(req Request, resp Response) (next bool) {
 	return
 }
 
-func (h *staticHandler) listDir(dir *os.File, resp Response) {
+func (h *staticHandlet) listDir(dir *os.File, resp Response) {
 	fis, err := dir.Readdir(-1)
 	if err != nil {
 		resp.SendInternalServerError([]byte("Internal Server Error 5"))

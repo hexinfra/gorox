@@ -52,7 +52,7 @@ const ( // comp list
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
 	compApp                   // app
-	compHandler               // static, ...
+	compHandlet               // static, ...
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
@@ -554,8 +554,8 @@ func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 			c.parseAssign(current, app)
 		} else {
 			switch current.Text {
-			case "handlers":
-				c.parseContainer2(app, compHandler, c.parseHandler, current.Text)
+			case "handlets":
+				c.parseContainer2(app, compHandlet, c.parseHandlet, current.Text)
 			case "revisers":
 				c.parseContainer2(app, compReviser, c.parseReviser, current.Text)
 			case "socklets":
@@ -568,7 +568,7 @@ func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 		}
 	}
 }
-func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign Token, app *App, rule *Rule), compName string) { // handlers, revisers, socklets {}
+func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign Token, app *App, rule *Rule), compName string) { // handlets, revisers, socklets {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -582,8 +582,8 @@ func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign 
 	}
 }
 
-func (c *config) parseHandler(sign Token, app *App, rule *Rule) { // xxxHandler <name> {}, xxxHandler {}
-	parseComponent2(c, sign, app, app.createHandler, rule, rule.addHandler)
+func (c *config) parseHandlet(sign Token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+	parseComponent2(c, sign, app, app.createHandlet, rule, rule.addHandlet)
 }
 func (c *config) parseReviser(sign Token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
 	parseComponent2(c, sign, app, app.createReviser, rule, rule.addReviser)
@@ -591,7 +591,7 @@ func (c *config) parseReviser(sign Token, app *App, rule *Rule) { // xxxReviser 
 func (c *config) parseSocklet(sign Token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
 }
-func parseComponent2[T Component](c *config, sign Token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handler, reviser, socklet
+func parseComponent2[T Component](c *config, sign Token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text
@@ -646,8 +646,8 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.Name(), current.Text, current.Line))
 		}
 		switch current.Info {
-		case compHandler:
-			c.parseHandler(current, app, rule)
+		case compHandlet:
+			c.parseHandlet(current, app, rule)
 		case compReviser:
 			c.parseReviser(current, app, rule)
 		case compSocklet:

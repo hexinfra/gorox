@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/1 proxy handler and WebSocket/1 proxy socklet implementation.
+// HTTP/1 proxy handlet and WebSocket/1 proxy socklet implementation.
 
 package internal
 
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterHandler("http1Proxy", func(name string, stage *Stage, app *App) Handler {
+	RegisterHandlet("http1Proxy", func(name string, stage *Stage, app *App) Handlet {
 		h := new(http1Proxy)
 		h.onCreate(name, stage, app)
 		return h
@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// http1Proxy handler passes requests to backend HTTP/1 servers and cache responses.
+// http1Proxy handlet passes requests to backend HTTP/1 servers and cache responses.
 type http1Proxy struct {
 	// Mixins
 	httpProxy_
@@ -130,7 +130,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	resp1 := stream1.Response()
 	for { // until we found a non-1xx status (>= 200)
 		resp1.recvHead()
-		if resp1.headResult != StatusOK || resp1.Status() == StatusSwitchingProtocols { // websocket is not served in handlers.
+		if resp1.headResult != StatusOK || resp1.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
 			stream1.markBroken()
 			resp.SendBadGateway(nil)
 			return

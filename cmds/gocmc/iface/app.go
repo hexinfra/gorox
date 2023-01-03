@@ -12,8 +12,8 @@ import (
 )
 
 func init() {
-	RegisterHandler("v1Handler", func(name string, stage *Stage, app *App) Handler {
-		h := new(v1Handler)
+	RegisterHandlet("v1Handlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(v1Handlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
@@ -22,10 +22,10 @@ func init() {
 	})
 }
 
-// v1Handler
-type v1Handler struct {
+// v1Handlet
+type v1Handlet struct {
 	// Mixins
-	Handler_
+	Handlet_
 	// Assocs
 	stage *Stage
 	app   *App
@@ -33,7 +33,7 @@ type v1Handler struct {
 	// States
 }
 
-func (h *v1Handler) onCreate(name string, stage *Stage, app *App) {
+func (h *v1Handlet) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app
@@ -42,22 +42,22 @@ func (h *v1Handler) onCreate(name string, stage *Stage, app *App) {
 	h.UseRouter(h, r)
 }
 
-func (h *v1Handler) OnConfigure() {
+func (h *v1Handlet) OnConfigure() {
 }
-func (h *v1Handler) OnPrepare() {
+func (h *v1Handlet) OnPrepare() {
 	h.rocks = h.stage.Server("cli").(*RocksServer)
 }
 
-func (h *v1Handler) OnShutdown() {
+func (h *v1Handlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *v1Handler) Handle(req Request, resp Response) (next bool) {
+func (h *v1Handlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, nil)
 	return
 }
 
-func (h *v1Handler) GET_(req Request, resp Response) {
+func (h *v1Handlet) GET_(req Request, resp Response) {
 	text := fmt.Sprintf("%d\n", h.rocks.NumConns())
 	resp.Send(text)
 }

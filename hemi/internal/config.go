@@ -41,13 +41,13 @@ const ( // comp list
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend, UnixBackend
 	compQUICMesher            // quicMesher
 	compQUICRunner            // quicProxy, ...
-	compQUICFilter            // ...
+	compQUICEditor            // ...
 	compTCPSMesher            // tcpsMesher
 	compTCPSRunner            // tcpsProxy, ...
-	compTCPSFilter            // ...
+	compTCPSEditor            // ...
 	compUDPSMesher            // udpsMesher
 	compUDPSRunner            // udpsProxy, ...
-	compUDPSFilter            // ...
+	compUDPSEditor            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
@@ -270,8 +270,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			switch current.Text {
 			case "runners":
 				parseContainer1(c, mesher, compQUICRunner, c.parseQUICRunner, current.Text)
-			case "filters":
-				parseContainer1(c, mesher, compQUICFilter, c.parseQUICFilter, current.Text)
+			case "editors":
+				parseContainer1(c, mesher, compQUICEditor, c.parseQUICEditor, current.Text)
 			case "cases":
 				parseCases(c, mesher, c.parseQUICCase)
 			default:
@@ -283,8 +283,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 func (c *config) parseQUICRunner(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqRunner <name> {}, qqqRunner {}
 	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseQUICFilter(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseQUICEditor(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
+	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 	mesherName := c.ForwardExpect(TokenString)
@@ -305,8 +305,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			switch current.Text {
 			case "runners":
 				parseContainer1(c, mesher, compTCPSRunner, c.parseTCPSRunner, current.Text)
-			case "filters":
-				parseContainer1(c, mesher, compTCPSFilter, c.parseTCPSFilter, current.Text)
+			case "editors":
+				parseContainer1(c, mesher, compTCPSEditor, c.parseTCPSEditor, current.Text)
 			case "cases":
 				parseCases(c, mesher, c.parseTCPSCase)
 			default:
@@ -318,8 +318,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 func (c *config) parseTCPSRunner(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttRunner <name> {}, tttRunner {}
 	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseTCPSFilter(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseTCPSEditor(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
+	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 	mesherName := c.ForwardExpect(TokenString)
@@ -340,8 +340,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			switch current.Text {
 			case "runners":
 				parseContainer1(c, mesher, compUDPSRunner, c.parseUDPSRunner, current.Text)
-			case "filters":
-				parseContainer1(c, mesher, compUDPSFilter, c.parseUDPSFilter, current.Text)
+			case "editors":
+				parseContainer1(c, mesher, compUDPSEditor, c.parseUDPSEditor, current.Text)
 			case "cases":
 				parseCases(c, mesher, c.parseUDPSCase)
 			default:
@@ -353,10 +353,10 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 func (c *config) parseUDPSRunner(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuRunner <name> {}, uuuRunner {}
 	parseComponent1(c, sign, mesher, mesher.createRunner, kase, kase.addRunner)
 }
-func (c *config) parseUDPSFilter(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseUDPSEditor(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
+	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
-func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign Token, mesher M, kase *C), compName string) { // runners, filters {}
+func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign Token, mesher M, kase *C), compName string) { // runners, editors {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -369,7 +369,7 @@ func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseC
 		parseComponent(current, mesher, nil) // not in case
 	}
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign Token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, filter
+func parseComponent1[M Component, T Component, C any](c *config, sign Token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // runner, editor
 	name := sign.Text
 	if current := c.Forward(); current.Kind == TokenString {
 		name = current.Text
@@ -423,8 +423,8 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		if current.Kind != TokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
-		if current.Info == compQUICFilter {
-			c.parseQUICFilter(current, mesher, kase)
+		if current.Info == compQUICEditor {
+			c.parseQUICEditor(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}
@@ -454,8 +454,8 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		if current.Kind != TokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
-		if current.Info == compTCPSFilter {
-			c.parseTCPSFilter(current, mesher, kase)
+		if current.Info == compTCPSEditor {
+			c.parseTCPSEditor(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}
@@ -485,8 +485,8 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		if current.Kind != TokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
-		if current.Info == compUDPSFilter {
-			c.parseUDPSFilter(current, mesher, kase)
+		if current.Info == compUDPSEditor {
+			c.parseUDPSEditor(current, mesher, kase)
 		} else {
 			c.parseAssign(current, kase)
 		}

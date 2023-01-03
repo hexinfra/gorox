@@ -17,11 +17,11 @@ const Version = "0.1.0-dev"
 var ( // core funcs
 	RegisterOptware    = internal.RegisterOptware
 	RegisterQUICRunner = internal.RegisterQUICRunner
-	RegisterQUICFilter = internal.RegisterQUICFilter
+	RegisterQUICEditor = internal.RegisterQUICEditor
 	RegisterTCPSRunner = internal.RegisterTCPSRunner
-	RegisterTCPSFilter = internal.RegisterTCPSFilter
+	RegisterTCPSEditor = internal.RegisterTCPSEditor
 	RegisterUDPSRunner = internal.RegisterUDPSRunner
-	RegisterUDPSFilter = internal.RegisterUDPSFilter
+	RegisterUDPSEditor = internal.RegisterUDPSEditor
 	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
 	RegisterAppInit    = internal.RegisterAppInit
@@ -107,17 +107,17 @@ type ( // core types
 
 	QUICMesher = internal.QUICMesher
 	QUICRunner = internal.QUICRunner
-	QUICFilter = internal.QUICFilter
+	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
 
 	TCPSMesher = internal.TCPSMesher
 	TCPSRunner = internal.TCPSRunner
-	TCPSFilter = internal.TCPSFilter
+	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
 
 	UDPSMesher = internal.UDPSMesher
 	UDPSRunner = internal.UDPSRunner
-	UDPSFilter = internal.UDPSFilter
+	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
 	Stater  = internal.Stater
@@ -154,11 +154,11 @@ type ( // core mixins
 	Stater_     = internal.Stater_
 	Cacher_     = internal.Cacher_
 	QUICRunner_ = internal.QUICRunner_
-	QUICFilter_ = internal.QUICFilter_
+	QUICEditor_ = internal.QUICEditor_
 	TCPSRunner_ = internal.TCPSRunner_
-	TCPSFilter_ = internal.TCPSFilter_
+	TCPSEditor_ = internal.TCPSEditor_
 	UDPSRunner_ = internal.UDPSRunner_
-	UDPSFilter_ = internal.UDPSFilter_
+	UDPSEditor_ = internal.UDPSEditor_
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_
 	Handlet_    = internal.Handlet_

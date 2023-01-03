@@ -10,8 +10,8 @@ package exts
 import ( // import standard components here.
 	_ "github.com/hexinfra/gorox/hemi/standard/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/stat"
-	_ "github.com/hexinfra/gorox/hemi/standard/filters/tcps/mysql"
-	_ "github.com/hexinfra/gorox/hemi/standard/filters/tcps/redis"
+	_ "github.com/hexinfra/gorox/hemi/standard/editors/tcps/mysql"
+	_ "github.com/hexinfra/gorox/hemi/standard/editors/tcps/redis"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/gatex"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/referer"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"

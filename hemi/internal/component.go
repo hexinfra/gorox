@@ -19,11 +19,11 @@ var ( // global maps, shared between stages
 	optwareCreators    = make(map[string]func(sign string, stage *Stage) Optware) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICRunner)
-	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
+	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
 	tcpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner)
-	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
+	tcpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor)
 	udpsRunnerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner)
-	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
+	udpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
@@ -52,20 +52,20 @@ func registerBackend(sign string, create func(name string, stage *Stage) backend
 func RegisterQUICRunner(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICRunner) {
 	registerComponent1(sign, compQUICRunner, quicRunnerCreators, create)
 }
-func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
-	registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
+func RegisterQUICEditor(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICEditor) {
+	registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
 }
 func RegisterTCPSRunner(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSRunner) {
 	registerComponent1(sign, compTCPSRunner, tcpsRunnerCreators, create)
 }
-func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
-	registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
+func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor) {
+	registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
 }
 func RegisterUDPSRunner(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSRunner) {
 	registerComponent1(sign, compUDPSRunner, udpsRunnerCreators, create)
 }
-func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
-	registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
+func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor) {
+	registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
 	registerComponent0(sign, compStater, staterCreators, create)
@@ -107,7 +107,7 @@ func registerComponent0[T Component](sign string, comp int16, creators map[strin
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, filter, handlet, reviser, socklet
+func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // runner, editor, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {

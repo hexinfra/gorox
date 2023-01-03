@@ -20,22 +20,22 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSRunner, TCPSFilter, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSRunner, TCPSEditor, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsRunnerCreators, tcpsFilterCreators)
+	m.mesher_.onCreate(name, stage, tcpsRunnerCreators, tcpsEditorCreators)
 }
 
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // runners, filters, cases
+	m.configureSubs() // runners, editors, cases
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // runners, filters, cases
+	m.prepareSubs() // runners, editors, cases
 }
 
 func (m *TCPSMesher) OnShutdown() {
@@ -72,9 +72,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
+	m.IncSub(len(m.runners) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // runners, filters, cases
+	m.WaitSubs() // runners, editors, cases
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("tcpsMesher=%s done\n", m.Name())
@@ -223,8 +223,8 @@ type TCPSConn struct {
 	tcpsConn0
 }
 type tcpsConn0 struct {
-	filters  [32]uint8
-	nFilters int8
+	editors  [32]uint8
+	nEditors int8
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -259,24 +259,24 @@ func (c *TCPSConn) serve() { // goroutine
 	putTCPSConn(c)
 }
 
-func (c *TCPSConn) hookFilter(filter TCPSFilter) {
-	if c.nFilters == int8(len(c.filters)) {
-		BugExitln("hook too many filters")
+func (c *TCPSConn) hookEditor(editor TCPSEditor) {
+	if c.nEditors == int8(len(c.editors)) {
+		BugExitln("hook too many editors")
 	}
-	c.filters[c.nFilters] = filter.ID()
-	c.nFilters++
+	c.editors[c.nEditors] = editor.ID()
+	c.nEditors++
 }
 
 func (c *TCPSConn) Read(p []byte) (n int, err error) {
 	// TODO
-	if c.nFilters > 0 {
+	if c.nEditors > 0 {
 	} else {
 	}
 	return c.netConn.Read(p)
 }
 func (c *TCPSConn) Write(p []byte) (n int, err error) {
 	// TODO
-	if c.nFilters > 0 {
+	if c.nEditors > 0 {
 	} else {
 	}
 	return c.netConn.Write(p)
@@ -319,8 +319,8 @@ type TCPSRunner_ struct {
 	// States
 }
 
-// TCPSFilter
-type TCPSFilter interface {
+// TCPSEditor
+type TCPSEditor interface {
 	Component
 	ider
 
@@ -328,8 +328,8 @@ type TCPSFilter interface {
 	OnOutput(conn *TCPSConn, kind int8)
 }
 
-// TCPSFilter_
-type TCPSFilter_ struct {
+// TCPSEditor_
+type TCPSEditor_ struct {
 	Component_
 	ider_
 }
@@ -337,7 +337,7 @@ type TCPSFilter_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSRunner, TCPSFilter]
+	case_[*TCPSMesher, TCPSRunner, TCPSEditor]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -406,8 +406,8 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value 
 }
 
 func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, filter := range c.filters {
-		conn.hookFilter(filter)
+	for _, editor := range c.editors {
+		conn.hookEditor(editor)
 	}
 	for _, runner := range c.runners {
 		if next := runner.Process(conn); !next {

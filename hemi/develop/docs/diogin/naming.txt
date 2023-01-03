@@ -26,7 +26,7 @@ COMPONENTS
     backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
     mesher (tcpsMesher, udpsMesher, quicMesher)
       runner (...)
-      filter (...)
+      editor (...)
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)

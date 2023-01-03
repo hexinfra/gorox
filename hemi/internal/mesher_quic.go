@@ -17,22 +17,22 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICRunner, QUICFilter, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICRunner, QUICEditor, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicRunnerCreators, quicFilterCreators)
+	m.mesher_.onCreate(name, stage, quicRunnerCreators, quicEditorCreators)
 }
 
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // runners, filters, cases
+	m.configureSubs() // runners, editors, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // runners, filters, cases
+	m.prepareSubs() // runners, editors, cases
 }
 
 func (m *QUICMesher) OnShutdown() {
@@ -65,9 +65,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.runners) + len(m.filters) + len(m.cases))
+	m.IncSub(len(m.runners) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // runners, filters, cases
+	m.WaitSubs() // runners, editors, cases
 	// TODO: close access log file
 	if Debug(2) {
 		fmt.Printf("quicMesher=%s done\n", m.Name())
@@ -144,7 +144,7 @@ type QUICConn struct {
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
-	filters [32]uint8
+	editors [32]uint8
 }
 
 func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
@@ -159,7 +159,7 @@ func (c *QUICConn) onPut() {
 	c.mesher = nil
 	c.gate = nil
 	c.quicConn = nil
-	c.filters = [32]uint8{}
+	c.editors = [32]uint8{}
 }
 
 func (c *QUICConn) serve() { // goroutine
@@ -218,15 +218,15 @@ type QUICRunner_ struct {
 	Component_
 }
 
-// QUICFilter
-type QUICFilter interface {
+// QUICEditor
+type QUICEditor interface {
 	Component
 	ider
 	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 
-// QUICFilter_
-type QUICFilter_ struct {
+// QUICEditor_
+type QUICEditor_ struct {
 	Component_
 	ider_
 }
@@ -234,7 +234,7 @@ type QUICFilter_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICRunner, QUICFilter]
+	case_[*QUICMesher, QUICRunner, QUICEditor]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }

@@ -470,12 +470,6 @@ func (h *Handlet_) IsCache() bool { return false } // override this for cache ha
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Router performs request routing.
-type Router interface {
-	FindHandle(req Request) Handle
-	CreateName(req Request) string
-}
-
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	Component
@@ -1118,8 +1112,15 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
+// Router performs request routing in handlers.
+type Router interface {
+	FindHandle(req Request) Handle
+	CreateName(req Request) string
+}
+
 // simpleRouter implements Router.
 type simpleRouter struct {
+	routes  map[string]Handle // for all methods
 	gets    map[string]Handle
 	posts   map[string]Handle
 	puts    map[string]Handle
@@ -1129,11 +1130,16 @@ type simpleRouter struct {
 // NewSimpleRouter creates a simpleRouter.
 func NewSimpleRouter() *simpleRouter {
 	r := new(simpleRouter)
+	r.routes = make(map[string]Handle)
 	r.gets = make(map[string]Handle)
 	r.posts = make(map[string]Handle)
 	r.puts = make(map[string]Handle)
 	r.deletes = make(map[string]Handle)
 	return r
+}
+
+func (r *simpleRouter) Route(path string, handle Handle) {
+	r.routes[path] = handle
 }
 
 func (r *simpleRouter) GET(path string, handle Handle) {
@@ -1151,7 +1157,10 @@ func (r *simpleRouter) DELETE(path string, handle Handle) {
 
 func (r *simpleRouter) FindHandle(req Request) Handle {
 	// TODO
-	if path := req.Path(); req.IsGET() {
+	path := req.Path()
+	if handle, ok := r.routes[path]; ok {
+		return handle
+	} else if req.IsGET() {
 		return r.gets[path]
 	} else if req.IsPOST() {
 		return r.posts[path]

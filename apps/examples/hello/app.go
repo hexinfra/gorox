@@ -44,7 +44,7 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
 	r := NewSimpleRouter() // you can write your own router as long as it implements Router interface
 
 	r.GET("/", h.index)
-	r.POST("/foo", h.handleFoo)
+	r.Route("/foo", h.handleFoo)
 
 	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
@@ -71,7 +71,7 @@ func (h *helloHandlet) index(req Request, resp Response) {
 	resp.Send(h.example)
 }
 func (h *helloHandlet) handleFoo(req Request, resp Response) {
-	resp.Push(req.Content())
+	resp.Push(req.UserAgent())
 	resp.Push(req.T("x"))
 	resp.AddTrailer("y", "123")
 }

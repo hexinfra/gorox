@@ -62,15 +62,13 @@ func (r *headReviser) Rank() int8 { return RankHead }
 func (r *headReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-
 func (r *headReviser) BeforePull(req Request, resp Response) { // chunked
 	// TODO
 }
 func (r *headReviser) FinishPull(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *headReviser) Change(req Request, resp Response, chain Chain) Chain {
+func (r *headReviser) OnInput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 
@@ -83,8 +81,7 @@ func (r *headReviser) BeforePush(req Request, resp Response) { // chunked
 func (r *headReviser) FinishPush(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *headReviser) Revise(req Request, resp Response, chain Chain) Chain {
+func (r *headReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
 	// Do nothing.
 	return chain
 }

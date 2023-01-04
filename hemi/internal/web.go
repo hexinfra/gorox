@@ -470,7 +470,7 @@ func (h *Handlet_) IsCache() bool { return false } // override this for cache ha
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Reviser component revises the outgoing response.
+// Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	Component
 	ider
@@ -478,18 +478,14 @@ type Reviser interface {
 	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
 
 	BeforeRecv(req Request, resp Response) // for sized content
-
 	BeforePull(req Request, resp Response) // for chunked content
 	FinishPull(req Request, resp Response) // for chunked content
-
-	Change(req Request, resp Response, chain Chain) Chain
+	OnInput(req Request, resp Response, chain Chain) Chain
 
 	BeforeSend(req Request, resp Response) // for sized content
-
 	BeforePush(req Request, resp Response) // for chunked content
 	FinishPush(req Request, resp Response) // for chunked content
-
-	Revise(req Request, resp Response, chain Chain) Chain
+	OnOutput(req Request, resp Response, chain Chain) Chain
 }
 
 // Reviser_ is the mixin for all revisers.

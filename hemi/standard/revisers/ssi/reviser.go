@@ -53,15 +53,13 @@ func (r *ssiReviser) Rank() int8 { return r.rank }
 func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-
 func (r *ssiReviser) BeforePull(req Request, resp Response) { // chunked
 	// TODO
 }
 func (r *ssiReviser) FinishPull(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *ssiReviser) Change(req Request, resp Response, chain Chain) Chain {
+func (r *ssiReviser) OnInput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 
@@ -74,7 +72,6 @@ func (r *ssiReviser) BeforePush(req Request, resp Response) { // chunked
 func (r *ssiReviser) FinishPush(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *ssiReviser) Revise(req Request, resp Response, chain Chain) Chain {
+func (r *ssiReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }

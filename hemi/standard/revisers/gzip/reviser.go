@@ -59,15 +59,13 @@ func (r *gzipReviser) Rank() int8 { return RankGzip }
 func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-
 func (r *gzipReviser) BeforePull(req Request, resp Response) { // chunked
 	// TODO
 }
 func (r *gzipReviser) FinishPull(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *gzipReviser) Change(req Request, resp Response, chain Chain) Chain {
+func (r *gzipReviser) OnInput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 
@@ -80,8 +78,7 @@ func (r *gzipReviser) BeforePush(req Request, resp Response) { // chunked
 func (r *gzipReviser) FinishPush(req Request, resp Response) { // chunked
 	// TODO
 }
-
-func (r *gzipReviser) Revise(req Request, resp Response, chain Chain) Chain {
+func (r *gzipReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 

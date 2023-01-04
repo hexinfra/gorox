@@ -2550,7 +2550,7 @@ func (r *httpResponse_) send() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.Revise(resp.Request(), resp, curChain)
+			newChain := reviser.OnOutput(resp.Request(), resp, curChain)
 			if newChain != curChain { // chain has been replaced by reviser
 				curChain.free()
 				curChain = newChain
@@ -2607,7 +2607,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.Revise(resp.Request(), resp, curChain)
+			newChain := reviser.OnOutput(resp.Request(), resp, curChain)
 			if newChain != curChain { // chain has be replaced by reviser
 				curChain.free()
 				curChain = newChain

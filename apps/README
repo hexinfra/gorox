@@ -1,5 +1,5 @@
-This directory holds web applications of gorox, basically one app per directory.
-Default apps are:
+This directory holds web applications of gorox, generally one app one directory.
+Some builtin apps are:
 
   examples/hello/    - An example app.
   official/en_us/    - The official Gorox website in en_US.

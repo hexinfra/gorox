@@ -191,7 +191,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock2Proxy socklet passes websockets to backend WebSocket/2 servers.
+// sock2Proxy socklet relays websockets to backend WebSocket/2 servers.
 type sock2Proxy struct {
 	// Mixins
 	sockProxy_

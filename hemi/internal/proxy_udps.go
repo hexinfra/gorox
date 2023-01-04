@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// udpsProxy passes UDP/DTLS connections to another UDP/DTLS server.
+// udpsProxy relays UDP/DTLS connections to another UDP/DTLS server.
 type udpsProxy struct {
 	// Mixins
 	UDPSDealet_

@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// quicProxy passes QUIC connections to another QUIC server.
+// quicProxy relays QUIC connections to another QUIC server.
 type quicProxy struct {
 	// Mixins
 	QUICDealet_

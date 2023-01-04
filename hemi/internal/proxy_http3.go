@@ -47,7 +47,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock3Proxy socklet passes websockets to backend WebSocket/3 servers.
+// sock3Proxy socklet relays websockets to backend WebSocket/3 servers.
 type sock3Proxy struct {
 	// Mixins
 	sockProxy_

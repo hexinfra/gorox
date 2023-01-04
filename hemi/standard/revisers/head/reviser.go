@@ -28,8 +28,10 @@ type headReviser struct {
 	stage *Stage
 	app   *App
 	// States
-	addHeaders map[string]string
-	delHeaders []string
+	addRequest  map[string]string
+	delRequest  []string
+	addResponse map[string]string
+	delResponse []string
 }
 
 func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
@@ -39,10 +41,14 @@ func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
 }
 
 func (r *headReviser) OnConfigure() {
-	// addHeaders
-	r.ConfigureStringDict("addHeaders", &r.addHeaders, nil, map[string]string{"date": "Mon, 14 Sep 2015 03:19:14 GMT"})
-	// delHeaders
-	r.ConfigureStringList("delHeaders", &r.delHeaders, nil, []string{})
+	// addRequest
+	r.ConfigureStringDict("addRequest", &r.addRequest, nil, map[string]string{"date": "Mon, 14 Sep 2015 03:19:14 GMT"})
+	// delRequest
+	r.ConfigureStringList("delRequest", &r.delRequest, nil, []string{})
+	// addResponse
+	r.ConfigureStringDict("addResponse", &r.addResponse, nil, map[string]string{"date": "Mon, 14 Sep 2015 03:19:14 GMT"})
+	// delResponse
+	r.ConfigureStringList("delResponse", &r.delResponse, nil, []string{})
 }
 func (r *headReviser) OnPrepare() {
 }

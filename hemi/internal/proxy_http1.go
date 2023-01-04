@@ -196,7 +196,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock1Proxy socklet passes websockets to backend WebSocket/1 servers.
+// sock1Proxy socklet relays websockets to backend WebSocket/1 servers.
 type sock1Proxy struct {
 	// Mixins
 	sockProxy_

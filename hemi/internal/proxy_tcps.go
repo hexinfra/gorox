@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// tcpsProxy passes TCP/TLS connections to another TCP/TLS server.
+// tcpsProxy relays TCP/TLS connections to another TCP/TLS server.
 type tcpsProxy struct {
 	// Mixins
 	TCPSDealet_

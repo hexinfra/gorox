@@ -159,7 +159,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	if hasContent2 && h.bufferServerContent { // including size 0
 		content2 = resp2.holdContent()
 		if content2 == nil {
-			// stream1 is marked as broken
+			// stream2 is marked as broken
 			resp.SendBadGateway(nil)
 			return
 		}

@@ -1116,7 +1116,7 @@ func (r *httpInMessage_) _newTempFile(retain bool) (TempFile, error) {
 	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
 	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
 }
-func (r *httpInMessage_) _prepareRead(toTime *time.Time) error {
+func (r *httpInMessage_) _beforeRead(toTime *time.Time) error {
 	now := time.Now()
 	if toTime.IsZero() {
 		*toTime = now
@@ -1515,7 +1515,7 @@ func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { 
 	return
 }
 
-func (r *httpOutMessage_) _prepareWrite() error {
+func (r *httpOutMessage_) _beforeWrite() error {
 	now := time.Now()
 	if r.sendTime.IsZero() {
 		r.sendTime = now

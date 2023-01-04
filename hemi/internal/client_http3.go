@@ -70,7 +70,7 @@ func (f *HTTP3Outgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *HTTP3Outgate) FetchConn(address string) (*H3Conn, error) {
+func (f *HTTP3Outgate) FetchConn(address string, tlsMode bool) (*H3Conn, error) {
 	// TODO
 	return nil, nil
 }

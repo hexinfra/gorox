@@ -62,6 +62,6 @@ func (r *fcgiResponse) holdContent() any {
 func (r *fcgiResponse) newTempFile() {
 }
 
-func (r *fcgiResponse) prepareRead() error {
+func (r *fcgiResponse) beforeRead() error {
 	return nil
 }

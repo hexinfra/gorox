@@ -206,7 +206,7 @@ func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 		r.imme.zero()
 		return r.bodyBuffer[0:size], nil
 	}
-	if err = r._prepareRead(&r.bodyTime); err != nil {
+	if err = r._beforeRead(&r.bodyTime); err != nil {
 		return nil, err
 	}
 	recvSize := int64(cap(r.bodyBuffer))
@@ -500,7 +500,7 @@ func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protoco
 		r.cFore -= r.cBack
 		r.cBack = 0
 	}
-	err := r._prepareRead(&r.bodyTime)
+	err := r._beforeRead(&r.bodyTime)
 	if err == nil {
 		n, e := r.stream.read(r.bodyBuffer[r.chunkEdge:])
 		if e == nil {
@@ -773,7 +773,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if err = r._prepareWrite(); err != nil {
+		if err = r._beforeWrite(); err != nil {
 			r.stream.markBroken()
 			return err
 		}
@@ -822,7 +822,7 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 		return httpWriteBroken
 	}
 	for {
-		if err := r._prepareWrite(); err != nil {
+		if err := r._beforeWrite(); err != nil {
 			r.stream.markBroken()
 			return err
 		}

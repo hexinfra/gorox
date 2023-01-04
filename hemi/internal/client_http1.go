@@ -498,7 +498,7 @@ type H1Response struct {
 
 func (r *H1Response) recvHead() { // control + headers
 	// The entire response head must be received within one timeout
-	if err := r._prepareRead(&r.recvTime); err != nil {
+	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
 		return
 	}

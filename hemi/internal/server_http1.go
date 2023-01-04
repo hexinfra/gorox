@@ -359,7 +359,9 @@ func (s *http1Stream) execute(conn *http1Conn) {
 			// It's switcher's responsibility to call onEnd()
 		}
 	}()
+
 	req, resp := &s.request, &s.response
+
 	req.recvHead()
 	if req.headResult != StatusOK { // receiving request error
 		s.serveAbnormal(req, resp)
@@ -393,6 +395,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	}
 
 	app := server.findApp(req.UnsafeHostname())
+
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
 		req.headResult, req.headReason = StatusNotFound, "app is not found in this server"
 		s.serveAbnormal(req, resp)
@@ -606,7 +609,7 @@ type http1Request struct {
 
 func (r *http1Request) recvHead() { // control + headers
 	// The entire request head must be received in one timeout
-	if err := r._prepareRead(&r.recvTime); err != nil {
+	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
 		return
 	}

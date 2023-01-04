@@ -309,7 +309,7 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 // TCPSDealet
 type TCPSDealet interface {
 	Component
-	Process(conn *TCPSConn) (next bool)
+	Deal(conn *TCPSConn) (next bool)
 }
 
 // TCPSDealet_
@@ -410,7 +410,7 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 		conn.hookEditor(editor)
 	}
 	for _, dealet := range c.dealets {
-		if next := dealet.Process(conn); !next {
+		if next := dealet.Deal(conn); !next {
 			return true
 		}
 	}

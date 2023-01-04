@@ -44,7 +44,7 @@ func (j *statCronjob) OnShutdown() {
 	j.Shutdown()
 }
 
-func (j *statCronjob) Run() { // goroutine
+func (j *statCronjob) Schedule() { // goroutine
 	Loop(time.Minute, j.Shut, func(now time.Time) {
 		// TODO
 	})

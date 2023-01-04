@@ -210,7 +210,7 @@ var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCo
 // QUICDealet
 type QUICDealet interface {
 	Component
-	Process(conn *QUICConn, stream *QUICStream) (next bool)
+	Deal(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
 // QUICDealet_

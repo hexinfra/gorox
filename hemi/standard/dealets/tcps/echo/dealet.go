@@ -44,14 +44,17 @@ func (d *echoDealet) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *echoDealet) Process(conn *TCPSConn) (next bool) {
+func (d *echoDealet) Deal(conn *TCPSConn) (next bool) {
 	p := make([]byte, 4096)
 	for {
 		n, err := conn.Read(p)
 		if err != nil {
 			break
 		}
-		conn.Write(p[:n])
+		if _, err := conn.Write(p[:n]); err != nil {
+			break
+		}
 	}
-	return
+	conn.Close()
+	return false
 }

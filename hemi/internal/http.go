@@ -95,7 +95,7 @@ type stream interface {
 	markBroken()
 }
 
-// stream is the trait for httpStream_ and hStream_.
+// stream is the mixin for httpStream_ and hStream_.
 type stream_ struct {
 	// Stream states (buffers)
 	stockStack [256]byte // a (fake) stack buffer to workaround Go's conservative escape analysis. WARNING: used this as a temp stack scoped memory!
@@ -130,7 +130,7 @@ type httpInMessage interface {
 	getSaveContentFilesDir() string
 }
 
-// httpInMessage_ is a trait for httpRequest_ and hResponse_.
+// httpInMessage_ is a mixin for httpRequest_ and hResponse_.
 type httpInMessage_ struct {
 	// Assocs
 	stream stream        // *http[1-3]Stream or *H[1-3]Stream
@@ -1154,7 +1154,7 @@ type httpOutMessage interface {
 	finalizeChunked() error
 }
 
-// httpOutMessage_ is a trait for httpResponse_ and hRequest_.
+// httpOutMessage_ is a mixin for httpResponse_ and hRequest_.
 type httpOutMessage_ struct {
 	// Assocs
 	stream stream         // *http[1-3]Stream or *H[1-3]Stream

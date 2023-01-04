@@ -44,8 +44,8 @@ func (d *helloDealet) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *helloDealet) Process(conn *TCPSConn) (next bool) {
+func (d *helloDealet) Deal(conn *TCPSConn) (next bool) {
 	conn.Write([]byte("hello, world"))
 	conn.Close()
-	return
+	return false
 }

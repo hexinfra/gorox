@@ -42,7 +42,7 @@ func (d *tcpsProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *tcpsProxy) Process(conn *TCPSConn) (next bool) {
+func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) {
 	// TODO
 	return
 }

@@ -44,6 +44,6 @@ func (d *dnsDealet) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *dnsDealet) Process(conn *UDPSConn) (next bool) {
+func (d *dnsDealet) Deal(conn *UDPSConn) (next bool) {
 	return
 }

@@ -5,7 +5,7 @@ leader 进程
 worker 进程
 
   多个 fixture.run() 并发
-  多个 optware.Run() 并发
+  多个 runner.Run() 并发
   多个 backend.maintain() 并发，每个 backend 有多个 node.maintain() 并发
   多个 mesher.serve() 并发，每个 mesher 有多个 gate.serve() 并发，每个 gate 有多个 conn.serve() 并发
   多个 stater.Maintain() 并发
@@ -15,4 +15,4 @@ worker 进程
   多个 server.Serve() 并发，每个 server 有多个 gate.serve() 并发，每个 gate 有多个 conn.serve() 并发
     每个 http/2 conn 有一个 serve() 和一个 receive() 并发，而且还有多个 http/2 stream.execute() 并发
     每个 http/3 conn 并发模型待定
-  多个 cronjob.Run() 并发
+  多个 cronjob.Schedule() 并发

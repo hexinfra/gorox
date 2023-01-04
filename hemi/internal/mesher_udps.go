@@ -210,7 +210,7 @@ var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes 
 // UDPSDealet
 type UDPSDealet interface {
 	Component
-	Process(conn *UDPSConn) (next bool)
+	Deal(conn *UDPSConn) (next bool)
 }
 
 // UDPSDealet_

@@ -42,7 +42,7 @@ func (d *udpsProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *udpsProxy) Process(conn *UDPSConn) (next bool) {
+func (d *udpsProxy) Deal(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

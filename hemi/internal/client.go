@@ -293,7 +293,7 @@ type PConn interface {
 	Close() error
 }
 
-// pConn_ is a trait for TConn and XConn.
+// pConn_ is a mixin for TConn and XConn.
 type pConn_ struct {
 	// Mixins
 	conn_

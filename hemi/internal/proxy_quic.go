@@ -42,7 +42,7 @@ func (d *quicProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *quicProxy) Process(conn *QUICConn, stream *QUICStream) (next bool) {
+func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

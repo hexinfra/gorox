@@ -99,6 +99,38 @@ func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
 	return nil
 }
 
+// poolHTTP2Inputs
+var poolHTTP2Inputs sync.Pool
+
+func getHTTP2Inputs() *http2Inputs {
+	var inputs *http2Inputs
+	if x := poolHTTP2Inputs.Get(); x == nil {
+		inputs = new(http2Inputs)
+	} else {
+		inputs = x.(*http2Inputs)
+	}
+	return inputs
+}
+func putHTTP2Inputs(inputs *http2Inputs) { poolHTTP2Inputs.Put(inputs) }
+
+// http2Inputs
+type http2Inputs struct {
+	buf [9 + http2FrameMaxSize]byte // header + payload
+	ref atomic.Int32
+}
+
+func (p *http2Inputs) size() uint32  { return uint32(cap(p.buf)) }
+func (p *http2Inputs) getRef() int32 { return p.ref.Load() }
+func (p *http2Inputs) incRef()       { p.ref.Add(1) }
+func (p *http2Inputs) decRef() {
+	if p.ref.Add(-1) == 0 {
+		if Debug(1) {
+			fmt.Printf("putHTTP2Inputs ref=%d\n", p.ref.Load())
+		}
+		putHTTP2Inputs(p)
+	}
+}
+
 // HTTP/2 protocol elements.
 
 const ( // HTTP/2 sizes and limits
@@ -482,38 +514,6 @@ var ( // HTTP/2 byteses
 	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS
 )
-
-// poolHTTP2Inputs
-var poolHTTP2Inputs sync.Pool
-
-func getHTTP2Inputs() *http2Inputs {
-	var inputs *http2Inputs
-	if x := poolHTTP2Inputs.Get(); x == nil {
-		inputs = new(http2Inputs)
-	} else {
-		inputs = x.(*http2Inputs)
-	}
-	return inputs
-}
-func putHTTP2Inputs(inputs *http2Inputs) { poolHTTP2Inputs.Put(inputs) }
-
-// http2Inputs
-type http2Inputs struct {
-	buf [9 + http2FrameMaxSize]byte // header + payload
-	ref atomic.Int32
-}
-
-func (p *http2Inputs) size() uint32  { return uint32(cap(p.buf)) }
-func (p *http2Inputs) getRef() int32 { return p.ref.Load() }
-func (p *http2Inputs) incRef()       { p.ref.Add(1) }
-func (p *http2Inputs) decRef() {
-	if p.ref.Add(-1) == 0 {
-		if Debug(1) {
-			fmt.Printf("putHTTP2Inputs ref=%d\n", p.ref.Load())
-		}
-		putHTTP2Inputs(p)
-	}
-}
 
 // http2InFrame is the server-side HTTP/2 incoming frame.
 type http2InFrame struct { // 32 bytes

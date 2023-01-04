@@ -88,6 +88,38 @@ func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
 	return nil
 }
 
+// poolHTTP3Inputs
+var poolHTTP3Inputs sync.Pool
+
+func getHTTP3Inputs() *http3Inputs {
+	var inputs *http3Inputs
+	if x := poolHTTP3Inputs.Get(); x == nil {
+		inputs = new(http3Inputs)
+	} else {
+		inputs = x.(*http3Inputs)
+	}
+	return inputs
+}
+func putHTTP3Inputs(inputs *http3Inputs) { poolHTTP3Inputs.Put(inputs) }
+
+// http3Inputs
+type http3Inputs struct {
+	buf [_16K]byte // header + payload
+	ref atomic.Int32
+}
+
+func (a *http3Inputs) size() uint32  { return uint32(cap(a.buf)) }
+func (a *http3Inputs) getRef() int32 { return a.ref.Load() }
+func (a *http3Inputs) incRef()       { a.ref.Add(1) }
+func (a *http3Inputs) decRef() {
+	if a.ref.Add(-1) == 0 {
+		if Debug(1) {
+			fmt.Printf("putHTTP3Inputs ref=%d\n", a.ref.Load())
+		}
+		putHTTP3Inputs(a)
+	}
+}
+
 // HTTP/3 protocol elements.
 
 const ( // HTTP/3 sizes and limits
@@ -215,38 +247,6 @@ type http3DynamicTable struct {
 var ( // HTTP/3 byteses
 	http3BytesStatic = []byte(":authority:path/age0content-dispositioncontent-length0cookiedateetagif-modified-sinceif-none-matchlast-modifiedlinklocationrefererset-cookie:methodCONNECTDELETEGETHEADOPTIONSPOSTPUT:schemehttphttps:status103200304404503accept*/*application/dns-messageaccept-encodinggzip, deflate, braccept-rangesbytesaccess-control-allow-headerscache-controlcontent-typeaccess-control-allow-origin*cache-controlmax-age=0max-age=2592000max-age=604800no-cacheno-storepublic, max-age=31536000content-encodingbrgzipcontent-typeapplication/dns-messageapplication/javascriptapplication/jsonapplication/x-www-form-urlencodedimage/gifimage/jpegimage/pngtext/csstext/html; charset=utf-8text/plaintext/plain;charset=utf-8rangebytes=0-strict-transport-securitymax-age=31536000max-age=31536000; includesubdomainsmax-age=31536000; includesubdomains; preloadvaryaccept-encodingoriginx-content-type-optionsnosniffx-xss-protection1; mode=block:status100204206302400403421425500accept-languageaccess-control-allow-credentialsFALSETRUEaccess-control-allow-headers*access-control-allow-methodsgetget, post, optionsoptionsaccess-control-expose-headerscontent-lengthaccess-control-request-headerscontent-typeaccess-control-request-methodgetpostalt-svcclearauthorizationcontent-security-policyscript-src 'none'; object-src 'none'; base-uri 'none'early-data1expect-ctforwardedif-rangeoriginpurposeprefetchservertiming-allow-origin*upgrade-insecure-requests1user-agentx-forwarded-forx-frame-optionsdenysameorigin") // DO NOT CHANGE THIS
 )
-
-// poolHTTP3Inputs
-var poolHTTP3Inputs sync.Pool
-
-func getHTTP3Inputs() *http3Inputs {
-	var inputs *http3Inputs
-	if x := poolHTTP3Inputs.Get(); x == nil {
-		inputs = new(http3Inputs)
-	} else {
-		inputs = x.(*http3Inputs)
-	}
-	return inputs
-}
-func putHTTP3Inputs(inputs *http3Inputs) { poolHTTP3Inputs.Put(inputs) }
-
-// http3Inputs
-type http3Inputs struct {
-	buf [_16K]byte // header + payload
-	ref atomic.Int32
-}
-
-func (a *http3Inputs) size() uint32  { return uint32(cap(a.buf)) }
-func (a *http3Inputs) getRef() int32 { return a.ref.Load() }
-func (a *http3Inputs) incRef()       { a.ref.Add(1) }
-func (a *http3Inputs) decRef() {
-	if a.ref.Add(-1) == 0 {
-		if Debug(1) {
-			fmt.Printf("putHTTP3Inputs ref=%d\n", a.ref.Load())
-		}
-		putHTTP3Inputs(a)
-	}
-}
 
 // http3InFrame is the server-side HTTP/3 incoming frame.
 type http3InFrame struct {

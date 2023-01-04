@@ -1589,7 +1589,7 @@ func (r *httpRequest_) checkHead() bool {
 			r.headResult, r.headReason = StatusLengthRequired, "POST and PUT must contain a content"
 			return false
 		}
-	} else { // content exists (sized or chunked)
+	} else { // content exists (counted or chunked)
 		// Content is not allowed in some methods, according to RFC 7231.
 		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
 			r.headResult, r.headReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
@@ -1794,11 +1794,11 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	} else { // content is not received
 		r.contentReceived = true
 		switch content := r.recvContent(true).(type) { // retain
-		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		case []byte: // (0, 64K1]. case happens when counted content <= 64K1
 			r.contentBlob = content
 			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
 			r.formBuffer, r.formEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.formBuffer refers to the exact r.content.
-		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is chunked.
+		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when counted content > 64K1, or content is chunked.
 			tempFile = content.(*os.File)
 			defer func() {
 				tempFile.Close()
@@ -2576,7 +2576,7 @@ func (r *httpResponse_) checkPush() error {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpMixSizedChunked
+		return httpMixedContentMode
 	}
 	r.isSent = true
 	r.contentSize = -2 // mark as chunked mode

@@ -19,13 +19,13 @@ httpInMessage_  | stream                    httpOutMessage_ | stream
   |             |                             |             |
   |             v                             |             v
   +-http[1-3]Request                          +-H[1-3]Request
-                           \           /
-                \           \         /
-      1/2/3      \           \       /            1/2/3
-   [httpServer]  [Handlet]  [httpProxy]        [httpClient]
-      1/2/3      /           /       \            1/2/3
-                /           /         \
-                           /           \
+                          \           /
+                \          \         /
+      1/2/3      \          \       /             1/2/3
+   [httpServer]  [Handlet]/[httpProxy]         [httpClient]
+      1/2/3      /          /       \             1/2/3
+                /          /         \
+                          /           \
 <--http[1-3]Stream--                        <---H[1-3]Stream----
 [REVISERS]       ^   <------pass/post------                ^
                  |                                         |
@@ -40,11 +40,11 @@ httpOutMessage_  | stream                   httpInMessage_ | stream
   +-http[1-3]Response                         +-H[1-3]Response
 
 
-NOTE:
+NOTES:
 
   * messages are composed of control, headers, [content, [trailers]].
   * control & headers is called head, and it must be small.
-  * contents, if exist (perhaps of zero size), may be large/small, sized/chunked.
+  * contents, if exist (perhaps of zero size), may be large/small, counted/chunked.
   * trailers must be small, and only exist when contents exist and are chunked.
   * incoming messages need parsing.
   * outgoing messages need building.
@@ -186,7 +186,7 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	contentBlobKind int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	maxRecvSeconds  int64 // max seconds to recv message content
 	maxContentSize  int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
-	sizeReceived    int64 // bytes of currently received content. for both sized & chunked content receiver
+	sizeReceived    int64 // bytes of currently received content. for both counted & chunked content receiver
 	chunkSize       int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack           int32 // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore           int32 // for parsing chunked elements. HTTP/1.1 chunked only
@@ -603,10 +603,10 @@ func (r *httpInMessage_) loadContent() { // into memory. [0, r.maxContentSize]
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
 		r.contentBlob = content                 // real content is r.contentBlob[:r.sizeReceived]
 		r.contentBlobKind = httpContentBlobPool // the returned content is got from pool. put back onEnd
-	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is chunked.
+	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
 		tempFile := content.(*os.File)
 		if r.sizeReceived > 0 { // chunked content may has 0 size, exclude that.
 			if r.sizeReceived <= _64K1 {
@@ -668,7 +668,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		}
 		return content // []byte, fetched from pool
 	}
-	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when chunked. to TempFile
+	// (64K1, r.maxContentSize] when counted, or [0, r.maxContentSize] when chunked. to TempFile
 	content, err := r._newTempFile(retain)
 	if err != nil {
 		return err
@@ -709,11 +709,11 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
 		r.contentBlob = content
 		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
 		return r.contentBlob[0:r.sizeReceived]
-	case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is chunked.
+	case TempFile: // [0, r.app.maxUploadContentSize]. case happens when counted content > 64K1, or content is chunked.
 		r.contentHeld = content.(*os.File)
 		return r.contentHeld
 	case error:
@@ -1436,7 +1436,7 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 }
 func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used by proxes, to pass content directly
 	pass := r.shell.passBytes
-	if size := in.ContentSize(); size == -2 || revise { // if we need to revise, we always use chunked output no matter the original content is sized or chunked
+	if size := in.ContentSize(); size == -2 || revise { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
 		pass = r.PushBytes
 	} else { // >= 0
 		r.isSent = true
@@ -1523,7 +1523,7 @@ var ( // http outgoing message errors
 	httpStatusForbidden  = errors.New("forbidden status")
 	httpAlreadySent      = errors.New("already sent")
 	httpContentTooLarge  = errors.New("content too large")
-	httpMixSizedChunked  = errors.New("mix sized and chunked")
+	httpMixedContentMode = errors.New("mixed content mode")
 	httpAddTrailerFailed = errors.New("add trailer failed")
 )
 

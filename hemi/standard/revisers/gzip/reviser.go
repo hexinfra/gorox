@@ -55,7 +55,7 @@ func (r *gzipReviser) OnPrepare() {
 
 func (r *gzipReviser) Rank() int8 { return RankGzip }
 
-func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // counted
 	// TODO
 }
 func (r *gzipReviser) BeforePull(req Request, resp Response) { // chunked
@@ -68,7 +68,7 @@ func (r *gzipReviser) OnInput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 
-func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *gzipReviser) BeforeSend(req Request, resp Response) { // counted
 	// TODO
 }
 func (r *gzipReviser) BeforePush(req Request, resp Response) { // chunked

@@ -49,7 +49,7 @@ func (r *ssiReviser) OnPrepare() {
 
 func (r *ssiReviser) Rank() int8 { return r.rank }
 
-func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // counted
 	// TODO
 }
 func (r *ssiReviser) BeforePull(req Request, resp Response) { // chunked
@@ -62,7 +62,7 @@ func (r *ssiReviser) OnInput(req Request, resp Response, chain Chain) Chain {
 	return chain
 }
 
-func (r *ssiReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *ssiReviser) BeforeSend(req Request, resp Response) { // counted
 	// TODO
 }
 func (r *ssiReviser) BeforePush(req Request, resp Response) { // chunked

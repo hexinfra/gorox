@@ -198,7 +198,7 @@ func (r *hRequest_) checkPush() error {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpMixSizedChunked
+		return httpMixedContentMode
 	}
 	r.isSent = true
 	r.contentSize = -2 // mark as chunked mode

@@ -499,7 +499,7 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
-	if !resp.isSent { // only happens on sized content.
+	if !resp.isSent { // only happens on counted content.
 		resp.sendChain(resp.content)
 	} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
 		resp.finishChunked()
@@ -1005,9 +1005,9 @@ func (r *http1Request) _cleanInput() {
 		}
 		return
 	}
-	// content exists (sized or chunked)
+	// content exists (counted or chunked)
 	r.imme.set(r.pFore, r.inputEdge)
-	if r.contentSize >= 0 { // sized mode
+	if r.contentSize >= 0 { // counted mode
 		immeSize := int64(r.imme.size())
 		if immeSize == 0 || immeSize <= r.contentSize {
 			r.inputNext, r.inputEdge = 0, 0 // reset

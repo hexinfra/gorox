@@ -182,13 +182,13 @@ func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-va
 }
 
 func (r *httpInMessage_) readContent1() (p []byte, err error) {
-	if r.contentSize >= 0 { // sized
-		return r._readSizedContent1()
+	if r.contentSize >= 0 { // counted
+		return r._readCountedContent1()
 	} else { // must be -2 (chunked). -1 is excluded priorly
 		return r._readChunkedContent1()
 	}
 }
-func (r *httpInMessage_) _readSizedContent1() (p []byte, err error) {
+func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize {
 		if r.bodyBuffer == nil { // body buffer is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF

@@ -14,20 +14,6 @@ import (
 type _mesher interface {
 	Component
 }
-type _gate interface {
-	open() error
-	shutdown() error
-}
-type _dealet interface {
-	Component
-}
-type _editor interface {
-	Component
-	ider
-}
-type _case interface {
-	Component
-}
 
 // mesher_ is the mixin for all meshers.
 type mesher_[M _mesher, G _gate, D _dealet, E _editor, C _case] struct {
@@ -55,6 +41,7 @@ func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealetCreat
 	m.editorCreators = editorCreators
 	m.nEditors = 1 // position 0 is not used
 }
+
 func (m *mesher_[M, G, D, E, C]) shutdownSubs() {
 	m.cases.walk(C.OnShutdown)
 	m.editors.walk(E.OnShutdown)
@@ -250,4 +237,20 @@ func (c *case_[M, D, E]) notWildcardMatch(value []byte) bool {
 func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
 	// TODO
 	return false
+}
+
+type _dealet interface {
+	Component
+}
+type _editor interface {
+	Component
+	ider
+}
+type _case interface {
+	Component
+}
+
+type _gate interface {
+	open() error
+	shutdown() error
 }

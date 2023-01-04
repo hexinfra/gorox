@@ -81,6 +81,120 @@ func (m *TCPSMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
+// TCPSDealet
+type TCPSDealet interface {
+	Component
+	Deal(conn *TCPSConn) (next bool)
+}
+
+// TCPSDealet_
+type TCPSDealet_ struct {
+	// Mixins
+	Component_
+	// States
+}
+
+// TCPSEditor
+type TCPSEditor interface {
+	Component
+	ider
+
+	OnInput(conn *TCPSConn, kind int8)
+	OnOutput(conn *TCPSConn, kind int8)
+}
+
+// TCPSEditor_
+type TCPSEditor_ struct {
+	Component_
+	ider_
+}
+
+// tcpsCase
+type tcpsCase struct {
+	// Mixins
+	case_[*TCPSMesher, TCPSDealet, TCPSEditor]
+	// States
+	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
+}
+
+func (c *tcpsCase) OnConfigure() {
+	c.case_.OnConfigure()
+	if c.info != nil {
+		cond := c.info.(caseCond)
+		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
+			c.matcher = matcher
+		} else {
+			UseExitln("unknown compare in case condition")
+		}
+	}
+}
+func (c *tcpsCase) OnPrepare() {
+	c.case_.OnPrepare()
+}
+
+func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
+	if c.general {
+		return true
+	}
+	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
+}
+
+var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
+	"==": (*tcpsCase).equalMatch,
+	"^=": (*tcpsCase).prefixMatch,
+	"$=": (*tcpsCase).suffixMatch,
+	"*=": (*tcpsCase).wildcardMatch,
+	"~=": (*tcpsCase).regexpMatch,
+	"!=": (*tcpsCase).notEqualMatch,
+	"!^": (*tcpsCase).notPrefixMatch,
+	"!$": (*tcpsCase).notSuffixMatch,
+	"!*": (*tcpsCase).notWildcardMatch,
+	"!~": (*tcpsCase).notRegexpMatch,
+}
+
+func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
+	return c.case_.equalMatch(value)
+}
+func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
+	return c.case_.prefixMatch(value)
+}
+func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
+	return c.case_.suffixMatch(value)
+}
+func (c *tcpsCase) wildcardMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
+	return c.case_.wildcardMatch(value)
+}
+func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
+	return c.case_.regexpMatch(value)
+}
+func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
+	return c.case_.notEqualMatch(value)
+}
+func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
+	return c.case_.notPrefixMatch(value)
+}
+func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
+	return c.case_.notSuffixMatch(value)
+}
+func (c *tcpsCase) notWildcardMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
+	return c.case_.notWildcardMatch(value)
+}
+func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
+	return c.case_.notRegexpMatch(value)
+}
+
+func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
+	for _, editor := range c.editors {
+		conn.hookEditor(editor)
+	}
+	for _, dealet := range c.dealets {
+		if next := dealet.Deal(conn); !next {
+			return true
+		}
+	}
+	return false
+}
+
 // tcpsGate
 type tcpsGate struct {
 	// Mixins
@@ -303,115 +417,4 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	nil, // transport
 	nil, // serverName
 	nil, // nextProto
-}
-
-// TCPSDealet
-type TCPSDealet interface {
-	Component
-	Deal(conn *TCPSConn) (next bool)
-}
-
-// TCPSDealet_
-type TCPSDealet_ struct {
-	// Mixins
-	Component_
-	// States
-}
-
-// TCPSEditor
-type TCPSEditor interface {
-	Component
-	ider
-
-	OnInput(conn *TCPSConn, kind int8)
-	OnOutput(conn *TCPSConn, kind int8)
-}
-
-// TCPSEditor_
-type TCPSEditor_ struct {
-	Component_
-	ider_
-}
-
-// tcpsCase
-type tcpsCase struct {
-	// Mixins
-	case_[*TCPSMesher, TCPSDealet, TCPSEditor]
-	// States
-	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
-}
-
-func (c *tcpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
-		}
-	}
-}
-
-func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
-	if c.general {
-		return true
-	}
-	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
-}
-
-var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
-	"==": (*tcpsCase).equalMatch,
-	"^=": (*tcpsCase).prefixMatch,
-	"$=": (*tcpsCase).suffixMatch,
-	"*=": (*tcpsCase).wildcardMatch,
-	"~=": (*tcpsCase).regexpMatch,
-	"!=": (*tcpsCase).notEqualMatch,
-	"!^": (*tcpsCase).notPrefixMatch,
-	"!$": (*tcpsCase).notSuffixMatch,
-	"!*": (*tcpsCase).notWildcardMatch,
-	"!~": (*tcpsCase).notRegexpMatch,
-}
-
-func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
-	return c.case_.equalMatch(value)
-}
-func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
-	return c.case_.prefixMatch(value)
-}
-func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
-	return c.case_.suffixMatch(value)
-}
-func (c *tcpsCase) wildcardMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
-	return c.case_.wildcardMatch(value)
-}
-func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
-	return c.case_.regexpMatch(value)
-}
-func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
-	return c.case_.notEqualMatch(value)
-}
-func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
-	return c.case_.notPrefixMatch(value)
-}
-func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
-	return c.case_.notSuffixMatch(value)
-}
-func (c *tcpsCase) notWildcardMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
-	return c.case_.notWildcardMatch(value)
-}
-func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
-	return c.case_.notRegexpMatch(value)
-}
-
-func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, editor := range c.editors {
-		conn.hookEditor(editor)
-	}
-	for _, dealet := range c.dealets {
-		if next := dealet.Deal(conn); !next {
-			return true
-		}
-	}
-	return false
 }

@@ -18,6 +18,7 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/access"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/ajp"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/favicon"
+	_ "github.com/hexinfra/gorox/hemi/standard/handlets/fcgi"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/gatex"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"

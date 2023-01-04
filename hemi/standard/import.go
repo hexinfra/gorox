@@ -13,6 +13,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/standard/dealets/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/ajp"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/favicon"
+	_ "github.com/hexinfra/gorox/hemi/standard/handlets/fcgi"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/limit"

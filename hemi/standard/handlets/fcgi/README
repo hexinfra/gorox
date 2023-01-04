@@ -1,0 +1,3 @@
+FCGI (FastCGI) is mainly for PHP applications.
+
+FCGI allows chunked content in HTTP, so we are not obliged to buffer content.

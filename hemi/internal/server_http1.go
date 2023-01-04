@@ -606,7 +606,7 @@ type http1Request struct {
 
 func (r *http1Request) recvHead() { // control + headers
 	// The entire request head must be received in one timeout
-	if err := r._prepareRead(&r.receiveTime); err != nil {
+	if err := r._prepareRead(&r.recvTime); err != nil {
 		r.headResult = -1
 		return
 	}

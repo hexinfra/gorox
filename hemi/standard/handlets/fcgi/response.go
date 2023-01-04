@@ -9,6 +9,7 @@ package fcgi
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"time"
 )
 
 // fcgiResponse
@@ -44,7 +45,7 @@ func (r *fcgiResponse) checkHead() bool {
 func (r *fcgiResponse) walkHeaders() {
 }
 
-func (r *fcgiResponse) setMaxRecvSeconds(seconds int64) {
+func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
 }
 
 func (r *fcgiResponse) readContent() (from int, edge int, err error) {

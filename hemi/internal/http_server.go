@@ -315,8 +315,8 @@ type Request interface {
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
-	HasContent() bool                // contentSize=0 and contentSize=-2 are considered as true
-	SetMaxRecvSeconds(seconds int64) // to defend against slowloris attack
+	HasContent() bool                        // contentSize>=0 and contentSize=-2 are considered as true
+	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 
 	F(name string) string
@@ -1984,7 +1984,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 								return
 							}
 							tempName := r.stream.smallStack() // stack is enough for tempName
-							from, edge := r.stream.makeTempName(tempName, r.receiveTime)
+							from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
 							if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
 								r.stream.markBroken()
 								return
@@ -2339,7 +2339,7 @@ type Response interface {
 	DelHeaderByBytes(name []byte) bool
 
 	IsSent() bool
-	SetMaxSendSeconds(seconds int64) // to defend against slowloris attack
+	SetMaxSendTimeout(timeout time.Duration) // to defend against slowloris attack
 
 	Send(content string) error
 	SendBytes(content []byte) error

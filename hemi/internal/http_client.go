@@ -10,6 +10,7 @@ package internal
 import (
 	"bytes"
 	"sync/atomic"
+	"time"
 )
 
 // httpClient is the interface for http outgates and http backends.
@@ -155,6 +156,8 @@ func (s *hStream_) callSocket() {
 // request is the client-side HTTP request and the interface for *H[1-3]Request.
 type request interface {
 	Response() response
+	SetMaxSendTimeout(timeout time.Duration) // to defend against bad server
+
 	setControl(method []byte, uri []byte, hasContent bool) bool
 	addHeader(name []byte, value []byte) bool
 	copyCookies(req Request) bool
@@ -282,6 +285,8 @@ func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
 type response interface {
 	Status() int16
 	ContentSize() int64
+	SetMaxRecvTimeout(timeout time.Duration) // to defend against bad server
+
 	unsafeDate() []byte
 	unsafeETag() []byte
 	unsafeLastModified() []byte

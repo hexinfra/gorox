@@ -206,7 +206,7 @@ func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 		r.imme.zero()
 		return r.bodyBuffer[0:size], nil
 	}
-	if err = r._prepareRead(&r.contentTime); err != nil {
+	if err = r._prepareRead(&r.bodyTime); err != nil {
 		return nil, err
 	}
 	recvSize := int64(cap(r.bodyBuffer))
@@ -215,7 +215,7 @@ func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 	}
 	size, err := r.stream.readFull(r.bodyBuffer[:recvSize])
 	r.sizeReceived += int64(size)
-	if err == nil && (r.maxRecvSeconds > 0 && time.Now().Unix()-r.contentTime >= r.maxRecvSeconds) {
+	if err == nil && (r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout) {
 		err = httpReadTooSlow
 	}
 	return r.bodyBuffer[0:size], err
@@ -500,11 +500,11 @@ func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protoco
 		r.cFore -= r.cBack
 		r.cBack = 0
 	}
-	err := r._prepareRead(&r.contentTime)
+	err := r._prepareRead(&r.bodyTime)
 	if err == nil {
 		n, e := r.stream.read(r.bodyBuffer[r.chunkEdge:])
 		if e == nil {
-			if r.maxRecvSeconds > 0 && time.Now().Unix()-r.contentTime >= r.maxRecvSeconds {
+			if r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout {
 				e = httpReadTooSlow
 			} else {
 				r.chunkEdge += int32(n)
@@ -791,7 +791,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 		} else {
 			_, err = r.stream.write(buffer[0:n])
 		}
-		if err == nil && (r.maxSendSeconds > 0 && time.Now().Unix()-r.sendTime >= r.maxSendSeconds) {
+		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {
@@ -827,7 +827,7 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 			return err
 		}
 		_, err := r.stream.writev(vector)
-		if err == nil && (r.maxSendSeconds > 0 && time.Now().Unix()-r.sendTime >= r.maxSendSeconds) {
+		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {

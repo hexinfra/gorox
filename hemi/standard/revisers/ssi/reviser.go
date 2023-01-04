@@ -36,16 +36,15 @@ func (r *ssiReviser) onCreate(name string, stage *Stage, app *App) {
 	r.stage = stage
 	r.app = app
 }
+func (r *ssiReviser) OnShutdown() {
+	r.app.SubDone()
+}
 
 func (r *ssiReviser) OnConfigure() {
 	// rank
 	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankSSI)
 }
 func (r *ssiReviser) OnPrepare() {
-}
-
-func (r *ssiReviser) OnShutdown() {
-	r.app.SubDone()
 }
 
 func (r *ssiReviser) Rank() int8 { return r.rank }

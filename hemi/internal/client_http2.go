@@ -48,6 +48,9 @@ func (f *HTTP2Outgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signHTTP2, stage)
 	f.httpOutgate_.onCreate()
 }
+func (f *HTTP2Outgate) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *HTTP2Outgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -56,10 +59,6 @@ func (f *HTTP2Outgate) OnConfigure() {
 func (f *HTTP2Outgate) OnPrepare() {
 	f.client_.onPrepare()
 	f.httpOutgate_.onPrepare(f)
-}
-
-func (f *HTTP2Outgate) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
@@ -92,6 +91,9 @@ func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.httpBackend_.onCreate()
 }
+func (b *HTTP2Backend) OnShutdown() {
+	b.Shutdown()
+}
 
 func (b *HTTP2Backend) OnConfigure() {
 	b.backend_.onConfigure()
@@ -100,10 +102,6 @@ func (b *HTTP2Backend) OnConfigure() {
 func (b *HTTP2Backend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.httpBackend_.onPrepare(b, len(b.nodes))
-}
-
-func (b *HTTP2Backend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *HTTP2Backend) createNode(id int32) *http2Node {

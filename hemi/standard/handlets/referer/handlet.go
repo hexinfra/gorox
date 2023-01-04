@@ -34,14 +34,13 @@ func (h *refererHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *refererHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *refererHandlet) OnConfigure() {
 }
 func (h *refererHandlet) OnPrepare() {
-}
-
-func (h *refererHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *refererHandlet) Handle(req Request, resp Response) (next bool) {

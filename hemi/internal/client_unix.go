@@ -68,6 +68,9 @@ func (f *UnixOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signUnix, stage)
 	f.unixClient_.onCreate()
 }
+func (f *UnixOutgate) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *UnixOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -76,10 +79,6 @@ func (f *UnixOutgate) OnConfigure() {
 func (f *UnixOutgate) OnPrepare() {
 	f.client_.onPrepare()
 	f.unixClient_.onPrepare(f)
-}
-
-func (f *UnixOutgate) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *UnixOutgate) run() { // goroutine
@@ -119,6 +118,9 @@ func (b *UnixBackend) onCreate(name string, stage *Stage) {
 	b.unixClient_.onCreate()
 	b.loadBalancer_.init()
 }
+func (b *UnixBackend) OnShutdown() {
+	b.Shutdown()
+}
 
 func (b *UnixBackend) OnConfigure() {
 	b.backend_.onConfigure()
@@ -129,10 +131,6 @@ func (b *UnixBackend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.unixClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
-}
-
-func (b *UnixBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *UnixBackend) createNode(id int32) *unixNode {

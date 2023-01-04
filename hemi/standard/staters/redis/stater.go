@@ -35,14 +35,13 @@ func (s *redisStater) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }
+func (s *redisStater) OnShutdown() {
+	s.Shutdown()
+}
 
 func (s *redisStater) OnConfigure() {
 }
 func (s *redisStater) OnPrepare() {
-}
-
-func (s *redisStater) OnShutdown() {
-	s.Shutdown()
 }
 
 func (s *redisStater) Maintain() { // goroutine

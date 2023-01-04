@@ -35,14 +35,13 @@ func (c *redisCacher) onCreate(name string, stage *Stage) {
 	c.CompInit(name)
 	c.stage = stage
 }
+func (c *redisCacher) OnShutdown() {
+	c.Shutdown()
+}
 
 func (c *redisCacher) OnConfigure() {
 }
 func (c *redisCacher) OnPrepare() {
-}
-
-func (c *redisCacher) OnShutdown() {
-	c.Shutdown()
 }
 
 func (c *redisCacher) Maintain() { // goroutine

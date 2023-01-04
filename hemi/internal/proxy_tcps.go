@@ -30,16 +30,15 @@ func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
+func (d *tcpsProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
 
 func (d *tcpsProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *tcpsProxy) OnPrepare() {
 	d.proxy_.onPrepare()
-}
-
-func (d *tcpsProxy) OnShutdown() {
-	d.mesher.SubDone()
 }
 
 func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) {

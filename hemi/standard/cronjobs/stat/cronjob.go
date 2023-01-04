@@ -34,14 +34,13 @@ func (j *statCronjob) onCreate(name string, stage *Stage) {
 	j.CompInit(name)
 	j.stage = stage
 }
+func (j *statCronjob) OnShutdown() {
+	j.Shutdown()
+}
 
 func (j *statCronjob) OnConfigure() {
 }
 func (j *statCronjob) OnPrepare() {
-}
-
-func (j *statCronjob) OnShutdown() {
-	j.Shutdown()
 }
 
 func (j *statCronjob) Schedule() { // goroutine

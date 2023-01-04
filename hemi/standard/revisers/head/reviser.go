@@ -39,6 +39,9 @@ func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
 	r.stage = stage
 	r.app = app
 }
+func (r *headReviser) OnShutdown() {
+	r.app.SubDone()
+}
 
 func (r *headReviser) OnConfigure() {
 	// addRequest
@@ -51,10 +54,6 @@ func (r *headReviser) OnConfigure() {
 	r.ConfigureStringList("delResponse", &r.delResponse, nil, []string{})
 }
 func (r *headReviser) OnPrepare() {
-}
-
-func (r *headReviser) OnShutdown() {
-	r.app.SubDone()
 }
 
 func (r *headReviser) Rank() int8 { return RankHead }

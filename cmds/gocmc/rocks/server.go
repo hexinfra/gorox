@@ -46,6 +46,10 @@ func (s *RocksServer) onCreate(name string, stage *Stage) {
 	s.stage = stage
 	s.conns = make(map[int64]*goroxConn)
 }
+func (s *RocksServer) OnShutdown() {
+	s.shut.Store(true)
+	s.gate.Close()
+}
 
 func (s *RocksServer) OnConfigure() {
 	// address
@@ -71,11 +75,6 @@ func (s *RocksServer) OnConfigure() {
 	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 }
 func (s *RocksServer) OnPrepare() {
-}
-
-func (s *RocksServer) OnShutdown() {
-	s.shut.Store(true)
-	s.gate.Close()
 }
 
 func (s *RocksServer) Serve() { // goroutine

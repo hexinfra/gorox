@@ -70,6 +70,9 @@ func (f *TCPSOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signTCPS, stage)
 	f.tcpsClient_.onCreate()
 }
+func (f *TCPSOutgate) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *TCPSOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -78,10 +81,6 @@ func (f *TCPSOutgate) OnConfigure() {
 func (f *TCPSOutgate) OnPrepare() {
 	f.client_.onPrepare()
 	f.tcpsClient_.onPrepare(f)
-}
-
-func (f *TCPSOutgate) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *TCPSOutgate) run() { // goroutine
@@ -128,6 +127,9 @@ func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.tcpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
+func (b *TCPSBackend) OnShutdown() {
+	b.Shutdown()
+}
 
 func (b *TCPSBackend) OnConfigure() {
 	b.backend_.onConfigure()
@@ -138,10 +140,6 @@ func (b *TCPSBackend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.tcpsClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
-}
-
-func (b *TCPSBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *TCPSBackend) createNode(id int32) *tcpsNode {

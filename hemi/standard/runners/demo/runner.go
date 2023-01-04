@@ -33,14 +33,13 @@ func (r *demoRunner) onCreate(name string, stage *Stage) {
 	r.CompInit(name)
 	r.stage = stage
 }
+func (r *demoRunner) OnShutdown() {
+	r.Shutdown()
+}
 
 func (r *demoRunner) OnConfigure() {
 }
 func (r *demoRunner) OnPrepare() {
-}
-
-func (r *demoRunner) OnShutdown() {
-	r.Shutdown()
 }
 
 func (r *demoRunner) Run() { // goroutine

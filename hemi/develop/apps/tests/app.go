@@ -38,14 +38,13 @@ func (h *testHandlet) onCreate(name string, stage *Stage, app *App) {
 	r := NewSimpleRouter()
 	h.UseRouter(h, r)
 }
+func (h *testHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *testHandlet) OnConfigure() {
 }
 func (h *testHandlet) OnPrepare() {
-}
-
-func (h *testHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *testHandlet) Handle(req Request, resp Response) (next bool) {

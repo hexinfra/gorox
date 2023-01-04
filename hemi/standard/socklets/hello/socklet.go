@@ -34,14 +34,13 @@ func (s *helloSocklet) onCreate(name string, stage *Stage, app *App) {
 	s.stage = stage
 	s.app = app
 }
+func (s *helloSocklet) OnShutdown() {
+	s.app.SubDone()
+}
 
 func (s *helloSocklet) OnConfigure() {
 }
 func (s *helloSocklet) OnPrepare() {
-}
-
-func (s *helloSocklet) OnShutdown() {
-	s.app.SubDone()
 }
 
 func (s *helloSocklet) Serve(req Request, sock Socket) {

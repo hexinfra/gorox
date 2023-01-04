@@ -25,6 +25,12 @@ type UDPSMesher struct {
 func (m *UDPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, udpsDealetCreators, udpsEditorCreators)
 }
+func (m *UDPSMesher) OnShutdown() {
+	// We don't use m.Shutdown() here.
+	for _, gate := range m.gates {
+		gate.shutdown()
+	}
+}
 
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
@@ -35,13 +41,6 @@ func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
 	m.prepareSubs() // dealets, editors, cases
-}
-
-func (m *UDPSMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
-	for _, gate := range m.gates {
-		gate.shutdown()
-	}
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {

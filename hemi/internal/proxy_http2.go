@@ -34,16 +34,15 @@ type http2Proxy struct {
 func (h *http2Proxy) onCreate(name string, stage *Stage, app *App) {
 	h.httpProxy_.onCreate(name, stage, app)
 }
+func (h *http2Proxy) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *http2Proxy) OnConfigure() {
 	h.httpProxy_.onConfigure(h)
 }
 func (h *http2Proxy) OnPrepare() {
 	h.httpProxy_.onPrepare()
-}
-
-func (h *http2Proxy) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -201,16 +200,15 @@ type sock2Proxy struct {
 func (s *sock2Proxy) onCreate(name string, stage *Stage, app *App) {
 	s.sockProxy_.onCreate(name, stage, app)
 }
+func (s *sock2Proxy) OnShutdown() {
+	s.app.SubDone()
+}
 
 func (s *sock2Proxy) OnConfigure() {
 	s.sockProxy_.onConfigure(s)
 }
 func (s *sock2Proxy) OnPrepare() {
 	s.sockProxy_.onPrepare()
-}
-
-func (s *sock2Proxy) OnShutdown() {
-	s.app.SubDone()
 }
 
 func (s *sock2Proxy) Serve(req Request, sock Socket) { // currently reverse only

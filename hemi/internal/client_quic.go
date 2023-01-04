@@ -68,6 +68,9 @@ func (f *QUICOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signQUIC, stage)
 	f.quicClient_.onCreate()
 }
+func (f *QUICOutgate) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *QUICOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -76,10 +79,6 @@ func (f *QUICOutgate) OnConfigure() {
 func (f *QUICOutgate) OnPrepare() {
 	f.client_.onPrepare()
 	f.quicClient_.onPrepare(f)
-}
-
-func (f *QUICOutgate) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *QUICOutgate) run() { // goroutine
@@ -118,6 +117,9 @@ func (b *QUICBackend) onCreate(name string, stage *Stage) {
 	b.quicClient_.onCreate()
 	b.loadBalancer_.init()
 }
+func (b *QUICBackend) OnShutdown() {
+	b.Shutdown()
+}
 
 func (b *QUICBackend) OnConfigure() {
 	b.backend_.onConfigure()
@@ -128,10 +130,6 @@ func (b *QUICBackend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.quicClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
-}
-
-func (b *QUICBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *QUICBackend) createNode(id int32) *quicNode {

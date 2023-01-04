@@ -30,16 +30,15 @@ type http3Proxy struct {
 func (h *http3Proxy) onCreate(name string, stage *Stage, app *App) {
 	h.httpProxy_.onCreate(name, stage, app)
 }
+func (h *http3Proxy) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *http3Proxy) OnConfigure() {
 	h.httpProxy_.onConfigure(h)
 }
 func (h *http3Proxy) OnPrepare() {
 	h.httpProxy_.onPrepare()
-}
-
-func (h *http3Proxy) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -57,16 +56,15 @@ type sock3Proxy struct {
 func (s *sock3Proxy) onCreate(name string, stage *Stage, app *App) {
 	s.sockProxy_.onCreate(name, stage, app)
 }
+func (s *sock3Proxy) OnShutdown() {
+	s.app.SubDone()
+}
 
 func (s *sock3Proxy) OnConfigure() {
 	s.sockProxy_.onConfigure(s)
 }
 func (s *sock3Proxy) OnPrepare() {
 	s.sockProxy_.onPrepare()
-}
-
-func (s *sock3Proxy) OnShutdown() {
-	s.app.SubDone()
 }
 
 func (s *sock3Proxy) Serve(req Request, sock Socket) { // currently reverse only

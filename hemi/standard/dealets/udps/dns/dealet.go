@@ -34,14 +34,13 @@ func (d *dnsDealet) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	d.stage = stage
 	d.mesher = mesher
 }
+func (d *dnsDealet) OnShutdown() {
+	d.mesher.SubDone()
+}
 
 func (d *dnsDealet) OnConfigure() {
 }
 func (d *dnsDealet) OnPrepare() {
-}
-
-func (d *dnsDealet) OnShutdown() {
-	d.mesher.SubDone()
 }
 
 func (d *dnsDealet) Deal(conn *UDPSConn) (next bool) {

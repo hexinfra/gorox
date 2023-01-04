@@ -30,16 +30,15 @@ func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
+func (d *quicProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
 
 func (d *quicProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *quicProxy) OnPrepare() {
 	d.proxy_.onPrepare()
-}
-
-func (d *quicProxy) OnShutdown() {
-	d.mesher.SubDone()
 }
 
 func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {

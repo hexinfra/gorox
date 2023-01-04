@@ -48,16 +48,15 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
 
 	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
+func (h *helloHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *helloHandlet) OnConfigure() {
 	// example
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *helloHandlet) OnPrepare() {
-}
-
-func (h *helloHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *helloHandlet) Handle(req Request, resp Response) (next bool) {

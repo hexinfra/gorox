@@ -34,14 +34,13 @@ func (e *mysqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	e.stage = stage
 	e.mesher = mesher
 }
+func (e *mysqlViewer) OnShutdown() {
+	e.mesher.SubDone()
+}
 
 func (e *mysqlViewer) OnConfigure() {
 }
 func (e *mysqlViewer) OnPrepare() {
-}
-
-func (e *mysqlViewer) OnShutdown() {
-	e.mesher.SubDone()
 }
 
 func (e *mysqlViewer) OnInput(conn *TCPSConn, kind int8) {

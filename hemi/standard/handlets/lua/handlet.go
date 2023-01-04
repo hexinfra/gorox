@@ -34,14 +34,13 @@ func (h *luaHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *luaHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *luaHandlet) OnConfigure() {
 }
 func (h *luaHandlet) OnPrepare() {
-}
-
-func (h *luaHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *luaHandlet) Handle(req Request, resp Response) (next bool) {

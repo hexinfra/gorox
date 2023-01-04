@@ -23,6 +23,12 @@ type QUICMesher struct {
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, quicDealetCreators, quicEditorCreators)
 }
+func (m *QUICMesher) OnShutdown() {
+	// We don't use m.Shutdown() here.
+	for _, gate := range m.gates {
+		gate.shutdown()
+	}
+}
 
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
@@ -33,13 +39,6 @@ func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
 	m.prepareSubs() // dealets, editors, cases
-}
-
-func (m *QUICMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
-	for _, gate := range m.gates {
-		gate.shutdown()
-	}
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {

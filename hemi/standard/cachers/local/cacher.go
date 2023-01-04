@@ -36,6 +36,9 @@ func (c *localCacher) onCreate(name string, stage *Stage) {
 	c.CompInit(name)
 	c.stage = stage
 }
+func (c *localCacher) OnShutdown() {
+	c.Shutdown()
+}
 
 func (c *localCacher) OnConfigure() {
 	// cacheDir
@@ -46,10 +49,6 @@ func (c *localCacher) OnPrepare() {
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}
-}
-
-func (c *localCacher) OnShutdown() {
-	c.Shutdown()
 }
 
 func (c *localCacher) Maintain() { // goroutine

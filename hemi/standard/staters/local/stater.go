@@ -36,6 +36,9 @@ func (s *localStater) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }
+func (s *localStater) OnShutdown() {
+	s.Shutdown()
+}
 
 func (s *localStater) OnConfigure() {
 	// stateDir
@@ -46,10 +49,6 @@ func (s *localStater) OnPrepare() {
 	if err := os.MkdirAll(s.stateDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}
-}
-
-func (s *localStater) OnShutdown() {
-	s.Shutdown()
 }
 
 func (s *localStater) Maintain() { // goroutine

@@ -38,6 +38,9 @@ func (h *uwsgiProxy) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *uwsgiProxy) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *uwsgiProxy) OnConfigure() {
 	// toBackend
@@ -72,10 +75,6 @@ func (h *uwsgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
 func (h *uwsgiProxy) OnPrepare() {
-}
-
-func (h *uwsgiProxy) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *uwsgiProxy) IsProxy() bool { return true }

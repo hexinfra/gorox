@@ -36,16 +36,15 @@ func (r *wrapReviser) onCreate(name string, stage *Stage, app *App) {
 	r.stage = stage
 	r.app = app
 }
+func (r *wrapReviser) OnShutdown() {
+	r.app.SubDone()
+}
 
 func (r *wrapReviser) OnConfigure() {
 	// rank
 	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankWrap)
 }
 func (r *wrapReviser) OnPrepare() {
-}
-
-func (r *wrapReviser) OnShutdown() {
-	r.app.SubDone()
 }
 
 func (r *wrapReviser) Rank() int8 { return r.rank }

@@ -31,6 +31,9 @@ func (s *Svc) onCreate(name string, stage *Stage) {
 	s.CompInit(name)
 	s.stage = stage
 }
+func (s *Svc) OnShutdown() {
+	s.Shutdown()
+}
 
 func (s *Svc) OnConfigure() {
 }
@@ -43,10 +46,6 @@ func (s *Svc) OnPrepare() {
 			UseExitln(err.Error())
 		}
 	}
-}
-
-func (s *Svc) OnShutdown() {
-	s.Shutdown()
 }
 
 func (s *Svc) LinkGRPC(server GRPCServer) {

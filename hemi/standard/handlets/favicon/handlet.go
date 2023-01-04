@@ -34,14 +34,13 @@ func (h *faviconHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *faviconHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *faviconHandlet) OnConfigure() {
 }
 func (h *faviconHandlet) OnPrepare() {
-}
-
-func (h *faviconHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {

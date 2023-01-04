@@ -34,14 +34,13 @@ func (h *limitHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *limitHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *limitHandlet) OnConfigure() {
 }
 func (h *limitHandlet) OnPrepare() {
-}
-
-func (h *limitHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *limitHandlet) Handle(req Request, resp Response) (next bool) {

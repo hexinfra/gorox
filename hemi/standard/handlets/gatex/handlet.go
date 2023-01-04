@@ -34,14 +34,13 @@ func (h *gatex) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *gatex) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *gatex) OnConfigure() {
 }
 func (h *gatex) OnPrepare() {
-}
-
-func (h *gatex) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *gatex) Handle(req Request, resp Response) (next bool) {

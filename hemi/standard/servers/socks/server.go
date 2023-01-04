@@ -37,19 +37,18 @@ type socksServer struct {
 func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
+func (s *socksServer) OnShutdown() {
+	// We don't use s.Shutdown() here.
+	for _, gate := range s.gates {
+		gate.shutdown()
+	}
+}
 
 func (s *socksServer) OnConfigure() {
 	s.Server_.OnConfigure()
 }
 func (s *socksServer) OnPrepare() {
 	s.Server_.OnPrepare()
-}
-
-func (s *socksServer) OnShutdown() {
-	// We don't use s.Shutdown() here.
-	for _, gate := range s.gates {
-		gate.shutdown()
-	}
 }
 
 func (s *socksServer) Serve() { // goroutine

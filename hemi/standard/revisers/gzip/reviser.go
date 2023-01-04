@@ -38,6 +38,9 @@ func (r *gzipReviser) onCreate(name string, stage *Stage, app *App) {
 	r.stage = stage
 	r.app = app
 }
+func (r *gzipReviser) OnShutdown() {
+	r.app.SubDone()
+}
 
 func (r *gzipReviser) OnConfigure() {
 	// compressLevel
@@ -48,10 +51,6 @@ func (r *gzipReviser) OnConfigure() {
 	r.ConfigureStringList("contentTypes", &r.contentTypes, nil, []string{})
 }
 func (r *gzipReviser) OnPrepare() {
-}
-
-func (r *gzipReviser) OnShutdown() {
-	r.app.SubDone()
 }
 
 func (r *gzipReviser) Rank() int8 { return RankGzip }

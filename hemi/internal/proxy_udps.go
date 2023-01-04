@@ -30,16 +30,15 @@ func (d *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
+func (d *udpsProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
 
 func (d *udpsProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *udpsProxy) OnPrepare() {
 	d.proxy_.onPrepare()
-}
-
-func (d *udpsProxy) OnShutdown() {
-	d.mesher.SubDone()
 }
 
 func (d *udpsProxy) Deal(conn *UDPSConn) (next bool) {

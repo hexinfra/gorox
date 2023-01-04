@@ -38,6 +38,9 @@ func (h *ajpProxy) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *ajpProxy) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *ajpProxy) OnConfigure() {
 	// toBackend
@@ -70,10 +73,6 @@ func (h *ajpProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
 func (h *ajpProxy) OnPrepare() {
-}
-
-func (h *ajpProxy) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *ajpProxy) IsProxy() bool { return true }

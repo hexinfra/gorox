@@ -34,14 +34,13 @@ func (h *rewriteHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *rewriteHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *rewriteHandlet) OnConfigure() {
 }
 func (h *rewriteHandlet) OnPrepare() {
-}
-
-func (h *rewriteHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *rewriteHandlet) Handle(req Request, resp Response) (next bool) {

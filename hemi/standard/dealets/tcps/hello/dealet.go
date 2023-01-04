@@ -34,14 +34,13 @@ func (d *helloDealet) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.stage = stage
 	d.mesher = mesher
 }
+func (d *helloDealet) OnShutdown() {
+	d.mesher.SubDone()
+}
 
 func (d *helloDealet) OnConfigure() {
 }
 func (d *helloDealet) OnPrepare() {
-}
-
-func (d *helloDealet) OnShutdown() {
-	d.mesher.SubDone()
 }
 
 func (d *helloDealet) Deal(conn *TCPSConn) (next bool) {

@@ -43,14 +43,13 @@ func (f *clockFixture) onCreate(stage *Stage) {
 	f.resolution = 100 * time.Millisecond
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }
+func (f *clockFixture) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *clockFixture) OnConfigure() {
 }
 func (f *clockFixture) OnPrepare() {
-}
-
-func (f *clockFixture) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *clockFixture) run() { // goroutine

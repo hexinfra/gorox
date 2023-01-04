@@ -41,15 +41,14 @@ func (h *v1Handlet) onCreate(name string, stage *Stage, app *App) {
 	r := NewSimpleRouter()
 	h.UseRouter(h, r)
 }
+func (h *v1Handlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *v1Handlet) OnConfigure() {
 }
 func (h *v1Handlet) OnPrepare() {
 	h.rocks = h.stage.Server("cli").(*RocksServer)
-}
-
-func (h *v1Handlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *v1Handlet) Handle(req Request, resp Response) (next bool) {

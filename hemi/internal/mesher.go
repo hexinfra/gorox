@@ -55,6 +55,11 @@ func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealetCreat
 	m.editorCreators = editorCreators
 	m.nEditors = 1 // position 0 is not used
 }
+func (m *mesher_[M, G, D, E, C]) shutdownSubs() {
+	m.cases.walk(C.OnShutdown)
+	m.editors.walk(E.OnShutdown)
+	m.dealets.walk(D.OnShutdown)
+}
 
 func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	m.Server_.OnConfigure()
@@ -85,12 +90,6 @@ func (m *mesher_[M, G, D, E, C]) prepareSubs() {
 	m.dealets.walk(D.OnPrepare)
 	m.editors.walk(E.OnPrepare)
 	m.cases.walk(C.OnPrepare)
-}
-
-func (m *mesher_[M, G, D, E, C]) shutdownSubs() {
-	m.cases.walk(C.OnShutdown)
-	m.editors.walk(E.OnShutdown)
-	m.dealets.walk(D.OnShutdown)
 }
 
 func (m *mesher_[M, G, D, E, C]) createDealet(sign string, name string) D {
@@ -160,6 +159,9 @@ func (c *case_[M, D, E]) onCreate(name string, mesher M) {
 	c.CompInit(name)
 	c.mesher = mesher
 }
+func (c *case_[M, D, E]) OnShutdown() {
+	c.mesher.SubDone()
+}
 
 func (c *case_[M, D, E]) OnConfigure() {
 	if c.info == nil {
@@ -176,10 +178,6 @@ func (c *case_[M, D, E]) OnConfigure() {
 	}
 }
 func (c *case_[M, D, E]) OnPrepare() {
-}
-
-func (c *case_[M, D, E]) OnShutdown() {
-	c.mesher.SubDone()
 }
 
 func (c *case_[M, D, E]) addDealet(dealet D) {

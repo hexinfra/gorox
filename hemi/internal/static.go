@@ -45,6 +45,9 @@ func (h *staticHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *staticHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *staticHandlet) OnConfigure() {
 	// webRoot
@@ -103,10 +106,6 @@ func (h *staticHandlet) OnPrepare() {
 	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
 		EnvExitln("indexFile must be a regular file")
 	}
-}
-
-func (h *staticHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {

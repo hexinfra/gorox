@@ -40,6 +40,9 @@ func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *fcgiProxy) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *fcgiProxy) OnConfigure() {
 	// toBackend
@@ -80,10 +83,6 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("keepConn", &h.keepConn, false)
 }
 func (h *fcgiProxy) OnPrepare() {
-}
-
-func (h *fcgiProxy) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }

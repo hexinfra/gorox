@@ -37,19 +37,18 @@ type echoServer struct {
 func (s *echoServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
+func (s *echoServer) OnShutdown() {
+	// We don't use s.Shutdown() here.
+	for _, gate := range s.gates {
+		gate.shutdown()
+	}
+}
 
 func (s *echoServer) OnConfigure() {
 	s.Server_.OnConfigure()
 }
 func (s *echoServer) OnPrepare() {
 	s.Server_.OnPrepare()
-}
-
-func (s *echoServer) OnShutdown() {
-	// We don't use s.Shutdown() here.
-	for _, gate := range s.gates {
-		gate.shutdown()
-	}
 }
 
 func (s *echoServer) Serve() { // goroutine

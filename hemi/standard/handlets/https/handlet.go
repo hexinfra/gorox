@@ -36,6 +36,9 @@ func (h *httpsHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *httpsHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *httpsHandlet) OnConfigure() {
 	// permanent
@@ -44,10 +47,6 @@ func (h *httpsHandlet) OnConfigure() {
 	h.ConfigureString("authority", &h.authority, nil, "")
 }
 func (h *httpsHandlet) OnPrepare() {
-}
-
-func (h *httpsHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *httpsHandlet) Handle(req Request, resp Response) (next bool) {

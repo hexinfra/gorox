@@ -34,14 +34,13 @@ func (e *redisViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	e.stage = stage
 	e.mesher = mesher
 }
+func (e *redisViewer) OnShutdown() {
+	e.mesher.SubDone()
+}
 
 func (e *redisViewer) OnConfigure() {
 }
 func (e *redisViewer) OnPrepare() {
-}
-
-func (e *redisViewer) OnShutdown() {
-	e.mesher.SubDone()
 }
 
 func (e *redisViewer) OnInput(conn *TCPSConn, kind int8) {

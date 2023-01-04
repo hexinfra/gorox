@@ -41,6 +41,9 @@ func (h *Sitex) OnCreate(name string, stage *Stage, app *App) {
 	h.hostnameSites = make(map[string]*Site)
 	h.sites = make(map[string]*Site)
 }
+func (h *Sitex) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *Sitex) OnConfigure() {
 	// sites
@@ -85,10 +88,6 @@ func (h *Sitex) OnConfigure() {
 	h.ConfigureString("rdbms", &h.rdbms, nil, "")
 }
 func (h *Sitex) OnPrepare() {
-}
-
-func (h *Sitex) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.

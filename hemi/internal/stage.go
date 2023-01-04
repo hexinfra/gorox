@@ -112,6 +112,71 @@ func (s *Stage) onCreate() {
 	s.appServers = make(map[string][]string)
 	s.svcServers = make(map[string][]string)
 }
+func (s *Stage) OnShutdown() {
+	if Debug(2) {
+		fmt.Printf("stage id=%d shutdown start!!\n", s.id)
+	}
+
+	s.IncSub(len(s.cronjobs))
+	s.cronjobs.goWalk(Cronjob.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.servers))
+	s.servers.goWalk(Server.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.svcs) + len(s.apps))
+	s.svcs.goWalk((*Svc).OnShutdown)
+	s.apps.goWalk((*App).OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.cachers) + len(s.staters))
+	s.cachers.goWalk(Cacher.OnShutdown)
+	s.staters.goWalk(Stater.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
+	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
+	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
+	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.backends))
+	s.backends.goWalk(backend.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(len(s.runners))
+	s.runners.goWalk(Runner.OnShutdown)
+	s.WaitSubs()
+
+	s.IncSub(7)
+	go s.http1.OnShutdown()
+	go s.http2.OnShutdown()
+	go s.http3.OnShutdown()
+	go s.quic.OnShutdown()
+	go s.tcps.OnShutdown()
+	go s.udps.OnShutdown()
+	go s.unix.OnShutdown()
+	s.WaitSubs()
+
+	s.IncSub(1)
+	s.filesys.OnShutdown()
+	s.WaitSubs()
+
+	s.IncSub(1)
+	s.resolv.OnShutdown()
+	s.WaitSubs()
+
+	s.IncSub(1)
+	s.clock.OnShutdown()
+	s.WaitSubs()
+
+	// TODO: shutdown s
+	if Debug(2) {
+		fmt.Println("stage close log file")
+	}
+	s.logger.Writer().(*os.File).Close()
+}
 
 func (s *Stage) OnConfigure() {
 	// appServers
@@ -195,72 +260,6 @@ func (s *Stage) OnPrepare() {
 	s.svcs.walk((*Svc).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
-}
-
-func (s *Stage) OnShutdown() {
-	if Debug(2) {
-		fmt.Printf("stage id=%d shutdown start!!\n", s.id)
-	}
-
-	s.IncSub(len(s.cronjobs))
-	s.cronjobs.goWalk(Cronjob.OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.servers))
-	s.servers.goWalk(Server.OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.svcs) + len(s.apps))
-	s.svcs.goWalk((*Svc).OnShutdown)
-	s.apps.goWalk((*App).OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.cachers) + len(s.staters))
-	s.cachers.goWalk(Cacher.OnShutdown)
-	s.staters.goWalk(Stater.OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
-	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
-	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
-	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.backends))
-	s.backends.goWalk(backend.OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(len(s.runners))
-	s.runners.goWalk(Runner.OnShutdown)
-	s.WaitSubs()
-
-	s.IncSub(7)
-	go s.http1.OnShutdown()
-	go s.http2.OnShutdown()
-	go s.http3.OnShutdown()
-	go s.quic.OnShutdown()
-	go s.tcps.OnShutdown()
-	go s.udps.OnShutdown()
-	go s.unix.OnShutdown()
-	s.WaitSubs()
-
-	s.IncSub(1)
-	s.filesys.OnShutdown()
-	s.WaitSubs()
-
-	s.IncSub(1)
-	s.resolv.OnShutdown()
-	s.WaitSubs()
-
-	s.IncSub(1)
-	s.clock.OnShutdown()
-	s.WaitSubs()
-
-	// TODO: shutdown s
-	if Debug(2) {
-		fmt.Println("stage close log file")
-	}
-	s.logger.Writer().(*os.File).Close()
 }
 
 func (s *Stage) createRunner(sign string) Runner {

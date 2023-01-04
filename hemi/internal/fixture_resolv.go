@@ -38,14 +38,13 @@ func (f *resolvFixture) onCreate(stage *Stage) {
 	f.CompInit(signResolv)
 	f.stage = stage
 }
+func (f *resolvFixture) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *resolvFixture) OnConfigure() {
 }
 func (f *resolvFixture) OnPrepare() {
-}
-
-func (f *resolvFixture) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *resolvFixture) run() { // goroutine

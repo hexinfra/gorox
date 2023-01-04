@@ -65,6 +65,9 @@ func (f *UDPSOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signUDPS, stage)
 	f.udpsClient_.onCreate()
 }
+func (f *UDPSOutgate) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *UDPSOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -73,10 +76,6 @@ func (f *UDPSOutgate) OnConfigure() {
 func (f *UDPSOutgate) OnPrepare() {
 	f.client_.onConfigure()
 	f.udpsClient_.onPrepare(f)
-}
-
-func (f *UDPSOutgate) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *UDPSOutgate) run() { // goroutine
@@ -116,6 +115,9 @@ func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.udpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
+func (b *UDPSBackend) OnShutdown() {
+	b.Shutdown()
+}
 
 func (b *UDPSBackend) OnConfigure() {
 	b.backend_.onConfigure()
@@ -126,10 +128,6 @@ func (b *UDPSBackend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.udpsClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
-}
-
-func (b *UDPSBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *UDPSBackend) createNode(id int32) *udpsNode {

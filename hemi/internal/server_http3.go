@@ -37,19 +37,18 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.httpServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
 }
+func (s *http3Server) OnShutdown() {
+	// We don't use s.Shutdown() here.
+	for _, gate := range s.gates {
+		gate.shutdown()
+	}
+}
 
 func (s *http3Server) OnConfigure() {
 	s.httpServer_.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
 	s.httpServer_.onPrepare()
-}
-
-func (s *http3Server) OnShutdown() {
-	// We don't use s.Shutdown() here.
-	for _, gate := range s.gates {
-		gate.shutdown()
-	}
 }
 
 func (s *http3Server) Serve() { // goroutine

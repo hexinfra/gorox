@@ -51,6 +51,9 @@ func (f *filesysFixture) onCreate(stage *Stage) {
 	f.stage = stage
 	f.entries = make(map[string]*filesysEntry)
 }
+func (f *filesysFixture) OnShutdown() {
+	f.Shutdown()
+}
 
 func (f *filesysFixture) OnConfigure() {
 	// smallFileSize
@@ -63,10 +66,6 @@ func (f *filesysFixture) OnConfigure() {
 	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) bool { return value > 0 }, 1*time.Second)
 }
 func (f *filesysFixture) OnPrepare() {
-}
-
-func (f *filesysFixture) OnShutdown() {
-	f.Shutdown()
 }
 
 func (f *filesysFixture) run() { // goroutine

@@ -26,6 +26,12 @@ type TCPSMesher struct {
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, tcpsDealetCreators, tcpsEditorCreators)
 }
+func (m *TCPSMesher) OnShutdown() {
+	// We don't use m.Shutdown() here.
+	for _, gate := range m.gates {
+		gate.shutdown()
+	}
+}
 
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
@@ -36,13 +42,6 @@ func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
 	m.prepareSubs() // dealets, editors, cases
-}
-
-func (m *TCPSMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
-	for _, gate := range m.gates {
-		gate.shutdown()
-	}
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {

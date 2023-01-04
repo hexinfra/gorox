@@ -120,6 +120,8 @@ func registerComponent1[T Component, C Component](sign string, comp int16, creat
 // Component is the interface for all components.
 type Component interface {
 	CompInit(name string)
+	OnShutdown()
+	SubDone()
 
 	Name() string
 
@@ -138,9 +140,6 @@ type Component interface {
 	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string)
 
 	OnPrepare()
-
-	OnShutdown()
-	SubDone()
 
 	setName(name string)
 	setShell(shell Component)

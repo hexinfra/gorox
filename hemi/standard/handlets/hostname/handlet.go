@@ -36,6 +36,9 @@ func (h *hostnameHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
+func (h *hostnameHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *hostnameHandlet) OnConfigure() {
 	// hostname
@@ -52,10 +55,6 @@ func (h *hostnameHandlet) OnConfigure() {
 	h.ConfigureBool("permanent", &h.permanent, false)
 }
 func (h *hostnameHandlet) OnPrepare() {
-}
-
-func (h *hostnameHandlet) OnShutdown() {
-	h.app.SubDone()
 }
 
 func (h *hostnameHandlet) Handle(req Request, resp Response) (next bool) {

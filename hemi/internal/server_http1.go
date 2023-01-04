@@ -46,6 +46,12 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.httpServer_.onCreate(name, stage)
 	s.forceScheme = -1 // not force
 }
+func (s *httpxServer) OnShutdown() {
+	// We don't use s.Shutdown() here.
+	for _, gate := range s.gates {
+		gate.shutdown()
+	}
+}
 
 func (s *httpxServer) OnConfigure() {
 	s.httpServer_.onConfigure()
@@ -78,13 +84,6 @@ func (s *httpxServer) OnPrepare() {
 		s.tlsConfig.NextProtos = nextProtos
 	} else if !s.enableHTTP2 {
 		s.h2cMode = false
-	}
-}
-
-func (s *httpxServer) OnShutdown() {
-	// We don't use s.Shutdown() here.
-	for _, gate := range s.gates {
-		gate.shutdown()
 	}
 }
 

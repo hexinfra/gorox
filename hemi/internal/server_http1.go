@@ -397,7 +397,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
-		req.headResult, req.headReason = StatusNotFound, "app is not found in this server"
+		req.headResult, req.headReason = StatusNotFound, "app is not found in this http server"
 		s.serveAbnormal(req, resp)
 		return
 	}
@@ -1243,7 +1243,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// RFC 7230 (section 3.3.1): A server MUST NOT send a
 			// response containing Transfer-Encoding unless the corresponding
 			// request indicates HTTP/1.1 (or later).
-			r.stream.(*http1Stream).conn.keepConn = false // close conn for HTTP/1.0
+			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
 		}
 		// content-type: text/html; charset=utf-8
 		if !r.contentTypeAdded {

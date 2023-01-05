@@ -347,7 +347,7 @@ type Request interface {
 	UnsafeVersion() []byte
 	UnsafeScheme() []byte
 	UnsafeMethod() []byte
-	UnsafeAuthority() []byte
+	UnsafeAuthority() []byte // hostname[:port]
 	UnsafeHostname() []byte
 	UnsafeColonPort() []byte
 	UnsafeURI() []byte

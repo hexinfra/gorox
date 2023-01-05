@@ -117,38 +117,46 @@ func (s *Stage) OnShutdown() {
 		fmt.Printf("stage id=%d shutdown start!!\n", s.id)
 	}
 
+	// cronjobs
 	s.IncSub(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.WaitSubs()
 
+	// servers
 	s.IncSub(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
+	// svcs & apps
 	s.IncSub(len(s.svcs) + len(s.apps))
 	s.svcs.goWalk((*Svc).OnShutdown)
 	s.apps.goWalk((*App).OnShutdown)
 	s.WaitSubs()
 
+	// cachers & staters
 	s.IncSub(len(s.cachers) + len(s.staters))
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
+	// meshers
 	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
 	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
 	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
 	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
 	s.WaitSubs()
 
+	// backends
 	s.IncSub(len(s.backends))
 	s.backends.goWalk(backend.OnShutdown)
 	s.WaitSubs()
 
+	// runners
 	s.IncSub(len(s.runners))
 	s.runners.goWalk(Runner.OnShutdown)
 	s.WaitSubs()
 
+	// fixtures
 	s.IncSub(7)
 	go s.http1.OnShutdown()
 	go s.http2.OnShutdown()
@@ -171,7 +179,7 @@ func (s *Stage) OnShutdown() {
 	s.clock.OnShutdown()
 	s.WaitSubs()
 
-	// TODO: shutdown s
+	// stage
 	if Debug(2) {
 		fmt.Println("stage close log file")
 	}
@@ -391,14 +399,17 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) Filesys() *filesysFixture           { return s.filesys }
-func (s *Stage) HTTP1() *HTTP1Outgate               { return s.http1 }
-func (s *Stage) HTTP2() *HTTP2Outgate               { return s.http2 }
-func (s *Stage) HTTP3() *HTTP3Outgate               { return s.http3 }
-func (s *Stage) QUIC() *QUICOutgate                 { return s.quic }
-func (s *Stage) TCPS() *TCPSOutgate                 { return s.tcps }
-func (s *Stage) UDPS() *UDPSOutgate                 { return s.udps }
-func (s *Stage) Unix() *UnixOutgate                 { return s.unix }
+func (s *Stage) Clock() *clockFixture     { return s.clock }
+func (s *Stage) Filesys() *filesysFixture { return s.filesys }
+func (s *Stage) Resolv() *resolvFixture   { return s.resolv }
+func (s *Stage) HTTP1() *HTTP1Outgate     { return s.http1 }
+func (s *Stage) HTTP2() *HTTP2Outgate     { return s.http2 }
+func (s *Stage) HTTP3() *HTTP3Outgate     { return s.http3 }
+func (s *Stage) QUIC() *QUICOutgate       { return s.quic }
+func (s *Stage) TCPS() *TCPSOutgate       { return s.tcps }
+func (s *Stage) UDPS() *UDPSOutgate       { return s.udps }
+func (s *Stage) Unix() *UnixOutgate       { return s.unix }
+
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Runner(sign string) Runner          { return s.runners[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
@@ -436,6 +447,7 @@ func (s *Stage) Start(id int32) {
 	if BaseDir() == "" || DataDir() == "" || LogsDir() == "" || TempDir() == "" {
 		UseExitln("baseDir, dataDir, logsDir, and tempDir must all be set")
 	}
+
 	// Configure all components
 	if err := s.configure(); err != nil {
 		UseExitln(err.Error())
@@ -444,19 +456,23 @@ func (s *Stage) Start(id int32) {
 	if len(s.servers) == 0 && len(s.quicMeshers) == 0 && len(s.tcpsMeshers) == 0 && len(s.udpsMeshers) == 0 {
 		UseExitln("no server/mesher provided, nothing to serve")
 	}
+
 	// Link apps to http servers
 	s.linkAppServers()
 	// Link svcs to http servers
 	s.linkSvcServers()
+
 	// Prepare all components
 	if err := s.prepare(); err != nil {
 		EnvExitln(err.Error())
 	}
+
 	// Init running environment
 	if err := os.Chdir(BaseDir()); err != nil {
 		EnvExitln(err.Error())
 	}
 
+	// Start all components
 	s.startFixtures() // go fixture.run()
 	s.startRunners()  // go runner.Run()
 	s.startBackends() // go backend.maintain()
@@ -473,7 +489,7 @@ func (s *Stage) Start(id int32) {
 func (s *Stage) Quit() {
 	s.OnShutdown()
 	if Debug(2) {
-		fmt.Printf("stage id=%d: graced.\n", s.id)
+		fmt.Printf("stage id=%d: quit.\n", s.id)
 	}
 }
 
@@ -638,7 +654,7 @@ func (s *Stage) configure() (err error) {
 			err = x.(error)
 		}
 		if Debug(1) {
-			fmt.Println("stage successfully configured")
+			fmt.Println("stage configured")
 		}
 	}()
 	s.OnConfigure()
@@ -653,7 +669,7 @@ func (s *Stage) prepare() (err error) {
 			err = x.(error)
 		}
 		if Debug(1) {
-			fmt.Println("stage successfully prepared")
+			fmt.Println("stage prepared")
 		}
 	}()
 	s.OnPrepare()

@@ -56,30 +56,6 @@ func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
 
-// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
-type Cacher interface {
-	Component
-	Maintain() // goroutine
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_
-type Cacher_ struct {
-	// Mixins
-	Component_
-}
-
-// Hobject is an HTTP object in cacher
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}
-
 // App is the application.
 type App struct {
 	// Mixins
@@ -100,6 +76,7 @@ type App struct {
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            []string          // (file, rotate)
+	logFormat            string            // log format
 	booker               *booker           // app access booker
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
@@ -188,6 +165,8 @@ func (a *App) OnConfigure() {
 	} else {
 		a.accessLog = nil
 	}
+	// logFormat
+	a.ConfigureString("logFormat", &a.logFormat, func(value string) bool { return value != "" }, "%T... todo")
 	// maxMemoryContentSize
 	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) bool { return value > 0 && value <= _1G }, _1M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 	// maxUploadContentSize
@@ -261,8 +240,8 @@ func (a *App) createHandlet(sign string, name string) Handlet {
 		UseExitln("conflicting handlet with a same name in app")
 	}
 	creatorsLock.RLock()
-	defer creatorsLock.RUnlock()
 	create, ok := handletCreators[sign]
+	creatorsLock.RUnlock()
 	if !ok {
 		UseExitln("unknown handlet sign: " + sign)
 	}
@@ -279,8 +258,8 @@ func (a *App) createReviser(sign string, name string) Reviser {
 		UseExitln("conflicting reviser with a same name in app")
 	}
 	creatorsLock.RLock()
-	defer creatorsLock.RUnlock()
 	create, ok := reviserCreators[sign]
+	creatorsLock.RUnlock()
 	if !ok {
 		UseExitln("unknown reviser sign: " + sign)
 	}
@@ -297,8 +276,8 @@ func (a *App) createSocklet(sign string, name string) Socklet {
 		UseExitln("conflicting socklet with a same name in app")
 	}
 	creatorsLock.RLock()
-	defer creatorsLock.RUnlock()
 	create, ok := sockletCreators[sign]
+	creatorsLock.RUnlock()
 	if !ok {
 		UseExitln("unknown socklet sign: " + sign)
 	}
@@ -318,15 +297,9 @@ func (a *App) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *App) Handlet(name string) Handlet {
-	return a.handlets[name]
-}
-func (a *App) Reviser(name string) Reviser {
-	return a.revisers[name]
-}
-func (a *App) Socklet(name string) Socklet {
-	return a.socklets[name]
-}
+func (a *App) Handlet(name string) Handlet { return a.handlets[name] }
+func (a *App) Reviser(name string) Reviser { return a.revisers[name] }
+func (a *App) Socklet(name string) Socklet { return a.socklets[name] }
 func (a *App) Rule(name string) *Rule {
 	for _, rule := range a.rules {
 		if rule.name == name {
@@ -350,9 +323,15 @@ func (a *App) Setting(name string) (value string, ok bool) {
 
 func (a *App) Log(s string) {
 	// TODO
+	if a.booker != nil {
+		//a.booker.log(s)
+	}
 }
 func (a *App) Logln(s string) {
 	// TODO
+	if a.booker != nil {
+		//a.booker.logln(s)
+	}
 }
 func (a *App) Logf(format string, args ...any) {
 	// TODO
@@ -369,13 +348,15 @@ func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {
 		// TODO
 	})
-	a.IncSub(len(a.handlets) + len(a.socklets) + len(a.revisers) + len(a.rules))
+	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
 	a.rules.goWalk((*Rule).OnShutdown)
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
 	a.handlets.goWalk(Handlet.OnShutdown)
-	a.WaitSubs() // handlets, socklets, revisers, rules
-	// TODO: close access log file
+	a.WaitSubs() // handlets, revisers, socklets, rules
+	if a.booker != nil {
+		// TODO: close access log file
+	}
 	if Debug(2) {
 		fmt.Printf("app=%s done\n", a.Name())
 	}

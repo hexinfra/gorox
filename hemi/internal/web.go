@@ -1112,7 +1112,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
-// Router performs request routing in handlers.
+// Router performs request routing in handlets.
 type Router interface {
 	FindHandle(req Request) Handle
 	CreateName(req Request) string

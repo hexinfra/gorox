@@ -315,9 +315,10 @@ type Request interface {
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
-	HasContent() bool                        // contentSize>=0 and contentSize=-2 are considered as true
+	HasContent() bool
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
+	HoldContent() any
 
 	F(name string) string
 	Fstr(name string, defaultValue string) string
@@ -333,6 +334,7 @@ type Request interface {
 	Uploads() (uploads []*Upload)
 	HasUpload(name string) bool
 
+	HasTrailers() bool
 	T(name string) string
 	Tstr(name string, defaultValue string) string
 	Trailer(name string) (value string, ok bool)
@@ -376,9 +378,7 @@ type Request interface {
 	walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	recvContent(retain bool) any
-	holdContent() any
 	readContent() (p []byte, err error)
-	hasTrailers() bool
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool
 	getSaveContentFilesDir() string

@@ -285,13 +285,13 @@ func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
 type response interface {
 	Status() int16
 	ContentSize() int64
+	UnsafeContentType() []byte
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against bad server
+	HasTrailers() bool
 
 	unsafeDate() []byte
 	unsafeETag() []byte
 	unsafeLastModified() []byte
-	UnsafeContentType() []byte
-	hasTrailers() bool
 	delCriticalHeaders()
 	delHopHeaders()
 	delHopTrailers()

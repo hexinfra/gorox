@@ -75,10 +75,11 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 type httpInMessage interface {
 	ContentSize() int64
 	UnsafeContent() []byte
+	HasTrailers() bool
+
 	arrayCopy(p []byte) bool
 	applyHeader(header *pair) bool
 	readContent() (p []byte, err error)
-	hasTrailers() bool
 	applyTrailer(trailer *pair) bool
 	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
 	getSaveContentFilesDir() string
@@ -116,7 +117,7 @@ type httpInMessage_ struct {
 	recvTime        time.Time // the time when receiving message
 	bodyTime        time.Time // the time when first body read operation is performed on this stream
 	contentBlob     []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentHeld     *os.File  // used by holdContent(), if content is TempFile. will be closed on stream ends
+	contentHeld     *os.File  // used by r.HoldContent(), if content is TempFile. will be closed on stream ends
 	httpInMessage0_           // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
@@ -657,7 +658,7 @@ badRecv:
 	}
 	return err
 }
-func (r *httpInMessage_) holdContent() any { // used by proxies
+func (r *httpInMessage_) HoldContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentHeld == nil { // content is either blob or file
 			return r.contentBlob
@@ -681,7 +682,7 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 	return nil
 }
 
-func (r *httpInMessage_) hasTrailers() bool { // used by proxies
+func (r *httpInMessage_) HasTrailers() bool { // used by proxies
 	return r.trailers.notEmpty()
 }
 func (r *httpInMessage_) T(name string) string {
@@ -1420,7 +1421,7 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 			return err
 		}
 	}
-	if in.hasTrailers() { // added trailers will be written eventually by upper code.
+	if in.HasTrailers() { // added trailers will be written eventually by upper code.
 		if !in.walkTrailers(func(name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}, true) { // for proxy

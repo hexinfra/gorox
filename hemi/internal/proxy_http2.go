@@ -55,7 +55,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
-		content = req.holdContent()
+		content = req.HoldContent()
 		if content == nil {
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
@@ -102,7 +102,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		resp.SendBadGateway(nil)
 		return
 	}
-	hasTrailers := req.hasTrailers()
+	hasTrailers := req.HasTrailers()
 	if !hasContent || h.bufferClientContent {
 		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err2 == nil && hasTrailers {
@@ -157,7 +157,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasContent2 = resp2.HasContent()
 	}
 	if hasContent2 && h.bufferServerContent { // including size 0
-		content2 = resp2.holdContent()
+		content2 = resp2.HoldContent()
 		if content2 == nil {
 			// stream2 is marked as broken
 			resp.SendBadGateway(nil)
@@ -169,7 +169,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		stream2.markBroken()
 		return
 	}
-	hasTrailers2 := resp2.hasTrailers()
+	hasTrailers2 := resp2.HasTrailers()
 	if !hasContent2 || h.bufferServerContent {
 		if resp.post(content2, hasTrailers2) != nil { // nil (no content), []byte, TempFile
 			if hasTrailers2 {

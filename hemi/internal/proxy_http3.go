@@ -55,7 +55,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
-		content = req.holdContent()
+		content = req.HoldContent()
 		if content == nil {
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
@@ -102,7 +102,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		resp.SendBadGateway(nil)
 		return
 	}
-	hasTrailers := req.hasTrailers()
+	hasTrailers := req.HasTrailers()
 	if !hasContent || h.bufferClientContent {
 		err3 = req3.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err3 == nil && hasTrailers {
@@ -157,7 +157,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasContent3 = resp3.HasContent()
 	}
 	if hasContent3 && h.bufferServerContent { // including size 0
-		content3 = resp3.holdContent()
+		content3 = resp3.HoldContent()
 		if content3 == nil {
 			// stream3 is marked as broken
 			resp.SendBadGateway(nil)
@@ -169,7 +169,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		stream3.markBroken()
 		return
 	}
-	hasTrailers3 := resp3.hasTrailers()
+	hasTrailers3 := resp3.HasTrailers()
 	if !hasContent3 || h.bufferServerContent {
 		if resp.post(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
 			if hasTrailers3 {

@@ -45,8 +45,8 @@ Constants
 
     @baseDir : Containing directory of the gorox executable
     @logsDir : Containing directory of the gorox log files
-    @tempDir : Containing directory of the gorox run-time files
-    @varsDir : Containing directory of the gorox run-time datum
+    @tempDir : Containing directory of the gorox temp files
+    @varsDir : Containing directory of the gorox run-time data
 
 Variables
 --------------------

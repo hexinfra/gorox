@@ -943,18 +943,20 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 	// RFC 7230 (section 5.4): A server MUST respond with a 400 (Bad Request) status code to any
 	// HTTP/1.1 request message that lacks a Host header field and to any request message that
 	// contains more than one Host header field or a Host header field with an invalid field-value.
-	if r.indexes.host != 0 || header.value.isEmpty() {
-		r.headResult, r.headReason = StatusBadRequest, "duplicate or empty host header"
+	if r.indexes.host != 0 {
+		r.headResult, r.headReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
 	value := header.value
-	// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
-	// The scheme and host are case-insensitive and normally provided in lowercase;
-	// all other components are compared in a case-sensitive manner.
-	bytesToLower(r.input[value.from:value.edge])
-	if !r.parseAuthority(value.from, value.edge, r.authority.isEmpty()) {
-		r.headResult, r.headReason = StatusBadRequest, "bad host value"
-		return false
+	if value.notEmpty() {
+		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
+		// The scheme and host are case-insensitive and normally provided in lowercase;
+		// all other components are compared in a case-sensitive manner.
+		bytesToLower(r.input[value.from:value.edge])
+		if !r.parseAuthority(value.from, value.edge, r.authority.isEmpty()) {
+			r.headResult, r.headReason = StatusBadRequest, "bad host value"
+			return false
+		}
 	}
 	r.indexes.host = index
 	return true

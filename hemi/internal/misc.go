@@ -26,9 +26,9 @@ var ( // global variables shared between stages
 	_logsOnce sync.Once    // protects _logsDir
 	_logsDir  atomic.Value // directory of the log files
 	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the run-time files
+	_tempDir  atomic.Value // directory of the temp files
 	_varsOnce sync.Once    // protects _varsDir
-	_varsDir  atomic.Value // directory of the run-time datum
+	_varsDir  atomic.Value // directory of the run-time data
 )
 
 func Debug(level int32) bool { return _debug.Load() >= level }

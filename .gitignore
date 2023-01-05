@@ -32,6 +32,7 @@ desktop.ini
 /hemi/develop/logs
 /hemi/develop/temp
 /hemi/develop/vars
+/hemi/develop/vendor
 
 /hemi/develop/demake
 /hemi/develop/derox

@@ -8,19 +8,19 @@
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/gocmc/board"
-	_ "github.com/hexinfra/gorox/cmds/gocmc/iface"
-	_ "github.com/hexinfra/gorox/cmds/gocmc/rocks"
-	_ "github.com/hexinfra/gorox/cmds/gocmc/store"
+	_ "github.com/hexinfra/gorox/cmds/goops/board"
+	_ "github.com/hexinfra/gorox/cmds/goops/iface"
+	_ "github.com/hexinfra/gorox/cmds/goops/rocks"
+	_ "github.com/hexinfra/gorox/cmds/goops/store"
 )
 
 import "github.com/hexinfra/gorox/hemi/manager"
 
 const usage = `
-Gocmc (%s)
+Goops (%s)
 ================================================================================
 
-  gocmc [ACTION] [OPTIONS]
+  goops [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -54,7 +54,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: gocmc-leader.log in logs dir)
+  -log    <path>      # leader log file (default: goops-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -69,5 +69,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("gocmc", usage, 0, "127.0.0.1:9528")
+	manager.Main("goops", usage, 0, "127.0.0.1:9528")
 }

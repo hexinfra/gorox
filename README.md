@@ -15,7 +15,7 @@ Welcome
     * Web Application Firewall
     * ... and more through its highly extensible compoments design!
 
-  There is also a Gocmc which can optionally manage your Gorox cluster.
+  There is also a Goops which can optionally manage your Gorox cluster.
 
   For more details about Gorox, please see: https://gorox.io/
 

@@ -7,7 +7,7 @@ package iface
 
 import (
 	"fmt"
-	. "github.com/hexinfra/gorox/cmds/gocmc/rocks"
+	. "github.com/hexinfra/gorox/cmds/goops/rocks"
 	. "github.com/hexinfra/gorox/hemi"
 )
 

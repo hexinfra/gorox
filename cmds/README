@@ -2,7 +2,7 @@ This directory holds commands and tools, basically one cmd per directory.
 By default there are 3 cmds:
 
   goben/    - An HTTP benchmarking tool.
-  gocmc/    - Gorox Cluster Management Center.
+  goops/    - Gorox Operations.
   gorox/    - The gorox server and control agent.
 
 To add a new cmd named "foo":

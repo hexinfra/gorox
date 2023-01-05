@@ -8,10 +8,10 @@
 // Some terms:
 //   admGate - Used by leader process, for receiving admConns from control agent
 //   admConn - control agent ----> adminServer()
-//   msgChan - adminServer()/gocmcClient() <---> keepWorker()
+//   msgChan - adminServer()/goopsClient() <---> keepWorker()
 //   deadWay - keepWorker() <---- worker.wait()
 //   cmdPipe - leader process <---> worker process
-//   cmcConn - leader gocmcClient <---> gocmc
+//   cmcConn - leader goopsClient <---> goops
 
 package manager
 
@@ -49,10 +49,10 @@ func leaderMain() {
 	}
 	logger = log.New(osFile, "", log.Ldate|log.Ltime)
 
-	if *gocmcAddr == "" {
+	if *goopsAddr == "" {
 		adminServer()
 	} else {
-		gocmcClient()
+		goopsClient()
 	}
 }
 
@@ -132,7 +132,7 @@ func adminServer() {
 		admConn.Close()
 	}
 }
-func gocmcClient() {
+func goopsClient() {
 	// TODO
 	fmt.Println("TODO")
 }

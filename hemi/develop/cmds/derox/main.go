@@ -55,7 +55,7 @@ OPTIONS
 
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9526)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9526)
-  -gocmc  <addr>      # gocmc address to join. if set, "-admin" will be ignored
+  -goops  <addr>      # goops address to join. if set, "-admin" will be ignored
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)

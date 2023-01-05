@@ -19,9 +19,10 @@
 desktop.ini
 
 /dist
+
+/data
 /logs
 /temp
-/vars
 /vendor
 
 /gomake
@@ -29,9 +30,9 @@ desktop.ini
 /goops
 /gorox
 
+/hemi/develop/data
 /hemi/develop/logs
 /hemi/develop/temp
-/hemi/develop/vars
 /hemi/develop/vendor
 
 /hemi/develop/demake

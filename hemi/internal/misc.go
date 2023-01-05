@@ -23,25 +23,25 @@ var ( // global variables shared between stages
 	_debug    atomic.Int32 // debug level
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
+	_dataOnce sync.Once    // protects _dataDir
+	_dataDir  atomic.Value // directory of the run-time data
 	_logsOnce sync.Once    // protects _logsDir
 	_logsDir  atomic.Value // directory of the log files
 	_tempOnce sync.Once    // protects _tempDir
 	_tempDir  atomic.Value // directory of the temp files
-	_varsOnce sync.Once    // protects _varsDir
-	_varsDir  atomic.Value // directory of the run-time data
 )
 
 func Debug(level int32) bool { return _debug.Load() >= level }
 func BaseDir() string        { return _baseDir.Load().(string) }
+func DataDir() string        { return _dataDir.Load().(string) }
 func LogsDir() string        { return _logsDir.Load().(string) }
 func TempDir() string        { return _tempDir.Load().(string) }
-func VarsDir() string        { return _varsDir.Load().(string) }
 
 func SetDebug(level int32)  { _debug.Store(level) }
 func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once
+func SetDataDir(dir string) { _dataOnce.Do(func() { _dataDir.Store(dir) }) } // only once
 func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // only once
 func SetTempDir(dir string) { _tempOnce.Do(func() { _tempDir.Store(dir) }) } // only once
-func SetVarsDir(dir string) { _varsOnce.Do(func() { _varsDir.Store(dir) }) } // only once
 
 const ( // exit codes. keep sync with ../hemi.go
 	CodeBug = 20

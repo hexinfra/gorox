@@ -429,12 +429,12 @@ func (s *Stage) Start(id int32) {
 		fmt.Printf("stageID=%d\n", s.id)
 		fmt.Printf("numCPU=%d\n", s.numCPU)
 		fmt.Printf("baseDir=%s\n", BaseDir())
+		fmt.Printf("dataDir=%s\n", DataDir())
 		fmt.Printf("logsDir=%s\n", LogsDir())
 		fmt.Printf("tempDir=%s\n", TempDir())
-		fmt.Printf("varsDir=%s\n", VarsDir())
 	}
-	if BaseDir() == "" || LogsDir() == "" || TempDir() == "" || VarsDir() == "" {
-		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
+	if BaseDir() == "" || DataDir() == "" || LogsDir() == "" || TempDir() == "" {
+		UseExitln("baseDir, dataDir, logsDir, and tempDir must all be set")
 	}
 	// Configure all components
 	if err := s.configure(); err != nil {

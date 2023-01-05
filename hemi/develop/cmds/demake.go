@@ -39,7 +39,7 @@ TARGET
 
   all      # build all cmds in the directory
   clean    # clean binaries, logs, and temp files
-  clear    # clear binaries, logs, temp, and vars files
+  clear    # clear binaries, data, logs, and temp files
 `
 
 var (
@@ -107,7 +107,7 @@ func main() {
 	}
 }
 
-func reset(withVars bool) {
+func reset(withData bool) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -117,8 +117,8 @@ func reset(withVars bool) {
 		"logs",
 		"temp",
 	}
-	if withVars {
-		dirs = append(dirs, "vars")
+	if withData {
+		dirs = append(dirs, "data")
 	}
 	for _, dir := range dirs {
 		dir = pwd + "/" + dir

@@ -32,9 +32,9 @@ var ( // flags
 	daemonMode = flag.Bool("daemon", false, "")
 	logFile    = flag.String("log", "", "")
 	baseDir    = flag.String("base", "", "")
+	dataDir    = flag.String("data", "", "")
 	logsDir    = flag.String("logs", "", "")
 	tempDir    = flag.String("temp", "", "")
-	varsDir    = flag.String("vars", "", "")
 	config     = flag.String("config", "", "")
 )
 
@@ -95,9 +95,9 @@ func serve() { // as single, leader, or worker
 		*pDir = filepath.ToSlash(*pDir)
 		set(*pDir)
 	}
+	setDir(dataDir, "data", hemi.SetDataDir)
 	setDir(logsDir, "logs", hemi.SetLogsDir)
 	setDir(tempDir, "temp", hemi.SetTempDir)
-	setDir(varsDir, "vars", hemi.SetVarsDir)
 
 	if *tryRun { // for testing config file
 		if _, err := hemi.ApplyFile(getConfig()); err != nil {

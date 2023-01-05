@@ -26,9 +26,9 @@ func ApplyFile(base string, file string) (*Stage, error) {
 func getConfig() (c config) {
 	constants := map[string]string{
 		"baseDir": BaseDir(),
+		"dataDir": DataDir(),
 		"logsDir": LogsDir(),
 		"tempDir": TempDir(),
-		"varsDir": VarsDir(),
 	}
 	c.init(constants, varCodes, signedComps)
 	return

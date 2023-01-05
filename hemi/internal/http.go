@@ -5,52 +5,6 @@
 
 // General HTTP protocol elements, incoming message and outgoing message implementation.
 
-/*
-
---http[1-3]Stream-->                        ----H[1-3]Stream--->
-[REVISERS]      ^    -------pass/post----->                 ^
-                |                                           |
-httpInMessage_  | stream                    httpOutMessage_ | stream
-^ - stream -----+                           ^ - stream -----+
-| - shell ------+                           | - shell ------+
-|               | httpInMessage             |               | httpOutMessage
-+-httpRequest_  |                           +-hRequest_     |
-  ^ - httpConn -+---> http[1-3]Conn           ^ - hConn ----+---> H[1-3]Conn
-  |             |                             |             |
-  |             v                             |             v
-  +-http[1-3]Request                          +-H[1-3]Request
-                          \           /
-                \          \         /
-      1/2/3      \          \       /             1/2/3
-   [httpServer]  [Handlet]/[httpProxy]         [httpClient]
-      1/2/3      /          /       \             1/2/3
-                /          /         \
-                          /           \
-<--http[1-3]Stream--                        <---H[1-3]Stream----
-[REVISERS]       ^   <------pass/post------                ^
-                 |                                         |
-httpOutMessage_  | stream                   httpInMessage_ | stream
-^ - stream ------+                          ^ - stream ----+
-| - shell -------+                          | - shell -----+
-|                | httpOutMessage           |              | httpInMessage
-+-httpResponse_  |                          +-hResponse_   |
-  ^ - httpConn --+---> http[1-3]Conn          ^ - hConn ---+---> H[1-3]Conn
-  |              |                            |            |
-  |              v                            |            v
-  +-http[1-3]Response                         +-H[1-3]Response
-
-
-NOTES:
-
-  * messages are composed of control, headers, [content, [trailers]].
-  * control & headers is called head, and it must be small.
-  * contents, if exist (perhaps of zero size), may be large/small, counted/chunked.
-  * trailers must be small, and only exist when contents exist and are chunked.
-  * incoming messages need parsing.
-  * outgoing messages need building.
-
-*/
-
 package internal
 
 import (
@@ -1497,13 +1451,13 @@ func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { 
 	}
 	from = int(r.fieldsEdge)
 	ceil := r.fieldsEdge + uint16(size)
-	tail := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
-	if ceil < r.fieldsEdge || tail > _16K || tail < ceil {
+	last := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
+	if ceil < r.fieldsEdge || last > _16K || last < ceil {
 		// Overflow
 		return
 	}
-	if tail > uint16(cap(r.fields)) { // tail <= _16K
-		fields := GetNK(int64(tail)) // 4K/16K
+	if last > uint16(cap(r.fields)) { // last <= _16K
+		fields := GetNK(int64(last)) // 4K/16K
 		copy(fields, r.fields[0:r.fieldsEdge])
 		if cap(r.fields) != cap(r.stockFields) {
 			PutNK(r.fields)

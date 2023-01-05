@@ -39,6 +39,7 @@ TARGET
 
   all      # build all cmds in the directory
   clean    # clean binaries, logs, and temp files
+  clear    # clear binaries, logs, temp, and vars files
 `
 
 var (
@@ -63,7 +64,9 @@ func main() {
 
 	switch target := flag.Arg(0); target {
 	case "clean":
-		clean()
+		reset(false)
+	case "clear":
+		reset(true)
 	default: // build
 		if *fmt_ {
 			cmd := exec.Command("gofmt", "-w", "..")
@@ -104,7 +107,7 @@ func main() {
 	}
 }
 
-func clean() {
+func reset(withVars bool) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -113,6 +116,9 @@ func clean() {
 	dirs := []string{
 		"logs",
 		"temp",
+	}
+	if withVars {
+		dirs = append(dirs, "vars")
 	}
 	for _, dir := range dirs {
 		dir = pwd + "/" + dir
@@ -139,7 +145,7 @@ func clean() {
 			}
 		}
 	}
-	fmt.Println("clean ok.")
+	fmt.Println("done.")
 }
 
 func build(name string, path string) {

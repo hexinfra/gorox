@@ -312,14 +312,17 @@ func (r *hRequest_) addConnection() {
 }
 func (r *hRequest_) delConnection() {
 }
+
 func (r *hRequest_) addContentLength() {
 }
 func (r *hRequest_) delContentLength() {
 }
+
 func (r *hRequest_) addTransferEncoding() {
 }
 func (r *hRequest_) delTransferEncoding() {
 }
+
 func (r *hRequest_) addCookie() {
 }
 func (r *hRequest_) delCookie() {

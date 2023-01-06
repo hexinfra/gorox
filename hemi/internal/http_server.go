@@ -2322,10 +2322,10 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
+	SetAcceptBytesRange()
 	SetLastModified(lastModified int64) bool
 	SetETag(etag string) bool
 	SetETagBytes(etag []byte) bool
-	SetAcceptBytesRange()
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
@@ -2451,6 +2451,9 @@ func (r *httpResponse_) Status() int16 {
 	return r.status
 }
 
+func (r *httpResponse_) SetAcceptBytesRange() {
+	r.acceptBytesRange = true
+}
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 	if lastModified >= 0 {
 		r.lastModified = lastModified
@@ -2493,9 +2496,6 @@ func (r *httpResponse_) makeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	r.etag[r.nETag] = '"'
 	r.nETag++
 	return r.etag[0:r.nETag], true
-}
-func (r *httpResponse_) SetAcceptBytesRange() {
-	r.acceptBytesRange = true
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2703,14 +2703,17 @@ func (r *httpResponse_) addConnection() {
 }
 func (r *httpResponse_) delConnection() {
 }
+
 func (r *httpResponse_) addContentLength() {
 }
 func (r *httpResponse_) delContentLength() {
 }
+
 func (r *httpResponse_) addTransferEncoding() {
 }
 func (r *httpResponse_) delTransferEncoding() {
 }
+
 func (r *httpResponse_) addSetCookie() {
 }
 func (r *httpResponse_) delSetCookie() {

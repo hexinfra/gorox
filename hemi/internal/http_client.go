@@ -182,7 +182,8 @@ type hRequest_ struct {
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
-	cookieCopied bool // is cookie header copied?
+	cookieCopied bool  // is cookie header copied?
+	iCookie      uint8 // ...
 }
 
 func (r *hRequest_) onUse() { // for non-zeros

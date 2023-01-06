@@ -2413,6 +2413,9 @@ type httpResponse0_ struct { // for fast reset, entirely
 	dateCopied         bool      // is date header copied?
 	lastModifiedCopied bool      // is last-modified header copied?
 	etagCopied         bool      // is etag header copied?
+	iSetCookie         uint8     // ...
+	iLastModified      uint8     // ...
+	iETag              uint8     // ...
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
@@ -2505,8 +2508,8 @@ func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
 }
 
 var ( // perfect hash table for response crucial fields
-	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie")
-	httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
+	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie last-modified etag")
+	httpResponseCrucialFieldTable = [6]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8
 		edge uint8
@@ -2517,6 +2520,8 @@ var ( // perfect hash table for response crucial fields
 		1: {httpHashContentLength, 2, 3, nil, nil},
 		2: {httpHashTransferEncoding, 4, 5, nil, nil},
 		3: {httpHashSetCookie, 6, 7, nil, nil},
+		4: {httpHashLastModified, 8, 9, nil, nil},
+		5: {httpHashETag, 10, 11, nil, nil},
 	}
 	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 }
 )

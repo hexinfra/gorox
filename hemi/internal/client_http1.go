@@ -41,26 +41,22 @@ func createHTTP1(stage *Stage) *HTTP1Outgate {
 // HTTP1Outgate
 type HTTP1Outgate struct {
 	// Mixins
-	client_
 	httpOutgate_
 	// States
 	conns any // TODO
 }
 
 func (f *HTTP1Outgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signHTTP1, stage)
-	f.httpOutgate_.onCreate()
+	f.httpOutgate_.onCreate(signHTTP1, stage)
 }
 func (f *HTTP1Outgate) OnShutdown() {
 	f.Shutdown()
 }
 
 func (f *HTTP1Outgate) OnConfigure() {
-	f.client_.onConfigure()
 	f.httpOutgate_.onConfigure(f)
 }
 func (f *HTTP1Outgate) OnPrepare() {
-	f.client_.onPrepare()
 	f.httpOutgate_.onPrepare(f)
 }
 
@@ -96,25 +92,21 @@ func (f *HTTP1Outgate) Dial(address string, tlsMode bool) (*H1Conn, error) {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Mixins
-	backend_[*http1Node]
-	httpBackend_
+	httpBackend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
-	b.httpBackend_.onCreate()
+	b.httpBackend_.onCreate(name, stage, b)
 }
 func (b *HTTP1Backend) OnShutdown() {
 	b.Shutdown()
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.backend_.onConfigure()
 	b.httpBackend_.onConfigure(b)
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.backend_.onPrepare()
 	b.httpBackend_.onPrepare(b, len(b.nodes))
 }
 

@@ -38,25 +38,21 @@ func createHTTP3(stage *Stage) *HTTP3Outgate {
 // HTTP3Outgate
 type HTTP3Outgate struct {
 	// Mixins
-	client_
 	httpOutgate_
 	// States
 }
 
 func (f *HTTP3Outgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signHTTP3, stage)
-	f.httpOutgate_.onCreate()
+	f.httpOutgate_.onCreate(signHTTP3, stage)
 }
 func (f *HTTP3Outgate) OnShutdown() {
 	f.Shutdown()
 }
 
 func (f *HTTP3Outgate) OnConfigure() {
-	f.client_.onConfigure()
 	f.httpOutgate_.onConfigure(f)
 }
 func (f *HTTP3Outgate) OnPrepare() {
-	f.client_.onPrepare()
 	f.httpOutgate_.onPrepare(f)
 }
 
@@ -81,25 +77,21 @@ func (f *HTTP3Outgate) StoreConn(conn *H3Conn) {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Mixins
-	backend_[*http3Node]
-	httpBackend_
+	httpBackend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
-	b.httpBackend_.onCreate()
+	b.httpBackend_.onCreate(name, stage, b)
 }
 func (b *HTTP3Backend) OnShutdown() {
 	b.Shutdown()
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.backend_.onConfigure()
 	b.httpBackend_.onConfigure(b)
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.backend_.onPrepare()
 	b.httpBackend_.onPrepare(b, len(b.nodes))
 }
 

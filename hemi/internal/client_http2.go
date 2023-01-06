@@ -39,25 +39,21 @@ func createHTTP2(stage *Stage) *HTTP2Outgate {
 // HTTP2Outgate
 type HTTP2Outgate struct {
 	// Mixins
-	client_
 	httpOutgate_
 	// States
 }
 
 func (f *HTTP2Outgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signHTTP2, stage)
-	f.httpOutgate_.onCreate()
+	f.httpOutgate_.onCreate(signHTTP2, stage)
 }
 func (f *HTTP2Outgate) OnShutdown() {
 	f.Shutdown()
 }
 
 func (f *HTTP2Outgate) OnConfigure() {
-	f.client_.onConfigure()
 	f.httpOutgate_.onConfigure(f)
 }
 func (f *HTTP2Outgate) OnPrepare() {
-	f.client_.onPrepare()
 	f.httpOutgate_.onPrepare(f)
 }
 
@@ -82,25 +78,21 @@ func (f *HTTP2Outgate) StoreConn(conn *H2Conn) {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Mixins
-	backend_[*http2Node]
-	httpBackend_
+	httpBackend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
-	b.httpBackend_.onCreate()
+	b.httpBackend_.onCreate(name, stage, b)
 }
 func (b *HTTP2Backend) OnShutdown() {
 	b.Shutdown()
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.backend_.onConfigure()
 	b.httpBackend_.onConfigure(b)
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.backend_.onPrepare()
 	b.httpBackend_.onPrepare(b, len(b.nodes))
 }
 

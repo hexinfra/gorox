@@ -49,41 +49,49 @@ func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
 	// Mixins
+	client_
 	httpClient_
 	// States
 }
 
-func (f *httpOutgate_) onCreate() {
+func (f *httpOutgate_) onCreate(name string, stage *Stage) {
+	f.client_.onCreate(name, stage)
 	f.httpClient_.onCreate()
 }
 
 func (f *httpOutgate_) onConfigure(c Component) {
+	f.client_.onConfigure()
 	f.httpClient_.onConfigure(c, "outgates")
 }
 func (f *httpOutgate_) onPrepare(c Component) {
+	f.client_.onPrepare()
 	f.httpClient_.onPrepare(c)
 	f.makeContentFilesDir(0755)
 }
 
 // httpBackend_ is the mixin for HTTP[1-3]Backend.
-type httpBackend_ struct {
+type httpBackend_[N node] struct {
 	// Mixins
+	backend_[N]
 	httpClient_
 	loadBalancer_
 	// States
 	health any // TODO
 }
 
-func (b *httpBackend_) onCreate() {
+func (b *httpBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+	b.backend_.onCreate(name, stage, creator)
 	b.httpClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
-func (b *httpBackend_) onConfigure(c Component) {
+func (b *httpBackend_[N]) onConfigure(c Component) {
+	b.backend_.onConfigure()
 	b.httpClient_.onConfigure(c, "backends")
 	b.loadBalancer_.onConfigure(c)
 }
-func (b *httpBackend_) onPrepare(c Component, numNodes int) {
+func (b *httpBackend_[N]) onPrepare(c Component, numNodes int) {
+	b.backend_.onPrepare()
 	b.httpClient_.onPrepare(c)
 	b.makeContentFilesDir(0755)
 	b.loadBalancer_.onPrepare(numNodes)

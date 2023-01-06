@@ -90,7 +90,7 @@ type backend_[N node] struct {
 	// Assocs
 	creator interface {
 		createNode(id int32) N
-	}
+	} // if Go's generic supports new(N) then this is not needed.
 	nodes []N
 	// States
 }

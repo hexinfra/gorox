@@ -42,7 +42,7 @@ func (h *http1Proxy) OnConfigure() {
 	h.httpProxy_.onConfigure(h)
 }
 func (h *http1Proxy) OnPrepare() {
-	h.httpProxy_.onPrepare()
+	h.httpProxy_.onPrepare(h)
 }
 
 func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -213,7 +213,7 @@ func (s *sock1Proxy) OnConfigure() {
 	s.sockProxy_.onConfigure(s)
 }
 func (s *sock1Proxy) OnPrepare() {
-	s.sockProxy_.onPrepare()
+	s.sockProxy_.onPrepare(s)
 }
 
 func (s *sock1Proxy) Serve(req Request, sock Socket) { // currently reverse only

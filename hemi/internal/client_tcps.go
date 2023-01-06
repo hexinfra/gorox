@@ -42,11 +42,11 @@ type tcpsClient_ struct {
 func (t *tcpsClient_) onCreate() {
 }
 
-func (t *tcpsClient_) onConfigure(c Component) {
+func (t *tcpsClient_) onConfigure(shell Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &t.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	shell.ConfigureInt32("maxStreamsPerConn", &t.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (t *tcpsClient_) onPrepare(c Component) {
+func (t *tcpsClient_) onPrepare(shell Component) {
 }
 
 const signTCPS = "tcps"
@@ -149,11 +149,11 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 }
 
 func (b *TCPSBackend) Dial() (PConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 func (b *TCPSBackend) FetchConn() (PConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *TCPSBackend) StoreConn(conn PConn) {

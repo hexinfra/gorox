@@ -38,7 +38,7 @@ func (d *udpsProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *udpsProxy) OnPrepare() {
-	d.proxy_.onPrepare()
+	d.proxy_.onPrepare(d)
 }
 
 func (d *udpsProxy) Deal(conn *UDPSConn) (next bool) {

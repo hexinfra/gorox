@@ -100,8 +100,8 @@ func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
 	h.app = app
 }
 
-func (h *httpProxy_) onConfigure(c Component) {
-	h.proxy_.onConfigure(c)
+func (h *httpProxy_) onConfigure(shell Component) {
+	h.proxy_.onConfigure(shell)
 	if h.proxyMode == "forward" && !h.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
@@ -133,8 +133,8 @@ func (h *httpProxy_) onConfigure(c Component) {
 		h.delResponseHeaders = append(h.delResponseHeaders, []byte(header))
 	}
 }
-func (h *httpProxy_) onPrepare() {
-	h.proxy_.onPrepare()
+func (h *httpProxy_) onPrepare(shell Component) {
+	h.proxy_.onPrepare(shell)
 }
 
 func (h *httpProxy_) IsProxy() bool { return true }
@@ -156,14 +156,14 @@ func (s *sockProxy_) onCreate(name string, stage *Stage, app *App) {
 	s.app = app
 }
 
-func (s *sockProxy_) onConfigure(c Component) {
-	s.proxy_.onConfigure(c)
+func (s *sockProxy_) onConfigure(shell Component) {
+	s.proxy_.onConfigure(shell)
 	if s.proxyMode == "forward" && !s.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }
-func (s *sockProxy_) onPrepare() {
-	s.proxy_.onPrepare()
+func (s *sockProxy_) onPrepare(shell Component) {
+	s.proxy_.onPrepare(shell)
 }
 
 func (s *sockProxy_) IsProxy() bool { return true }

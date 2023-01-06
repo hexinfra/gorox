@@ -20,9 +20,9 @@ func (p *proxy_) onCreate(stage *Stage) {
 	p.stage = stage
 }
 
-func (p *proxy_) onConfigure(c Component) {
+func (p *proxy_) onConfigure(shell Component) {
 	// proxyMode
-	if v, ok := c.Find("proxyMode"); ok {
+	if v, ok := shell.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
 			p.proxyMode = mode
 		} else {
@@ -32,7 +32,7 @@ func (p *proxy_) onConfigure(c Component) {
 		p.proxyMode = "reverse"
 	}
 	// toBackend
-	if v, ok := c.Find("toBackend"); ok {
+	if v, ok := shell.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := p.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
@@ -46,5 +46,5 @@ func (p *proxy_) onConfigure(c Component) {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (p *proxy_) onPrepare() {
+func (p *proxy_) onPrepare(shell Component) {
 }

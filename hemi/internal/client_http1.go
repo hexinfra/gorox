@@ -117,7 +117,7 @@ func (b *HTTP1Backend) createNode(id int32) *http1Node {
 }
 
 func (b *HTTP1Backend) FetchConn() (*H1Conn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *HTTP1Backend) StoreConn(conn *H1Conn) {

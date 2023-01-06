@@ -84,7 +84,14 @@ type streamHolder interface {
 // streamHolder_ is a mixin.
 type streamHolder_ struct {
 	// States
-	maxStreamsPerConn int32 // max streams of one conn
+	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
+}
+
+func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
+	// maxStreamsPerConn
+	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, defaultMaxStreams)
+}
+func (s *streamHolder_) onPrepare(shell Component) {
 }
 
 func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
@@ -123,39 +130,37 @@ func (b *loadBalancer_) init() {
 	b.nodeIndex.Store(-1)
 }
 
-func (b *loadBalancer_) onConfigure(c Component) {
+func (b *loadBalancer_) onConfigure(shell Component) {
 	// balancer
-	c.ConfigureString("balancer", &b.balancer, func(value string) bool {
+	shell.ConfigureString("balancer", &b.balancer, func(value string) bool {
 		return value == "roundRobin" || value == "ipHash" || value == "random"
 	}, "roundRobin")
 }
 func (b *loadBalancer_) onPrepare(numNodes int) {
 	switch b.balancer {
 	case "roundRobin":
-		b.indexGet = b.getIndexByRoundRobin
+		b.indexGet = b.getNextByRoundRobin
 	case "ipHash":
-		b.indexGet = b.getIndexByIPHash
+		b.indexGet = b.getNextByIPHash
 	case "random":
-		b.indexGet = b.getIndexByRandom
+		b.indexGet = b.getNextByRandom
 	default:
 		BugExitln("this should not happen")
 	}
 	b.numNodes = int64(numNodes)
 }
 
-func (b *loadBalancer_) getIndex() int64 {
-	return b.indexGet()
-}
+func (b *loadBalancer_) getNext() int64 { return b.indexGet() }
 
-func (b *loadBalancer_) getIndexByRoundRobin() int64 {
+func (b *loadBalancer_) getNextByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes
 }
-func (b *loadBalancer_) getIndexByIPHash() int64 {
+func (b *loadBalancer_) getNextByIPHash() int64 {
 	// TODO
 	return 0
 }
-func (b *loadBalancer_) getIndexByRandom() int64 {
+func (b *loadBalancer_) getNextByRandom() int64 {
 	// TODO
 	return 0
 }

@@ -39,9 +39,9 @@ type udpsClient_ struct {
 func (u *udpsClient_) onCreate() {
 }
 
-func (u *udpsClient_) onConfigure(c Component) {
+func (u *udpsClient_) onConfigure(shell Component) {
 }
-func (u *udpsClient_) onPrepare(c Component) {
+func (u *udpsClient_) onPrepare(shell Component) {
 }
 
 const signUDPS = "udps"
@@ -137,11 +137,11 @@ func (b *UDPSBackend) createNode(id int32) *udpsNode {
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 func (b *UDPSBackend) FetchConn() (*UConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *UDPSBackend) StoreConn(conn *UConn) {

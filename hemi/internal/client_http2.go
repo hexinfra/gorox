@@ -103,7 +103,7 @@ func (b *HTTP2Backend) createNode(id int32) *http2Node {
 }
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *HTTP2Backend) StoreConn(conn *H2Conn) {

@@ -35,8 +35,9 @@ func init() {
 type httpxServer struct {
 	// Mixins
 	httpServer_
+	// Assocs
 	// States
-	forceScheme  int8 // scheme that is must used
+	forceScheme  int8 // scheme that must be used
 	strictScheme bool // use https scheme for TLS and http scheme for TCP?
 	enableHTTP2  bool // enable HTTP/2?
 	h2cMode      bool // if true, TCP runs HTTP/2 only. TLS is not affected. requires enableHTTP2
@@ -54,15 +55,15 @@ func (s *httpxServer) OnShutdown() {
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.httpServer_.onConfigure()
-	var forceScheme string
+	s.httpServer_.onConfigure(s)
+	var scheme string
 	// forceScheme
-	s.ConfigureString("forceScheme", &forceScheme, func(value string) bool {
+	s.ConfigureString("forceScheme", &scheme, func(value string) bool {
 		return value == "http" || value == "https"
 	}, "")
-	if forceScheme == "http" {
+	if scheme == "http" {
 		s.forceScheme = SchemeHTTP
-	} else if forceScheme == "https" {
+	} else if scheme == "https" {
 		s.forceScheme = SchemeHTTPS
 	}
 	// strictScheme
@@ -73,7 +74,7 @@ func (s *httpxServer) OnConfigure() {
 	s.ConfigureBool("h2cMode", &s.h2cMode, false)
 }
 func (s *httpxServer) OnPrepare() {
-	s.httpServer_.onPrepare()
+	s.httpServer_.onPrepare(s)
 	if s.tlsMode {
 		var nextProtos []string
 		if s.enableHTTP2 {

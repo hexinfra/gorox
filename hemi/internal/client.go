@@ -17,16 +17,16 @@ import (
 	"time"
 )
 
-// client is the interface for all outgates and backends.
+// client is the interface for outgates and backends.
 type client interface {
 	Stage() *Stage
 	TLSMode() bool
 	WriteTimeout() time.Duration
 	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
+	IdleTimeout() time.Duration
 }
 
-// client_ is a mixin shared by outgates and backends.
+// client_ is a mixin for outgates and backends.
 type client_ struct {
 	// Mixins
 	Component_
@@ -38,7 +38,7 @@ type client_ struct {
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write operation timeout
 	readTimeout  time.Duration // read operation timeout
-	aliveTimeout time.Duration // conn alive timeout
+	idleTimeout  time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 }
 
@@ -61,8 +61,8 @@ func (c *client_) onConfigure() {
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
 	// readTimeout
 	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
-	// aliveTimeout
-	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
+	// idleTimeout
+	c.ConfigureDuration("idleTimeout", &c.idleTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
 }
 func (c *client_) onPrepare() {
 }
@@ -71,7 +71,7 @@ func (c *client_) Stage() *Stage               { return c.stage }
 func (c *client_) TLSMode() bool               { return c.tlsMode }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
-func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
+func (c *client_) IdleTimeout() time.Duration  { return c.idleTimeout }
 
 func (c *client_) nextConnID() int64 {
 	return c.connID.Add(1)
@@ -259,7 +259,7 @@ type conn_ struct {
 func (c *conn_) onGet(id int64, client client) {
 	c.id = id
 	c.client = client
-	c.expire = time.Now().Add(client.AliveTimeout())
+	c.expire = time.Now().Add(client.IdleTimeout())
 }
 func (c *conn_) onPut() {
 	c.client = nil

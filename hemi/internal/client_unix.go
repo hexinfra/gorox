@@ -40,11 +40,11 @@ type unixClient_ struct {
 func (u *unixClient_) onCreate() {
 }
 
-func (u *unixClient_) onConfigure(c Component) {
+func (u *unixClient_) onConfigure(shell Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &u.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	shell.ConfigureInt32("maxStreamsPerConn", &u.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (u *unixClient_) onPrepare(c Component) {
+func (u *unixClient_) onPrepare(shell Component) {
 }
 
 const signUnix = "unix"
@@ -140,11 +140,11 @@ func (b *UnixBackend) createNode(id int32) *unixNode {
 }
 
 func (b *UnixBackend) Dial() (PConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 func (b *UnixBackend) FetchConn() (PConn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *UnixBackend) StoreConn(conn PConn) {

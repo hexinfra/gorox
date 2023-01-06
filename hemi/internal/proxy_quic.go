@@ -38,7 +38,7 @@ func (d *quicProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *quicProxy) OnPrepare() {
-	d.proxy_.onPrepare()
+	d.proxy_.onPrepare(d)
 }
 
 func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {

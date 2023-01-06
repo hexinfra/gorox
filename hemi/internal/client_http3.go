@@ -102,7 +102,7 @@ func (b *HTTP3Backend) createNode(id int32) *http3Node {
 }
 
 func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {
-	node := b.nodes[b.getIndex()]
+	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *HTTP3Backend) StoreConn(conn *H3Conn) {

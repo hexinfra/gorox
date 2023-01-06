@@ -45,10 +45,10 @@ func (s *http3Server) OnShutdown() {
 }
 
 func (s *http3Server) OnConfigure() {
-	s.httpServer_.onConfigure()
+	s.httpServer_.onConfigure(s)
 }
 func (s *http3Server) OnPrepare() {
-	s.httpServer_.onPrepare()
+	s.httpServer_.onPrepare(s)
 }
 
 func (s *http3Server) Serve() { // goroutine

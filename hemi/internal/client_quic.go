@@ -40,11 +40,11 @@ type quicClient_ struct {
 func (q *quicClient_) onCreate() {
 }
 
-func (q *quicClient_) onConfigure(c Component) {
+func (q *quicClient_) onConfigure(shell Component) {
 	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &q.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	shell.ConfigureInt32("maxStreamsPerConn", &q.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
 }
-func (q *quicClient_) onPrepare(c Component) {
+func (q *quicClient_) onPrepare(shell Component) {
 }
 
 const signQUIC = "quic"

@@ -33,15 +33,15 @@ type httpClient_ struct {
 func (h *httpClient_) onCreate() {
 }
 
-func (h *httpClient_) onConfigure(c Component, clientName string) {
-	// maxStreamsPerConn
-	c.ConfigureInt32("maxStreamsPerConn", &h.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+func (h *httpClient_) onConfigure(shell Component, clientName string) {
+	h.streamHolder_.onConfigure(shell, 1000)
 	// saveContentFilesDir
-	c.ConfigureString("saveContentFilesDir", &h.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+c.Name())
+	shell.ConfigureString("saveContentFilesDir", &h.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+shell.Name())
 	// maxContentSize
-	c.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
-func (h *httpClient_) onPrepare(c Component) {
+func (h *httpClient_) onPrepare(shell Component) {
+	h.streamHolder_.onPrepare(shell)
 }
 
 func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
@@ -59,13 +59,13 @@ func (f *httpOutgate_) onCreate(name string, stage *Stage) {
 	f.httpClient_.onCreate()
 }
 
-func (f *httpOutgate_) onConfigure(c Component) {
+func (f *httpOutgate_) onConfigure(shell Component) {
 	f.client_.onConfigure()
-	f.httpClient_.onConfigure(c, "outgates")
+	f.httpClient_.onConfigure(shell, "outgates")
 }
-func (f *httpOutgate_) onPrepare(c Component) {
+func (f *httpOutgate_) onPrepare(shell Component) {
 	f.client_.onPrepare()
-	f.httpClient_.onPrepare(c)
+	f.httpClient_.onPrepare(shell)
 	f.makeContentFilesDir(0755)
 }
 
@@ -85,14 +85,14 @@ func (b *httpBackend_[N]) onCreate(name string, stage *Stage, creator interface{
 	b.loadBalancer_.init()
 }
 
-func (b *httpBackend_[N]) onConfigure(c Component) {
+func (b *httpBackend_[N]) onConfigure(shell Component) {
 	b.backend_.onConfigure()
-	b.httpClient_.onConfigure(c, "backends")
-	b.loadBalancer_.onConfigure(c)
+	b.httpClient_.onConfigure(shell, "backends")
+	b.loadBalancer_.onConfigure(shell)
 }
-func (b *httpBackend_[N]) onPrepare(c Component, numNodes int) {
+func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.backend_.onPrepare()
-	b.httpClient_.onPrepare(c)
+	b.httpClient_.onPrepare(shell)
 	b.makeContentFilesDir(0755)
 	b.loadBalancer_.onPrepare(numNodes)
 }

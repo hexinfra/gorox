@@ -38,7 +38,7 @@ func (d *tcpsProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
 func (d *tcpsProxy) OnPrepare() {
-	d.proxy_.onPrepare()
+	d.proxy_.onPrepare(d)
 }
 
 func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) {

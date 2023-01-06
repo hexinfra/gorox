@@ -37,7 +37,7 @@ type httpServer_ struct {
 	streamHolder_
 	// Assocs
 	gates      []httpGate
-	defaultApp *App
+	defaultApp *App // fallback app
 	// States
 	exactApps    []*hostnameTo[*App] // like: ("example.com")
 	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
@@ -54,10 +54,9 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 
-func (s *httpServer_) onConfigure() {
+func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	// maxStreamsPerConn
-	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, 0) // 0 means infinite
+	s.streamHolder_.onConfigure(shell, 0)
 	// hrpcMode
 	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// enableTCPTun
@@ -65,8 +64,9 @@ func (s *httpServer_) onConfigure() {
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
 }
-func (s *httpServer_) onPrepare() {
+func (s *httpServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
+	s.streamHolder_.onPrepare(shell)
 }
 
 func (s *httpServer_) linkApp(app *App) {

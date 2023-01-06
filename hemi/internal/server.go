@@ -99,6 +99,7 @@ func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 type Gate interface {
 	ID() int32
 	IsShut() bool
+
 	shutdown() error
 }
 
@@ -120,6 +121,7 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 	g.stage = stage
 	g.id = id
 	g.address = address
+	g.shut.Store(false)
 	g.maxConns = maxConns
 	g.numConns.Store(0)
 }

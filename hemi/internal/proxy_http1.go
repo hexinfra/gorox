@@ -216,7 +216,7 @@ func (s *sock1Proxy) OnPrepare() {
 	s.sockProxy_.onPrepare(s)
 }
 
-func (s *sock1Proxy) Serve(req Request, sock Socket) { // currently reverse only
+func (s *sock1Proxy) Serve(req Request, sock Socket) { // forward or reverse
 	// TODO(diogin): Implementation
 	sock.Close()
 }

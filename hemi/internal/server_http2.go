@@ -971,6 +971,9 @@ func (r *http2Response) control() []byte {
 func (r *http2Response) header(name []byte) (value []byte, ok bool) {
 	return r.header2(name)
 }
+func (r *http2Response) hasHeader(name []byte) bool {
+	return r.hasHeader2(name)
+}
 func (r *http2Response) addHeader(name []byte, value []byte) bool {
 	return r.addHeader2(name, value)
 }

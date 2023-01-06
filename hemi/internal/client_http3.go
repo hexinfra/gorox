@@ -332,6 +332,9 @@ func (r *H3Request) control() []byte {
 func (r *H3Request) header(name []byte) (value []byte, ok bool) {
 	return r.header3(name)
 }
+func (r *H3Request) hasHeader(name []byte) bool {
+	return r.hasHeader3(name)
+}
 func (r *H3Request) addHeader(name []byte, value []byte) bool {
 	return r.addHeader3(name, value)
 }

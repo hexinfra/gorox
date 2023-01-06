@@ -540,6 +540,20 @@ func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
+func (r *httpOutMessage_) hasHeader1(name []byte) bool {
+	if r.nHeaders > 0 && len(name) > 0 {
+		from := uint16(0)
+		for i := uint8(0); i < r.nHeaders; i++ {
+			edge := r.edges[i]
+			header := r.fields[from:edge]
+			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
+				return true
+			}
+			from = edge
+		}
+	}
+	return false
+}
 func (r *httpOutMessage_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
@@ -854,7 +868,6 @@ var ( // HTTP/1 byteses
 	http1BytesFixedResponseHeaders = []byte("server: gorox\r\n\r\n")
 	http1BytesAcceptRangesBytes    = []byte("accept-ranges: bytes\r\n")
 	http1BytesVaryEncoding         = []byte("vary: accept-encoding\r\n")
-	http1BytesContentTypeTextHTML  = []byte("content-type: text/html; charset=utf-8\r\n")
 	http1BytesZeroCRLF             = []byte("0\r\n")
 	http1BytesZeroCRLFCRLF         = []byte("0\r\n\r\n")
 )

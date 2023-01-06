@@ -47,7 +47,7 @@ func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {
 	if status, pass := req.TestConditions(faviconTime, faviconETag, true); pass {
 		resp.SetLastModified(faviconTime)
 		resp.SetETagBytes(faviconETag)
-		resp.AddContentType("image/png")
+		resp.AddHeader("content-type", "image/png")
 		resp.SendBytes(faviconBytes)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)

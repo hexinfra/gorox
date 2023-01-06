@@ -250,6 +250,7 @@ func (s *httpStream_) execSocket() {
 type Request interface {
 	PeerAddr() net.Addr
 	App() *App
+	Svc() *Svc
 
 	VersionCode() uint8
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
@@ -491,6 +492,9 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.httpInMessage_.onEnd()
 }
 
+func (r *httpRequest_) App() *App { return r.app }
+func (r *httpRequest_) Svc() *Svc { return r.svc }
+
 func (r *httpRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *httpRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
 func (r *httpRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
@@ -702,7 +706,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpMultipleRequestHeaderTable[httpMultipleRequestHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpMultipleRequestHeaderBytes[h.from:h.edge], headerName) {
+	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderBytes[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
@@ -721,7 +725,7 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &httpCriticalRequestHeaderTable[httpCriticalRequestHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpCriticalRequestHeaderBytes[h.from:h.edge], headerName) {
+		if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderBytes[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 				// r.headResult is set.
 				return false
@@ -732,8 +736,8 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for multiple request headers
-	httpMultipleRequestHeaderBytes = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via")
-	httpMultipleRequestHeaderTable = [17]struct {
+	httpRequestMultipleHeaderBytes = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via")
+	httpRequestMultipleHeaderTable = [17]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -758,7 +762,7 @@ var ( // perfect hash table for multiple request headers
 		15: {httpHashIfMatch, 123, 131, false, (*httpRequest_).checkIfMatch},                  // If-Match = "*" / #entity-tag
 		16: {httpHashIfNoneMatch, 132, 145, false, (*httpRequest_).checkIfNoneMatch},          // If-None-Match = "*" / #entity-tag
 	}
-	httpMultipleRequestHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
+	httpRequestMultipleHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
 )
 
 func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
@@ -869,8 +873,8 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 }
 
 var ( // perfect hash table for critical request headers
-	httpCriticalRequestHeaderBytes = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent")
-	httpCriticalRequestHeaderTable = [10]struct {
+	httpRequestCriticalHeaderBytes = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent")
+	httpRequestCriticalHeaderTable = [10]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -887,7 +891,7 @@ var ( // perfect hash table for critical request headers
 		8: {httpHashCookie, 28, 34, (*httpRequest_).checkCookie},
 		9: {httpHashExpect, 35, 41, (*httpRequest_).checkExpect},
 	}
-	httpCriticalRequestHeaderFind = func(hash uint16) int { return (252525 / int(hash)) % 10 }
+	httpRequestCriticalHeaderFind = func(hash uint16) int { return (252525 / int(hash)) % 10 }
 )
 
 func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool {
@@ -1685,7 +1689,6 @@ func (r *httpRequest_) checkHead() bool {
 
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
 	r.delPrime(r.iContentLength)
-	r.delPrime(r.iContentType)
 }
 func (r *httpRequest_) delHost() { // used by proxies
 	r.delPrime(r.indexes.host) // zero safe
@@ -2269,9 +2272,6 @@ func (r *httpRequest_) applyTrailer(trailer *pair) bool {
 	return true
 }
 
-func (r *httpRequest_) App() *App { return r.app }
-func (r *httpRequest_) Svc() *Svc { return r.svc }
-
 func (r *httpRequest_) arrayCopy(p []byte) bool {
 	if len(p) > 0 {
 		edge := r.arrayEdge + int32(len(p))
@@ -2322,7 +2322,6 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
-	AddContentType(contentType string) bool
 	SetLastModified(lastModified int64) bool
 	SetETag(etag string) bool
 	SetETagBytes(etag []byte) bool
@@ -2333,11 +2332,12 @@ type Response interface {
 
 	AddCookie(cookie *Cookie) bool
 
+	Header(name string) (value string, ok bool)
+	HasHeader(name string) bool
 	AddHeader(name string, value string) bool
 	AddHeaderBytes(name string, value []byte) bool
 	AddHeaderByBytes(name []byte, value string) bool
 	AddHeaderBytesByBytes(name []byte, value []byte) bool
-	Header(name string) (value string, ok bool)
 	DelHeader(name string) bool
 	DelHeaderByBytes(name []byte) bool
 
@@ -2368,8 +2368,9 @@ type Response interface {
 	AddTrailerBytesByBytes(name []byte, value []byte) bool
 
 	// Internal only
-	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
+	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
 	setConnectionClose()
@@ -2634,9 +2635,6 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	if etag := resp.unsafeETag(); etag != nil && !r.copyHeader(&r.etagCopied, httpBytesETag, etag) {
 		return false
 	}
-	if contentType := resp.UnsafeContentType(); contentType != nil && !r.addContentType(contentType) {
-		return false
-	}
 	resp.delCriticalHeaders()
 
 	// copy remaining headers
@@ -2675,7 +2673,7 @@ func (r *httpResponse_) hookReviser(reviser Reviser) {
 
 func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
 	// TODO: perfect hashing
-	for _, field := range httpResponseCrucialFields {
+	for _, field := range httpResponseCrucialFieldTable {
 		if field.hash == hash && bytes.Equal(field.name, name) {
 			return true
 		}
@@ -2683,15 +2681,14 @@ func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
 	return false
 }
 
-var httpResponseCrucialFields = [5]struct { // TODO: perfect hashing
+var httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
 	hash uint16
 	name []byte
 }{
 	0: {httpHashConnection, httpBytesConnection},
 	1: {httpHashContentLength, httpBytesContentLength},
 	2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-	3: {httpHashContentType, httpBytesContentType},
-	4: {httpHashSetCookie, httpBytesSetCookie},
+	3: {httpHashSetCookie, httpBytesSetCookie},
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

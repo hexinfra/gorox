@@ -197,7 +197,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 				contentType = mimeType
 			}
 		}
-		resp.AddContentType(contentType)
+		resp.AddHeaderByBytes(httpBytesContentType, contentType)
 		if entry.isSmall() {
 			if Debug(2) {
 				fmt.Println("static send blob")

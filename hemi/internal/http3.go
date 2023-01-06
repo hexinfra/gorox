@@ -33,6 +33,10 @@ func (r *httpOutMessage_) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
+func (r *httpOutMessage_) hasHeader3(name []byte) bool {
+	// TODO
+	return false
+}
 func (r *httpOutMessage_) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false

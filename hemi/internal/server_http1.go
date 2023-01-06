@@ -539,7 +539,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
-	resp.addContentType(httpBytesTextHTML)
+	resp.AddHeaderBytesByBytes(httpBytesContentType, httpBytesTextHTML)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
@@ -1067,6 +1067,9 @@ func (r *http1Response) control() []byte {
 func (r *http1Response) header(name []byte) (value []byte, ok bool) {
 	return r.header1(name)
 }
+func (r *http1Response) hasHeader(name []byte) bool {
+	return r.hasHeader1(name)
+}
 func (r *http1Response) addHeader(name []byte, value []byte) bool {
 	return r.addHeader1(name, value)
 }
@@ -1248,10 +1251,8 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// request indicates HTTP/1.1 (or later).
 			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
 		}
-		// content-type: text/html; charset=utf-8
-		if !r.contentTypeAdded {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
-		}
+		// TODO: check content-type?
+		// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
 	}
 	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))

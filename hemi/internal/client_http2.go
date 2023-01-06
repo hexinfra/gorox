@@ -360,6 +360,9 @@ func (r *H2Request) control() []byte {
 func (r *H2Request) header(name []byte) (value []byte, ok bool) {
 	return r.header2(name)
 }
+func (r *H2Request) hasHeader(name []byte) bool {
+	return r.hasHeader2(name)
+}
 func (r *H2Request) addHeader(name []byte, value []byte) bool {
 	return r.addHeader2(name, value)
 }

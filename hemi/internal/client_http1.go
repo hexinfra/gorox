@@ -392,6 +392,9 @@ func (r *H1Request) control() []byte {
 func (r *H1Request) header(name []byte) (value []byte, ok bool) {
 	return r.header1(name)
 }
+func (r *H1Request) hasHeader(name []byte) bool {
+	return r.hasHeader1(name)
+}
 func (r *H1Request) addHeader(name []byte, value []byte) bool {
 	return r.addHeader1(name, value)
 }
@@ -468,10 +471,8 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
 		}
-		// content-type: text/html; charset=utf-8
-		if !r.contentTypeAdded {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
-		}
+		// TODO: check content-type?
+		// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
 	}
 	// connection: keep-alive
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))

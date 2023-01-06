@@ -1094,6 +1094,7 @@ var ( // http incoming message errors
 type httpOutMessage interface {
 	control() []byte
 	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
 	delHeader(name []byte) (deleted bool)
 	addHeader(name []byte, value []byte) bool
 	addedHeaders() []byte
@@ -1136,14 +1137,13 @@ type httpOutMessage_ struct {
 	httpOutMessage0_
 }
 type httpOutMessage0_ struct { // for fast reset, entirely
-	controlEdge      uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
-	fieldsEdge       uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
-	nHeaders         uint8  // num of added headers, <= 255
-	nTrailers        uint8  // num of added trailers, <= 255
-	forbidContent    bool   // forbid content?
-	forbidFraming    bool   // forbid content-length and transfer-encoding?
-	isSent           bool   // whether the message is sent
-	contentTypeAdded bool   // is content-type header added?
+	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
+	nHeaders      uint8  // num of added headers, <= 255
+	nTrailers     uint8  // num of added trailers, <= 255
+	forbidContent bool   // forbid content?
+	forbidFraming bool   // forbid content-length and transfer-encoding?
+	isSent        bool   // whether the message is sent
 }
 
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
@@ -1166,16 +1166,12 @@ func (r *httpOutMessage_) onEnd() { // for zeros
 	r.httpOutMessage0_ = httpOutMessage0_{}
 }
 
-func (r *httpOutMessage_) AddContentType(contentType string) bool {
-	return r.addContentType(risky.ConstBytes(contentType))
-}
-func (r *httpOutMessage_) addContentType(contentType []byte) bool {
-	return r.copyHeader(&r.contentTypeAdded, httpBytesContentType, contentType)
-}
-
 func (r *httpOutMessage_) Header(name string) (value string, ok bool) {
 	v, ok := r.shell.header(risky.ConstBytes(name))
 	return string(v), ok
+}
+func (r *httpOutMessage_) HasHeader(name string) bool {
+	return r.shell.hasHeader(risky.ConstBytes(name))
 }
 func (r *httpOutMessage_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytesByBytes(risky.ConstBytes(name), risky.ConstBytes(value))

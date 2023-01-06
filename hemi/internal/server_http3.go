@@ -374,6 +374,9 @@ func (r *http3Response) control() []byte {
 func (r *http3Response) header(name []byte) (value []byte, ok bool) {
 	return r.header3(name)
 }
+func (r *http3Response) hasHeader(name []byte) bool {
+	return r.hasHeader3(name)
+}
 func (r *http3Response) addHeader(name []byte, value []byte) bool {
 	return r.addHeader3(name, value)
 }

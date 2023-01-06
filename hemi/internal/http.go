@@ -33,7 +33,7 @@ type stream interface {
 
 	peerAddr() net.Addr
 
-	smallStack() []byte
+	tinyBuffer() []byte
 	unsafeMake(size int) []byte
 	makeTempName(p []byte, stamp int64) (from int, edge int)
 
@@ -52,7 +52,7 @@ type stream interface {
 // stream is the mixin for httpStream_ and hStream_.
 type stream_ struct {
 	// Stream states (buffers)
-	stockStack [256]byte // a (fake) stack buffer to workaround Go's conservative escape analysis. WARNING: used this as a temp stack scoped memory!
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	region region // a region-based memory pool
@@ -68,7 +68,7 @@ func (s *stream_) onEnd() { // for zeros
 	s.region.free()
 }
 
-func (s *stream_) smallStack() []byte         { return s.stockStack[:] }
+func (s *stream_) tinyBuffer() []byte         { return s.stockBuffer[:] }
 func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 
 // httpInMessage is a Request or response, used as shell by httpInMessage_.
@@ -1098,7 +1098,7 @@ type httpOutMessage interface {
 	addHeader(name []byte, value []byte) bool
 	addedHeaders() []byte
 	fixedHeaders() []byte
-	isForbiddenField(hash uint16, name []byte) bool
+	isCrucialField(hash uint16, name []byte) bool
 	send() error
 	sendChain(chain Chain) error
 	checkPush() error
@@ -1187,7 +1187,7 @@ func (r *httpOutMessage_) AddHeaderByBytes(name []byte, value string) bool {
 	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
-	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isForbiddenField(hash, lower) {
+	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isCrucialField(hash, lower) {
 		for _, b := range value { // to prevent response splitting
 			if b == '\r' || b == '\n' {
 				return false
@@ -1202,7 +1202,7 @@ func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
 }
 func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
-	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isForbiddenField(hash, lower) {
+	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isCrucialField(hash, lower) {
 		return r.shell.delHeader(lower)
 	} else {
 		return false
@@ -1226,7 +1226,7 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	if allLower {
 		return hash, true, name
 	}
-	stack := r.stream.smallStack()
+	buffer := r.stream.tinyBuffer()
 	for i := 0; i < n; i++ {
 		b := name[i]
 		if b >= 'A' && b <= 'Z' {
@@ -1235,9 +1235,9 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 			return 0, false, nil
 		}
 		hash += uint16(b)
-		stack[i] = b
+		buffer[i] = b
 	}
-	return hash, true, stack[:n]
+	return hash, true, buffer[:n]
 }
 func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
@@ -1998,50 +1998,6 @@ var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for
 		{0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0},
 	},
 }
-
-var ( // forbidden httpResponse_ fields
-	httpForbiddenResponseFields = [5]struct { // TODO: perfect hashing
-		hash uint16
-		name []byte
-	}{
-		0: {httpHashConnection, httpBytesConnection},
-		1: {httpHashContentLength, httpBytesContentLength},
-		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-		3: {httpHashContentType, httpBytesContentType},
-		4: {httpHashSetCookie, httpBytesSetCookie},
-	}
-	httpIsForbiddenResponseField = func(hash uint16, name []byte) bool {
-		// TODO: perfect hashing
-		for _, field := range httpForbiddenResponseFields {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-		return false
-	}
-)
-
-var ( // forbidden hRequest_ fields
-	httpForbiddenRequestFields = [5]struct { // TODO: perfect hashing
-		hash uint16
-		name []byte
-	}{
-		0: {httpHashConnection, httpBytesConnection},
-		1: {httpHashContentLength, httpBytesContentLength},
-		2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-		3: {httpHashContentType, httpBytesContentType},
-		4: {httpHashCookie, httpBytesCookie},
-	}
-	httpIsForbiddenRequestField = func(hash uint16, name []byte) bool {
-		// TODO: perfect hashing
-		for _, field := range httpForbiddenRequestFields {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-		return false
-	}
-)
 
 var httpErrorPages = func() map[int16][]byte {
 	const template = `<!doctype html>

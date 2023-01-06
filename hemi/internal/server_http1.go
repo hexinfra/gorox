@@ -369,6 +369,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 
+	// TODO: upgradeUDPTun?
 	if req.methodCode == MethodCONNECT { // tcp tunnel mode?
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
@@ -405,7 +406,6 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	req.app = app
 	resp.app = app
 
-	// TODO: upgradeUDPTun?
 	if req.upgradeSocket { // socket mode?
 		if req.expectContinue && !s.writeContinue() {
 			return
@@ -435,12 +435,13 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if req.methodCode == MethodHEAD {
 		resp.forbidContent = true
 	}
+
 	if req.expectContinue && !s.writeContinue() {
 		return
 	}
 	conn.usedStreams.Add(1)
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
-		s.conn.keepConn = false // reaches limit
+		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
 
 	s.serveNormal(app, req, resp)
@@ -478,7 +479,8 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 			return true
 		}
 	}
-	s.conn.keepConn = false // i/o error
+	// i/o error
+	s.conn.keepConn = false
 	return false
 }
 func (s *http1Stream) serveTCPTun() { // CONNECT method
@@ -622,7 +624,7 @@ func (r *http1Request) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	r._cleanInput()
+	r.cleanInput()
 	if Debug(2) {
 		fmt.Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
@@ -997,7 +999,7 @@ beforeVersion: // r.pFore is at ' '.
 
 	return true
 }
-func (r *http1Request) _cleanInput() {
+func (r *http1Request) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true
@@ -1235,7 +1237,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: >= 0
-			lengthBuffer := r.stream.smallStack() // stack is enough for length
+			lengthBuffer := r.stream.tinyBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
 		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked

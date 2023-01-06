@@ -464,7 +464,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		if r.contentSize == -2 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else { // content-length: 12345
-			lengthBuffer := r.stream.smallStack() // stack is enough for length
+			lengthBuffer := r.stream.tinyBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, lengthBuffer)
 			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
 		}
@@ -498,7 +498,7 @@ func (r *H1Response) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	r._cleanInput()
+	r.cleanInput()
 	if Debug(2) {
 		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
@@ -592,7 +592,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 
 	return true
 }
-func (r *H1Response) _cleanInput() {
+func (r *H1Response) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true

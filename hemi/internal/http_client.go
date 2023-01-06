@@ -100,7 +100,7 @@ type hConn interface {
 	getClient() httpClient
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallStack() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in tinyBuffer() of stream
 }
 
 // hConn_ is the mixin for H[1-3]Conn.
@@ -283,8 +283,25 @@ func (r *hRequest_) finishChunked() error {
 	return r.shell.finalizeChunked()
 }
 
-func (r *hRequest_) isForbiddenField(hash uint16, name []byte) bool {
-	return httpIsForbiddenRequestField(hash, name)
+func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
+	// TODO: perfect hashing
+	for _, field := range hRequestCrucialFields {
+		if field.hash == hash && bytes.Equal(field.name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+var hRequestCrucialFields = [5]struct { // TODO: perfect hashing
+	hash uint16
+	name []byte
+}{
+	0: {httpHashConnection, httpBytesConnection},
+	1: {httpHashContentLength, httpBytesContentLength},
+	2: {httpHashTransferEncoding, httpBytesTransferEncoding},
+	3: {httpHashContentType, httpBytesContentType},
+	4: {httpHashCookie, httpBytesCookie},
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.

@@ -19,16 +19,17 @@ import (
 // http1InMessage_ is used by http1Request and H1Response.
 
 func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
-	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.input is full
+	// Is r.input full?
+	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
 			if r.receiving == httpSectionControl {
 				r.headResult = StatusURITooLong
-			} else {
+			} else { // httpSectionHeaders
 				r.headResult = StatusRequestHeaderFieldsTooLarge
 			}
 			return false
 		}
-		// r.input size is not 16K. We switch to a larger input (stock -> 4K -> 16K)
+		// r.input size < 16K. We switch to a larger input (stock -> 4K -> 16K)
 		var input []byte
 		stockSize := int32(cap(r.stockInput))
 		if inputSize == stockSize {
@@ -36,7 +37,7 @@ func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, 
 		} else { // 4K
 			input = Get16K()
 		}
-		copy(input, r.input)
+		copy(input, r.input) // copy all
 		if inputSize != stockSize {
 			PutNK(r.input)
 		}
@@ -77,10 +78,10 @@ func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-va
 		}
 
 		// header-field = field-name ":" OWS field-value OWS
-		header.hash = 0
 
 		// field-name = token
 		// token = 1*tchar
+		header.hash = 0
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
@@ -100,11 +101,12 @@ func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-va
 				return false
 			}
 		}
-		if n := r.pFore - r.pBack; n == 0 || n > 255 {
+		size := r.pFore - r.pBack
+		if size == 0 || size > 255 {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		header.nameFrom, header.nameSize = r.pBack, uint8(r.pFore-r.pBack)
+		header.nameFrom, header.nameSize = r.pBack, uint8(size)
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
@@ -417,10 +419,11 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 				return false
 			}
 		}
-		if n := r.pFore - r.pBack; n == 0 || n > 255 {
+		size := r.pFore - r.pBack
+		if size == 0 || size > 255 {
 			return false
 		}
-		trailer.nameFrom, trailer.nameSize = r.pBack, uint8(r.pFore-r.pBack)
+		trailer.nameFrom, trailer.nameSize = r.pBack, uint8(size)
 		// Skip ':'
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
@@ -778,7 +781,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 			return err
 		}
 		if chunked {
-			sizeBuffer := r.stream.smallStack()
+			sizeBuffer := r.stream.tinyBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
 			sizeBuffer[k+1] = '\n'
@@ -802,7 +805,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 }
 func (r *httpOutMessage_) _writeBlob1(block *Block, chunked bool) error { // blob
 	if chunked { // HTTP/1.1
-		sizeBuffer := r.stream.smallStack() // stack is enough for chunk size
+		sizeBuffer := r.stream.tinyBuffer() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
 		sizeBuffer[n+1] = '\n'

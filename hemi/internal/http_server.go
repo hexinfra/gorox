@@ -182,7 +182,7 @@ type httpConn interface {
 	getServer() httpServer
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallStack() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in tinyBuffer() of stream
 }
 
 // httpConn_ is the mixin for http[1-3]Conn.
@@ -460,6 +460,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 
 func (r *httpRequest_) onUse() { // for non-zeros
 	r.httpInMessage_.onUse(false)
+
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
 func (r *httpRequest_) onEnd() { // for zeros
@@ -484,7 +485,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.pathInfo = nil
 	r.app = nil
 	r.svc = nil
-	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool at return. so just set nil
+	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool at return. so just set as nil
 	r.httpRequest0_ = httpRequest0_{}
 
 	r.httpInMessage_.onEnd()
@@ -1985,7 +1986,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 								r.stream.markBroken()
 								return
 							}
-							tempName := r.stream.smallStack() // stack is enough for tempName
+							tempName := r.stream.tinyBuffer() // buffer is enough for tempName
 							from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
 							if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
 								r.stream.markBroken()
@@ -2667,13 +2668,30 @@ func (r *httpResponse_) finishChunked() error {
 	return resp.finalizeChunked()
 }
 
-func (r *httpResponse_) isForbiddenField(hash uint16, name []byte) bool {
-	return httpIsForbiddenResponseField(hash, name)
-}
-
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+}
+
+func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
+	// TODO: perfect hashing
+	for _, field := range httpResponseCrucialFields {
+		if field.hash == hash && bytes.Equal(field.name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+var httpResponseCrucialFields = [5]struct { // TODO: perfect hashing
+	hash uint16
+	name []byte
+}{
+	0: {httpHashConnection, httpBytesConnection},
+	1: {httpHashContentLength, httpBytesContentLength},
+	2: {httpHashTransferEncoding, httpBytesTransferEncoding},
+	3: {httpHashContentType, httpBytesContentType},
+	4: {httpHashSetCookie, httpBytesSetCookie},
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

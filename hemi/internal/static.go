@@ -188,7 +188,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
 		resp.SetLastModified(modTime)
 		resp.SetETagBytes(etag)
-		resp.SetAcceptBytesRange()
+		//resp.AddHeader(httpBytesAcceptRange, httpBytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)
 		if pDot := strings.LastIndex(filePath, "."); pDot >= 0 {

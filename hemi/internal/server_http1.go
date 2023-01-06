@@ -1259,10 +1259,8 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	} else { // connection: close
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
-	// accept-ranges: bytes
-	if r.acceptBytesRange {
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesAcceptRangesBytes))
-	}
+	// TODO: check accept-ranges: bytes?
+	// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesAcceptRangesBytes))
 }
 func (r *http1Response) finalizeChunked() error {
 	if r.request.VersionCode() == Version1_0 {

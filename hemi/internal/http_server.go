@@ -2322,7 +2322,6 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
-	SetAcceptBytesRange()
 	SetLastModified(lastModified int64) bool
 	SetETag(etag string) bool
 	SetETagBytes(etag []byte) bool
@@ -2411,7 +2410,6 @@ type httpResponse0_ struct { // for fast reset, entirely
 	revisers           [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 	hasRevisers        bool      // are there any revisers hooked on this response?
 	nETag              int8      // etag is at r.etag[:r.nETag]
-	acceptBytesRange   bool      // accept-ranges: bytes?
 	dateCopied         bool      // is date header copied?
 	lastModifiedCopied bool      // is last-modified header copied?
 	etagCopied         bool      // is etag header copied?
@@ -2451,9 +2449,6 @@ func (r *httpResponse_) Status() int16 {
 	return r.status
 }
 
-func (r *httpResponse_) SetAcceptBytesRange() {
-	r.acceptBytesRange = true
-}
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 	if lastModified >= 0 {
 		r.lastModified = lastModified
@@ -2496,6 +2491,54 @@ func (r *httpResponse_) makeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	r.etag[r.nETag] = '"'
 	r.nETag++
 	return r.etag[0:r.nETag], true
+}
+
+func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
+	/*
+		for _, field := range httpResponseCrucialFieldTable {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
+		}
+	*/
+	return false
+}
+
+var ( // perfect hash table for response crucial fields
+	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie")
+	httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
+		hash uint16
+		from uint8
+		edge uint8
+		fAdd func()
+		fDel func()
+	}{
+		0: {httpHashConnection, 0, 1, nil, nil},
+		1: {httpHashContentLength, 2, 3, nil, nil},
+		2: {httpHashTransferEncoding, 4, 5, nil, nil},
+		3: {httpHashSetCookie, 6, 7, nil, nil},
+	}
+	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 }
+)
+
+func (r *httpResponse_) addConnection() {
+}
+func (r *httpResponse_) delConnection() {
+}
+
+func (r *httpResponse_) addContentLength() {
+}
+func (r *httpResponse_) delContentLength() {
+}
+
+func (r *httpResponse_) addTransferEncoding() {
+}
+func (r *httpResponse_) delTransferEncoding() {
+}
+
+func (r *httpResponse_) addSetCookie() {
+}
+func (r *httpResponse_) delSetCookie() {
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2669,54 +2712,6 @@ func (r *httpResponse_) finishChunked() error {
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-}
-
-func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
-	/*
-		for _, field := range httpResponseCrucialFieldTable {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-	*/
-	return false
-}
-
-var ( // perfect hash table for response crucial fields
-	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie")
-	httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
-		hash uint16
-		from uint8
-		edge uint8
-		fAdd func()
-		fDel func()
-	}{
-		0: {httpHashConnection, 0, 1, nil, nil},
-		1: {httpHashContentLength, 2, 3, nil, nil},
-		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashSetCookie, 6, 7, nil, nil},
-	}
-	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 }
-)
-
-func (r *httpResponse_) addConnection() {
-}
-func (r *httpResponse_) delConnection() {
-}
-
-func (r *httpResponse_) addContentLength() {
-}
-func (r *httpResponse_) delContentLength() {
-}
-
-func (r *httpResponse_) addTransferEncoding() {
-}
-func (r *httpResponse_) delTransferEncoding() {
-}
-
-func (r *httpResponse_) addSetCookie() {
-}
-func (r *httpResponse_) delSetCookie() {
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

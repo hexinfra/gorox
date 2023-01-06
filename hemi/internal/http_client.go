@@ -195,6 +195,54 @@ func (r *hRequest_) onEnd() { // for zeros
 
 func (r *hRequest_) Response() response { return r.response }
 
+func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
+	/*
+		for _, field := range hRequestCrucialFieldTable {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
+		}
+	*/
+	return false
+}
+
+var ( // perfect hash table for request crucial fields
+	hRequestCrucialFieldNames = []byte("connection content-length transfer-encoding cookie")
+	hRequestCrucialFieldTable = [4]struct { // TODO: perfect hashing
+		hash uint16
+		from uint8
+		edge uint8
+		fAdd func()
+		fDel func()
+	}{
+		0: {httpHashConnection, 0, 1, nil, nil},
+		1: {httpHashContentLength, 2, 3, nil, nil},
+		2: {httpHashTransferEncoding, 4, 5, nil, nil},
+		3: {httpHashCookie, 6, 7, nil, nil},
+	}
+	hRequestCrucialFieldFind = func(hash uint16) int { return 1 }
+)
+
+func (r *hRequest_) addConnection() {
+}
+func (r *hRequest_) delConnection() {
+}
+
+func (r *hRequest_) addContentLength() {
+}
+func (r *hRequest_) delContentLength() {
+}
+
+func (r *hRequest_) addTransferEncoding() {
+}
+func (r *hRequest_) delTransferEncoding() {
+}
+
+func (r *hRequest_) addCookie() {
+}
+func (r *hRequest_) delCookie() {
+}
+
 func (r *hRequest_) send() error {
 	return r.shell.sendChain(r.content)
 }
@@ -278,54 +326,6 @@ func (r *hRequest_) finishChunked() error {
 		return httpWriteBroken
 	}
 	return r.shell.finalizeChunked()
-}
-
-func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
-	/*
-		for _, field := range hRequestCrucialFieldTable {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-	*/
-	return false
-}
-
-var ( // perfect hash table for request crucial fields
-	hRequestCrucialFieldNames = []byte("connection content-length transfer-encoding cookie")
-	hRequestCrucialFieldTable = [4]struct { // TODO: perfect hashing
-		hash uint16
-		from uint8
-		edge uint8
-		fAdd func()
-		fDel func()
-	}{
-		0: {httpHashConnection, 0, 1, nil, nil},
-		1: {httpHashContentLength, 2, 3, nil, nil},
-		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashCookie, 6, 7, nil, nil},
-	}
-	hRequestCrucialFieldFind = func(hash uint16) int { return 1 }
-)
-
-func (r *hRequest_) addConnection() {
-}
-func (r *hRequest_) delConnection() {
-}
-
-func (r *hRequest_) addContentLength() {
-}
-func (r *hRequest_) delContentLength() {
-}
-
-func (r *hRequest_) addTransferEncoding() {
-}
-func (r *hRequest_) delTransferEncoding() {
-}
-
-func (r *hRequest_) addCookie() {
-}
-func (r *hRequest_) delCookie() {
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.

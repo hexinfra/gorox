@@ -559,8 +559,8 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 }
 
-func (s *http1Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *http1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.makeTempName(p, stamp)
 }
 
 func (s *http1Stream) setReadDeadline(deadline time.Time) error {

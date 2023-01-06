@@ -306,8 +306,8 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 	// TODO
 }
 
-func (s *http3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *http3Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.makeTempName(p, stamp)
 }
 
 func (s *http3Stream) setReadDeadline(deadline time.Time) error { // for content only

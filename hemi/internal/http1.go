@@ -190,57 +190,57 @@ func (r *httpInMessage_) readContent1() (p []byte, err error) {
 }
 func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize {
-		if r.bodyBuffer == nil { // body buffer is not used. this means content is immediate
+		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF
 		}
-		PutNK(r.bodyBuffer)
-		r.bodyBuffer = nil
+		PutNK(r.bodyWindow)
+		r.bodyWindow = nil
 		return nil, io.EOF
 	}
-	if r.bodyBuffer == nil {
-		r.bodyBuffer = Get16K() // will be freed on ends
+	if r.bodyWindow == nil {
+		r.bodyWindow = Get16K() // will be freed on ends
 	}
 	if r.imme.notEmpty() {
-		size := copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyBuffer
+		size := copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyWindow
 		r.sizeReceived = int64(size)
 		r.imme.zero()
-		return r.bodyBuffer[0:size], nil
+		return r.bodyWindow[0:size], nil
 	}
 	if err = r._beforeRead(&r.bodyTime); err != nil {
 		return nil, err
 	}
-	recvSize := int64(cap(r.bodyBuffer))
+	recvSize := int64(cap(r.bodyWindow))
 	if sizeLeft := r.contentSize - r.sizeReceived; sizeLeft < recvSize {
 		recvSize = sizeLeft
 	}
-	size, err := r.stream.readFull(r.bodyBuffer[:recvSize])
+	size, err := r.stream.readFull(r.bodyWindow[:recvSize])
 	r.sizeReceived += int64(size)
 	if err == nil && (r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout) {
 		err = httpReadTooSlow
 	}
-	return r.bodyBuffer[0:size], err
+	return r.bodyWindow[0:size], err
 }
 func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
-	if r.bodyBuffer == nil {
-		r.bodyBuffer = Get16K() // will be freed on ends
+	if r.bodyWindow == nil {
+		r.bodyWindow = Get16K() // will be freed on ends
 	}
 	if r.imme.notEmpty() {
-		r.chunkEdge = int32(copy(r.bodyBuffer, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyBuffer
+		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow
 		r.imme.zero()
 	}
-	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyBuffer is empty. must fill
+	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyWindow is empty. must fill
 		goto badRecv
 	}
 	switch r.chunkSize { // size left in receiving current chunk
 	case -2: // got chunk-data. needs CRLF or LF
-		if r.bodyBuffer[r.cFore] == '\r' {
+		if r.bodyWindow[r.cFore] == '\r' {
 			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 				goto badRecv
 			}
 		}
 		fallthrough
 	case -1: // got chunk-data CR. needs LF
-		if r.bodyBuffer[r.cFore] != '\n' {
+		if r.bodyWindow[r.cFore] != '\n' {
 			goto badRecv
 		}
 		// Skip '\n'
@@ -249,10 +249,10 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		}
 		fallthrough
 	case 0: // start a new chunk = chunk-size [chunk-ext] CRLF chunk-data CRLF
-		r.cBack = r.cFore // now r.bodyBuffer is used for receiving chunk-size [chunk-ext] CRLF
+		r.cBack = r.cFore // now r.bodyWindow is used for receiving chunk-size [chunk-ext] CRLF
 		chunkSize := int64(0)
 		for { // chunk-size = 1*HEXDIG
-			b := r.bodyBuffer[r.cFore]
+			b := r.bodyWindow[r.cFore]
 			if b >= '0' && b <= '9' {
 				b = b - '0'
 			} else if b >= 'a' && b <= 'f' {
@@ -271,8 +271,8 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		if chunkSize < 0 { // bad chunk size.
 			goto badRecv
 		}
-		if b := r.bodyBuffer[r.cFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
-			for r.bodyBuffer[r.cFore] != '\n' {
+		if b := r.bodyWindow[r.cFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
+			for r.bodyWindow[r.cFore] != '\n' {
 				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 					goto badRecv
 				}
@@ -283,7 +283,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 				goto badRecv
 			}
 		}
-		if r.bodyBuffer[r.cFore] != '\n' {
+		if r.bodyWindow[r.cFore] != '\n' {
 			goto badRecv
 		}
 		// Check target size
@@ -300,15 +300,15 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		// Last chunk?
 		if r.chunkSize == 0 { // last-chunk = 1*("0") [chunk-ext] CRLF
 			// last-chunk trailer-section CRLF
-			if r.bodyBuffer[r.cFore] == '\r' {
+			if r.bodyWindow[r.cFore] == '\r' {
 				// Skip '\r'
 				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 					goto badRecv
 				}
-				if r.bodyBuffer[r.cFore] != '\n' {
+				if r.bodyWindow[r.cFore] != '\n' {
 					goto badRecv
 				}
-			} else if r.bodyBuffer[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
+			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
 				if !r.recvTrailers1() {
 					goto badRecv
@@ -319,12 +319,12 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			r.cFore++ // now the whole chunked content is received and r.cFore is immediately after chunked content.
 			// Now we have found the end of current message, so determine r.inputNext and r.inputEdge.
 			if r.cFore < r.chunkEdge { // still has data, stream is pipelined
-				r.overChunked = true                            // so r.bodyBuffer will be used as r.input on stream ends
+				r.overChunked = true                            // so r.bodyWindow will be used as r.input on stream ends
 				r.inputNext, r.inputEdge = r.cFore, r.chunkEdge // mark the next message
 			} else { // no data anymore, stream is not pipelined
 				r.inputNext, r.inputEdge = 0, 0 // reset input
-				PutNK(r.bodyBuffer)
-				r.bodyBuffer = nil
+				PutNK(r.bodyWindow)
+				r.bodyWindow = nil
 			}
 			return nil, io.EOF
 		}
@@ -347,7 +347,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 			r.sizeReceived += r.chunkSize
 			dataEdge = r.cFore + int32(r.chunkSize)
 			if sizeLeft := r.chunkEdge - dataEdge; sizeLeft == 1 { // chunk-data ?
-				if b := r.bodyBuffer[dataEdge]; b == '\r' { // exact chunk-data CR
+				if b := r.bodyWindow[dataEdge]; b == '\r' { // exact chunk-data CR
 					r.chunkSize = -1 // got chunk-data CR, needs LF
 				} else if b == '\n' { // exact chunk-data LF
 					r.chunkSize = 0
@@ -355,30 +355,30 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 					goto badRecv
 				}
 				r.cFore, r.chunkEdge = 0, 0 // all data taken
-			} else if r.bodyBuffer[dataEdge] == '\r' && r.bodyBuffer[dataEdge+1] == '\n' { // chunk-data CRLF..
+			} else if r.bodyWindow[dataEdge] == '\r' && r.bodyWindow[dataEdge+1] == '\n' { // chunk-data CRLF..
 				r.chunkSize = 0
 				if sizeLeft == 2 { // exact chunk-data CRLF
 					r.cFore, r.chunkEdge = 0, 0 // all data taken
 				} else { // > 2, chunk-data CRLF X
 					r.cFore = dataEdge + 2
 				}
-			} else if r.bodyBuffer[dataEdge] == '\n' { // >= 2, chunk-data LF X
+			} else if r.bodyWindow[dataEdge] == '\n' { // >= 2, chunk-data LF X
 				r.chunkSize = 0
 				r.cFore = dataEdge + 1
 			} else { // >= 2, chunk-data XX
 				goto badRecv
 			}
 		}
-		return r.bodyBuffer[from:int(dataEdge)], nil
+		return r.bodyWindow[from:int(dataEdge)], nil
 	}
 badRecv:
 	return nil, http1ReadBadChunk
 }
 
 func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
-	copy(r.bodyBuffer, r.bodyBuffer[r.cFore:r.chunkEdge]) // slide to start
+	copy(r.bodyWindow, r.bodyWindow[r.cFore:r.chunkEdge]) // slide to start
 	r.chunkEdge -= r.cFore
-	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyBuffer will not slide, so the whole trailers must fit in r.bodyBuffer.
+	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
 	r.pBack, r.pFore = 0, 0 // for parsing trailer fields
 	r.trailers.from = uint8(len(r.primes))
 	r.trailers.edge = r.trailers.from
@@ -386,12 +386,12 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 	trailer.zero()
 	trailer.setPlace(pairPlaceArray) // all received trailers are placed in r.array
 	for {
-		if b := r.bodyBuffer[r.pFore]; b == '\r' {
+		if b := r.bodyWindow[r.pFore]; b == '\r' {
 			// Skip '\r'
 			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
-			if r.bodyBuffer[r.pFore] != '\n' {
+			if r.bodyWindow[r.pFore] != '\n' {
 				return false
 			}
 			break
@@ -401,12 +401,12 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 		trailer.hash = 0
 		r.pBack = r.pFore // for field-name
 		for {
-			b := r.bodyBuffer[r.pFore]
+			b := r.bodyWindow[r.pFore]
 			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
-				r.bodyBuffer[r.pFore] = b
+				r.bodyWindow[r.pFore] = b
 			} else if b == ':' {
 				break
 			} else {
@@ -425,14 +425,14 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
-		for r.bodyBuffer[r.pFore] == ' ' || r.bodyBuffer[r.pFore] == '\t' {
+		for r.bodyWindow[r.pFore] == ' ' || r.bodyWindow[r.pFore] == '\t' {
 			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
 		r.pBack = r.pFore // for field-value or EOL
 		for {
-			if b := r.bodyBuffer[r.pFore]; httpVchar[b] == 1 {
+			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
@@ -441,7 +441,7 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
-				if r.bodyBuffer[r.pFore] != '\n' {
+				if r.bodyWindow[r.pFore] != '\n' {
 					return false
 				}
 				break
@@ -453,11 +453,11 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 		}
 		// r.pFore is at '\n'
 		fore := r.pFore
-		if r.bodyBuffer[fore-1] == '\r' {
+		if r.bodyWindow[fore-1] == '\r' {
 			fore--
 		}
 		if fore > r.pBack {
-			for r.bodyBuffer[fore-1] == ' ' || r.bodyBuffer[fore-1] == '\t' {
+			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
 			trailer.value.set(r.pBack, fore)
@@ -467,12 +467,12 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 
 		// Copy trailer to r.array
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(trailer.nameAt(r.bodyBuffer)) {
+		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
 		trailer.nameFrom = fore // adjust name from
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(trailer.valueAt(r.bodyBuffer)) {
+		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
 		trailer.value.set(fore, r.arrayEdge)
@@ -491,18 +491,18 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 	return true
 }
 func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
-	if r.chunkEdge == int32(cap(r.bodyBuffer)) && r.cBack == 0 { // r.bodyBuffer is full and we can't slide
+	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.cBack == 0 { // r.bodyWindow is full and we can't slide
 		return false
 	}
 	if r.cBack > 0 { // has previously used data. slide to start so we can read more data
-		copy(r.bodyBuffer, r.bodyBuffer[r.cBack:r.chunkEdge])
+		copy(r.bodyWindow, r.bodyWindow[r.cBack:r.chunkEdge])
 		r.chunkEdge -= r.cBack
 		r.cFore -= r.cBack
 		r.cBack = 0
 	}
 	err := r._beforeRead(&r.bodyTime)
 	if err == nil {
-		n, e := r.stream.read(r.bodyBuffer[r.chunkEdge:])
+		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		if e == nil {
 			if r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout {
 				e = httpReadTooSlow

@@ -284,8 +284,8 @@ func (s *H3Stream) reverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
-func (s *H3Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *H3Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.makeTempName(p, stamp)
 }
 
 func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content only

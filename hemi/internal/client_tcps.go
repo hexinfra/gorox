@@ -43,10 +43,10 @@ func (t *tcpsClient_) onCreate() {
 }
 
 func (t *tcpsClient_) onConfigure(shell Component) {
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &t.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	t.streamHolder_.onConfigure(shell, 1000)
 }
 func (t *tcpsClient_) onPrepare(shell Component) {
+	t.streamHolder_.onPrepare(shell)
 }
 
 const signTCPS = "tcps"

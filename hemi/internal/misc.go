@@ -107,7 +107,11 @@ type contentSaver_ struct {
 	saveContentFilesDir string
 }
 
-func (s *contentSaver_) makeContentFilesDir(perm os.FileMode) {
+func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
+	// saveContentFilesDir
+	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) bool { return value != "" }, defaultDir)
+}
+func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
 		EnvExitln(err.Error())
 	}
@@ -115,6 +119,7 @@ func (s *contentSaver_) makeContentFilesDir(perm os.FileMode) {
 		s.saveContentFilesDir += "/"
 	}
 }
+
 func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir }
 
 // loadBalancer_
@@ -508,14 +513,14 @@ type span struct { // 16 bytes
 	from, last int64 // including last
 }
 
-func makeTempName(p []byte, stageID int64, connID int64, seconds int64, counter int64) (from int, edge int) {
+func makeTempName(p []byte, stageID int64, connID int64, stamp int64, counter int64) (from int, edge int) {
 	// TODO: improvement
 	stageID &= 0xff
 	connID &= 0xffff
-	seconds &= 0xffffffff
+	stamp &= 0xffffffff
 	counter &= 0xff
 	// stageID(8) | connID(16) | seconds(32) | counter(8)
-	i64 := stageID<<56 | connID<<40 | seconds<<8 | counter
+	i64 := stageID<<56 | connID<<40 | stamp<<8 | counter
 	i64 &= 0x7fffffffffffffff // clear left-most bit
 	return i64ToDec(i64, p)
 }

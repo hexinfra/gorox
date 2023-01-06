@@ -35,13 +35,13 @@ func (h *httpClient_) onCreate() {
 
 func (h *httpClient_) onConfigure(shell Component, clientName string) {
 	h.streamHolder_.onConfigure(shell, 1000)
-	// saveContentFilesDir
-	shell.ConfigureString("saveContentFilesDir", &h.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/"+clientName+"/"+shell.Name())
+	h.contentSaver_.onConfigure(shell, TempDir()+"/"+clientName+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
 func (h *httpClient_) onPrepare(shell Component) {
 	h.streamHolder_.onPrepare(shell)
+	h.contentSaver_.onPrepare(shell, 0755)
 }
 
 func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
@@ -66,7 +66,6 @@ func (f *httpOutgate_) onConfigure(shell Component) {
 func (f *httpOutgate_) onPrepare(shell Component) {
 	f.client_.onPrepare()
 	f.httpClient_.onPrepare(shell)
-	f.makeContentFilesDir(0755)
 }
 
 // httpBackend_ is the mixin for HTTP[1-3]Backend.
@@ -93,7 +92,6 @@ func (b *httpBackend_[N]) onConfigure(shell Component) {
 func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.backend_.onPrepare()
 	b.httpClient_.onPrepare(shell)
-	b.makeContentFilesDir(0755)
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
@@ -102,7 +100,7 @@ type hConn interface {
 	getClient() httpClient
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, seconds int64) (from int, edge int) // small enough to be placed in smallStack() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallStack() of stream
 }
 
 // hConn_ is the mixin for H[1-3]Conn.
@@ -133,8 +131,8 @@ func (c *hConn_) getClient() httpClient { return c.client.(httpClient) }
 func (c *hConn_) isBroken() bool { return c.broken.Load() }
 func (c *hConn_) markBroken()    { c.broken.Store(true) }
 
-func (c *hConn_) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, seconds, c.counter.Add(1))
+func (c *hConn_) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, stamp, c.counter.Add(1))
 }
 
 func (c *hConn_) reachLimit() bool {

@@ -314,8 +314,8 @@ func (s *H1Stream) reverseProxy(req Request, resp Response, bufferClientContent 
 	return nil
 }
 
-func (s *H1Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *H1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.makeTempName(p, stamp)
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {

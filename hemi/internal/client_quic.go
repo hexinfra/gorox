@@ -41,10 +41,10 @@ func (q *quicClient_) onCreate() {
 }
 
 func (q *quicClient_) onConfigure(shell Component) {
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &q.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	q.streamHolder_.onConfigure(shell, 1000)
 }
 func (q *quicClient_) onPrepare(shell Component) {
+	q.streamHolder_.onPrepare(shell)
 }
 
 const signQUIC = "quic"

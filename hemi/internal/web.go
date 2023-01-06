@@ -105,6 +105,8 @@ func (a *App) OnShutdown() {
 }
 
 func (a *App) OnConfigure() {
+	a.contentSaver_.onConfigure(a, TempDir()+"/apps/"+a.name)
+
 	// hostnames
 	if v, ok := a.Find("hostnames"); ok {
 		hostnames, ok := v.StringList()
@@ -171,8 +173,6 @@ func (a *App) OnConfigure() {
 	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) bool { return value > 0 && value <= _1G }, _1M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 	// maxUploadContentSize
 	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) bool { return value > 0 && value <= _1T }, _128M)
-	// saveContentFilesDir
-	a.ConfigureString("saveContentFilesDir", &a.saveContentFilesDir, func(value string) bool { return value != "" }, TempDir()+"/apps/"+a.name)
 	// settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 	// proxyOnly
@@ -209,6 +209,8 @@ func (a *App) OnConfigure() {
 	a.rules.walk((*Rule).OnConfigure)
 }
 func (a *App) OnPrepare() {
+	a.contentSaver_.onPrepare(a, 0755)
+
 	if a.accessLog != nil {
 		//a.booker = newBooker(a.accessLog[0], a.accessLog[1])
 	}
@@ -217,7 +219,6 @@ func (a *App) OnPrepare() {
 			a.bytes404 = data
 		}
 	}
-	a.makeContentFilesDir(0755)
 
 	// sub components
 	a.handlets.walk(Handlet.OnPrepare)

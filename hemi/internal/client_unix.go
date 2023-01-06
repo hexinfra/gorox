@@ -41,10 +41,10 @@ func (u *unixClient_) onCreate() {
 }
 
 func (u *unixClient_) onConfigure(shell Component) {
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &u.maxStreamsPerConn, func(value int32) bool { return value > 0 }, 1000)
+	u.streamHolder_.onConfigure(shell, 1000)
 }
 func (u *unixClient_) onPrepare(shell Component) {
+	u.streamHolder_.onPrepare(shell)
 }
 
 const signUnix = "unix"

@@ -846,7 +846,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 	s.httpStream_.onUse()
 	s.conn = conn
 	s.id = id
-	s.inWindow = _64K1 // max size of r.bodyBuffer
+	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
 	s.request.versionCode = Version2 // explicitly set
 	s.request.onUse()
@@ -897,8 +897,8 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 	// TODO
 }
 
-func (s *http2Stream) makeTempName(p []byte, seconds int64) (from int, edge int) {
-	return s.conn.makeTempName(p, seconds)
+func (s *http2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.makeTempName(p, stamp)
 }
 
 func (s *http2Stream) setReadDeadline(deadline time.Time) error { // for content only

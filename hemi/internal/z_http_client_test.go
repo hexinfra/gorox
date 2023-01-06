@@ -13,27 +13,27 @@ import (
 )
 
 func TestMultipleResponseHeaders(t *testing.T) {
-	headers := bytes.Split(httpResponseMultipleHeaderBytes, []byte(" "))
+	headers := bytes.Split(hResponseMultipleHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
-		h := httpResponseMultipleHeaderTable[httpResponseMultipleHeaderFind(hash)]
+		h := hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(hash)]
 		if h.hash != hash {
 			t.Error("hash invalid")
 		}
-		if !bytes.Equal(httpResponseMultipleHeaderBytes[h.from:h.edge], header) {
+		if !bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], header) {
 			t.Error("from edge invalid")
 		}
 	}
 }
 func TestCriticalResponseHeaders(t *testing.T) {
-	headers := bytes.Split(httpResponseCriticalHeaderBytes, []byte(" "))
+	headers := bytes.Split(hResponseCriticalHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
-		h := httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
+		h := hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(hash)]
 		if h.hash != hash {
 			t.Error("hash invalid")
 		}
-		if !bytes.Equal(httpResponseCriticalHeaderBytes[h.from:h.edge], header) {
+		if !bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], header) {
 			t.Error("from edge invalid")
 		}
 	}

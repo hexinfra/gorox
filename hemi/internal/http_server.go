@@ -706,7 +706,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderBytes[h.from:h.edge], headerName) {
+	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
@@ -725,7 +725,7 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderBytes[h.from:h.edge], headerName) {
+		if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 				// r.headResult is set.
 				return false
@@ -735,8 +735,8 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for multiple request headers
-	httpRequestMultipleHeaderBytes = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via")
+var ( // perfect hash table for request multiple headers
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via")
 	httpRequestMultipleHeaderTable = [17]struct {
 		hash  uint16
 		from  uint8
@@ -872,8 +872,8 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 	return true
 }
 
-var ( // perfect hash table for critical request headers
-	httpRequestCriticalHeaderBytes = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent")
+var ( // perfect hash table for request critical headers
+	httpRequestCriticalHeaderNames = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent")
 	httpRequestCriticalHeaderTable = [10]struct {
 		hash  uint16
 		from  uint8
@@ -2672,23 +2672,48 @@ func (r *httpResponse_) hookReviser(reviser Reviser) {
 }
 
 func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
-	// TODO: perfect hashing
-	for _, field := range httpResponseCrucialFieldTable {
-		if field.hash == hash && bytes.Equal(field.name, name) {
-			return true
+	/*
+		for _, field := range httpResponseCrucialFieldTable {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
 		}
-	}
+	*/
 	return false
 }
 
-var httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
-	hash uint16
-	name []byte
-}{
-	0: {httpHashConnection, httpBytesConnection},
-	1: {httpHashContentLength, httpBytesContentLength},
-	2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-	3: {httpHashSetCookie, httpBytesSetCookie},
+var ( // perfect hash table for response crucial fields
+	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie")
+	httpResponseCrucialFieldTable = [4]struct { // TODO: perfect hashing
+		hash uint16
+		from uint8
+		edge uint8
+		fAdd func()
+		fDel func()
+	}{
+		0: {httpHashConnection, 0, 1, nil, nil},
+		1: {httpHashContentLength, 2, 3, nil, nil},
+		2: {httpHashTransferEncoding, 4, 5, nil, nil},
+		3: {httpHashSetCookie, 6, 7, nil, nil},
+	}
+	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 }
+)
+
+func (r *httpResponse_) addConnection() {
+}
+func (r *httpResponse_) delConnection() {
+}
+func (r *httpResponse_) addContentLength() {
+}
+func (r *httpResponse_) delContentLength() {
+}
+func (r *httpResponse_) addTransferEncoding() {
+}
+func (r *httpResponse_) delTransferEncoding() {
+}
+func (r *httpResponse_) addSetCookie() {
+}
+func (r *httpResponse_) delSetCookie() {
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

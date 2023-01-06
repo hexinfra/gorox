@@ -281,23 +281,48 @@ func (r *hRequest_) finishChunked() error {
 }
 
 func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
-	// TODO: perfect hashing
-	for _, field := range hRequestCrucialFieldTable {
-		if field.hash == hash && bytes.Equal(field.name, name) {
-			return true
+	/*
+		for _, field := range hRequestCrucialFieldTable {
+			if field.hash == hash && bytes.Equal(field.name, name) {
+				return true
+			}
 		}
-	}
+	*/
 	return false
 }
 
-var hRequestCrucialFieldTable = [4]struct { // TODO: perfect hashing
-	hash uint16
-	name []byte
-}{
-	0: {httpHashConnection, httpBytesConnection},
-	1: {httpHashContentLength, httpBytesContentLength},
-	2: {httpHashTransferEncoding, httpBytesTransferEncoding},
-	3: {httpHashCookie, httpBytesCookie},
+var ( // perfect hash table for request crucial fields
+	hRequestCrucialFieldNames = []byte("connection content-length transfer-encoding cookie")
+	hRequestCrucialFieldTable = [4]struct { // TODO: perfect hashing
+		hash uint16
+		from uint8
+		edge uint8
+		fAdd func()
+		fDel func()
+	}{
+		0: {httpHashConnection, 0, 1, nil, nil},
+		1: {httpHashContentLength, 2, 3, nil, nil},
+		2: {httpHashTransferEncoding, 4, 5, nil, nil},
+		3: {httpHashCookie, 6, 7, nil, nil},
+	}
+	hRequestCrucialFieldFind = func(hash uint16) int { return 1 }
+)
+
+func (r *hRequest_) addConnection() {
+}
+func (r *hRequest_) delConnection() {
+}
+func (r *hRequest_) addContentLength() {
+}
+func (r *hRequest_) delContentLength() {
+}
+func (r *hRequest_) addTransferEncoding() {
+}
+func (r *hRequest_) delTransferEncoding() {
+}
+func (r *hRequest_) addCookie() {
+}
+func (r *hRequest_) delCookie() {
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.
@@ -377,7 +402,7 @@ func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpResponseMultipleHeaderTable[httpResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpResponseMultipleHeaderBytes[h.from:h.edge], headerName) {
+	if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
@@ -396,7 +421,7 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpResponseCriticalHeaderBytes[h.from:h.edge], headerName) {
+		if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 				// r.headResult is set.
 				return false
@@ -406,9 +431,9 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for multiple response headers
-	httpResponseMultipleHeaderBytes = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
-	httpResponseMultipleHeaderTable = [14]struct {
+var ( // perfect hash table for response multiple headers
+	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	hResponseMultipleHeaderTable = [14]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -430,7 +455,7 @@ var ( // perfect hash table for multiple response headers
 		12: {httpHashAcceptEncoding, 0, 15, false, nil},
 		13: {httpHashUpgrade, 140, 147, false, (*hResponse_).checkUpgrade},
 	}
-	httpResponseMultipleHeaderFind = func(hash uint16) int { return (4114134 / int(hash)) % 14 }
+	hResponseMultipleHeaderFind = func(hash uint16) int { return (4114134 / int(hash)) % 14 }
 )
 
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
@@ -456,9 +481,9 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 	return false
 }
 
-var ( // perfect hash table for critical response headers
-	httpResponseCriticalHeaderBytes = []byte("content-length content-range content-type date etag expires last-modified location server set-cookie")
-	httpResponseCriticalHeaderTable = [10]struct {
+var ( // perfect hash table for response critical headers
+	hResponseCriticalHeaderNames = []byte("content-length content-range content-type date etag expires last-modified location server set-cookie")
+	hResponseCriticalHeaderTable = [10]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -475,7 +500,7 @@ var ( // perfect hash table for critical response headers
 		8: {httpHashSetCookie, 90, 100, (*hResponse_).checkSetCookie},
 		9: {httpHashExpires, 52, 59, (*hResponse_).checkExpires},
 	}
-	httpResponseCriticalHeaderFind = func(hash uint16) int { return (68805 / int(hash)) % 10 }
+	hResponseCriticalHeaderFind = func(hash uint16) int { return (68805 / int(hash)) % 10 }
 )
 
 func (r *hResponse_) checkContentRange(header *pair, index uint8) bool {

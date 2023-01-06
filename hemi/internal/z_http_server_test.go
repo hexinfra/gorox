@@ -13,27 +13,27 @@ import (
 )
 
 func TestMultipleRequestHeaders(t *testing.T) {
-	headers := bytes.Split(httpRequestMultipleHeaderBytes, []byte(" "))
+	headers := bytes.Split(httpRequestMultipleHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(hash)]
 		if h.hash != hash {
 			t.Error("hash invalid")
 		}
-		if !bytes.Equal(httpRequestMultipleHeaderBytes[h.from:h.edge], header) {
+		if !bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], header) {
 			t.Error("from edge invalid")
 		}
 	}
 }
 func TestCriticalRequestHeaders(t *testing.T) {
-	headers := bytes.Split(httpRequestCriticalHeaderBytes, []byte(" "))
+	headers := bytes.Split(httpRequestCriticalHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(hash)]
 		if h.hash != hash {
 			t.Error("hash invalid")
 		}
-		if !bytes.Equal(httpRequestCriticalHeaderBytes[h.from:h.edge], header) {
+		if !bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], header) {
 			t.Error("from edge invalid")
 		}
 	}

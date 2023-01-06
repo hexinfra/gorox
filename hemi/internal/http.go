@@ -1183,7 +1183,19 @@ func (r *httpOutMessage_) AddHeaderByBytes(name []byte, value string) bool {
 	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
-	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isCrucialField(hash, lower) {
+	hash, valid, lower := r._nameCheck(name)
+	/*
+		if !valid {
+			return false
+		}
+		for _, b := range value { // to prevent response splitting
+			if b == '\r' || b == '\n' {
+				return false
+			}
+		}
+		return r.shell.addHeader(hash, lower, value)
+	*/
+	if valid && !r.shell.isCrucialField(hash, lower) {
 		for _, b := range value { // to prevent response splitting
 			if b == '\r' || b == '\n' {
 				return false
@@ -1198,7 +1210,8 @@ func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
 }
 func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
-	if hash, valid, lower := r._nameCheck(name); valid && !r.shell.isCrucialField(hash, lower) {
+	hash, valid, lower := r._nameCheck(name)
+	if valid && !r.shell.isCrucialField(hash, lower) {
 		return r.shell.delHeader(lower)
 	} else {
 		return false

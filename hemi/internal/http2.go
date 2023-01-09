@@ -56,6 +56,9 @@ func (r *httpOutMessage_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
+func (r *httpOutMessage_) delHeaderAt2(o uint8) {
+	// TODO
+}
 
 func (r *httpOutMessage_) sendChain2(chain Chain, vector [][]byte) error {
 	// TODO
@@ -138,9 +141,9 @@ func (p *http2Inputs) decRef() {
 // HTTP/2 protocol elements.
 
 const ( // HTTP/2 sizes and limits
-	http2FrameMaxSize     = 64000 // for both of our HTTP/2 client and HTTP/2 server
-	http2MaxTableSize     = _4K   // for both of our HTTP/2 client and HTTP/2 server
-	http2MaxActiveStreams = 127   // for both of our HTTP/2 client and HTTP/2 server
+	http2FrameMaxSize     = _16K // for both of our HTTP/2 client and HTTP/2 server
+	http2MaxTableSize     = _4K  // for both of our HTTP/2 client and HTTP/2 server
+	http2MaxActiveStreams = 127  // for both of our HTTP/2 client and HTTP/2 server
 )
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0

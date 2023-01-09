@@ -792,7 +792,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 		// RFC 7230 (section 6.7):
 		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
 		for i := from; i < edge; i++ {
-			r.delPrime(i) // we delete it.
+			r.delPrimeAt(i) // we delete it.
 		}
 	}
 	return true
@@ -929,7 +929,7 @@ func (r *httpRequest_) checkExpect(header *pair, index uint8) bool {
 		if r.versionCode == Version1_0 {
 			// RFC 7231 (section 5.1.1):
 			// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-			r.delPrime(index) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+			r.delPrimeAt(index) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		} else {
 			r.expectContinue = true
 		}
@@ -980,15 +980,15 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 		r.headResult, r.headReason = StatusBadRequest, "duplicated if-range"
 		return false
 	}
-	if time, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-		r.ifRangeTime = time
+	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+		r.ifRangeTime = modTime
 	}
 	r.indexes.ifRange = index
 	return true
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	if r.methodCode != MethodGET {
-		r.delPrime(index)
+		r.delPrimeAt(index)
 		return true
 	}
 	if r.nRanges > 0 {
@@ -1561,15 +1561,15 @@ func (r *httpRequest_) checkHead() bool {
 			r.ifNoneMatch = 0
 		}
 		if r.indexes.ifModifiedSince != 0 {
-			r.delPrime(r.indexes.ifModifiedSince)
+			r.delPrimeAt(r.indexes.ifModifiedSince)
 			r.indexes.ifModifiedSince = 0
 		}
 		if r.indexes.ifUnmodifiedSince != 0 {
-			r.delPrime(r.indexes.ifUnmodifiedSince)
+			r.delPrimeAt(r.indexes.ifUnmodifiedSince)
 			r.indexes.ifUnmodifiedSince = 0
 		}
 		if r.indexes.ifRange != 0 {
-			r.delPrime(r.indexes.ifRange)
+			r.delPrimeAt(r.indexes.ifRange)
 			r.indexes.ifRange = 0
 		}
 	} else {
@@ -1578,12 +1578,12 @@ func (r *httpRequest_) checkHead() bool {
 		// received field value is not a valid HTTP-date, the field value has
 		// more than one member, or if the request method is neither GET nor HEAD.
 		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
-			r.delPrime(r.indexes.ifModifiedSince) // we delete it.
+			r.delPrimeAt(r.indexes.ifModifiedSince) // we delete it.
 			r.indexes.ifModifiedSince = 0
 		}
 		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
 		if r.indexes.ifRange != 0 && r.nRanges == 0 {
-			r.delPrime(r.indexes.ifRange) // we delete it.
+			r.delPrimeAt(r.indexes.ifRange) // we delete it.
 			r.indexes.ifRange = 0
 		}
 	}
@@ -1688,10 +1688,10 @@ func (r *httpRequest_) checkHead() bool {
 }
 
 func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	r.delPrime(r.iContentLength)
+	r.delPrimeAt(r.iContentLength)
 }
 func (r *httpRequest_) delHost() { // used by proxies
-	r.delPrime(r.indexes.host) // zero safe
+	r.delPrimeAt(r.indexes.host) // zero safe
 }
 
 func (r *httpRequest_) parseHTMLForm() {
@@ -2322,9 +2322,8 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
+	MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with `""`
 	SetLastModified(lastModified int64) bool
-	SetETag(etag string) bool
-	SetETagBytes(etag []byte) bool
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
@@ -2370,7 +2369,6 @@ type Response interface {
 	hasHeader(name []byte) bool
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
-	makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with ""
 	setConnectionClose()
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
@@ -2396,24 +2394,18 @@ type httpResponse_ struct {
 	request Request // *http[1-3]Request
 	// Stream states (buffers)
 	// Stream states (controlled)
-	etag [32]byte // etag buffer. like: "60928f91-21ef3c4" (modTime-fileSize, in hex format. DQUOTE included). controlled by r.nETag
 	// Stream states (non-zeros)
 	status       int16 // 200, 302, 404, 500, ...
-	lastModified int64 // -1: unknown. unix timestamp in seconds. if set, will add a "last-modified" response header
+	lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
 	// Stream states (zeros)
 	app            *App // associated app
 	svc            *Svc // associated svc
 	httpResponse0_      // all values must be zero by default in this struct!
 }
 type httpResponse0_ struct { // for fast reset, entirely
-	revisers           [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	hasRevisers        bool      // are there any revisers hooked on this response?
-	nETag              int8      // etag is at r.etag[:r.nETag]
-	dateCopied         bool      // is date header copied?
-	lastModifiedCopied bool      // is last-modified header copied?
-	etagCopied         bool      // is etag header copied?
-	oLastModified      uint8     // ...
-	oETag              uint8     // ...
+	revisers      [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
+	hasRevisers   bool      // are there any revisers hooked on this response?
+	oLastModified uint8     // ...
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
@@ -2450,97 +2442,82 @@ func (r *httpResponse_) Status() int16 {
 	return r.status
 }
 
-func (r *httpResponse_) SetLastModified(lastModified int64) bool {
-	if lastModified >= 0 {
-		r.lastModified = lastModified
-		return true
-	} else {
-		return false
-	}
-}
-func (r *httpResponse_) SetETag(etag string) bool {
-	return r.SetETagBytes(risky.ConstBytes(etag))
-}
-func (r *httpResponse_) SetETagBytes(etag []byte) bool {
-	n := len(etag)
-	if n == 0 || n > 30 {
-		return false
-	}
-	if etag[0] == '"' && etag[n-1] == '"' {
-		r.nETag = int8(copy(r.etag[:], etag))
-	} else {
-		r.etag[0] = '"'
-		copy(r.etag[1:], etag)
-		r.etag[n+1] = '"'
-		r.nETag = int8(n) + 2
-	}
-	return true
-}
-func (r *httpResponse_) makeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
+func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
 	if modTime < 0 || fileSize < 0 {
 		return nil, false
 	}
-	r.etag[0] = '"'
-	etag := r.etag[1:]
-	nETag := i64ToHex(modTime, etag)
-	etag[nETag] = '-'
-	nETag++
-	if nETag > 13 {
+	p := r.unsafeMake(32)
+	p[0] = '"'
+	etag := p[1:]
+	n := i64ToHex(modTime, etag)
+	etag[n] = '-'
+	n++
+	if n > 13 {
 		return nil, false
 	}
-	r.nETag = 1 + int8(nETag+i64ToHex(fileSize, etag[nETag:]))
-	r.etag[r.nETag] = '"'
-	r.nETag++
-	return r.etag[0:r.nETag], true
+	n = 1 + n + i64ToHex(fileSize, etag[n:])
+	p[n] = '"'
+	return p[0 : n+1], true
+}
+func (r *httpResponse_) SetLastModified(lastModified int64) bool {
+	if lastModified < 0 {
+		return false
+	}
+	if r.lastModified == -2 {
+		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+	}
+	r.lastModified = lastModified
+	return true
 }
 
-func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
-	/*
-		for _, field := range httpResponseCrucialFieldTable {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-	*/
-	return false
-}
-
-var ( // perfect hash table for response crucial fields
-	httpResponseCrucialFieldNames = []byte("connection content-length content-type etag last-modified set-cookie transfer-encoding upgrade")
-	httpResponseCrucialFieldTable = [8]struct { // TODO: perfect hashing
+var ( // perfect hash table for response crucial headers
+	httpResponseCrucialHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
+	httpResponseCrucialHeaderTable = [10]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8
 		edge uint8
-		fAdd func(*httpResponse_) // nil if not allowed
-		fDel func(*httpResponse_) // nil if not allowed
+		fAdd func(*httpResponse_, []byte) (ok bool)
+		fDel func(*httpResponse_) (deleted bool)
 	}{
 		0: {httpHashConnection, 0, 1, nil, nil},
 		1: {httpHashContentLength, 2, 3, nil, nil},
 		2: {httpHashTransferEncoding, 4, 5, nil, nil},
 		3: {httpHashUpgrade, 6, 7, nil, nil},
 		4: {httpHashSetCookie, 6, 7, nil, nil},
-		5: {httpHashContentType, 8, 9, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
-		6: {httpHashLastModified, 8, 9, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
-		7: {httpHashETag, 10, 11, (*httpResponse_).addETag, (*httpResponse_).delETag},
+		5: {httpHashServer, 8, 9, nil, nil},
+		6: {httpHashContentType, 8, 9, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
+		7: {httpHashExpires, 8, 9, (*httpResponse_).addExpires, (*httpResponse_).delExpires},
+		8: {httpHashLastModified, 8, 9, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
+		9: {httpHashDate, 8, 9, (*httpResponse_).addDate, (*httpResponse_).delDate},
 	}
-	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
+	httpResponseCrucialHeaderFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
 )
 
-func (r *httpResponse_) addContentType() {
-	r._addContentType()
+func (r *httpResponse_) addExpires(expires []byte) (ok bool) {
+	return false
 }
-func (r *httpResponse_) delContentType() {
-	r._delContentType()
-}
-
-func (r *httpResponse_) addLastModified() {
-}
-func (r *httpResponse_) delLastModified() {
+func (r *httpResponse_) delExpires() (deleted bool) {
+	return false
 }
 
-func (r *httpResponse_) addETag() {
+func (r *httpResponse_) addLastModified(lastModified []byte) (ok bool) {
+	if r.lastModified == -2 {
+		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+	} else { // >= 0 or -1
+		r.lastModified = -2
+	}
+	// TODO: addHeader and set r.oLastModified
+	return false
 }
-func (r *httpResponse_) delETag() {
+func (r *httpResponse_) delLastModified() (deleted bool) {
+	if r.lastModified == -1 {
+		return false
+	}
+	if r.lastModified == -2 {
+		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+	}
+	r.lastModified = -1
+	return true
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2668,18 +2645,16 @@ func (r *httpResponse_) push(chunk *Block) error {
 
 func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	r.SetStatus(resp.Status())
+
 	resp.delHopHeaders()
 
 	// copy critical headers from resp
-	if date := resp.unsafeDate(); date != nil && !r.copyHeader(&r.dateCopied, httpBytesDate, date) {
-		return false
-	}
-	if lastModified := resp.unsafeLastModified(); lastModified != nil && !r.copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
-		return false
-	}
-	if etag := resp.unsafeETag(); etag != nil && !r.copyHeader(&r.etagCopied, httpBytesETag, etag) {
-		return false
-	}
+	/*
+		if lastModified := resp.unsafeLastModified(); lastModified != nil && !r.copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
+			return false
+		}
+	*/
+
 	resp.delCriticalHeaders()
 
 	// copy remaining headers

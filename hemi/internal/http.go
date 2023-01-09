@@ -812,7 +812,7 @@ func (r *httpInMessage_) addPrime(prime *pair) (edge uint8, ok bool) {
 	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
 }
-func (r *httpInMessage_) delPrime(i uint8) {
+func (r *httpInMessage_) delPrimeAt(i uint8) {
 	r.primes[i].zero()
 }
 func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bool {
@@ -1096,10 +1096,10 @@ type httpOutMessage interface {
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	delHeader(name []byte) (deleted bool)
+	delHeaderAt(o uint8)
 	addHeader(name []byte, value []byte) bool
 	addedHeaders() []byte
 	fixedHeaders() []byte
-	isCrucialField(hash uint16, name []byte) bool
 	send() error
 	sendChain(chain Chain) error
 	checkPush() error
@@ -1123,12 +1123,14 @@ type httpOutMessage_ struct {
 	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
-	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers
+	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
 	fields         []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
 	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
 	maxSendTimeout time.Duration // max timeout to send message
 	asRequest      bool          // use message as request?
+	nHeaders       uint8         // num of added headers, <= 255, starts from 1
+	nTrailers      uint8         // num of added trailers, <= 255, starts from 1
 	content        Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
@@ -1139,12 +1141,11 @@ type httpOutMessage_ struct {
 type httpOutMessage0_ struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
-	nHeaders      uint8  // num of added headers, <= 255
-	nTrailers     uint8  // num of added trailers, <= 255
+	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
-	isSent        bool   // whether the message is sent
 	oContentType  uint8  // ...
+	oDate         uint8  // ...
 }
 
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
@@ -1152,6 +1153,8 @@ func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
 	r.contentSize = -1 // not set
 	r.maxSendTimeout = r.stream.getHolder().WriteTimeout()
 	r.asRequest = asRequest
+	r.nHeaders = 1                    // r.edges[0] is not used
+	r.nTrailers = 1                   // r.edges[0] is not used
 	r.content.PushTail(&r.stockBlock) // r.content has 1 block by default
 }
 func (r *httpOutMessage_) onEnd() { // for zeros
@@ -1188,8 +1191,9 @@ func (r *httpOutMessage_) AddHeaderByBytes(name []byte, value string) bool {
 	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
-	hash, valid, lower := r._nameCheck(name)
+	return false
 	/*
+		hash, valid, lower := r._nameCheck(name)
 		if !valid {
 			return false
 		}
@@ -1200,27 +1204,21 @@ func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool 
 		}
 		return r.shell.addHeader(hash, lower, value)
 	*/
-	if valid && !r.shell.isCrucialField(hash, lower) {
-		for _, b := range value { // to prevent response splitting
-			if b == '\r' || b == '\n' {
-				return false
-			}
-		}
-		return r.shell.addHeader(lower, value)
-	} else {
-		return false
-	}
 }
 func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
 }
 func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
-	hash, valid, lower := r._nameCheck(name)
-	if valid && !r.shell.isCrucialField(hash, lower) {
-		return r.shell.delHeader(lower)
-	} else {
-		return false
+	return false
+	/*
+		hash, valid, lower := r._nameCheck(name)
+	*/
+}
+func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
+	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
+		return
 	}
+	return r._growFields(size)
 }
 func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) {
 	n := len(name)
@@ -1253,18 +1251,31 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	}
 	return hash, true, buffer[:n]
 }
-func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
-	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
-		return
+
+func (r *httpOutMessage_) addContentType(contentType []byte) (ok bool) {
+	if r.oContentType > 0 {
+		return false
 	}
-	return r._growFields(size)
+	return false
+}
+func (r *httpOutMessage_) delContentType() (deleted bool) {
+	if r.oContentType == 0 {
+		return false
+	}
+	return false
 }
 
-func (r *httpOutMessage_) _addContentType() {
-	// TODO: use r.oContentType
+func (r *httpOutMessage_) addDate(date []byte) (ok bool) {
+	if r.oDate > 0 {
+		return false
+	}
+	return false
 }
-func (r *httpOutMessage_) _delContentType() {
-	// TODO: use r.oContentType
+func (r *httpOutMessage_) delDate() (deleted bool) {
+	if r.oDate == 0 {
+		return false
+	}
+	return false
 }
 
 func (r *httpOutMessage_) IsSent() bool {
@@ -1450,17 +1461,6 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 		}
 	}
 	return nil
-}
-func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bool {
-	if *copied {
-		return true
-	}
-	if r.shell.addHeader(name, value) {
-		*copied = true
-		return true
-	} else {
-		return false
-	}
 }
 
 func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time
@@ -1833,7 +1833,7 @@ var ( // misc http strings & byteses.
 	httpBytesMultipartForm  = []byte("multipart/form-data")
 	httpBytesName           = []byte("name")
 	httpBytesNone           = []byte("none")
-	httpBytesTextHTML       = []byte("text/html; charset=utf-8")
+	httpBytesHTMLUTF8       = []byte("text/html; charset=utf-8")
 	httpBytesTrailers       = []byte("trailers")
 	httpBytesWebSocket      = []byte("websocket")
 )

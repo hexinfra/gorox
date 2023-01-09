@@ -339,7 +339,7 @@ func (s *H2Stream) readFull(p []byte) (int, error) { // for content only
 func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
 
-// H2Request
+// H2Request is the client-side HTTP/2 request.
 type H2Request struct {
 	// Mixins
 	hRequest_
@@ -368,6 +368,9 @@ func (r *H2Request) addHeader(name []byte, value []byte) bool {
 }
 func (r *H2Request) delHeader(name []byte) (deleted bool) {
 	return r.delHeader2(name)
+}
+func (r *H2Request) delHeaderAt(o uint8) {
+	r.delHeaderAt2(o)
 }
 func (r *H2Request) addedHeaders() []byte {
 	return nil
@@ -421,7 +424,7 @@ func (r *H2Request) finalizeChunked() error {
 	return nil
 }
 
-// H2Response
+// H2Response is the client-side HTTP/2 response.
 type H2Response struct {
 	// Mixins
 	hResponse_

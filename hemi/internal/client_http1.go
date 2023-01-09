@@ -401,6 +401,9 @@ func (r *H1Request) addHeader(name []byte, value []byte) bool {
 func (r *H1Request) delHeader(name []byte) (deleted bool) {
 	return r.delHeader1(name)
 }
+func (r *H1Request) delHeaderAt(o uint8) {
+	r.delHeaderAt1(o)
+}
 func (r *H1Request) addedHeaders() []byte {
 	return r.fields[r.controlEdge:r.fieldsEdge]
 }
@@ -471,12 +474,13 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		if r.contentSize == -2 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else { // content-length: 12345
-			lengthBuffer := r.stream.tinyBuffer() // enough for length
-			from, edge := i64ToDec(r.contentSize, lengthBuffer)
-			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
+			sizeBuffer := r.stream.tinyBuffer() // enough for length
+			from, edge := i64ToDec(r.contentSize, sizeBuffer)
+			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
 		}
-		// TODO: check content-type?
-		// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
+		if r.oContentType == 0 {
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+		}
 	}
 	// connection: keep-alive
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))

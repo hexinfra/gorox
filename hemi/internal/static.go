@@ -184,10 +184,10 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	}
 
 	modTime := entry.info.ModTime().Unix()
-	etag, _ := resp.makeETagFrom(modTime, entry.info.Size()) // with ""
+	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
 		resp.SetLastModified(modTime)
-		resp.SetETagBytes(etag)
+		resp.AddHeaderBytesByBytes(httpBytesETag, etag)
 		//resp.AddHeader(httpBytesAcceptRange, httpBytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)
@@ -212,7 +212,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {
-			resp.SetETagBytes(etag)
+			resp.AddHeaderBytesByBytes(httpBytesETag, etag)
 		}
 		resp.SendBytes(nil)
 	}

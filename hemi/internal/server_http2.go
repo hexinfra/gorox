@@ -252,7 +252,7 @@ var http2ServerPrefaceAndMore = []byte{
 	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
 	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
 	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
-	0, 5, 0, 0, 0xfa, 0x00, // maxFrameSize=64000
+	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
 	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
 
 	// ack client settings
@@ -977,8 +977,11 @@ func (r *http2Response) hasHeader(name []byte) bool {
 func (r *http2Response) addHeader(name []byte, value []byte) bool {
 	return r.addHeader2(name, value)
 }
-func (r *http2Response) delHeader(name []byte) bool {
+func (r *http2Response) delHeader(name []byte) (deleted bool) {
 	return r.delHeader2(name)
+}
+func (r *http2Response) delHeaderAt(o uint8) {
+	r.delHeaderAt2(o)
 }
 func (r *http2Response) addedHeaders() []byte {
 	return nil

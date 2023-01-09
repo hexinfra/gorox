@@ -182,7 +182,7 @@ type hRequest_ struct {
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
-	cookieCopied bool // is cookie header copied?
+	oHost uint8 // ...
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
@@ -195,41 +195,68 @@ func (r *hRequest_) onEnd() { // for zeros
 
 func (r *hRequest_) Response() response { return r.response }
 
-func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
-	/*
-		for _, field := range hRequestCrucialFieldTable {
-			if field.hash == hash && bytes.Equal(field.name, name) {
-				return true
-			}
-		}
-	*/
+func (r *hRequest_) SetIfModifiedSince(since int64) bool {
+	return false
+}
+func (r *hRequest_) SetIfRangeTime(modTime int64) bool {
+	return false
+}
+func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
 	return false
 }
 
-var ( // perfect hash table for request crucial fields
-	hRequestCrucialFieldNames = []byte("connection content-length content-type cookie transfer-encoding upgrade")
-	hRequestCrucialFieldTable = [6]struct { // TODO: perfect hashing
+var ( // perfect hash table for request crucial headers
+	hRequestCrucialHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade")
+	hRequestCrucialHeaderTable = [11]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8
 		edge uint8
-		fAdd func(*hRequest_) // nil if not allowed
-		fDel func(*hRequest_) // nil if not allowed
+		fAdd func(*hRequest_, []byte) (ok bool)
+		fDel func(*hRequest_) (deleted bool)
 	}{
-		0: {httpHashConnection, 0, 1, nil, nil},
-		1: {httpHashContentLength, 2, 3, nil, nil},
-		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashUpgrade, 4, 5, nil, nil},
-		4: {httpHashCookie, 6, 7, nil, nil},
-		5: {httpHashContentType, 6, 7, (*hRequest_).addContentType, (*hRequest_).delContentType},
+		0:  {httpHashConnection, 0, 1, nil, nil},
+		1:  {httpHashContentLength, 2, 3, nil, nil},
+		2:  {httpHashTransferEncoding, 4, 5, nil, nil},
+		3:  {httpHashUpgrade, 4, 5, nil, nil},
+		4:  {httpHashCookie, 6, 7, nil, nil},
+		5:  {httpHashContentType, 6, 7, (*hRequest_).addContentType, (*hRequest_).delContentType},
+		6:  {httpHashHost, 6, 7, (*hRequest_).addHost, (*hRequest_).delHost},
+		7:  {httpHashDate, 6, 7, (*hRequest_).addDate, (*hRequest_).delDate},
+		8:  {httpHashIfModifiedSince, 6, 7, (*hRequest_).addIfModifiedSince, (*hRequest_).delIfModifiedSince},
+		9:  {httpHashIfRange, 6, 7, (*hRequest_).addIfRange, (*hRequest_).delIfRange},
+		10: {httpHashIfUnmodifiedSince, 6, 7, (*hRequest_).addIfUnmodifiedSince, (*hRequest_).delIfUnmodifiedSince},
 	}
-	hRequestCrucialFieldFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
+	hRequestCrucialHeaderFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
 )
 
-func (r *hRequest_) addContentType() {
-	r._addContentType()
+func (r *hRequest_) addHost(host []byte) (ok bool) {
+	// TODO
+	return false
 }
-func (r *hRequest_) delContentType() {
-	r._delContentType()
+func (r *hRequest_) delHost() (deleted bool) {
+	// TODO
+	return false
+}
+
+func (r *hRequest_) addIfModifiedSince(since []byte) (ok bool) {
+	return false
+}
+func (r *hRequest_) delIfModifiedSince() (deleted bool) {
+	return false
+}
+
+func (r *hRequest_) addIfRange(ifRange []byte) (ok bool) {
+	return false
+}
+func (r *hRequest_) delIfRange() (deleted bool) {
+	return false
+}
+
+func (r *hRequest_) addIfUnmodifiedSince(since []byte) (ok bool) {
+	return false
+}
+func (r *hRequest_) delIfUnmodifiedSince() (deleted bool) {
+	return false
 }
 
 func (r *hRequest_) send() error {
@@ -276,6 +303,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	if !r.shell.(request).setControl(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
+
 	req.delHopHeaders()
 
 	// copy critical headers from req
@@ -284,6 +312,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 			return false
 		}
 	}
+
 	req.delCriticalHeaders()
 
 	if req.IsAbsoluteForm() {
@@ -326,7 +355,6 @@ type response interface {
 	HasTrailers() bool
 
 	unsafeDate() []byte
-	unsafeETag() []byte
 	unsafeLastModified() []byte
 	delCriticalHeaders()
 	delHopHeaders()
@@ -527,23 +555,17 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	return r.parseSetCookie(header.value)
 }
 
-func (r *hResponse_) unsafeDate() []byte { // used by proxies
+func (r *hResponse_) unsafeDate() []byte {
 	if r.indexes.date == 0 {
 		return nil
 	}
 	return r.primes[r.indexes.date].valueAt(r.input)
 }
-func (r *hResponse_) unsafeLastModified() []byte { // used by proxies
+func (r *hResponse_) unsafeLastModified() []byte {
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
-}
-func (r *hResponse_) unsafeETag() []byte { // used by proxies
-	if r.indexes.etag == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.etag].valueAt(r.input)
 }
 
 func (r *hResponse_) parseSetCookie(setCookieString text) bool {
@@ -624,11 +646,8 @@ func (r *hResponse_) checkHead() bool {
 }
 
 func (r *hResponse_) delCriticalHeaders() { // used by proxies
-	r.delPrime(r.indexes.server)
-	r.delPrime(r.indexes.date)
-	r.delPrime(r.indexes.lastModified)
-	r.delPrime(r.indexes.etag)
-	r.delPrime(r.iContentLength)
+	r.delPrimeAt(r.indexes.server)
+	r.delPrimeAt(r.iContentLength)
 }
 
 func (r *hResponse_) HasContent() bool {

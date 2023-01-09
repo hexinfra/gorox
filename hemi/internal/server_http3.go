@@ -380,8 +380,11 @@ func (r *http3Response) hasHeader(name []byte) bool {
 func (r *http3Response) addHeader(name []byte, value []byte) bool {
 	return r.addHeader3(name, value)
 }
-func (r *http3Response) delHeader(name []byte) bool {
+func (r *http3Response) delHeader(name []byte) (deleted bool) {
 	return r.delHeader3(name)
+}
+func (r *http3Response) delHeaderAt(o uint8) {
+	r.delHeaderAt3(o)
 }
 func (r *http3Response) addedHeaders() []byte {
 	return nil

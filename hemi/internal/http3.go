@@ -45,6 +45,9 @@ func (r *httpOutMessage_) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
+func (r *httpOutMessage_) delHeaderAt3(o uint8) {
+	// TODO
+}
 
 func (r *httpOutMessage_) sendChain3(chain Chain, vector [][]byte) error {
 	// TODO

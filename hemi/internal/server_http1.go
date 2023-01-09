@@ -539,7 +539,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
-	resp.AddHeaderBytesByBytes(httpBytesContentType, httpBytesTextHTML)
+	resp.AddHeaderBytesByBytes(httpBytesContentType, httpBytesHTMLUTF8)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
@@ -1076,6 +1076,9 @@ func (r *http1Response) addHeader(name []byte, value []byte) bool {
 func (r *http1Response) delHeader(name []byte) (deleted bool) {
 	return r.delHeader1(name)
 }
+func (r *http1Response) delHeaderAt(o uint8) {
+	r.delHeaderAt1(o)
+}
 func (r *http1Response) addedHeaders() []byte {
 	return r.fields[0:r.fieldsEdge]
 }
@@ -1225,24 +1228,20 @@ func (r *http1Response) passBytes(p []byte) error {
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
-	if !r.dateCopied {
+	if r.oDate == 0 {
 		r.stream.getHolder().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])
 		r.fieldsEdge += uint16(clockDateSize)
 	}
 	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT
-	if r.lastModified != -1 && !r.lastModifiedCopied {
+	if r.lastModified >= 0 {
 		clockWriteLastModified(r.fields[r.fieldsEdge:r.fieldsEdge+uint16(clockLastModifiedSize)], r.lastModified)
 		r.fieldsEdge += uint16(clockLastModifiedSize)
 	}
-	// etag: "xxxx-xxxx"
-	if r.nETag > 0 && !r.etagCopied {
-		r._addFixedHeader1(httpBytesETag, r.etag[0:r.nETag])
-	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: >= 0
-			lengthBuffer := r.stream.tinyBuffer() // enough for length
-			from, edge := i64ToDec(r.contentSize, lengthBuffer)
-			r._addFixedHeader1(httpBytesContentLength, lengthBuffer[from:edge])
+			sizeBuffer := r.stream.tinyBuffer() // enough for length
+			from, edge := i64ToDec(r.contentSize, sizeBuffer)
+			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
 		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else {
@@ -1251,16 +1250,15 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// request indicates HTTP/1.1 (or later).
 			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
 		}
-		// TODO: check content-type?
-		// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeTextHTML))
+		if r.oContentType == 0 {
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+		}
 	}
 	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
-	// TODO: check accept-ranges: bytes?
-	// r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesAcceptRangesBytes))
 }
 func (r *http1Response) finalizeChunked() error {
 	if r.request.VersionCode() == Version1_0 {

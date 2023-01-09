@@ -527,9 +527,9 @@ var ( // http/1 message reading errors
 // http1OutMessage_ is used by http1Response and H1Request.
 
 func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
-	if r.nHeaders > 0 && len(name) > 0 {
+	if r.nHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(0); i < r.nHeaders; i++ {
+		for i := uint8(1); i < r.nHeaders; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -541,9 +541,9 @@ func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
 	return
 }
 func (r *httpOutMessage_) hasHeader1(name []byte) bool {
-	if r.nHeaders > 0 && len(name) > 0 {
+	if r.nHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(0); i < r.nHeaders; i++ {
+		for i := uint8(1); i < r.nHeaders; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -573,7 +573,7 @@ func (r *httpOutMessage_) addHeader1(name []byte, value []byte) bool {
 }
 func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)
-	for i := uint8(0); i < r.nHeaders; {
+	for i := uint8(1); i < r.nHeaders; {
 		edge := r.edges[i]
 		if bytes.HasPrefix(r.fields[from:edge], name) {
 			size := edge - from
@@ -590,6 +590,9 @@ func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
 		}
 	}
 	return
+}
+func (r *httpOutMessage_) delHeaderAt1(o uint8) {
+	// TODO
 }
 func (r *httpOutMessage_) _addCRLFHeader1(from int) {
 	r.fields[from] = '\r'
@@ -685,9 +688,9 @@ func (r *httpOutMessage_) pushChain1(chain Chain, chunked bool) error {
 }
 
 func (r *httpOutMessage_) trailer1(name []byte) (value []byte, ok bool) {
-	if r.nTrailers > 0 && len(name) > 0 {
+	if r.nTrailers > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(0); i < r.nTrailers; i++ {
+		for i := uint8(1); i < r.nTrailers; i++ {
 			edge := r.edges[i]
 			trailer := r.fields[from:edge]
 			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
@@ -730,7 +733,7 @@ func (r *httpOutMessage_) passBytes1(p []byte) error {
 }
 
 func (r *httpOutMessage_) finalizeChunked1() error {
-	if r.nTrailers == 0 { // no trailers
+	if r.nTrailers == 1 { // no trailers
 		r.vector = r.fixedVector[0:1]
 		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
 	} else { // with trailers
@@ -859,15 +862,15 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 
 var ( // HTTP/1 byteses
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
-	http1BytesTransferChunked      = []byte("transfer-encoding: chunked\r\n")
 	http1BytesConnectionClose      = []byte("connection: close\r\n")
 	http1BytesConnectionKeepAlive  = []byte("connection: keep-alive\r\n")
+	http1BytesContentTypeHTMLUTF8  = []byte("content-type: text/html; charset=utf-8\r\n")
+	http1BytesTransferChunked      = []byte("transfer-encoding: chunked\r\n")
+	http1BytesVaryEncoding         = []byte("vary: accept-encoding\r\n")
 	http1BytesLocationHTTP         = []byte("location: http://")
 	http1BytesLocationHTTPS        = []byte("location: https://")
 	http1BytesFixedRequestHeaders  = []byte("client: gorox\r\n\r\n")
 	http1BytesFixedResponseHeaders = []byte("server: gorox\r\n\r\n")
-	http1BytesAcceptRangesBytes    = []byte("accept-ranges: bytes\r\n")
-	http1BytesVaryEncoding         = []byte("vary: accept-encoding\r\n")
 	http1BytesZeroCRLF             = []byte("0\r\n")
 	http1BytesZeroCRLFCRLF         = []byte("0\r\n\r\n")
 )

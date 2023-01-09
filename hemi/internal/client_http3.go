@@ -311,7 +311,7 @@ func (s *H3Stream) readFull(p []byte) (int, error) { // for content only
 func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
 
-// H3Request
+// H3Request is the client-side HTTP/3 request.
 type H3Request struct {
 	// Mixins
 	hRequest_
@@ -340,6 +340,9 @@ func (r *H3Request) addHeader(name []byte, value []byte) bool {
 }
 func (r *H3Request) delHeader(name []byte) (deleted bool) {
 	return r.delHeader3(name)
+}
+func (r *H3Request) delHeaderAt(o uint8) {
+	r.delHeaderAt3(o)
 }
 func (r *H3Request) addedHeaders() []byte {
 	return nil
@@ -393,7 +396,7 @@ func (r *H3Request) finalizeChunked() error {
 	return nil
 }
 
-// H3Response
+// H3Response is the client-side HTTP/3 response.
 type H3Response struct {
 	// Mixins
 	hResponse_
@@ -404,8 +407,18 @@ type H3Response struct {
 	// Stream states (zeros)
 }
 
+func (r *H3Response) joinHeaders(p []byte) bool {
+	// TODO
+	return false
+}
+
 func (r *H3Response) readContent() (p []byte, err error) {
 	return r.readContent3()
+}
+
+func (r *H3Response) joinTrailers(p []byte) bool {
+	// TODO
+	return false
 }
 
 // H3Socket is the client-side HTTP/3 websocket.

@@ -228,6 +228,13 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	r.httpInMessage0_ = httpInMessage0_{}
 }
 
+func (r *httpInMessage_) UnsafeMake(size int) []byte {
+	return r.stream.unsafeMake(size)
+}
+func (r *httpInMessage_) PeerAddr() net.Addr {
+	return r.stream.peerAddr()
+}
+
 func (r *httpInMessage_) VersionCode() uint8    { return r.versionCode }
 func (r *httpInMessage_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpInMessage_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
@@ -734,13 +741,6 @@ func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, f
 	return r._walkFields(r.trailers, extraKindTrailer, fn, forProxy)
 }
 
-func (r *httpInMessage_) UnsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
-}
-func (r *httpInMessage_) PeerAddr() net.Addr {
-	return r.stream.peerAddr()
-}
-
 func (r *httpInMessage_) arrayPush(b byte) {
 	r.array[r.arrayEdge] = b
 	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
@@ -1144,9 +1144,9 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 	forbidContent     bool   // forbid content?
 	forbidFraming     bool   // forbid content-length and transfer-encoding?
 	isSent            bool   // whether the message is sent
-	iConnection       uint8  // ...
-	iContentLength    uint8  // ...
-	iTransferEncoding uint8  // ...
+	oConnection       uint8  // ...
+	oContentLength    uint8  // ...
+	oTransferEncoding uint8  // ...
 }
 
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
@@ -1167,6 +1167,10 @@ func (r *httpOutMessage_) onEnd() { // for zeros
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
 	r.httpOutMessage0_ = httpOutMessage0_{}
+}
+
+func (r *httpOutMessage_) unsafeMake(size int) []byte {
+	return r.stream.unsafeMake(size)
 }
 
 func (r *httpOutMessage_) Header(name string) (value string, ok bool) {
@@ -1452,10 +1456,6 @@ func (r *httpOutMessage_) copyHeader(copied *bool, name []byte, value []byte) bo
 	} else {
 		return false
 	}
-}
-
-func (r *httpOutMessage_) unsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
 }
 
 func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time

@@ -183,7 +183,7 @@ type hRequest_ struct {
 }
 type hRequest0_ struct { // for fast reset, entirely
 	cookieCopied bool  // is cookie header copied?
-	iCookie      uint8 // ...
+	oCookie      uint8 // ...
 }
 
 func (r *hRequest_) onUse() { // for non-zeros

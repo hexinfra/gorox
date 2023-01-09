@@ -207,7 +207,7 @@ func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
 }
 
 var ( // perfect hash table for request crucial fields
-	hRequestCrucialFieldNames = []byte("connection content-length content-type upgrade transfer-encoding cookie")
+	hRequestCrucialFieldNames = []byte("connection content-length content-type cookie transfer-encoding upgrade")
 	hRequestCrucialFieldTable = [6]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8

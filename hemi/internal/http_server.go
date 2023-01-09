@@ -2347,7 +2347,6 @@ type Response interface {
 	SendBytes(content []byte) error
 	SendJSON(content any) error
 	SendFile(contentPath string) error
-
 	SendBadRequest(content []byte) error
 	SendForbidden(content []byte) error
 	SendNotFound(content []byte) error
@@ -2507,7 +2506,7 @@ func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
 }
 
 var ( // perfect hash table for response crucial fields
-	httpResponseCrucialFieldNames = []byte("connection content-length content-type transfer-encoding upgrade set-cookie last-modified etag")
+	httpResponseCrucialFieldNames = []byte("connection content-length content-type etag last-modified set-cookie transfer-encoding upgrade")
 	httpResponseCrucialFieldTable = [8]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8

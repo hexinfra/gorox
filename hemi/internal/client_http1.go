@@ -408,6 +408,10 @@ func (r *H1Request) fixedHeaders() []byte {
 	return http1BytesFixedRequestHeaders
 }
 
+func (r *H1Request) AddCookie(name string, value string) bool {
+	// TODO
+	return false
+}
 func (r *H1Request) copyCookies(req Request) bool { // used by proxies
 	size := len(httpBytesCookie) + len(httpBytesColonSpace) // `cookie: `
 	req.forCookies(func(name []byte, value []byte) bool {

@@ -1156,17 +1156,17 @@ func (r *http1Response) setConnectionClose() {
 	r.stream.(*http1Stream).conn.keepConn = false // explicitly
 }
 
-func (r *http1Response) AddCookie(cookie *Cookie) bool {
-	if cookie.name == "" || cookie.invalid {
+func (r *http1Response) SetCookie(setCookie *SetCookie) bool {
+	if setCookie.name == "" || setCookie.invalid {
 		return false
 	}
-	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + cookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n
+	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + setCookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], httpBytesSetCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		from += cookie.writeTo(r.fields[from:])
+		from += setCookie.writeTo(r.fields[from:])
 		r._addCRLFHeader1(from)
 		return true
 	} else {

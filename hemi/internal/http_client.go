@@ -182,8 +182,7 @@ type hRequest_ struct {
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
-	cookieCopied bool  // is cookie header copied?
-	oCookie      uint8 // ...
+	cookieCopied bool // is cookie header copied?
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
@@ -208,40 +207,29 @@ func (r *hRequest_) isCrucialField(hash uint16, name []byte) bool {
 }
 
 var ( // perfect hash table for request crucial fields
-	hRequestCrucialFieldNames = []byte("connection content-length transfer-encoding cookie")
-	hRequestCrucialFieldTable = [4]struct { // TODO: perfect hashing
+	hRequestCrucialFieldNames = []byte("connection content-length content-type upgrade transfer-encoding cookie")
+	hRequestCrucialFieldTable = [6]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8
 		edge uint8
-		fAdd func()
-		fDel func()
+		fAdd func(*hRequest_) // nil if not allowed
+		fDel func(*hRequest_) // nil if not allowed
 	}{
 		0: {httpHashConnection, 0, 1, nil, nil},
 		1: {httpHashContentLength, 2, 3, nil, nil},
 		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashCookie, 6, 7, nil, nil},
+		3: {httpHashUpgrade, 4, 5, nil, nil},
+		4: {httpHashCookie, 6, 7, nil, nil},
+		5: {httpHashContentType, 6, 7, (*hRequest_).addContentType, (*hRequest_).delContentType},
 	}
-	hRequestCrucialFieldFind = func(hash uint16) int { return 1 }
+	hRequestCrucialFieldFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
 )
 
-func (r *hRequest_) addConnection() {
+func (r *hRequest_) addContentType() {
+	r._addContentType()
 }
-func (r *hRequest_) delConnection() {
-}
-
-func (r *hRequest_) addContentLength() {
-}
-func (r *hRequest_) delContentLength() {
-}
-
-func (r *hRequest_) addTransferEncoding() {
-}
-func (r *hRequest_) delTransferEncoding() {
-}
-
-func (r *hRequest_) addCookie() {
-}
-func (r *hRequest_) delCookie() {
+func (r *hRequest_) delContentType() {
+	r._delContentType()
 }
 
 func (r *hRequest_) send() error {
@@ -574,10 +562,7 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 	// samesite-av = "SameSite=" samesite-value
 	// extension-av = <any CHAR except CTLs or ";">
 	var cookie setCookie
-	// TODO: parse
-	return r.addSetCookie(&cookie)
-}
-func (r *hResponse_) addSetCookie(cookie *setCookie) bool {
+	// TODO: parse to cookie
 	if len(r.setCookies) == cap(r.setCookies) {
 		if cap(r.setCookies) == cap(r.stockSetCookies) {
 			setCookies := make([]setCookie, 0, 16)
@@ -590,7 +575,7 @@ func (r *hResponse_) addSetCookie(cookie *setCookie) bool {
 			return false
 		}
 	}
-	r.setCookies = append(r.setCookies, *cookie)
+	r.setCookies = append(r.setCookies, cookie)
 	return true
 }
 

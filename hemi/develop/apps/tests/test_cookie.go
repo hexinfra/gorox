@@ -11,17 +11,17 @@ import (
 )
 
 func (h *testHandlet) GET_cookie_set(req Request, resp Response) {
-	cookie1 := new(Cookie)
+	cookie1 := new(SetCookie)
 	cookie1.Set("hello", "wo r,ld")
 	cookie1.SetMaxAge(99)
 	cookie1.SetExpires(time.Now().Add(time.Minute))
 	cookie1.SetPath("/")
-	resp.AddCookie(cookie1)
+	resp.SetCookie(cookie1)
 
-	cookie2 := new(Cookie)
+	cookie2 := new(SetCookie)
 	cookie2.Set("world", "hello")
 	cookie2.SetPath("/")
-	resp.AddCookie(cookie2)
+	resp.SetCookie(cookie2)
 
 	resp.SendBytes(nil)
 }

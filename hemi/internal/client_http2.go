@@ -376,6 +376,10 @@ func (r *H2Request) fixedHeaders() []byte {
 	return nil
 }
 
+func (r *H2Request) AddCookie(name string, value string) bool {
+	// TODO
+	return false
+}
 func (r *H2Request) copyCookies(req Request) bool { // used by proxies
 	// TODO: one by one?
 	return true

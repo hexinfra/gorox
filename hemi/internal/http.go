@@ -1137,16 +1137,14 @@ type httpOutMessage_ struct {
 	httpOutMessage0_
 }
 type httpOutMessage0_ struct { // for fast reset, entirely
-	controlEdge       uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
-	fieldsEdge        uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
-	nHeaders          uint8  // num of added headers, <= 255
-	nTrailers         uint8  // num of added trailers, <= 255
-	forbidContent     bool   // forbid content?
-	forbidFraming     bool   // forbid content-length and transfer-encoding?
-	isSent            bool   // whether the message is sent
-	oConnection       uint8  // ...
-	oContentLength    uint8  // ...
-	oTransferEncoding uint8  // ...
+	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
+	nHeaders      uint8  // num of added headers, <= 255
+	nTrailers     uint8  // num of added trailers, <= 255
+	forbidContent bool   // forbid content?
+	forbidFraming bool   // forbid content-length and transfer-encoding?
+	isSent        bool   // whether the message is sent
+	oContentType  uint8  // ...
 }
 
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
@@ -1260,6 +1258,13 @@ func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
 		return
 	}
 	return r._growFields(size)
+}
+
+func (r *httpOutMessage_) _addContentType() {
+	// TODO: use r.oContentType
+}
+func (r *httpOutMessage_) _delContentType() {
+	// TODO: use r.oContentType
 }
 
 func (r *httpOutMessage_) IsSent() bool {

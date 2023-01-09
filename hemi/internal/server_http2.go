@@ -1003,7 +1003,7 @@ func (r *http2Response) setConnectionClose() {
 	BugExitln("not used in HTTP/2")
 }
 
-func (r *http2Response) AddCookie(cookie *Cookie) bool {
+func (r *http2Response) SetCookie(setCookie *SetCookie) bool {
 	// TODO
 	return false
 }

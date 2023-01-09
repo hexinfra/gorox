@@ -348,6 +348,10 @@ func (r *H3Request) fixedHeaders() []byte {
 	return nil
 }
 
+func (r *H3Request) AddCookie(name string, value string) bool {
+	// TODO
+	return false
+}
 func (r *H3Request) copyCookies(req Request) bool { // used by proxies
 	// TODO: one by one?
 	return true

@@ -2329,7 +2329,7 @@ type Response interface {
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
 
-	AddCookie(cookie *Cookie) bool
+	SetCookie(setCookie *SetCookie) bool
 
 	Header(name string) (value string, ok bool)
 	HasHeader(name string) bool
@@ -2413,7 +2413,6 @@ type httpResponse0_ struct { // for fast reset, entirely
 	dateCopied         bool      // is date header copied?
 	lastModifiedCopied bool      // is last-modified header copied?
 	etagCopied         bool      // is etag header copied?
-	oSetCookie         uint8     // ...
 	oLastModified      uint8     // ...
 	oETag              uint8     // ...
 }
@@ -2508,42 +2507,41 @@ func (r *httpResponse_) isCrucialField(hash uint16, name []byte) bool {
 }
 
 var ( // perfect hash table for response crucial fields
-	httpResponseCrucialFieldNames = []byte("connection content-length transfer-encoding set-cookie last-modified etag")
-	httpResponseCrucialFieldTable = [6]struct { // TODO: perfect hashing
+	httpResponseCrucialFieldNames = []byte("connection content-length content-type transfer-encoding upgrade set-cookie last-modified etag")
+	httpResponseCrucialFieldTable = [8]struct { // TODO: perfect hashing
 		hash uint16
 		from uint8
 		edge uint8
-		fAdd func()
-		fDel func()
+		fAdd func(*httpResponse_) // nil if not allowed
+		fDel func(*httpResponse_) // nil if not allowed
 	}{
 		0: {httpHashConnection, 0, 1, nil, nil},
 		1: {httpHashContentLength, 2, 3, nil, nil},
 		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashSetCookie, 6, 7, nil, nil},
-		4: {httpHashLastModified, 8, 9, nil, nil},
-		5: {httpHashETag, 10, 11, nil, nil},
+		3: {httpHashUpgrade, 6, 7, nil, nil},
+		4: {httpHashSetCookie, 6, 7, nil, nil},
+		5: {httpHashContentType, 8, 9, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
+		6: {httpHashLastModified, 8, 9, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
+		7: {httpHashETag, 10, 11, (*httpResponse_).addETag, (*httpResponse_).delETag},
 	}
-	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 }
+	httpResponseCrucialFieldFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
 )
 
-func (r *httpResponse_) addConnection() {
+func (r *httpResponse_) addContentType() {
+	r._addContentType()
 }
-func (r *httpResponse_) delConnection() {
-}
-
-func (r *httpResponse_) addContentLength() {
-}
-func (r *httpResponse_) delContentLength() {
+func (r *httpResponse_) delContentType() {
+	r._delContentType()
 }
 
-func (r *httpResponse_) addTransferEncoding() {
+func (r *httpResponse_) addLastModified() {
 }
-func (r *httpResponse_) delTransferEncoding() {
+func (r *httpResponse_) delLastModified() {
 }
 
-func (r *httpResponse_) addSetCookie() {
+func (r *httpResponse_) addETag() {
 }
-func (r *httpResponse_) delSetCookie() {
+func (r *httpResponse_) delETag() {
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2717,6 +2715,164 @@ func (r *httpResponse_) finishChunked() error {
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+}
+
+// SetCookie is a "set-cookie" sent to client.
+type SetCookie struct {
+	name     string
+	value    string
+	expires  time.Time
+	maxAge   int64
+	domain   string
+	path     string
+	sameSite string
+	secure   bool
+	httpOnly bool
+	invalid  bool
+	quote    bool // if true, quote value with ""
+	aFrom    int8
+	aEdge    int8
+	ageBuf   [19]byte
+}
+
+func (c *SetCookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	if name == "" {
+		c.invalid = true
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; httpKchar[b] == 0 {
+			c.invalid = true
+			return false
+		}
+	}
+	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	for i := 0; i < len(value); i++ {
+		b := value[i]
+		if httpKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		c.invalid = true
+		return false
+	}
+	c.value = value
+	return true
+}
+
+func (c *SetCookie) SetDomain(domain string) bool {
+	// TODO: check domain
+	c.domain = domain
+	return true
+}
+func (c *SetCookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
+			return false
+		}
+	}
+	c.path = path
+	return true
+}
+func (c *SetCookie) SetExpires(expires time.Time) bool {
+	if expires.Year() < 1601 {
+		c.invalid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *SetCookie) SetMaxAge(maxAge int64) { c.maxAge = maxAge }
+func (c *SetCookie) SetSecure()             { c.secure = true }
+func (c *SetCookie) SetHttpOnly()           { c.httpOnly = true }
+func (c *SetCookie) SetSameSiteStrict()     { c.sameSite = "Strict" }
+func (c *SetCookie) SetSameSiteLax()        { c.sameSite = "Lax" }
+func (c *SetCookie) SetSameSiteNone()       { c.sameSite = "None" }
+
+func (c *SetCookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if !c.expires.IsZero() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		from, edge := i64ToDec(c.maxAge, c.ageBuf[:])
+		c.aFrom, c.aEdge = int8(from), int8(edge)
+		n += len("; Max-Age=") + (edge - from)
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aFrom, c.aEdge = 0, 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *SetCookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if !c.expires.IsZero() {
+		i += copy(p[i:], "; Expires=")
+		i += clockWriteHTTPDate(c.expires, p[i:])
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[c.aFrom:c.aEdge])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
 }
 
 // Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.

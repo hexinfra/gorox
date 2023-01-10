@@ -871,7 +871,6 @@ func (s *http2Stream) execute() { // goroutine
 func (s *http2Stream) holder() holder {
 	return s.conn.getServer()
 }
-
 func (s *http2Stream) peerAddr() net.Addr {
 	return s.conn.netConn.RemoteAddr()
 }

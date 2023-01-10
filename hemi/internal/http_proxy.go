@@ -86,6 +86,8 @@ type httpProxy_ struct {
 	app    *App   // the app to which the proxy belongs
 	cacher Cacher // the cache server which is used by this proxy
 	// States
+	hostname            []byte      // ...
+	colonPort           []byte      // ...
 	bufferClientContent bool        // buffer client content into TempFile?
 	bufferServerContent bool        // buffer server content into TempFile?
 	delRequestHeaders   [][]byte    // client request headers to delete
@@ -117,6 +119,14 @@ func (h *httpProxy_) onConfigure(shell Component) {
 			UseExitln("invalid withCacher")
 		}
 	}
+	// hostname
+	var hostname string
+	h.ConfigureString("hostname", &hostname, nil, "")
+	h.hostname = []byte(hostname)
+	// colonPort
+	var colonPort string
+	h.ConfigureString("colonPort", &colonPort, nil, "")
+	h.colonPort = []byte(colonPort)
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

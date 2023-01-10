@@ -31,7 +31,6 @@ type holder interface {
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
 	holder() holder
-
 	peerAddr() net.Addr
 
 	tinyBuffer() []byte
@@ -89,8 +88,8 @@ type httpInMessage interface {
 // httpInMessage_ is a mixin for httpRequest_ and hResponse_.
 type httpInMessage_ struct {
 	// Assocs
-	stream stream        // *http[1-3]Stream or *H[1-3]Stream
 	shell  httpInMessage // *http[1-3]Request or *H[1-3]Response
+	stream stream        // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
 	stockArray  [1024]byte // for r.array
@@ -1051,14 +1050,11 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 }
 func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
-		field := &r.primes[i]
-		if field.hash == 0 {
-			continue
-		}
-		p := r._getPlace(field)
-		fieldName := field.nameAt(p)
-		if !fn(field.hash, fieldName, field.valueAt(p)) {
-			return false
+		if field := &r.primes[i]; field.hash != 0 {
+			p := r._getPlace(field)
+			if !fn(field.hash, field.nameAt(p), field.valueAt(p)) {
+				return false
+			}
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
@@ -1131,8 +1127,8 @@ type httpOutMessage interface {
 // httpOutMessage_ is a mixin for httpResponse_ and hRequest_.
 type httpOutMessage_ struct {
 	// Assocs
-	stream stream         // *http[1-3]Stream or *H[1-3]Stream
 	shell  httpOutMessage // *http[1-3]Response or *H[1-3]Request
+	stream stream         // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
 	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used

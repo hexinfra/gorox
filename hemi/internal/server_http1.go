@@ -467,7 +467,6 @@ func (s *http1Stream) onEnd() { // for zeros
 func (s *http1Stream) holder() holder {
 	return s.conn.getServer()
 }
-
 func (s *http1Stream) peerAddr() net.Addr {
 	return s.conn.netConn.RemoteAddr()
 }

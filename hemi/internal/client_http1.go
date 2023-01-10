@@ -296,7 +296,6 @@ func (s *H1Stream) onEnd() { // for zeros
 func (s *H1Stream) holder() holder {
 	return s.conn.getClient()
 }
-
 func (s *H1Stream) peerAddr() net.Addr {
 	return s.conn.netConn.RemoteAddr()
 }
@@ -387,6 +386,22 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 }
 func (r *H1Request) control() []byte {
 	return r.fields[0:r.controlEdge]
+}
+func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+	// TODO: if colonPort is default (:80 for http, :443 for https), omit it
+	size := len(httpBytesHost) + len(httpBytesColonSpace) + len(hostname) + len(colonPort) + len(httpBytesCRLF) // host: xxx\r\n
+	if from, _, ok := r._growFields(size); ok {
+		from += copy(r.fields[from:], httpBytesHost)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += copy(r.fields[from:], hostname)
+		from += copy(r.fields[from:], colonPort)
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
 }
 
 func (r *H1Request) header(name []byte) (value []byte, ok bool) {

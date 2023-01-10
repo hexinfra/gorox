@@ -264,7 +264,6 @@ func (s *H3Stream) onEnd() { // for zeros
 func (s *H3Stream) holder() holder {
 	return s.conn.getClient()
 }
-
 func (s *H3Stream) peerAddr() net.Addr {
 	// TODO
 	return nil
@@ -326,7 +325,12 @@ func (r *H3Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 	return false
 }
 func (r *H3Request) control() []byte {
+	// TODO
 	return nil
+}
+func (r *H3Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+	// TODO
+	return false
 }
 
 func (r *H3Request) header(name []byte) (value []byte, ok bool) {

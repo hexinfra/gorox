@@ -279,7 +279,6 @@ func (s *http3Stream) execute() { // goroutine
 func (s *http3Stream) holder() holder {
 	return s.conn.getServer()
 }
-
 func (s *http3Stream) peerAddr() net.Addr {
 	// TODO
 	return nil

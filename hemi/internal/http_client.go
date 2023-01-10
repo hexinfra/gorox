@@ -165,6 +165,7 @@ type request interface {
 	SetMaxSendTimeout(timeout time.Duration) // to defend against bad server
 
 	setControl(method []byte, uri []byte, hasContent bool) bool
+	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	addHeader(name []byte, value []byte) bool
 	copyCookies(req Request) bool
 }
@@ -319,7 +320,7 @@ func (r *hRequest_) push(chunk *Block) error {
 	return r.shell.pushChain(curChain)
 }
 
-func (r *hRequest_) copyHead(req Request) bool { // used by proxies
+func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
 	var uri []byte
 	if req.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
@@ -339,20 +340,25 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
 		return false
 	}
-
-	if req.IsAbsoluteForm() {
-		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
-		// field (if any) and instead replace it with the host information of the request-target. A proxy that forwards such a request
-		// MUST generate a new Host field value based on the received request-target rather than forward the received Host field value.
+	if custom := len(hostname) != 0 || len(colonPort) != 0; custom || req.IsAbsoluteForm() {
 		req.unsetHost()
-		if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
+		if custom {
+			if len(hostname) == 0 {
+				hostname = req.UnsafeHostname()
+			}
+			if len(colonPort) == 0 {
+				colonPort = req.UnsafeColonPort()
+			}
+			if !r.shell.(request).setAuthority(hostname, colonPort) {
+				return false
+			}
+		} else if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
 			return false
 		}
 	}
+
 	// copy remaining headers from req
-	if !req.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
-		return r.shell.joinHeader(hash, name, value)
-	}) {
+	if !req.walkHeaders(r.shell.joinHeader) {
 		return false
 	}
 

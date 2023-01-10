@@ -178,6 +178,8 @@ type hRequest_ struct {
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	ifModifiedSince   int64
+	ifUnmodifiedSince int64
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }
@@ -190,6 +192,8 @@ type hRequest0_ struct { // for fast reset, entirely
 
 func (r *hRequest_) onUse() { // for non-zeros
 	r.httpOutMessage_.onUse(true)
+	r.ifModifiedSince = -1
+	r.ifUnmodifiedSince = -1
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}
@@ -199,10 +203,6 @@ func (r *hRequest_) onEnd() { // for zeros
 func (r *hRequest_) Response() response { return r.response }
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
-	// TODO
-	return false
-}
-func (r *hRequest_) SetIfRangeTime(modTime int64) bool {
 	// TODO
 	return false
 }
@@ -348,7 +348,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
 		// field (if any) and instead replace it with the host information of the request-target. A proxy that forwards such a request
 		// MUST generate a new Host field value based on the received request-target rather than forward the received Host field value.
-		req.delHost()
+		req.unsetHost()
 		if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
 			return false
 		}

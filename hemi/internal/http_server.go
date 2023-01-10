@@ -374,7 +374,7 @@ type Request interface {
 	applyHeader(header *pair) bool
 	walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	delHost()
+	unsetHost()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
@@ -500,11 +500,6 @@ func (r *httpRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.scheme
 func (r *httpRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
 func (r *httpRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
 
-func (r *httpRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
-		r.methodCode = m.code
-	}
-}
 func (r *httpRequest_) MethodCode() uint32   { return r.methodCode }
 func (r *httpRequest_) Method() string       { return string(r.UnsafeMethod()) }
 func (r *httpRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
@@ -512,6 +507,11 @@ func (r *httpRequest_) IsGET() bool          { return r.methodCode == MethodGET 
 func (r *httpRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
 func (r *httpRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *httpRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
+func (r *httpRequest_) recognizeMethod(method []byte, hash uint16) {
+	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
+		r.methodCode = m.code
+	}
+}
 
 func (r *httpRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 func (r *httpRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
@@ -1683,10 +1683,11 @@ func (r *httpRequest_) checkHead() bool {
 			}
 		}
 	}
+
 	return true
 }
 
-func (r *httpRequest_) delHost() { // used by proxies
+func (r *httpRequest_) unsetHost() { // used by proxies
 	r.delPrimeAt(r.indexes.host) // zero safe
 }
 
@@ -2462,7 +2463,8 @@ func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 		return false
 	}
 	if r.lastModified == -2 {
-		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+		r.shell.delHeaderAt(r.oLastModified)
+		r.oLastModified = 0
 	}
 	r.lastModified = lastModified
 	return true
@@ -2514,7 +2516,7 @@ func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
 
 func (r *httpResponse_) addExpires(expires []byte) (ok bool) {
 	// TODO
-	return true
+	return r.shell.addHeader(httpBytesExpires, expires)
 }
 func (r *httpResponse_) delExpires() (deleted bool) {
 	// TODO
@@ -2522,23 +2524,25 @@ func (r *httpResponse_) delExpires() (deleted bool) {
 }
 
 func (r *httpResponse_) addLastModified(lastModified []byte) (ok bool) {
-	return r.shell.addHeader(httpBytesLastModified, lastModified)
-	/*
-		if r.lastModified == -2 {
-			// TODO: delHeader at r.oLastModified, then reset r.oLastModified
-		} else { // >= 0 or -1
-			r.lastModified = -2
-		}
-		// TODO: addHeader and set r.oLastModified
+	if r.lastModified == -2 {
+		r.shell.delHeaderAt(r.oLastModified)
+		r.oLastModified = 0
+	} else { // >= 0 or -1
+		r.lastModified = -2
+	}
+	if !r.shell.addHeader(httpBytesLastModified, lastModified) {
 		return false
-	*/
+	}
+	r.oLastModified = r.nHeaders - 1
+	return true
 }
 func (r *httpResponse_) delLastModified() (deleted bool) {
 	if r.lastModified == -1 {
 		return false
 	}
 	if r.lastModified == -2 {
-		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+		r.shell.delHeaderAt(r.oLastModified)
+		r.oLastModified = 0
 	}
 	r.lastModified = -1
 	return true

@@ -1254,7 +1254,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// request indicates HTTP/1.1 (or later).
 			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
 		}
-		if r.oContentType == 0 {
+		if r.oContentType == 0 { // content-type: text/html; charset=utf-8
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}

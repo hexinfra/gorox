@@ -575,7 +575,7 @@ func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)
 	for i := uint8(1); i < r.nHeaders; {
 		edge := r.edges[i]
-		if bytes.HasPrefix(r.fields[from:edge], name) {
+		if p := bytes.IndexByte(r.fields[from:edge], ':'); bytes.Equal(r.fields[from:from+uint16(p)], name) {
 			size := edge - from
 			copy(r.fields[from:], r.fields[edge:])
 			for j := i + 1; j < r.nHeaders; j++ {
@@ -592,7 +592,18 @@ func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
 	return
 }
 func (r *httpOutMessage_) delHeaderAt1(o uint8) {
-	// TODO
+	if o == 0 {
+		BugExitln("delHeaderAt1: o == 0 must not happen!")
+	}
+	from := r.edges[o-1]
+	edge := r.edges[o]
+	size := edge - from
+	copy(r.fields[from:], r.fields[edge:])
+	for j := o + 1; j < r.nHeaders; j++ {
+		r.edges[j] -= size
+	}
+	r.fieldsEdge -= size
+	r.nHeaders--
 }
 func (r *httpOutMessage_) _addCRLFHeader1(from int) {
 	r.fields[from] = '\r'
@@ -627,11 +638,11 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 	vector[2] = r.shell.fixedHeaders()
 	if Debug(2) {
 		if r.asRequest {
-			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+			fmt.Printf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
 		} else {
-			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+			fmt.Printf("[http1Stream=%d]-------> ", r.stream.(*http1Stream).conn.id)
 		}
-		fmt.Printf("-------> [%s%s%s]\n", vector[0], vector[1], vector[2])
+		fmt.Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
 	// TODO: ranged content support

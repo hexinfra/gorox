@@ -1115,8 +1115,8 @@ type httpOutMessage_ struct {
 	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
 	maxSendTimeout time.Duration // max timeout to send message
 	asRequest      bool          // use message as request?
-	nHeaders       uint8         // num of added headers, <= 255, starts from 1
-	nTrailers      uint8         // num of added trailers, <= 255, starts from 1
+	nHeaders       uint8         // num+1 of added headers, starts from 1
+	nTrailers      uint8         // num+1 of added trailers, starts from 1
 	content        Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
@@ -1237,10 +1237,7 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 }
 
 func (r *httpOutMessage_) addContentType(contentType []byte) (ok bool) {
-	if r.oContentType > 0 {
-		return false
-	}
-	if !r.shell.addHeader(httpBytesContentType, contentType) {
+	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
 		return false
 	}
 	r.oContentType = r.nHeaders - 1
@@ -1256,10 +1253,7 @@ func (r *httpOutMessage_) delContentType() (deleted bool) {
 }
 
 func (r *httpOutMessage_) addDate(date []byte) (ok bool) {
-	if r.oDate > 0 {
-		return false
-	}
-	if !r.shell.addHeader(httpBytesDate, date) {
+	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
 		return false
 	}
 	r.oDate = r.nHeaders - 1

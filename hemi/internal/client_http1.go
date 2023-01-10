@@ -470,6 +470,10 @@ func (r *H1Request) passBytes(p []byte) error {
 }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
+	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT
+	if r.ifModifiedSince >= 0 {
+		// TODO
+	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize == -2 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
@@ -478,7 +482,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
 		}
-		if r.oContentType == 0 {
+		if r.oContentType == 0 { // content-type: text/html; charset=utf-8
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
@@ -509,7 +513,7 @@ func (r *H1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if Debug(2) {
-		fmt.Printf("[H1Stream=%d]<------- [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
+		fmt.Printf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

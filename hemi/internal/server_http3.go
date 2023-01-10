@@ -413,10 +413,6 @@ func (r *http3Response) SetCookie(setCookie *SetCookie) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) copySetCookies(resp response) bool { // used by proxies
-	// TODO
-	return true
-}
 
 func (r *http3Response) sendChain(chain Chain) error {
 	// TODO

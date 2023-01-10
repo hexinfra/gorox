@@ -139,8 +139,8 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	iContentType     uint8 // content-type header in r.primes->r.input
 	acceptGzip       bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	receiving        int8  // currently receiving. see httpSectionXXX
 	upgradeSocket    bool  // upgrade: websocket?
+	receiving        int8  // currently receiving. see httpSectionXXX
 	contentReceived  bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	maxContentSize   int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
@@ -927,13 +927,14 @@ func (r *httpInMessage_) getPairList(name string, hash uint16, primes zone, extr
 func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 	var all [][2]string
 	for i := primes.from; i < primes.edge; i++ {
-		prime := &r.primes[i]
-		p := r._getPlace(prime)
-		all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
+		if prime := &r.primes[i]; prime.hash != 0 {
+			p := r._getPlace(prime)
+			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
+		}
 	}
 	if extraKind != extraKindNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 			}
 		}
@@ -943,6 +944,9 @@ func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
+		if prime.hash == 0 {
+			continue
+		}
 		p := r._getPlace(prime)
 		if !fn(prime.hash, prime.nameAt(p), prime.valueAt(p)) {
 			return false
@@ -950,7 +954,7 @@ func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(hash uin
 	}
 	if extraKind != extraKindNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -965,7 +969,7 @@ func (r *httpInMessage_) hasPairs(primes zone, extraKind uint8) bool {
 	}
 	if extraKind != extraKindNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
 				return true
 			}
 		}
@@ -1058,9 +1062,8 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash 
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
-		if field := &r.extras[i]; field.isKind(extraKind) {
-			fieldName := field.nameAt(r.array)
-			if !fn(field.hash, fieldName, field.valueAt(r.array)) {
+		if field := &r.extras[i]; field.hash != 0 && field.isKind(extraKind) {
+			if !fn(field.hash, field.nameAt(r.array), field.valueAt(r.array)) {
 				return false
 			}
 		}

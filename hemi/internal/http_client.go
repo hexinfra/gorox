@@ -325,8 +325,6 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
-
-		// Note, even target form is asterisk-form, not absolute-form, req.uri is still empty in our implementation, not "*". So just use "*".
 		uri = httpBytesAsterisk
 	} else {
 		uri = req.UnsafeURI()

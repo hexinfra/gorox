@@ -2392,10 +2392,9 @@ type Response interface {
 	pushHeaders() error
 	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
-	pass1xx(resp response) bool        // used by proxies
-	copySetCookies(resp response) bool // used by proxies
-	copyHead(resp response) bool       // used by proxies
-	pass(resp httpInMessage) error     // used by proxies
+	pass1xx(resp response) bool    // used by proxies
+	copyHead(resp response) bool   // used by proxies
+	pass(resp httpInMessage) error // used by proxies
 	finishChunked() error
 	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
@@ -2695,14 +2694,15 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 
 	resp.delHopHeaders()
 
-	// copy crucial headers (including set-cookie) from resp
-	if resp.hasSetCookies() && !r.shell.(Response).copySetCookies(resp) {
-		return false
-	}
+	// copy crucial headers (excluding set-cookie) from resp
 
 	// copy remaining headers
 	if !resp.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
-		return r.shell.joinHeader(hash, name, value)
+		if hash == httpHashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
+			return r.shell.addHeader(name, value)
+		} else {
+			return r.shell.joinHeader(hash, name, value)
+		}
 	}) {
 		return false
 	}

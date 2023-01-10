@@ -1176,10 +1176,6 @@ func (r *http1Response) SetCookie(setCookie *SetCookie) bool {
 		return false
 	}
 }
-func (r *http1Response) copySetCookies(resp response) bool { // used by proxies
-	// TODO
-	return true
-}
 
 func (r *http1Response) sendChain(chain Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	return r.sendChain1(chain)

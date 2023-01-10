@@ -81,7 +81,7 @@ type httpInMessage interface {
 	applyHeader(header *pair) bool
 	readContent() (p []byte, err error)
 	applyTrailer(trailer *pair) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
 	getSaveContentFilesDir() string
 }
 
@@ -544,7 +544,7 @@ func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
 }
-func (r *httpInMessage_) walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
+func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
 	return r._walkFields(r.headers, extraKindHeader, fn, forProxy)
 }
 
@@ -737,7 +737,7 @@ func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, r.delTrailer)
 }
-func (r *httpInMessage_) walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
+func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
 	return r._walkFields(r.trailers, extraKindTrailer, fn, forProxy)
 }
 
@@ -916,18 +916,18 @@ func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 	}
 	return all
 }
-func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(name []byte, value []byte) bool) bool {
+func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
 		p := r._getPlace(prime)
-		if !fn(prime.nameAt(p), prime.valueAt(p)) {
+		if !fn(prime.hash, prime.nameAt(p), prime.valueAt(p)) {
 			return false
 		}
 	}
 	if extraKind != extraKindNoExtra {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.isKind(extraKind) {
-				if !fn(extra.nameAt(r.array), extra.valueAt(r.array)) {
+				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
 			}
@@ -1020,7 +1020,7 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 		// Note: we don't remove pair ("connection: xxx") itself, since we simply skip it when acting as a proxy.
 	}
 }
-func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name []byte, value []byte) bool, forProxy bool) bool {
+func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		field := &r.primes[i]
 		if field.hash == 0 {
@@ -1036,7 +1036,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 				continue
 			}
 		}
-		if !fn(fieldName, field.valueAt(p)) {
+		if !fn(field.hash, fieldName, field.valueAt(p)) {
 			return false
 		}
 	}
@@ -1051,7 +1051,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(name 
 					continue
 				}
 			}
-			if !fn(fieldName, field.valueAt(r.array)) {
+			if !fn(field.hash, fieldName, field.valueAt(r.array)) {
 				return false
 			}
 		}
@@ -1098,6 +1098,8 @@ type httpOutMessage interface {
 	delHeader(name []byte) (deleted bool)
 	delHeaderAt(o uint8)
 	addHeader(name []byte, value []byte) bool
+	joinHeader(hash uint16, name []byte, value []byte) bool
+	kickHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
 	send() error
@@ -1191,28 +1193,26 @@ func (r *httpOutMessage_) AddHeaderByBytes(name []byte, value string) bool {
 	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
-	return false
-	/*
-		hash, valid, lower := r._nameCheck(name)
-		if !valid {
+	hash, valid, lower := r._nameCheck(name)
+	if !valid {
+		return false
+	}
+	for _, b := range value { // to prevent response splitting
+		if b == '\r' || b == '\n' {
 			return false
 		}
-		for _, b := range value { // to prevent response splitting
-			if b == '\r' || b == '\n' {
-				return false
-			}
-		}
-		return r.shell.addHeader(hash, lower, value)
-	*/
+	}
+	return r.shell.joinHeader(hash, lower, value)
 }
 func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
 }
 func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
-	return false
-	/*
-		hash, valid, lower := r._nameCheck(name)
-	*/
+	hash, valid, lower := r._nameCheck(name)
+	if !valid {
+		return false
+	}
+	return r.shell.kickHeader(hash, lower)
 }
 func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
@@ -1256,26 +1256,34 @@ func (r *httpOutMessage_) addContentType(contentType []byte) (ok bool) {
 	if r.oContentType > 0 {
 		return false
 	}
-	return false
+	if !r.shell.addHeader(httpBytesContentType, contentType) {
+		return false
+	}
+	r.oContentType = r.nHeaders - 1
+	return true
 }
 func (r *httpOutMessage_) delContentType() (deleted bool) {
 	if r.oContentType == 0 {
 		return false
 	}
-	return false
+	r.shell.delHeaderAt(r.oContentType)
+	r.oContentType = 0
+	return true
 }
 
 func (r *httpOutMessage_) addDate(date []byte) (ok bool) {
 	if r.oDate > 0 {
 		return false
 	}
-	return false
+	return r.shell.addHeader(httpBytesDate, date)
 }
 func (r *httpOutMessage_) delDate() (deleted bool) {
 	if r.oDate == 0 {
 		return false
 	}
-	return false
+	r.shell.delHeaderAt(r.oDate)
+	r.oDate = 0
+	return true
 }
 
 func (r *httpOutMessage_) IsSent() bool {
@@ -1454,7 +1462,7 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 		}
 	}
 	if in.HasTrailers() { // added trailers will be written eventually by upper code.
-		if !in.walkTrailers(func(name []byte, value []byte) bool {
+		if !in.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}, true) { // for proxy
 			return httpAddTrailerFailed

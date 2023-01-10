@@ -372,12 +372,12 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	applyHeader(header *pair) bool
-	forCookies(fn func(name []byte, value []byte) bool) bool
+	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delCriticalHeaders()
 	delHost()
 	delHopHeaders()
-	walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
+	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
 	recvContent(retain bool) any
 	readContent() (p []byte, err error)
 	delHopTrailers()
@@ -1398,7 +1398,7 @@ func (r *httpRequest_) Cookies() (cookies [][2]string) {
 func (r *httpRequest_) HasCookies() bool {
 	return r.hasPairs(r.cookies, extraKindCookie)
 }
-func (r *httpRequest_) forCookies(fn func(name []byte, value []byte) bool) bool {
+func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return r.forPairs(r.cookies, extraKindCookie, fn)
 }
 func (r *httpRequest_) HasCookie(name string) bool {
@@ -2405,6 +2405,7 @@ type httpResponse_ struct {
 type httpResponse0_ struct { // for fast reset, entirely
 	revisers      [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 	hasRevisers   bool      // are there any revisers hooked on this response?
+	oExpires      uint8     // ...
 	oLastModified uint8     // ...
 }
 
@@ -2472,31 +2473,54 @@ func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 
 var ( // perfect hash table for response crucial headers
 	httpResponseCrucialHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
-	httpResponseCrucialHeaderTable = [10]struct { // TODO: perfect hashing
+	httpResponseCrucialHeaderTable = [10]struct {
 		hash uint16
 		from uint8
 		edge uint8
 		fAdd func(*httpResponse_, []byte) (ok bool)
 		fDel func(*httpResponse_) (deleted bool)
 	}{
-		0: {httpHashConnection, 0, 1, nil, nil},
-		1: {httpHashContentLength, 2, 3, nil, nil},
-		2: {httpHashTransferEncoding, 4, 5, nil, nil},
-		3: {httpHashUpgrade, 6, 7, nil, nil},
-		4: {httpHashSetCookie, 6, 7, nil, nil},
-		5: {httpHashServer, 8, 9, nil, nil},
-		6: {httpHashContentType, 8, 9, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
-		7: {httpHashExpires, 8, 9, (*httpResponse_).addExpires, (*httpResponse_).delExpires},
-		8: {httpHashLastModified, 8, 9, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
-		9: {httpHashDate, 8, 9, (*httpResponse_).addDate, (*httpResponse_).delDate},
+		0: {httpHashServer, 66, 72, nil, nil},
+		1: {httpHashSetCookie, 73, 83, nil, nil},
+		2: {httpHashUpgrade, 102, 109, nil, nil},
+		3: {httpHashDate, 39, 43, (*httpResponse_).addDate, (*httpResponse_).delDate},
+		4: {httpHashTransferEncoding, 84, 101, nil, nil},
+		5: {httpHashConnection, 0, 10, nil, nil},
+		6: {httpHashLastModified, 52, 65, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
+		7: {httpHashExpires, 44, 51, (*httpResponse_).addExpires, (*httpResponse_).delExpires},
+		8: {httpHashContentLength, 11, 25, nil, nil},
+		9: {httpHashContentType, 26, 38, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
 	}
-	httpResponseCrucialHeaderFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
+	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
 
+func (r *httpResponse_) joinHeader(hash uint16, name []byte, value []byte) bool {
+	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fAdd != nil {
+			return h.fAdd(r, value)
+		}
+		return false
+	}
+	return r.shell.addHeader(name, value)
+}
+func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
+	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fDel != nil {
+			return h.fDel(r)
+		}
+		return false
+	}
+	return r.shell.delHeader(name)
+}
+
 func (r *httpResponse_) addExpires(expires []byte) (ok bool) {
+	// TODO
 	return false
 }
 func (r *httpResponse_) delExpires() (deleted bool) {
+	// TODO
 	return false
 }
 
@@ -2649,16 +2673,11 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy critical headers from resp
-	/*
-		if lastModified := resp.unsafeLastModified(); lastModified != nil && !r.copyHeader(&r.lastModifiedCopied, httpBytesLastModified, lastModified) {
-			return false
-		}
-	*/
 
 	resp.delCriticalHeaders()
 
 	// copy remaining headers
-	if !resp.walkHeaders(func(name []byte, value []byte) bool {
+	if !resp.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
 	}, true) { // for proxy
 		return false

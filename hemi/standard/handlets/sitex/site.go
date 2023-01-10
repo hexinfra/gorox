@@ -22,7 +22,6 @@ type Site struct {
 }
 
 func (s *Site) show(req Request, resp Response, page string) {
-	resp.AddHeader("content-type", "text/html; charset=utf-8")
 	if html := s.load(req, s.viewDir+"/"+page+".html"); html == nil {
 		resp.SendNotFound(nil)
 	} else {

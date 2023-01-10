@@ -182,7 +182,10 @@ type hRequest_ struct {
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
-	oHost uint8 // ...
+	oHost              uint8 // ...
+	oIfModifiedSince   uint8
+	oIfRange           uint8
+	oIfUnmodifiedSince uint8
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
@@ -196,38 +199,62 @@ func (r *hRequest_) onEnd() { // for zeros
 func (r *hRequest_) Response() response { return r.response }
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
+	// TODO
 	return false
 }
 func (r *hRequest_) SetIfRangeTime(modTime int64) bool {
+	// TODO
 	return false
 }
 func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
+	// TODO
 	return false
 }
 
 var ( // perfect hash table for request crucial headers
 	hRequestCrucialHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade")
-	hRequestCrucialHeaderTable = [11]struct { // TODO: perfect hashing
+	hRequestCrucialHeaderTable = [11]struct {
 		hash uint16
 		from uint8
 		edge uint8
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {httpHashConnection, 0, 1, nil, nil},
-		1:  {httpHashContentLength, 2, 3, nil, nil},
-		2:  {httpHashTransferEncoding, 4, 5, nil, nil},
-		3:  {httpHashUpgrade, 4, 5, nil, nil},
-		4:  {httpHashCookie, 6, 7, nil, nil},
-		5:  {httpHashContentType, 6, 7, (*hRequest_).addContentType, (*hRequest_).delContentType},
-		6:  {httpHashHost, 6, 7, (*hRequest_).addHost, (*hRequest_).delHost},
-		7:  {httpHashDate, 6, 7, (*hRequest_).addDate, (*hRequest_).delDate},
-		8:  {httpHashIfModifiedSince, 6, 7, (*hRequest_).addIfModifiedSince, (*hRequest_).delIfModifiedSince},
-		9:  {httpHashIfRange, 6, 7, (*hRequest_).addIfRange, (*hRequest_).delIfRange},
-		10: {httpHashIfUnmodifiedSince, 6, 7, (*hRequest_).addIfUnmodifiedSince, (*hRequest_).delIfUnmodifiedSince},
+		0:  {httpHashDate, 46, 50, (*hRequest_).addDate, (*hRequest_).delDate},
+		1:  {httpHashIfRange, 74, 82, (*hRequest_).addIfRange, (*hRequest_).delIfRange},
+		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_).addIfUnmodifiedSince, (*hRequest_).delIfUnmodifiedSince},
+		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_).addIfModifiedSince, (*hRequest_).delIfModifiedSince},
+		4:  {httpHashTransferEncoding, 103, 120, nil, nil},
+		5:  {httpHashHost, 51, 55, (*hRequest_).addHost, (*hRequest_).delHost},
+		6:  {httpHashCookie, 39, 45, nil, nil},
+		7:  {httpHashContentLength, 11, 25, nil, nil},
+		8:  {httpHashContentType, 26, 38, (*hRequest_).addContentType, (*hRequest_).delContentType},
+		9:  {httpHashConnection, 0, 10, nil, nil},
+		10: {httpHashUpgrade, 121, 128, nil, nil},
 	}
-	hRequestCrucialHeaderFind = func(hash uint16) int { return 1 } // TODO: perfect hashing
+	hRequestCrucialHeaderFind = func(hash uint16) int { return (1685160 / int(hash)) % 11 }
 )
+
+func (r *hRequest_) joinHeader(hash uint16, name []byte, value []byte) bool {
+	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fAdd != nil {
+			return h.fAdd(r, value)
+		}
+		return false
+	}
+	return r.shell.addHeader(name, value)
+}
+func (r *hRequest_) kickHeader(hash uint16, name []byte) bool {
+	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fDel != nil {
+			return h.fDel(r)
+		}
+		return false
+	}
+	return r.shell.delHeader(name)
+}
 
 func (r *hRequest_) addHost(host []byte) (ok bool) {
 	// TODO
@@ -239,23 +266,29 @@ func (r *hRequest_) delHost() (deleted bool) {
 }
 
 func (r *hRequest_) addIfModifiedSince(since []byte) (ok bool) {
+	// TODO
 	return false
 }
 func (r *hRequest_) delIfModifiedSince() (deleted bool) {
+	// TODO
 	return false
 }
 
 func (r *hRequest_) addIfRange(ifRange []byte) (ok bool) {
+	// TODO
 	return false
 }
 func (r *hRequest_) delIfRange() (deleted bool) {
+	// TODO
 	return false
 }
 
 func (r *hRequest_) addIfUnmodifiedSince(since []byte) (ok bool) {
+	// TODO
 	return false
 }
 func (r *hRequest_) delIfUnmodifiedSince() (deleted bool) {
+	// TODO
 	return false
 }
 
@@ -325,7 +358,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 		}
 	}
 	// copy remaining headers from req
-	if !req.walkHeaders(func(name []byte, value []byte) bool {
+	if !req.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
 		return r.shell.addHeader(name, value)
 	}, true) { // for proxy
 		return false
@@ -359,8 +392,8 @@ type response interface {
 	delCriticalHeaders()
 	delHopHeaders()
 	delHopTrailers()
-	walkHeaders(fn func(name []byte, value []byte) bool, forProxy bool) bool
-	walkTrailers(fn func(name []byte, value []byte) bool, forProxy bool) bool
+	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
 	recvContent(retain bool) any
 	readContent() (p []byte, err error)
 }

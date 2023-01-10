@@ -372,12 +372,11 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	applyHeader(header *pair) bool
-	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
-	delCriticalHeaders()
-	delHost()
+	walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
+	delHost()
+	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
 	readContent() (p []byte, err error)
 	delHopTrailers()
@@ -1398,9 +1397,6 @@ func (r *httpRequest_) Cookies() (cookies [][2]string) {
 func (r *httpRequest_) HasCookies() bool {
 	return r.hasPairs(r.cookies, extraKindCookie)
 }
-func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r.forPairs(r.cookies, extraKindCookie, fn)
-}
 func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, extraKindCookie)
 	return ok
@@ -1410,6 +1406,9 @@ func (r *httpRequest_) AddCookie(name string, value string) bool {
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, extraKindCookie)
+}
+func (r *httpRequest_) walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return r.forPairs(r.cookies, extraKindCookie, fn)
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
@@ -1687,9 +1686,6 @@ func (r *httpRequest_) checkHead() bool {
 	return true
 }
 
-func (r *httpRequest_) delCriticalHeaders() { // used by proxies
-	r.delPrimeAt(r.iContentLength)
-}
 func (r *httpRequest_) delHost() { // used by proxies
 	r.delPrimeAt(r.indexes.host) // zero safe
 }
@@ -2376,9 +2372,10 @@ type Response interface {
 	pushHeaders() error
 	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
-	pass1xx(resp response) bool    // used by proxies
-	copyHead(resp response) bool   // used by proxies
-	pass(resp httpInMessage) error // used by proxies
+	pass1xx(resp response) bool        // used by proxies
+	copySetCookies(resp response) bool // used by proxies
+	copyHead(resp response) bool       // used by proxies
+	pass(resp httpInMessage) error     // used by proxies
 	finishChunked() error
 	post(content any, hasTrailers bool) error // used by proxies
 	finalizeChunked() error
@@ -2497,41 +2494,44 @@ var ( // perfect hash table for response crucial headers
 func (r *httpResponse_) joinHeader(hash uint16, name []byte, value []byte) bool {
 	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fAdd != nil {
-			return h.fAdd(r, value)
+		if h.fAdd == nil {
+			return true // pretend to be successful
 		}
-		return false
+		return h.fAdd(r, value)
 	}
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
 	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fDel != nil {
-			return h.fDel(r)
+		if h.fDel == nil {
+			return true // pretend to be successful
 		}
-		return false
+		return h.fDel(r)
 	}
 	return r.shell.delHeader(name)
 }
 
 func (r *httpResponse_) addExpires(expires []byte) (ok bool) {
 	// TODO
-	return false
+	return true
 }
 func (r *httpResponse_) delExpires() (deleted bool) {
 	// TODO
-	return false
+	return true
 }
 
 func (r *httpResponse_) addLastModified(lastModified []byte) (ok bool) {
-	if r.lastModified == -2 {
-		// TODO: delHeader at r.oLastModified, then reset r.oLastModified
-	} else { // >= 0 or -1
-		r.lastModified = -2
-	}
-	// TODO: addHeader and set r.oLastModified
-	return false
+	return r.shell.addHeader(httpBytesLastModified, lastModified)
+	/*
+		if r.lastModified == -2 {
+			// TODO: delHeader at r.oLastModified, then reset r.oLastModified
+		} else { // >= 0 or -1
+			r.lastModified = -2
+		}
+		// TODO: addHeader and set r.oLastModified
+		return false
+	*/
 }
 func (r *httpResponse_) delLastModified() (deleted bool) {
 	if r.lastModified == -1 {
@@ -2672,16 +2672,18 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 
 	resp.delHopHeaders()
 
-	// copy critical headers from resp
-
-	resp.delCriticalHeaders()
+	// copy crucial headers (including set-cookie) from resp
+	if resp.hasSetCookies() && !r.shell.(Response).copySetCookies(resp) {
+		return false
+	}
 
 	// copy remaining headers
 	if !resp.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
-		return r.shell.addHeader(name, value)
-	}, true) { // for proxy
+		return r.shell.joinHeader(hash, name, value)
+	}) {
 		return false
 	}
+
 	return true
 }
 func (r *httpResponse_) pass(resp httpInMessage) error { // used by proxies

@@ -1010,6 +1010,10 @@ func (r *http2Response) SetCookie(setCookie *SetCookie) bool {
 	// TODO
 	return false
 }
+func (r *http2Response) copySetCookies(resp response) bool { // used by proxies
+	// TODO
+	return true
+}
 
 func (r *http2Response) sendChain(chain Chain) error {
 	// TODO

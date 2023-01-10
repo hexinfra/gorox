@@ -108,7 +108,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if err2 == nil && hasTrailers {
 			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req2.addTrailer(name, value)
-			}, true) { // for proxy
+			}) {
 				stream2.markBroken()
 				err2 = httpAddTrailerFailed
 			} else if err2 = req2.finishChunked(); err2 != nil {
@@ -179,7 +179,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		} else if hasTrailers2 {
 			if !resp2.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return resp.addTrailer(name, value)
-			}, true) { // for proxy
+			}) {
 				return
 			}
 		}

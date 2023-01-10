@@ -81,7 +81,7 @@ type httpInMessage interface {
 	applyHeader(header *pair) bool
 	readContent() (p []byte, err error)
 	applyTrailer(trailer *pair) bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	getSaveContentFilesDir() string
 }
 
@@ -544,8 +544,8 @@ func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
 }
-func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
-	return r._walkFields(r.headers, extraKindHeader, fn, forProxy)
+func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool { // used by proxies
+	return r._walkFields(r.headers, extraKindHeader, fn)
 }
 
 func (r *httpInMessage_) SetMaxRecvTimeout(timeout time.Duration) {
@@ -737,8 +737,8 @@ func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, r.delTrailer)
 }
-func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool { // used by proxies
-	return r._walkFields(r.trailers, extraKindTrailer, fn, forProxy)
+func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // used by proxies
+	return r._walkFields(r.trailers, extraKindTrailer, fn)
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {
@@ -1020,7 +1020,7 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 		// Note: we don't remove pair ("connection: xxx") itself, since we simply skip it when acting as a proxy.
 	}
 }
-func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool {
+func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		field := &r.primes[i]
 		if field.hash == 0 {
@@ -1028,14 +1028,6 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash 
 		}
 		p := r._getPlace(field)
 		fieldName := field.nameAt(p)
-		if forProxy {
-			if field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
-				continue
-			}
-			if field.hash == httpHashCookie && bytes.Equal(fieldName, httpBytesCookie) {
-				continue
-			}
-		}
 		if !fn(field.hash, fieldName, field.valueAt(p)) {
 			return false
 		}
@@ -1043,14 +1035,6 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash 
 	for i := 0; i < len(r.extras); i++ {
 		if field := &r.extras[i]; field.isKind(extraKind) {
 			fieldName := field.nameAt(r.array)
-			if forProxy {
-				if field.hash == httpHashConnection && bytes.Equal(fieldName, httpBytesConnection) {
-					continue
-				}
-				if field.hash == httpHashCookie && bytes.Equal(fieldName, httpBytesCookie) {
-					continue
-				}
-			}
 			if !fn(field.hash, fieldName, field.valueAt(r.array)) {
 				return false
 			}
@@ -1275,7 +1259,11 @@ func (r *httpOutMessage_) addDate(date []byte) (ok bool) {
 	if r.oDate > 0 {
 		return false
 	}
-	return r.shell.addHeader(httpBytesDate, date)
+	if !r.shell.addHeader(httpBytesDate, date) {
+		return false
+	}
+	r.oDate = r.nHeaders - 1
+	return true
 }
 func (r *httpOutMessage_) delDate() (deleted bool) {
 	if r.oDate == 0 {
@@ -1464,7 +1452,7 @@ func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used 
 	if in.HasTrailers() { // added trailers will be written eventually by upper code.
 		if !in.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
-		}, true) { // for proxy
+		}) {
 			return httpAddTrailerFailed
 		}
 	}

@@ -108,7 +108,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if err3 == nil && hasTrailers {
 			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req3.addTrailer(name, value)
-			}, true) { // for proxy
+			}) {
 				stream3.markBroken()
 				err3 = httpAddTrailerFailed
 			} else if err3 = req3.finishChunked(); err3 != nil {
@@ -179,7 +179,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		} else if hasTrailers3 {
 			if !resp3.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return resp.addTrailer(name, value)
-			}, true) { // for proxy
+			}) {
 				return
 			}
 		}

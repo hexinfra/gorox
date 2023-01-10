@@ -238,58 +238,58 @@ var ( // perfect hash table for request crucial headers
 func (r *hRequest_) joinHeader(hash uint16, name []byte, value []byte) bool {
 	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fAdd != nil {
-			return h.fAdd(r, value)
+		if h.fAdd == nil {
+			return true // pretend to be successful
 		}
-		return false
+		return h.fAdd(r, value)
 	}
 	return r.shell.addHeader(name, value)
 }
 func (r *hRequest_) kickHeader(hash uint16, name []byte) bool {
 	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fDel != nil {
-			return h.fDel(r)
+		if h.fDel == nil {
+			return true // pretend to be successful
 		}
-		return false
+		return h.fDel(r)
 	}
 	return r.shell.delHeader(name)
 }
 
 func (r *hRequest_) addHost(host []byte) (ok bool) {
 	// TODO
-	return false
+	return r.shell.addHeader(httpBytesHost, host)
 }
 func (r *hRequest_) delHost() (deleted bool) {
 	// TODO
-	return false
+	return true
 }
 
 func (r *hRequest_) addIfModifiedSince(since []byte) (ok bool) {
 	// TODO
-	return false
+	return true
 }
 func (r *hRequest_) delIfModifiedSince() (deleted bool) {
 	// TODO
-	return false
+	return true
 }
 
 func (r *hRequest_) addIfRange(ifRange []byte) (ok bool) {
 	// TODO
-	return false
+	return true
 }
 func (r *hRequest_) delIfRange() (deleted bool) {
 	// TODO
-	return false
+	return true
 }
 
 func (r *hRequest_) addIfUnmodifiedSince(since []byte) (ok bool) {
 	// TODO
-	return false
+	return true
 }
 func (r *hRequest_) delIfUnmodifiedSince() (deleted bool) {
 	// TODO
-	return false
+	return true
 }
 
 func (r *hRequest_) send() error {
@@ -339,14 +339,10 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 
 	req.delHopHeaders()
 
-	// copy critical headers from req
-	if req.AcceptTrailers() { // te: trailers
-		if !r.shell.addHeader(httpBytesTE, httpBytesTrailers) {
-			return false
-		}
+	// copy crucial headers (including cookie) from req
+	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
+		return false
 	}
-
-	req.delCriticalHeaders()
 
 	if req.IsAbsoluteForm() {
 		// When a proxy receives a request with an absolute-form of request-target, the proxy MUST ignore the received Host header
@@ -359,13 +355,11 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 	}
 	// copy remaining headers from req
 	if !req.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
-		return r.shell.addHeader(name, value)
-	}, true) { // for proxy
+		return r.shell.joinHeader(hash, name, value)
+	}) {
 		return false
 	}
-	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
-		return false
-	}
+
 	return true
 }
 func (r *hRequest_) pass(req httpInMessage) error { // used by proxies.
@@ -389,11 +383,11 @@ type response interface {
 
 	unsafeDate() []byte
 	unsafeLastModified() []byte
-	delCriticalHeaders()
+	hasSetCookies() bool
 	delHopHeaders()
 	delHopTrailers()
-	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool, forProxy bool) bool
+	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
 	readContent() (p []byte, err error)
 }
@@ -633,6 +627,10 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 	r.setCookies = append(r.setCookies, cookie)
 	return true
 }
+func (r *hResponse_) hasSetCookies() bool {
+	// TODO
+	return false
+}
 
 func (r *hResponse_) checkHead() bool {
 	// Resolve r.keepAlive
@@ -676,11 +674,6 @@ func (r *hResponse_) checkHead() bool {
 		return false
 	}
 	return true
-}
-
-func (r *hResponse_) delCriticalHeaders() { // used by proxies
-	r.delPrimeAt(r.indexes.server)
-	r.delPrimeAt(r.iContentLength)
 }
 
 func (r *hResponse_) HasContent() bool {

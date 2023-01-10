@@ -261,7 +261,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.h3Stream0 = h3Stream0{}
 }
 
-func (s *H3Stream) getHolder() holder {
+func (s *H3Stream) holder() holder {
 	return s.conn.getClient()
 }
 

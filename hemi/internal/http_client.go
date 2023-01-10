@@ -220,15 +220,15 @@ var ( // perfect hash table for request crucial headers
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {httpHashDate, 46, 50, (*hRequest_).addDate, (*hRequest_).delDate},
-		1:  {httpHashIfRange, 74, 82, (*hRequest_).addIfRange, (*hRequest_).delIfRange},
-		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_).addIfUnmodifiedSince, (*hRequest_).delIfUnmodifiedSince},
-		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_).addIfModifiedSince, (*hRequest_).delIfModifiedSince},
+		0:  {httpHashDate, 46, 50, (*hRequest_).joinDate, (*hRequest_).kickDate},
+		1:  {httpHashIfRange, 74, 82, (*hRequest_).joinIfRange, (*hRequest_).kickIfRange},
+		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_).joinIfUnmodifiedSince, (*hRequest_).kickIfUnmodifiedSince},
+		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_).joinIfModifiedSince, (*hRequest_).kickIfModifiedSince},
 		4:  {httpHashTransferEncoding, 103, 120, nil, nil},
-		5:  {httpHashHost, 51, 55, (*hRequest_).addHost, (*hRequest_).delHost},
+		5:  {httpHashHost, 51, 55, (*hRequest_).joinHost, (*hRequest_).kickHost},
 		6:  {httpHashCookie, 39, 45, nil, nil},
 		7:  {httpHashContentLength, 11, 25, nil, nil},
-		8:  {httpHashContentType, 26, 38, (*hRequest_).addContentType, (*hRequest_).delContentType},
+		8:  {httpHashContentType, 26, 38, (*hRequest_).joinContentType, (*hRequest_).kickContentType},
 		9:  {httpHashConnection, 0, 10, nil, nil},
 		10: {httpHashUpgrade, 121, 128, nil, nil},
 	}
@@ -256,38 +256,36 @@ func (r *hRequest_) kickHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 
-func (r *hRequest_) addHost(host []byte) (ok bool) {
+func (r *hRequest_) joinHost(host []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesHost, host)
 }
-func (r *hRequest_) delHost() (deleted bool) {
+func (r *hRequest_) joinIfModifiedSince(since []byte) (ok bool) {
+	// TODO
+	return true
+}
+func (r *hRequest_) joinIfRange(ifRange []byte) (ok bool) {
+	// TODO
+	return true
+}
+func (r *hRequest_) joinIfUnmodifiedSince(since []byte) (ok bool) {
 	// TODO
 	return true
 }
 
-func (r *hRequest_) addIfModifiedSince(since []byte) (ok bool) {
+func (r *hRequest_) kickHost() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) delIfModifiedSince() (deleted bool) {
+func (r *hRequest_) kickIfModifiedSince() (deleted bool) {
 	// TODO
 	return true
 }
-
-func (r *hRequest_) addIfRange(ifRange []byte) (ok bool) {
+func (r *hRequest_) kickIfRange() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) delIfRange() (deleted bool) {
-	// TODO
-	return true
-}
-
-func (r *hRequest_) addIfUnmodifiedSince(since []byte) (ok bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) delIfUnmodifiedSince() (deleted bool) {
+func (r *hRequest_) kickIfUnmodifiedSince() (deleted bool) {
 	// TODO
 	return true
 }
@@ -362,7 +360,7 @@ func (r *hRequest_) copyHead(req Request) bool { // used by proxies
 
 	return true
 }
-func (r *hRequest_) pass(req httpInMessage) error { // used by proxies.
+func (r *hRequest_) pass(req httpInMessage) error { // used by proxies
 	return r.doPass(req, false) // no revisers in client side
 }
 
@@ -479,7 +477,7 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for response multiple headers
-	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate") // alt-svc?
 	hResponseMultipleHeaderTable = [14]struct {
 		hash  uint16
 		from  uint8
@@ -529,7 +527,7 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 }
 
 var ( // perfect hash table for response critical headers
-	hResponseCriticalHeaderNames = []byte("content-length content-range content-type date etag expires last-modified location server set-cookie")
+	hResponseCriticalHeaderNames = []byte("content-length content-range content-type date etag expires last-modified location server set-cookie") // age?
 	hResponseCriticalHeaderTable = [10]struct {
 		hash  uint16
 		from  uint8
@@ -550,7 +548,7 @@ var ( // perfect hash table for response critical headers
 	hResponseCriticalHeaderFind = func(hash uint16) int { return (68805 / int(hash)) % 10 }
 )
 
-func (r *hResponse_) checkContentRange(header *pair, index uint8) bool {
+func (r *hResponse_) checkAge(header *pair, index uint8) bool {
 	// TODO
 	return true
 }
@@ -627,10 +625,7 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 	r.setCookies = append(r.setCookies, cookie)
 	return true
 }
-func (r *hResponse_) hasSetCookies() bool {
-	// TODO
-	return false
-}
+func (r *hResponse_) hasSetCookies() bool { return len(r.setCookies) > 0 }
 
 func (r *hResponse_) checkHead() bool {
 	// Resolve r.keepAlive
@@ -643,7 +638,7 @@ func (r *hResponse_) checkHead() bool {
 		}
 	}
 	// Resolve r.contentSize
-	r.maxContentSize = r.stream.getHolder().(httpClient).MaxContentSize()
+	r.maxContentSize = r.stream.holder().(httpClient).MaxContentSize()
 	if r.transferChunked { // there is a transfer-encoding: chunked
 		if r.versionCode == Version1_0 {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not used in http/1.0"
@@ -711,7 +706,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 }
 
 func (r *hResponse_) getSaveContentFilesDir() string {
-	return r.stream.getHolder().(httpClient).SaveContentFilesDir() // must ends with '/'
+	return r.stream.holder().(httpClient).SaveContentFilesDir() // must ends with '/'
 }
 
 // setCookie is a "set-cookie" received from server.

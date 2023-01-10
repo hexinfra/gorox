@@ -16,6 +16,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -29,7 +30,7 @@ type holder interface {
 
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
-	getHolder() holder
+	holder() holder
 
 	peerAddr() net.Addr
 
@@ -121,34 +122,36 @@ type httpInMessage_ struct {
 	httpInMessage0_           // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
-	pBack           int32 // element begins from. for parsing control & headers & content & trailers elements
-	pFore           int32 // element spanning to. for parsing control & headers & content & trailers elements
-	head            text  // head (control + headers) of current message -> r.input. set after head is received. only for debugging
-	imme            text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	headers         zone  // raw headers ->r.input
-	options         zone  // connection options ->r.input
-	versionCode     uint8 // Version1_0, Version1_1, Version2, Version3
-	nContentCodings int8  // num of content-encoding flags, controls r.contentCodings
-	nAcceptCodings  int8  // num of accept-encoding flags
-	arrayKind       int8  // kind of current r.array. see arrayKindXXX
-	arrayEdge       int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	iContentLength  uint8 // content-length header in r.primes->r.input
-	iContentType    uint8 // content-type header in r.primes->r.input
-	acceptGzip      bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli    bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	receiving       int8  // currently receiving. see httpSectionXXX
-	upgradeSocket   bool  // upgrade: websocket?
-	contentReceived bool  // is content received? if message has no content, it is true (received)
-	contentBlobKind int8  // kind of current r.contentBlob. see httpContentBlobXXX
-	maxContentSize  int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
-	sizeReceived    int64 // bytes of currently received content. for both counted & chunked content receiver
-	chunkSize       int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
-	cBack           int32 // for parsing chunked elements. HTTP/1.1 chunked only
-	cFore           int32 // for parsing chunked elements. HTTP/1.1 chunked only
-	chunkEdge       int32 // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
-	transferChunked bool  // transfer-encoding: chunked? HTTP/1.1 only
-	overChunked     bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
-	trailers        zone  // raw trailers -> r.array. set after trailer section is received and parsed
+	pBack            int32 // element begins from. for parsing control & headers & content & trailers elements
+	pFore            int32 // element spanning to. for parsing control & headers & content & trailers elements
+	head             text  // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	imme             text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	headers          zone  // raw headers ->r.input
+	options          zone  // connection options ->r.input
+	versionCode      uint8 // Version1_0, Version1_1, Version2, Version3
+	nContentCodings  int8  // num of content-encoding flags, controls r.contentCodings
+	nAcceptCodings   int8  // num of accept-encoding flags
+	arrayKind        int8  // kind of current r.array. see arrayKindXXX
+	arrayEdge        int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	iContentLength   uint8 // content-length header in r.primes->r.input
+	iContentLocation uint8 // content-location header in r.primes->r.input
+	iContentRange    uint8 // content-range header in r.primes->r.input
+	iContentType     uint8 // content-type header in r.primes->r.input
+	acceptGzip       bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	receiving        int8  // currently receiving. see httpSectionXXX
+	upgradeSocket    bool  // upgrade: websocket?
+	contentReceived  bool  // is content received? if message has no content, it is true (received)
+	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
+	maxContentSize   int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
+	sizeReceived     int64 // bytes of currently received content. for both counted & chunked content receiver
+	chunkSize        int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
+	cBack            int32 // for parsing chunked elements. HTTP/1.1 chunked only
+	cFore            int32 // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkEdge        int32 // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
+	transferChunked  bool  // transfer-encoding: chunked? HTTP/1.1 only
+	overChunked      bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
+	trailers         zone  // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
 func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
@@ -161,7 +164,7 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.contentSize = -1
-	r.maxRecvTimeout = r.stream.getHolder().ReadTimeout()
+	r.maxRecvTimeout = r.stream.holder().ReadTimeout()
 	r.asResponse = asResponse
 	r.keepAlive = -1
 	r.headResult = StatusOK
@@ -228,17 +231,45 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	r.httpInMessage0_ = httpInMessage0_{}
 }
 
-func (r *httpInMessage_) UnsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
-}
-func (r *httpInMessage_) PeerAddr() net.Addr {
-	return r.stream.peerAddr()
-}
+func (r *httpInMessage_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+func (r *httpInMessage_) PeerAddr() net.Addr         { return r.stream.peerAddr() }
 
 func (r *httpInMessage_) VersionCode() uint8    { return r.versionCode }
 func (r *httpInMessage_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpInMessage_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
+func (r *httpInMessage_) checkAcceptEncoding(from uint8, edge uint8) bool {
+	// Accept-Encoding = #( codings [ weight ] )
+	// codings         = content-coding / "identity" / "*"
+	// content-coding  = token
+	for i := from; i < edge; i++ {
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
+			break
+		}
+		value := r.primes[i].valueAt(r.input)
+		bytesToLower(value)
+		var coding uint8
+		if bytes.HasPrefix(value, httpBytesGzip) {
+			r.acceptGzip = true
+			coding = httpCodingGzip
+		} else if bytes.HasPrefix(value, httpBytesBrotli) {
+			r.acceptBrotli = true
+			coding = httpCodingBrotli
+		} else if bytes.HasPrefix(value, httpBytesDeflate) {
+			coding = httpCodingDeflate
+		} else if bytes.HasPrefix(value, httpBytesCompress) {
+			coding = httpCodingCompress
+		} else if bytes.Equal(value, httpBytesIdentity) {
+			coding = httpCodingIdentity
+		} else {
+			// Empty or unknown content-coding, ignored
+			continue
+		}
+		r.acceptCodings[r.nAcceptCodings] = coding
+		r.nAcceptCodings++
+	}
+	return true
+}
 func (r *httpInMessage_) checkConnection(from uint8, edge uint8) bool {
 	if r.versionCode >= Version2 {
 		r.headResult, r.headReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
@@ -262,28 +293,6 @@ func (r *httpInMessage_) checkConnection(from uint8, edge uint8) bool {
 			r.keepAlive = 0
 		} else if bytes.Equal(value, httpBytesKeepAlive) {
 			r.keepAlive = 1 // to be compatible with HTTP/1.0
-		}
-	}
-	return true
-}
-func (r *httpInMessage_) checkTransferEncoding(from uint8, edge uint8) bool {
-	if r.versionCode != Version1_1 {
-		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
-		return false
-	}
-	// Transfer-Encoding = 1#transfer-coding
-	// transfer-coding   = "chunked" / "compress" / "deflate" / "gzip"
-	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, httpBytesChunked) {
-			r.transferChunked = true
-		} else {
-			// RFC 7230 (section 3.3.1):
-			// A server that receives a request message with a transfer coding it
-			// does not understand SHOULD respond with 501 (Not Implemented).
-			r.headResult, r.headReason = StatusNotImplemented, "unknown transfer coding"
-			return false
 		}
 	}
 	return true
@@ -322,35 +331,25 @@ func (r *httpInMessage_) checkContentEncoding(from uint8, edge uint8) bool {
 	}
 	return true
 }
-func (r *httpInMessage_) checkAcceptEncoding(from uint8, edge uint8) bool {
-	// Accept-Encoding = #( codings [ weight ] )
-	// codings         = content-coding / "identity" / "*"
-	// content-coding  = token
+func (r *httpInMessage_) checkTransferEncoding(from uint8, edge uint8) bool {
+	if r.versionCode != Version1_1 {
+		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
+		return false
+	}
+	// Transfer-Encoding = 1#transfer-coding
+	// transfer-coding   = "chunked" / "compress" / "deflate" / "gzip"
 	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
-			break
-		}
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
-		var coding uint8
-		if bytes.HasPrefix(value, httpBytesGzip) {
-			r.acceptGzip = true
-			coding = httpCodingGzip
-		} else if bytes.HasPrefix(value, httpBytesBrotli) {
-			r.acceptBrotli = true
-			coding = httpCodingBrotli
-		} else if bytes.HasPrefix(value, httpBytesDeflate) {
-			coding = httpCodingDeflate
-		} else if bytes.HasPrefix(value, httpBytesCompress) {
-			coding = httpCodingCompress
-		} else if bytes.Equal(value, httpBytesIdentity) {
-			coding = httpCodingIdentity
+		if bytes.Equal(value, httpBytesChunked) {
+			r.transferChunked = true
 		} else {
-			// Empty or unknown content-coding, ignored
-			continue
+			// RFC 7230 (section 3.3.1):
+			// A server that receives a request message with a transfer coding it
+			// does not understand SHOULD respond with 501 (Not Implemented).
+			r.headResult, r.headReason = StatusNotImplemented, "unknown transfer coding"
+			return false
 		}
-		r.acceptCodings[r.nAcceptCodings] = coding
-		r.nAcceptCodings++
 	}
 	return true
 }
@@ -386,6 +385,14 @@ func (r *httpInMessage_) checkContentLength(header *pair, index uint8) bool {
 	r.headResult, r.headReason = StatusBadRequest, "bad content-length"
 	return false
 }
+func (r *httpInMessage_) checkContentLocation(header *pair, index uint8) bool {
+	// TODO: use r.iContentLocation
+	return true
+}
+func (r *httpInMessage_) checkContentRange(header *pair, index uint8) bool {
+	// TODO: use r.iContentRange
+	return true
+}
 func (r *httpInMessage_) checkContentType(header *pair, index uint8) bool {
 	// Content-Type = media-type
 	// media-type = type "/" subtype *( OWS ";" OWS parameter )
@@ -411,9 +418,7 @@ func (r *httpInMessage_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8
 	return false
 }
 
-func (r *httpInMessage_) ContentSize() int64 {
-	return r.contentSize
-}
+func (r *httpInMessage_) ContentSize() int64 { return r.contentSize }
 func (r *httpInMessage_) ContentType() string {
 	return string(r.UnsafeContentType())
 }
@@ -431,6 +436,14 @@ func (r *httpInMessage_) H(name string) string {
 func (r *httpInMessage_) Hstr(name string, defaultValue string) string {
 	if value, ok := r.Header(name); ok {
 		return value
+	}
+	return defaultValue
+}
+func (r *httpInMessage_) Hint(name string, defaultValue int) int {
+	if value, ok := r.Header(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }
@@ -544,7 +557,7 @@ func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
 }
-func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool { // used by proxies
+func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return r._walkFields(r.headers, extraKindHeader, fn)
 }
 
@@ -610,7 +623,7 @@ func (r *httpInMessage_) dropContent() {
 }
 func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		timeout := r.stream.getHolder().ReadTimeout()
+		timeout := r.stream.holder().ReadTimeout()
 		if r.maxRecvTimeout > 0 {
 			timeout = r.maxRecvTimeout
 		}
@@ -689,7 +702,7 @@ func (r *httpInMessage_) HoldContent() any { // used by proxies
 	return nil
 }
 
-func (r *httpInMessage_) HasTrailers() bool { // used by proxies
+func (r *httpInMessage_) HasTrailers() bool {
 	return r.trailers.notEmpty()
 }
 func (r *httpInMessage_) T(name string) string {
@@ -699,6 +712,14 @@ func (r *httpInMessage_) T(name string) string {
 func (r *httpInMessage_) Tstr(name string, defaultValue string) string {
 	if value, ok := r.Trailer(name); ok {
 		return value
+	}
+	return defaultValue
+}
+func (r *httpInMessage_) Tint(name string, defaultValue int) int {
+	if value, ok := r.Trailer(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }
@@ -722,14 +743,14 @@ func (r *httpInMessage_) HasTrailer(name string) bool {
 func (r *httpInMessage_) AddTrailer(name string, value string) bool {
 	return r.addExtra(name, value, extraKindTrailer)
 }
-func (r *httpInMessage_) DelTrailer(name string) (deleted bool) {
-	return r.delPair(name, 0, r.trailers, extraKindTrailer)
-}
 func (r *httpInMessage_) addTrailer(trailer *pair) {
 	if edge, ok := r.addPrime(trailer); ok {
 		r.trailers.edge = edge
 	}
 	// Ignore too many trailers
+}
+func (r *httpInMessage_) DelTrailer(name string) (deleted bool) {
+	return r.delPair(name, 0, r.trailers, extraKindTrailer)
 }
 func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, extraKindTrailer)
@@ -737,7 +758,7 @@ func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
 func (r *httpInMessage_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, r.delTrailer)
 }
-func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // used by proxies
+func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return r._walkFields(r.trailers, extraKindTrailer, fn)
 }
 
@@ -847,6 +868,7 @@ func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bo
 	r.extras = append(r.extras, extra)
 	return true
 }
+
 func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
 	if name != "" {
 		if hash == 0 {
@@ -864,7 +886,8 @@ func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKin
 		}
 		if extraKind != extraKindNoExtra {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				extra := &r.extras[i]
+				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
 			}
@@ -889,7 +912,8 @@ func (r *httpInMessage_) getPairList(name string, hash uint16, primes zone, extr
 		}
 		if extraKind != extraKindNoExtra {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				extra := &r.extras[i]
+				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
 					list = append(list, string(extra.valueAt(r.array)))
 				}
 			}
@@ -966,7 +990,8 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 		}
 		if extraKind != extraKindNoExtra {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				extra := &r.extras[i]
+				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1060,7 +1085,7 @@ func (r *httpInMessage_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.getHolder().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.holder().ReadTimeout()))
 }
 
 const ( // HTTP content blob kinds
@@ -1137,7 +1162,7 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
 	r.contentSize = -1 // not set
-	r.maxSendTimeout = r.stream.getHolder().WriteTimeout()
+	r.maxSendTimeout = r.stream.holder().WriteTimeout()
 	r.asRequest = asRequest
 	r.nHeaders = 1                    // r.edges[0] is not used
 	r.nTrailers = 1                   // r.edges[0] is not used
@@ -1236,14 +1261,22 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	return hash, true, buffer[:n]
 }
 
-func (r *httpOutMessage_) addContentType(contentType []byte) (ok bool) {
+func (r *httpOutMessage_) joinContentType(contentType []byte) (ok bool) {
 	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
 		return false
 	}
 	r.oContentType = r.nHeaders - 1
 	return true
 }
-func (r *httpOutMessage_) delContentType() (deleted bool) {
+func (r *httpOutMessage_) joinDate(date []byte) (ok bool) {
+	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
+		return false
+	}
+	r.oDate = r.nHeaders - 1
+	return true
+}
+
+func (r *httpOutMessage_) kickContentType() (deleted bool) {
 	if r.oContentType == 0 {
 		return false
 	}
@@ -1251,15 +1284,7 @@ func (r *httpOutMessage_) delContentType() (deleted bool) {
 	r.oContentType = 0
 	return true
 }
-
-func (r *httpOutMessage_) addDate(date []byte) (ok bool) {
-	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
-		return false
-	}
-	r.oDate = r.nHeaders - 1
-	return true
-}
-func (r *httpOutMessage_) delDate() (deleted bool) {
+func (r *httpOutMessage_) kickDate() (deleted bool) {
 	if r.oDate == 0 {
 		return false
 	}
@@ -1482,7 +1507,7 @@ func (r *httpOutMessage_) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.getHolder().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.holder().WriteTimeout()))
 }
 
 var ( // http outgoing message errors

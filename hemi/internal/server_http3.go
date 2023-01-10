@@ -276,7 +276,7 @@ func (s *http3Stream) execute() { // goroutine
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) getHolder() holder {
+func (s *http3Stream) holder() holder {
 	return s.conn.getServer()
 }
 

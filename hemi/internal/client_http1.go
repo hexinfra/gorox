@@ -293,7 +293,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.hStream_.onEnd()
 }
 
-func (s *H1Stream) getHolder() holder {
+func (s *H1Stream) holder() holder {
 	return s.conn.getClient()
 }
 

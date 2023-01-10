@@ -464,7 +464,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.httpStream_.onEnd()
 }
 
-func (s *http1Stream) getHolder() holder {
+func (s *http1Stream) holder() holder {
 	return s.conn.getServer()
 }
 
@@ -1233,7 +1233,7 @@ func (r *http1Response) passBytes(p []byte) error {
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
 	if r.oDate == 0 {
-		r.stream.getHolder().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])
+		r.stream.holder().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])
 		r.fieldsEdge += uint16(clockDateSize)
 	}
 	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT

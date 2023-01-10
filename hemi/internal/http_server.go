@@ -278,7 +278,7 @@ type Request interface {
 	Path() string        // /path
 	EncodedPath() string // /encodedPath
 
-	QueryString() string // including '?' if query string exists
+	QueryString() string // including '?' if query string exists, otherwise empty
 	Q(name string) string
 	Qstr(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
@@ -291,6 +291,7 @@ type Request interface {
 
 	H(name string) string
 	Hstr(name string, defaultValue string) string
+	Hint(name string, defaultValue int) int
 	Header(name string) (value string, ok bool)
 	HeaderList(name string) (list []string, ok bool)
 	Headers() (headers [][2]string)
@@ -308,6 +309,7 @@ type Request interface {
 
 	C(name string) string
 	Cstr(name string, defaultValue string) string
+	Cint(name string, defaultValue int) int
 	Cookie(name string) (value string, ok bool)
 	CookieList(name string) (list []string, ok bool)
 	Cookies() (cookies [][2]string)
@@ -338,6 +340,7 @@ type Request interface {
 	HasTrailers() bool
 	T(name string) string
 	Tstr(name string, defaultValue string) string
+	Tint(name string, defaultValue int) int
 	Trailer(name string) (value string, ok bool)
 	TrailerList(name string) (list []string, ok bool)
 	Trailers() (trailers [][2]string)
@@ -367,7 +370,6 @@ type Request interface {
 	UnsafeTrailer(name string) (value []byte, ok bool)
 
 	// Internal only
-	arrayCopy(p []byte) bool
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
@@ -381,6 +383,7 @@ type Request interface {
 	readContent() (p []byte, err error)
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool
+	arrayCopy(p []byte) bool
 	getSaveContentFilesDir() string
 	hookReviser(reviser Reviser)
 	unsafeVariable(index int16) []byte
@@ -764,6 +767,38 @@ var ( // perfect hash table for request multiple headers
 	httpRequestMultipleHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
 )
 
+func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
+	// Cache-Control   = 1#cache-directive
+	// cache-directive = token [ "=" ( token / quoted-string ) ]
+	for i := from; i < edge; i++ {
+		// TODO
+	}
+	return true
+}
+func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
+	// If-Match = "*" / #entity-tag
+	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
+}
+func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool {
+	// If-None-Match = "*" / #entity-tag
+	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
+}
+func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
+	// TE        = #t-codings
+	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
+	// t-ranking = OWS ";" OWS "q=" rank
+	for i := from; i < edge; i++ {
+		value := r.primes[i].valueAt(r.input)
+		bytesToLower(value)
+		if bytes.Equal(value, httpBytesTrailers) {
+			r.acceptTrailers = true
+		} else if r.versionCode > Version1_1 {
+			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
+			return false
+		}
+	}
+	return true
+}
 func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 	if r.versionCode == Version2 || r.versionCode == Version3 {
 		r.headResult, r.headReason = StatusBadRequest, "upgrade is only supported in http/1.1"
@@ -795,38 +830,6 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 		}
 	}
 	return true
-}
-func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
-	// TE        = #t-codings
-	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
-	// t-ranking = OWS ";" OWS "q=" rank
-	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, httpBytesTrailers) {
-			r.acceptTrailers = true
-		} else if r.versionCode > Version1_1 {
-			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
-			return false
-		}
-	}
-	return true
-}
-func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
-	// Cache-Control   = 1#cache-directive
-	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
-		// TODO
-	}
-	return true
-}
-func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
-	// If-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
-}
-func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool {
-	// If-None-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
 }
 func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {
 	if matches.isEmpty() {
@@ -872,7 +875,7 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 }
 
 var ( // perfect hash table for request critical headers
-	httpRequestCriticalHeaderNames = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent")
+	httpRequestCriticalHeaderNames = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent") // authorization? proxy-authorization?
 	httpRequestCriticalHeaderTable = [10]struct {
 		hash  uint16
 		from  uint8
@@ -893,14 +896,13 @@ var ( // perfect hash table for request critical headers
 	httpRequestCriticalHeaderFind = func(hash uint16) int { return (252525 / int(hash)) % 10 }
 )
 
-func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool {
-	if r.indexes.userAgent == 0 {
-		r.indexes.userAgent = index
-		return true
-	} else {
-		r.headResult, r.headReason = StatusBadRequest, "duplicated user-agent"
-		return false
-	}
+func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
+	// TODO
+	return true
+}
+func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
+	// TODO
+	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
 	// cookie-header = "Cookie:" OWS cookie-string OWS
@@ -969,10 +971,6 @@ func (r *httpRequest_) checkIfModifiedSince(header *pair, index uint8) bool {
 	// If-Modified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.ifModifiedTime)
 }
-func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool {
-	// If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.ifUnmodifiedTime)
-}
 func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 	// If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
@@ -984,6 +982,10 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 	}
 	r.indexes.ifRange = index
 	return true
+}
+func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool {
+	// If-Unmodified-Since = HTTP-date
+	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.ifUnmodifiedTime)
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	if r.methodCode != MethodGET {
@@ -1108,6 +1110,15 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 badRange:
 	r.headResult, r.headReason = StatusBadRequest, "invalid range"
 	return false
+}
+func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool {
+	if r.indexes.userAgent == 0 {
+		r.indexes.userAgent = index
+		return true
+	} else {
+		r.headResult, r.headReason = StatusBadRequest, "duplicated user-agent"
+		return false
+	}
 }
 func (r *httpRequest_) _addRange(from int64, last int64) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
@@ -1378,6 +1389,14 @@ func (r *httpRequest_) C(name string) string {
 func (r *httpRequest_) Cstr(name string, defaultValue string) string {
 	if value, ok := r.Cookie(name); ok {
 		return value
+	}
+	return defaultValue
+}
+func (r *httpRequest_) Cint(name string, defaultValue int) int {
+	if value, ok := r.Cookie(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }
@@ -2482,13 +2501,13 @@ var ( // perfect hash table for response crucial headers
 		0: {httpHashServer, 66, 72, nil, nil},
 		1: {httpHashSetCookie, 73, 83, nil, nil},
 		2: {httpHashUpgrade, 102, 109, nil, nil},
-		3: {httpHashDate, 39, 43, (*httpResponse_).addDate, (*httpResponse_).delDate},
+		3: {httpHashDate, 39, 43, (*httpResponse_).joinDate, (*httpResponse_).kickDate},
 		4: {httpHashTransferEncoding, 84, 101, nil, nil},
 		5: {httpHashConnection, 0, 10, nil, nil},
-		6: {httpHashLastModified, 52, 65, (*httpResponse_).addLastModified, (*httpResponse_).delLastModified},
-		7: {httpHashExpires, 44, 51, (*httpResponse_).addExpires, (*httpResponse_).delExpires},
+		6: {httpHashLastModified, 52, 65, (*httpResponse_).joinLastModified, (*httpResponse_).kickLastModified},
+		7: {httpHashExpires, 44, 51, (*httpResponse_).joinExpires, (*httpResponse_).kickExpires},
 		8: {httpHashContentLength, 11, 25, nil, nil},
-		9: {httpHashContentType, 26, 38, (*httpResponse_).addContentType, (*httpResponse_).delContentType},
+		9: {httpHashContentType, 26, 38, (*httpResponse_).joinContentType, (*httpResponse_).kickContentType},
 	}
 	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
@@ -2514,16 +2533,11 @@ func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 
-func (r *httpResponse_) addExpires(expires []byte) (ok bool) {
+func (r *httpResponse_) joinExpires(expires []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesExpires, expires)
 }
-func (r *httpResponse_) delExpires() (deleted bool) {
-	// TODO
-	return true
-}
-
-func (r *httpResponse_) addLastModified(lastModified []byte) (ok bool) {
+func (r *httpResponse_) joinLastModified(lastModified []byte) (ok bool) {
 	if r.lastModified == -2 {
 		r.shell.delHeaderAt(r.oLastModified)
 		r.oLastModified = 0
@@ -2536,7 +2550,12 @@ func (r *httpResponse_) addLastModified(lastModified []byte) (ok bool) {
 	r.oLastModified = r.nHeaders - 1
 	return true
 }
-func (r *httpResponse_) delLastModified() (deleted bool) {
+
+func (r *httpResponse_) kickExpires() (deleted bool) {
+	// TODO
+	return true
+}
+func (r *httpResponse_) kickLastModified() (deleted bool) {
 	if r.lastModified == -1 {
 		return false
 	}

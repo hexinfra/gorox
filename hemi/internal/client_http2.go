@@ -290,7 +290,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.h2Stream0 = h2Stream0{}
 }
 
-func (s *H2Stream) getHolder() holder {
+func (s *H2Stream) holder() holder {
 	return s.conn.getClient()
 }
 

@@ -868,7 +868,7 @@ func (s *http2Stream) execute() { // goroutine
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) getHolder() holder {
+func (s *http2Stream) holder() holder {
 	return s.conn.getServer()
 }
 

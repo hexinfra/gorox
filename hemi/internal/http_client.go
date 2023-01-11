@@ -179,8 +179,8 @@ type hRequest_ struct {
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	ifModifiedSince   int64
-	ifUnmodifiedSince int64
+	ifModifiedSince   int64 // ...
+	ifUnmodifiedSince int64 // ...
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }

@@ -472,15 +472,20 @@ func (r *httpInMessage_) DelHeader(name string) (deleted bool) {
 	return r.delPair(name, 0, r.headers, extraKindHeader)
 }
 func (r *httpInMessage_) addMultipleHeader(header *pair, must bool) bool {
+	// Add main header before sub headers.
+	if !r.addHeader(header) {
+		return false
+	}
 	// RFC 7230 (section 7):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
 	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-	subHeader := *header
-	added := uint8(0)
+	subHeader := *header // clone header
+	subHeader.setSubField(true)
+	added := uint8(0) // how many subHeaders have been added?
 	value := header.value
 	needComma := false
-	for {
+	for { // each element
 		haveComma := false
 		for value.from < header.value.edge {
 			if b := r.input[value.from]; b == ',' {
@@ -500,19 +505,18 @@ func (r *httpInMessage_) addMultipleHeader(header *pair, must bool) bool {
 			return false
 		}
 		value.edge = value.from
-		if r.input[value.edge] == '"' {
+		if r.input[value.edge] == '"' { // value is quoted?
 			value.edge++
-			// TODO: use index()?
 			for value.edge < header.value.edge && r.input[value.edge] != '"' {
 				value.edge++
 			}
 			if value.edge == header.value.edge {
-				subHeader.value = value // value is "...
-			} else {
-				subHeader.value.set(value.from+1, value.edge) // strip ""
+				subHeader.value = value // value is `"...`
+			} else { // got a `"`
+				subHeader.value.set(value.from+1, value.edge) // strip `""`
 				value.edge++
 			}
-		} else {
+		} else { // not a quoted value
 			for value.edge < header.value.edge {
 				if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
 					break
@@ -531,13 +535,9 @@ func (r *httpInMessage_) addMultipleHeader(header *pair, must bool) bool {
 		value.from = value.edge
 		needComma = true
 	}
-	if added == 0 {
-		if must {
-			r.headResult, r.headReason = StatusBadRequest, "empty element detected in 1#(element)"
-			return false
-		}
-		header.value.zero()
-		return r.addHeader(header)
+	if added == 0 && must {
+		r.headResult, r.headReason = StatusBadRequest, "empty element detected in 1#(element)"
+		return false
 	}
 	return true
 }
@@ -904,6 +904,9 @@ func (r *httpInMessage_) getPairList(name string, hash uint16, primes zone, extr
 			if prime.hash != hash {
 				continue
 			}
+			if extraKind == extraKindHeader && !prime.isSubField() { // TODO: what about extraKindTrailer?
+				continue
+			}
 			p := r._getPlace(prime)
 			if prime.nameEqualString(p, name) {
 				list = append(list, string(prime.valueAt(p)))
@@ -1050,7 +1053,7 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 }
 func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 {
+		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
 			p := r._getPlace(field)
 			if !fn(field.hash, field.nameAt(p), field.valueAt(p)) {
 				return false

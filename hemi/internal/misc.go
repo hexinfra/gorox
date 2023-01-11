@@ -417,7 +417,7 @@ func put255Pairs(pairs []pair) {
 	pool255Pairs.Put(pairs)
 }
 
-// pair is used to hold queries, headers, cookies, forms, and trailers.
+// pair is used to hold queries, headers, cookies, forms (but not uploads), and trailers.
 type pair struct { // 16 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
 	flags    uint8  // see pair flags
@@ -457,7 +457,7 @@ const ( // pair flags
 	pairFlagWeakETag = 0b00001000 // weak etag or not
 	pairFlagLiteral  = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
 	pairFlagPseudo   = 0b00000010 // pseudo header or not. used in HTTP/2 and HTTP/3
-	pairFlagReserved = 0b00000001 // reserved for future use
+	pairFlagSubField = 0b00000001 // sub field or not. currently only used by headers
 )
 
 func (p *pair) setKind(kind uint8)     { p.flags = p.flags&^pairMaskExtraKind | kind }
@@ -475,10 +475,13 @@ func (p *pair) isLiteral() bool         { return p.flags&pairFlagLiteral > 0 }
 func (p *pair) setPseudo(pseudo bool) { p._setFlag(pairFlagPseudo, pseudo) }
 func (p *pair) isPseudo() bool        { return p.flags&pairFlagPseudo > 0 }
 
+func (p *pair) setSubField(subField bool) { p._setFlag(pairFlagSubField, subField) }
+func (p *pair) isSubField() bool          { return p.flags&pairFlagSubField > 0 }
+
 func (p *pair) _setFlag(pairFlag uint8, on bool) {
 	if on {
 		p.flags |= pairFlag
-	} else {
+	} else { // off
 		p.flags &^= pairFlag
 	}
 }

@@ -8,7 +8,6 @@
 package redis
 
 import (
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -48,8 +47,8 @@ func (s *redisStater) Maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("redisStater=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("redisStater=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

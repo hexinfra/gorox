@@ -104,8 +104,8 @@ func (s *RocksServer) Serve() { // goroutine
 		connID++
 	}
 	// TODO: waiting for all connections end. Use sync.Cond?
-	if Debug(2) {
-		fmt.Printf("rocksServer=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("rocksServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

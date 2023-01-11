@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"io"
@@ -104,8 +103,8 @@ func (s *httpxServer) Serve() { // goroutine
 		}
 	}
 	s.WaitSubs() // gates
-	if Debug(2) {
-		fmt.Printf("httpxServer=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
@@ -176,8 +175,8 @@ func (g *httpxGate) serveTCP() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("httpxGate=%d TCP done\n", g.id)
+	if IsDebug(2) {
+		Debugf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
 }
@@ -214,8 +213,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("httpxGate=%d TLS done\n", g.id)
+	if IsDebug(2) {
+		Debugf("httpxGate=%d TLS done\n", g.id)
 	}
 	g.server.SubDone()
 }
@@ -515,8 +514,8 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
-	if Debug(2) {
-		fmt.Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
+	if IsDebug(2) {
+		Debugf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
 	status := req.headResult
@@ -624,8 +623,8 @@ func (r *http1Request) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if Debug(2) {
-		fmt.Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
+	if IsDebug(2) {
+		Debugf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-version CRLF

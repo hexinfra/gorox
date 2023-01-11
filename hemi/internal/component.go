@@ -205,11 +205,17 @@ func (c *Component_) ConfigureInt(name string, prop *int, check func(value int) 
 func (c *Component_) ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string) {
 	configureProp(c, name, prop, (*Value).String, check, defaultValue)
 }
+func (c *Component_) ConfigureBytes(name string, prop *[]byte, check func(value []byte) bool, defaultValue []byte) {
+	configureProp(c, name, prop, (*Value).Bytes, check, defaultValue)
+}
 func (c *Component_) ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration) {
 	configureProp(c, name, prop, (*Value).Duration, check, defaultValue)
 }
 func (c *Component_) ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string) {
 	configureProp(c, name, prop, (*Value).StringList, check, defaultValue)
+}
+func (c *Component_) ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) bool, defaultValue [][]byte) {
+	configureProp(c, name, prop, (*Value).BytesList, check, defaultValue)
 }
 func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string) {
 	configureProp(c, name, prop, (*Value).StringDict, check, defaultValue)

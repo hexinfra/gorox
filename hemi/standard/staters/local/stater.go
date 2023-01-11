@@ -8,7 +8,6 @@
 package local
 
 import (
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"time"
@@ -55,8 +54,8 @@ func (s *localStater) Maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("localStater=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("localStater=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

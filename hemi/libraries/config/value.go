@@ -49,6 +49,12 @@ func (v *Value) String() (s string, ok bool) {
 	s, ok = v.Data.(string)
 	return
 }
+func (v *Value) Bytes() (p []byte, ok bool) {
+	if s, isString := v.String(); isString {
+		return []byte(s), true
+	}
+	return
+}
 func (v *Value) Duration() (d time.Duration, ok bool) {
 	d, ok = v.Data.(time.Duration)
 	return
@@ -66,12 +72,22 @@ func (v *Value) ListN(n int) (list []Value, ok bool) {
 }
 func (v *Value) StringList() (list []string, ok bool) {
 	l, ok := v.Data.([]Value)
-	if !ok {
-		return
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, s)
+			}
+		}
 	}
-	for _, value := range l {
-		if s, ok := value.String(); ok {
-			list = append(list, s)
+	return
+}
+func (v *Value) BytesList() (list [][]byte, ok bool) {
+	l, ok := v.Data.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, []byte(s))
+			}
 		}
 	}
 	return

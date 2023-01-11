@@ -7,10 +7,6 @@
 
 package internal
 
-import (
-	"fmt"
-)
-
 func init() {
 	RegisterHandlet("http3Proxy", func(name string, stage *Stage, app *App) Handlet {
 		h := new(http3Proxy)
@@ -67,8 +63,8 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		outgate3 := h.stage.http3
 		conn3, err3 = outgate3.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err3 != nil {
-			if Debug(1) {
-				fmt.Println(err3.Error())
+			if IsDebug(1) {
+				Debugln(err3.Error())
 			}
 			resp.SendBadGateway(nil)
 			return
@@ -78,8 +74,8 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		backend3 := h.backend.(*HTTP3Backend)
 		conn3, err3 = backend3.FetchConn()
 		if err3 != nil {
-			if Debug(1) {
-				fmt.Println(err3.Error())
+			if IsDebug(1) {
+				Debugln(err3.Error())
 			}
 			resp.SendBadGateway(nil)
 			return

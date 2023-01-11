@@ -11,7 +11,6 @@ package internal
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"net"
 	"sync"
@@ -63,8 +62,8 @@ func (s *http3Server) Serve() { // goroutine
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if Debug(2) {
-		fmt.Printf("http3Server=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("http3Server=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
@@ -118,8 +117,8 @@ func (g *http3Gate) serve() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("http3Gate=%d done\n", g.id)
+	if IsDebug(2) {
+		Debugf("http3Gate=%d done\n", g.id)
 	}
 	g.server.SubDone()
 }

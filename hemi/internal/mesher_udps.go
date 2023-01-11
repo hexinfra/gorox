@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -74,8 +73,8 @@ func (m *UDPSMesher) serve() { // goroutine
 	m.shutdownSubs()
 	m.WaitSubs() // dealets, editors, cases
 	// TODO: close access log file
-	if Debug(2) {
-		fmt.Printf("udpsMesher=%s done\n", m.Name())
+	if IsDebug(2) {
+		Debugf("udpsMesher=%s done\n", m.Name())
 	}
 	m.stage.SubDone()
 }

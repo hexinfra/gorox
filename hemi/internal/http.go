@@ -154,10 +154,10 @@ type httpInMessage0_ struct { // for fast reset, entirely
 }
 
 func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
-	if r.versionCode >= Version2 || asResponse { // for HTTP/2 and HTTP/3, r.versionCode is explicitly set in streams
+	if r.versionCode >= Version2 || asResponse { // for HTTP/2 and HTTP/3, r.versionCode is explicitly set in streams. default is 0, means HTTP/1.0
 		r.input = r.stockInput[:]
 	} else {
-		// HTTP/1 requests support pipelining, so r.input and r.inputEdge are not reset here.
+		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
 	}
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of indexes.
@@ -169,13 +169,13 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 	r.headResult = StatusOK
 }
 func (r *httpInMessage_) onEnd() { // for zeros
-	if r.versionCode >= Version2 || r.asResponse {
+	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, so responses are not pipelined.
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
 		}
 		r.input, r.inputEdge = nil, 0
 	} else {
-		// HTTP/1 requests support pipelining, so r.input and r.inputEdge are not reset here.
+		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
 	}
 	if r.arrayKind == arrayKindPool {
 		PutNK(r.array)
@@ -216,14 +216,14 @@ func (r *httpInMessage_) onEnd() { // for zeros
 	if r.contentBlobKind == httpContentBlobPool {
 		PutNK(r.contentBlob)
 	}
-	r.contentBlob = nil
+	r.contentBlob = nil // other blob kinds are only references, just reset.
 
 	if r.contentHeld != nil {
 		r.contentHeld.Close()
 		os.Remove(r.contentHeld.Name())
 		r.contentHeld = nil
-		if Debug(2) {
-			fmt.Println("contentHeld is closed and removed!!")
+		if IsDebug(2) {
+			Debugln("contentHeld is closed and removed!!")
 		}
 	}
 

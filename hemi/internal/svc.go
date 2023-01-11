@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -61,8 +60,8 @@ func (s *Svc) maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("svc=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("svc=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

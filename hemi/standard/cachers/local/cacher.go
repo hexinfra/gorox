@@ -8,7 +8,6 @@
 package local
 
 import (
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"time"
@@ -55,8 +54,8 @@ func (c *localCacher) Maintain() { // goroutine
 	Loop(time.Second, c.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("localCacher=%s done\n", c.Name())
+	if IsDebug(2) {
+		Debugf("localCacher=%s done\n", c.Name())
 	}
 	c.stage.SubDone()
 }

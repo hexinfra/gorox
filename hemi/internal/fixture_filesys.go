@@ -9,7 +9,6 @@ package internal
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
@@ -79,8 +78,8 @@ func (f *filesysFixture) run() { // goroutine
 				entry.decRef()
 			}
 			delete(f.entries, path)
-			if Debug(2) {
-				fmt.Printf("filesys entry deleted: %s\n", path)
+			if IsDebug(2) {
+				Debugf("filesys entry deleted: %s\n", path)
 			}
 		}
 		f.rwMutex.Unlock()
@@ -89,8 +88,8 @@ func (f *filesysFixture) run() { // goroutine
 	f.entries = nil
 	f.rwMutex.Unlock()
 
-	if Debug(2) {
-		fmt.Println("filesys done")
+	if IsDebug(2) {
+		Debugln("filesys done")
 	}
 	f.stage.SubDone()
 }
@@ -183,8 +182,8 @@ func (e *filesysEntry) addRef() {
 }
 func (e *filesysEntry) decRef() {
 	if e.nRef.Add(-1) < 0 {
-		if Debug(2) {
-			fmt.Printf("filesys large entry closed: %s\n", e.file.Name())
+		if IsDebug(2) {
+			Debugf("filesys large entry closed: %s\n", e.file.Name())
 		}
 		e.file.Close()
 	}

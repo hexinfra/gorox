@@ -32,7 +32,7 @@ var ( // core funcs
 	RegisterServer     = internal.RegisterServer
 	RegisterCronjob    = internal.RegisterCronjob
 
-	Debug   = internal.Debug
+	IsDebug = internal.IsDebug
 	BaseDir = internal.BaseDir
 	DataDir = internal.DataDir
 	LogsDir = internal.LogsDir
@@ -43,6 +43,10 @@ var ( // core funcs
 	SetDataDir = internal.SetDataDir
 	SetLogsDir = internal.SetLogsDir
 	SetTempDir = internal.SetTempDir
+
+	Debug   = internal.Debug
+	Debugln = internal.Debugln
+	Debugf  = internal.Debugf
 
 	BugExitln = internal.BugExitln
 	BugExitf  = internal.BugExitf

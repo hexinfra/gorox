@@ -12,7 +12,6 @@ package internal
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -64,8 +63,8 @@ func (f *HTTP1Outgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("http1 done")
+	if IsDebug(2) {
+		Debugln("http1 done")
 	}
 	f.stage.SubDone()
 }
@@ -143,8 +142,8 @@ func (n *http1Node) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	n.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("http1Node=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("http1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
@@ -190,13 +189,13 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 }
 func (n *http1Node) storeConn(hConn *H1Conn) {
 	if hConn.isBroken() || n.isDown() || !hConn.isAlive() || !hConn.keepConn {
-		if Debug(2) {
-			fmt.Printf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
+		if IsDebug(2) {
+			Debugf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
 		}
 		n.closeConn(hConn)
 	} else {
-		if Debug(2) {
-			fmt.Printf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
+		if IsDebug(2) {
+			Debugf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
 	}
@@ -527,8 +526,8 @@ func (r *H1Response) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if Debug(2) {
-		fmt.Printf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
+	if IsDebug(2) {
+		Debugf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

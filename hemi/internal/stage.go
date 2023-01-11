@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -113,8 +112,8 @@ func (s *Stage) onCreate() {
 	s.svcServers = make(map[string][]string)
 }
 func (s *Stage) OnShutdown() {
-	if Debug(2) {
-		fmt.Printf("stage id=%d shutdown start!!\n", s.id)
+	if IsDebug(2) {
+		Debugf("stage id=%d shutdown start!!\n", s.id)
 	}
 
 	// cronjobs
@@ -180,8 +179,8 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	// stage
-	if Debug(2) {
-		fmt.Println("stage close log file")
+	if IsDebug(2) {
+		Debugln("stage close log file")
 	}
 	s.logger.Writer().(*os.File).Close()
 }
@@ -427,22 +426,22 @@ func (s *Stage) Start(id int32) {
 	s.id = id
 	s.numCPU = int32(runtime.NumCPU())
 
-	if Debug(2) {
-		fmt.Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
-		fmt.Printf("size of h1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
-		fmt.Printf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
-		fmt.Printf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
-		fmt.Printf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
-		fmt.Printf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
-		fmt.Printf("size of Block = %d\n", unsafe.Sizeof(Block{}))
+	if IsDebug(2) {
+		Debugf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
+		Debugf("size of h1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
+		Debugf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
+		Debugf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
+		Debugf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
+		Debugf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
+		Debugf("size of Block = %d\n", unsafe.Sizeof(Block{}))
 	}
-	if Debug(1) {
-		fmt.Printf("stageID=%d\n", s.id)
-		fmt.Printf("numCPU=%d\n", s.numCPU)
-		fmt.Printf("baseDir=%s\n", BaseDir())
-		fmt.Printf("dataDir=%s\n", DataDir())
-		fmt.Printf("logsDir=%s\n", LogsDir())
-		fmt.Printf("tempDir=%s\n", TempDir())
+	if IsDebug(1) {
+		Debugf("stageID=%d\n", s.id)
+		Debugf("numCPU=%d\n", s.numCPU)
+		Debugf("baseDir=%s\n", BaseDir())
+		Debugf("dataDir=%s\n", DataDir())
+		Debugf("logsDir=%s\n", LogsDir())
+		Debugf("tempDir=%s\n", TempDir())
 	}
 	if BaseDir() == "" || DataDir() == "" || LogsDir() == "" || TempDir() == "" {
 		UseExitln("baseDir, dataDir, logsDir, and tempDir must all be set")
@@ -488,20 +487,20 @@ func (s *Stage) Start(id int32) {
 }
 func (s *Stage) Quit() {
 	s.OnShutdown()
-	if Debug(2) {
-		fmt.Printf("stage id=%d: quit.\n", s.id)
+	if IsDebug(2) {
+		Debugf("stage id=%d: quit.\n", s.id)
 	}
 }
 
 func (s *Stage) linkAppServers() {
-	if Debug(1) {
-		fmt.Println("link apps to http servers")
+	if IsDebug(1) {
+		Debugln("link apps to http servers")
 	}
 	for _, app := range s.apps {
 		serverNames, ok := s.appServers[app.Name()]
 		if !ok {
-			if Debug(1) {
-				fmt.Printf("no server is provided for app '%s'\n", app.name)
+			if IsDebug(1) {
+				Debugf("no server is provided for app '%s'\n", app.name)
 			}
 			continue
 		}
@@ -515,21 +514,21 @@ func (s *Stage) linkAppServers() {
 			} else {
 				UseExitf("server '%s' is not an http server, cannot link app to it", serverName)
 			}
-			if Debug(1) {
-				fmt.Printf("app %s is linked to http server %s\n", app.name, serverName)
+			if IsDebug(1) {
+				Debugf("app %s is linked to http server %s\n", app.name, serverName)
 			}
 		}
 	}
 }
 func (s *Stage) linkSvcServers() {
-	if Debug(1) {
-		fmt.Println("link svcs to http servers")
+	if IsDebug(1) {
+		Debugln("link svcs to http servers")
 	}
 	for _, svc := range s.svcs {
 		serverNames, ok := s.svcServers[svc.Name()]
 		if !ok {
-			if Debug(1) {
-				fmt.Printf("no server is provided for svc '%s'\n", svc.name)
+			if IsDebug(1) {
+				Debugf("no server is provided for svc '%s'\n", svc.name)
 			}
 			continue
 		}
@@ -545,8 +544,8 @@ func (s *Stage) linkSvcServers() {
 			} else {
 				UseExitf("server '%s' is not an http server nor grpc server, cannot link svc to it", serverName)
 			}
-			if Debug(1) {
-				fmt.Printf("svc %s is linked to rpc server %s\n", svc.name, serverName)
+			if IsDebug(1) {
+				Debugf("svc %s is linked to rpc server %s\n", svc.name, serverName)
 			}
 		}
 	}
@@ -554,122 +553,122 @@ func (s *Stage) linkSvcServers() {
 
 func (s *Stage) startFixtures() {
 	for _, fixture := range s.fixtures {
-		if Debug(1) {
-			fmt.Printf("fixture=%s go run()\n", fixture.Name())
+		if IsDebug(1) {
+			Debugf("fixture=%s go run()\n", fixture.Name())
 		}
 		go fixture.run()
 	}
 }
 func (s *Stage) startRunners() {
 	for _, runner := range s.runners {
-		if Debug(1) {
-			fmt.Printf("runner=%s go Run()\n", runner.Name())
+		if IsDebug(1) {
+			Debugf("runner=%s go Run()\n", runner.Name())
 		}
 		go runner.Run()
 	}
 }
 func (s *Stage) startBackends() {
 	for _, backend := range s.backends {
-		if Debug(1) {
-			fmt.Printf("backend=%s go maintain()\n", backend.Name())
+		if IsDebug(1) {
+			Debugf("backend=%s go maintain()\n", backend.Name())
 		}
 		go backend.maintain()
 	}
 }
 func (s *Stage) startMeshers() {
 	for _, quicMesher := range s.quicMeshers {
-		if Debug(1) {
-			fmt.Printf("quicMesher=%s go serve()\n", quicMesher.Name())
+		if IsDebug(1) {
+			Debugf("quicMesher=%s go serve()\n", quicMesher.Name())
 		}
 		go quicMesher.serve()
 	}
 	for _, tcpsMesher := range s.tcpsMeshers {
-		if Debug(1) {
-			fmt.Printf("tcpsMesher=%s go serve()\n", tcpsMesher.Name())
+		if IsDebug(1) {
+			Debugf("tcpsMesher=%s go serve()\n", tcpsMesher.Name())
 		}
 		go tcpsMesher.serve()
 	}
 	for _, udpsMesher := range s.udpsMeshers {
-		if Debug(1) {
-			fmt.Printf("udpsMesher=%s go serve()\n", udpsMesher.Name())
+		if IsDebug(1) {
+			Debugf("udpsMesher=%s go serve()\n", udpsMesher.Name())
 		}
 		go udpsMesher.serve()
 	}
 }
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
-		if Debug(1) {
-			fmt.Printf("stater=%s go Maintain()\n", stater.Name())
+		if IsDebug(1) {
+			Debugf("stater=%s go Maintain()\n", stater.Name())
 		}
 		go stater.Maintain()
 	}
 }
 func (s *Stage) startCachers() {
 	for _, cacher := range s.cachers {
-		if Debug(1) {
-			fmt.Printf("cacher=%s go Maintain()\n", cacher.Name())
+		if IsDebug(1) {
+			Debugf("cacher=%s go Maintain()\n", cacher.Name())
 		}
 		go cacher.Maintain()
 	}
 }
 func (s *Stage) startApps() {
 	for _, app := range s.apps {
-		if Debug(1) {
-			fmt.Printf("app=%s go maintain()\n", app.Name())
+		if IsDebug(1) {
+			Debugf("app=%s go maintain()\n", app.Name())
 		}
 		go app.maintain()
 	}
 }
 func (s *Stage) startSvcs() {
 	for _, svc := range s.svcs {
-		if Debug(1) {
-			fmt.Printf("svc=%s go maintain()\n", svc.Name())
+		if IsDebug(1) {
+			Debugf("svc=%s go maintain()\n", svc.Name())
 		}
 		go svc.maintain()
 	}
 }
 func (s *Stage) startServers() {
 	for _, server := range s.servers {
-		if Debug(1) {
-			fmt.Printf("server=%s go Serve()\n", server.Name())
+		if IsDebug(1) {
+			Debugf("server=%s go Serve()\n", server.Name())
 		}
 		go server.Serve()
 	}
 }
 func (s *Stage) startCronjobs() {
 	for _, cronjob := range s.cronjobs {
-		if Debug(1) {
-			fmt.Printf("cronjob=%s go Schedule()\n", cronjob.Name())
+		if IsDebug(1) {
+			Debugf("cronjob=%s go Schedule()\n", cronjob.Name())
 		}
 		go cronjob.Schedule()
 	}
 }
 
 func (s *Stage) configure() (err error) {
-	if Debug(1) {
-		fmt.Println("now configure stage")
+	if IsDebug(1) {
+		Debugln("now configure stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if Debug(1) {
-			fmt.Println("stage configured")
+		if IsDebug(1) {
+			Debugln("stage configured")
 		}
 	}()
 	s.OnConfigure()
 	return nil
 }
 func (s *Stage) prepare() (err error) {
-	if Debug(1) {
-		fmt.Println("now prepare stage")
+	if IsDebug(1) {
+		Debugln("now prepare stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if Debug(1) {
-			fmt.Println("stage prepared")
+		if IsDebug(1) {
+			Debugln("stage prepared")
 		}
 	}()
 	s.OnPrepare()

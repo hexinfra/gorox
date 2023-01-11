@@ -120,13 +120,9 @@ func (h *httpProxy_) onConfigure(shell Component) {
 		}
 	}
 	// hostname
-	var hostname string
-	h.ConfigureString("hostname", &hostname, nil, "")
-	h.hostname = []byte(hostname)
+	h.ConfigureBytes("hostname", &h.hostname, nil, nil)
 	// colonPort
-	var colonPort string
-	h.ConfigureString("colonPort", &colonPort, nil, "")
-	h.colonPort = []byte(colonPort)
+	h.ConfigureBytes("colonPort", &h.colonPort, nil, nil)
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

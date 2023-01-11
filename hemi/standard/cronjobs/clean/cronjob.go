@@ -8,7 +8,6 @@
 package clean
 
 import (
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -47,8 +46,8 @@ func (j *cleanCronjob) Schedule() { // goroutine
 	Loop(time.Minute, j.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("cleanCronjob=%s done\n", j.Name())
+	if IsDebug(2) {
+		Debugf("cleanCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()
 }

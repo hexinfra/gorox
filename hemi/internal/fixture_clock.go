@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -75,8 +74,8 @@ func (f *clockFixture) run() { // goroutine
 		date |= int64(weekday) << 8
 		f.date.Store(date)
 	})
-	if Debug(2) {
-		fmt.Println("clock done")
+	if IsDebug(2) {
+		Debugln("clock done")
 	}
 	f.stage.SubDone()
 }

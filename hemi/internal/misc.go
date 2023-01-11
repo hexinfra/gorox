@@ -31,17 +31,27 @@ var ( // global variables shared between stages
 	_tempDir  atomic.Value // directory of the temp files
 )
 
-func Debug(level int32) bool { return _debug.Load() >= level }
-func BaseDir() string        { return _baseDir.Load().(string) }
-func DataDir() string        { return _dataDir.Load().(string) }
-func LogsDir() string        { return _logsDir.Load().(string) }
-func TempDir() string        { return _tempDir.Load().(string) }
+func IsDebug(level int32) bool { return _debug.Load() >= level }
+func BaseDir() string          { return _baseDir.Load().(string) }
+func DataDir() string          { return _dataDir.Load().(string) }
+func LogsDir() string          { return _logsDir.Load().(string) }
+func TempDir() string          { return _tempDir.Load().(string) }
 
 func SetDebug(level int32)  { _debug.Store(level) }
 func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once
 func SetDataDir(dir string) { _dataOnce.Do(func() { _dataDir.Store(dir) }) } // only once
 func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // only once
 func SetTempDir(dir string) { _tempOnce.Do(func() { _tempDir.Store(dir) }) } // only once
+
+func Debug(args ...any) {
+	fmt.Print(args...)
+}
+func Debugln(args ...any) {
+	fmt.Println(args...)
+}
+func Debugf(format string, args ...any) {
+	fmt.Printf(format, args...)
+}
 
 const ( // exit codes. keep sync with ../hemi.go
 	CodeBug = 20
@@ -240,11 +250,11 @@ func (b *Block) closeFile() {
 	if b.shut {
 		b.file.Close()
 	}
-	if Debug(2) {
+	if IsDebug(2) {
 		if b.shut {
-			fmt.Println("file closed on Block.closeFile()")
+			Debugln("file closed on Block.closeFile()")
 		} else {
-			fmt.Println("file NOT closed on Block.closeFile()")
+			Debugln("file NOT closed on Block.closeFile()")
 		}
 	}
 	b.file = nil

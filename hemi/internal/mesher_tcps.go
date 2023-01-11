@@ -10,7 +10,6 @@ package internal
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
 	"sync"
@@ -75,8 +74,8 @@ func (m *TCPSMesher) serve() { // goroutine
 	m.shutdownSubs()
 	m.WaitSubs() // dealets, editors, cases
 	// TODO: close access log file
-	if Debug(2) {
-		fmt.Printf("tcpsMesher=%s done\n", m.Name())
+	if IsDebug(2) {
+		Debugf("tcpsMesher=%s done\n", m.Name())
 	}
 	m.stage.SubDone()
 }
@@ -247,16 +246,16 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
-			if Debug(1) {
-				fmt.Printf("%+v\n", tcpsConn)
+			if IsDebug(1) {
+				Debugf("%+v\n", tcpsConn)
 			}
 			go tcpsConn.serve() // tcpsConn is put to pool in serve()
 			connID++
 		}
 	}
 	g.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("tcpsGate=%d TCP done\n", g.id)
+	if IsDebug(2) {
+		Debugf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.mesher.SubDone()
 }
@@ -287,8 +286,8 @@ func (g *tcpsGate) serveTLS() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("tcpsGate=%d TLS done\n", g.id)
+	if IsDebug(2) {
+		Debugf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.mesher.SubDone()
 }

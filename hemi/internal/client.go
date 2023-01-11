@@ -10,7 +10,6 @@ package internal
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -163,8 +162,8 @@ func (b *backend_[N]) maintain() { // goroutine
 	<-b.Shut     // waiting for shut signal
 	close(shut)  // notify all nodes
 	b.WaitSubs() // nodes
-	if Debug(2) {
-		fmt.Printf("backend=%s done\n", b.Name())
+	if IsDebug(2) {
+		Debugf("backend=%s done\n", b.Name())
 	}
 	b.stage.SubDone()
 }

@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -82,8 +81,8 @@ func (f *UDPSOutgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("udps done")
+	if IsDebug(2) {
+		Debugln("udps done")
 	}
 	f.stage.SubDone()
 }
@@ -167,8 +166,8 @@ func (n *udpsNode) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug(2) {
-		fmt.Printf("udpsNode=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("udpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

@@ -9,7 +9,6 @@ package echo
 
 import (
 	"context"
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
@@ -63,8 +62,8 @@ func (s *echoServer) Serve() { // goroutine
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if Debug(2) {
-		fmt.Printf("echoServer=%s done\n", s.Name())
+	if IsDebug(2) {
+		Debugf("echoServer=%s done\n", s.Name())
 	}
 	s.Stage().SubDone()
 }

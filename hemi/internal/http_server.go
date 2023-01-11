@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"net"
 	"os"
@@ -78,8 +77,8 @@ func (s *httpServer_) linkApp(app *App) {
 		if err != nil {
 			UseExitln(err.Error())
 		}
-		if Debug(1) {
-			fmt.Printf("adding certificate to %s\n", s.ColonPort())
+		if IsDebug(1) {
+			Debugf("adding certificate to %s\n", s.ColonPort())
 		}
 		s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 	}
@@ -1869,8 +1868,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		}
 		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
-			if Debug(2) {
-				fmt.Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
+			if IsDebug(2) {
+				Debugln(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
 		} else if !bytes.Equal(r.formWindow[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
@@ -2071,13 +2070,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			part.upload.typeSize, part.upload.typeFrom = uint8(part.type_.size()), part.type_.from
 			part.upload.pathSize, part.upload.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
-				if Debug(2) {
-					fmt.Println("OPENED")
+				if IsDebug(2) {
+					Debugln("OPENED")
 				}
 				part.osFile = osFile
 			} else {
-				if Debug(2) {
-					fmt.Println(err.Error())
+				if IsDebug(2) {
+					Debugln(err.Error())
 				}
 				part.osFile = nil
 			}
@@ -2118,8 +2117,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				if mode == 1 { // file part ends
 					r.addUpload(&part.upload)
 					part.osFile.Close()
-					if Debug(2) {
-						fmt.Println("CLOSED")
+					if IsDebug(2) {
+						Debugln("CLOSED")
 					}
 				}
 			}

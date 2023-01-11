@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"os"
 	"strconv"
@@ -62,11 +61,11 @@ func (h *staticHandlet) OnConfigure() {
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
 	h.useAppRoot = h.webRoot == h.app.webRoot
-	if Debug(1) {
+	if IsDebug(1) {
 		if h.useAppRoot {
-			fmt.Printf("static=%s use app web root\n", h.Name())
+			Debugf("static=%s use app web root\n", h.Name())
 		} else {
-			fmt.Printf("static=%s NOT use app web root\n", h.Name())
+			Debugf("static=%s NOT use app web root\n", h.Name())
 		}
 	}
 	// aliasTo
@@ -143,12 +142,12 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	filesys := h.stage.Filesys()
 	entry, err := filesys.getEntry(openPath)
 	if err == nil {
-		if Debug(1) {
-			fmt.Println("entry HIT")
+		if IsDebug(1) {
+			Debugln("entry HIT")
 		}
 	} else { // entry not exist
-		if Debug(1) {
-			fmt.Println("entry MISS")
+		if IsDebug(1) {
+			Debugln("entry MISS")
 		}
 		entry, err = filesys.newEntry(string(openPath))
 		if err != nil {
@@ -199,13 +198,13 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		}
 		resp.AddHeaderByBytes(httpBytesContentType, contentType)
 		if entry.isSmall() {
-			if Debug(2) {
-				fmt.Println("static send blob")
+			if IsDebug(2) {
+				Debugln("static send blob")
 			}
 			resp.sendBlob(entry.data)
 		} else {
-			if Debug(2) {
-				fmt.Println("static send file")
+			if IsDebug(2) {
+				Debugln("static send file")
 			}
 			resp.sendFile(entry.file, entry.info, false)
 		}

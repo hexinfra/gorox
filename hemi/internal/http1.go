@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -636,13 +635,13 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 	vector[0] = r.shell.control()
 	vector[1] = r.shell.addedHeaders()
 	vector[2] = r.shell.fixedHeaders()
-	if Debug(2) {
+	if IsDebug(2) {
 		if r.asRequest {
-			fmt.Printf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
+			Debugf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
 		} else {
-			fmt.Printf("[http1Stream=%d]-------> ", r.stream.(*http1Stream).conn.id)
+			Debugf("[http1Stream=%d]-------> ", r.stream.(*http1Stream).conn.id)
 		}
-		fmt.Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
+		Debugf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
 	// TODO: ranged content support
@@ -762,13 +761,13 @@ func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
 	r.vector[0] = r.shell.control()
 	r.vector[1] = r.shell.addedHeaders()
 	r.vector[2] = r.shell.fixedHeaders()
-	if Debug(2) {
+	if IsDebug(2) {
 		if r.asRequest {
-			fmt.Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+			Debugf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
 		} else {
-			fmt.Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+			Debugf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
 		}
-		fmt.Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
+		Debugf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
 	if err := r.writeVector1(&r.vector); err != nil {
 		return err

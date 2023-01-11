@@ -8,7 +8,6 @@
 package stat
 
 import (
-	"fmt"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )
@@ -47,8 +46,8 @@ func (j *statCronjob) Schedule() { // goroutine
 	Loop(time.Minute, j.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Printf("statCronjob=%s done\n", j.Name())
+	if IsDebug(2) {
+		Debugf("statCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()
 }

@@ -9,7 +9,6 @@ package internal
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -87,8 +86,8 @@ func (f *TCPSOutgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("tcps done")
+	if IsDebug(2) {
+		Debugln("tcps done")
 	}
 	f.stage.SubDone()
 }
@@ -180,8 +179,8 @@ func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	n.WaitSubs() // conns
-	if Debug(2) {
-		fmt.Printf("tcpsNode=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("tcpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

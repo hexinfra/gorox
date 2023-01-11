@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -85,8 +84,8 @@ func (f *UnixOutgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("unix done")
+	if IsDebug(2) {
+		Debugln("unix done")
 	}
 	f.stage.SubDone()
 }
@@ -171,8 +170,8 @@ func (n *unixNode) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug(2) {
-		fmt.Printf("unixNode=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("unixNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

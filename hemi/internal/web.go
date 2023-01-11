@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"os"
 	"reflect"
@@ -358,8 +357,8 @@ func (a *App) maintain() { // goroutine
 	if a.booker != nil {
 		// TODO: close access log file
 	}
-	if Debug(2) {
-		fmt.Printf("app=%s done\n", a.Name())
+	if IsDebug(2) {
+		Debugf("app=%s done\n", a.Name())
 	}
 	a.stage.SubDone()
 }
@@ -550,9 +549,7 @@ func (r *Rule) OnConfigure() {
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) bool { return value >= 200 && value < 1000 }, 0)
 
 	// returnText
-	var returnText string
-	r.ConfigureString("returnText", &returnText, nil, "")
-	r.returnText = []byte(returnText)
+	r.ConfigureBytes("returnText", &r.returnText, nil, nil)
 
 	// handlets
 	if v, ok := r.Find("handlets"); ok {

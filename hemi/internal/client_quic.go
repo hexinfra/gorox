@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"sync"
 	"sync/atomic"
@@ -85,8 +84,8 @@ func (f *QUICOutgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("quic done")
+	if IsDebug(2) {
+		Debugln("quic done")
 	}
 	f.stage.SubDone()
 }
@@ -169,8 +168,8 @@ func (n *quicNode) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug(2) {
-		fmt.Printf("quicNode=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("quicNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -51,8 +50,8 @@ func (f *resolvFixture) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("resolve done")
+	if IsDebug(2) {
+		Debugln("resolve done")
 	}
 	f.stage.SubDone()
 }

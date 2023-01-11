@@ -10,7 +10,6 @@
 package internal
 
 import (
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/quix"
 	"net"
 	"sync"
@@ -60,8 +59,8 @@ func (f *HTTP3Outgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
-	if Debug(2) {
-		fmt.Println("http3 done")
+	if IsDebug(2) {
+		Debugln("http3 done")
 	}
 	f.stage.SubDone()
 }
@@ -128,8 +127,8 @@ func (n *http3Node) maintain(shut chan struct{}) { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug(2) {
-		fmt.Printf("http3Node=%d done\n", n.id)
+	if IsDebug(2) {
+		Debugf("http3Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

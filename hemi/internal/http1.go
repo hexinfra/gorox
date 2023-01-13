@@ -736,7 +736,7 @@ func (r *httpOutMessage_) trailers1() []byte {
 	return r.fields[0:r.fieldsEdge]
 }
 
-func (r *httpOutMessage_) passBytes1(p []byte) error {
+func (r *httpOutMessage_) syncBytes1(p []byte) error {
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
 	return r.writeVector1(&r.vector)
@@ -755,7 +755,7 @@ func (r *httpOutMessage_) finalizeChunked1() error {
 	return r.writeVector1(&r.vector)
 }
 
-func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
+func (r *httpOutMessage_) writeHeaders1() error { // used by push and sync
 	r.shell.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.shell.control()
@@ -808,7 +808,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 			return err
 		}
 		if chunked {
-			sizeBuffer := r.stream.tinyBuffer()
+			sizeBuffer := r.stream.smallBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
 			sizeBuffer[k+1] = '\n'
@@ -832,7 +832,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 }
 func (r *httpOutMessage_) _writeBlob1(block *Block, chunked bool) error { // blob
 	if chunked { // HTTP/1.1
-		sizeBuffer := r.stream.tinyBuffer() // buffer is enough for chunk size
+		sizeBuffer := r.stream.smallBuffer() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
 		sizeBuffer[n+1] = '\n'

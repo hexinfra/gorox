@@ -384,10 +384,10 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *H3Request) passHeaders() error {
+func (r *H3Request) syncHeaders() error {
 	return nil
 }
-func (r *H3Request) passBytes(p []byte) error {
+func (r *H3Request) syncBytes(p []byte) error {
 	return nil
 }
 

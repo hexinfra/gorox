@@ -412,10 +412,10 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *H2Request) passHeaders() error {
+func (r *H2Request) syncHeaders() error {
 	return nil
 }
-func (r *H2Request) passBytes(p []byte) error {
+func (r *H2Request) syncBytes(p []byte) error {
 	return nil
 }
 

@@ -506,7 +506,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 	if !resp.isSent { // only happens on counted content.
 		resp.sendChain(resp.content)
 	} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
-		resp.finishChunked()
+		resp.endChunked()
 	}
 	if !req.contentReceived {
 		req.dropContent()
@@ -1196,7 +1196,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
 
-func (r *http1Response) pass1xx(resp response) bool { // used by proxies
+func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	r.status = resp.Status()
 	resp.delHopHeaders()
 	if !resp.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
@@ -1217,11 +1217,11 @@ func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return true
 }
-func (r *http1Response) passHeaders() error {
+func (r *http1Response) syncHeaders() error {
 	return r.writeHeaders1()
 }
-func (r *http1Response) passBytes(p []byte) error {
-	return r.passBytes1(p)
+func (r *http1Response) syncBytes(p []byte) error {
+	return r.syncBytes1(p)
 }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
@@ -1237,7 +1237,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.contentSize != -2 { // content-length: >= 0
-			sizeBuffer := r.stream.tinyBuffer() // enough for length
+			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
 		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked

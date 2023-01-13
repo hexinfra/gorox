@@ -31,9 +31,9 @@ func (r *fcgiRequest) withHead(req Request) bool {
 	return false
 }
 
-func (r *fcgiRequest) pass(req Request) error {
+func (r *fcgiRequest) sync(req Request) error {
 	return nil
 }
-func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File
+func (r *fcgiRequest) pass(content any) error { // nil, []byte, *os.File
 	return nil
 }

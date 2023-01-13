@@ -100,7 +100,7 @@ type hConn interface {
 	getClient() httpClient
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in tinyBuffer() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
 }
 
 // hConn_ is the mixin for H[1-3]Conn.
@@ -364,11 +364,11 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 
 	return true
 }
-func (r *hRequest_) pass(req httpInMessage) error { // used by proxies
-	return r.doPass(req, false) // no revisers in client side
+func (r *hRequest_) sync(req httpInMessage) error { // used by proxies
+	return r._sync(req, false) // no revisers in client side
 }
 
-func (r *hRequest_) finishChunked() error {
+func (r *hRequest_) endChunked() error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
 	}
@@ -709,7 +709,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *hResponse_) getSaveContentFilesDir() string {
+func (r *hResponse_) saveContentFilesDir() string {
 	return r.stream.holder().(httpClient).SaveContentFilesDir() // must ends with '/'
 }
 

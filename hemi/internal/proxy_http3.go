@@ -100,23 +100,23 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	hasTrailers := req.HasTrailers()
 	if !hasContent || h.bufferClientContent {
-		err3 = req3.post(content, hasTrailers) // nil (no content), []byte, TempFile
+		err3 = req3.pass(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err3 == nil && hasTrailers {
 			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req3.addTrailer(name, value)
 			}) {
 				stream3.markBroken()
 				err3 = httpAddTrailerFailed
-			} else if err3 = req3.finishChunked(); err3 != nil {
+			} else if err3 = req3.endChunked(); err3 != nil {
 				stream3.markBroken()
 			}
 		} else if hasTrailers {
 			stream3.markBroken()
 		}
-	} else if err3 = req3.pass(req); err3 != nil {
+	} else if err3 = req3.sync(req); err3 != nil {
 		stream3.markBroken()
 	} else if req3.contentSize == -2 { // write last chunk and trailers (if exist)
-		if err3 = req3.finishChunked(); err3 != nil {
+		if err3 = req3.endChunked(); err3 != nil {
 			stream3.markBroken()
 		}
 	}
@@ -140,7 +140,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.pass1xx(resp3) {
+		if !resp.sync1xx(resp3) {
 			stream3.markBroken()
 			return
 		}
@@ -167,7 +167,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	hasTrailers3 := resp3.HasTrailers()
 	if !hasContent3 || h.bufferServerContent {
-		if resp.post(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
+		if resp.pass(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
 			if hasTrailers3 {
 				stream3.markBroken()
 			}
@@ -179,7 +179,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				return
 			}
 		}
-	} else if err := resp.pass(resp3); err != nil {
+	} else if err := resp.sync(resp3); err != nil {
 		stream3.markBroken()
 		return
 	}

@@ -1029,16 +1029,16 @@ func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *http2Response) pass1xx(resp response) bool { // used by proxies
+func (r *http2Response) sync1xx(resp response) bool { // used by proxies
 	// TODO
 	r.onEnd()
 	r.onUse()
 	return false
 }
-func (r *http2Response) passHeaders() error {
+func (r *http2Response) syncHeaders() error {
 	return nil
 }
-func (r *http2Response) passBytes(p []byte) error {
+func (r *http2Response) syncBytes(p []byte) error {
 	return nil
 }
 

@@ -74,10 +74,10 @@ func (r *httpOutMessage_) trailers3() []byte {
 	return nil
 }
 
-func (r *httpOutMessage_) passHeaders3() error {
+func (r *httpOutMessage_) syncHeaders3() error {
 	return nil
 }
-func (r *httpOutMessage_) passBytes3(p []byte) error {
+func (r *httpOutMessage_) syncBytes3(p []byte) error {
 	return nil
 }
 

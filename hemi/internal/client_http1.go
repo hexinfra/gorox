@@ -476,11 +476,11 @@ func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
 
-func (r *H1Request) passHeaders() error {
+func (r *H1Request) syncHeaders() error {
 	return r.writeHeaders1()
 }
-func (r *H1Request) passBytes(p []byte) error {
-	return r.passBytes1(p)
+func (r *H1Request) syncBytes(p []byte) error {
+	return r.syncBytes1(p)
 }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
@@ -492,7 +492,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		if r.contentSize == -2 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else { // content-length: 12345
-			sizeBuffer := r.stream.tinyBuffer() // enough for length
+			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
 		}

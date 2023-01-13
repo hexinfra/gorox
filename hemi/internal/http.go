@@ -33,7 +33,7 @@ type stream interface {
 	holder() holder
 	peerAddr() net.Addr
 
-	tinyBuffer() []byte
+	smallBuffer() []byte
 	unsafeMake(size int) []byte
 	makeTempName(p []byte, stamp int64) (from int, edge int)
 
@@ -41,8 +41,8 @@ type stream interface {
 	setWriteDeadline(deadline time.Time) error
 
 	read(p []byte) (int, error)
-	write(p []byte) (int, error)
 	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 
 	isBroken() bool
@@ -68,21 +68,21 @@ func (s *stream_) onEnd() { // for zeros
 	s.region.free()
 }
 
-func (s *stream_) tinyBuffer() []byte         { return s.stockBuffer[:] }
+func (s *stream_) smallBuffer() []byte        { return s.stockBuffer[:] }
 func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
 
 // httpInMessage is a Request or response, used as shell by httpInMessage_.
 type httpInMessage interface {
+	applyHeader(header *pair) bool
 	ContentSize() int64
+	readContent() (p []byte, err error)
 	UnsafeContent() []byte
 	HasTrailers() bool
-
-	arrayCopy(p []byte) bool
-	applyHeader(header *pair) bool
-	readContent() (p []byte, err error)
 	applyTrailer(trailer *pair) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
-	getSaveContentFilesDir() string
+
+	arrayCopy(p []byte) bool
+	saveContentFilesDir() string
 }
 
 // httpInMessage_ is a mixin for httpRequest_ and hResponse_.
@@ -242,7 +242,7 @@ func (r *httpInMessage_) checkAcceptEncoding(from uint8, edge uint8) bool {
 	// codings         = content-coding / "identity" / "*"
 	// content-coding  = token
 	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
 			break
 		}
 		value := r.primes[i].valueAt(r.input)
@@ -284,14 +284,14 @@ func (r *httpInMessage_) checkConnection(from uint8, edge uint8) bool {
 	for i := from; i < edge; i++ {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value) // connection options are case-insensitive.
-		if bytes.Equal(value, httpBytesClose) {
+		if bytes.Equal(value, httpBytesKeepAlive) {
+			r.keepAlive = 1 // to be compatible with HTTP/1.0
+		} else if bytes.Equal(value, httpBytesClose) {
 			// Furthermore, the header field-name "Close" has been registered as
 			// "reserved", since using that name as an HTTP header field might
 			// conflict with the "close" connection option of the Connection header
 			// field (Section 6.1).
 			r.keepAlive = 0
-		} else if bytes.Equal(value, httpBytesKeepAlive) {
-			r.keepAlive = 1 // to be compatible with HTTP/1.0
 		}
 	}
 	return true
@@ -321,7 +321,7 @@ func (r *httpInMessage_) checkContentEncoding(from uint8, edge uint8) bool {
 			// Media Type) if a representation in the request message has a content
 			// coding that is not acceptable.
 
-			// TODO: we can be proxies too...
+			// TODO: but we can be proxies too...
 			r.headResult, r.headReason = StatusUnsupportedMediaType, "currently only gzip, deflate, compress, and br are supported"
 			return false
 		}
@@ -385,12 +385,22 @@ func (r *httpInMessage_) checkContentLength(header *pair, index uint8) bool {
 	return false
 }
 func (r *httpInMessage_) checkContentLocation(header *pair, index uint8) bool {
-	// TODO: use r.iContentLocation
-	return true
+	// TODO
+	if r.iContentLocation == 0 && header.value.notEmpty() {
+		r.iContentLocation = index
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-location"
+	return false
 }
 func (r *httpInMessage_) checkContentRange(header *pair, index uint8) bool {
-	// TODO: use r.iContentRange
-	return true
+	// TODO
+	if r.iContentRange == 0 && header.value.notEmpty() {
+		r.iContentRange = index
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-range"
+	return false
 }
 func (r *httpInMessage_) checkContentType(header *pair, index uint8) bool {
 	// Content-Type = media-type
@@ -402,7 +412,7 @@ func (r *httpInMessage_) checkContentType(header *pair, index uint8) bool {
 		r.iContentType = index
 		return true
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad content-type"
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
 func (r *httpInMessage_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool {
@@ -604,23 +614,46 @@ func (r *httpInMessage_) loadContent() { // into memory. [0, r.maxContentSize]
 		if err := os.Remove(tempFile.Name()); err != nil {
 			// TODO: r.app.log
 		}
-	case error:
-		// TODO: log error
+	case error: // i/o error
+		// TODO: log error?
 		r.stream.markBroken()
 	}
 }
 func (r *httpInMessage_) dropContent() {
 	switch content := r.recvContent(false).(type) { // don't retain
-	case []byte: // (0, 64K1]
+	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
 		PutNK(content)
-	case TempFile: // [0, r.maxContentSize]
+	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
 		if content != FakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
-	case error:
-		// TODO: log error
+	case error: // i/o error
+		// TODO: log error?
 		r.stream.markBroken()
 	}
+}
+func (r *httpInMessage_) HoldContent() any { // used by proxies
+	if r.contentReceived {
+		if r.contentHeld == nil { // content is either blob or file
+			return r.contentBlob
+		} else {
+			return r.contentHeld
+		}
+	}
+	r.contentReceived = true
+	switch content := r.recvContent(true).(type) { // retain
+	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
+		r.contentBlob = content
+		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
+		return r.contentBlob[0:r.sizeReceived]
+	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
+		r.contentHeld = content.(*os.File)
+		return r.contentHeld
+	case error: // i/o error
+		// TODO: log err?
+	}
+	r.stream.markBroken()
+	return nil
 }
 func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
@@ -648,7 +681,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 		}
 		return content // []byte, fetched from pool
 	}
-	// (64K1, r.maxContentSize] when counted, or [0, r.maxContentSize] when chunked. to TempFile
+	// (64K1, r.maxContentSize] when counted, or [0, r.maxContentSize] when chunked. save to TempFile
 	content, err := r._newTempFile(retain)
 	if err != nil {
 		return err
@@ -678,29 +711,6 @@ badRecv:
 		os.Remove(content.Name())
 	}
 	return err
-}
-func (r *httpInMessage_) HoldContent() any { // used by proxies
-	if r.contentReceived {
-		if r.contentHeld == nil { // content is either blob or file
-			return r.contentBlob
-		} else {
-			return r.contentHeld
-		}
-	}
-	r.contentReceived = true
-	switch content := r.recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
-		r.contentBlob = content
-		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
-		return r.contentBlob[0:r.sizeReceived]
-	case TempFile: // [0, r.app.maxUploadContentSize]. case happens when counted content > 64K1, or content is chunked.
-		r.contentHeld = content.(*os.File)
-		return r.contentHeld
-	case error:
-		// TODO: log err
-	}
-	r.stream.markBroken()
-	return nil
 }
 
 func (r *httpInMessage_) HasTrailers() bool {
@@ -1077,7 +1087,7 @@ func (r *httpInMessage_) _newTempFile(retain bool) (TempFile, error) {
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
 		return FakeFile, nil
 	}
-	filesDir := r.shell.getSaveContentFilesDir() // must ends with '/'
+	filesDir := r.shell.saveContentFilesDir() // must ends with '/'
 	pathSize := len(filesDir)
 	filePath := r.UnsafeMake(pathSize + 19) // 19 bytes is enough for int64
 	copy(filePath, filesDir)
@@ -1116,6 +1126,8 @@ type httpOutMessage interface {
 	kickHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
+	syncHeaders() error // used by proxies
+	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
 	checkPush() error
@@ -1124,10 +1136,8 @@ type httpOutMessage interface {
 	pushChain(chain Chain) error
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
-	passHeaders() error
-	passBytes(p []byte) error
-	finalizeHeaders()
 	finalizeChunked() error
+	syncBytes(p []byte) error // used by proxies
 }
 
 // httpOutMessage_ is a mixin for httpResponse_ and hRequest_.
@@ -1252,7 +1262,7 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	if allLower {
 		return hash, true, name
 	}
-	buffer := r.stream.tinyBuffer()
+	buffer := r.stream.smallBuffer()
 	for i := 0; i < n; i++ {
 		b := name[i]
 		if b >= 'A' && b <= 'Z' {
@@ -1425,7 +1435,7 @@ func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
 	return r._growFields(size)
 }
 
-func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
+func (r *httpOutMessage_) pass(content any, hasTrailers bool) error { // used by proxies, to pass held content
 	if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
@@ -1448,21 +1458,21 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 		return r.sendBlob(nil)
 	}
 }
-func (r *httpOutMessage_) doPass(in httpInMessage, revise bool) error { // used by proxes, to pass content directly
-	pass := r.shell.passBytes
+func (r *httpOutMessage_) _sync(in httpInMessage, revise bool) error { // used by proxes, to sync content directly
+	sync := r.shell.syncBytes
 	if size := in.ContentSize(); size == -2 || revise { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
-		pass = r.PushBytes
-	} else { // >= 0
+		sync = r.PushBytes
+	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
-		if err := r.shell.passHeaders(); err != nil {
+		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}
 	}
 	for {
 		p, err := in.readContent()
 		if len(p) >= 0 {
-			if e := pass(p); e != nil {
+			if e := sync(p); e != nil {
 				return e
 			}
 		}

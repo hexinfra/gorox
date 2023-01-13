@@ -181,7 +181,7 @@ type httpConn interface {
 	getServer() httpServer
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in tinyBuffer() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
 }
 
 // httpConn_ is the mixin for http[1-3]Conn.
@@ -383,7 +383,7 @@ type Request interface {
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool
 	arrayCopy(p []byte) bool
-	getSaveContentFilesDir() string
+	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
 	unsafeVariable(index int16) []byte
 }
@@ -2004,7 +2004,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 								r.stream.markBroken()
 								return
 							}
-							tempName := r.stream.tinyBuffer() // buffer is enough for tempName
+							tempName := r.stream.smallBuffer() // buffer is enough for tempName
 							from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
 							if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
 								r.stream.markBroken()
@@ -2304,7 +2304,7 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *httpRequest_) getSaveContentFilesDir() string {
+func (r *httpRequest_) saveContentFilesDir() string {
 	return r.app.saveContentFilesDir // must ends with '/'
 }
 
@@ -2380,23 +2380,23 @@ type Response interface {
 	AddTrailerBytesByBytes(name []byte, value []byte) bool
 
 	// Internal only
+	sync1xx(resp response) bool // used by proxies
+	setConnectionClose()
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
-	setConnectionClose()
+	copyHead(resp response) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
 	pushHeaders() error
 	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
-	pass1xx(resp response) bool    // used by proxies
-	copyHead(resp response) bool   // used by proxies
-	pass(resp httpInMessage) error // used by proxies
-	finishChunked() error
-	post(content any, hasTrailers bool) error // used by proxies
+	endChunked() error
 	finalizeChunked() error
+	sync(resp httpInMessage) error            // used by proxies
+	pass(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2708,11 +2708,11 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 
 	return true
 }
-func (r *httpResponse_) pass(resp httpInMessage) error { // used by proxies
-	return r.doPass(resp, r.hasRevisers)
+func (r *httpResponse_) sync(resp httpInMessage) error { // used by proxies
+	return r._sync(resp, r.hasRevisers)
 }
 
-func (r *httpResponse_) finishChunked() error {
+func (r *httpResponse_) endChunked() error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
 	}

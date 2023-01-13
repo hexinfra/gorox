@@ -1021,13 +1021,13 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 }
 func (r *httpInMessage_) _getPlace(pair *pair) []byte {
 	var place []byte
-	if pair.inPlace(pairPlaceInput) {
+	if pair.inPlace(placeInput) {
 		place = r.input
-	} else if pair.inPlace(pairPlaceArray) {
+	} else if pair.inPlace(placeArray) {
 		place = r.array
-	} else if pair.inPlace(pairPlaceStatic2) {
+	} else if pair.inPlace(placeStatic2) {
 		place = http2BytesStatic
-	} else if pair.inPlace(pairPlaceStatic3) {
+	} else if pair.inPlace(placeStatic3) {
 		place = http3BytesStatic
 	} else {
 		BugExitln("unknown place")

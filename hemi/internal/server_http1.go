@@ -774,7 +774,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			query pair  // plain query in r.array[query.from:query.edge]
 			qsOff int32 // offset of query string, if exists
 		)
-		query.setPlace(pairPlaceArray) // because queries are decoded
+		query.setPlace(placeArray) // because queries are decoded
 
 		// r.pFore is at '/'.
 		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.

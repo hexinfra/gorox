@@ -448,16 +448,16 @@ const ( // pair flags
 	extraKindTrailer  = 0b11000000 // extra trailers
 	extraKindNoExtra  = 0b11111111 // no extra, for comparison only
 
-	pairMaskPlace    = 0b00110000 // place where pair data is stored. values below
-	pairPlaceInput   = 0b00000000 // in r.input
-	pairPlaceArray   = 0b00010000 // in r.array
-	pairPlaceStatic2 = 0b00100000 // in HTTP/2 static table
-	pairPlaceStatic3 = 0b00110000 // in HTTP/3 static table
+	pairMaskPlace = 0b00110000 // place where pair data is stored. values below
+	placeInput    = 0b00000000 // in r.input
+	placeArray    = 0b00010000 // in r.array
+	placeStatic2  = 0b00100000 // in HTTP/2 static table
+	placeStatic3  = 0b00110000 // in HTTP/3 static table
 
-	pairFlagWeakETag = 0b00001000 // weak etag or not
-	pairFlagLiteral  = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
-	pairFlagPseudo   = 0b00000010 // pseudo header or not. used in HTTP/2 and HTTP/3
-	pairFlagSubField = 0b00000001 // sub field or not. currently only used by headers
+	flagWeakETag = 0b00001000 // weak etag or not
+	flagLiteral  = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo   = 0b00000010 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagSubField = 0b00000001 // sub field or not. currently only used by headers
 )
 
 func (p *pair) setKind(kind uint8)     { p.flags = p.flags&^pairMaskExtraKind | kind }
@@ -466,23 +466,23 @@ func (p *pair) isKind(kind uint8) bool { return p.flags&pairMaskExtraKind == kin
 func (p *pair) setPlace(place uint8)     { p.flags = p.flags&^pairMaskPlace | place }
 func (p *pair) inPlace(place uint8) bool { return p.flags&pairMaskPlace == place }
 
-func (p *pair) setWeakETag(weak bool) { p._setFlag(pairFlagWeakETag, weak) }
-func (p *pair) isWeakETag() bool      { return p.flags&pairFlagWeakETag > 0 }
+func (p *pair) setWeakETag(weak bool) { p._setFlag(flagWeakETag, weak) }
+func (p *pair) isWeakETag() bool      { return p.flags&flagWeakETag > 0 }
 
-func (p *pair) setLiteral(literal bool) { p._setFlag(pairFlagLiteral, literal) }
-func (p *pair) isLiteral() bool         { return p.flags&pairFlagLiteral > 0 }
+func (p *pair) setLiteral(literal bool) { p._setFlag(flagLiteral, literal) }
+func (p *pair) isLiteral() bool         { return p.flags&flagLiteral > 0 }
 
-func (p *pair) setPseudo(pseudo bool) { p._setFlag(pairFlagPseudo, pseudo) }
-func (p *pair) isPseudo() bool        { return p.flags&pairFlagPseudo > 0 }
+func (p *pair) setPseudo(pseudo bool) { p._setFlag(flagPseudo, pseudo) }
+func (p *pair) isPseudo() bool        { return p.flags&flagPseudo > 0 }
 
-func (p *pair) setSubField(subField bool) { p._setFlag(pairFlagSubField, subField) }
-func (p *pair) isSubField() bool          { return p.flags&pairFlagSubField > 0 }
+func (p *pair) setSubField(subField bool) { p._setFlag(flagSubField, subField) }
+func (p *pair) isSubField() bool          { return p.flags&flagSubField > 0 }
 
-func (p *pair) _setFlag(pairFlag uint8, on bool) {
+func (p *pair) _setFlag(flag uint8, on bool) {
 	if on {
-		p.flags |= pairFlag
+		p.flags |= flag
 	} else { // off
-		p.flags &^= pairFlag
+		p.flags &^= flag
 	}
 }
 

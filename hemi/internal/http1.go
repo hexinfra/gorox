@@ -58,7 +58,7 @@ func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-va
 	r.headers.edge = r.headers.from
 	header := &r.field
 	header.zero()
-	header.setPlace(pairPlaceInput) // all received headers are in r.input
+	header.setPlace(placeInput) // all received headers are in r.input
 	// r.pFore is at headers (if any) or end of headers (if none).
 	for { // each header
 		// End of headers?
@@ -385,7 +385,7 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 	r.trailers.edge = r.trailers.from
 	trailer := &r.field
 	trailer.zero()
-	trailer.setPlace(pairPlaceArray) // all received trailers are placed in r.array
+	trailer.setPlace(placeArray) // all received trailers are placed in r.array
 	for {
 		if b := r.bodyWindow[r.pFore]; b == '\r' {
 			// Skip '\r'

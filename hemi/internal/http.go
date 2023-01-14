@@ -457,29 +457,29 @@ func (r *httpInMessage_) Hint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpInMessage_) Header(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.headers, extraKindHeader)
+	v, ok := r.getPair(name, 0, r.headers, extraHeader)
 	return string(v), ok
 }
 func (r *httpInMessage_) UnsafeHeader(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.headers, extraKindHeader)
+	return r.getPair(name, 0, r.headers, extraHeader)
 }
 func (r *httpInMessage_) HeaderList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.headers, extraKindHeader)
+	return r.getPairList(name, 0, r.headers, extraHeader)
 }
 func (r *httpInMessage_) Headers() (headers [][2]string) {
-	return r.getPairs(r.headers, extraKindHeader)
+	return r.getPairs(r.headers, extraHeader)
 }
 func (r *httpInMessage_) HasHeader(name string) bool {
-	_, ok := r.getPair(name, 0, r.headers, extraKindHeader)
+	_, ok := r.getPair(name, 0, r.headers, extraHeader)
 	return ok
 }
 func (r *httpInMessage_) AddHeader(name string, value string) bool {
 	// TODO: forbid some important headers, like: if-match, if-none-match, so we don't need to search them in extra.
-	return r.addExtra(name, value, extraKindHeader)
+	return r.addExtra(name, value, extraHeader)
 }
 func (r *httpInMessage_) DelHeader(name string) (deleted bool) {
 	// TODO: forbid some important headers, so we don't need to search them in extra.
-	return r.delPair(name, 0, r.headers, extraKindHeader)
+	return r.delPair(name, 0, r.headers, extraHeader)
 }
 func (r *httpInMessage_) addMultipleHeader(header *pair, must bool) bool {
 	// Add main header before sub headers.
@@ -563,13 +563,13 @@ func (r *httpInMessage_) addHeader(header *pair) bool {
 	}
 }
 func (r *httpInMessage_) delHeader(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.headers, extraKindHeader)
+	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
 }
 func (r *httpInMessage_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, r.delHeader)
 }
 func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r._walkFields(r.headers, extraKindHeader, fn)
+	return r._walkFields(r.headers, extraHeader, fn)
 }
 
 func (r *httpInMessage_) SetMaxRecvTimeout(timeout time.Duration) {
@@ -735,24 +735,24 @@ func (r *httpInMessage_) Tint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpInMessage_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.trailers, extraKindTrailer)
+	v, ok := r.getPair(name, 0, r.trailers, extraTrailer)
 	return string(v), ok
 }
 func (r *httpInMessage_) UnsafeTrailer(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.trailers, extraKindTrailer)
+	return r.getPair(name, 0, r.trailers, extraTrailer)
 }
 func (r *httpInMessage_) TrailerList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.trailers, extraKindTrailer)
+	return r.getPairList(name, 0, r.trailers, extraTrailer)
 }
 func (r *httpInMessage_) Trailers() (trailers [][2]string) {
-	return r.getPairs(r.trailers, extraKindTrailer)
+	return r.getPairs(r.trailers, extraTrailer)
 }
 func (r *httpInMessage_) HasTrailer(name string) bool {
-	_, ok := r.getPair(name, 0, r.trailers, extraKindTrailer)
+	_, ok := r.getPair(name, 0, r.trailers, extraTrailer)
 	return ok
 }
 func (r *httpInMessage_) AddTrailer(name string, value string) bool {
-	return r.addExtra(name, value, extraKindTrailer)
+	return r.addExtra(name, value, extraTrailer)
 }
 func (r *httpInMessage_) addTrailer(trailer *pair) {
 	if edge, ok := r.addPrime(trailer); ok {
@@ -761,16 +761,16 @@ func (r *httpInMessage_) addTrailer(trailer *pair) {
 	// Ignore too many trailers
 }
 func (r *httpInMessage_) DelTrailer(name string) (deleted bool) {
-	return r.delPair(name, 0, r.trailers, extraKindTrailer)
+	return r.delPair(name, 0, r.trailers, extraTrailer)
 }
 func (r *httpInMessage_) delTrailer(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.trailers, extraKindTrailer)
+	r.delPair(risky.WeakString(name), hash, r.trailers, extraTrailer)
 }
 func (r *httpInMessage_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, r.delTrailer)
 }
 func (r *httpInMessage_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r._walkFields(r.trailers, extraKindTrailer, fn)
+	return r._walkFields(r.trailers, extraTrailer, fn)
 }
 
 func (r *httpInMessage_) arrayPush(b byte) {
@@ -861,7 +861,7 @@ func (r *httpInMessage_) addExtra(name string, value string, extraKind uint8) bo
 	}
 	extra := &r.field
 	extra.zero()
-	extra.setKind(extraKind)
+	extra.setExtra(extraKind)
 	extra.hash = stringHash(name)
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
@@ -896,10 +896,10 @@ func (r *httpInMessage_) getPair(name string, hash uint16, primes zone, extraKin
 				return prime.valueAt(p), true
 			}
 		}
-		if extraKind != extraKindNoExtra {
+		if extraKind != extraNoExtra {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
 			}
@@ -917,7 +917,7 @@ func (r *httpInMessage_) getPairList(name string, hash uint16, primes zone, extr
 			if prime.hash != hash {
 				continue
 			}
-			if extraKind == extraKindHeader && !prime.isSubField() { // TODO: what about extraKindTrailer?
+			if extraKind == extraHeader && !prime.isSubField() { // TODO: what about extraTrailer?
 				continue
 			}
 			p := r._getPlace(prime)
@@ -925,10 +925,10 @@ func (r *httpInMessage_) getPairList(name string, hash uint16, primes zone, extr
 				list = append(list, string(prime.valueAt(p)))
 			}
 		}
-		if extraKind != extraKindNoExtra {
+		if extraKind != extraNoExtra {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
 					list = append(list, string(extra.valueAt(r.array)))
 				}
 			}
@@ -947,9 +947,9 @@ func (r *httpInMessage_) getPairs(primes zone, extraKind uint8) [][2]string {
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
 	}
-	if extraKind != extraKindNoExtra {
+	if extraKind != extraNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 			}
 		}
@@ -967,9 +967,9 @@ func (r *httpInMessage_) forPairs(primes zone, extraKind uint8, fn func(hash uin
 			return false
 		}
 	}
-	if extraKind != extraKindNoExtra {
+	if extraKind != extraNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -982,9 +982,9 @@ func (r *httpInMessage_) hasPairs(primes zone, extraKind uint8) bool {
 	if primes.notEmpty() {
 		return true
 	}
-	if extraKind != extraKindNoExtra {
+	if extraKind != extraNoExtra {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isKind(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				return true
 			}
 		}
@@ -1007,10 +1007,10 @@ func (r *httpInMessage_) delPair(name string, hash uint16, primes zone, extraKin
 				deleted = true
 			}
 		}
-		if extraKind != extraKindNoExtra {
+		if extraKind != extraNoExtra {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isKind(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1074,7 +1074,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash 
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
-		if field := &r.extras[i]; field.hash != 0 && field.isKind(extraKind) {
+		if field := &r.extras[i]; field.hash != 0 && field.isExtra(extraKind) {
 			if !fn(field.hash, field.nameAt(r.array), field.valueAt(r.array)) {
 				return false
 			}

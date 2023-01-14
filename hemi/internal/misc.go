@@ -417,7 +417,7 @@ func put255Pairs(pairs []pair) {
 	pool255Pairs.Put(pairs)
 }
 
-// pair is used to hold queries, headers, cookies, forms (but not uploads), and trailers.
+// pair is used to hold queries, headers (and sub headers), cookies, forms (but not uploads), and trailers.
 type pair struct { // 16 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
 	flags    uint8  // see pair flags
@@ -441,12 +441,12 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 }
 
 const ( // pair flags
-	pairMaskExtraKind = 0b11000000 // kind for extra pairs, values below
-	extraKindQuery    = 0b00000000 // extra queries
-	extraKindHeader   = 0b01000000 // extra headers
-	extraKindCookie   = 0b10000000 // extra cookies
-	extraKindTrailer  = 0b11000000 // extra trailers
-	extraKindNoExtra  = 0b11111111 // no extra, for comparison only
+	pairMaskExtra = 0b11000000 // kind of extra pairs, values below
+	extraQuery    = 0b00000000 // extra queries
+	extraHeader   = 0b01000000 // extra headers
+	extraCookie   = 0b10000000 // extra cookies
+	extraTrailer  = 0b11000000 // extra trailers
+	extraNoExtra  = 0b11111111 // no extra, for comparison only
 
 	pairMaskPlace = 0b00110000 // place where pair data is stored. values below
 	placeInput    = 0b00000000 // in r.input
@@ -460,8 +460,8 @@ const ( // pair flags
 	flagSubField = 0b00000001 // sub field or not. currently only used by headers
 )
 
-func (p *pair) setKind(kind uint8)     { p.flags = p.flags&^pairMaskExtraKind | kind }
-func (p *pair) isKind(kind uint8) bool { return p.flags&pairMaskExtraKind == kind }
+func (p *pair) setExtra(extra uint8)     { p.flags = p.flags&^pairMaskExtra | extra }
+func (p *pair) isExtra(extra uint8) bool { return p.flags&pairMaskExtra == extra }
 
 func (p *pair) setPlace(place uint8)     { p.flags = p.flags&^pairMaskPlace | place }
 func (p *pair) inPlace(place uint8) bool { return p.flags&pairMaskPlace == place }

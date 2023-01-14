@@ -23,7 +23,6 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/limit"
-	_ "github.com/hexinfra/gorox/hemi/standard/handlets/lua"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/referer"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/rewrite"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"

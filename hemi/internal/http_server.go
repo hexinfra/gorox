@@ -682,27 +682,27 @@ func (r *httpRequest_) Qint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpRequest_) Query(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.queries, extraKindQuery)
+	v, ok := r.getPair(name, 0, r.queries, extraQuery)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.queries, extraKindQuery)
+	return r.getPair(name, 0, r.queries, extraQuery)
 }
 func (r *httpRequest_) QueryList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.queries, extraKindQuery)
+	return r.getPairList(name, 0, r.queries, extraQuery)
 }
 func (r *httpRequest_) Queries() (queries [][2]string) {
-	return r.getPairs(r.queries, extraKindQuery)
+	return r.getPairs(r.queries, extraQuery)
 }
 func (r *httpRequest_) HasQuery(name string) bool {
-	_, ok := r.getPair(name, 0, r.queries, extraKindQuery)
+	_, ok := r.getPair(name, 0, r.queries, extraQuery)
 	return ok
 }
 func (r *httpRequest_) AddQuery(name string, value string) bool {
-	return r.addExtra(name, value, extraKindQuery)
+	return r.addExtra(name, value, extraQuery)
 }
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
-	return r.delPair(name, 0, r.queries, extraKindQuery)
+	return r.delPair(name, 0, r.queries, extraQuery)
 }
 
 func (r *httpRequest_) applyHeader(header *pair) bool {
@@ -1400,33 +1400,33 @@ func (r *httpRequest_) Cint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.cookies, extraKindCookie)
+	v, ok := r.getPair(name, 0, r.cookies, extraCookie)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.cookies, extraKindCookie)
+	return r.getPair(name, 0, r.cookies, extraCookie)
 }
 func (r *httpRequest_) CookieList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.cookies, extraKindCookie)
+	return r.getPairList(name, 0, r.cookies, extraCookie)
 }
 func (r *httpRequest_) Cookies() (cookies [][2]string) {
-	return r.getPairs(r.cookies, extraKindCookie)
+	return r.getPairs(r.cookies, extraCookie)
 }
 func (r *httpRequest_) HasCookies() bool {
-	return r.hasPairs(r.cookies, extraKindCookie)
+	return r.hasPairs(r.cookies, extraCookie)
 }
 func (r *httpRequest_) HasCookie(name string) bool {
-	_, ok := r.getPair(name, 0, r.cookies, extraKindCookie)
+	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
 	return ok
 }
 func (r *httpRequest_) AddCookie(name string, value string) bool {
-	return r.addExtra(name, value, extraKindCookie)
+	return r.addExtra(name, value, extraCookie)
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
-	return r.delPair(name, 0, r.cookies, extraKindCookie)
+	return r.delPair(name, 0, r.cookies, extraCookie)
 }
 func (r *httpRequest_) walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r.forPairs(r.cookies, extraKindCookie, fn)
+	return r.forPairs(r.cookies, extraCookie, fn)
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
@@ -2187,24 +2187,24 @@ func (r *httpRequest_) Fint(name string, defaultValue int) int {
 }
 func (r *httpRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
-	v, ok := r.getPair(name, 0, r.forms, extraKindNoExtra)
+	v, ok := r.getPair(name, 0, r.forms, extraNoExtra)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
-	return r.getPair(name, 0, r.forms, extraKindNoExtra)
+	return r.getPair(name, 0, r.forms, extraNoExtra)
 }
 func (r *httpRequest_) FormList(name string) (list []string, ok bool) {
 	r.parseHTMLForm()
-	return r.getPairList(name, 0, r.forms, extraKindNoExtra)
+	return r.getPairList(name, 0, r.forms, extraNoExtra)
 }
 func (r *httpRequest_) Forms() (forms [][2]string) {
 	r.parseHTMLForm()
-	return r.getPairs(r.forms, extraKindNoExtra)
+	return r.getPairs(r.forms, extraNoExtra)
 }
 func (r *httpRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.getPair(name, 0, r.forms, extraKindNoExtra)
+	_, ok := r.getPair(name, 0, r.forms, extraNoExtra)
 	return ok
 }
 

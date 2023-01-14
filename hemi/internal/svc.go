@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Svc and related components. Currently only gRPC and HRPC are planned to support.
+// Svc and related components. Currently only HRPC and gRPC are planned to support.
 
 package internal
 
@@ -11,14 +11,24 @@ import (
 	"time"
 )
 
+// GRPCServer is the interface for all grpc servers.
+// Due to gRPC's large dependancies, to keep hemi small, we won't implement our own grpc server.
+// Users can implement their own grpc server in exts, which embeds *grpc.Server and implements GRPCServer interface.
+// Maybe we can implements our own gRPC server following its official spec. TBD.
+type GRPCServer interface {
+	Server
+	RealServer() any
+	LinkSvc(svc *Svc)
+}
+
 // Svc is the microservice.
 type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
 	stage       *Stage // current stage
-	grpcServers []GRPCServer
 	hrpcServers []httpServer
+	grpcServers []GRPCServer
 	// States
 	hostnames       [][]byte // should be used by hrpc only
 	exactHostnames  [][]byte // like: ("example.com")
@@ -47,14 +57,14 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
+func (s *Svc) linkHRPC(server httpServer) {
+	s.hrpcServers = append(s.hrpcServers, server)
+}
+
 func (s *Svc) LinkGRPC(server GRPCServer) {
 	s.grpcServers = append(s.grpcServers, server)
 }
 func (s *Svc) GRPCServers() []GRPCServer { return s.grpcServers }
-
-func (s *Svc) linkHRPC(server httpServer) {
-	s.hrpcServers = append(s.hrpcServers, server)
-}
 
 func (s *Svc) maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {

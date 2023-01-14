@@ -14,23 +14,6 @@ import (
 func init() {
 	// Register svc initializer.
 	RegisterSvcInit("hello", func(svc *Svc) error {
-		/*
-			servers := svc.GRPCServers()
-			for _, server := range servers {
-				g := server.RealServer().(*grpc.Server)
-				pb.RegisterGreeterServer(g, &greetServer{})
-			}
-		*/
 		return nil
 	})
 }
-
-/*
-type greetServer struct {
-	pb.UnimplementedGreeterServer
-}
-
-func (s *greetServer) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-}
-*/

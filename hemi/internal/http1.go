@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"net"
 	"time"
@@ -373,7 +372,7 @@ func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
 		return r.bodyWindow[from:int(dataEdge)], nil
 	}
 badRecv:
-	return nil, http1ReadBadChunk
+	return nil, httpReadBadChunk
 }
 
 func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
@@ -518,10 +517,6 @@ func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protoco
 	// err != nil. TODO: log err
 	return false
 }
-
-var ( // http/1 message reading errors
-	http1ReadBadChunk = errors.New("bad chunk")
-)
 
 // http1OutMessage_ is used by http1Response and H1Request.
 

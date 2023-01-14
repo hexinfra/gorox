@@ -7,11 +7,11 @@ Welcome
   server, and proxy server. It can be used as:
 
     * HTTP Server (HTTP 1/2/3, WebSocket, FCGI, uwsgi, AJP)
-    * Application Server for Go (Applications & Frameworks)
-    * Microservice Server for Go (gRPC Services & HRPC Services)
+    * Application Server for Go (Applications, Frameworks)
+    * Microservice Server for Go (HRPC Services, gRPC Services)
     * HTTP Proxy Server (Forward & Reverse, Caching, Tunneling)
     * Service Mesh (Data Plane & Control Plane)
-    * API Gateway (HTTP APIs & gRPC APIs)
+    * API Gateway (HTTP APIs, HRPC APIs, gRPC APIs)
     * Web Application Firewall
     * ... and more through its highly extensible compoments design!
 

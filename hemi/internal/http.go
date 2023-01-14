@@ -160,7 +160,7 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
 	}
 	r.array = r.stockArray[:]
-	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of indexes.
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.contentSize = -1
 	r.maxRecvTimeout = r.stream.holder().ReadTimeout()
@@ -1111,7 +1111,8 @@ const ( // HTTP content blob kinds
 )
 
 var ( // http incoming message errors
-	httpReadTooSlow = errors.New("read too slow")
+	httpReadBadChunk = errors.New("bad chunk")
+	httpReadTooSlow  = errors.New("read too slow")
 )
 
 // httpOutMessage is a Response or request, used as shell by httpOutMessage_.

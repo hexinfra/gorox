@@ -51,7 +51,7 @@ func (f *filesysFixture) onCreate(stage *Stage) {
 	f.entries = make(map[string]*filesysEntry)
 }
 func (f *filesysFixture) OnShutdown() {
-	f.Shutdown()
+	close(f.Shut)
 }
 
 func (f *filesysFixture) OnConfigure() {

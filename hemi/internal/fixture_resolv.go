@@ -38,7 +38,7 @@ func (f *resolvFixture) onCreate(stage *Stage) {
 	f.stage = stage
 }
 func (f *resolvFixture) OnShutdown() {
-	f.Shutdown()
+	close(f.Shut)
 }
 
 func (f *resolvFixture) OnConfigure() {

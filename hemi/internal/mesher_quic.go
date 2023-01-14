@@ -23,7 +23,7 @@ func (m *QUICMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, quicDealetCreators, quicEditorCreators)
 }
 func (m *QUICMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
+	// We don't close(m.Shut) here.
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}

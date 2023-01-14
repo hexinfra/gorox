@@ -47,7 +47,7 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.forceScheme = -1 // not force
 }
 func (s *httpxServer) OnShutdown() {
-	// We don't use s.Shutdown() here.
+	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

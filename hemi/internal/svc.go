@@ -31,7 +31,7 @@ func (s *Svc) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *Svc) OnShutdown() {
-	s.Shutdown()
+	close(s.Shut)
 }
 
 func (s *Svc) OnConfigure() {

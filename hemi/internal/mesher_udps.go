@@ -25,7 +25,7 @@ func (m *UDPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, udpsDealetCreators, udpsEditorCreators)
 }
 func (m *UDPSMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
+	// We don't close(m.Shut) here.
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}

@@ -64,9 +64,6 @@ func (f *UDPSOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signUDPS, stage)
 	f.udpsClient_.onCreate()
 }
-func (f *UDPSOutgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *UDPSOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -113,9 +110,6 @@ func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.udpsClient_.onCreate()
 	b.loadBalancer_.init()
-}
-func (b *UDPSBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *UDPSBackend) OnConfigure() {

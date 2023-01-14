@@ -67,9 +67,6 @@ func (f *QUICOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signQUIC, stage)
 	f.quicClient_.onCreate()
 }
-func (f *QUICOutgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *QUICOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -115,9 +112,6 @@ func (b *QUICBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.quicClient_.onCreate()
 	b.loadBalancer_.init()
-}
-func (b *QUICBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *QUICBackend) OnConfigure() {

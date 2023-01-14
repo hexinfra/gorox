@@ -37,7 +37,7 @@ func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *socksServer) OnShutdown() {
-	// We don't use s.Shutdown() here.
+	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

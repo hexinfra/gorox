@@ -37,7 +37,7 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
 }
 func (s *http3Server) OnShutdown() {
-	// We don't use s.Shutdown() here.
+	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}

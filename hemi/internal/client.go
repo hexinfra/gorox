@@ -66,6 +66,10 @@ func (c *client_) onConfigure() {
 func (c *client_) onPrepare() {
 }
 
+func (c *client_) OnShutdown() {
+	close(c.Shut)
+}
+
 func (c *client_) Stage() *Stage               { return c.stage }
 func (c *client_) TLSMode() bool               { return c.tlsMode }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
@@ -159,7 +163,7 @@ func (b *backend_[N]) maintain() { // goroutine
 		b.IncSub(1)
 		go node.maintain(shut)
 	}
-	<-b.Shut     // waiting for shut signal
+	<-b.Shut     // waiting for shutdown signal
 	close(shut)  // notify all nodes
 	b.WaitSubs() // nodes
 	if IsDebug(2) {

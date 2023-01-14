@@ -67,9 +67,6 @@ func (f *UnixOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signUnix, stage)
 	f.unixClient_.onCreate()
 }
-func (f *UnixOutgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *UnixOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -116,9 +113,6 @@ func (b *UnixBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.unixClient_.onCreate()
 	b.loadBalancer_.init()
-}
-func (b *UnixBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *UnixBackend) OnConfigure() {

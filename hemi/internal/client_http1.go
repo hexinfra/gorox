@@ -48,9 +48,6 @@ type HTTP1Outgate struct {
 func (f *HTTP1Outgate) onCreate(stage *Stage) {
 	f.httpOutgate_.onCreate(signHTTP1, stage)
 }
-func (f *HTTP1Outgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *HTTP1Outgate) OnConfigure() {
 	f.httpOutgate_.onConfigure(f)
@@ -97,9 +94,6 @@ type HTTP1Backend struct {
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 	b.httpBackend_.onCreate(name, stage, b)
-}
-func (b *HTTP1Backend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *HTTP1Backend) OnConfigure() {

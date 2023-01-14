@@ -69,9 +69,6 @@ func (f *TCPSOutgate) onCreate(stage *Stage) {
 	f.client_.onCreate(signTCPS, stage)
 	f.tcpsClient_.onCreate()
 }
-func (f *TCPSOutgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *TCPSOutgate) OnConfigure() {
 	f.client_.onConfigure()
@@ -125,9 +122,6 @@ func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.tcpsClient_.onCreate()
 	b.loadBalancer_.init()
-}
-func (b *TCPSBackend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *TCPSBackend) OnConfigure() {

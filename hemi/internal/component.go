@@ -232,8 +232,6 @@ func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value)
 	}
 }
 
-func (c *Component_) Shutdown() { c.Shut <- struct{}{} }
-
 func (c *Component_) setName(name string)              { c.name = name }
 func (c *Component_) setShell(shell Component)         { c.shell = shell }
 func (c *Component_) setParent(parent Component)       { c.parent = parent }

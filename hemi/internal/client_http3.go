@@ -44,9 +44,6 @@ type HTTP3Outgate struct {
 func (f *HTTP3Outgate) onCreate(stage *Stage) {
 	f.httpOutgate_.onCreate(signHTTP3, stage)
 }
-func (f *HTTP3Outgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *HTTP3Outgate) OnConfigure() {
 	f.httpOutgate_.onConfigure(f)
@@ -82,9 +79,6 @@ type HTTP3Backend struct {
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
 	b.httpBackend_.onCreate(name, stage, b)
-}
-func (b *HTTP3Backend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *HTTP3Backend) OnConfigure() {

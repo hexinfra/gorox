@@ -35,7 +35,7 @@ func (c *redisCacher) onCreate(name string, stage *Stage) {
 	c.stage = stage
 }
 func (c *redisCacher) OnShutdown() {
-	c.Shutdown()
+	close(c.Shut)
 }
 
 func (c *redisCacher) OnConfigure() {

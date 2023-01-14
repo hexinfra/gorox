@@ -33,7 +33,7 @@ func (o *demoOpture) onCreate(name string, stage *Stage) {
 	o.stage = stage
 }
 func (o *demoOpture) OnShutdown() {
-	o.Shutdown()
+	close(o.Shut)
 }
 
 func (o *demoOpture) OnConfigure() {

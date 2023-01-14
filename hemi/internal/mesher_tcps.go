@@ -26,7 +26,7 @@ func (m *TCPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, tcpsDealetCreators, tcpsEditorCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
-	// We don't use m.Shutdown() here.
+	// We don't close(m.Shut) here.
 	for _, gate := range m.gates {
 		gate.shutdown()
 	}

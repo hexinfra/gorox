@@ -45,9 +45,6 @@ type HTTP2Outgate struct {
 func (f *HTTP2Outgate) onCreate(stage *Stage) {
 	f.httpOutgate_.onCreate(signHTTP2, stage)
 }
-func (f *HTTP2Outgate) OnShutdown() {
-	f.Shutdown()
-}
 
 func (f *HTTP2Outgate) OnConfigure() {
 	f.httpOutgate_.onConfigure(f)
@@ -83,9 +80,6 @@ type HTTP2Backend struct {
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 	b.httpBackend_.onCreate(name, stage, b)
-}
-func (b *HTTP2Backend) OnShutdown() {
-	b.Shutdown()
 }
 
 func (b *HTTP2Backend) OnConfigure() {

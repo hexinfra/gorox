@@ -2380,7 +2380,6 @@ type Response interface {
 	AddTrailerBytesByBytes(name []byte, value []byte) bool
 
 	// Internal only
-	sync1xx(resp response) bool // used by proxies
 	setConnectionClose()
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
@@ -2395,6 +2394,7 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endChunked() error
 	finalizeChunked() error
+	sync1xx(resp response) bool               // used by proxies
 	sync(resp httpInMessage) error            // used by proxies
 	pass(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)

@@ -657,11 +657,7 @@ func (r *httpInMessage_) HoldContent() any { // used by proxies
 }
 func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		timeout := r.stream.holder().ReadTimeout()
-		if r.maxRecvTimeout > 0 {
-			timeout = r.maxRecvTimeout
-		}
-		if err := r.stream.setReadDeadline(time.Now().Add(timeout)); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.holder().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow is not needed, and TempFile is not used either.

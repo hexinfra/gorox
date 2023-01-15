@@ -90,10 +90,10 @@ type httpProxy_ struct {
 	colonPort           []byte      // ...
 	bufferClientContent bool        // buffer client content into TempFile?
 	bufferServerContent bool        // buffer server content into TempFile?
-	delRequestHeaders   [][]byte    // client request headers to delete
 	addRequestHeaders   [][2][]byte // headers appended to client request
-	delResponseHeaders  [][]byte    // server response headers to delete
+	delRequestHeaders   [][]byte    // client request headers to delete
 	addResponseHeaders  [][2][]byte // headers appended to server response
+	delResponseHeaders  [][]byte    // server response headers to delete
 }
 
 func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
@@ -127,17 +127,10 @@ func (h *httpProxy_) onConfigure(shell Component) {
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
-	var headers []string
 	// delRequestHeaders
-	h.ConfigureStringList("delRequestHeaders", &headers, nil, []string{})
-	for _, header := range headers {
-		h.delRequestHeaders = append(h.delRequestHeaders, []byte(header))
-	}
+	h.ConfigureBytesList("delRequestHeaders", &h.delRequestHeaders, nil, [][]byte{})
 	// delResponseHeaders
-	h.ConfigureStringList("delResponseHeaders", &headers, nil, []string{})
-	for _, header := range headers {
-		h.delResponseHeaders = append(h.delResponseHeaders, []byte(header))
-	}
+	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }
 func (h *httpProxy_) onPrepare(shell Component) {
 	h.proxy_.onPrepare(shell)

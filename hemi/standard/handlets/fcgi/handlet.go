@@ -33,6 +33,10 @@ type fcgiProxy struct {
 	bufferClientContent bool   // ...
 	bufferServerContent bool   // server content is buffered anyway?
 	keepConn            bool   // instructs FCGI server to keep conn?
+	addRequestHeaders   [][2][]byte // headers appended to client request
+	delRequestHeaders   [][]byte    // client request headers to delete
+	addResponseHeaders  [][2][]byte // headers appended to server response
+	delResponseHeaders  [][]byte    // server response headers to delete
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {

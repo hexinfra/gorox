@@ -193,10 +193,6 @@ const ( // core constants
 	MethodCONNECT = internal.MethodCONNECT
 	MethodOPTIONS = internal.MethodOPTIONS
 	MethodTRACE   = internal.MethodTRACE
-	MethodPATCH   = internal.MethodPATCH
-	MethodLINK    = internal.MethodLINK
-	MethodUNLINK  = internal.MethodUNLINK
-	MethodQUERY   = internal.MethodQUERY
 
 	// 1XX
 	StatusContinue           = internal.StatusContinue

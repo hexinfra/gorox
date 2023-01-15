@@ -23,7 +23,7 @@ tcptun mode
 udptun mode
 ===========
 
-  connect-udp
+  upgrade: connect-udp
 
   through stream
   --------------
@@ -33,7 +33,7 @@ udptun mode
 socket mode
 ===========
 
-  websocket
+  upgrade: websocket
 
   through socklet
   ---------------

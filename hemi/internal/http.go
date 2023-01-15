@@ -1057,7 +1057,7 @@ func (r *httpInMessage_) _delHopFields(fields zone, delField func(name []byte, h
 				field.zero()
 			}
 		}
-		// Note: we don't remove pair ("connection: xxx") itself, since we simply skip it when acting as a proxy.
+		// Note: we don't remove pair ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 	}
 }
 func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
@@ -1420,7 +1420,7 @@ func (r *httpOutMessage_) AddTrailerByBytes(name []byte, value string) bool {
 	return r.AddTrailerBytesByBytes(name, risky.ConstBytes(value))
 }
 func (r *httpOutMessage_) AddTrailerBytesByBytes(name []byte, value []byte) bool {
-	if !r.isSent { // trailers must be set after headers & content are sent
+	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
 		return false
 	}
 	return r.shell.addTrailer(name, value)
@@ -1625,34 +1625,26 @@ const ( // method codes. keep sync with ../hemi.go
 	MethodCONNECT = 0x00000020
 	MethodOPTIONS = 0x00000040
 	MethodTRACE   = 0x00000080
-	MethodPATCH   = 0x00000100
-	MethodLINK    = 0x00000200
-	MethodUNLINK  = 0x00000400
-	MethodQUERY   = 0x00000800
 )
 
 var ( // method hash table
-	httpMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE PATCH LINK UNLINK QUERY")
-	httpMethodTable = [12]struct {
+	httpMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
+	httpMethodTable = [8]struct {
 		hash uint16
 		from uint8
 		edge uint8
 		code uint32
 	}{
-		0:  {326, 9, 13, MethodPOST},
-		1:  {465, 58, 64, MethodUNLINK},
-		2:  {302, 53, 57, MethodLINK},
-		3:  {435, 18, 24, MethodDELETE},
-		4:  {224, 0, 3, MethodGET},
-		5:  {406, 65, 70, MethodQUERY},
-		6:  {274, 4, 8, MethodHEAD},
-		7:  {368, 47, 52, MethodPATCH},
-		8:  {367, 41, 46, MethodTRACE},
-		9:  {556, 33, 40, MethodOPTIONS},
-		10: {522, 25, 32, MethodCONNECT},
-		11: {249, 14, 17, MethodPUT},
+		0: {326, 9, 13, MethodPOST},
+		1: {274, 4, 8, MethodHEAD},
+		2: {249, 14, 17, MethodPUT},
+		3: {224, 0, 3, MethodGET},
+		4: {556, 33, 40, MethodOPTIONS},
+		5: {522, 25, 32, MethodCONNECT},
+		6: {435, 18, 24, MethodDELETE},
+		7: {367, 41, 46, MethodTRACE},
 	}
-	httpMethodFind = func(hash uint16) int { return (11774 / int(hash)) % 12 }
+	httpMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
 )
 
 const ( // status codes. keep sync with ../hemi.go

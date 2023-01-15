@@ -537,10 +537,10 @@ func (s *Stage) linkSvcServers() {
 			if server == nil {
 				UseExitf("no server named '%s'", serverName)
 			}
-			if grpcServer, ok := server.(GRPCServer); ok {
+			if hrpcServer, ok := server.(httpServer); ok {
+				hrpcServer.linkSvc(svc)
+			} else if grpcServer, ok := server.(GRPCServer); ok {
 				grpcServer.LinkSvc(svc)
-			} else if httpServer, ok := server.(httpServer); ok {
-				httpServer.linkSvc(svc)
 			} else {
 				UseExitf("server '%s' is not an http server nor grpc server, cannot link svc to it", serverName)
 			}

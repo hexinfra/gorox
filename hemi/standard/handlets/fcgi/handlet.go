@@ -9,6 +9,9 @@ package fcgi
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"net"
+	"sync"
+	"time"
 )
 
 func init() {
@@ -29,10 +32,10 @@ type fcgiProxy struct {
 	backend PBackend // *TCPSBackend or *UnixBackend
 	cacher  Cacher
 	// States
-	scriptFilename      string // ...
-	bufferClientContent bool   // ...
-	bufferServerContent bool   // server content is buffered anyway?
-	keepConn            bool   // instructs FCGI server to keep conn?
+	scriptFilename      string      // ...
+	bufferClientContent bool        // ...
+	bufferServerContent bool        // server content is buffered anyway?
+	keepConn            bool        // instructs FCGI server to keep conn?
 	addRequestHeaders   [][2][]byte // headers appended to client request
 	delRequestHeaders   [][]byte    // client request headers to delete
 	addResponseHeaders  [][2][]byte // headers appended to server response
@@ -113,11 +116,11 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		defer conn.Close()
 	}
 
-	stream := getFCGIStream(conn)
-	defer putFCGIStream(stream)
+	exchan := getFCGIExchan(conn)
+	defer putFCGIExchan(exchan)
 
-	feq, fesp := &stream.request, &stream.response
-	_, _ = feq, fesp
+	fReq, fResp := &exchan.request, &exchan.response
+	_, _ = fReq, fResp
 
 	if h.keepConn {
 		// use fcgiBeginKeepConn
@@ -133,4 +136,156 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	}
 	resp.Send("foobar")
 	return
+}
+
+// poolFCGIExchan
+var poolFCGIExchan sync.Pool
+
+func getFCGIExchan(conn PConn) *fcgiExchan {
+	var exchan *fcgiExchan
+	if x := poolFCGIExchan.Get(); x == nil {
+		exchan = new(fcgiExchan)
+	} else {
+		exchan = x.(*fcgiExchan)
+	}
+	exchan.onUse(conn)
+	return exchan
+}
+func putFCGIExchan(exchan *fcgiExchan) {
+	exchan.onEnd()
+	poolFCGIExchan.Put(exchan)
+}
+
+// fcgiExchan
+type fcgiExchan struct {
+	// Assocs
+	request  fcgiRequest  // the fcgi request
+	response fcgiResponse // the fcgi response
+	// Exchan states (buffers)
+	stockStack [64]byte
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	conn PConn
+}
+
+func (s *fcgiExchan) onUse(conn PConn) {
+	s.conn = conn
+	s.request.onUse(conn)
+	s.response.onUse(conn)
+}
+func (s *fcgiExchan) onEnd() {
+	s.request.onEnd()
+	s.response.onEnd()
+	s.conn = nil
+}
+
+func (s *fcgiExchan) smallStack() []byte {
+	return s.stockStack[:]
+}
+
+func (s *fcgiExchan) setWriteDeadline(deadline time.Time) error {
+	return nil
+}
+func (s *fcgiExchan) setReadDeadline(deadline time.Time) error {
+	return nil
+}
+
+func (s *fcgiExchan) write(p []byte) (int, error) {
+	return s.conn.Write(p)
+}
+func (s *fcgiExchan) read(p []byte) (int, error) {
+	return s.conn.Read(p)
+}
+
+// fcgiRequest
+type fcgiRequest struct {
+	// Assocs
+	conn     PConn
+	exchan   *fcgiExchan
+	response *fcgiResponse
+	// States (buffers)
+	stockParams [1536]byte
+	// States (non-zeros)
+	params         []byte
+	maxSendTimeout time.Duration
+	// States (zeros)
+	sendTime    time.Time
+	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
+	fixedVector [4][]byte   // for sending/pushing message. reset after stream. 96B
+	fcgiRequest0
+}
+type fcgiRequest0 struct {
+}
+
+func (r *fcgiRequest) onUse(conn PConn) {
+	r.conn = conn
+}
+func (r *fcgiRequest) onEnd() {
+	r.conn = nil
+}
+
+func (r *fcgiRequest) withHead(req Request) bool {
+	return false
+}
+
+func (r *fcgiRequest) sync(req Request) error {
+	return nil
+}
+func (r *fcgiRequest) pass(content any) error { // nil, []byte, *os.File
+	return nil
+}
+
+// fcgiResponse
+type fcgiResponse struct {
+	// Assocs
+	conn   PConn
+	exchan *fcgiExchan
+	// States (buffers)
+	stockInput [2048]byte
+	stockArray [1024]byte
+	// States (non-zeros)
+	input []byte
+	array []byte
+}
+
+func (r *fcgiResponse) onUse(conn PConn) {
+	r.conn = conn
+	r.input = r.stockInput[:]
+	r.array = r.stockArray[:]
+}
+func (r *fcgiResponse) onEnd() {
+	r.conn = nil
+}
+
+func (r *fcgiResponse) recvHead() {
+}
+func (r *fcgiResponse) addHeader() bool {
+	return false
+}
+func (r *fcgiResponse) checkHead() bool {
+	return false
+}
+
+func (r *fcgiResponse) walkHeaders() {
+}
+
+func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
+}
+
+func (r *fcgiResponse) readContent() (from int, edge int, err error) {
+	return
+}
+
+func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or TempFile (for large content)
+	return nil
+}
+func (r *fcgiResponse) holdContent() any {
+	return nil
+}
+
+func (r *fcgiResponse) newTempFile() {
+}
+
+func (r *fcgiResponse) beforeRead() error {
+	return nil
 }

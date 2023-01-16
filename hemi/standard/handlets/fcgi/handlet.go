@@ -10,6 +10,7 @@ package fcgi
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"net"
+	"os"
 	"sync"
 	"time"
 )
@@ -210,8 +211,8 @@ type fcgiRequest struct {
 	maxSendTimeout time.Duration
 	// States (zeros)
 	sendTime    time.Time
-	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector [4][]byte   // for sending/pushing message. reset after stream. 96B
+	vector      net.Buffers
+	fixedVector [4][]byte
 	fcgiRequest0
 }
 type fcgiRequest0 struct {
@@ -224,14 +225,14 @@ func (r *fcgiRequest) onEnd() {
 	r.conn = nil
 }
 
-func (r *fcgiRequest) withHead(req Request) bool {
+func (r *fcgiRequest) copyHead(req Request) bool {
 	return false
 }
 
-func (r *fcgiRequest) sync(req Request) error {
+func (r *fcgiRequest) pass(content any) error { // nil, []byte, *os.File
 	return nil
 }
-func (r *fcgiRequest) pass(content any) error { // nil, []byte, *os.File
+func (r *fcgiRequest) sync(req Request) error {
 	return nil
 }
 
@@ -241,17 +242,43 @@ type fcgiResponse struct {
 	conn   PConn
 	exchan *fcgiExchan
 	// States (buffers)
-	stockInput [2048]byte
-	stockArray [1024]byte
+	stockInput   [2048]byte // for fcgi response headers
+	stockHeaders [32]fcgiHeader
+	// States (controlled)
+	header fcgiHeader // to overcome ...
 	// States (non-zeros)
-	input []byte
-	array []byte
+	input          []byte
+	headers        []fcgiHeader
+	contentSize    int64
+	maxRecvTimeout time.Duration
+	headResult     int16
+	// States (zeros)
+	headReason  string
+	inputEdge   int32
+	bodyWindow  []byte
+	recvTime    time.Time
+	bodyTime    time.Time
+	contentBlob []byte
+	contentHeld *os.File
+	fcgiResponse0
+}
+type fcgiResponse0 struct {
+	pBack           int16
+	pFore           int16
+	receiving       int8
+	status          int16
+	contentReceived bool
+	contentBlobKind int8
+	maxContentSize  int64
+	sizeReceived    int64
+	indexes         struct {
+		xPoweredBy uint8
+	}
 }
 
 func (r *fcgiResponse) onUse(conn PConn) {
 	r.conn = conn
 	r.input = r.stockInput[:]
-	r.array = r.stockArray[:]
 }
 func (r *fcgiResponse) onEnd() {
 	r.conn = nil
@@ -259,20 +286,44 @@ func (r *fcgiResponse) onEnd() {
 
 func (r *fcgiResponse) recvHead() {
 }
+
 func (r *fcgiResponse) addHeader() bool {
 	return false
 }
-func (r *fcgiResponse) checkHead() bool {
-	return false
+func (r *fcgiResponse) walkHeaders() {
 }
 
-func (r *fcgiResponse) walkHeaders() {
+var (
+	fcgiResponseCriticalHeaderNames = []byte("todo")
+	fcgiResponseCriticalHeaderTable = [1]struct {
+		hash  uint8
+		from  uint8
+		edge  uint8
+		check func(*fcgiResponse, *fcgiHeader, uint8) bool
+	}{
+		0: {123, 0, 4, (*fcgiResponse).checkTransferEncoding},
+	}
+	fcgiResponseCriticalHeaderFind = func(hash uint8) int { return 0 }
+)
+
+func (r *fcgiResponse) checkTransferEncoding(header *fcgiHeader, index uint8) bool {
+	return true
+}
+func (r *fcgiResponse) checkContentLength(header *fcgiHeader, index uint8) bool {
+	return true
+}
+
+func (r *fcgiResponse) cleanInput() {
+}
+
+func (r *fcgiResponse) checkHead() bool {
+	return false
 }
 
 func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
 }
 
-func (r *fcgiResponse) readContent() (from int, edge int, err error) {
+func (r *fcgiResponse) readContent() (p []byte, err error) {
 	return
 }
 
@@ -289,3 +340,24 @@ func (r *fcgiResponse) newTempFile() {
 func (r *fcgiResponse) beforeRead() error {
 	return nil
 }
+
+// fcgiHeader
+type fcgiHeader struct {
+	nameHash  uint8
+	nameSize  uint8
+	nameFrom  uint16
+	valueFrom uint16
+	valueEdge uint16
+}
+
+const (
+	fcgiHashContentLength    = 170
+	fcgiHashContentType      = 234
+	fcgiHashTransferEncoding = 217
+)
+
+var (
+	fcgiBytesContentLength    = []byte("content-length")
+	fcgiBytesContentType      = []byte("content-type")
+	fcgiBytesTransferEncoding = []byte("transfer-encoding")
+)

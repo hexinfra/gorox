@@ -83,7 +83,7 @@ Community
 Contact
 =======
 
-  Gorox is originally written by Jingcheng Zhang <diogin@gmail.com>.
+  Gorox is originally written by Zhang Jingcheng <diogin@gmail.com>.
   You can also contact him through Twitter: @diogin.
 
   The official website of the Gorox project is at:

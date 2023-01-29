@@ -13,6 +13,8 @@ const (
 	fcgiNullID    = 0 // request id for management records
 	fcgiResponder = 1 // traditional cgi role
 	fcgiComplete  = 0 // protocol status ok
+	fcgiMaxParams = 8 + 16384
+	fcgiMaxRecord = 8 + 65535 + 255
 )
 
 const ( // request record types
@@ -21,13 +23,7 @@ const ( // request record types
 	fcgiTypeStdin        = 5
 )
 
-const ( // response record types
-	fcgiTypeStdout     = 6
-	fcgiTypeStderr     = 7
-	fcgiTypeEndRequest = 3
-)
-
-var ( // begin request records
+var ( // predefined request records
 	fcgiBeginKeepConn = []byte{
 		fcgiVersion,
 		fcgiTypeBeginRequest,
@@ -50,4 +46,24 @@ var ( // begin request records
 		0,             // flags=dontKeep
 		0, 0, 0, 0, 0, // reserved
 	}
+	fcgiEndParams = []byte{
+		fcgiVersion,
+		fcgiTypeParams,
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0 & reserved
+	}
+	fcgiEndStdin = []byte{
+		fcgiVersion,
+		fcgiTypeStdin,
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0 & reserved
+	}
+)
+
+const ( // response record types
+	fcgiTypeStdout     = 6
+	fcgiTypeStderr     = 7
+	fcgiTypeEndRequest = 3
 )

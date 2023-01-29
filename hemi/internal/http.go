@@ -140,6 +140,7 @@ type httpInMessage0_ struct { // for fast reset, entirely
 	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	upgradeSocket    bool  // upgrade: websocket?
 	receiving        int8  // currently receiving. see httpSectionXXX
+	hasRevisers      bool  // are there any revisers hooked on this incoming message?
 	contentReceived  bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	maxContentSize   int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
@@ -1164,6 +1165,7 @@ type httpOutMessage_ struct {
 type httpOutMessage0_ struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
+	hasRevisers   bool   // are there any revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
@@ -1455,9 +1457,9 @@ func (r *httpOutMessage_) pass(content any, hasTrailers bool) error { // used by
 		return r.sendBlob(nil)
 	}
 }
-func (r *httpOutMessage_) _sync(in httpInMessage, revise bool) error { // used by proxes, to sync content directly
+func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to sync content directly
 	sync := r.shell.syncBytes
-	if size := in.ContentSize(); size == -2 || revise { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
+	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
 		sync = r.PushBytes
 	} else { // size >= 0
 		r.isSent = true

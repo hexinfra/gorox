@@ -452,7 +452,6 @@ type httpRequest0_ struct { // for fast reset, entirely
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
-	hasRevisers  bool      // are there any revisers hooked on this request?
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
@@ -2419,7 +2418,6 @@ type httpResponse_ struct {
 }
 type httpResponse0_ struct { // for fast reset, entirely
 	revisers      [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	hasRevisers   bool      // are there any revisers hooked on this response?
 	oExpires      uint8     // ...
 	oLastModified uint8     // ...
 }
@@ -2707,9 +2705,6 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	}
 
 	return true
-}
-func (r *httpResponse_) sync(resp httpInMessage) error { // used by proxies
-	return r._sync(resp, r.hasRevisers)
 }
 
 func (r *httpResponse_) endChunked() error {

@@ -364,9 +364,6 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 
 	return true
 }
-func (r *hRequest_) sync(req httpInMessage) error { // used by proxies
-	return r._sync(req, false) // no revisers in client side
-}
 
 func (r *hRequest_) endChunked() error {
 	if r.stream.isBroken() {

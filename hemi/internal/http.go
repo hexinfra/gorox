@@ -55,27 +55,27 @@ type stream_ struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	region region // a region-based memory pool
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 	httpMode int8 // http mode of current stream. see httpModeXXX
 }
 
 func (s *stream_) onUse() { // for non-zeros
-	s.region.init()
+	s.region.Init()
 	s.httpMode = httpModeNormal
 }
 func (s *stream_) onEnd() { // for zeros
-	s.region.free()
+	s.region.Free()
 }
 
 func (s *stream_) smallBuffer() []byte        { return s.stockBuffer[:] }
-func (s *stream_) unsafeMake(size int) []byte { return s.region.alloc(size) }
+func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpInMessage is a Request or response, used as shell by httpInMessage_.
 type httpInMessage interface {
 	applyHeader(header *pair) bool
 	ContentSize() int64
-	readContent() (p []byte, err error)
+	ReadContent() (p []byte, err error)
 	UnsafeContent() []byte
 	HasTrailers() bool
 	applyTrailer(trailer *pair) bool
@@ -685,7 +685,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 	}
 	var p []byte
 	for {
-		p, err = r.shell.readContent()
+		p, err = r.shell.ReadContent()
 		if len(p) > 0 { // skip 0, don't write
 			if _, e := content.Write(p); e != nil {
 				err = e
@@ -1237,12 +1237,6 @@ func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
 	}
 	return r.shell.kickHeader(hash, lower)
 }
-func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
-	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
-		return
-	}
-	return r._growFields(size)
-}
 func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) {
 	n := len(name)
 	if n == 0 || n > 255 {
@@ -1427,40 +1421,11 @@ func (r *httpOutMessage_) AddTrailerBytesByBytes(name []byte, value []byte) bool
 	}
 	return r.shell.addTrailer(name, value)
 }
-func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
-	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
-		return
-	}
-	return r._growFields(size)
-}
 
-func (r *httpOutMessage_) pass(content any, hasTrailers bool) error { // used by proxies, to pass held content
-	if contentFile, ok := content.(*os.File); ok {
-		fileInfo, err := contentFile.Stat()
-		if err != nil {
-			contentFile.Close()
-			return err
-		}
-		if hasTrailers { // we must use chunked
-			return r.pushFile(contentFile, fileInfo, false) // false to avoid twice close()
-		} else {
-			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
-		}
-	} else if contentBlob, ok := content.([]byte); ok {
-		if hasTrailers { // if we supports holding chunked content in buffer, this happens
-			return r.pushBlob(contentBlob)
-		} else {
-			return r.sendBlob(contentBlob)
-		}
-		return r.sendBlob(contentBlob)
-	} else { // nil means no content, but we have to send, so send nil.
-		return r.sendBlob(nil)
-	}
-}
 func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to sync content directly
-	sync := r.shell.syncBytes
+	pass := r.shell.syncBytes
 	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
-		sync = r.PushBytes
+		pass = r.PushBytes
 	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
@@ -1469,9 +1434,9 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 		}
 	}
 	for {
-		p, err := in.readContent()
+		p, err := in.ReadContent()
 		if len(p) >= 0 {
-			if e := sync(p); e != nil {
+			if e := pass(p); e != nil {
 				return e
 			}
 		}
@@ -1491,7 +1456,41 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 	}
 	return nil
 }
+func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
+	if contentFile, ok := content.(*os.File); ok {
+		fileInfo, err := contentFile.Stat()
+		if err != nil {
+			contentFile.Close()
+			return err
+		}
+		if hasTrailers { // we must use chunked
+			return r.pushFile(contentFile, fileInfo, false) // false to avoid twice close()
+		} else {
+			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
+		}
+	} else if contentBlob, ok := content.([]byte); ok {
+		if hasTrailers { // if (in the future) we supports holding chunked content in buffer, this happens
+			return r.pushBlob(contentBlob)
+		} else {
+			return r.sendBlob(contentBlob)
+		}
+	} else { // nil means no content, but we have to send, so send nil.
+		return r.sendBlob(nil)
+	}
+}
 
+func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
+	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
+		return
+	}
+	return r._growFields(size)
+}
+func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
+	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
+		return
+	}
+	return r._growFields(size)
+}
 func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")

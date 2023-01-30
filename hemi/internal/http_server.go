@@ -321,6 +321,7 @@ type Request interface {
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 	HoldContent() any
+	ReadContent() (p []byte, err error)
 
 	F(name string) string
 	Fstr(name string, defaultValue string) string
@@ -379,7 +380,6 @@ type Request interface {
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
-	readContent() (p []byte, err error)
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool
 	arrayCopy(p []byte) bool
@@ -2395,7 +2395,7 @@ type Response interface {
 	finalizeChunked() error
 	sync1xx(resp response) bool               // used by proxies
 	sync(resp httpInMessage) error            // used by proxies
-	pass(content any, hasTrailers bool) error // used by proxies
+	post(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }

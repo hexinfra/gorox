@@ -8,7 +8,7 @@
 /*
 
 --http[1-3]Stream-->                        ----H[1-3]Stream--->
-[REVISERS]      ^    -------sync/pass----->                 ^
+[REVISERS]      ^    -------sync/post----->                 ^
                 |                                           |
 httpInMessage_  | stream                    httpOutMessage_ | stream
 ^ - stream -----+                           ^ - stream -----+
@@ -27,7 +27,7 @@ httpInMessage_  | stream                    httpOutMessage_ | stream
                 /          /         \
                           /           \
 <--http[1-3]Stream--                        <---H[1-3]Stream----
-[REVISERS]       ^   <------sync/pass------                ^
+[REVISERS]       ^   <------sync/post------                ^
                  |                                         |
 httpOutMessage_  | stream                   httpInMessage_ | stream
 ^ - stream ------+                          ^ - stream ----+

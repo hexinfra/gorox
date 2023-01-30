@@ -378,6 +378,7 @@ type response interface {
 	ContentSize() int64
 	UnsafeContentType() []byte
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against bad server
+	ReadContent() (p []byte, err error)
 	HasTrailers() bool
 
 	unsafeDate() []byte
@@ -388,7 +389,6 @@ type response interface {
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
-	readContent() (p []byte, err error)
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

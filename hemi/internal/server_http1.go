@@ -1035,7 +1035,7 @@ func (r *http1Request) cleanInput() {
 	}
 }
 
-func (r *http1Request) readContent() (p []byte, err error) {
+func (r *http1Request) ReadContent() (p []byte, err error) {
 	return r.readContent1()
 }
 

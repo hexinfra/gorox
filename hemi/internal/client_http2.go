@@ -328,8 +328,8 @@ func (s *H2Stream) readFull(p []byte) (int, error) { // for content only
 	return 0, nil
 }
 
-func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
-func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H2Request is the client-side HTTP/2 request.
 type H2Request struct {
@@ -437,7 +437,7 @@ func (r *H2Response) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *H2Response) readContent() (p []byte, err error) {
+func (r *H2Response) ReadContent() (p []byte, err error) {
 	return r.readContent2()
 }
 

@@ -13,8 +13,6 @@ const (
 	fcgiNullID    = 0 // request id for management records
 	fcgiResponder = 1 // traditional cgi role
 	fcgiComplete  = 0 // protocol status ok
-	fcgiMaxParams = 8 + 16384
-	fcgiMaxRecord = 8 + 65535 + 255
 )
 
 const ( // request record types
@@ -24,36 +22,40 @@ const ( // request record types
 )
 
 var ( // predefined request records
-	fcgiBeginKeepConn = []byte{
+	fcgiBeginKeepConn = []byte{ // 16 bytes
+		// header
 		fcgiVersion,
 		fcgiTypeBeginRequest,
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 8, // content length = 8
 		0, 0, // padding length = 0 & reserved
-
+		// content
 		0, fcgiResponder, // role
 		1,             // flags=keepConn
 		0, 0, 0, 0, 0, // reserved
 	}
-	fcgiBeginDontKeep = []byte{
+	fcgiBeginDontKeep = []byte{ // 16 bytes
+		// header
 		fcgiVersion,
 		fcgiTypeBeginRequest,
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 8, // content length = 8
 		0, 0, // padding length = 0 & reserved
-
+		// content
 		0, fcgiResponder, // role
 		0,             // flags=dontKeep
 		0, 0, 0, 0, 0, // reserved
 	}
-	fcgiEndParams = []byte{
+	fcgiEndParams = []byte{ // 8 bytes
+		// header
 		fcgiVersion,
 		fcgiTypeParams,
 		0, 1, // request id = 1
 		0, 0, // content length = 0
 		0, 0, // padding length = 0 & reserved
 	}
-	fcgiEndStdin = []byte{
+	fcgiEndStdin = []byte{ // 8 bytes
+		// header
 		fcgiVersion,
 		fcgiTypeStdin,
 		0, 1, // request id = 1

@@ -9,6 +9,7 @@ package fcgi
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -28,6 +29,7 @@ type fcgiProxy struct {
 	// Mixins
 	Handlet_
 	// Assocs
+
 	stage   *Stage
 	app     *App
 	backend PBackend // *TCPSBackend or *UnixBackend
@@ -41,6 +43,8 @@ type fcgiProxy struct {
 	delRequestHeaders   [][]byte    // client request headers to delete
 	addResponseHeaders  [][2][]byte // headers appended to server response
 	delResponseHeaders  [][]byte    // server response headers to delete
+	maxSendTimeout      time.Duration
+	maxRecvTimeout      time.Duration
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
@@ -117,7 +121,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		defer conn.Close()
 	}
 
-	stream := getFCGIStream(conn)
+	stream := getFCGIStream(h, conn)
 	defer putFCGIStream(stream)
 
 	fReq, fResp := &stream.request, &stream.response
@@ -142,14 +146,18 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 // poolFCGIStream
 var poolFCGIStream sync.Pool
 
-func getFCGIStream(conn PConn) *fcgiStream {
+func getFCGIStream(proxy *fcgiProxy, conn PConn) *fcgiStream {
 	var stream *fcgiStream
 	if x := poolFCGIStream.Get(); x == nil {
 		stream = new(fcgiStream)
+		req, resp := &stream.request, &stream.response
+		req.stream = stream
+		req.response = resp
+		resp.stream = stream
 	} else {
 		stream = x.(*fcgiStream)
 	}
-	stream.onUse(conn)
+	stream.onUse(proxy, conn)
 	return stream
 }
 func putFCGIStream(stream *fcgiStream) {
@@ -163,26 +171,32 @@ type fcgiStream struct {
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
 	// Stream states (buffers)
-	stockStack [64]byte
+	stockBuffer [256]byte
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn PConn
+	proxy  *fcgiProxy // associated proxy
+	conn   PConn      // associated conn
+	region Region     // a region-based memory pool
+	// Stream states (zeros)
 }
 
-func (s *fcgiStream) onUse(conn PConn) {
+func (s *fcgiStream) onUse(proxy *fcgiProxy, conn PConn) {
+	s.proxy = proxy
 	s.conn = conn
+	s.region.Init()
 	s.request.onUse()
 	s.response.onUse()
 }
 func (s *fcgiStream) onEnd() {
 	s.request.onEnd()
 	s.response.onEnd()
+	s.region.Free()
 	s.conn = nil
+	s.proxy = nil
 }
 
-func (s *fcgiStream) smallStack() []byte {
-	return s.stockStack[:]
-}
+func (s *fcgiStream) smallBuffer() []byte        { return s.stockBuffer[:] }
+func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *fcgiStream) setWriteDeadline(deadline time.Time) error {
 	return nil
@@ -194,8 +208,20 @@ func (s *fcgiStream) setReadDeadline(deadline time.Time) error {
 func (s *fcgiStream) write(p []byte) (int, error) {
 	return s.conn.Write(p)
 }
+func (s *fcgiStream) writev(vector *net.Buffers) (int64, error) {
+	return s.conn.Writev(vector)
+}
 func (s *fcgiStream) read(p []byte) (int, error) {
 	return s.conn.Read(p)
+}
+func (s *fcgiStream) readFull(p []byte) (int, error) {
+	return s.conn.ReadFull(p)
+}
+
+func (s *fcgiStream) isBroken() bool {
+	return false
+}
+func (s *fcgiStream) markBroken() {
 }
 
 // fcgiRequest
@@ -207,27 +233,41 @@ type fcgiRequest struct {
 	stockParams [1536]byte
 	// States (non-zeros)
 	params         []byte
+	contentSize    int64
 	maxSendTimeout time.Duration
 	// States (zeros)
-	sendTime    time.Time
-	vector      net.Buffers
-	fixedVector [4][]byte
+	sendTime    time.Time   // the time when first send operation is performed
+	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
+	fixedVector [4][]byte   // for sending/pushing request. reset after stream. 96B
 	fcgiRequest0
 }
 type fcgiRequest0 struct {
+	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= fcgiMaxParams.
+	isSent        bool   // whether the request is sent
+	forbidContent bool   // forbid content?
+	forbidFraming bool   // forbid content-length and transfer-encoding?
 }
 
 func (r *fcgiRequest) onUse() {
 	r.params = r.stockParams[:]
+	r.contentSize = -1 // not set
+	r.maxSendTimeout = r.stream.proxy.maxSendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
 		putFCGIParams(r.params)
 		r.params = nil
 	}
+	r.sendTime = time.Time{}
+	r.vector = nil
+	r.fixedVector = [4][]byte{}
+	r.fcgiRequest0 = fcgiRequest0{}
 }
 
 func (r *fcgiRequest) copyHead(req Request) bool {
+	return false
+}
+func (r *fcgiRequest) addParam(name []byte, value []byte) bool {
 	return false
 }
 
@@ -235,11 +275,62 @@ func (r *fcgiRequest) setMaxSendTimeout(timeout time.Duration) {
 	r.maxSendTimeout = timeout
 }
 
-func (r *fcgiRequest) pass(content any) error { // nil, []byte, *os.File
+func (r *fcgiRequest) sendBlob(content []byte) error {
 	return nil
 }
-func (r *fcgiRequest) sync(req Request) error {
+func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	return nil
+}
+func (r *fcgiRequest) pushBlob(chunk []byte) error {
+	return nil
+}
+
+func (r *fcgiRequest) sync(req Request) error {
+	pass := r.syncBytes
+	if size := req.ContentSize(); size == -2 {
+		pass = r.pushBlob
+	} else { // size >= 0
+		r.isSent = true
+		r.contentSize = size
+		if err := r.syncHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := req.ReadContent()
+		if len(p) >= 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return nil
+}
+func (r *fcgiRequest) syncBytes(p []byte) error {
+	return nil
+}
+func (r *fcgiRequest) syncHeaders() error {
+	return nil
+}
+func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File
+	if contentFile, ok := content.(*os.File); ok {
+		fileInfo, err := contentFile.Stat()
+		if err != nil {
+			contentFile.Close()
+			return err
+		}
+		return r.sendFile(contentFile, fileInfo)
+	} else if contentBlob, ok := content.([]byte); ok {
+		return r.sendBlob(contentBlob)
+	} else {
+		return r.sendBlob(nil)
+	}
 }
 
 func (r *fcgiRequest) growParams(size int) (from int, edge int, ok bool) {
@@ -252,6 +343,8 @@ func (r *fcgiRequest) beforeWrite() error {
 
 // poolFCGIParams
 var poolFCGIParams sync.Pool
+
+const fcgiMaxParams = 8 + 16384
 
 func getFCGIParams() []byte {
 	if x := poolFCGIParams.Get(); x == nil {
@@ -283,37 +376,61 @@ type fcgiResponse struct {
 	maxRecvTimeout time.Duration
 	headResult     int16
 	// States (zeros)
-	headReason  string
-	inputEdge   int32
-	bodyWindow  []byte
-	recvTime    time.Time
-	bodyTime    time.Time
-	contentBlob []byte
-	contentHeld *os.File
-	fcgiResponse0
+	headReason    string    // the reason of head result
+	inputEdge     int32     // edge position of current response
+	bodyWindow    []byte    // a window used for receiving content
+	recvTime      time.Time // the time when receiving response
+	bodyTime      time.Time // the time when first body read operation is performed on this stream
+	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.sizeReceived]
+	contentHeld   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
+	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct {
-	pBack           int16
-	pFore           int16
-	receiving       int8
+	pBack           int16 // element begins from. for parsing
+	pFore           int16 // element spanning to. for parsing
 	status          int16
+	receiving       int8
 	contentReceived bool
 	contentBlobKind int8
 	maxContentSize  int64
 	sizeReceived    int64
 	indexes         struct {
-		xPoweredBy uint8
+		contentType uint8
+		xPoweredBy  uint8
 	}
 }
 
 func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
+	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
+	r.contentSize = -1
+	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.input) != cap(r.stockInput) {
 		putFCGIInput(r.input)
-		r.input = nil
+		r.input, r.inputEdge = nil, 0
 	}
+	if cap(r.headers) != cap(r.stockHeaders) {
+		// TODO: put
+		r.headers = nil
+	}
+	r.headReason = ""
+	if r.bodyWindow != nil {
+		// TODO: put
+		r.bodyWindow = nil
+	}
+	r.recvTime = time.Time{}
+	r.bodyTime = time.Time{}
+	if r.contentHeld != nil {
+		r.contentHeld.Close()
+		os.Remove(r.contentHeld.Name())
+		r.contentHeld = nil
+		if IsDebug(2) {
+			Debugln("contentHeld is closed and removed!!")
+		}
+	}
+	r.fcgiResponse0 = fcgiResponse0{}
 }
 
 func (r *fcgiResponse) recvHead() {
@@ -365,6 +482,7 @@ func (r *fcgiResponse) cleanInput() {
 }
 
 func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
+	r.maxRecvTimeout = timeout
 }
 
 func (r *fcgiResponse) hasContent() bool {
@@ -379,12 +497,6 @@ func (r *fcgiResponse) holdContent() any {
 }
 func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or TempFile (for large content)
 	return nil
-}
-
-func (r *fcgiResponse) arrayPush(b byte) {
-}
-func (r *fcgiResponse) arrayCopy(p []byte) bool {
-	return false
 }
 
 func (r *fcgiResponse) addHeader(header *fcgiHeader) (edge uint8, ok bool) {
@@ -403,6 +515,8 @@ func (r *fcgiResponse) beforeRead() error {
 // poolFCGIInput
 var poolFCGIInput sync.Pool
 
+const fcgiMaxRecord = 8 + 65535 + 255
+
 func getFCGIInput() []byte {
 	if x := poolFCGIInput.Get(); x == nil {
 		return make([]byte, fcgiMaxRecord)
@@ -417,8 +531,8 @@ func putFCGIInput(input []byte) {
 	poolFCGIInput.Put(input)
 }
 
-// fcgiHeader
-type fcgiHeader struct {
+// fcgiHeader is a header in fcgi response.
+type fcgiHeader struct { // 8 bytes
 	nameHash  uint8
 	nameSize  uint8
 	nameFrom  uint16
@@ -426,13 +540,13 @@ type fcgiHeader struct {
 	valueEdge uint16
 }
 
-const (
+const ( // response header hashes
 	fcgiHashContentLength    = 170
 	fcgiHashContentType      = 234
 	fcgiHashTransferEncoding = 217
 )
 
-var (
+var ( // response header bytes
 	fcgiBytesContentLength    = []byte("content-length")
 	fcgiBytesContentType      = []byte("content-type")
 	fcgiBytesTransferEncoding = []byte("transfer-encoding")

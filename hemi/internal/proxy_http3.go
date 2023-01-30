@@ -100,7 +100,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	hasTrailers := req.HasTrailers()
 	if !hasContent || h.bufferClientContent {
-		err3 = req3.pass(content, hasTrailers) // nil (no content), []byte, TempFile
+		err3 = req3.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err3 == nil && hasTrailers {
 			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req3.addTrailer(name, value)
@@ -167,7 +167,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	hasTrailers3 := resp3.HasTrailers()
 	if !hasContent3 || h.bufferServerContent {
-		if resp.pass(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
+		if resp.post(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
 			if hasTrailers3 {
 				stream3.markBroken()
 			}

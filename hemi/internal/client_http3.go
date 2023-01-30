@@ -300,8 +300,8 @@ func (s *H3Stream) readFull(p []byte) (int, error) { // for content only
 	return 0, nil
 }
 
-func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
-func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H3Request is the client-side HTTP/3 request.
 type H3Request struct {
@@ -409,7 +409,7 @@ func (r *H3Response) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *H3Response) readContent() (p []byte, err error) {
+func (r *H3Response) ReadContent() (p []byte, err error) {
 	return r.readContent3()
 }
 

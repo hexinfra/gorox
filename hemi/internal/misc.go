@@ -557,19 +557,19 @@ func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
 func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
 func (f _fakeFile) Close() error                           { return nil }
 
-// region
-type region struct { // 512B
+// Region
+type Region struct { // 512B
 	blocks [][]byte  // the blocks. [<stocks>/make]
 	stocks [4][]byte // for blocks. 96B
 	block0 [392]byte // for blocks[0]
 }
 
-func (r *region) init() {
+func (r *Region) Init() {
 	r.blocks = r.stocks[0:1:cap(r.stocks)]                    // block0 always at 0
 	r.stocks[0] = r.block0[:]                                 // first block is always block0
 	binary.BigEndian.PutUint16(r.block0[cap(r.block0)-2:], 0) // reset used size of block0
 }
-func (r *region) alloc(size int) []byte { // good for a lot of small buffers
+func (r *Region) Make(size int) []byte { // good for a lot of small buffers
 	if size <= 0 {
 		BugExitln("bad size")
 	}
@@ -594,7 +594,7 @@ func (r *region) alloc(size int) []byte { // good for a lot of small buffers
 	r.blocks = append(r.blocks, block)
 	return block[0:size]
 }
-func (r *region) free() {
+func (r *Region) Free() {
 	for i := 1; i < len(r.blocks); i++ {
 		PutNK(r.blocks[i])
 		r.blocks[i] = nil

@@ -919,8 +919,8 @@ func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 	return 0, nil
 }
 
-func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
-func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct {
@@ -943,7 +943,7 @@ func (r *http2Request) addHeaders(p []byte) bool {
 	return true
 }
 
-func (r *http2Request) readContent() (p []byte, err error) {
+func (r *http2Request) ReadContent() (p []byte, err error) {
 	return r.readContent2()
 }
 

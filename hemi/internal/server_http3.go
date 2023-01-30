@@ -328,8 +328,8 @@ func (s *http3Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 	return 0, nil
 }
 
-func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
-func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct {
@@ -346,7 +346,7 @@ func (r *http3Request) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *http3Request) readContent() (p []byte, err error) {
+func (r *http3Request) ReadContent() (p []byte, err error) {
 	return r.readContent3()
 }
 

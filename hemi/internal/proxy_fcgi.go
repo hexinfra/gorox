@@ -5,10 +5,17 @@
 
 // FCGI proxy handlets pass requests to backend FCGI servers and cache responses.
 
-package fcgi
+// FCGI (FastCGI) is mainly for PHP applications.
+
+// FCGI uses a framing protocol like HTTP/2, so "content-length" is not required.
+// It relies on framing protocol to decide when or where the content is finished.
+// So, FCGI allows chunked content in HTTP, and we are not obliged to buffer content.
+
+// But, FCGI does not support HTTP trailers.
+
+package internal
 
 import (
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"io"
 	"net"
 	"os"
@@ -102,36 +109,42 @@ func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	var (
-		conn PConn
-		err  error
+		content  any
+		fContent any
+		fErr     error
+		fConn    PConn
 	)
+
+	hasContent := req.HasContent()
+	if hasContent && h.bufferClientContent { // including size 0
+		content = req.HoldContent()
+		if content == nil {
+			resp.SetStatus(StatusBadRequest)
+			resp.SendBytes(nil)
+			return
+		}
+	}
+
 	if h.keepConn { // FCGI_KEEP_CONN=1
-		conn, err = h.backend.FetchConn()
-		if err != nil {
+		fConn, fErr = h.backend.FetchConn()
+		if fErr != nil {
 			resp.SendBadGateway(nil)
 			return
 		}
-		defer h.backend.StoreConn(conn)
+		defer h.backend.StoreConn(fConn)
 	} else { // FCGI_KEEP_CONN=0
-		conn, err = h.backend.Dial()
-		if err != nil {
+		fConn, fErr = h.backend.Dial()
+		if fErr != nil {
 			resp.SendBadGateway(nil)
 			return
 		}
-		defer conn.Close()
+		defer fConn.Close()
 	}
 
-	stream := getFCGIStream(h, conn)
-	defer putFCGIStream(stream)
+	fStream := getFCGIStream(h, fConn)
+	defer putFCGIStream(fStream)
 
-	fReq, fResp := &stream.request, &stream.response
-	_, _ = fReq, fResp
-
-	if h.keepConn {
-		// use fcgiBeginKeepConn
-	} else {
-		// use fcgiBeginDontKeep
-	}
+	fReq := &fStream.request
 
 	// TODO(diogin): Implementation
 	if h.scriptFilename == "" {
@@ -139,7 +152,69 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	} else {
 		// use h.scriptFilename as SCRIPT_FILENAME
 	}
-	resp.Send("foobar")
+	if !fReq.copyHead(req) {
+		fStream.markBroken()
+		resp.SendBadGateway(nil)
+		return
+	}
+	if !hasContent || h.bufferClientContent {
+		fErr = fReq.post(content)
+		if fErr != nil {
+			fStream.markBroken()
+		}
+	} else if fErr = fReq.sync(req); fErr != nil {
+		fStream.markBroken()
+	} else if fReq.contentSize == -2 {
+		// write last chunk?
+	}
+	if fErr != nil {
+		resp.SendBadGateway(nil)
+		return
+	}
+
+	fResp := &fStream.response
+	for { // until we found a non-1xx status (>= 200)
+		fResp.recvHead()
+		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols {
+			fStream.markBroken()
+			resp.SendBadGateway(nil)
+			return
+		}
+		if fResp.status >= StatusOK {
+			break
+		}
+		if req.VersionCode() == Version1_0 {
+			fStream.markBroken()
+			resp.SendBadGateway(nil)
+			return
+		}
+		if !resp.sync1xx(fResp) {
+			fStream.markBroken()
+			return
+		}
+		fResp.onEnd()
+		fResp.onUse()
+	}
+
+	fHasContent := false
+	if req.MethodCode() != MethodHEAD {
+		fHasContent = fResp.hasContent()
+	}
+	if fHasContent && h.bufferServerContent { // including size 0
+		fContent = fResp.holdContent()
+		if fContent == nil {
+			// fStream is marked as broken
+			resp.SendBadGateway(nil)
+			return
+		}
+	}
+	/*
+		if !resp.copyHead(fResp) {
+			fStream.markBroken()
+			return
+		}
+	*/
+
 	return
 }
 
@@ -205,18 +280,10 @@ func (s *fcgiStream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *fcgiStream) write(p []byte) (int, error) {
-	return s.conn.Write(p)
-}
-func (s *fcgiStream) writev(vector *net.Buffers) (int64, error) {
-	return s.conn.Writev(vector)
-}
-func (s *fcgiStream) read(p []byte) (int, error) {
-	return s.conn.Read(p)
-}
-func (s *fcgiStream) readFull(p []byte) (int, error) {
-	return s.conn.ReadFull(p)
-}
+func (s *fcgiStream) write(p []byte) (int, error)               { return s.conn.Write(p) }
+func (s *fcgiStream) writev(vector *net.Buffers) (int64, error) { return s.conn.Writev(vector) }
+func (s *fcgiStream) read(p []byte) (int, error)                { return s.conn.Read(p) }
+func (s *fcgiStream) readFull(p []byte) (int, error)            { return s.conn.ReadFull(p) }
 
 func (s *fcgiStream) isBroken() bool {
 	return false
@@ -316,6 +383,11 @@ func (r *fcgiRequest) syncBytes(p []byte) error {
 	return nil
 }
 func (r *fcgiRequest) syncHeaders() error {
+	if r.stream.proxy.keepConn {
+		// use fcgiBeginKeepConn
+	} else {
+		// use fcgiBeginDontKeep
+	}
 	return nil
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File
@@ -344,7 +416,7 @@ func (r *fcgiRequest) beforeWrite() error {
 // poolFCGIParams
 var poolFCGIParams sync.Pool
 
-const fcgiMaxParams = 8 + 16384
+const fcgiMaxParams = 8 + 16384 // header + content
 
 func getFCGIParams() []byte {
 	if x := poolFCGIParams.Get(); x == nil {
@@ -439,10 +511,13 @@ func (r *fcgiResponse) _recvRecord() {
 	// TODO: use getFCGIInput
 }
 
+func (r *fcgiResponse) Status() int16 {return r.status}
+
 func (r *fcgiResponse) applyHeader() bool {
 	return false
 }
-func (r *fcgiResponse) walkHeaders() {
+func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return false
 }
 
 var ( // perfect hash table for response critical headers
@@ -465,12 +540,22 @@ func (r *fcgiResponse) checkContentLength(header *fcgiHeader, index uint8) bool 
 	return true
 }
 
-func (r *fcgiResponse) contentType() string {
-	return ""
+func (r *fcgiResponse) ContentSize() int64 { return r.contentSize }
+func (r *fcgiResponse) UnsafeContentType() []byte {return nil}
+func (r *fcgiResponse) unsafeDate() []byte {
+	return nil
+}
+func (r *fcgiResponse) unsafeLastModified() []byte {
+	return nil
+}
+func (r *fcgiResponse) delHopHeaders() {
 }
 
 func (r *fcgiResponse) parseSetCookie() bool {
 	// TODO
+	return false
+}
+func (r *fcgiResponse) hasSetCookies() bool {
 	return false
 }
 
@@ -481,22 +566,29 @@ func (r *fcgiResponse) checkHead() bool {
 func (r *fcgiResponse) cleanInput() {
 }
 
-func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
+func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
 
 func (r *fcgiResponse) hasContent() bool {
 	return false
 }
-func (r *fcgiResponse) readContent(retain bool) (p []byte, err error) {
+func (r *fcgiResponse) ReadContent() (p []byte, err error) {
 	return
 }
 
 func (r *fcgiResponse) holdContent() any {
 	return nil
 }
-func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or TempFile (for large content)
+func (r *fcgiResponse) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	return nil
+}
+
+func (r *fcgiResponse) HasTrailers() bool {return false}
+func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return false
+}
+func (r *fcgiResponse) delHopTrailers() {
 }
 
 func (r *fcgiResponse) addHeader(header *fcgiHeader) (edge uint8, ok bool) {
@@ -515,7 +607,7 @@ func (r *fcgiResponse) beforeRead() error {
 // poolFCGIInput
 var poolFCGIInput sync.Pool
 
-const fcgiMaxRecord = 8 + 65535 + 255
+const fcgiMaxRecord = 8 + 65535 + 255 // header + content + padding
 
 func getFCGIInput() []byte {
 	if x := poolFCGIInput.Get(); x == nil {
@@ -550,4 +642,73 @@ var ( // response header bytes
 	fcgiBytesContentLength    = []byte("content-length")
 	fcgiBytesContentType      = []byte("content-type")
 	fcgiBytesTransferEncoding = []byte("transfer-encoding")
+)
+
+// FCGI protocol.
+
+// FCGI Record = FCGI Header(8) + content + padding
+// FCGI Header = version(1) + type(1) + requestId(2) + contentLength(2) + paddingLength(1) + reserved(1)
+
+// Discrete records are standalone.
+// Stream records end with an empty record (contentLength=0).
+
+const (
+	fcgiVersion   = 1 // fcgi protocol version
+	fcgiResponder = 1 // traditional cgi role
+	fcgiComplete  = 0 // protocol status ok
+)
+
+const ( // request record types
+	fcgiTypeBeginRequest = 1
+	fcgiTypeParams       = 4
+	fcgiTypeStdin        = 5
+)
+
+var ( // predefined request records
+	fcgiBeginKeepConn = []byte{ // 16 bytes
+		// header
+		fcgiVersion,
+		fcgiTypeBeginRequest,
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
+		0, 8, // content length = 8
+		0, 0, // padding length = 0 & reserved
+		// content
+		0, fcgiResponder, // role
+		1,             // flags=keepConn
+		0, 0, 0, 0, 0, // reserved
+	}
+	fcgiBeginDontKeep = []byte{ // 16 bytes
+		// header
+		fcgiVersion,
+		fcgiTypeBeginRequest,
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
+		0, 8, // content length = 8
+		0, 0, // padding length = 0 & reserved
+		// content
+		0, fcgiResponder, // role
+		0,             // flags=dontKeep
+		0, 0, 0, 0, 0, // reserved
+	}
+	fcgiEndParams = []byte{ // 8 bytes
+		// header
+		fcgiVersion,
+		fcgiTypeParams,
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0 & reserved
+	}
+	fcgiEndStdin = []byte{ // 8 bytes
+		// header
+		fcgiVersion,
+		fcgiTypeStdin,
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0 & reserved
+	}
+)
+
+const ( // response record types
+	fcgiTypeStdout     = 6
+	fcgiTypeStderr     = 7
+	fcgiTypeEndRequest = 3
 )

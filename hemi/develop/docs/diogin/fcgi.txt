@@ -1,5 +1,0 @@
-fcgi 使用类似于 http/2 的 framing protocol，因此可以不需要 content-length，
-而是由 framing protocol 来决定当前请求或响应是否结束。
-
-因此，fcgi 支持 http/1.1 chunked 传输方式。
-但是，fcgi 不支持 trailers。

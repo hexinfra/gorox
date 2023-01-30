@@ -385,10 +385,10 @@ type response interface {
 	unsafeLastModified() []byte
 	hasSetCookies() bool
 	delHopHeaders()
-	delHopTrailers()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	recvContent(retain bool) any
+	delHopTrailers()
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

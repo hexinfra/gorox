@@ -320,8 +320,6 @@ type Request interface {
 	HasContent() bool
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
-	HoldContent() any
-	ReadContent() (p []byte, err error)
 
 	F(name string) string
 	Fstr(name string, defaultValue string) string
@@ -379,6 +377,8 @@ type Request interface {
 	unsetHost()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	readContent() (p []byte, err error)
+	holdContent() any
 	recvContent(retain bool) any
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool

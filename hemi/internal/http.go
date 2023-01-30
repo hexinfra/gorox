@@ -75,7 +75,7 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 type httpInMessage interface {
 	applyHeader(header *pair) bool
 	ContentSize() int64
-	ReadContent() (p []byte, err error)
+	readContent() (p []byte, err error)
 	UnsafeContent() []byte
 	HasTrailers() bool
 	applyTrailer(trailer *pair) bool
@@ -117,7 +117,7 @@ type httpInMessage_ struct {
 	recvTime        time.Time // the time when receiving message
 	bodyTime        time.Time // the time when first body read operation is performed on this stream
 	contentBlob     []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentHeld     *os.File  // used by r.HoldContent(), if content is TempFile. will be closed on stream ends
+	contentHeld     *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	httpInMessage0_           // all values must be zero by default in this struct!
 }
 type httpInMessage0_ struct { // for fast reset, entirely
@@ -633,7 +633,7 @@ func (r *httpInMessage_) dropContent() {
 		r.stream.markBroken()
 	}
 }
-func (r *httpInMessage_) HoldContent() any { // used by proxies
+func (r *httpInMessage_) holdContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentHeld == nil { // content is either blob or file
 			return r.contentBlob
@@ -685,7 +685,7 @@ func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small 
 	}
 	var p []byte
 	for {
-		p, err = r.shell.ReadContent()
+		p, err = r.shell.readContent()
 		if len(p) > 0 { // skip 0, don't write
 			if _, e := content.Write(p); e != nil {
 				err = e
@@ -1434,7 +1434,7 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 		}
 	}
 	for {
-		p, err := in.ReadContent()
+		p, err := in.readContent()
 		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e

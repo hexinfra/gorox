@@ -409,7 +409,7 @@ func (r *H3Response) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *H3Response) ReadContent() (p []byte, err error) {
+func (r *H3Response) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 

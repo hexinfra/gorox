@@ -943,7 +943,7 @@ func (r *http2Request) addHeaders(p []byte) bool {
 	return true
 }
 
-func (r *http2Request) ReadContent() (p []byte, err error) {
+func (r *http2Request) readContent() (p []byte, err error) {
 	return r.readContent2()
 }
 

@@ -5,11 +5,19 @@
 
 // AJP proxy handlets pass requests to backend AJP servers and cache responses.
 
-package ajp
+// See: https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
-import (
-	. "github.com/hexinfra/gorox/hemi/internal"
-)
+// I'm not sure whether AJP supports HTTP chunked transfer.
+// If it doesn't, we have to buffer the request content.
+
+// It seems AJP does support chunked request content, see below:
+
+// Get Body Chunk
+
+// The container asks for more data from the request (If the body was too large to fit in the first packet sent over or when the request is chuncked). The server will send a body packet back with an amount of data which is the minimum of the request_length, the maximum send body size (8186 (8 Kbytes - 6)), and the number of bytes actually left to send from the request body.
+// If there is no more data in the body (i.e. the servlet container is trying to read past the end of the body), the server will send back an "empty" packet, which is a body packet with a payload length of 0. (0x12,0x34,0x00,0x00)
+
+package internal
 
 func init() {
 	RegisterHandlet("ajpProxy", func(name string, stage *Stage, app *App) Handlet {

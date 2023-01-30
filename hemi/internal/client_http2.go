@@ -437,7 +437,7 @@ func (r *H2Response) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *H2Response) ReadContent() (p []byte, err error) {
+func (r *H2Response) readContent() (p []byte, err error) {
 	return r.readContent2()
 }
 

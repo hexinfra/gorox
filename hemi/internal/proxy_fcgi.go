@@ -117,7 +117,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
-		content = req.HoldContent()
+		content = req.holdContent()
 		if content == nil {
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
@@ -364,7 +364,7 @@ func (r *fcgiRequest) sync(req Request) error {
 		}
 	}
 	for {
-		p, err := req.ReadContent()
+		p, err := req.readContent()
 		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e
@@ -511,7 +511,7 @@ func (r *fcgiResponse) _recvRecord() {
 	// TODO: use getFCGIInput
 }
 
-func (r *fcgiResponse) Status() int16 {return r.status}
+func (r *fcgiResponse) Status() int16 { return r.status }
 
 func (r *fcgiResponse) applyHeader() bool {
 	return false
@@ -540,8 +540,8 @@ func (r *fcgiResponse) checkContentLength(header *fcgiHeader, index uint8) bool 
 	return true
 }
 
-func (r *fcgiResponse) ContentSize() int64 { return r.contentSize }
-func (r *fcgiResponse) UnsafeContentType() []byte {return nil}
+func (r *fcgiResponse) ContentSize() int64        { return r.contentSize }
+func (r *fcgiResponse) UnsafeContentType() []byte { return nil }
 func (r *fcgiResponse) unsafeDate() []byte {
 	return nil
 }
@@ -573,7 +573,7 @@ func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
 func (r *fcgiResponse) hasContent() bool {
 	return false
 }
-func (r *fcgiResponse) ReadContent() (p []byte, err error) {
+func (r *fcgiResponse) readContent() (p []byte, err error) {
 	return
 }
 
@@ -584,7 +584,7 @@ func (r *fcgiResponse) recvContent(retain bool) any { // to []byte (for small co
 	return nil
 }
 
-func (r *fcgiResponse) HasTrailers() bool {return false}
+func (r *fcgiResponse) HasTrailers() bool { return false }
 func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return false
 }

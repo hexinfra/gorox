@@ -346,7 +346,7 @@ func (r *http3Request) addHeaders(p []byte) bool {
 	return false
 }
 
-func (r *http3Request) ReadContent() (p []byte, err error) {
+func (r *http3Request) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 

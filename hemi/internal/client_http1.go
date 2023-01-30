@@ -647,7 +647,7 @@ func (r *H1Response) cleanInput() {
 	}
 }
 
-func (r *H1Response) ReadContent() (p []byte, err error) {
+func (r *H1Response) readContent() (p []byte, err error) {
 	return r.readContent1()
 }
 

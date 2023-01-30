@@ -5,11 +5,15 @@
 
 // UWSGI proxy handlets pass requests to backend uWSGI servers and cache responses.
 
-package uwsgi
+// UWSGI is mainly for Python applications.
 
-import (
-	. "github.com/hexinfra/gorox/hemi/internal"
-)
+// UWSGI doesn't allow chunked content in HTTP, so we must buffer content.
+// Until the whole content is buffered, we treat it as counted instead of chunked.
+
+// UWSGI 1.9.13 seems to have solved this problem:
+// https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+
+package internal
 
 func init() {
 	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, app *App) Handlet {

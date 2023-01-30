@@ -17,7 +17,6 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/editors/tcps/redis"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/access"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/favicon"
-	_ "github.com/hexinfra/gorox/hemi/standard/handlets/gatex"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/limit"

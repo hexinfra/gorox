@@ -208,12 +208,18 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 			return
 		}
 	}
-	/*
-		if !resp.copyHead(fResp) {
-			fStream.markBroken()
+	if !resp.copyHead(fResp) {
+		fStream.markBroken()
+		return
+	}
+	if !fHasContent || h.bufferServerContent {
+		if resp.post(fContent, false) != nil {
 			return
 		}
-	*/
+	} else if err := resp.sync(fResp); err != nil {
+		fStream.markBroken()
+		return
+	}
 
 	return
 }
@@ -438,12 +444,12 @@ type fcgiResponse struct {
 	stream *fcgiStream
 	// States (buffers)
 	stockInput   [2048]byte // for fcgi response headers
-	stockHeaders [32]fcgiHeader
+	stockHeaders [32]pair
 	// States (controlled)
-	header fcgiHeader // to overcome ...
+	header pair // to overcome ...
 	// States (non-zeros)
 	input          []byte
-	headers        []fcgiHeader
+	headers        []pair
 	contentSize    int64
 	maxRecvTimeout time.Duration
 	headResult     int16
@@ -513,7 +519,7 @@ func (r *fcgiResponse) _recvRecord() {
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) applyHeader() bool {
+func (r *fcgiResponse) applyHeader(header *pair) bool {
 	return false
 }
 func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
@@ -523,20 +529,20 @@ func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byt
 var ( // perfect hash table for response critical headers
 	fcgiResponseCriticalHeaderNames = []byte("todo")
 	fcgiResponseCriticalHeaderTable = [1]struct {
-		hash  uint8
+		hash  uint16
 		from  uint8
 		edge  uint8
-		check func(*fcgiResponse, *fcgiHeader, uint8) bool
+		check func(*fcgiResponse, *pair, uint8) bool
 	}{
 		0: {123, 0, 4, (*fcgiResponse).checkTransferEncoding},
 	}
-	fcgiResponseCriticalHeaderFind = func(hash uint8) int { return 0 }
+	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return 0 }
 )
 
-func (r *fcgiResponse) checkTransferEncoding(header *fcgiHeader, index uint8) bool {
+func (r *fcgiResponse) checkTransferEncoding(header *pair, index uint8) bool {
 	return true
 }
-func (r *fcgiResponse) checkContentLength(header *fcgiHeader, index uint8) bool {
+func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
 	return true
 }
 
@@ -570,13 +576,15 @@ func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
 
+func (r *fcgiResponse) UnsafeContent() []byte {
+	return nil
+}
 func (r *fcgiResponse) hasContent() bool {
 	return false
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) {
 	return
 }
-
 func (r *fcgiResponse) holdContent() any {
 	return nil
 }
@@ -585,17 +593,28 @@ func (r *fcgiResponse) recvContent(retain bool) any { // to []byte (for small co
 }
 
 func (r *fcgiResponse) HasTrailers() bool { return false }
+func (r *fcgiResponse) applyTrailer(trailer *pair) bool {
+	return false
+}
 func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return false
 }
 func (r *fcgiResponse) delHopTrailers() {
 }
 
-func (r *fcgiResponse) addHeader(header *fcgiHeader) (edge uint8, ok bool) {
+func (r *fcgiResponse) addHeader(header *pair) (edge uint8, ok bool) {
 	return
 }
-func (r *fcgiResponse) getHeader(name string, hash uint8) (value []byte, ok bool) {
+func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok bool) {
 	return
+}
+
+func (r *fcgiResponse) arrayCopy(p []byte) bool {
+	return false
+}
+
+func (r *fcgiResponse) saveContentFilesDir() string {
+	return ""
 }
 
 func (r *fcgiResponse) newTempFile() {
@@ -622,27 +641,6 @@ func putFCGIInput(input []byte) {
 	}
 	poolFCGIInput.Put(input)
 }
-
-// fcgiHeader is a header in fcgi response.
-type fcgiHeader struct { // 8 bytes
-	nameHash  uint8
-	nameSize  uint8
-	nameFrom  uint16
-	valueFrom uint16
-	valueEdge uint16
-}
-
-const ( // response header hashes
-	fcgiHashContentLength    = 170
-	fcgiHashContentType      = 234
-	fcgiHashTransferEncoding = 217
-)
-
-var ( // response header bytes
-	fcgiBytesContentLength    = []byte("content-length")
-	fcgiBytesContentType      = []byte("content-type")
-	fcgiBytesTransferEncoding = []byte("transfer-encoding")
-)
 
 // FCGI protocol.
 

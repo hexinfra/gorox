@@ -76,9 +76,7 @@ func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) IdleTimeout() time.Duration  { return c.idleTimeout }
 
-func (c *client_) nextConnID() int64 {
-	return c.connID.Add(1)
-}
+func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
 // backend is a group of nodes.
 type backend interface {
@@ -158,14 +156,14 @@ func (b *backend_[N]) onPrepare() {
 }
 
 func (b *backend_[N]) maintain() { // goroutine
-	shut := make(chan struct{})
+	shutNodes := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1)
-		go node.maintain(shut)
+		go node.maintain(shutNodes)
 	}
-	<-b.Shut     // waiting for shutdown signal
-	close(shut)  // notify all nodes
-	b.WaitSubs() // nodes
+	<-b.Shut         // waiting for shutdown signal
+	close(shutNodes) // notify all nodes
+	b.WaitSubs()     // nodes
 	if IsDebug(2) {
 		Debugf("backend=%s done\n", b.Name())
 	}
@@ -271,9 +269,7 @@ func (c *conn_) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *conn_) isAlive() bool {
-	return time.Now().Before(c.expire)
-}
+func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 
 func (c *conn_) getNext() conn     { return c.next }
 func (c *conn_) setNext(next conn) { c.next = next }
@@ -289,11 +285,15 @@ type PBackend interface {
 // connection-oriented conn, supports TCPS and Unix.
 type PConn interface {
 	conn
+	SetWriteDeadline(deadline time.Time) error
+	SetReadDeadline(deadline time.Time) error
 	Write(p []byte) (n int, err error)
 	Writev(vector *net.Buffers) (int64, error)
 	Read(p []byte) (n int, err error)
 	ReadFull(p []byte) (n int, err error)
 	Close() error
+	IsBroken() bool
+	MarkBroken()
 }
 
 // pConn_ is a mixin for TConn and XConn.
@@ -319,12 +319,13 @@ func (c *pConn_) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *pConn_) isBroken() bool {
-	return c.writeBroken.Load() || c.readBroken.Load()
+func (c *pConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
+func (c *pConn_) MarkBroken() {
+	c.markWriteBroken()
+	c.markReadBroken()
 }
+
 func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }
 
-func (c *pConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.maxStreams
-}
+func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }

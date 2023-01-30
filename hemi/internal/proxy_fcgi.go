@@ -36,11 +36,10 @@ type fcgiProxy struct {
 	// Mixins
 	Handlet_
 	// Assocs
-
-	stage   *Stage
-	app     *App
+	stage   *Stage   // current stage
+	app     *App     // the app to which the proxy belongs
 	backend PBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher
+	cacher  Cacher   // the cache server which is used by this proxy
 	// States
 	scriptFilename      string      // ...
 	bufferClientContent bool        // ...
@@ -146,12 +145,12 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 
 	fReq := &fStream.request
 
-	// TODO(diogin): Implementation
 	if h.scriptFilename == "" {
 		// use absPath as SCRIPT_FILENAME
 	} else {
 		// use h.scriptFilename as SCRIPT_FILENAME
 	}
+
 	if !fReq.copyHead(req) {
 		fStream.markBroken()
 		resp.SendBadGateway(nil)
@@ -280,10 +279,10 @@ func (s *fcgiStream) smallBuffer() []byte        { return s.stockBuffer[:] }
 func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *fcgiStream) setWriteDeadline(deadline time.Time) error {
-	return nil
+	return s.conn.SetWriteDeadline(deadline)
 }
 func (s *fcgiStream) setReadDeadline(deadline time.Time) error {
-	return nil
+	return s.conn.SetReadDeadline(deadline)
 }
 
 func (s *fcgiStream) write(p []byte) (int, error)               { return s.conn.Write(p) }
@@ -292,9 +291,10 @@ func (s *fcgiStream) read(p []byte) (int, error)                { return s.conn.
 func (s *fcgiStream) readFull(p []byte) (int, error)            { return s.conn.ReadFull(p) }
 
 func (s *fcgiStream) isBroken() bool {
-	return false
+	return s.conn.IsBroken()
 }
 func (s *fcgiStream) markBroken() {
+	s.conn.MarkBroken()
 }
 
 // fcgiRequest
@@ -338,9 +338,15 @@ func (r *fcgiRequest) onEnd() {
 }
 
 func (r *fcgiRequest) copyHead(req Request) bool {
+	// TODO
 	return false
 }
 func (r *fcgiRequest) addParam(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *fcgiRequest) addSchemeParam(name []byte, value []byte) bool {
+	// TODO
 	return false
 }
 
@@ -349,12 +355,15 @@ func (r *fcgiRequest) setMaxSendTimeout(timeout time.Duration) {
 }
 
 func (r *fcgiRequest) sendBlob(content []byte) error {
+	// TODO
 	return nil
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
+	// TODO
 	return nil
 }
 func (r *fcgiRequest) pushBlob(chunk []byte) error {
+	// TODO
 	return nil
 }
 
@@ -386,9 +395,11 @@ func (r *fcgiRequest) sync(req Request) error {
 	return nil
 }
 func (r *fcgiRequest) syncBytes(p []byte) error {
+	// TODO
 	return nil
 }
 func (r *fcgiRequest) syncHeaders() error {
+	// TODO
 	if r.stream.proxy.keepConn {
 		// use fcgiBeginKeepConn
 	} else {
@@ -416,6 +427,7 @@ func (r *fcgiRequest) growParams(size int) (from int, edge int, ok bool) {
 	return
 }
 func (r *fcgiRequest) beforeWrite() error {
+	// TODO
 	return nil
 }
 
@@ -444,7 +456,7 @@ type fcgiResponse struct {
 	stream *fcgiStream
 	// States (buffers)
 	stockInput   [2048]byte // for fcgi response headers
-	stockHeaders [32]pair
+	stockHeaders [64]pair
 	// States (controlled)
 	header pair // to overcome ...
 	// States (non-zeros)
@@ -467,14 +479,19 @@ type fcgiResponse0 struct {
 	pBack           int16 // element begins from. for parsing
 	pFore           int16 // element spanning to. for parsing
 	status          int16
-	receiving       int8
-	contentReceived bool
-	contentBlobKind int8
-	maxContentSize  int64
-	sizeReceived    int64
-	indexes         struct {
-		contentType uint8
-		xPoweredBy  uint8
+	receiving       int8     // currently receiving. see httpSectionXXX
+	contentReceived bool     // is content received? if response has no content, it is true (received)
+	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
+	maxContentSize  int64    // max content size allowed for current response
+	sizeReceived    int64    // bytes of currently received content
+	indexes         struct { // indexes of some selected headers, for fast accessing
+		contentType  uint8
+		xPoweredBy   uint8
+		date         uint8
+		lastModified uint8
+		expires      uint8
+		etag         uint8
+		location     uint8
 	}
 }
 
@@ -483,6 +500,7 @@ func (r *fcgiResponse) onUse() {
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
 	r.contentSize = -1
 	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
+	r.headResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.input) != cap(r.stockInput) {
@@ -493,13 +511,22 @@ func (r *fcgiResponse) onEnd() {
 		// TODO: put
 		r.headers = nil
 	}
+
 	r.headReason = ""
+
 	if r.bodyWindow != nil {
 		// TODO: put
 		r.bodyWindow = nil
 	}
+
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
+
+	if r.contentBlobKind == httpContentBlobPool {
+		PutNK(r.contentBlob)
+	}
+	r.contentBlob = nil // other blob kinds are only references, just reset.
+
 	if r.contentHeld != nil {
 		r.contentHeld.Close()
 		os.Remove(r.contentHeld.Name())
@@ -508,26 +535,30 @@ func (r *fcgiResponse) onEnd() {
 			Debugln("contentHeld is closed and removed!!")
 		}
 	}
+
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
 func (r *fcgiResponse) recvHead() {
+	// TODO
 }
-func (r *fcgiResponse) _recvRecord() {
+func (r *fcgiResponse) nextRecord() {
 	// TODO: use getFCGIInput
 }
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
 func (r *fcgiResponse) applyHeader(header *pair) bool {
+	// TODO
 	return false
 }
 func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	// TODO
 	return false
 }
 
 var ( // perfect hash table for response critical headers
-	fcgiResponseCriticalHeaderNames = []byte("todo")
+	fcgiResponseCriticalHeaderNames = []byte("content-length transfer-encoding")
 	fcgiResponseCriticalHeaderTable = [1]struct {
 		hash  uint16
 		from  uint8
@@ -540,21 +571,31 @@ var ( // perfect hash table for response critical headers
 )
 
 func (r *fcgiResponse) checkTransferEncoding(header *pair, index uint8) bool {
+	// TODO
 	return true
 }
 func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
+	// TODO
 	return true
 }
 
-func (r *fcgiResponse) ContentSize() int64        { return r.contentSize }
-func (r *fcgiResponse) UnsafeContentType() []byte { return nil }
+func (r *fcgiResponse) ContentSize() int64 { return r.contentSize }
+func (r *fcgiResponse) UnsafeContentType() []byte {
+	if r.indexes.contentType == 0 {
+		return nil
+	}
+	return r.headers[r.indexes.contentType].valueAt(r.input)
+}
 func (r *fcgiResponse) unsafeDate() []byte {
+	// TODO
 	return nil
 }
 func (r *fcgiResponse) unsafeLastModified() []byte {
+	// TODO
 	return nil
 }
 func (r *fcgiResponse) delHopHeaders() {
+	// TODO
 }
 
 func (r *fcgiResponse) parseSetCookie() bool {
@@ -562,14 +603,17 @@ func (r *fcgiResponse) parseSetCookie() bool {
 	return false
 }
 func (r *fcgiResponse) hasSetCookies() bool {
+	// TODO
 	return false
 }
 
 func (r *fcgiResponse) checkHead() bool {
+	// TODO
 	return false
 }
 
 func (r *fcgiResponse) cleanInput() {
+	// TODO
 }
 
 func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
@@ -577,56 +621,61 @@ func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
 }
 
 func (r *fcgiResponse) UnsafeContent() []byte {
+	// TODO
 	return nil
 }
 func (r *fcgiResponse) hasContent() bool {
+	// TODO
 	return false
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) {
+	// TODO
 	return
 }
 func (r *fcgiResponse) holdContent() any {
+	// TODO
 	return nil
 }
 func (r *fcgiResponse) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
+	// TODO
 	return nil
 }
 
-func (r *fcgiResponse) HasTrailers() bool { return false }
-func (r *fcgiResponse) applyTrailer(trailer *pair) bool {
-	return false
-}
+func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
+func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return false
+	return true // fcgi doesn't support trailers
 }
-func (r *fcgiResponse) delHopTrailers() {
-}
+func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 
 func (r *fcgiResponse) addHeader(header *pair) (edge uint8, ok bool) {
+	// TODO
 	return
 }
 func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok bool) {
+	// TODO
 	return
 }
 
-func (r *fcgiResponse) arrayCopy(p []byte) bool {
-	return false
-}
+func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by response interface
 
 func (r *fcgiResponse) saveContentFilesDir() string {
+	// TODO
 	return ""
 }
 
 func (r *fcgiResponse) newTempFile() {
+	// TODO
 }
 func (r *fcgiResponse) beforeRead() error {
+	// TODO
 	return nil
 }
 
 // poolFCGIInput
 var poolFCGIInput sync.Pool
 
-const fcgiMaxRecord = 8 + 65535 + 255 // header + content + padding
+const fcgiMaxRecord = 8 + 65535 + 255 // header + max content + max padding
 
 func getFCGIInput() []byte {
 	if x := poolFCGIInput.Get(); x == nil {
@@ -642,19 +691,13 @@ func putFCGIInput(input []byte) {
 	poolFCGIInput.Put(input)
 }
 
-// FCGI protocol.
+// FCGI protocol elements.
 
 // FCGI Record = FCGI Header(8) + content + padding
 // FCGI Header = version(1) + type(1) + requestId(2) + contentLength(2) + paddingLength(1) + reserved(1)
 
 // Discrete records are standalone.
 // Stream records end with an empty record (contentLength=0).
-
-const (
-	fcgiVersion   = 1 // fcgi protocol version
-	fcgiResponder = 1 // traditional cgi role
-	fcgiComplete  = 0 // protocol status ok
-)
 
 const ( // request record types
 	fcgiTypeBeginRequest = 1
@@ -664,44 +707,44 @@ const ( // request record types
 
 var ( // predefined request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes
-		// header
-		fcgiVersion,
+		// header=8
+		1, // version
 		fcgiTypeBeginRequest,
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 8, // content length = 8
 		0, 0, // padding length = 0 & reserved
-		// content
-		0, fcgiResponder, // role
-		1,             // flags=keepConn
+		// content=8
+		0, 1, 1, // role=responder, flags=keepConn
 		0, 0, 0, 0, 0, // reserved
 	}
 	fcgiBeginDontKeep = []byte{ // 16 bytes
-		// header
-		fcgiVersion,
+		// header=8
+		1, // version
 		fcgiTypeBeginRequest,
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 8, // content length = 8
 		0, 0, // padding length = 0 & reserved
-		// content
-		0, fcgiResponder, // role
-		0,             // flags=dontKeep
+		// content=8
+		0, 1, 0, // role=responder, flags=dontKeep
 		0, 0, 0, 0, 0, // reserved
 	}
 	fcgiEndParams = []byte{ // 8 bytes
-		// header
-		fcgiVersion,
+		// header=8
+		1, // version
 		fcgiTypeParams,
-		0, 1, // request id = 1
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 0, // content length = 0
 		0, 0, // padding length = 0 & reserved
+		// content=0
 	}
 	fcgiEndStdin = []byte{ // 8 bytes
-		// header
-		fcgiVersion,
+		// header=8
+		1, // version
 		fcgiTypeStdin,
-		0, 1, // request id = 1
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1
 		0, 0, // content length = 0
 		0, 0, // padding length = 0 & reserved
+		// content=0
 	}
 )
 

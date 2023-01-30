@@ -223,7 +223,7 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 	return tConn, err
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
-	if tConn.isBroken() || n.isDown() || !tConn.isAlive() {
+	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
 		n.closeConn(tConn)
 	} else {
 		n.pushConn(tConn)

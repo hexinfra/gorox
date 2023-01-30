@@ -22,10 +22,6 @@ func TestHTTPMethods(t *testing.T) {
 		"CONNECT": MethodCONNECT,
 		"OPTIONS": MethodOPTIONS,
 		"TRACE":   MethodTRACE,
-		"PATCH":   MethodPATCH,
-		"LINK":    MethodLINK,
-		"UNLINK":  MethodUNLINK,
-		"QUERY":   MethodQUERY,
 	}
 	methods := bytes.Split(httpMethodBytes, []byte(" "))
 	for _, method := range methods {

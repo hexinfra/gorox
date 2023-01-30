@@ -89,3 +89,17 @@ func (h *uwsgiProxy) Handle(req Request, resp Response) (next bool) {
 	resp.Send("uwsgi")
 	return
 }
+
+// uwsgiStream
+type uwsgiStream struct {
+}
+
+// uwsgiRequest
+type uwsgiRequest struct {
+}
+
+// uwsgiResponse
+type uwsgiResponse struct {
+}
+
+// UWSGI protocol elements.

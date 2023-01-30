@@ -49,6 +49,9 @@ type fcgiProxy struct {
 	delRequestHeaders   [][]byte    // client request headers to delete
 	addResponseHeaders  [][2][]byte // headers appended to server response
 	delResponseHeaders  [][]byte    // server response headers to delete
+	dialTimeout         time.Duration
+	writeTimeout        time.Duration
+	readTimeout         time.Duration
 	maxSendTimeout      time.Duration
 	maxRecvTimeout      time.Duration
 }
@@ -99,6 +102,12 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// keepConn
 	h.ConfigureBool("keepConn", &h.keepConn, false)
+	// dialTimeout
+	h.ConfigureDuration("dialTimeout", &h.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 10*time.Second)
+	// writeTimeout
+	h.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	// readTimeout
+	h.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
 }
 func (h *fcgiProxy) OnPrepare() {
 }
@@ -427,8 +436,11 @@ func (r *fcgiRequest) growParams(size int) (from int, edge int, ok bool) {
 	return
 }
 func (r *fcgiRequest) beforeWrite() error {
-	// TODO
-	return nil
+	now := time.Now()
+	if r.sendTime.IsZero() {
+		r.sendTime = now
+	}
+	return r.stream.setWriteDeadline(now.Add(r.stream.proxy.writeTimeout))
 }
 
 // poolFCGIParams
@@ -667,9 +679,12 @@ func (r *fcgiResponse) saveContentFilesDir() string {
 func (r *fcgiResponse) newTempFile() {
 	// TODO
 }
-func (r *fcgiResponse) beforeRead() error {
-	// TODO
-	return nil
+func (r *fcgiResponse) beforeRead(toTime *time.Time) error {
+	now := time.Now()
+	if toTime.IsZero() {
+		*toTime = now
+	}
+	return r.stream.setReadDeadline(now.Add(r.stream.proxy.readTimeout))
 }
 
 // poolFCGIInput

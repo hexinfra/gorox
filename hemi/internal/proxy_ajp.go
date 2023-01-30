@@ -91,3 +91,17 @@ func (h *ajpProxy) Handle(req Request, resp Response) (next bool) {
 	resp.Send("ajp")
 	return
 }
+
+// ajpStream
+type ajpStream struct {
+}
+
+// ajpRequest
+type ajpRequest struct {
+}
+
+// ajpResponse
+type ajpResponse struct {
+}
+
+// AJP protocol elements.

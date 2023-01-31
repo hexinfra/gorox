@@ -241,7 +241,7 @@ func (c *UConn) isBroken() bool { return c.broken.Load() }
 func (c *UConn) markBroken()    { c.broken.Store(true) }
 
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {
+	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.udpConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (c *UConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= c.client.ReadTimeout()/4 {
+	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.udpConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}

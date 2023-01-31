@@ -224,7 +224,7 @@ func (c *XConn) onPut() {
 func (c *XConn) getClient() unixClient { return c.client.(unixClient) }
 
 func (c *XConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {
+	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.unixConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ func (c *XConn) SetWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (c *XConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= c.client.ReadTimeout()/4 {
+	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.unixConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}

@@ -280,23 +280,23 @@ func (s *H3Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)
 }
 
-func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content only
+func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content only
+func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 
-func (s *H3Stream) write(p []byte) (int, error) { // for content only
+func (s *H3Stream) write(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H3Stream) writev(vector *net.Buffers) (int64, error) { // for content only
+func (s *H3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H3Stream) read(p []byte) (int, error) { // for content only
+func (s *H3Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H3Stream) readFull(p []byte) (int, error) { // for content only
+func (s *H3Stream) readFull(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
 

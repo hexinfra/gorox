@@ -184,7 +184,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
 				logger.Println("worker critical error")
 				stop()
-			} else if now := time.Now(); now.Sub(worker.lastDie) > 1*time.Second {
+			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()
 				worker.lastDie = now
 				worker.start(base, file, deadWay) // start again

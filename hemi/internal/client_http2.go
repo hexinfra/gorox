@@ -196,7 +196,7 @@ func (c *H2Conn) StoreStream(stream *H2Stream) {
 }
 
 func (c *H2Conn) setWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {
+	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
@@ -205,7 +205,7 @@ func (c *H2Conn) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (c *H2Conn) setReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= c.client.ReadTimeout()/4 {
+	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
@@ -308,23 +308,23 @@ func (s *H2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)
 }
 
-func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content only
+func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content only
+func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 
-func (s *H2Stream) write(p []byte) (int, error) { // for content only
+func (s *H2Stream) write(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H2Stream) writev(vector *net.Buffers) (int64, error) { // for content only
+func (s *H2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H2Stream) read(p []byte) (int, error) { // for content only
+func (s *H2Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *H2Stream) readFull(p []byte) (int, error) { // for content only
+func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
 

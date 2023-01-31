@@ -565,7 +565,7 @@ func (s *http1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 
 func (s *http1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s.conn
-	if deadline.Sub(conn.lastRead) >= conn.server.ReadTimeout()/4 {
+	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
@@ -575,7 +575,7 @@ func (s *http1Stream) setReadDeadline(deadline time.Time) error {
 }
 func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	conn := s.conn
-	if deadline.Sub(conn.lastWrite) >= conn.server.WriteTimeout()/4 {
+	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}

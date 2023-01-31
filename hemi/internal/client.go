@@ -81,6 +81,7 @@ func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 // backend is a group of nodes.
 type backend interface {
 	Component
+	client
 	maintain() // goroutine
 }
 

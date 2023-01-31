@@ -35,25 +35,23 @@ func init() {
 type fcgiProxy struct {
 	// Mixins
 	Handlet_
+	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage   // current stage
 	app     *App     // the app to which the proxy belongs
 	backend PBackend // *TCPSBackend or *UnixBackend
 	cacher  Cacher   // the cache server which is used by this proxy
 	// States
-	scriptFilename      string      // ...
-	bufferClientContent bool        // ...
-	bufferServerContent bool        // server content is buffered anyway?
-	keepConn            bool        // instructs FCGI server to keep conn?
-	addRequestHeaders   [][2][]byte // headers appended to client request
-	delRequestHeaders   [][]byte    // client request headers to delete
-	addResponseHeaders  [][2][]byte // headers appended to server response
-	delResponseHeaders  [][]byte    // server response headers to delete
-	dialTimeout         time.Duration
-	writeTimeout        time.Duration
-	readTimeout         time.Duration
-	maxSendTimeout      time.Duration
-	maxRecvTimeout      time.Duration
+	scriptFilename      string        // ...
+	bufferClientContent bool          // ...
+	bufferServerContent bool          // server content is buffered anyway?
+	keepConn            bool          // instructs FCGI server to keep conn?
+	addRequestHeaders   [][2][]byte   // headers appended to client request
+	delRequestHeaders   [][]byte      // client request headers to delete
+	addResponseHeaders  [][2][]byte   // headers appended to server response
+	delResponseHeaders  [][]byte      // server response headers to delete
+	maxSendTimeout      time.Duration // max timeout to send request
+	maxRecvTimeout      time.Duration // max timeout to recv response
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
@@ -66,6 +64,7 @@ func (h *fcgiProxy) OnShutdown() {
 }
 
 func (h *fcgiProxy) OnConfigure() {
+	h.contentSaver_.onConfigure(h, TempDir()+"/fcgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -102,14 +101,13 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// keepConn
 	h.ConfigureBool("keepConn", &h.keepConn, false)
-	// dialTimeout
-	h.ConfigureDuration("dialTimeout", &h.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 10*time.Second)
-	// writeTimeout
-	h.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
-	// readTimeout
-	h.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	// maxSendTimeout
+	h.ConfigureDuration("maxSendTimeout", &h.maxSendTimeout, func(value time.Duration) bool { return value >= 0 }, 0)
+	// maxRecvTimeout
+	h.ConfigureDuration("maxRecvTimeout", &h.maxRecvTimeout, func(value time.Duration) bool { return value >= 0 }, 0)
 }
 func (h *fcgiProxy) OnPrepare() {
+	h.contentSaver_.onPrepare(h, 0755)
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }
@@ -133,14 +131,14 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	if h.keepConn { // FCGI_KEEP_CONN=1
+	if h.keepConn {
 		fConn, fErr = h.backend.FetchConn()
 		if fErr != nil {
 			resp.SendBadGateway(nil)
 			return
 		}
 		defer h.backend.StoreConn(fConn)
-	} else { // FCGI_KEEP_CONN=0
+	} else {
 		fConn, fErr = h.backend.Dial()
 		if fErr != nil {
 			resp.SendBadGateway(nil)
@@ -153,14 +151,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-
-	if h.scriptFilename == "" {
-		// use absPath as SCRIPT_FILENAME
-	} else {
-		// use h.scriptFilename as SCRIPT_FILENAME
-	}
-
-	if !fReq.copyHead(req) {
+	if !fReq.copyHead(req, h.scriptFilename) {
 		fStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -172,8 +163,6 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		}
 	} else if fErr = fReq.sync(req); fErr != nil {
 		fStream.markBroken()
-	} else if fReq.contentSize == -2 {
-		// write last chunk?
 	}
 	if fErr != nil {
 		resp.SendBadGateway(nil)
@@ -183,7 +172,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	fResp := &fStream.response
 	for { // until we found a non-1xx status (>= 200)
 		fResp.recvHead()
-		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols {
+		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
 			fStream.markBroken()
 			resp.SendBadGateway(nil)
 			return
@@ -191,11 +180,15 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		if fResp.status >= StatusOK {
 			break
 		}
+		// We got 1xx
 		if req.VersionCode() == Version1_0 {
 			fStream.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
+		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
+		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
+		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.sync1xx(fResp) {
 			fStream.markBroken()
 			return
@@ -216,6 +209,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 			return
 		}
 	}
+
 	if !resp.copyHead(fResp) {
 		fStream.markBroken()
 		return
@@ -299,12 +293,8 @@ func (s *fcgiStream) writev(vector *net.Buffers) (int64, error) { return s.conn.
 func (s *fcgiStream) read(p []byte) (int, error)                { return s.conn.Read(p) }
 func (s *fcgiStream) readFull(p []byte) (int, error)            { return s.conn.ReadFull(p) }
 
-func (s *fcgiStream) isBroken() bool {
-	return s.conn.IsBroken()
-}
-func (s *fcgiStream) markBroken() {
-	s.conn.MarkBroken()
-}
+func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
+func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
 
 // fcgiRequest
 type fcgiRequest struct {
@@ -316,7 +306,7 @@ type fcgiRequest struct {
 	// States (non-zeros)
 	params         []byte
 	contentSize    int64
-	maxSendTimeout time.Duration
+	maxSendTimeout time.Duration // max timeout to send request
 	// States (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
@@ -346,8 +336,13 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) copyHead(req Request) bool {
+func (r *fcgiRequest) copyHead(req Request, scriptFilename string) bool {
 	// TODO
+	if scriptFilename == "" {
+		// use absPath as SCRIPT_FILENAME
+	} else {
+		// use scriptFilename as SCRIPT_FILENAME
+	}
 	return false
 }
 func (r *fcgiRequest) addParam(name []byte, value []byte) bool {
@@ -440,7 +435,7 @@ func (r *fcgiRequest) beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.proxy.writeTimeout))
+	return r.stream.setWriteDeadline(now.Add(r.stream.proxy.backend.WriteTimeout()))
 }
 
 // poolFCGIParams
@@ -475,7 +470,7 @@ type fcgiResponse struct {
 	input          []byte
 	headers        []pair
 	contentSize    int64
-	maxRecvTimeout time.Duration
+	maxRecvTimeout time.Duration // max timeout to recv response
 	headResult     int16
 	// States (zeros)
 	headReason    string    // the reason of head result
@@ -628,7 +623,7 @@ func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
 
-func (r *fcgiResponse) SetMaxRecvTimeout(timeout time.Duration) {
+func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
 
@@ -672,8 +667,7 @@ func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok boo
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by response interface
 
 func (r *fcgiResponse) saveContentFilesDir() string {
-	// TODO
-	return ""
+	return r.stream.proxy.SaveContentFilesDir() // must ends with '/'
 }
 
 func (r *fcgiResponse) newTempFile() {
@@ -684,7 +678,7 @@ func (r *fcgiResponse) beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.proxy.readTimeout))
+	return r.stream.setReadDeadline(now.Add(r.stream.proxy.backend.ReadTimeout()))
 }
 
 // poolFCGIInput

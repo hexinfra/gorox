@@ -283,7 +283,7 @@ func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }
 
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= c.client.WriteTimeout()/4 {
+	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
@@ -292,7 +292,7 @@ func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (c *TConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= c.client.ReadTimeout()/4 {
+	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}

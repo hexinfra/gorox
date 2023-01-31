@@ -252,6 +252,10 @@ type Request interface {
 	Svc() *Svc
 
 	VersionCode() uint8
+	IsHTTP1_0() bool
+	IsHTTP1_1() bool
+	IsHTTP2() bool
+	IsHTTP3() bool
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
 
 	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
@@ -1999,7 +2003,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 							}
 							part.base.edge = r.arrayEdge
 							part.path.from = r.arrayEdge
-							if !r.arrayCopy(risky.ConstBytes(r.app.saveContentFilesDir)) { // add "/path/to/"
+							if !r.arrayCopy(risky.ConstBytes(r.app.SaveContentFilesDir())) { // add "/path/to/"
 								r.stream.markBroken()
 								return
 							}
@@ -2273,6 +2277,9 @@ func (r *httpRequest_) HasUpload(name string) bool {
 func (r *httpRequest_) HasContent() bool {
 	return r.contentSize >= 0 || r.contentSize == -2 // -2 means chunked
 }
+func (r *httpRequest_) SetMaxRecvTimeout(timeout time.Duration) {
+	r.setMaxRecvTimeout(timeout)
+}
 func (r *httpRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
@@ -2304,7 +2311,7 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 }
 
 func (r *httpRequest_) saveContentFilesDir() string {
-	return r.app.saveContentFilesDir // must ends with '/'
+	return r.app.SaveContentFilesDir() // must ends with '/'
 }
 
 func (r *httpRequest_) hookReviser(reviser Reviser) {

@@ -377,7 +377,6 @@ type response interface {
 	Status() int16
 	ContentSize() int64
 	UnsafeContentType() []byte
-	SetMaxRecvTimeout(timeout time.Duration) // to defend against bad server
 	HasTrailers() bool
 
 	unsafeDate() []byte
@@ -385,6 +384,7 @@ type response interface {
 	hasSetCookies() bool
 	delHopHeaders()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	setMaxRecvTimeout(timeout time.Duration) // to defend against bad server
 	readContent() (p []byte, err error)
 	recvContent(retain bool) any
 	delHopTrailers()

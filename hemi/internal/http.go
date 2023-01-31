@@ -235,6 +235,10 @@ func (r *httpInMessage_) UnsafeMake(size int) []byte { return r.stream.unsafeMak
 func (r *httpInMessage_) PeerAddr() net.Addr         { return r.stream.peerAddr() }
 
 func (r *httpInMessage_) VersionCode() uint8    { return r.versionCode }
+func (r *httpInMessage_) IsHTTP1_0() bool       { return r.versionCode == Version1_0 }
+func (r *httpInMessage_) IsHTTP1_1() bool       { return r.versionCode == Version1_1 }
+func (r *httpInMessage_) IsHTTP2() bool         { return r.versionCode == Version2 }
+func (r *httpInMessage_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpInMessage_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpInMessage_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
@@ -573,7 +577,7 @@ func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []b
 	return r._walkFields(r.headers, extraHeader, fn)
 }
 
-func (r *httpInMessage_) SetMaxRecvTimeout(timeout time.Duration) {
+func (r *httpInMessage_) setMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
 

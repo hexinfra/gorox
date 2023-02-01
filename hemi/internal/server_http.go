@@ -21,7 +21,7 @@ import (
 // httpServer is the interface for *httpxServer and *http3Server.
 type httpServer interface {
 	Server
-	streamHolder
+	streamKeeper
 
 	linkApp(app *App)
 	findApp(hostname []byte) *App
@@ -33,7 +33,7 @@ type httpServer interface {
 type httpServer_ struct {
 	// Mixins
 	Server_
-	streamHolder_
+	streamKeeper_
 	// Assocs
 	gates      []httpGate
 	defaultApp *App // fallback app
@@ -55,7 +55,7 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s.streamHolder_.onConfigure(shell, 0)
+	s.streamKeeper_.onConfigure(shell, 0)
 	// hrpcMode
 	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// enableTCPTun
@@ -65,7 +65,7 @@ func (s *httpServer_) onConfigure(shell Component) {
 }
 func (s *httpServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
-	s.streamHolder_.onPrepare(shell)
+	s.streamKeeper_.onPrepare(shell)
 }
 
 func (s *httpServer_) linkApp(app *App) {

@@ -28,13 +28,13 @@ func init() {
 // tcpsClient is the interface for TCPSOutgate and TCPSBackend.
 type tcpsClient interface {
 	client
-	streamHolder
+	streamKeeper
 }
 
 // tcpsClient_
 type tcpsClient_ struct {
 	// Mixins
-	streamHolder_
+	streamKeeper_
 	// States
 }
 
@@ -42,10 +42,10 @@ func (t *tcpsClient_) onCreate() {
 }
 
 func (t *tcpsClient_) onConfigure(shell Component) {
-	t.streamHolder_.onConfigure(shell, 1000)
+	t.streamKeeper_.onConfigure(shell, 1000)
 }
 func (t *tcpsClient_) onPrepare(shell Component) {
-	t.streamHolder_.onPrepare(shell)
+	t.streamKeeper_.onPrepare(shell)
 }
 
 const signTCPS = "tcps"

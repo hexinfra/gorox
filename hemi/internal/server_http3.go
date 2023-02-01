@@ -275,7 +275,7 @@ func (s *http3Stream) execute() { // goroutine
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) holder() holder {
+func (s *http3Stream) keeper() keeper {
 	return s.conn.getServer()
 }
 func (s *http3Stream) peerAddr() net.Addr {
@@ -438,10 +438,12 @@ func (r *http3Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
-func (r *http3Response) syncHeaders() error {
+func (r *http3Response) passHeaders() error {
+	// TODO
 	return nil
 }
 func (r *http3Response) syncBytes(p []byte) error {
+	// TODO
 	return nil
 }
 

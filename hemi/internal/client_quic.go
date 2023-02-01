@@ -26,13 +26,13 @@ func init() {
 // quicClient is the interface for QUICOutgate and QUICBackend.
 type quicClient interface {
 	client
-	streamHolder
+	streamKeeper
 }
 
 // quicClient_
 type quicClient_ struct {
 	// Mixins
-	streamHolder_
+	streamKeeper_
 	// States
 }
 
@@ -40,10 +40,10 @@ func (q *quicClient_) onCreate() {
 }
 
 func (q *quicClient_) onConfigure(shell Component) {
-	q.streamHolder_.onConfigure(shell, 1000)
+	q.streamKeeper_.onConfigure(shell, 1000)
 }
 func (q *quicClient_) onPrepare(shell Component) {
-	q.streamHolder_.onPrepare(shell)
+	q.streamKeeper_.onPrepare(shell)
 }
 
 const signQUIC = "quic"

@@ -5,52 +5,6 @@
 
 // General HTTP proxy handlet and WebSocket proxy socklet implementation.
 
-/*
-
---http[1-3]Stream-->                        ----H[1-3]Stream--->
-[REVISERS]      ^    -------sync/post----->                 ^
-                |                                           |
-httpInMessage_  | stream                    httpOutMessage_ | stream
-^ - stream -----+                           ^ - stream -----+
-| - shell ------+                           | - shell ------+
-|               | httpInMessage             |               | httpOutMessage
-+-httpRequest_  |                           +-hRequest_     |
-  ^ - httpConn -+---> http[1-3]Conn           ^ - hConn ----+---> H[1-3]Conn
-  |             |                             |             |
-  |             v                             |             v
-  +-http[1-3]Request                          +-H[1-3]Request
-                          \           /
-                \          \         /
-      1/2/3      \          \       /             1/2/3
-   [httpServer]  [Handlet]/[httpProxy]         [httpClient]
-      1/2/3      /          /       \             1/2/3
-                /          /         \
-                          /           \
-<--http[1-3]Stream--                        <---H[1-3]Stream----
-[REVISERS]       ^   <------sync/post------                ^
-                 |                                         |
-httpOutMessage_  | stream                   httpInMessage_ | stream
-^ - stream ------+                          ^ - stream ----+
-| - shell -------+                          | - shell -----+
-|                | httpOutMessage           |              | httpInMessage
-+-httpResponse_  |                          +-hResponse_   |
-  ^ - httpConn --+---> http[1-3]Conn          ^ - hConn ---+---> H[1-3]Conn
-  |              |                            |            |
-  |              v                            |            v
-  +-http[1-3]Response                         +-H[1-3]Response
-
-
-NOTES:
-
-  * messages are composed of control, headers, [content, [trailers]].
-  * control & headers is called head, and it must be small.
-  * contents, if exist (perhaps of zero size), may be large/small, counted/chunked.
-  * trailers must be small, and only exist when contents exist and are chunked.
-  * incoming messages need parsing.
-  * outgoing messages need building.
-
-*/
-
 package internal
 
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.

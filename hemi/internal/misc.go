@@ -86,25 +86,25 @@ func (w *waiter_) IncSub(n int) { w.subs.Add(n) }
 func (w *waiter_) WaitSubs()    { w.subs.Wait() }
 func (w *waiter_) SubDone()     { w.subs.Done() }
 
-// streamHolder
-type streamHolder interface {
+// streamKeeper
+type streamKeeper interface {
 	MaxStreamsPerConn() int32
 }
 
-// streamHolder_ is a mixin.
-type streamHolder_ struct {
+// streamKeeper_ is a mixin.
+type streamKeeper_ struct {
 	// States
 	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
 }
 
-func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
+func (s *streamKeeper_) onConfigure(shell Component, defaultMaxStreams int32) {
 	// maxStreamsPerConn
 	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, defaultMaxStreams)
 }
-func (s *streamHolder_) onPrepare(shell Component) {
+func (s *streamKeeper_) onPrepare(shell Component) {
 }
 
-func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
+func (s *streamKeeper_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
 
 // contentSaver
 type contentSaver interface {

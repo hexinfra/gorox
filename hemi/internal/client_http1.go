@@ -286,7 +286,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.hStream_.onEnd()
 }
 
-func (s *H1Stream) holder() holder {
+func (s *H1Stream) keeper() keeper {
 	return s.conn.getClient()
 }
 func (s *H1Stream) peerAddr() net.Addr {
@@ -470,7 +470,7 @@ func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
 
-func (r *H1Request) syncHeaders() error {
+func (r *H1Request) passHeaders() error {
 	return r.writeHeaders1()
 }
 func (r *H1Request) syncBytes(p []byte) error {

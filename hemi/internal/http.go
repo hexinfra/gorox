@@ -20,8 +20,8 @@ import (
 	"time"
 )
 
-// holder is an httpServer or httpClient which holds http connections and streams.
-type holder interface {
+// keeper is an httpServer or httpClient which keeps http connections and streams.
+type keeper interface {
 	Stage() *Stage
 	TLSMode() bool
 	ReadTimeout() time.Duration
@@ -30,7 +30,7 @@ type holder interface {
 
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
-	holder() holder
+	keeper() keeper
 	peerAddr() net.Addr
 
 	smallBuffer() []byte
@@ -164,7 +164,7 @@ func (r *httpInMessage_) onUse(asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.contentSize = -1
-	r.maxRecvTimeout = r.stream.holder().ReadTimeout()
+	r.maxRecvTimeout = r.stream.keeper().ReadTimeout()
 	r.asResponse = asResponse
 	r.keepAlive = -1
 	r.headResult = StatusOK
@@ -662,7 +662,7 @@ func (r *httpInMessage_) holdContent() any { // used by proxies
 }
 func (r *httpInMessage_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.holder().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow is not needed, and TempFile is not used either.
@@ -1101,7 +1101,7 @@ func (r *httpInMessage_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.holder().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.keeper().ReadTimeout()))
 }
 
 const ( // HTTP content blob kinds
@@ -1128,7 +1128,7 @@ type httpOutMessage interface {
 	kickHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
-	syncHeaders() error // used by proxies
+	passHeaders() error // used by proxies
 	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
@@ -1161,10 +1161,10 @@ type httpOutMessage_ struct {
 	nTrailers      uint8         // num+1 of added trailers, starts from 1
 	content        Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	// Stream states (zeros)
-	sendTime    time.Time   // the time when first send operation is performed
-	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector [4][]byte   // for sending/pushing message. reset after stream. 96B
-	httpOutMessage0_
+	sendTime         time.Time   // the time when first send operation is performed
+	vector           net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
+	fixedVector      [4][]byte   // for sending/pushing message. reset after stream. 96B
+	httpOutMessage0_             // all values must be zero by default in this struct!
 }
 type httpOutMessage0_ struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
@@ -1180,7 +1180,7 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
 	r.contentSize = -1 // not set
-	r.maxSendTimeout = r.stream.holder().WriteTimeout()
+	r.maxSendTimeout = r.stream.keeper().WriteTimeout()
 	r.asRequest = asRequest
 	r.nHeaders = 1                    // r.edges[0] is not used
 	r.nTrailers = 1                   // r.edges[0] is not used
@@ -1338,29 +1338,6 @@ func (r *httpOutMessage_) SendFile(contentPath string) error {
 	}
 	return r.sendFile(file, info, true)
 }
-func (r *httpOutMessage_) checkSend() error {
-	if r.isSent {
-		return httpAlreadySent
-	}
-	r.isSent = true
-	return nil
-}
-func (r *httpOutMessage_) sendBlob(content []byte) error {
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	r.content.head.SetBlob(content)
-	r.contentSize = int64(len(content)) // original size, may be revised
-	return r.shell.send()
-}
-func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	r.content.head.SetFile(content, info, shut)
-	r.contentSize = info.Size() // original size, may be revised
-	return r.shell.send()
-}
 
 func (r *httpOutMessage_) Push(chunk string) error {
 	return r.PushBytes(risky.ConstBytes(chunk))
@@ -1379,31 +1356,6 @@ func (r *httpOutMessage_) PushFile(chunkPath string) error {
 		return err
 	}
 	return r.pushFile(file, info, true)
-}
-func (r *httpOutMessage_) pushBlob(chunk []byte) error {
-	if err := r.shell.checkPush(); err != nil {
-		return err
-	}
-	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
-		return nil
-	}
-	chunk_ := GetBlock()
-	chunk_.SetBlob(chunk)
-	return r.shell.push(chunk_)
-}
-func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
-	if err := r.shell.checkPush(); err != nil {
-		return err
-	}
-	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
-		if shut {
-			chunk.Close()
-		}
-		return nil
-	}
-	chunk_ := GetBlock()
-	chunk_.SetFile(chunk, info, shut)
-	return r.shell.push(chunk_)
 }
 
 func (r *httpOutMessage_) Trailer(name string) (value string, ok bool) {
@@ -1433,7 +1385,7 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
-		if err := r.shell.syncHeaders(); err != nil {
+		if err := r.shell.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -1483,6 +1435,55 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 	}
 }
 
+func (r *httpOutMessage_) checkSend() error {
+	if r.isSent {
+		return httpAlreadySent
+	}
+	r.isSent = true
+	return nil
+}
+func (r *httpOutMessage_) sendBlob(content []byte) error {
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	r.content.head.SetBlob(content)
+	r.contentSize = int64(len(content)) // original size, may be revised
+	return r.shell.send()
+}
+func (r *httpOutMessage_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	r.content.head.SetFile(content, info, shut)
+	r.contentSize = info.Size() // original size, may be revised
+	return r.shell.send()
+}
+func (r *httpOutMessage_) pushBlob(chunk []byte) error {
+	if err := r.shell.checkPush(); err != nil {
+		return err
+	}
+	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
+		return nil
+	}
+	chunk_ := GetBlock()
+	chunk_.SetBlob(chunk)
+	return r.shell.push(chunk_)
+}
+func (r *httpOutMessage_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
+	if err := r.shell.checkPush(); err != nil {
+		return err
+	}
+	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
+		if shut {
+			chunk.Close()
+		}
+		return nil
+	}
+	chunk_ := GetBlock()
+	chunk_.SetFile(chunk, info, shut)
+	return r.shell.push(chunk_)
+}
+
 func (r *httpOutMessage_) growHeader(size int) (from int, edge int, ok bool) {
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
 		return
@@ -1495,7 +1496,7 @@ func (r *httpOutMessage_) growTrailer(size int) (from int, edge int, ok bool) {
 	}
 	return r._growFields(size)
 }
-func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not present at the same time
+func (r *httpOutMessage_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not used at the same time
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")
 	}
@@ -1524,7 +1525,7 @@ func (r *httpOutMessage_) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.holder().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.keeper().WriteTimeout()))
 }
 
 var ( // http outgoing message errors

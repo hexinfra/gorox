@@ -750,7 +750,7 @@ func (r *httpOutMessage_) finalizeChunked1() error {
 	return r.writeVector1(&r.vector)
 }
 
-func (r *httpOutMessage_) writeHeaders1() error { // used by push and sync
+func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
 	r.shell.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.shell.control()

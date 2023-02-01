@@ -85,9 +85,6 @@ func (r *httpOutMessage_) trailers2() []byte {
 	return nil
 }
 
-func (r *httpOutMessage_) syncHeaders2() error {
-	return nil
-}
 func (r *httpOutMessage_) syncBytes2(p []byte) error {
 	return nil
 }

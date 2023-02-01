@@ -254,7 +254,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.h3Stream0 = h3Stream0{}
 }
 
-func (s *H3Stream) holder() holder {
+func (s *H3Stream) keeper() keeper {
 	return s.conn.getClient()
 }
 func (s *H3Stream) peerAddr() net.Addr {
@@ -378,10 +378,12 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *H3Request) syncHeaders() error {
+func (r *H3Request) passHeaders() error {
+	// TODO
 	return nil
 }
 func (r *H3Request) syncBytes(p []byte) error {
+	// TODO
 	return nil
 }
 

@@ -16,7 +16,7 @@ import (
 // httpClient is the interface for http outgates and http backends.
 type httpClient interface {
 	client
-	streamHolder
+	streamKeeper
 	contentSaver
 	MaxContentSize() int64
 }
@@ -24,7 +24,7 @@ type httpClient interface {
 // httpClient_ is a mixin for httpOutgate_ and httpBackend_.
 type httpClient_ struct {
 	// Mixins
-	streamHolder_
+	streamKeeper_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxContentSize int64
@@ -34,13 +34,13 @@ func (h *httpClient_) onCreate() {
 }
 
 func (h *httpClient_) onConfigure(shell Component, clientName string) {
-	h.streamHolder_.onConfigure(shell, 1000)
+	h.streamKeeper_.onConfigure(shell, 1000)
 	h.contentSaver_.onConfigure(shell, TempDir()+"/"+clientName+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
 func (h *httpClient_) onPrepare(shell Component) {
-	h.streamHolder_.onPrepare(shell)
+	h.streamKeeper_.onPrepare(shell)
 	h.contentSaver_.onPrepare(shell, 0755)
 }
 
@@ -376,12 +376,8 @@ func (r *hRequest_) endChunked() error {
 type response interface {
 	Status() int16
 	ContentSize() int64
-	UnsafeContentType() []byte
 	HasTrailers() bool
 
-	unsafeDate() []byte
-	unsafeLastModified() []byte
-	hasSetCookies() bool
 	delHopHeaders()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	setMaxRecvTimeout(timeout time.Duration) // to defend against bad server
@@ -639,7 +635,7 @@ func (r *hResponse_) checkHead() bool {
 		}
 	}
 	// Resolve r.contentSize
-	r.maxContentSize = r.stream.holder().(httpClient).MaxContentSize()
+	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()
 	if r.transferChunked { // there is a transfer-encoding: chunked
 		if r.versionCode == Version1_0 {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not used in http/1.0"
@@ -707,7 +703,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 }
 
 func (r *hResponse_) saveContentFilesDir() string {
-	return r.stream.holder().(httpClient).SaveContentFilesDir() // must ends with '/'
+	return r.stream.keeper().(httpClient).SaveContentFilesDir() // must ends with '/'
 }
 
 // setCookie is a "set-cookie" received from server.

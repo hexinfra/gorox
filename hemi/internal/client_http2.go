@@ -283,7 +283,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.h2Stream0 = h2Stream0{}
 }
 
-func (s *H2Stream) holder() holder {
+func (s *H2Stream) keeper() keeper {
 	return s.conn.getClient()
 }
 func (s *H2Stream) peerAddr() net.Addr {
@@ -406,10 +406,12 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *H2Request) syncHeaders() error {
+func (r *H2Request) passHeaders() error {
+	// TODO
 	return nil
 }
 func (r *H2Request) syncBytes(p []byte) error {
+	// TODO
 	return nil
 }
 

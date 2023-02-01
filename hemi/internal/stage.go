@@ -433,6 +433,7 @@ func (s *Stage) Start(id int32) {
 		Debugf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
 		Debugf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
 		Debugf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
+		Debugf("size of fcgiStream = %d\n", unsafe.Sizeof(fcgiStream{}))
 		Debugf("size of Block = %d\n", unsafe.Sizeof(Block{}))
 	}
 	if IsDebug(1) {

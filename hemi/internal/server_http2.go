@@ -867,7 +867,7 @@ func (s *http2Stream) execute() { // goroutine
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) holder() holder {
+func (s *http2Stream) keeper() keeper {
 	return s.conn.getServer()
 }
 func (s *http2Stream) peerAddr() net.Addr {
@@ -1035,10 +1035,12 @@ func (r *http2Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
-func (r *http2Response) syncHeaders() error {
+func (r *http2Response) passHeaders() error {
+	// TODO
 	return nil
 }
 func (r *http2Response) syncBytes(p []byte) error {
+	// TODO
 	return nil
 }
 

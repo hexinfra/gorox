@@ -678,6 +678,9 @@ func (r *hResponse_) HasContent() bool {
 	// be of zero length.
 	return r.contentSize >= 0 || r.contentSize == -2
 }
+func (r *hResponse_) Content() string {
+	return string(r.unsafeContent())
+}
 func (r *hResponse_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }

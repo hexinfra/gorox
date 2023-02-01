@@ -2280,6 +2280,9 @@ func (r *httpRequest_) HasContent() bool {
 func (r *httpRequest_) SetMaxRecvTimeout(timeout time.Duration) {
 	r.setMaxRecvTimeout(timeout)
 }
+func (r *httpRequest_) Content() string {
+	return string(r.UnsafeContent())
+}
 func (r *httpRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil

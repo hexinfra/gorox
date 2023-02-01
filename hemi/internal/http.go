@@ -76,7 +76,6 @@ type httpInMessage interface {
 	applyHeader(header *pair) bool
 	ContentSize() int64
 	readContent() (p []byte, err error)
-	UnsafeContent() []byte
 	HasTrailers() bool
 	applyTrailer(trailer *pair) bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
@@ -581,9 +580,6 @@ func (r *httpInMessage_) setMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
 
-func (r *httpInMessage_) Content() string {
-	return string(r.shell.UnsafeContent())
-}
 func (r *httpInMessage_) unsafeContent() []byte {
 	r.loadContent()
 	if r.stream.isBroken() {

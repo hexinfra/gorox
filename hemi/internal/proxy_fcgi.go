@@ -479,7 +479,7 @@ func putFCGIParams(params []byte) {
 	poolFCGIParams.Put(params)
 }
 
-// fcgiResponse
+// fcgiResponse must implements response interface.
 type fcgiResponse struct {
 	// Assocs
 	stream *fcgiStream
@@ -594,42 +594,50 @@ var ( // perfect hash table for response multiple headers
 		edge  uint8
 		check func(*fcgiResponse, uint8, uint8) bool
 	}{
-		0: {123, 0, 4, (*fcgiResponse).checkConnection},
-		1: {123, 0, 4, (*fcgiResponse).checkTransferEncoding},
+		0: {httpHashConnection, 0, 4, (*fcgiResponse).checkConnection},
+		1: {httpHashTransferEncoding, 0, 4, (*fcgiResponse).checkTransferEncoding},
 	}
 	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return 0 }
 )
 
 func (r *fcgiResponse) checkConnection(from uint8, edge uint8) bool {
-	// TODO
-	return false
+	for i := from; i < edge; i++ {
+		r.headers[i].zero()
+	}
+	return true
 }
 func (r *fcgiResponse) checkTransferEncoding(from uint8, edge uint8) bool {
-	// TODO
-	return false
+	for i := from; i < edge; i++ {
+		r.headers[i].zero()
+	}
+	return true
 }
 
 var ( // perfect hash table for response critical headers
-	fcgiResponseCriticalHeaderNames = []byte("content-length content-type")
-	fcgiResponseCriticalHeaderTable = [2]struct {
+	fcgiResponseCriticalHeaderNames = []byte("content-length content-type status")
+	fcgiResponseCriticalHeaderTable = [3]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		check func(*fcgiResponse, *pair, uint8) bool
 	}{
-		0: {123, 0, 4, (*fcgiResponse).checkContentLength},
-		1: {123, 0, 4, (*fcgiResponse).checkContentType},
+		0: {httpHashContentLength, 0, 4, (*fcgiResponse).checkContentLength},
+		1: {httpHashContentType, 0, 4, (*fcgiResponse).checkContentType},
+		2: {fcgiHashStatus, 0, 4, (*fcgiResponse).checkStatus},
 	}
 	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return 0 }
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
-	// TODO
+	r.headers[index].zero() // we don't believe the value provided by fcgi application.
 	return true
 }
 func (r *fcgiResponse) checkContentType(header *pair, index uint8) bool {
-	// TODO
 	r.indexes.contentType = index
+	return true
+}
+func (r *fcgiResponse) checkStatus(header *pair, index uint8) bool {
+	// TODO
 	return true
 }
 
@@ -640,9 +648,7 @@ func (r *fcgiResponse) unsafeContentType() []byte {
 	}
 	return r.headers[r.indexes.contentType].valueAt(r.input)
 }
-func (r *fcgiResponse) delHopHeaders() {
-	// TODO
-}
+func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to del
 
 func (r *fcgiResponse) parseSetCookie() bool {
 	// TODO
@@ -660,10 +666,6 @@ func (r *fcgiResponse) cleanInput() {
 
 func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) { r.maxRecvTimeout = timeout }
 
-func (r *fcgiResponse) UnsafeContent() []byte {
-	// TODO
-	return nil
-}
 func (r *fcgiResponse) hasContent() bool {
 	// TODO
 	return false
@@ -797,6 +799,10 @@ const ( // response record types
 	fcgiTypeStdout     = 6
 	fcgiTypeStderr     = 7
 	fcgiTypeEndRequest = 3
+)
+
+const ( // fcgi hashes
+	fcgiHashStatus = 676
 )
 
 var ( // fcgi variables

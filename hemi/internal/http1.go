@@ -770,6 +770,26 @@ func (r *httpOutMessage_) writeHeaders1() error { // used by push and pass
 	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
 	return nil
 }
+func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
+	if r.stream.isBroken() {
+		return httpWriteBroken
+	}
+	for {
+		if err := r._beforeWrite(); err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		_, err := r.stream.writev(vector)
+		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
+			err = httpWriteTooSlow
+		}
+		if err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		return nil
+	}
+}
 func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
@@ -841,26 +861,6 @@ func (r *httpOutMessage_) _writeBlob1(block *Block, chunked bool) error { // blo
 		r.vector[0] = block.Blob()
 	}
 	return r.writeVector1(&r.vector)
-}
-func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
-	if r.stream.isBroken() {
-		return httpWriteBroken
-	}
-	for {
-		if err := r._beforeWrite(); err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		_, err := r.stream.writev(vector)
-		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
-			err = httpWriteTooSlow
-		}
-		if err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		return nil
-	}
 }
 
 // HTTP/1 protocol elements.

@@ -150,12 +150,11 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		resp.SendBadGateway(nil)
 		return
 	}
-	if !hasContent || h.bufferClientContent || req.isChunked() {
-		fErr = fReq.post(content)
-		if fErr != nil {
+	if hasContent && !h.bufferClientContent && !req.isChunked() {
+		if fErr = fReq.sync(req); fErr != nil {
 			fStream.markBroken()
 		}
-	} else if fErr = fReq.sync(req); fErr != nil {
+	} else if fErr = fReq.post(content); fErr != nil {
 		fStream.markBroken()
 	}
 	if fErr != nil {
@@ -208,12 +207,12 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		fStream.markBroken()
 		return
 	}
-	if !fHasContent || h.bufferServerContent {
-		if resp.post(fContent, false) != nil {
+	if fHasContent && !h.bufferServerContent {
+		if err := resp.sync(fResp); err != nil {
+			fStream.markBroken()
 			return
 		}
-	} else if err := resp.sync(fResp); err != nil {
-		fStream.markBroken()
+	} else if err := resp.post(fContent, false); err != nil {
 		return
 	}
 
@@ -274,6 +273,10 @@ func (s *fcgiStream) onEnd() {
 
 func (s *fcgiStream) smallBuffer() []byte        { return s.stockBuffer[:] }
 func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (s *fcgiStream) makeTempName(p []byte, stamp int64) (from int, edge int) {
+	return s.conn.MakeTempName(p, stamp)
+}
 
 func (s *fcgiStream) setWriteDeadline(deadline time.Time) error {
 	return s.conn.SetWriteDeadline(deadline)
@@ -355,21 +358,16 @@ func (r *fcgiRequest) addHTTPParam(name []byte, value []byte) bool {
 
 func (r *fcgiRequest) setMaxSendTimeout(timeout time.Duration) { r.maxSendTimeout = timeout }
 
-func (r *fcgiRequest) sync(req Request) error { // only for counted content
-	pass := r.syncBytes
-	if size := req.ContentSize(); size == -2 {
-		// TODO: remove this branch
-	} else { // size >= 0
-		r.isSent = true
-		r.contentSize = size
-		if err := r.passHeaders(); err != nil {
-			return err
-		}
+func (r *fcgiRequest) sync(req Request) error { // only for counted (>0) content
+	r.isSent = true
+	r.contentSize = req.ContentSize()
+	if err := r.syncParams(); err != nil {
+		return err
 	}
 	for {
 		p, err := req.readContent()
 		if len(p) >= 0 {
-			if e := pass(p); e != nil {
+			if e := r.syncBytes(p); e != nil {
 				return e
 			}
 		}
@@ -382,8 +380,8 @@ func (r *fcgiRequest) sync(req Request) error { // only for counted content
 	}
 	return nil
 }
-func (r *fcgiRequest) passHeaders() error {
-	// TODO
+func (r *fcgiRequest) syncParams() error {
+	// TODO: build the params record, sync beginRequest and params
 	if r.stream.proxy.keepConn {
 		// use fcgiBeginKeepConn
 	} else {
@@ -392,34 +390,43 @@ func (r *fcgiRequest) passHeaders() error {
 	return nil
 }
 func (r *fcgiRequest) syncBytes(p []byte) error {
-	// TODO
+	// TODO: create a stdin record, sync
 	return nil
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or chunked Request content
-	if contentFile, ok := content.(*os.File); ok {
+	if contentBlob, ok := content.([]byte); ok {
+		return r.sendBlob(contentBlob)
+	} else if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
 			contentFile.Close()
 			return err
 		}
 		return r.sendFile(contentFile, fileInfo)
-	} else if contentBlob, ok := content.([]byte); ok {
-		return r.sendBlob(contentBlob)
-	} else {
+	} else { // nil, means no content
 		return r.sendBlob(nil)
 	}
 }
 
 func (r *fcgiRequest) checkSend() error {
-	// TODO
+	if r.isSent {
+		return httpAlreadySent
+	}
+	r.isSent = true
 	return nil
 }
-func (r *fcgiRequest) sendBlob(content []byte) error {
-	// TODO
+func (r *fcgiRequest) sendBlob(content []byte) error { // with params
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	// TODO: beginRequest + params + stdin
 	return nil
 }
-func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	// TODO
+func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error { // with params
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	// TODO: beginRequest + params + stdin
 	return nil
 }
 
@@ -482,7 +489,7 @@ type fcgiResponse struct {
 	// States (non-zeros)
 	input          []byte
 	headers        []pair
-	contentSize    int64
+	contentSize    int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
 	maxRecvTimeout time.Duration // max timeout to recv response
 	headResult     int16
 	// States (zeros)
@@ -518,7 +525,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
-	r.contentSize = -1
+	r.contentSize = -1                                  // no content
 	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
 	r.headResult = StatusOK
 }
@@ -562,7 +569,7 @@ func (r *fcgiResponse) onEnd() {
 func (r *fcgiResponse) recvHead() {
 	// TODO
 }
-func (r *fcgiResponse) nextRecord() {
+func (r *fcgiResponse) _nextRecord() {
 	// TODO: use getFCGIInput if necessary
 }
 
@@ -639,7 +646,7 @@ func (r *fcgiResponse) unsafeContentType() []byte {
 	}
 	return r.headers[r.indexes.contentType].valueAt(r.input)
 }
-func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to del
+func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 
 func (r *fcgiResponse) parseSetCookie() bool {
 	// TODO
@@ -655,29 +662,35 @@ func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
 
+func (r *fcgiResponse) markChunked()                            { r.contentSize = -2 }
+func (r *fcgiResponse) isChunked() bool                         { return r.contentSize == -2 }
 func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) { r.maxRecvTimeout = timeout }
 
 func (r *fcgiResponse) hasContent() bool {
-	// TODO
-	return false
-}
-func (r *fcgiResponse) readContent() (p []byte, err error) {
-	// TODO
-	return
+	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
+	if r.status == StatusNoContent || r.status == StatusNotModified {
+		return false
+	}
+	// All other responses do include content, although that content might be of zero length.
+	return r.contentSize >= 0 || r.isChunked()
 }
 func (r *fcgiResponse) holdContent() any {
 	// TODO
 	return nil
 }
-func (r *fcgiResponse) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
+func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or TempFile (for large content)
 	// TODO
 	return nil
+}
+func (r *fcgiResponse) readContent() (p []byte, err error) {
+	// TODO
+	return
 }
 
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return true // fcgi doesn't support trailers
+func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+	return true
 }
 func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 
@@ -696,8 +709,9 @@ func (r *fcgiResponse) saveContentFilesDir() string {
 	return r.stream.proxy.SaveContentFilesDir() // must ends with '/'
 }
 
-func (r *fcgiResponse) _newTempFile() {
+func (r *fcgiResponse) _newTempFile() (TempFile, error) {
 	// TODO
+	return nil, nil
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	now := time.Now()

@@ -384,7 +384,6 @@ type Request interface {
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	readContent() (p []byte, err error)
 	holdContent() any
-	recvContent(retain bool) any
 	delHopTrailers()
 	applyTrailer(trailer *pair) bool
 	arrayCopy(p []byte) bool

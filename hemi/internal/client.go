@@ -293,6 +293,7 @@ type PConn interface {
 	Read(p []byte) (n int, err error)
 	ReadFull(p []byte) (n int, err error)
 	Close() error
+	MakeTempName(p []byte, stamp int64) (from int, edge int)
 	IsBroken() bool
 	MarkBroken()
 }
@@ -304,6 +305,7 @@ type pConn_ struct {
 	// Conn states (non-zeros)
 	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)
+	counter     atomic.Int64 // used to make temp name
 	usedStreams atomic.Int32 // how many streams has been used?
 	writeBroken atomic.Bool  // write-side broken?
 	readBroken  atomic.Bool  // read-side broken?
@@ -315,10 +317,16 @@ func (c *pConn_) onGet(id int64, client client, maxStreams int32) {
 }
 func (c *pConn_) onPut() {
 	c.conn_.onPut()
+	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
 }
+
+func (c *pConn_) MakeTempName(p []byte, stamp int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, stamp, c.counter.Add(1))
+}
+func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *pConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
 func (c *pConn_) MarkBroken() {
@@ -328,5 +336,3 @@ func (c *pConn_) MarkBroken() {
 
 func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }
-
-func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }

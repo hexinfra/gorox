@@ -98,9 +98,9 @@ func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {
 // hConn is the interface for *H[1-3]Conn.
 type hConn interface {
 	getClient() httpClient
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
 }
 
 // hConn_ is the mixin for H[1-3]Conn.
@@ -128,9 +128,6 @@ func (c *hConn_) onPut() {
 
 func (c *hConn_) getClient() httpClient { return c.client.(httpClient) }
 
-func (c *hConn_) isBroken() bool { return c.broken.Load() }
-func (c *hConn_) markBroken()    { c.broken.Store(true) }
-
 func (c *hConn_) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, stamp, c.counter.Add(1))
 }
@@ -138,6 +135,9 @@ func (c *hConn_) makeTempName(p []byte, stamp int64) (from int, edge int) {
 func (c *hConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
 }
+
+func (c *hConn_) isBroken() bool { return c.broken.Load() }
+func (c *hConn_) markBroken()    { c.broken.Store(true) }
 
 // hStream_ is the mixin for H[1-3]Stream.
 type hStream_ struct {
@@ -382,7 +382,6 @@ type response interface {
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	setMaxRecvTimeout(timeout time.Duration) // to defend against bad server
 	readContent() (p []byte, err error)
-	recvContent(retain bool) any
 	delHopTrailers()
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 }

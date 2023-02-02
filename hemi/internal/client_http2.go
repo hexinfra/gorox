@@ -406,13 +406,12 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *H2Request) passHeaders() error {
+func (r *H2Request) syncHeaders() error {
 	// TODO
 	return nil
 }
 func (r *H2Request) syncBytes(p []byte) error {
-	// TODO
-	return nil
+	return r.syncBytes2(p)
 }
 
 func (r *H2Request) finalizeHeaders() {

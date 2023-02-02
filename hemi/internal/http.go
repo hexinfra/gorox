@@ -1126,7 +1126,6 @@ type httpOutMessage interface {
 	kickHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
-	passHeaders() error // used by proxies
 	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
@@ -1137,6 +1136,7 @@ type httpOutMessage interface {
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	finalizeChunked() error
+	syncHeaders() error       // used by proxies
 	syncBytes(p []byte) error // used by proxies
 }
 
@@ -1383,7 +1383,7 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
-		if err := r.shell.passHeaders(); err != nil {
+		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}
 	}
@@ -1411,7 +1411,13 @@ func (r *httpOutMessage_) sync(in httpInMessage) error { // used by proxes, to s
 	return nil
 }
 func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
-	if contentFile, ok := content.(*os.File); ok {
+	if contentBlob, ok := content.([]byte); ok {
+		if hasTrailers { // if (in the future) we supports holding chunked content in buffer, this happens
+			return r.pushBlob(contentBlob)
+		} else {
+			return r.sendBlob(contentBlob)
+		}
+	} else if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
 			contentFile.Close()
@@ -1421,12 +1427,6 @@ func (r *httpOutMessage_) post(content any, hasTrailers bool) error { // used by
 			return r.pushFile(contentFile, fileInfo, false) // false to avoid twice close()
 		} else {
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
-		}
-	} else if contentBlob, ok := content.([]byte); ok {
-		if hasTrailers { // if (in the future) we supports holding chunked content in buffer, this happens
-			return r.pushBlob(contentBlob)
-		} else {
-			return r.sendBlob(contentBlob)
 		}
 	} else { // nil means no content, but we have to send, so send nil.
 		return r.sendBlob(nil)

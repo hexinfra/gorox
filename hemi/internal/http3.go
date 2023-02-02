@@ -71,10 +71,12 @@ func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
 	return false
 }
 func (r *httpOutMessage_) trailers3() []byte {
+	// TODO
 	return nil
 }
 
 func (r *httpOutMessage_) syncBytes3(p []byte) error {
+	// TODO
 	return nil
 }
 

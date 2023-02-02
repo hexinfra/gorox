@@ -732,6 +732,7 @@ func (r *httpOutMessage_) trailers1() []byte {
 }
 
 func (r *httpOutMessage_) syncBytes1(p []byte) error {
+	// TODO: use write() instead of writev()?
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
 	return r.writeVector1(&r.vector)

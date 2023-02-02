@@ -378,13 +378,12 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *H3Request) passHeaders() error {
+func (r *H3Request) syncHeaders() error {
 	// TODO
 	return nil
 }
 func (r *H3Request) syncBytes(p []byte) error {
-	// TODO
-	return nil
+	return r.syncBytes3(p)
 }
 
 func (r *H3Request) finalizeHeaders() {

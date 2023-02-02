@@ -1013,7 +1013,7 @@ func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return true
 }
-func (r *http1Response) passHeaders() error {
+func (r *http1Response) syncHeaders() error {
 	return r.writeHeaders1()
 }
 func (r *http1Response) syncBytes(p []byte) error {

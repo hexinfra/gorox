@@ -438,13 +438,12 @@ func (r *http3Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
-func (r *http3Response) passHeaders() error {
+func (r *http3Response) syncHeaders() error {
 	// TODO
 	return nil
 }
 func (r *http3Response) syncBytes(p []byte) error {
-	// TODO
-	return nil
+	return r.syncBytes3(p)
 }
 
 func (r *http3Response) finalizeHeaders() {

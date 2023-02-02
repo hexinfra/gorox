@@ -82,10 +82,12 @@ func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
 	return false
 }
 func (r *httpOutMessage_) trailers2() []byte {
+	// TODO
 	return nil
 }
 
 func (r *httpOutMessage_) syncBytes2(p []byte) error {
+	// TODO
 	return nil
 }
 

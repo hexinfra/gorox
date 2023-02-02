@@ -470,7 +470,7 @@ func (r *H1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
 
-func (r *H1Request) passHeaders() error {
+func (r *H1Request) syncHeaders() error {
 	return r.writeHeaders1()
 }
 func (r *H1Request) syncBytes(p []byte) error {

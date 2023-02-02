@@ -1035,13 +1035,12 @@ func (r *http2Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return false
 }
-func (r *http2Response) passHeaders() error {
+func (r *http2Response) syncHeaders() error {
 	// TODO
 	return nil
 }
 func (r *http2Response) syncBytes(p []byte) error {
-	// TODO
-	return nil
+	return r.syncBytes2(p)
 }
 
 func (r *http2Response) finalizeHeaders() {

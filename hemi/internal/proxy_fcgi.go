@@ -5,12 +5,7 @@
 
 // FCGI proxy handlets pass requests to backend FCGI servers and cache responses.
 
-// FCGI (FastCGI) is mainly for PHP applications.
-
-// FCGI uses a framing protocol like HTTP/2, so "content-length" is not required.
-// It relies on framing protocol to decide when or where the content is finished.
-// So, FCGI allows chunked content in HTTP, we are not obliged to buffer content.
-// However, FCGI does not support HTTP trailers.
+// FCGI (FastCGI) is mainly for PHP applications. It does not support chunking and trailers.
 
 package internal
 
@@ -121,7 +116,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	)
 
 	hasContent := req.HasContent()
-	if hasContent && h.bufferClientContent { // including size 0
+	if hasContent && (h.bufferClientContent || req.isChunked()) { // including size 0
 		content = req.holdContent()
 		if content == nil {
 			resp.SetStatus(StatusBadRequest)
@@ -155,7 +150,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		resp.SendBadGateway(nil)
 		return
 	}
-	if !hasContent || h.bufferClientContent {
+	if !hasContent || h.bufferClientContent || req.isChunked() {
 		fErr = fReq.post(content)
 		if fErr != nil {
 			fStream.markBroken()
@@ -309,7 +304,7 @@ type fcgiRequest struct {
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
 	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector  [5][]byte   // for sending/pushing request. reset after stream. 120B
+	fixedVector  [5][]byte   // for sending request. reset after stream. 120B
 	fcgiRequest0             // all values must be zero by default in this struct!
 }
 type fcgiRequest0 struct { // for fast reset, entirely
@@ -360,10 +355,10 @@ func (r *fcgiRequest) addHTTPParam(name []byte, value []byte) bool {
 
 func (r *fcgiRequest) setMaxSendTimeout(timeout time.Duration) { r.maxSendTimeout = timeout }
 
-func (r *fcgiRequest) sync(req Request) error {
+func (r *fcgiRequest) sync(req Request) error { // only for counted content
 	pass := r.syncBytes
 	if size := req.ContentSize(); size == -2 {
-		pass = r.pushBlob
+		// TODO: remove this branch
 	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
@@ -400,7 +395,7 @@ func (r *fcgiRequest) syncBytes(p []byte) error {
 	// TODO
 	return nil
 }
-func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File
+func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or chunked Request content
 	if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
@@ -424,10 +419,6 @@ func (r *fcgiRequest) sendBlob(content []byte) error {
 	return nil
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	// TODO
-	return nil
-}
-func (r *fcgiRequest) pushBlob(chunk []byte) error {
 	// TODO
 	return nil
 }

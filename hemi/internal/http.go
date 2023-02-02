@@ -576,6 +576,8 @@ func (r *httpInMessage_) walkHeaders(fn func(hash uint16, name []byte, value []b
 	return r._walkFields(r.headers, extraHeader, fn)
 }
 
+func (r *httpInMessage_) markChunked()    { r.contentSize = -2 }
+func (r *httpInMessage_) isChunked() bool { return r.contentSize == -2 }
 func (r *httpInMessage_) setMaxRecvTimeout(timeout time.Duration) {
 	r.maxRecvTimeout = timeout
 }
@@ -1301,9 +1303,9 @@ func (r *httpOutMessage_) kickDate() (deleted bool) {
 	return true
 }
 
-func (r *httpOutMessage_) IsSent() bool {
-	return r.isSent
-}
+func (r *httpOutMessage_) IsSent() bool    { return r.isSent }
+func (r *httpOutMessage_) markChunked()    { r.contentSize = -2 }
+func (r *httpOutMessage_) isChunked() bool { return r.contentSize == -2 }
 func (r *httpOutMessage_) SetMaxSendTimeout(timeout time.Duration) {
 	r.maxSendTimeout = timeout
 }

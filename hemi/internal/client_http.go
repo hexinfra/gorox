@@ -306,7 +306,7 @@ func (r *hRequest_) checkPush() error {
 		return httpMixedContentMode
 	}
 	r.isSent = true
-	r.contentSize = -2 // mark as chunked mode
+	r.markChunked()
 	return r.shell.pushHeaders()
 }
 func (r *hRequest_) push(chunk *Block) error {
@@ -642,7 +642,7 @@ func (r *hResponse_) checkHead() bool {
 			return false
 		}
 		if r.contentSize == -1 { // content-length does not exist
-			r.contentSize = -2 // mark as chunked. use -2 to check chunked content from now on
+			r.markChunked()
 		} else {
 			// RFC 7230 (section 3.3.3):
 			// If a message is received with both a Transfer-Encoding and a
@@ -676,7 +676,7 @@ func (r *hResponse_) HasContent() bool {
 	}
 	// All other responses do include content, although that content might
 	// be of zero length.
-	return r.contentSize >= 0 || r.contentSize == -2
+	return r.contentSize >= 0 || r.isChunked()
 }
 func (r *hResponse_) Content() string {
 	return string(r.unsafeContent())

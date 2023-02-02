@@ -115,7 +115,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	} else if err2 = req2.sync(req); err2 != nil {
 		stream2.markBroken()
-	} else if req2.contentSize == -2 { // write last chunk and trailers (if exist)
+	} else if req2.isChunked() { // write last chunk and trailers (if exist)
 		if err2 = req2.endChunked(); err2 != nil {
 			stream2.markBroken()
 		}

@@ -301,7 +301,7 @@ func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Respon
 	app.dispatchHandlet(req, resp)
 	if !resp.isSent { // only happens on counted content.
 		resp.sendChain(resp.content)
-	} else if resp.contentSize == -2 { // write last chunk and trailers (if exist)
+	} else if resp.isChunked() { // write last chunk and trailers (if exist)
 		resp.endChunked()
 	}
 	if !req.contentReceived {
@@ -1032,7 +1032,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r.fieldsEdge += uint16(clockLastModifiedSize)
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if r.contentSize != -2 { // content-length: >= 0
+		if !r.isChunked() { // content-length: >= 0
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])

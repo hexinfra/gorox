@@ -112,7 +112,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	} else if err1 = req1.sync(req); err1 != nil {
 		stream1.markBroken()
-	} else if req1.contentSize == -2 { // write last chunk and trailers (if exist)
+	} else if req1.isChunked() { // write last chunk and trailers (if exist)
 		if err1 = req1.endChunked(); err1 != nil {
 			stream1.markBroken()
 		}

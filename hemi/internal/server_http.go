@@ -322,6 +322,7 @@ type Request interface {
 	DelCookie(name string) (deleted bool)
 
 	HasContent() bool
+	isChunked() bool
 	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 
@@ -1553,10 +1554,10 @@ func (r *httpRequest_) checkHead() bool {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
-		r.contentSize = -2 // mark as chunked. use -2 to check chunked content from now on
+		r.markChunked()
 	} else if r.versionCode >= Version2 && r.contentSize == -1 {
 		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame.
-		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as chunked
+		r.markChunked() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as chunked
 	}
 
 	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
@@ -2274,9 +2275,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) HasContent() bool {
-	return r.contentSize >= 0 || r.contentSize == -2 // -2 means chunked
-}
+func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isChunked() }
 func (r *httpRequest_) SetMaxRecvTimeout(timeout time.Duration) {
 	r.setMaxRecvTimeout(timeout)
 }
@@ -2658,7 +2657,7 @@ func (r *httpResponse_) checkPush() error {
 		return httpMixedContentMode
 	}
 	r.isSent = true
-	r.contentSize = -2 // mark as chunked mode
+	r.markChunked()
 	resp := r.shell.(Response)
 	if r.hasRevisers {
 		for _, id := range r.revisers {

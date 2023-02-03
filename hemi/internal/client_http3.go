@@ -405,7 +405,7 @@ type H3Response struct {
 	// Stream states (zeros)
 }
 
-func (r *H3Response) addHeaders(p []byte) bool {
+func (r *H3Response) appendHeaders(p []byte) bool {
 	// TODO
 	return false
 }
@@ -414,7 +414,7 @@ func (r *H3Response) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 
-func (r *H3Response) addTrailers(p []byte) bool {
+func (r *H3Response) appendTrailers(p []byte) bool {
 	// TODO
 	return false
 }

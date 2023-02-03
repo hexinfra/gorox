@@ -1082,7 +1082,7 @@ func (r *httpInMessage_) _walkFields(fields zone, extraKind uint8, fn func(hash 
 	return true
 }
 
-func (r *httpInMessage_) _newTempFile(retain bool) (TempFile, error) {
+func (r *httpInMessage_) _newTempFile(retain bool) (TempFile, error) { // to save content to
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
 		return FakeFile, nil
 	}
@@ -1177,8 +1177,8 @@ type httpOutMessage0_ struct { // for fast reset, entirely
 
 func (r *httpOutMessage_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.contentSize = -1 // not set
-	r.maxSendTimeout = r.stream.keeper().WriteTimeout()
+	r.contentSize = -1                                      // not set
+	r.maxSendTimeout = r.stream.keeper().WriteTimeout() * 2 // what is the best default value?
 	r.asRequest = asRequest
 	r.nHeaders = 1                    // r.edges[0] is not used
 	r.nTrailers = 1                   // r.edges[0] is not used

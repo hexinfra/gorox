@@ -342,7 +342,7 @@ type http3Request struct {
 	// Stream states (zeros)
 }
 
-func (r *http3Request) addHeaders(p []byte) bool {
+func (r *http3Request) appendHeaders(p []byte) bool {
 	return false
 }
 
@@ -350,7 +350,7 @@ func (r *http3Request) readContent() (p []byte, err error) {
 	return r.readContent3()
 }
 
-func (r *http3Request) addTrailers(p []byte) bool {
+func (r *http3Request) appendTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false
 }

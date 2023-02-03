@@ -305,6 +305,9 @@ func (c *TConn) Write(p []byte) (n int, err error)         { return c.netConn.Wr
 func (c *TConn) Writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
 func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Read(p) }
 func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
+func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
+	return io.ReadAtLeast(c.netConn, p, min)
+}
 
 func (c *TConn) CloseWrite() error {
 	if c.client.TLSMode() {

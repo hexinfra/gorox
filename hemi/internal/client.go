@@ -292,6 +292,7 @@ type PConn interface {
 	Writev(vector *net.Buffers) (int64, error)
 	Read(p []byte) (n int, err error)
 	ReadFull(p []byte) (n int, err error)
+	ReadAtLeast(p []byte, min int) (n int, err error)
 	Close() error
 	MakeTempName(p []byte, stamp int64) (from int, edge int)
 	IsBroken() bool

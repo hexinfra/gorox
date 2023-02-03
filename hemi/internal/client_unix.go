@@ -246,6 +246,9 @@ func (c *XConn) Write(p []byte) (n int, err error)         { return c.unixConn.W
 func (c *XConn) Writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.unixConn) }
 func (c *XConn) Read(p []byte) (n int, err error)          { return c.unixConn.Read(p) }
 func (c *XConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.unixConn, p) }
+func (c *XConn) ReadAtLeast(p []byte, min int) (n int, err error) {
+	return io.ReadAtLeast(c.unixConn, p, min)
+}
 
 func (c *XConn) CloseWrite() error { return c.unixConn.CloseWrite() }
 

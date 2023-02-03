@@ -285,10 +285,10 @@ func (s *fcgiStream) setReadDeadline(deadline time.Time) error {
 	return s.conn.SetReadDeadline(deadline)
 }
 
-func (s *fcgiStream) write(p []byte) (int, error)               { return s.conn.Write(p) }
-func (s *fcgiStream) writev(vector *net.Buffers) (int64, error) { return s.conn.Writev(vector) }
-func (s *fcgiStream) read(p []byte) (int, error)                { return s.conn.Read(p) }
-func (s *fcgiStream) readFull(p []byte) (int, error)            { return s.conn.ReadFull(p) }
+func (s *fcgiStream) write(p []byte) (int, error)                { return s.conn.Write(p) }
+func (s *fcgiStream) writev(vector *net.Buffers) (int64, error)  { return s.conn.Writev(vector) }
+func (s *fcgiStream) read(p []byte) (int, error)                 { return s.conn.Read(p) }
+func (s *fcgiStream) readAtLeast(p []byte, min int) (int, error) { return s.conn.ReadAtLeast(p, min) }
 
 func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
 func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
@@ -299,10 +299,10 @@ type fcgiRequest struct {
 	stream   *fcgiStream
 	response *fcgiResponse
 	// States (buffers)
-	stockParams [2048]byte
+	stockParams [_2K]byte // for r.params
 	// States (non-zeros)
-	params         []byte // place exactly one FCGI_PARAMS record
-	contentSize    int64
+	params         []byte        // place exactly one FCGI_PARAMS record
+	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
 	maxSendTimeout time.Duration // max timeout to send request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
@@ -319,8 +319,8 @@ type fcgiRequest0 struct { // for fast reset, entirely
 
 func (r *fcgiRequest) onUse() {
 	r.params = r.stockParams[:]
-	copy(r.params, fcgiParamsHeader)
-	r.contentSize = -1 // not set
+	copy(r.params, fcgiParamsHeader) // contentLength (r.params[4:6]) needs modification
+	r.contentSize = -1               // not set
 	r.maxSendTimeout = r.stream.proxy.maxSendTimeout
 }
 func (r *fcgiRequest) onEnd() {
@@ -482,19 +482,22 @@ type fcgiResponse struct {
 	// Assocs
 	stream *fcgiStream
 	// States (buffers)
-	stockInput   [2048]byte // for fcgi response headers
-	stockHeaders [64]pair
+	stockInput   [_2K]byte // for r.input
+	stockHeaders [64]pair  // for r.headers
 	// States (controlled)
-	header pair // to overcome ...
+	backup [fcgiSize]byte // a buffer for storing last bytes of current r.input when receiving records. will be copied back
+	header pair           // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	input          []byte
-	headers        []pair
+	input          []byte        // bytes of incoming response. [<r.stockInput>/4K/16K]
+	headers        []pair        // fcgi response headers
 	contentSize    int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
 	maxRecvTimeout time.Duration // max timeout to recv response
-	headResult     int16
+	inputEdge      int32         // edge position of current response
+	hBack          int32         // element begins from. for parsing header elements
+	hFore          int32         // element spanning to. for parsing header elements
+	headResult     int16         // result of receiving response head. values are same as http status for convenience
 	// States (zeros)
 	headReason    string    // the reason of head result
-	inputEdge     int32     // edge position of current response
 	bodyWindow    []byte    // a window used for receiving content
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
@@ -503,8 +506,9 @@ type fcgiResponse struct {
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
-	pBack           int16    // element begins from. for parsing
-	pFore           int16    // element spanning to. for parsing
+	paddingLength   int32    // ...
+	head            text     // ...
+	imme            text     // ...
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentReceived bool     // is content received? if response has no content, it is true (received)
@@ -525,14 +529,17 @@ type fcgiResponse0 struct { // for fast reset, entirely
 func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
-	r.contentSize = -1                                  // no content
+	r.contentSize = -1
 	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
+	r.inputEdge = fcgiSize // the first fcgiSize bytes are backed up to r.backup
+	r.hBack = r.inputEdge
+	r.hFore = r.hBack
 	r.headResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.input) != cap(r.stockInput) {
 		putFCGIInput(r.input)
-		r.input, r.inputEdge = nil, 0
+		r.input = nil
 	}
 	if cap(r.headers) != cap(r.stockHeaders) {
 		// TODO: put
@@ -567,10 +574,60 @@ func (r *fcgiResponse) onEnd() {
 }
 
 func (r *fcgiResponse) recvHead() {
-	// TODO
+	// The entire response head must be received within one timeout
+	if err := r._beforeRead(&r.recvTime); err != nil {
+		r.headResult = -1
+		return
+	}
+	if !r.growHead() || !r.recvHeaders() || !r.checkHead() {
+		// r.headResult is set.
+		return
+	}
+	r.cleanInput()
 }
-func (r *fcgiResponse) _nextRecord() {
-	// TODO: use getFCGIInput if necessary
+func (r *fcgiResponse) growHead() bool { // we need more head bytes
+	// Is r.input full?
+	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
+		if inputSize != int32(cap(r.stockInput)) {
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+		input := getFCGIInput()
+		copy(input, r.input) // copy all
+		r.input = input      // a larger input is now used
+	}
+	// r.input is not full.
+	inputFrom := r.inputEdge - fcgiSize
+	copy(r.backup[:], r.input[inputFrom:r.inputEdge])
+	if n, err := r.stream.readAtLeast(r.input[inputFrom:], fcgiSize+1); err == nil {
+		contentLength := int32(r.input[inputFrom+4])<<8 + int32(r.input[inputFrom+5])
+		if contentLength == 0 || r.input[inputFrom+1] != fcgiTypeStdout {
+			r.headResult = StatusBadRequest
+			return false
+		}
+		copy(r.input[inputFrom:r.inputEdge], r.backup[:])
+		r.inputEdge += int32(n) // we might have only read 1 byte.
+		return true
+	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		r.headResult = StatusRequestTimeout
+	} else { // i/o error
+		r.headResult = -1
+	}
+	return false
+}
+func (r *fcgiResponse) recvHeaders() bool {
+	// generic-response = 1*header-field NL [ response-body ]
+	// header-field    = CGI-field | other-field
+	// CGI-field       = Content-Type | Location | Status
+	// other-field     = protocol-field | extension-field
+	// protocol-field  = generic-field
+	// extension-field = generic-field
+	// generic-field   = field-name ":" [ field-value ] NL
+	// field-name      = token
+	// field-value     = *( field-content | LWSP )
+	// field-content   = *( token | separator | quoted-string )
+	// TODO
+	return false
 }
 
 func (r *fcgiResponse) Status() int16 { return r.status }
@@ -709,7 +766,7 @@ func (r *fcgiResponse) saveContentFilesDir() string {
 	return r.stream.proxy.SaveContentFilesDir() // must ends with '/'
 }
 
-func (r *fcgiResponse) _newTempFile() (TempFile, error) {
+func (r *fcgiResponse) _newTempFile() (TempFile, error) { // to save content to
 	// TODO
 	return nil, nil
 }
@@ -724,7 +781,7 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 // poolFCGIInput
 var poolFCGIInput sync.Pool
 
-const fcgiMaxRecord = 8 + 65535 + 255 // header + max content + max padding
+const fcgiMaxRecord = fcgiSize + _64K1 + 255 // header + max content + max padding
 
 func getFCGIInput() []byte {
 	if x := poolFCGIInput.Get(); x == nil {
@@ -748,10 +805,12 @@ func putFCGIInput(input []byte) {
 // Discrete records are standalone.
 // Stream records end with an empty record (contentLength=0).
 
+const fcgiSize = 8 // fcgi header size
+
 const ( // request record types
-	fcgiTypeBeginRequest = 1
-	fcgiTypeParams       = 4
-	fcgiTypeStdin        = 5
+	fcgiTypeBeginRequest = 1 // only one
+	fcgiTypeParams       = 4 // only one in our implementation (plus one empty params record)
+	fcgiTypeStdin        = 5 // many (ends with an empty stdin record)
 )
 
 var ( // predefined request records
@@ -801,9 +860,9 @@ var ( // predefined request records
 )
 
 const ( // response record types
-	fcgiTypeStdout     = 6
-	fcgiTypeStderr     = 7
-	fcgiTypeEndRequest = 3
+	fcgiTypeStdout     = 6 // many
+	fcgiTypeStderr     = 7 // many
+	fcgiTypeEndRequest = 3 // only one
 )
 
 const ( // fcgi hashes

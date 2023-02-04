@@ -10,6 +10,7 @@
 package internal
 
 import (
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -299,7 +300,7 @@ type fcgiRequest struct {
 	stream   *fcgiStream
 	response *fcgiResponse
 	// States (buffers)
-	stockParams [_2K]byte // for r.params
+	stockParams [1536]byte // for r.params
 	// States (non-zeros)
 	params         []byte        // place exactly one FCGI_PARAMS record
 	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
@@ -482,23 +483,19 @@ type fcgiResponse struct {
 	// Assocs
 	stream *fcgiStream
 	// States (buffers)
+	stockRecords [_2K]byte // for r.records
 	stockInput   [_2K]byte // for r.input
 	stockHeaders [64]pair  // for r.headers
 	// States (controlled)
-	backup [fcgiSize]byte // a buffer for storing last bytes of current r.input when receiving records. will be copied back
-	header pair           // to overcome the limitation of Go's escape analysis when receiving headers
+	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	input          []byte        // bytes of incoming response. [<r.stockInput>/4K/16K]
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecord]
+	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	headers        []pair        // fcgi response headers
-	contentSize    int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
 	maxRecvTimeout time.Duration // max timeout to recv response
-	inputEdge      int32         // edge position of current response
-	hBack          int32         // element begins from. for parsing header elements
-	hFore          int32         // element spanning to. for parsing header elements
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
 	// States (zeros)
 	headReason    string    // the reason of head result
-	bodyWindow    []byte    // a window used for receiving content
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
 	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.sizeReceived]
@@ -506,9 +503,12 @@ type fcgiResponse struct {
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
-	paddingLength   int32    // ...
-	head            text     // ...
+	recordsFrom     int32    // from position of current records
+	recordsEdge     int32    // edge position of current records
+	inputEdge       int32    // edge position of current input
 	imme            text     // ...
+	pBack           int32    // element begins from. for parsing header elements
+	pFore           int32    // element spanning to. for parsing header elements
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentReceived bool     // is content received? if response has no content, it is true (received)
@@ -527,32 +527,31 @@ type fcgiResponse0 struct { // for fast reset, entirely
 }
 
 func (r *fcgiResponse) onUse() {
+	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
-	r.contentSize = -1
 	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
-	r.inputEdge = fcgiSize // the first fcgiSize bytes are backed up to r.backup
-	r.hBack = r.inputEdge
-	r.hFore = r.hBack
 	r.headResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
+	if cap(r.records) != cap(r.stockRecords) {
+		if cap(r.records) == _16K {
+			PutNK(r.records)
+		} else {
+			putFCGIMaxRecord(r.records)
+		}
+		r.records = nil
+	}
 	if cap(r.input) != cap(r.stockInput) {
-		putFCGIInput(r.input)
+		PutNK(r.input)
 		r.input = nil
 	}
 	if cap(r.headers) != cap(r.stockHeaders) {
-		// TODO: put
+		put255Pairs(r.headers)
 		r.headers = nil
 	}
 
 	r.headReason = ""
-
-	if r.bodyWindow != nil {
-		// TODO: put
-		r.bodyWindow = nil
-	}
-
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
@@ -573,6 +572,79 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
+func (r *fcgiResponse) recordsRead() (p []byte, err error) { // only for stdout records
+read: // a new stdout record
+	haveSize := r.recordsEdge - r.recordsFrom
+	if haveSize < fcgiHeaderSize { // ensure a fcgi header
+		wantSize := int(fcgiHeaderSize - haveSize)
+		if freeSize := cap(r.records) - int(r.recordsEdge); wantSize > freeSize {
+			r.slideRecords(r.records)
+		}
+		n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], wantSize) // probably more
+		if err != nil {
+			return nil, err
+		}
+		r.recordsEdge += int32(n)
+		haveSize += int32(n)
+	}
+	contentLength := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
+	recordSize := fcgiHeaderSize + contentLength + int32(r.records[r.recordsFrom+6])
+	if recordSize > haveSize {
+		if bufferSize := int32(cap(r.records)); recordSize > bufferSize { // we need a larger r.records
+			var records []byte
+			if recordSize > _16K {
+				records = getFCGIMaxRecord()
+			} else { // recordSize <= _16K
+				records = Get16K()
+			}
+			r.slideRecords(records)
+			if bufferSize != int32(cap(r.stockRecords)) {
+				PutNK(r.records)
+			}
+			r.records = records
+		}
+		// r.records is large enough. read left bytes
+		wantSize := int(recordSize - haveSize)
+		if freeSize := cap(r.records) - int(r.recordsEdge); wantSize > freeSize {
+			r.slideRecords(r.records)
+		}
+		n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], wantSize)
+		if err != nil {
+			return nil, err
+		}
+		r.recordsEdge += int32(n)
+		haveSize += int32(n)
+	}
+	// recordSize <= haveSize.
+	kind := r.records[r.recordsFrom+1]
+	if kind != fcgiTypeStdout && kind != fcgiTypeStderr {
+		return nil, fcgiReadBadRecord
+	}
+	from := r.recordsFrom + fcgiHeaderSize
+	p = r.records[from : from+contentLength]
+	if recordSize == haveSize {
+		r.recordsFrom = 0
+		r.recordsEdge = 0
+	} else { // recordSize < haveSize
+		r.recordsFrom += recordSize
+	}
+	if kind == fcgiTypeStderr {
+		goto read
+	}
+	if contentLength == 0 {
+		err = io.EOF
+	}
+	return p, err
+}
+func (r *fcgiResponse) slideRecords(records []byte) {
+	copy(records, r.records[r.recordsFrom:r.recordsEdge])
+	r.recordsEdge -= r.recordsFrom
+	r.recordsFrom = 0
+}
+func (r *fcgiResponse) switchRecords() { // for receiving response content
+	// TODO: switch to 16k if 2k
+}
+
 func (r *fcgiResponse) recvHead() {
 	// The entire response head must be received within one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
@@ -586,33 +658,6 @@ func (r *fcgiResponse) recvHead() {
 	r.cleanInput()
 }
 func (r *fcgiResponse) growHead() bool { // we need more head bytes
-	// Is r.input full?
-	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
-		if inputSize != int32(cap(r.stockInput)) {
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-		input := getFCGIInput()
-		copy(input, r.input) // copy all
-		r.input = input      // a larger input is now used
-	}
-	// r.input is not full.
-	inputFrom := r.inputEdge - fcgiSize
-	copy(r.backup[:], r.input[inputFrom:r.inputEdge])
-	if n, err := r.stream.readAtLeast(r.input[inputFrom:], fcgiSize+1); err == nil {
-		contentLength := int32(r.input[inputFrom+4])<<8 + int32(r.input[inputFrom+5])
-		if contentLength == 0 || r.input[inputFrom+1] != fcgiTypeStdout {
-			r.headResult = StatusBadRequest
-			return false
-		}
-		copy(r.input[inputFrom:r.inputEdge], r.backup[:])
-		r.inputEdge += int32(n) // we might have only read 1 byte.
-		return true
-	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-		r.headResult = StatusRequestTimeout
-	} else { // i/o error
-		r.headResult = -1
-	}
 	return false
 }
 func (r *fcgiResponse) recvHeaders() bool {
@@ -684,7 +729,7 @@ var ( // perfect hash table for response critical headers
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
-	r.headers[index].zero() // we don't believe the value provided by fcgi application.
+	r.headers[index].zero() // we don't believe the value provided by fcgi application. we use chunked
 	return true
 }
 func (r *fcgiResponse) checkContentType(header *pair, index uint8) bool {
@@ -696,7 +741,7 @@ func (r *fcgiResponse) checkStatus(header *pair, index uint8) bool {
 	return true
 }
 
-func (r *fcgiResponse) ContentSize() int64 { return r.contentSize }
+func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is chunked by default
 func (r *fcgiResponse) unsafeContentType() []byte {
 	if r.indexes.contentType == 0 {
 		return nil
@@ -719,8 +764,6 @@ func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
 
-func (r *fcgiResponse) markChunked()                            { r.contentSize = -2 }
-func (r *fcgiResponse) isChunked() bool                         { return r.contentSize == -2 }
 func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) { r.maxRecvTimeout = timeout }
 
 func (r *fcgiResponse) hasContent() bool {
@@ -729,7 +772,7 @@ func (r *fcgiResponse) hasContent() bool {
 		return false
 	}
 	// All other responses do include content, although that content might be of zero length.
-	return r.contentSize >= 0 || r.isChunked()
+	return true
 }
 func (r *fcgiResponse) holdContent() any {
 	// TODO
@@ -742,6 +785,8 @@ func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or T
 func (r *fcgiResponse) readContent() (p []byte, err error) {
 	// TODO
 	return
+}
+func (r *fcgiResponse) growBody() {
 }
 
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
@@ -778,23 +823,27 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	return r.stream.setReadDeadline(now.Add(r.stream.proxy.backend.ReadTimeout()))
 }
 
-// poolFCGIInput
-var poolFCGIInput sync.Pool
+var ( // fcgi response errors
+	fcgiReadBadRecord = errors.New("bad record")
+)
 
-const fcgiMaxRecord = fcgiSize + _64K1 + 255 // header + max content + max padding
+// poolFCGIMaxRecord
+var poolFCGIMaxRecord sync.Pool
 
-func getFCGIInput() []byte {
-	if x := poolFCGIInput.Get(); x == nil {
+const fcgiMaxRecord = fcgiHeaderSize + _64K1 + fcgiMaxPadding // header + max content + max padding
+
+func getFCGIMaxRecord() []byte {
+	if x := poolFCGIMaxRecord.Get(); x == nil {
 		return make([]byte, fcgiMaxRecord)
 	} else {
 		return x.([]byte)
 	}
 }
-func putFCGIInput(input []byte) {
-	if cap(input) != fcgiMaxRecord {
-		BugExitln("bad fcgi input")
+func putFCGIMaxRecord(maxRecord []byte) {
+	if cap(maxRecord) != fcgiMaxRecord {
+		BugExitln("bad fcgi maxRecord")
 	}
-	poolFCGIInput.Put(input)
+	poolFCGIMaxRecord.Put(maxRecord)
 }
 
 // FCGI protocol elements.
@@ -805,7 +854,11 @@ func putFCGIInput(input []byte) {
 // Discrete records are standalone.
 // Stream records end with an empty record (contentLength=0).
 
-const fcgiSize = 8 // fcgi header size
+const (
+	fcgiHeaderSize = 8
+	fcgiMaxPadding = 255
+	fcgiMaxHead    = _16K - fcgiHeaderSize - fcgiMaxPadding
+)
 
 const ( // request record types
 	fcgiTypeBeginRequest = 1 // only one

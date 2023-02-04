@@ -78,7 +78,7 @@ MEMORY
 
     A window used for reading and parsing multipart/form-data content
 
-  c.inputs
+  c.frames
   --------
 
     A buffer to hold incoming frames of HTTP/2 and HTTP/3

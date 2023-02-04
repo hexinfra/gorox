@@ -28,8 +28,8 @@ func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, 
 			return false
 		}
 		// r.input size < 16K. We switch to a larger input (stock -> 4K -> 16K)
-		var input []byte
 		stockSize := int32(cap(r.stockInput))
+		var input []byte
 		if inputSize == stockSize {
 			input = Get4K()
 		} else { // 4K

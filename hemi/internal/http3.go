@@ -93,35 +93,35 @@ func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
 	return nil
 }
 
-// poolHTTP3Inputs
-var poolHTTP3Inputs sync.Pool
+// poolHTTP3Frames
+var poolHTTP3Frames sync.Pool
 
-func getHTTP3Inputs() *http3Inputs {
-	var inputs *http3Inputs
-	if x := poolHTTP3Inputs.Get(); x == nil {
-		inputs = new(http3Inputs)
+func getHTTP3Frames() *http3Frames {
+	var frames *http3Frames
+	if x := poolHTTP3Frames.Get(); x == nil {
+		frames = new(http3Frames)
 	} else {
-		inputs = x.(*http3Inputs)
+		frames = x.(*http3Frames)
 	}
-	return inputs
+	return frames
 }
-func putHTTP3Inputs(inputs *http3Inputs) { poolHTTP3Inputs.Put(inputs) }
+func putHTTP3Frames(frames *http3Frames) { poolHTTP3Frames.Put(frames) }
 
-// http3Inputs
-type http3Inputs struct {
+// http3Frames
+type http3Frames struct {
 	buf [_16K]byte // header + payload
 	ref atomic.Int32
 }
 
-func (a *http3Inputs) size() uint32  { return uint32(cap(a.buf)) }
-func (a *http3Inputs) getRef() int32 { return a.ref.Load() }
-func (a *http3Inputs) incRef()       { a.ref.Add(1) }
-func (a *http3Inputs) decRef() {
-	if a.ref.Add(-1) == 0 {
+func (p *http3Frames) size() uint32  { return uint32(cap(p.buf)) }
+func (p *http3Frames) getRef() int32 { return p.ref.Load() }
+func (p *http3Frames) incRef()       { p.ref.Add(1) }
+func (p *http3Frames) decRef() {
+	if p.ref.Add(-1) == 0 {
 		if IsDebug(1) {
-			Debugf("putHTTP3Inputs ref=%d\n", a.ref.Load())
+			Debugf("putHTTP3Frames ref=%d\n", p.ref.Load())
 		}
-		putHTTP3Inputs(a)
+		putHTTP3Frames(p)
 	}
 }
 

@@ -537,7 +537,7 @@ func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
 		if cap(r.records) == _16K {
 			PutNK(r.records)
-		} else {
+		} else { // must be fcgiMaxRecord
 			putFCGIMaxRecord(r.records)
 		}
 		r.records = nil
@@ -572,77 +572,99 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
-func (r *fcgiResponse) recordsRead() (p []byte, err error) { // only for stdout records
-read: // a new stdout record
-	haveSize := r.recordsEdge - r.recordsFrom
-	if haveSize < fcgiHeaderSize { // ensure a fcgi header
-		wantSize := int(fcgiHeaderSize - haveSize)
-		if freeSize := cap(r.records) - int(r.recordsEdge); wantSize > freeSize {
-			r.slideRecords(r.records)
-		}
-		n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], wantSize) // probably more
+func (r *fcgiResponse) readStdout() (int32, int32, error) {
+	for {
+		kind, from, edge, err := r._readRecord()
 		if err != nil {
-			return nil, err
+			return 0, 0, err
 		}
-		r.recordsEdge += int32(n)
-		haveSize += int32(n)
+		if kind == fcgiTypeStdout {
+			return from, edge, nil
+		}
+		// TODO
 	}
-	contentLength := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
-	recordSize := fcgiHeaderSize + contentLength + int32(r.records[r.recordsFrom+6])
-	if recordSize > haveSize {
-		if bufferSize := int32(cap(r.records)); recordSize > bufferSize { // we need a larger r.records
+}
+func (r *fcgiResponse) _readRecord() (kind byte, from int32, edge int32, err error) {
+	remainSize := r.recordsEdge - r.recordsFrom
+	if remainSize < fcgiHeaderSize { // ensure a fcgi header
+		if n, e := r._growRecords(int(fcgiHeaderSize - remainSize)); e == nil {
+			remainSize += int32(n)
+		} else {
+			err = e
+			return
+		}
+	}
+	contentLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
+	recordSize := fcgiHeaderSize + contentLen + int32(r.records[r.recordsFrom+6])
+	// Is the record immediate?
+	if recordSize > remainSize { // not immediate
+		// Shoud we switch to a larger r.records?
+		if recordSize > int32(cap(r.records)) { // yes
 			var records []byte
 			if recordSize > _16K {
 				records = getFCGIMaxRecord()
 			} else { // recordSize <= _16K
 				records = Get16K()
 			}
-			r.slideRecords(records)
-			if bufferSize != int32(cap(r.stockRecords)) {
-				PutNK(r.records)
+			r._slideRecords(records)
+			if cap(r.records) != cap(r.stockRecords) {
+				PutNK(r.records) // must be 16K
 			}
 			r.records = records
 		}
-		// r.records is large enough. read left bytes
-		wantSize := int(recordSize - haveSize)
-		if freeSize := cap(r.records) - int(r.recordsEdge); wantSize > freeSize {
-			r.slideRecords(r.records)
+		// Now r.records is large enough. we can read the missing bytes of the record
+		if n, e := r._growRecords(int(recordSize - remainSize)); e == nil {
+			remainSize += int32(n)
+		} else {
+			err = e
+			return
 		}
-		n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], wantSize)
-		if err != nil {
-			return nil, err
-		}
-		r.recordsEdge += int32(n)
-		haveSize += int32(n)
 	}
-	// recordSize <= haveSize.
-	kind := r.records[r.recordsFrom+1]
-	if kind != fcgiTypeStdout && kind != fcgiTypeStderr {
-		return nil, fcgiReadBadRecord
-	}
-	from := r.recordsFrom + fcgiHeaderSize
-	p = r.records[from : from+contentLength]
-	if recordSize == haveSize {
+	// Now recordSize <= remainSize, the record is immediate.
+	kind = r.records[r.recordsFrom+1]
+	from = r.recordsFrom + fcgiHeaderSize
+	edge = from + contentLen
+	if recordSize == remainSize { // all remain data are consumed, reset positions
 		r.recordsFrom = 0
 		r.recordsEdge = 0
-	} else { // recordSize < haveSize
+	} else { // recordSize < remainSize, extra records exist, mark it for next read
 		r.recordsFrom += recordSize
 	}
-	if kind == fcgiTypeStderr {
-		goto read
-	}
-	if contentLength == 0 {
+	if contentLen == 0 && (kind == fcgiTypeStdout || kind == fcgiTypeStderr) {
 		err = io.EOF
 	}
-	return p, err
+	return
 }
-func (r *fcgiResponse) slideRecords(records []byte) {
+func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is large enough.
+	// Should we slide to get enough space to grow?
+	if size > cap(r.records)-int(r.recordsEdge) { // yes
+		r._slideRecords(r.records)
+	}
+	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
+	if err != nil {
+		return 0, err
+	}
+	r.recordsEdge += int32(n)
+	return n, nil
+}
+func (r *fcgiResponse) _slideRecords(records []byte) {
 	copy(records, r.records[r.recordsFrom:r.recordsEdge])
 	r.recordsEdge -= r.recordsFrom
 	r.recordsFrom = 0
 }
-func (r *fcgiResponse) switchRecords() { // for receiving response content
-	// TODO: switch to 16k if 2k
+func (r *fcgiResponse) switchRecords() { // for receiving response content. must after setting and processing r.imme
+	if cap(r.records) != cap(r.stockRecords) {
+		// Already large enough, 16K or fcgiMaxRecord
+		return
+	}
+	// Was using stock. Switch to 16K
+	records := Get16K()
+	r._slideRecords(records)
+	r.records = records
+}
+func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only for endRequest record
+	// TODO
+	return 0, nil
 }
 
 func (r *fcgiResponse) recvHead() {

@@ -10,6 +10,7 @@
 package internal
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net"
@@ -108,20 +109,20 @@ func (h *fcgiProxy) OnPrepare() {
 func (h *fcgiProxy) IsProxy() bool { return true }
 func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
+func (h *fcgiProxy) Handle(hReq Request, hResp Response) (next bool) {
 	var (
-		content  any
-		fContent any
-		fErr     error
+		hContent any
 		fConn    PConn
+		fErr     error
+		fContent any
 	)
 
-	hasContent := req.HasContent()
-	if hasContent && (h.bufferClientContent || req.isChunked()) { // including size 0
-		content = req.holdContent()
-		if content == nil {
-			resp.SetStatus(StatusBadRequest)
-			resp.SendBytes(nil)
+	hHasContent := hReq.HasContent()
+	if hHasContent && (h.bufferClientContent || hReq.isChunked()) { // including size 0
+		hContent = hReq.holdContent()
+		if hContent == nil {
+			hResp.SetStatus(StatusBadRequest)
+			hResp.SendBytes(nil)
 			return
 		}
 	}
@@ -129,14 +130,14 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	if h.keepConn {
 		fConn, fErr = h.backend.FetchConn()
 		if fErr != nil {
-			resp.SendBadGateway(nil)
+			hResp.SendBadGateway(nil)
 			return
 		}
 		defer h.backend.StoreConn(fConn)
 	} else {
 		fConn, fErr = h.backend.Dial()
 		if fErr != nil {
-			resp.SendBadGateway(nil)
+			hResp.SendBadGateway(nil)
 			return
 		}
 		defer fConn.Close()
@@ -146,20 +147,20 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-	if !fReq.copyHead(req, h.scriptFilename) {
+	if !fReq.copyHead(hReq, h.scriptFilename) {
 		fStream.markBroken()
-		resp.SendBadGateway(nil)
+		hResp.SendBadGateway(nil)
 		return
 	}
-	if hasContent && !h.bufferClientContent && !req.isChunked() {
-		if fErr = fReq.sync(req); fErr != nil {
+	if hHasContent && !h.bufferClientContent && !hReq.isChunked() {
+		if fErr = fReq.sync(hReq); fErr != nil {
 			fStream.markBroken()
 		}
-	} else if fErr = fReq.post(content); fErr != nil {
+	} else if fErr = fReq.post(hContent); fErr != nil {
 		fStream.markBroken()
 	}
 	if fErr != nil {
-		resp.SendBadGateway(nil)
+		hResp.SendBadGateway(nil)
 		return
 	}
 
@@ -168,22 +169,22 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 		fResp.recvHead()
 		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
 			fStream.markBroken()
-			resp.SendBadGateway(nil)
+			hResp.SendBadGateway(nil)
 			return
 		}
 		if fResp.status >= StatusOK {
 			break
 		}
 		// We got 1xx
-		if req.VersionCode() == Version1_0 {
+		if hReq.VersionCode() == Version1_0 {
 			fStream.markBroken()
-			resp.SendBadGateway(nil)
+			hResp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.sync1xx(fResp) {
+		if !hResp.sync1xx(fResp) {
 			fStream.markBroken()
 			return
 		}
@@ -192,28 +193,28 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) {
 	}
 
 	fHasContent := false
-	if req.MethodCode() != MethodHEAD {
+	if hReq.MethodCode() != MethodHEAD {
 		fHasContent = fResp.hasContent()
 	}
 	if fHasContent && h.bufferServerContent { // including size 0
 		fContent = fResp.holdContent()
 		if fContent == nil {
 			// fStream is marked as broken
-			resp.SendBadGateway(nil)
+			hResp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !resp.copyHead(fResp) {
+	if !hResp.copyHead(fResp) {
 		fStream.markBroken()
 		return
 	}
 	if fHasContent && !h.bufferServerContent {
-		if err := resp.sync(fResp); err != nil {
+		if err := hResp.sync(fResp); err != nil {
 			fStream.markBroken()
 			return
 		}
-	} else if err := resp.post(fContent, false); err != nil {
+	} else if err := hResp.post(fContent, false); err != nil { // false means no trailers
 		return
 	}
 
@@ -320,7 +321,7 @@ type fcgiRequest0 struct { // for fast reset, entirely
 
 func (r *fcgiRequest) onUse() {
 	r.params = r.stockParams[:]
-	copy(r.params, fcgiParamsHeader) // contentLength (r.params[4:6]) needs modification
+	copy(r.params, fcgiParamsHeader) // contentLen (r.params[4:6]) needs modification
 	r.contentSize = -1               // not set
 	r.maxSendTimeout = r.stream.proxy.maxSendTimeout
 }
@@ -473,7 +474,7 @@ func getFCGIParams() []byte {
 }
 func putFCGIParams(params []byte) {
 	if cap(params) != fcgiMaxParams {
-		BugExitln("bad fcgi params")
+		BugExitln("fcgi: bad params")
 	}
 	poolFCGIParams.Put(params)
 }
@@ -505,8 +506,10 @@ type fcgiResponse struct {
 type fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
+	inputRead       int32    // accumulated input size
 	inputEdge       int32    // edge position of current input
-	imme            text     // ...
+	head            text     // for debugging
+	imme            text     // immediate bytes in r.records that is content
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
 	status          int16    // 200, 302, 404, ...
@@ -572,7 +575,7 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
-func (r *fcgiResponse) readStdout() (int32, int32, error) {
+func (r *fcgiResponse) readStdout() (int32, int32, error) { // only for stdout records
 	for {
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
@@ -584,7 +587,9 @@ func (r *fcgiResponse) readStdout() (int32, int32, error) {
 		if kind != fcgiTypeStderr {
 			return 0, 0, fcgiReadBadRecord
 		}
-		// TODO: log r.records[from:edge] as stderr?
+		if IsDebug(2) && edge > from {
+			Debugf("fcgi stderr=%s\n", r.records[from:edge])
+		}
 	}
 }
 func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only for endRequest record
@@ -593,10 +598,15 @@ func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only f
 		if err != nil {
 			return 0, err
 		}
+		if kind == fcgiTypeStderr {
+			if IsDebug(2) && edge > from {
+				Debugf("fcgi stderr=%s\n", r.records[from:edge])
+			}
+		}
 		if kind != fcgiTypeEndRequest {
 			continue
 		}
-		if edge-from != 8 {
+		if edge-from != 8 { // contentLen of endRequest
 			return 0, fcgiReadBadRecord
 		}
 		appStatus = int32(r.records[from+3])
@@ -608,7 +618,8 @@ func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only f
 }
 func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) {
 	remainSize := r.recordsEdge - r.recordsFrom
-	if remainSize < fcgiHeaderSize { // ensure an fcgi header
+	// At least an fcgi header must be immediate
+	if remainSize < fcgiHeaderSize {
 		if n, e := r._growRecords(fcgiHeaderSize - int(remainSize)); e == nil {
 			remainSize += int32(n)
 		} else {
@@ -735,24 +746,170 @@ func (r *fcgiResponse) growHead() bool { // we need more head bytes
 }
 func (r *fcgiResponse) recvHeaders() bool {
 	// generic-response = 1*header-field NL [ response-body ]
-	// header-field    = CGI-field | other-field
+	// header-field    = CGI-field | generic-field
 	// CGI-field       = Content-Type | Location | Status
-	// other-field     = protocol-field | extension-field
-	// protocol-field  = generic-field
-	// extension-field = generic-field
+	// Content-Type    = "Content-Type:" media-type NL
+	// Status          = "Status:" status-code SP reason-phrase NL
 	// generic-field   = field-name ":" [ field-value ] NL
 	// field-name      = token
 	// field-value     = *( field-content | LWSP )
 	// field-content   = *( token | separator | quoted-string )
-	// TODO
-	return false
+	header := &r.header
+	header.zero()
+	header.setPlace(placeInput) // all received headers are in r.input
+	// r.pFore is at headers (if any) or end of headers (if none).
+	for { // each header
+		// End of headers?
+		if b := r.input[r.pFore]; b == '\r' {
+			// Skip '\r'
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+				return false
+			}
+			if r.input[r.pFore] != '\n' {
+				r.headResult, r.headReason = StatusBadRequest, "bad end of headers"
+				return false
+			}
+			break
+		} else if b == '\n' {
+			break
+		}
+
+		// field-name = token
+		// token = 1*tchar
+		header.hash = 0
+		r.pBack = r.pFore // now r.pBack is at header-field
+		for {
+			b := r.input[r.pFore]
+			if t := httpTchar[b]; t == 1 {
+				// Fast path, do nothing
+			} else if t == 2 { // A-Z
+				b += 0x20 // to lower
+				r.input[r.pFore] = b
+			} else if b == ':' {
+				break
+			} else {
+				r.headResult, r.headReason = StatusBadRequest, "header name contains bad character"
+				return false
+			}
+			header.hash += uint16(b)
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+				return false
+			}
+		}
+		size := r.pFore - r.pBack
+		if size == 0 || size > 255 {
+			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
+			return false
+		}
+		header.nameFrom, header.nameSize = r.pBack, uint8(size)
+		// Skip ':'
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+			return false
+		}
+
+		// Skip OWS before field-value (and OWS after field-value, if field-value is empty)
+		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+				return false
+			}
+		}
+
+		// field-value = *( field-content | LWSP )
+		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
+		for {
+			if b := r.input[r.pFore]; httpVchar[b] == 1 {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+					return false
+				}
+			} else if b == '\r' {
+				// Skip '\r'
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+					return false
+				}
+				if r.input[r.pFore] != '\n' {
+					r.headResult, r.headReason = StatusBadRequest, "header value contains bad eol"
+					return false
+				}
+				break
+			} else if b == '\n' {
+				break
+			} else {
+				r.headResult, r.headReason = StatusBadRequest, "header value contains bad character"
+				return false
+			}
+		}
+		// r.pFore is at '\n'
+		fore := r.pFore
+		if r.input[fore-1] == '\r' {
+			fore--
+		}
+		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
+				fore--
+			}
+			header.value.set(r.pBack, fore)
+		} else {
+			header.value.zero()
+		}
+
+		// Header is received in general algorithm. Now apply it
+		if !r.applyHeader(header) {
+			// r.headResult is set.
+			return false
+		}
+
+		// Header is successfully received. Skip '\n'
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+			return false
+		}
+		// r.pFore is now at the next header or end of headers.
+	}
+	r.receiving = httpSectionContent
+	// Skip end of headers
+	r.pFore++
+	// Now the head is received, and r.pFore is at the beginning of content (if exists).
+	r.head.set(0, r.pFore)
+
+	return true
 }
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
 func (r *fcgiResponse) applyHeader(header *pair) bool {
-	// TODO
-	return false
+	headerName := header.nameAt(r.input)
+	if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+		/*
+			if header.value.isEmpty() && h.must {
+				r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
+				return false
+			}
+			from := r.headers.edge
+			if !r.addMultipleHeader(header, h.must) {
+				// r.headResult is set.
+				return false
+			}
+			if h.check != nil && !h.check(r, from, r.headers.edge) {
+				// r.headResult is set.
+				return false
+			}
+		*/
+	} else { // single-value response header
+		/*
+			if !r.addHeader(header) {
+				// r.headResult is set.
+				return false
+			}
+		*/
+		if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+			/*
+				if h.check != nil && !h.check(r, header, r.headers.edge-1) {
+					// r.headResult is set.
+					return false
+				}
+			*/
+		}
+	}
+	return true
 }
 func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	// TODO
@@ -802,7 +959,7 @@ var ( // perfect hash table for response critical headers
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
-	r.headers[index].zero() // we don't believe the value provided by fcgi application. we use chunked
+	r.headers[index].zero() // we don't believe the value provided by fcgi application. we use fcgi framing
 	return true
 }
 func (r *fcgiResponse) checkContentType(header *pair, index uint8) bool {
@@ -914,7 +1071,7 @@ func getFCGIMaxRecords() []byte {
 }
 func putFCGIMaxRecords(maxRecords []byte) {
 	if cap(maxRecords) != fcgiMaxRecords {
-		BugExitln("bad fcgi maxRecords")
+		BugExitln("fcgi: bad maxRecords")
 	}
 	poolFCGIMaxRecords.Put(maxRecords)
 }
@@ -922,15 +1079,14 @@ func putFCGIMaxRecords(maxRecords []byte) {
 // FCGI protocol elements.
 
 // FCGI Record = FCGI Header(8) + content + padding
-// FCGI Header = version(1) + type(1) + requestId(2) + contentLength(2) + paddingLength(1) + reserved(1)
+// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
 
 // Discrete records are standalone.
-// Stream records end with an empty record (contentLength=0).
+// Stream records end with an empty record (contentLen=0).
 
 const (
 	fcgiHeaderSize = 8
 	fcgiMaxPadding = 255
-	fcgiMaxHead    = _16K - fcgiHeaderSize - fcgiMaxPadding
 )
 
 const ( // request record types

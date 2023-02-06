@@ -44,9 +44,9 @@ func (h *http1Proxy) OnPrepare() {
 func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
 	var (
 		content  any
-		content1 any
-		err1     error
 		conn1    *H1Conn
+		err1     error
+		content1 any
 	)
 
 	hasContent := req.HasContent()

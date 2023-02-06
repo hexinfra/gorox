@@ -1278,20 +1278,19 @@ func (r *httpOutMessage_) joinContentType(contentType []byte) (ok bool) {
 	r.oContentType = r.nHeaders - 1
 	return true
 }
-func (r *httpOutMessage_) joinDate(date []byte) (ok bool) {
-	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
-		return false
-	}
-	r.oDate = r.nHeaders - 1
-	return true
-}
-
 func (r *httpOutMessage_) kickContentType() (deleted bool) {
 	if r.oContentType == 0 {
 		return false
 	}
 	r.shell.delHeaderAt(r.oContentType)
 	r.oContentType = 0
+	return true
+}
+func (r *httpOutMessage_) joinDate(date []byte) (ok bool) {
+	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
+		return false
+	}
+	r.oDate = r.nHeaders - 1
 	return true
 }
 func (r *httpOutMessage_) kickDate() (deleted bool) {

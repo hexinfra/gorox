@@ -2541,6 +2541,10 @@ func (r *httpResponse_) joinExpires(expires []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesExpires, expires)
 }
+func (r *httpResponse_) kickExpires() (deleted bool) {
+	// TODO
+	return true
+}
 func (r *httpResponse_) joinLastModified(lastModified []byte) (ok bool) {
 	if r.lastModified == -2 {
 		r.shell.delHeaderAt(r.oLastModified)
@@ -2552,11 +2556,6 @@ func (r *httpResponse_) joinLastModified(lastModified []byte) (ok bool) {
 		return false
 	}
 	r.oLastModified = r.nHeaders - 1
-	return true
-}
-
-func (r *httpResponse_) kickExpires() (deleted bool) {
-	// TODO
 	return true
 }
 func (r *httpResponse_) kickLastModified() (deleted bool) {

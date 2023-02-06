@@ -261,20 +261,11 @@ func (r *hRequest_) joinHost(host []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesHost, host)
 }
-func (r *hRequest_) joinIfModifiedSince(since []byte) (ok bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) joinIfRange(ifRange []byte) (ok bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) joinIfUnmodifiedSince(since []byte) (ok bool) {
-	// TODO
-	return true
-}
-
 func (r *hRequest_) kickHost() (deleted bool) {
+	// TODO
+	return true
+}
+func (r *hRequest_) joinIfModifiedSince(since []byte) (ok bool) {
 	// TODO
 	return true
 }
@@ -282,7 +273,15 @@ func (r *hRequest_) kickIfModifiedSince() (deleted bool) {
 	// TODO
 	return true
 }
+func (r *hRequest_) joinIfRange(ifRange []byte) (ok bool) {
+	// TODO
+	return true
+}
 func (r *hRequest_) kickIfRange() (deleted bool) {
+	// TODO
+	return true
+}
+func (r *hRequest_) joinIfUnmodifiedSince(since []byte) (ok bool) {
 	// TODO
 	return true
 }

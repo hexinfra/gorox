@@ -5,7 +5,7 @@
 
 // FCGI proxy handlets pass requests to backend FCGI servers and cache responses.
 
-// FCGI (FastCGI) is mainly for PHP applications. It does not support chunking and trailers.
+// FCGI (FastCGI) is mainly for PHP applications. It does not support trailers and request chunking.
 
 package internal
 
@@ -489,7 +489,7 @@ type fcgiResponse struct {
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecord]
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	headers        []pair        // fcgi response headers
 	maxRecvTimeout time.Duration // max timeout to recv response
@@ -535,10 +535,10 @@ func (r *fcgiResponse) onUse() {
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
-		if cap(r.records) == _16K {
+		if cap(r.records) == fcgiMaxRecords {
+			putFCGIMaxRecords(r.records)
+		} else {
 			PutNK(r.records)
-		} else { // must be fcgiMaxRecord
-			putFCGIMaxRecord(r.records)
 		}
 		r.records = nil
 	}
@@ -574,35 +574,58 @@ func (r *fcgiResponse) onEnd() {
 
 func (r *fcgiResponse) readStdout() (int32, int32, error) {
 	for {
-		kind, from, edge, err := r._readRecord()
+		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, 0, err
 		}
 		if kind == fcgiTypeStdout {
 			return from, edge, nil
 		}
-		// TODO
+		if kind != fcgiTypeStderr {
+			return 0, 0, fcgiReadBadRecord
+		}
+		// TODO: log r.records[from:edge] as stderr?
 	}
 }
-func (r *fcgiResponse) _readRecord() (kind byte, from int32, edge int32, err error) {
+func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only for endRequest record
+	for {
+		kind, from, edge, err := r._recvRecord()
+		if err != nil {
+			return 0, err
+		}
+		if kind != fcgiTypeEndRequest {
+			continue
+		}
+		if edge-from != 8 {
+			return 0, fcgiReadBadRecord
+		}
+		appStatus = int32(r.records[from+3])
+		appStatus += int32(r.records[from+2]) << 8
+		appStatus += int32(r.records[from+1]) << 16
+		appStatus += int32(r.records[from]) << 24
+		return appStatus, nil
+	}
+}
+func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) {
 	remainSize := r.recordsEdge - r.recordsFrom
-	if remainSize < fcgiHeaderSize { // ensure a fcgi header
-		if n, e := r._growRecords(int(fcgiHeaderSize - remainSize)); e == nil {
+	if remainSize < fcgiHeaderSize { // ensure an fcgi header
+		if n, e := r._growRecords(fcgiHeaderSize - int(remainSize)); e == nil {
 			remainSize += int32(n)
 		} else {
 			err = e
 			return
 		}
 	}
+	// FCGI header is immediate.
 	contentLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
 	recordSize := fcgiHeaderSize + contentLen + int32(r.records[r.recordsFrom+6])
-	// Is the record immediate?
-	if recordSize > remainSize { // not immediate
+	// Is the whole record immediate?
+	if recordSize > remainSize { // not immediate, we need to make it immediate by reading the missing bytes
 		// Shoud we switch to a larger r.records?
-		if recordSize > int32(cap(r.records)) { // yes
+		if recordSize > int32(cap(r.records)) { // yes, the record is too large
 			var records []byte
 			if recordSize > _16K {
-				records = getFCGIMaxRecord()
+				records = getFCGIMaxRecords()
 			} else { // recordSize <= _16K
 				records = Get16K()
 			}
@@ -612,7 +635,7 @@ func (r *fcgiResponse) _readRecord() (kind byte, from int32, edge int32, err err
 			}
 			r.records = records
 		}
-		// Now r.records is large enough. we can read the missing bytes of the record
+		// Now r.records is large enough. we can read the missing bytes of this record
 		if n, e := r._growRecords(int(recordSize - remainSize)); e == nil {
 			remainSize += int32(n)
 		} else {
@@ -640,6 +663,7 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	if size > cap(r.records)-int(r.recordsEdge) { // yes
 		r._slideRecords(r.records)
 	}
+	// We now have enough space to grow.
 	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
 	if err != nil {
 		return 0, err
@@ -648,23 +672,21 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	return n, nil
 }
 func (r *fcgiResponse) _slideRecords(records []byte) {
-	copy(records, r.records[r.recordsFrom:r.recordsEdge])
-	r.recordsEdge -= r.recordsFrom
-	r.recordsFrom = 0
-}
-func (r *fcgiResponse) switchRecords() { // for receiving response content. must after setting and processing r.imme
-	if cap(r.records) != cap(r.stockRecords) {
-		// Already large enough, 16K or fcgiMaxRecord
-		return
+	if r.recordsFrom > 0 {
+		copy(records, r.records[r.recordsFrom:r.recordsEdge])
+		r.recordsEdge -= r.recordsFrom
+		r.imme.sub(r.recordsFrom)
+		r.recordsFrom = 0
 	}
-	// Was using stock. Switch to 16K
-	records := Get16K()
-	r._slideRecords(records)
-	r.records = records
 }
-func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only for endRequest record
-	// TODO
-	return 0, nil
+func (r *fcgiResponse) _switchRecords() { // for receiving response content
+	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
+		records := Get16K()
+		if imme := r.imme; imme.notEmpty() {
+			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+		}
+		r.records = records
+	}
 }
 
 func (r *fcgiResponse) recvHead() {
@@ -680,6 +702,35 @@ func (r *fcgiResponse) recvHead() {
 	r.cleanInput()
 }
 func (r *fcgiResponse) growHead() bool { // we need more head bytes
+	// Is r.input full?
+	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
+		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+		// r.input size < 16K. We switch to a larger input (stock -> 4K -> 16K)
+		stockSize := int32(cap(r.stockInput))
+		var input []byte
+		if inputSize == stockSize {
+			input = Get4K()
+		} else { // 4K
+			input = Get16K()
+		}
+		copy(input, r.input) // copy all
+		if inputSize != stockSize {
+			PutNK(r.input)
+		}
+		r.input = input // a larger input is now used
+	}
+	// r.input is not full.
+	if from, edge, err := r.readStdout(); err == nil {
+		// TODO
+		_, _ = from, edge
+	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		r.headResult = StatusRequestTimeout
+	} else { // i/o error
+		r.headResult = -1
+	}
 	return false
 }
 func (r *fcgiResponse) recvHeaders() bool {
@@ -849,23 +900,23 @@ var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("bad record")
 )
 
-// poolFCGIMaxRecord
-var poolFCGIMaxRecord sync.Pool
+// poolFCGIMaxRecords
+var poolFCGIMaxRecords sync.Pool
 
-const fcgiMaxRecord = fcgiHeaderSize + _64K1 + fcgiMaxPadding // header + max content + max padding
+const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // header + max content + max padding
 
-func getFCGIMaxRecord() []byte {
-	if x := poolFCGIMaxRecord.Get(); x == nil {
-		return make([]byte, fcgiMaxRecord)
+func getFCGIMaxRecords() []byte {
+	if x := poolFCGIMaxRecords.Get(); x == nil {
+		return make([]byte, fcgiMaxRecords)
 	} else {
 		return x.([]byte)
 	}
 }
-func putFCGIMaxRecord(maxRecord []byte) {
-	if cap(maxRecord) != fcgiMaxRecord {
-		BugExitln("bad fcgi maxRecord")
+func putFCGIMaxRecords(maxRecords []byte) {
+	if cap(maxRecords) != fcgiMaxRecords {
+		BugExitln("bad fcgi maxRecords")
 	}
-	poolFCGIMaxRecord.Put(maxRecord)
+	poolFCGIMaxRecords.Put(maxRecords)
 }
 
 // FCGI protocol elements.

@@ -95,11 +95,11 @@ type uwsgiStream struct {
 }
 
 // uwsgiRequest
-type uwsgiRequest struct {
+type uwsgiRequest struct { // outgoing. needs building
 }
 
 // uwsgiResponse
-type uwsgiResponse struct {
+type uwsgiResponse struct { // incoming. needs parsing
 }
 
 // UWSGI protocol elements.

@@ -923,7 +923,7 @@ func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limi
 func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http2Request is the server-side HTTP/2 request.
-type http2Request struct {
+type http2Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
 	// Assocs
@@ -953,7 +953,7 @@ func (r *http2Request) appendTrailers(p []byte) bool {
 }
 
 // http2Response is the server-side HTTP/2 response.
-type http2Response struct {
+type http2Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
 	// Stream states (buffers)

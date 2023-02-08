@@ -397,7 +397,7 @@ func (s *http1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 
 // http1Request is the server-side HTTP/1 request.
-type http1Request struct {
+type http1Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
 	// Assocs
@@ -836,7 +836,7 @@ func (r *http1Request) readContent() (p []byte, err error) {
 }
 
 // http1Response is the server-side HTTP/1 response.
-type http1Response struct {
+type http1Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
 	// Stream states (controlled)

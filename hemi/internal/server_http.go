@@ -379,13 +379,13 @@ type Request interface {
 	applyHeader(header *pair) bool
 	walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	unsetHost()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
-	delHopTrailers()
 	applyTrailer(trailer *pair) bool
+	delHopTrailers()
+	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
@@ -393,7 +393,7 @@ type Request interface {
 }
 
 // httpRequest_ is the mixin for http[1-3]Request.
-type httpRequest_ struct {
+type httpRequest_ struct { // incoming. needs parsing
 	// Mixins
 	httpInMessage_
 	// Stream states (buffers)
@@ -715,7 +715,7 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
 		}
-		from := r.headers.edge
+		from := r.headers.edge + 1 // excluding original header. overflow doesn't matter
 		if !r.addMultipleHeader(header, h.must) {
 			// r.headResult is set.
 			return false
@@ -2151,7 +2151,9 @@ func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller ne
 		copy(r.formWindow, r.formWindow[r.pBack:r.formEdge])
 		r.formEdge -= r.pBack
 		r.pFore -= r.pBack
-		r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
+		if r.pFieldName.notEmpty() {
+			r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
+		}
 		r.pBack = 0
 	}
 	if n, err := tempFile.Read(r.formWindow[r.formEdge:]); err == nil {
@@ -2409,7 +2411,7 @@ type Response interface {
 }
 
 // httpResponse_ is the mixin for http[1-3]Response.
-type httpResponse_ struct {
+type httpResponse_ struct { // outgoing. needs building
 	// Mixins
 	httpOutMessage_
 	// Assocs

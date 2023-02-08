@@ -332,7 +332,7 @@ func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit t
 func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H2Request is the client-side HTTP/2 request.
-type H2Request struct {
+type H2Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
 	// Stream states (buffers)
@@ -423,7 +423,7 @@ func (r *H2Request) finalizeChunked() error {
 }
 
 // H2Response is the client-side HTTP/2 response.
-type H2Response struct {
+type H2Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
 	// Assocs

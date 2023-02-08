@@ -5,13 +5,14 @@
 
 // FCGI proxy handlets pass requests to backend FCGI servers and cache responses.
 
-// FCGI (FastCGI) is mainly for PHP applications. It does not support trailers and request chunking.
+// FCGI (FastCGI) is mainly for PHP applications. It does not support HTTP trailers and request-side chunking.
 
 package internal
 
 import (
 	"bytes"
 	"errors"
+	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"net"
 	"os"
@@ -296,12 +297,12 @@ func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
 func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
 
 // fcgiRequest
-type fcgiRequest struct {
+type fcgiRequest struct { // outgoing. needs building
 	// Assocs
 	stream   *fcgiStream
 	response *fcgiResponse
 	// States (buffers)
-	stockParams [1536]byte // for r.params
+	stockParams [_2K]byte // for r.params
 	// States (non-zeros)
 	params         []byte        // place exactly one FCGI_PARAMS record
 	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
@@ -343,17 +344,17 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 	} else {
 		value = scriptFilename
 	}
-	if !r.addMetaParam(fcgiBytesScriptFilename, value) {
+	if !r._addMetaParam(fcgiBytesScriptFilename, value) {
 		return false
 	}
 	// TODO
 	return true
 }
-func (r *fcgiRequest) addMetaParam(name []byte, value []byte) bool {
+func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *fcgiRequest) addHTTPParam(name []byte, value []byte) bool {
+func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
@@ -480,13 +481,13 @@ func putFCGIParams(params []byte) {
 }
 
 // fcgiResponse must implements response interface.
-type fcgiResponse struct {
+type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream
 	// States (buffers)
-	stockRecords [_2K]byte // for r.records
-	stockInput   [_2K]byte // for r.input
-	stockHeaders [64]pair  // for r.headers
+	stockRecords [8192]byte // for r.records
+	stockInput   [_2K]byte  // for r.input
+	stockHeaders [64]pair   // for r.headers
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
@@ -506,7 +507,6 @@ type fcgiResponse struct {
 type fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
-	inputRead       int32    // accumulated input size
 	inputEdge       int32    // edge position of current input
 	head            text     // for debugging
 	imme            text     // immediate bytes in r.records that is content
@@ -575,7 +575,7 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
-func (r *fcgiResponse) readStdout() (int32, int32, error) { // only for stdout records
+func (r *fcgiResponse) _readStdout() (int32, int32, error) { // only for stdout records
 	for {
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
@@ -592,18 +592,16 @@ func (r *fcgiResponse) readStdout() (int32, int32, error) { // only for stdout r
 		}
 	}
 }
-func (r *fcgiResponse) readEndRequest() (appStatus int32, err error) { // only for endRequest record
+func (r *fcgiResponse) _readEndRequest() (appStatus int32, err error) { // only for endRequest records
 	for {
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, err
 		}
-		if kind == fcgiTypeStderr {
-			if IsDebug(2) && edge > from {
-				Debugf("fcgi stderr=%s\n", r.records[from:edge])
-			}
-		}
 		if kind != fcgiTypeEndRequest {
+			if IsDebug(2) {
+				Debugf("fcgi type=%d data=%s\n", kind, r.records[from:edge])
+			}
 			continue
 		}
 		if edge-from != 8 { // contentLen of endRequest
@@ -686,7 +684,9 @@ func (r *fcgiResponse) _slideRecords(records []byte) {
 	if r.recordsFrom > 0 {
 		copy(records, r.records[r.recordsFrom:r.recordsEdge])
 		r.recordsEdge -= r.recordsFrom
-		r.imme.sub(r.recordsFrom)
+		if r.imme.notEmpty() {
+			r.imme.sub(r.recordsFrom)
+		}
 		r.recordsFrom = 0
 	}
 }
@@ -712,31 +712,14 @@ func (r *fcgiResponse) recvHead() {
 	}
 	r.cleanInput()
 }
-func (r *fcgiResponse) growHead() bool { // we need more head bytes
-	// Is r.input full?
-	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
-		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-		// r.input size < 16K. We switch to a larger input (stock -> 4K -> 16K)
-		stockSize := int32(cap(r.stockInput))
-		var input []byte
-		if inputSize == stockSize {
-			input = Get4K()
-		} else { // 4K
-			input = Get16K()
-		}
-		copy(input, r.input) // copy all
-		if inputSize != stockSize {
-			PutNK(r.input)
-		}
-		r.input = input // a larger input is now used
+func (r *fcgiResponse) growHead() bool { // we need more head bytes to be appended to r.input
+	if r.inputEdge == _16K {
+		return false
 	}
-	// r.input is not full.
-	if from, edge, err := r.readStdout(); err == nil {
-		// TODO
-		_, _ = from, edge
+	if from, edge, err := r._readStdout(); err == nil {
+		size := edge - from
+		want := r.inputEdge + size
+		_ = want
 	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		r.headResult = StatusRequestTimeout
 	} else { // i/o error
@@ -878,42 +861,28 @@ func (r *fcgiResponse) Status() int16 { return r.status }
 func (r *fcgiResponse) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
-		/*
-			if header.value.isEmpty() && h.must {
-				r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
-				return false
-			}
-			from := r.headers.edge
-			if !r.addMultipleHeader(header, h.must) {
-				// r.headResult is set.
-				return false
-			}
-			if h.check != nil && !h.check(r, from, r.headers.edge) {
-				// r.headResult is set.
-				return false
-			}
-		*/
+		from := len(r.headers) + 1 // excluding original header. overflow doesn't matter
+		if !r.addMultipleHeader(header) {
+			// r.headResult is set.
+			return false
+		}
+		if h.check != nil && !h.check(r, from, len(r.headers)) {
+			// r.headResult is set.
+			return false
+		}
 	} else { // single-value response header
-		/*
-			if !r.addHeader(header) {
+		if !r.addHeader(header) {
+			// r.headResult is set.
+			return false
+		}
+		if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+			if h.check != nil && !h.check(r, header, len(r.headers)-1) {
 				// r.headResult is set.
 				return false
 			}
-		*/
-		if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
-			/*
-				if h.check != nil && !h.check(r, header, r.headers.edge-1) {
-					// r.headResult is set.
-					return false
-				}
-			*/
 		}
 	}
 	return true
-}
-func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	// TODO
-	return false
 }
 
 var ( // perfect hash table for response multiple headers
@@ -922,7 +891,7 @@ var ( // perfect hash table for response multiple headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		check func(*fcgiResponse, uint8, uint8) bool
+		check func(*fcgiResponse, int, int) bool
 	}{
 		0: {httpHashConnection, 0, 4, (*fcgiResponse).checkConnection},
 		1: {httpHashTransferEncoding, 0, 4, (*fcgiResponse).checkTransferEncoding},
@@ -930,13 +899,13 @@ var ( // perfect hash table for response multiple headers
 	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return 0 }
 )
 
-func (r *fcgiResponse) checkConnection(from uint8, edge uint8) bool {
+func (r *fcgiResponse) checkConnection(from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		r.headers[i].zero()
 	}
 	return true
 }
-func (r *fcgiResponse) checkTransferEncoding(from uint8, edge uint8) bool {
+func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		r.headers[i].zero()
 	}
@@ -944,29 +913,34 @@ func (r *fcgiResponse) checkTransferEncoding(from uint8, edge uint8) bool {
 }
 
 var ( // perfect hash table for response critical headers
-	fcgiResponseCriticalHeaderNames = []byte("content-length content-type status")
-	fcgiResponseCriticalHeaderTable = [3]struct {
+	fcgiResponseCriticalHeaderNames = []byte("content-length content-type location status")
+	fcgiResponseCriticalHeaderTable = [4]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
-		check func(*fcgiResponse, *pair, uint8) bool
+		check func(*fcgiResponse, *pair, int) bool
 	}{
 		0: {httpHashContentLength, 0, 4, (*fcgiResponse).checkContentLength},
 		1: {httpHashContentType, 0, 4, (*fcgiResponse).checkContentType},
-		2: {fcgiHashStatus, 0, 4, (*fcgiResponse).checkStatus},
+		2: {httpHashLocation, 0, 4, (*fcgiResponse).checkLocation},
+		3: {fcgiHashStatus, 0, 4, (*fcgiResponse).checkStatus},
 	}
 	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return 0 }
 )
 
-func (r *fcgiResponse) checkContentLength(header *pair, index uint8) bool {
-	r.headers[index].zero() // we don't believe the value provided by fcgi application. we use fcgi framing
+func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
+	r.headers[index].zero() // we don't believe the value provided by fcgi application. we believe fcgi framing
 	return true
 }
-func (r *fcgiResponse) checkContentType(header *pair, index uint8) bool {
-	r.indexes.contentType = index
+func (r *fcgiResponse) checkContentType(header *pair, index int) bool {
+	r.indexes.contentType = uint8(index)
 	return true
 }
-func (r *fcgiResponse) checkStatus(header *pair, index uint8) bool {
+func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
+	// TODO
+	return true
+}
+func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	// TODO
 	return true
 }
@@ -978,9 +952,49 @@ func (r *fcgiResponse) unsafeContentType() []byte {
 	}
 	return r.headers[r.indexes.contentType].valueAt(r.input)
 }
-func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 
-func (r *fcgiResponse) parseSetCookie() bool {
+func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
+	// Add main header before sub headers.
+	if !r.addHeader(header) {
+		// r.headResult is set.
+		return false
+	}
+	// TODO
+	return true
+}
+func (r *fcgiResponse) addHeader(header *pair) bool {
+	if len(r.headers) == cap(r.headers) {
+		if cap(r.headers) == cap(r.stockHeaders) {
+			r.headers = get255Pairs()
+			r.headers = append(r.headers, r.stockHeaders[:]...)
+		} else { // overflow
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+	}
+	r.headers = append(r.headers, *header)
+	return true
+}
+func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok bool) {
+	if name != "" {
+		if hash == 0 {
+			hash = stringHash(name)
+		}
+		for i := 0; i < len(r.headers); i++ {
+			header := &r.headers[i]
+			if header.hash != hash {
+				continue
+			}
+			if header.nameEqualString(r.input, name) {
+				return header.valueAt(r.input), true
+			}
+		}
+	}
+	return
+}
+
+func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
+func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	// TODO
 	return false
 }
@@ -1021,18 +1035,10 @@ func (r *fcgiResponse) growBody() {
 
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+
+func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
-}
-func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
-
-func (r *fcgiResponse) addHeader(header *pair) (edge uint8, ok bool) {
-	// TODO
-	return
-}
-func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok bool) {
-	// TODO
-	return
 }
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by response interface
@@ -1042,8 +1048,13 @@ func (r *fcgiResponse) saveContentFilesDir() string {
 }
 
 func (r *fcgiResponse) _newTempFile() (TempFile, error) { // to save content to
-	// TODO
-	return nil, nil
+	filesDir := r.saveContentFilesDir() // must ends with '/'
+	pathSize := len(filesDir)
+	filePath := r.stream.unsafeMake(pathSize + 19) // 19 bytes is enough for int64
+	copy(filePath, filesDir)
+	from, edge := r.stream.makeTempName(filePath[pathSize:], r.recvTime.Unix())
+	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
+	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	now := time.Now()
@@ -1054,13 +1065,13 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 }
 
 var ( // fcgi response errors
-	fcgiReadBadRecord = errors.New("bad record")
+	fcgiReadBadRecord = errors.New("fcgi: bad record")
 )
 
 // poolFCGIMaxRecords
 var poolFCGIMaxRecords sync.Pool
 
-const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // header + max content + max padding
+const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max content + max padding
 
 func getFCGIMaxRecords() []byte {
 	if x := poolFCGIMaxRecords.Get(); x == nil {
@@ -1084,7 +1095,7 @@ func putFCGIMaxRecords(maxRecords []byte) {
 // Discrete records are standalone.
 // Stream records end with an empty record (contentLen=0).
 
-const (
+const ( // fcgi constants
 	fcgiHeaderSize = 8
 	fcgiMaxPadding = 255
 )
@@ -1093,6 +1104,32 @@ const ( // request record types
 	fcgiTypeBeginRequest = 1 // only one
 	fcgiTypeParams       = 4 // only one in our implementation (plus one empty params record)
 	fcgiTypeStdin        = 5 // many (ends with an empty stdin record)
+)
+
+var ( // fcgi params
+	fcgiBytesAuthType         = []byte("AUTH_TYPE")
+	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
+	fcgiBytesContentType      = []byte("CONTENT_TYPE")
+	fcgiBytesDocumentRoot     = []byte("DOCUMENT_ROOT")
+	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
+	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
+	fcgiBytesHTTPS            = []byte("HTTPS")
+	fcgiBytesPathInfo         = []byte("PATH_INFO")
+	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
+	fcgiBytesQueryString      = []byte("QUERY_STRING")
+	fcgiBytesRedirectStatus   = []byte("REDIRECT_STATUS")
+	fcgiBytesRemoteAddr       = []byte("REMOTE_ADDR")
+	fcgiBytesRemoteHost       = []byte("REMOTE_HOST")
+	fcgiBytesRequestMethod    = []byte("REQUEST_METHOD")
+	fcgiBytesRequestScheme    = []byte("REQUEST_SCHEME")
+	fcgiBytesRequestURI       = []byte("REQUEST_URI")
+	fcgiBytesScriptFilename   = []byte("SCRIPT_FILENAME")
+	fcgiBytesScriptName       = []byte("SCRIPT_NAME")
+	fcgiBytesServerAddr       = []byte("SERVER_ADDR")
+	fcgiBytesServerName       = []byte("SERVER_NAME")
+	fcgiBytesServerPort       = []byte("SERVER_PORT")
+	fcgiBytesServerProtocol   = []byte("SERVER_PROTOCOL")
+	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
 )
 
 var ( // predefined request records
@@ -1149,30 +1186,4 @@ const ( // response record types
 
 const ( // fcgi hashes
 	fcgiHashStatus = 676
-)
-
-var ( // fcgi variables
-	fcgiBytesAuthType         = []byte("AUTH_TYPE")
-	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
-	fcgiBytesContentType      = []byte("CONTENT_TYPE")
-	fcgiBytesDocumentRoot     = []byte("DOCUMENT_ROOT")
-	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
-	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
-	fcgiBytesHTTPS            = []byte("HTTPS")
-	fcgiBytesPathInfo         = []byte("PATH_INFO")
-	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
-	fcgiBytesQueryString      = []byte("QUERY_STRING")
-	fcgiBytesRedirectStatus   = []byte("REDIRECT_STATUS")
-	fcgiBytesRemoteAddr       = []byte("REMOTE_ADDR")
-	fcgiBytesRemoteHost       = []byte("REMOTE_HOST")
-	fcgiBytesRequestMethod    = []byte("REQUEST_METHOD")
-	fcgiBytesRequestScheme    = []byte("REQUEST_SCHEME")
-	fcgiBytesRequestURI       = []byte("REQUEST_URI")
-	fcgiBytesScriptFilename   = []byte("SCRIPT_FILENAME")
-	fcgiBytesScriptName       = []byte("SCRIPT_NAME")
-	fcgiBytesServerAddr       = []byte("SERVER_ADDR")
-	fcgiBytesServerName       = []byte("SERVER_NAME")
-	fcgiBytesServerPort       = []byte("SERVER_PORT")
-	fcgiBytesServerProtocol   = []byte("SERVER_PROTOCOL")
-	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
 )

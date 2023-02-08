@@ -332,7 +332,7 @@ func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limi
 func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http3Request is the server-side HTTP/3 request.
-type http3Request struct {
+type http3Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
 	// Assocs
@@ -356,7 +356,7 @@ func (r *http3Request) appendTrailers(p []byte) bool {
 }
 
 // http3Response is the server-side HTTP/3 response.
-type http3Response struct {
+type http3Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
 	// Stream states (buffers)

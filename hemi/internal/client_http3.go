@@ -304,7 +304,7 @@ func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit t
 func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H3Request is the client-side HTTP/3 request.
-type H3Request struct {
+type H3Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
 	// Stream states (buffers)
@@ -395,7 +395,7 @@ func (r *H3Request) finalizeChunked() error {
 }
 
 // H3Response is the client-side HTTP/3 response.
-type H3Response struct {
+type H3Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
 	// Assocs

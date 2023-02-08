@@ -348,7 +348,7 @@ func (s *H1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 
 // H1Request is the client-side HTTP/1 request.
-type H1Request struct {
+type H1Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
 	// Stream states (non-zeros)
@@ -502,7 +502,7 @@ func (r *H1Request) finalizeChunked() error {
 }
 
 // H1Response is the client-side HTTP/1 response.
-type H1Response struct {
+type H1Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
 	// Assocs

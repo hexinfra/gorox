@@ -171,7 +171,7 @@ type request interface {
 }
 
 // hRequest_ is the mixin for H[1-3]Request.
-type hRequest_ struct {
+type hRequest_ struct { // outgoing. needs building
 	// Mixins
 	httpOutMessage_
 	// Assocs
@@ -386,7 +386,7 @@ type response interface {
 }
 
 // hResponse_ is the mixin for H[1-3]Response.
-type hResponse_ struct {
+type hResponse_ struct { // incoming. needs parsing
 	// Mixins
 	httpInMessage_
 	// Stream states (buffers)
@@ -447,7 +447,7 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
 		}
-		from := r.headers.edge
+		from := r.headers.edge + 1 // excluding original header. overflow doesn't matter
 		if !r.addMultipleHeader(header, h.must) {
 			// r.headResult is set.
 			return false

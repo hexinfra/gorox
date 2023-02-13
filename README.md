@@ -36,7 +36,7 @@ Platforms
     * Apple macOS >= Catalina, AMD64 & ARM64
     * Microsoft Windows >= 10, AMD64
 
-  Other platforms are not tested and probably don't work.
+  Other platforms are currently not tested and probably don't work.
 
 
 Performance

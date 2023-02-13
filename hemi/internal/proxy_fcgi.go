@@ -886,8 +886,8 @@ func (r *fcgiResponse) applyHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for response multiple headers
-	fcgiResponseMultipleHeaderNames = []byte("connection transfer-encoding")
-	fcgiResponseMultipleHeaderTable = [2]struct {
+	fcgiResponseMultipleHeaderNames = []byte("connection transfer-encoding upgrade")
+	fcgiResponseMultipleHeaderTable = [3]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -895,17 +895,21 @@ var ( // perfect hash table for response multiple headers
 	}{
 		0: {httpHashConnection, 0, 4, (*fcgiResponse).checkConnection},
 		1: {httpHashTransferEncoding, 0, 4, (*fcgiResponse).checkTransferEncoding},
+		2: {httpHashUpgrade, 0, 4, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return 0 }
 )
 
 func (r *fcgiResponse) checkConnection(from int, edge int) bool {
-	for i := from; i < edge; i++ {
-		r.headers[i].zero()
-	}
-	return true
+	return r.delRange(from, edge)
 }
 func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
+	return r.delRange(from, edge)
+}
+func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
+	return r.delRange(from, edge)
+}
+func (r *fcgiResponse) delRange(from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		r.headers[i].zero()
 	}

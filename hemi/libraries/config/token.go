@@ -28,10 +28,6 @@ func (t Token) String() string {
 const ( // token list. if you change this list, change in tokenNames too.
 	// Word
 	TokenWord = 1 + iota // address, hostnames, ...
-	// Constants
-	TokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
-	// Variables
-	TokenVariable // %method, %path, ...
 	// Operators
 	TokenLeftBrace    // {
 	TokenRightBrace   // }
@@ -47,6 +43,10 @@ const ( // token list. if you change this list, change in tokenNames too.
 	TokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
 	TokenAND          // &&
 	TokenOR           // ||
+	// Constants
+	TokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
+	// Variables
+	TokenVariable // %method, %path, ...
 	// Values
 	TokenBool     // true, false
 	TokenInteger  // 123, 16K, 256M, ...
@@ -59,10 +59,6 @@ const ( // token list. if you change this list, change in tokenNames too.
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
 	// Word
 	TokenWord: "word",
-	// Constants
-	TokenConstant: "constant",
-	// Variables
-	TokenVariable: "variable",
 	// Operators
 	TokenLeftBrace:    "leftBrace",
 	TokenRightBrace:   "rightBrace",
@@ -78,6 +74,10 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	TokenFSCheck:      "fsCheck",
 	TokenAND:          "and",
 	TokenOR:           "or",
+	// Constants
+	TokenConstant: "constant",
+	// Variables
+	TokenVariable: "variable",
 	// Value literals
 	TokenBool:     "bool",
 	TokenInteger:  "integer",

@@ -90,7 +90,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		conn2.StoreStream(stream2)
 	}()
 
-	// TODO: use stream2.forwardProxy() or stream2.reverseProxy()
+	// TODO: use stream2.ForwardProxy() or stream2.ReverseProxy()
 
 	req2 := stream2.Request()
 	if !req2.copyHead(req, h.hostname, h.colonPort) {

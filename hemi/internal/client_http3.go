@@ -269,10 +269,10 @@ func (s *H3Stream) Socket() *H3Socket {
 	return nil
 }
 
-func (s *H3Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (s *H3Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 

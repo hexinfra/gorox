@@ -87,7 +87,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	stream1.onUse(conn1)
 	defer stream1.onEnd()
 
-	// TODO: use stream1.forwardProxy() or stream1.reverseProxy()
+	// TODO: use stream1.ForwardProxy() or stream1.ReverseProxy()
 
 	req1 := stream1.Request()
 	if !req1.copyHead(req, h.hostname, h.colonPort) {

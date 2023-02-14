@@ -297,10 +297,10 @@ func (s *H2Stream) Socket() *H2Socket {
 	return nil
 }
 
-func (s *H2Stream) forwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (s *H2Stream) reverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 

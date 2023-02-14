@@ -23,7 +23,6 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/referer"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/rewrite"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
-	_ "github.com/hexinfra/gorox/hemi/standard/unitures/demo"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/head"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/replace"
@@ -34,4 +33,5 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/staters/local"
 	_ "github.com/hexinfra/gorox/hemi/standard/staters/redis"
+	_ "github.com/hexinfra/gorox/hemi/standard/unitures/demo"
 )

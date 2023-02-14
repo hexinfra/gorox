@@ -16,10 +16,10 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/limit"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/rewrite"
-	_ "github.com/hexinfra/gorox/hemi/standard/unitures/demo"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/head"
 	_ "github.com/hexinfra/gorox/hemi/standard/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/standard/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/standard/staters/local"
+	_ "github.com/hexinfra/gorox/hemi/standard/unitures/demo"
 )

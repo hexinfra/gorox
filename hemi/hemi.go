@@ -15,7 +15,7 @@ import (
 const Version = "0.1.0-dev"
 
 var ( // core funcs
-	RegisterUniture     = internal.RegisterUniture
+	RegisterUniture    = internal.RegisterUniture
 	RegisterQUICDealet = internal.RegisterQUICDealet
 	RegisterQUICEditor = internal.RegisterQUICEditor
 	RegisterTCPSDealet = internal.RegisterTCPSDealet

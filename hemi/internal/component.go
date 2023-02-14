@@ -16,7 +16,7 @@ import (
 var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	unitureCreators     = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
+	unitureCreators    = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicDealetCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealet)
 	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)

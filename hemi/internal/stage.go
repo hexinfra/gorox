@@ -45,7 +45,7 @@ type Stage struct {
 	udps        *UDPSOutgate          // for fast accessing
 	unix        *UnixOutgate          // for fast accessing
 	fixtures    compDict[fixture]     // indexed by sign
-	unitures     compDict[Uniture]      // indexed by sign
+	unitures    compDict[Uniture]     // indexed by sign
 	backends    compDict[backend]     // indexed by backendName
 	quicMeshers compDict[*QUICMesher] // indexed by mesherName
 	tcpsMeshers compDict[*TCPSMesher] // indexed by mesherName
@@ -410,7 +410,7 @@ func (s *Stage) UDPS() *UDPSOutgate       { return s.udps }
 func (s *Stage) Unix() *UnixOutgate       { return s.unix }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Uniture(sign string) Uniture          { return s.unitures[sign] }
+func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
@@ -474,7 +474,7 @@ func (s *Stage) Start(id int32) {
 
 	// Start all components
 	s.startFixtures() // go fixture.run()
-	s.startUnitures()  // go uniture.Run()
+	s.startUnitures() // go uniture.Run()
 	s.startBackends() // go backend.maintain()
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()

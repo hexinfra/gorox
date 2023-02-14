@@ -12,7 +12,9 @@ func main() {
 	//calc([]byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent"))
 	//calc([]byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade"))
 	//calc([]byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade"))
-	calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE"))
+	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE"))
+	//calc([]byte("connection transfer-encoding upgrade"))
+	calc([]byte("content-length content-type location status"))
 	//println(sum("proxy-authenticate"))
 }
 

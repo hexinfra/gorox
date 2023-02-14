@@ -1122,8 +1122,8 @@ type httpOutMessage interface {
 	delHeader(name []byte) (deleted bool)
 	delHeaderAt(o uint8)
 	addHeader(name []byte, value []byte) bool
-	joinHeader(hash uint16, name []byte, value []byte) bool
-	kickHeader(hash uint16, name []byte) (deleted bool)
+	appendHeader(hash uint16, name []byte, value []byte) bool
+	removeHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
 	finalizeHeaders()
@@ -1227,7 +1227,7 @@ func (r *httpOutMessage_) AddHeaderBytesByBytes(name []byte, value []byte) bool 
 			return false
 		}
 	}
-	return r.shell.joinHeader(hash, lower, value)
+	return r.shell.appendHeader(hash, lower, value)
 }
 func (r *httpOutMessage_) DelHeader(name string) bool {
 	return r.DelHeaderByBytes(risky.ConstBytes(name))
@@ -1237,7 +1237,7 @@ func (r *httpOutMessage_) DelHeaderByBytes(name []byte) bool {
 	if !valid {
 		return false
 	}
-	return r.shell.kickHeader(hash, lower)
+	return r.shell.removeHeader(hash, lower)
 }
 func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) {
 	n := len(name)
@@ -1271,14 +1271,14 @@ func (r *httpOutMessage_) _nameCheck(name []byte) (hash uint16, valid bool, lowe
 	return hash, true, buffer[:n]
 }
 
-func (r *httpOutMessage_) joinContentType(contentType []byte) (ok bool) {
+func (r *httpOutMessage_) appendContentType(contentType []byte) (ok bool) {
 	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
 		return false
 	}
 	r.oContentType = r.nHeaders - 1
 	return true
 }
-func (r *httpOutMessage_) kickContentType() (deleted bool) {
+func (r *httpOutMessage_) removeContentType() (deleted bool) {
 	if r.oContentType == 0 {
 		return false
 	}
@@ -1286,14 +1286,14 @@ func (r *httpOutMessage_) kickContentType() (deleted bool) {
 	r.oContentType = 0
 	return true
 }
-func (r *httpOutMessage_) joinDate(date []byte) (ok bool) {
+func (r *httpOutMessage_) appendDate(date []byte) (ok bool) {
 	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
 		return false
 	}
 	r.oDate = r.nHeaders - 1
 	return true
 }
-func (r *httpOutMessage_) kickDate() (deleted bool) {
+func (r *httpOutMessage_) removeDate() (deleted bool) {
 	if r.oDate == 0 {
 		return false
 	}

@@ -221,22 +221,22 @@ var ( // perfect hash table for request crucial headers
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {httpHashDate, 46, 50, (*hRequest_).joinDate, (*hRequest_).kickDate},
-		1:  {httpHashIfRange, 74, 82, (*hRequest_).joinIfRange, (*hRequest_).kickIfRange},
-		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_).joinIfUnmodifiedSince, (*hRequest_).kickIfUnmodifiedSince},
-		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_).joinIfModifiedSince, (*hRequest_).kickIfModifiedSince},
+		0:  {httpHashDate, 46, 50, (*hRequest_).appendDate, (*hRequest_).removeDate},
+		1:  {httpHashIfRange, 74, 82, (*hRequest_).appendIfRange, (*hRequest_).removeIfRange},
+		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_).appendIfUnmodifiedSince, (*hRequest_).removeIfUnmodifiedSince},
+		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_).appendIfModifiedSince, (*hRequest_).removeIfModifiedSince},
 		4:  {httpHashTransferEncoding, 103, 120, nil, nil},
-		5:  {httpHashHost, 51, 55, (*hRequest_).joinHost, (*hRequest_).kickHost},
+		5:  {httpHashHost, 51, 55, (*hRequest_).appendHost, (*hRequest_).removeHost},
 		6:  {httpHashCookie, 39, 45, nil, nil},
 		7:  {httpHashContentLength, 11, 25, nil, nil},
-		8:  {httpHashContentType, 26, 38, (*hRequest_).joinContentType, (*hRequest_).kickContentType},
+		8:  {httpHashContentType, 26, 38, (*hRequest_).appendContentType, (*hRequest_).removeContentType},
 		9:  {httpHashConnection, 0, 10, nil, nil},
 		10: {httpHashUpgrade, 121, 128, nil, nil},
 	}
 	hRequestCrucialHeaderFind = func(hash uint16) int { return (1685160 / int(hash)) % 11 }
 )
 
-func (r *hRequest_) joinHeader(hash uint16, name []byte, value []byte) bool {
+func (r *hRequest_) appendHeader(hash uint16, name []byte, value []byte) bool {
 	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
 		if h.fAdd == nil {
@@ -246,7 +246,7 @@ func (r *hRequest_) joinHeader(hash uint16, name []byte, value []byte) bool {
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *hRequest_) kickHeader(hash uint16, name []byte) bool {
+func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
 		if h.fDel == nil {
@@ -257,35 +257,35 @@ func (r *hRequest_) kickHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 
-func (r *hRequest_) joinHost(host []byte) (ok bool) {
+func (r *hRequest_) appendHost(host []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesHost, host)
 }
-func (r *hRequest_) kickHost() (deleted bool) {
+func (r *hRequest_) removeHost() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) joinIfModifiedSince(since []byte) (ok bool) {
+func (r *hRequest_) appendIfModifiedSince(since []byte) (ok bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) kickIfModifiedSince() (deleted bool) {
+func (r *hRequest_) removeIfModifiedSince() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) joinIfRange(ifRange []byte) (ok bool) {
+func (r *hRequest_) appendIfRange(ifRange []byte) (ok bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) kickIfRange() (deleted bool) {
+func (r *hRequest_) removeIfRange() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) joinIfUnmodifiedSince(since []byte) (ok bool) {
+func (r *hRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 	// TODO
 	return true
 }
-func (r *hRequest_) kickIfUnmodifiedSince() (deleted bool) {
+func (r *hRequest_) removeIfUnmodifiedSince() (deleted bool) {
 	// TODO
 	return true
 }
@@ -357,7 +357,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy remaining headers from req
-	if !req.walkHeaders(r.shell.joinHeader) {
+	if !req.walkHeaders(r.shell.appendHeader) {
 		return false
 	}
 

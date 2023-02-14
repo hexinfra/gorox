@@ -2507,18 +2507,18 @@ var ( // perfect hash table for response crucial headers
 		0: {httpHashServer, 66, 72, nil, nil},
 		1: {httpHashSetCookie, 73, 83, nil, nil},
 		2: {httpHashUpgrade, 102, 109, nil, nil},
-		3: {httpHashDate, 39, 43, (*httpResponse_).joinDate, (*httpResponse_).kickDate},
+		3: {httpHashDate, 39, 43, (*httpResponse_).appendDate, (*httpResponse_).removeDate},
 		4: {httpHashTransferEncoding, 84, 101, nil, nil},
 		5: {httpHashConnection, 0, 10, nil, nil},
-		6: {httpHashLastModified, 52, 65, (*httpResponse_).joinLastModified, (*httpResponse_).kickLastModified},
-		7: {httpHashExpires, 44, 51, (*httpResponse_).joinExpires, (*httpResponse_).kickExpires},
+		6: {httpHashLastModified, 52, 65, (*httpResponse_).appendLastModified, (*httpResponse_).removeLastModified},
+		7: {httpHashExpires, 44, 51, (*httpResponse_).appendExpires, (*httpResponse_).removeExpires},
 		8: {httpHashContentLength, 11, 25, nil, nil},
-		9: {httpHashContentType, 26, 38, (*httpResponse_).joinContentType, (*httpResponse_).kickContentType},
+		9: {httpHashContentType, 26, 38, (*httpResponse_).appendContentType, (*httpResponse_).removeContentType},
 	}
 	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
 
-func (r *httpResponse_) joinHeader(hash uint16, name []byte, value []byte) bool {
+func (r *httpResponse_) appendHeader(hash uint16, name []byte, value []byte) bool {
 	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
 		if h.fAdd == nil {
@@ -2528,7 +2528,7 @@ func (r *httpResponse_) joinHeader(hash uint16, name []byte, value []byte) bool 
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
+func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
 		if h.fDel == nil {
@@ -2539,15 +2539,15 @@ func (r *httpResponse_) kickHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 
-func (r *httpResponse_) joinExpires(expires []byte) (ok bool) {
+func (r *httpResponse_) appendExpires(expires []byte) (ok bool) {
 	// TODO
 	return r.shell.addHeader(httpBytesExpires, expires)
 }
-func (r *httpResponse_) kickExpires() (deleted bool) {
+func (r *httpResponse_) removeExpires() (deleted bool) {
 	// TODO
 	return true
 }
-func (r *httpResponse_) joinLastModified(lastModified []byte) (ok bool) {
+func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
 	if r.lastModified == -2 {
 		r.shell.delHeaderAt(r.oLastModified)
 		r.oLastModified = 0
@@ -2560,7 +2560,7 @@ func (r *httpResponse_) joinLastModified(lastModified []byte) (ok bool) {
 	r.oLastModified = r.nHeaders - 1
 	return true
 }
-func (r *httpResponse_) kickLastModified() (deleted bool) {
+func (r *httpResponse_) removeLastModified() (deleted bool) {
 	if r.lastModified == -1 {
 		return false
 	}
@@ -2707,7 +2707,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 		if hash == httpHashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
 			return r.shell.addHeader(name, value)
 		} else {
-			return r.shell.joinHeader(hash, name, value)
+			return r.shell.appendHeader(hash, name, value)
 		}
 	}) {
 		return false

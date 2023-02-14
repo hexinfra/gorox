@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI proxy handlets pass requests to backend FCGI servers and cache responses.
+// FCGI proxy handlets pass requests to backend FastCGI servers and cache responses.
 
-// FCGI (FastCGI) is mainly for PHP applications. It does not support HTTP trailers and request-side chunking.
+// FastCGI is mainly used by PHP applications. It does not support HTTP trailers and request-side chunking.
 
 package internal
 
@@ -901,15 +901,15 @@ var ( // perfect hash table for response multiple headers
 )
 
 func (r *fcgiResponse) checkConnection(from int, edge int) bool {
-	return r.delRange(from, edge)
+	return r.delHeaders(from, edge)
 }
 func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
-	return r.delRange(from, edge)
+	return r.delHeaders(from, edge)
 }
 func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
-	return r.delRange(from, edge)
+	return r.delHeaders(from, edge)
 }
-func (r *fcgiResponse) delRange(from int, edge int) bool {
+func (r *fcgiResponse) delHeaders(from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		r.headers[i].zero()
 	}

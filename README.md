@@ -6,7 +6,7 @@ Welcome
   Gorox is a high-performance HTTP server, application server, microservice
   server, and proxy server. It can be used as:
 
-    * HTTP Server (HTTP 1/2/3, WebSocket, FCGI, uwsgi)
+    * HTTP Server (HTTP 1/2/3, WebSocket, FastCGI, uwsgi)
     * Application Server for Go (Applications, Frameworks)
     * Microservice Server for Go (HRPC Services, gRPC Services)
     * HTTP Proxy Server (Forward & Reverse, Caching, Tunneling)
@@ -54,7 +54,14 @@ Performance
 Quickstart
 ==========
 
-  See INSTALL.md file.
+  To build and run Gorox, see INSTALL.md file.
+
+  If you have latest Go installed and you are impatient, simply run:
+
+    shell> go build ./cmds/gorox
+    shell> ./gorox -daemon
+    shell> curl -v http://localhost:3080
+    shell> ./gorox stop
 
 
 Documentation

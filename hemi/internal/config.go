@@ -37,7 +37,7 @@ func getConfig() (c config) {
 const ( // comp list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, filesys, resolv, http1, http2, http3, quic, tcps, udps, unix
-	compOpture                // ...
+	compUniture                // ...
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend, UnixBackend
 	compQUICMesher            // quicMesher
 	compQUICDealet            // quicProxy, ...
@@ -165,8 +165,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			switch current.Text {
 			case "fixtures":
 				c.parseContainer0(compFixture, c.parseFixture, current.Text, stage)
-			case "optures":
-				c.parseContainer0(compOpture, c.parseOpture, current.Text, stage)
+			case "unitures":
+				c.parseContainer0(compUniture, c.parseUniture, current.Text, stage)
 			case "backends":
 				c.parseContainer0(compBackend, c.parseBackend, current.Text, stage)
 			case "meshers":
@@ -189,7 +189,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, optures, backends, staters, cachers, apps, svcs, servers, cronjobs {}
+func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, unitures, backends, staters, cachers, apps, svcs, servers, cronjobs {}
 	c.ForwardExpect(TokenLeftBrace) // {
 	for {
 		current := c.Forward()
@@ -213,11 +213,11 @@ func (c *config) parseFixture(sign Token, stage *Stage) { // xxxFixture {}
 	c.Forward()
 	c.parseAssigns(fixture)
 }
-func (c *config) parseOpture(sign Token, stage *Stage) { // xxxOpture {}
-	opture := stage.createOpture(sign.Text)
-	opture.setParent(stage)
+func (c *config) parseUniture(sign Token, stage *Stage) { // xxxUniture {}
+	uniture := stage.createUniture(sign.Text)
+	uniture.setParent(stage)
 	c.Forward()
-	c.parseAssigns(opture)
+	c.parseAssigns(uniture)
 }
 func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)

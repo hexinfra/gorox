@@ -16,7 +16,7 @@ import (
 var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	optureCreators     = make(map[string]func(sign string, stage *Stage) Opture) // indexed by sign, same below.
+	unitureCreators     = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
 	quicDealetCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealet)
 	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
@@ -43,8 +43,8 @@ func registerFixture(sign string) {
 	fixtureSigns[sign] = true
 	signComp(sign, compFixture)
 }
-func RegisterOpture(sign string, create func(sign string, stage *Stage) Opture) {
-	registerComponent0(sign, compOpture, optureCreators, create)
+func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture) {
+	registerComponent0(sign, compUniture, unitureCreators, create)
 }
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
 	registerComponent0(sign, compBackend, backendCreators, create)
@@ -98,7 +98,7 @@ func RegisterServer(sign string, create func(name string, stage *Stage) Server) 
 func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
 	registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
-func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // opture, backend, stater, cacher, server, cronjob
+func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // uniture, backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 	if _, ok := creators[sign]; ok {

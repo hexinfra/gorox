@@ -22,7 +22,7 @@ COMPONENTS
 
   stage [*]
     fixture (clock, filesys, resolv, http1, http2, http3, quic, tcps, udps, unix)
-    opture (...)
+    uniture (...)
     backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
     mesher (tcpsMesher, udpsMesher, quicMesher)
       dealet (...)

@@ -15,7 +15,7 @@ import (
 const Version = "0.1.0-dev"
 
 var ( // core funcs
-	RegisterOpture     = internal.RegisterOpture
+	RegisterUniture     = internal.RegisterUniture
 	RegisterQUICDealet = internal.RegisterQUICDealet
 	RegisterQUICEditor = internal.RegisterQUICEditor
 	RegisterTCPSDealet = internal.RegisterTCPSDealet
@@ -64,7 +64,7 @@ var ( // core funcs
 type ( // core types
 	Stage = internal.Stage
 
-	Opture = internal.Opture
+	Uniture = internal.Uniture
 
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend

@@ -45,7 +45,7 @@ type Stage struct {
 	udps        *UDPSOutgate          // for fast accessing
 	unix        *UnixOutgate          // for fast accessing
 	fixtures    compDict[fixture]     // indexed by sign
-	optures     compDict[Opture]      // indexed by sign
+	unitures     compDict[Uniture]      // indexed by sign
 	backends    compDict[backend]     // indexed by backendName
 	quicMeshers compDict[*QUICMesher] // indexed by mesherName
 	tcpsMeshers compDict[*TCPSMesher] // indexed by mesherName
@@ -96,7 +96,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signUDPS] = s.udps
 	s.fixtures[signUnix] = s.unix
 
-	s.optures = make(compDict[Opture])
+	s.unitures = make(compDict[Uniture])
 	s.backends = make(compDict[backend])
 	s.quicMeshers = make(compDict[*QUICMesher])
 	s.tcpsMeshers = make(compDict[*TCPSMesher])
@@ -150,9 +150,9 @@ func (s *Stage) OnShutdown() {
 	s.backends.goWalk(backend.OnShutdown)
 	s.WaitSubs()
 
-	// optures
-	s.IncSub(len(s.optures))
-	s.optures.goWalk(Opture.OnShutdown)
+	// unitures
+	s.IncSub(len(s.unitures))
+	s.unitures.goWalk(Uniture.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures
@@ -230,7 +230,7 @@ func (s *Stage) OnConfigure() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
-	s.optures.walk(Opture.OnConfigure)
+	s.unitures.walk(Uniture.OnConfigure)
 	s.backends.walk(backend.OnConfigure)
 	s.quicMeshers.walk((*QUICMesher).OnConfigure)
 	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
@@ -256,7 +256,7 @@ func (s *Stage) OnPrepare() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
-	s.optures.walk(Opture.OnPrepare)
+	s.unitures.walk(Uniture.OnPrepare)
 	s.backends.walk(backend.OnPrepare)
 	s.quicMeshers.walk((*QUICMesher).OnPrepare)
 	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
@@ -269,18 +269,18 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createOpture(sign string) Opture {
-	create, ok := optureCreators[sign]
+func (s *Stage) createUniture(sign string) Uniture {
+	create, ok := unitureCreators[sign]
 	if !ok {
-		UseExitln("unknown opture type: " + sign)
+		UseExitln("unknown uniture type: " + sign)
 	}
-	if s.Opture(sign) != nil {
-		UseExitf("conflicting opture with a same sign '%s'\n", sign)
+	if s.Uniture(sign) != nil {
+		UseExitf("conflicting uniture with a same sign '%s'\n", sign)
 	}
-	opture := create(sign, s)
-	opture.setShell(opture)
-	s.optures[sign] = opture
-	return opture
+	uniture := create(sign, s)
+	uniture.setShell(uniture)
+	s.unitures[sign] = uniture
+	return uniture
 }
 func (s *Stage) createBackend(sign string, name string) backend {
 	create, ok := backendCreators[sign]
@@ -410,7 +410,7 @@ func (s *Stage) UDPS() *UDPSOutgate       { return s.udps }
 func (s *Stage) Unix() *UnixOutgate       { return s.unix }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Opture(sign string) Opture          { return s.optures[sign] }
+func (s *Stage) Uniture(sign string) Uniture          { return s.unitures[sign] }
 func (s *Stage) Backend(name string) backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
@@ -474,7 +474,7 @@ func (s *Stage) Start(id int32) {
 
 	// Start all components
 	s.startFixtures() // go fixture.run()
-	s.startOptures()  // go opture.Run()
+	s.startUnitures()  // go uniture.Run()
 	s.startBackends() // go backend.maintain()
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
@@ -560,12 +560,12 @@ func (s *Stage) startFixtures() {
 		go fixture.run()
 	}
 }
-func (s *Stage) startOptures() {
-	for _, opture := range s.optures {
+func (s *Stage) startUnitures() {
+	for _, uniture := range s.unitures {
 		if IsDebug(1) {
-			Debugf("opture=%s go Run()\n", opture.Name())
+			Debugf("uniture=%s go Run()\n", uniture.Name())
 		}
-		go opture.Run()
+		go uniture.Run()
 	}
 }
 func (s *Stage) startBackends() {
@@ -749,11 +749,11 @@ type fixture interface {
 	run() // goroutine
 }
 
-// Opture component.
+// Uniture component.
 //
-// Optures behave like fixtures except that they are optional
-// and extendible, so users can create their own optures.
-type Opture interface {
+// Unitures behave like fixtures except that they are optional
+// and extendible, so users can create their own unitures.
+type Uniture interface {
 	Component
 	Run() // goroutine
 }

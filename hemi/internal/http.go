@@ -163,7 +163,7 @@ func (r *httpIn_) onUse(asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.contentSize = -1
-	r.maxRecvTimeout = r.stream.keeper().ReadTimeout()
+	r.maxRecvTimeout = r.stream.keeper().ReadTimeout() * 2 // what is the best default value?
 	r.asResponse = asResponse
 	r.keepAlive = -1
 	r.headResult = StatusOK
@@ -1103,10 +1103,10 @@ func (r *httpIn_) _beforeRead(toTime *time.Time) error {
 }
 
 const ( // HTTP content blob kinds
-	httpContentBlobNone = iota // must be 0
-	httpContentBlobInput
-	httpContentBlobPool
-	httpContentBlobMake
+	httpContentBlobNone  = iota // must be 0
+	httpContentBlobInput        // refers to r.input
+	httpContentBlobPool         // fetched from pool
+	httpContentBlobMake         // direct make
 )
 
 var ( // http incoming message errors
@@ -1730,9 +1730,10 @@ const ( // misc http types
 	httpTargetAuthority = 2 // hostname:port
 	httpTargetAsterisk  = 3 // *
 
-	httpFormNotForm    = 0 // must be 0
-	httpFormURLEncoded = 1
-	httpFormMultipart  = 2
+	httpSectionControl  = 0 // must be 0
+	httpSectionHeaders  = 1
+	httpSectionContent  = 2
+	httpSectionTrailers = 3
 
 	httpCodingIdentity = 0 // must be 0
 	httpCodingCompress = 1
@@ -1740,10 +1741,9 @@ const ( // misc http types
 	httpCodingGzip     = 3
 	httpCodingBrotli   = 4
 
-	httpSectionControl  = 0 // must be 0
-	httpSectionHeaders  = 1
-	httpSectionContent  = 2
-	httpSectionTrailers = 3
+	httpFormNotForm    = 0 // must be 0
+	httpFormURLEncoded = 1
+	httpFormMultipart  = 2
 )
 
 const ( // hashes of http fields. value is calculated by adding all ASCII values.

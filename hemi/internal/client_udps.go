@@ -55,22 +55,22 @@ func createUDPS(stage *Stage) *UDPSOutgate {
 // UDPSOutgate component.
 type UDPSOutgate struct {
 	// Mixins
-	client_
+	outgate_
 	udpsClient_
 	// States
 }
 
 func (f *UDPSOutgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signUDPS, stage)
+	f.outgate_.onCreate(signUDPS, stage)
 	f.udpsClient_.onCreate()
 }
 
 func (f *UDPSOutgate) OnConfigure() {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.udpsClient_.onConfigure(f)
 }
 func (f *UDPSOutgate) OnPrepare() {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.udpsClient_.onPrepare(f)
 }
 
@@ -124,9 +124,9 @@ func (b *UDPSBackend) OnPrepare() {
 }
 
 func (b *UDPSBackend) createNode(id int32) *udpsNode {
-	n := new(udpsNode)
-	n.init(id, b)
-	return n
+	node := new(udpsNode)
+	node.init(id, b)
+	return node
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {

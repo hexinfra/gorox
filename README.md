@@ -38,19 +38,6 @@ Platforms
   Other platforms are currently not tested and probably don't work.
 
 
-Performance
-===========
-
-  Gorox is fast. You can use wrk to perform a simple benchmark:
-
-    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark
-    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
-
-  Change the parameters and/or target URL to match your need.
-
-  Generally, the result is about 80% of nginx and slightly better than fasthttp.
-
-
 Quickstart
 ==========
 
@@ -62,6 +49,19 @@ Quickstart
     shell> ./gorox -daemon
     shell> curl -v http://localhost:3080
     shell> ./gorox stop
+
+
+Performance
+===========
+
+  Gorox is fast. You can use wrk to perform a simple benchmark:
+
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
+
+  Change the parameters and/or target URL to match your need.
+
+  Generally, the result is about 80% of nginx and slightly better than fasthttp.
 
 
 Documentation

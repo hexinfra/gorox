@@ -1,1 +1,10 @@
 Goben is an HTTP benchmarking tool.
+
+goben -c 128 -r 10000 -u http1://1.2.3.4:3080/uri?query
+goben -c 128 -r 10000 -u http1s://1.2.3.4:3443/uri?query
+
+goben -c 128 -r 10000 -s 100 -u http2://1.2.3.4:3080/uri?query
+goben -c 128 -r 10000 -s 100 -u http2s://1.2.3.4:3443/uri?query
+
+goben -c 128 -r 10000 -s 100 -u http3://1.2.3.4:3080/uri?query
+goben -c 128 -r 10000 -s 100 -u http3s://1.2.3.4:3443/uri?query

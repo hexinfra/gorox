@@ -58,22 +58,22 @@ func createQUIC(stage *Stage) *QUICOutgate {
 // QUICOutgate component.
 type QUICOutgate struct {
 	// Mixins
-	client_
+	outgate_
 	quicClient_
 	// States
 }
 
 func (f *QUICOutgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signQUIC, stage)
+	f.outgate_.onCreate(signQUIC, stage)
 	f.quicClient_.onCreate()
 }
 
 func (f *QUICOutgate) OnConfigure() {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.quicClient_.onConfigure(f)
 }
 func (f *QUICOutgate) OnPrepare() {
-	f.client_.onPrepare()
+	f.outgate_.onPrepare()
 	f.quicClient_.onPrepare(f)
 }
 
@@ -126,9 +126,9 @@ func (b *QUICBackend) OnPrepare() {
 }
 
 func (b *QUICBackend) createNode(id int32) *quicNode {
-	n := new(quicNode)
-	n.init(id, b)
-	return n
+	node := new(quicNode)
+	node.init(id, b)
+	return node
 }
 
 func (b *QUICBackend) Dial() (*QConn, error) {

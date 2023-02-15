@@ -90,9 +90,9 @@ func (b *HTTP2Backend) OnPrepare() {
 }
 
 func (b *HTTP2Backend) createNode(id int32) *http2Node {
-	n := new(http2Node)
-	n.init(id, b)
-	return n
+	node := new(http2Node)
+	node.init(id, b)
+	return node
 }
 
 func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {

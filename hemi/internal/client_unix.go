@@ -58,22 +58,22 @@ func createUnix(stage *Stage) *UnixOutgate {
 // UnixOutgate component.
 type UnixOutgate struct {
 	// Mixins
-	client_
+	outgate_
 	unixClient_
 	// States
 }
 
 func (f *UnixOutgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signUnix, stage)
+	f.outgate_.onCreate(signUnix, stage)
 	f.unixClient_.onCreate()
 }
 
 func (f *UnixOutgate) OnConfigure() {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.unixClient_.onConfigure(f)
 }
 func (f *UnixOutgate) OnPrepare() {
-	f.client_.onPrepare()
+	f.outgate_.onPrepare()
 	f.unixClient_.onPrepare(f)
 }
 
@@ -127,9 +127,9 @@ func (b *UnixBackend) OnPrepare() {
 }
 
 func (b *UnixBackend) createNode(id int32) *unixNode {
-	n := new(unixNode)
-	n.init(id, b)
-	return n
+	node := new(unixNode)
+	node.init(id, b)
+	return node
 }
 
 func (b *UnixBackend) Dial() (PConn, error) {

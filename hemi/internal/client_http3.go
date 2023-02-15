@@ -89,9 +89,9 @@ func (b *HTTP3Backend) OnPrepare() {
 }
 
 func (b *HTTP3Backend) createNode(id int32) *http3Node {
-	n := new(http3Node)
-	n.init(id, b)
-	return n
+	node := new(http3Node)
+	node.init(id, b)
+	return node
 }
 
 func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {

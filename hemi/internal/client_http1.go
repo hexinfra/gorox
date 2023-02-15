@@ -104,9 +104,9 @@ func (b *HTTP1Backend) OnPrepare() {
 }
 
 func (b *HTTP1Backend) createNode(id int32) *http1Node {
-	n := new(http1Node)
-	n.init(id, b)
-	return n
+	node := new(http1Node)
+	node.init(id, b)
+	return node
 }
 
 func (b *HTTP1Backend) FetchConn() (*H1Conn, error) {

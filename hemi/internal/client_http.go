@@ -49,22 +49,22 @@ func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
 	// Mixins
-	client_
+	outgate_
 	httpClient_
 	// States
 }
 
 func (f *httpOutgate_) onCreate(name string, stage *Stage) {
-	f.client_.onCreate(name, stage)
+	f.outgate_.onCreate(name, stage)
 	f.httpClient_.onCreate()
 }
 
 func (f *httpOutgate_) onConfigure(shell Component) {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.httpClient_.onConfigure(shell, "outgates")
 }
 func (f *httpOutgate_) onPrepare(shell Component) {
-	f.client_.onPrepare()
+	f.outgate_.onPrepare()
 	f.httpClient_.onPrepare(shell)
 }
 

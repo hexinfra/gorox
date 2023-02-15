@@ -60,22 +60,22 @@ func createTCPS(stage *Stage) *TCPSOutgate {
 // TCPSOutgate component.
 type TCPSOutgate struct {
 	// Mixins
-	client_
+	outgate_
 	tcpsClient_
 	// States
 }
 
 func (f *TCPSOutgate) onCreate(stage *Stage) {
-	f.client_.onCreate(signTCPS, stage)
+	f.outgate_.onCreate(signTCPS, stage)
 	f.tcpsClient_.onCreate()
 }
 
 func (f *TCPSOutgate) OnConfigure() {
-	f.client_.onConfigure()
+	f.outgate_.onConfigure()
 	f.tcpsClient_.onConfigure(f)
 }
 func (f *TCPSOutgate) OnPrepare() {
-	f.client_.onPrepare()
+	f.outgate_.onPrepare()
 	f.tcpsClient_.onPrepare(f)
 }
 
@@ -136,9 +136,9 @@ func (b *TCPSBackend) OnPrepare() {
 }
 
 func (b *TCPSBackend) createNode(id int32) *tcpsNode {
-	n := new(tcpsNode)
-	n.init(id, b)
-	return n
+	node := new(tcpsNode)
+	node.init(id, b)
+	return node
 }
 
 func (b *TCPSBackend) Dial() (PConn, error) {

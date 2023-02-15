@@ -78,6 +78,33 @@ func (c *client_) IdleTimeout() time.Duration  { return c.idleTimeout }
 
 func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
+// outgate
+type outgate interface {
+	served() int64
+}
+
+// outgate_
+type outgate_ struct {
+	// Mixins
+	client_
+	// States
+	nServed atomic.Int64
+}
+
+func (o *outgate_) onCreate(name string, stage *Stage) {
+	o.client_.onCreate(name, stage)
+}
+
+func (o *outgate_) onConfigure() {
+	o.client_.onConfigure()
+}
+func (o *outgate_) onPrepare() {
+	o.client_.onPrepare()
+}
+
+func (o *outgate_) served() int64 { return o.nServed.Load() }
+func (o *outgate_) incServed()    { o.nServed.Add(1) }
+
 // backend is a group of nodes.
 type backend interface {
 	Component
@@ -93,7 +120,7 @@ type backend_[N node] struct {
 	creator interface {
 		createNode(id int32) N
 	} // if Go's generic supports new(N) then this is not needed.
-	nodes []N
+	nodes []N // nodes of this backend
 	// States
 }
 
@@ -111,7 +138,7 @@ func (b *backend_[N]) onConfigure() {
 	}
 	vNodes, ok := v.List()
 	if !ok {
-		UseExitln("bad nodes")
+		UseExitln("nodes must be a list")
 	}
 	for id, elem := range vNodes {
 		vNode, ok := elem.Dict()
@@ -159,11 +186,11 @@ func (b *backend_[N]) onPrepare() {
 func (b *backend_[N]) maintain() { // goroutine
 	shutNodes := make(chan struct{})
 	for _, node := range b.nodes {
-		b.IncSub(1)
+		b.IncSub(1) // one more node
 		go node.maintain(shutNodes)
 	}
-	<-b.Shut         // waiting for shutdown signal
-	close(shutNodes) // notify all nodes
+	<-b.Shut         // waiting for backend shutdown signal
+	close(shutNodes) // this will notify all nodes
 	b.WaitSubs()     // nodes
 	if IsDebug(2) {
 		Debugf("backend=%s done\n", b.Name())
@@ -189,11 +216,11 @@ type node_ struct {
 	weight    int32       // 1, 22, 333, ...
 	keepConns int32       // max conns to keep alive
 	down      atomic.Bool // TODO: false-sharing
-	freeList  struct {    // free list of conn in this node
+	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		size int32
-		head conn
-		tail conn
+		size int32 // size of the list
+		head conn  // head element
+		tail conn  // tail element
 	}
 }
 
@@ -229,7 +256,7 @@ func (n *node_) pushConn(conn conn) {
 	if list.size == 0 {
 		list.head = conn
 		list.tail = conn
-	} else {
+	} else { // >= 1
 		list.tail.setNext(conn)
 		list.tail = conn
 	}
@@ -240,9 +267,9 @@ var errNodeDown = errors.New("node is down")
 
 // conn is the client conns.
 type conn interface {
-	isAlive() bool
 	getNext() conn
 	setNext(next conn)
+	isAlive() bool
 	closeConn()
 }
 
@@ -270,10 +297,10 @@ func (c *conn_) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
-
 func (c *conn_) getNext() conn     { return c.next }
 func (c *conn_) setNext(next conn) { c.next = next }
+
+func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 
 // connection-oriented backend, supports TCPS and Unix.
 type PBackend interface {

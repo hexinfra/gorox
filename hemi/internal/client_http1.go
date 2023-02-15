@@ -266,6 +266,7 @@ type H1Stream struct {
 	// Assocs
 	request  H1Request  // the client-side http/1 request
 	response H1Response // the client-side http/1 response
+	socket   *H1Socket  // the client-side http/1 socket
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non zeros)
@@ -282,6 +283,7 @@ func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
 func (s *H1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
+	s.socket = nil
 	s.conn = nil
 	s.hStream_.onEnd()
 }
@@ -304,10 +306,7 @@ func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
-func (s *H1Stream) Socket() *H1Socket {
-	// TODO
-	return nil
-}
+func (s *H1Stream) Socket() *H1Socket     { return s.socket }
 
 func (s *H1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)

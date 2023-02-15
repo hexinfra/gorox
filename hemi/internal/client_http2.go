@@ -256,6 +256,7 @@ type H2Stream struct {
 	// Assocs
 	request  H2Request
 	response H2Response
+	socket   *H2Socket
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -278,9 +279,10 @@ func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
 func (s *H2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.hStream_.onEnd()
+	s.socket = nil
 	s.conn = nil
 	s.h2Stream0 = h2Stream0{}
+	s.hStream_.onEnd()
 }
 
 func (s *H2Stream) keeper() keeper {
@@ -299,10 +301,7 @@ func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
-func (s *H2Stream) Socket() *H2Socket {
-	// TODO
-	return nil
-}
+func (s *H2Stream) Socket() *H2Socket     { return s.socket }
 
 func (s *H2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)

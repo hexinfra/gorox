@@ -226,6 +226,7 @@ type H3Stream struct {
 	// Assocs
 	request  H3Request
 	response H3Response
+	socket   *H3Socket
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -248,10 +249,11 @@ func (s *H3Stream) onUse(conn *H3Conn, quicStream *quix.Stream) { // for non-zer
 func (s *H3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.hStream_.onEnd()
+	s.socket = nil
 	s.conn = nil
 	s.quicStream = nil
 	s.h3Stream0 = h3Stream0{}
+	s.hStream_.onEnd()
 }
 
 func (s *H3Stream) keeper() keeper {
@@ -271,10 +273,7 @@ func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }
 func (s *H3Stream) Response() *H3Response { return &s.response }
-func (s *H3Stream) Socket() *H3Socket {
-	// TODO
-	return nil
-}
+func (s *H3Stream) Socket() *H3Socket     { return s.socket }
 
 func (s *H3Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)

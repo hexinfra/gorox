@@ -64,8 +64,8 @@ func (r *gzipReviser) BeforePull(req Request, resp Response) { // chunked
 func (r *gzipReviser) FinishPull(req Request, resp Response) { // chunked
 	// TODO
 }
-func (r *gzipReviser) OnInput(req Request, resp Response, chain Chain) Chain {
-	return chain
+func (r *gzipReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
 }
 
 func (r *gzipReviser) BeforeSend(req Request, resp Response) { // counted

@@ -58,8 +58,8 @@ func (r *replaceReviser) BeforePull(req Request, resp Response) { // chunked
 func (r *replaceReviser) FinishPull(req Request, resp Response) { // chunked
 	// TODO
 }
-func (r *replaceReviser) OnInput(req Request, resp Response, chain Chain) Chain {
-	return chain
+func (r *replaceReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
 }
 
 func (r *replaceReviser) BeforeSend(req Request, resp Response) { // counted

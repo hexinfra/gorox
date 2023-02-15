@@ -461,7 +461,7 @@ type Reviser interface {
 	BeforeRecv(req Request, resp Response) // for counted content
 	BeforePull(req Request, resp Response) // for chunked content
 	FinishPull(req Request, resp Response) // for chunked content
-	OnInput(req Request, resp Response, chain Chain) Chain
+	OnInput(req Request, resp Response, chain Chain) (Chain, bool)
 
 	BeforeSend(req Request, resp Response) // for counted content
 	BeforePush(req Request, resp Response) // for chunked content

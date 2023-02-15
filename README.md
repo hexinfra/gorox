@@ -6,12 +6,12 @@ Welcome
   Gorox is a high-performance HTTP server, application server, microservice
   server, and proxy server. It can be used as:
 
-    * HTTP Server (HTTP 1/2/3, WebSocket, FastCGI, uwsgi)
+    * HTTP Server (HTTP 1/2/3, WebSocket, TLS, FastCGI, uwsgi)
     * Application Server for Go (Applications, Frameworks)
     * Microservice Server for Go (HRPC Services, gRPC Services)
-    * HTTP Proxy Server (Forward & Reverse, Caching, Tunneling)
-    * API Gateway (HTTP APIs & gRPC APIs, WAF)
-    * Service Mesh (Data Plane & Control Plane)
+    * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
+    * API Gateway (HTTP APIs, gRPC APIs, WAF)
+    * Service Mesh (Data Plane, Control Plane)
     * ... and more through its highly extensible compoments design!
 
   There is also a Goops which can optionally manage your Gorox cluster.

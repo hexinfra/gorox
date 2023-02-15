@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI proxy handlets pass requests to backend FastCGI servers and cache responses.
+// FCGI agent handlets pass requests to backend FastCGI servers and cache responses.
 
 // FastCGI is mainly used by PHP applications. It does not support HTTP trailers and request-side chunking.
 
@@ -21,23 +21,23 @@ import (
 )
 
 func init() {
-	RegisterHandlet("fcgiProxy", func(name string, stage *Stage, app *App) Handlet {
-		h := new(fcgiProxy)
+	RegisterHandlet("fcgiAgent", func(name string, stage *Stage, app *App) Handlet {
+		h := new(fcgiAgent)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// fcgiProxy handlet
-type fcgiProxy struct {
+// fcgiAgent handlet
+type fcgiAgent struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage   // current stage
-	app     *App     // the app to which the proxy belongs
+	app     *App     // the app to which the agent belongs
 	backend PBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher   // the cache server which is used by this proxy
+	cacher  Cacher   // the cache server which is used by this agent
 	// States
 	scriptFilename      []byte        // ...
 	bufferClientContent bool          // ...
@@ -51,16 +51,16 @@ type fcgiProxy struct {
 	maxRecvTimeout      time.Duration // max timeout to recv response
 }
 
-func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
+func (h *fcgiAgent) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *fcgiProxy) OnShutdown() {
+func (h *fcgiAgent) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *fcgiProxy) OnConfigure() {
+func (h *fcgiAgent) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/fcgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -70,13 +70,13 @@ func (h *fcgiProxy) OnConfigure() {
 			} else if pBackend, ok := backend.(PBackend); ok {
 				h.backend = pBackend
 			} else {
-				UseExitf("incorrect backend '%s' for fcgiProxy\n", name)
+				UseExitf("incorrect backend '%s' for fcgiAgent\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for fcgiProxy")
+		UseExitln("toBackend is required for fcgiAgent")
 	}
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
@@ -103,14 +103,14 @@ func (h *fcgiProxy) OnConfigure() {
 	// maxRecvTimeout
 	h.ConfigureDuration("maxRecvTimeout", &h.maxRecvTimeout, func(value time.Duration) bool { return value >= 0 }, 0)
 }
-func (h *fcgiProxy) OnPrepare() {
+func (h *fcgiAgent) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *fcgiProxy) IsProxy() bool { return true }
-func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *fcgiAgent) IsProxy() bool { return true }
+func (h *fcgiAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiProxy) Handle(hReq Request, hResp Response) (next bool) {
+func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	var (
 		hContent any
 		fConn    PConn
@@ -225,7 +225,7 @@ func (h *fcgiProxy) Handle(hReq Request, hResp Response) (next bool) {
 // poolFCGIStream
 var poolFCGIStream sync.Pool
 
-func getFCGIStream(proxy *fcgiProxy, conn PConn) *fcgiStream {
+func getFCGIStream(agent *fcgiAgent, conn PConn) *fcgiStream {
 	var stream *fcgiStream
 	if x := poolFCGIStream.Get(); x == nil {
 		stream = new(fcgiStream)
@@ -236,7 +236,7 @@ func getFCGIStream(proxy *fcgiProxy, conn PConn) *fcgiStream {
 	} else {
 		stream = x.(*fcgiStream)
 	}
-	stream.onUse(proxy, conn)
+	stream.onUse(agent, conn)
 	return stream
 }
 func putFCGIStream(stream *fcgiStream) {
@@ -253,14 +253,14 @@ type fcgiStream struct {
 	stockBuffer [256]byte
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	proxy  *fcgiProxy // associated proxy
+	agent  *fcgiAgent // associated agent
 	conn   PConn      // associated conn
 	region Region     // a region-based memory pool
 	// Stream states (zeros)
 }
 
-func (s *fcgiStream) onUse(proxy *fcgiProxy, conn PConn) {
-	s.proxy = proxy
+func (s *fcgiStream) onUse(agent *fcgiAgent, conn PConn) {
+	s.agent = agent
 	s.conn = conn
 	s.region.Init()
 	s.request.onUse()
@@ -271,7 +271,7 @@ func (s *fcgiStream) onEnd() {
 	s.response.onEnd()
 	s.region.Free()
 	s.conn = nil
-	s.proxy = nil
+	s.agent = nil
 }
 
 func (s *fcgiStream) smallBuffer() []byte        { return s.stockBuffer[:] }
@@ -324,7 +324,7 @@ func (r *fcgiRequest) onUse() {
 	r.params = r.stockParams[:]
 	copy(r.params, fcgiParamsHeader) // contentLen (r.params[4:6]) needs modification
 	r.contentSize = -1               // not set
-	r.maxSendTimeout = r.stream.proxy.maxSendTimeout
+	r.maxSendTimeout = r.stream.agent.maxSendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -385,7 +385,7 @@ func (r *fcgiRequest) sync(req Request) error { // only for counted (>0) content
 }
 func (r *fcgiRequest) syncParams() error {
 	// TODO: build the params record, sync beginRequest and params
-	if r.stream.proxy.keepConn {
+	if r.stream.agent.keepConn {
 		// use fcgiBeginKeepConn
 	} else {
 		// use fcgiBeginDontKeep
@@ -458,7 +458,7 @@ func (r *fcgiRequest) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.proxy.backend.WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.agent.backend.WriteTimeout()))
 }
 
 // poolFCGIParams
@@ -533,7 +533,7 @@ func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
-	r.maxRecvTimeout = r.stream.proxy.maxRecvTimeout
+	r.maxRecvTimeout = r.stream.agent.maxRecvTimeout
 	r.headResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
@@ -1048,7 +1048,7 @@ func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []by
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by response interface
 
 func (r *fcgiResponse) saveContentFilesDir() string {
-	return r.stream.proxy.SaveContentFilesDir() // must ends with '/'
+	return r.stream.agent.SaveContentFilesDir() // must ends with '/'
 }
 
 func (r *fcgiResponse) _newTempFile() (TempFile, error) { // to save content to
@@ -1065,7 +1065,7 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.proxy.backend.ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.agent.backend.ReadTimeout()))
 }
 
 var ( // fcgi response errors

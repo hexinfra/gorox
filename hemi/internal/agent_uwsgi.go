@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI proxy handlets pass requests to backend uWSGI servers and cache responses.
+// UWSGI agent handlets pass requests to backend uWSGI servers and cache responses.
 
 // UWSGI is mainly for Python applications.
 
@@ -16,15 +16,15 @@
 package internal
 
 func init() {
-	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, app *App) Handlet {
-		h := new(uwsgiProxy)
+	RegisterHandlet("uwsgiAgent", func(name string, stage *Stage, app *App) Handlet {
+		h := new(uwsgiAgent)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// uwsgiProxy handlet
-type uwsgiProxy struct {
+// uwsgiAgent handlet
+type uwsgiAgent struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -37,16 +37,16 @@ type uwsgiProxy struct {
 	bufferServerContent bool // server content is buffered anyway?
 }
 
-func (h *uwsgiProxy) onCreate(name string, stage *Stage, app *App) {
+func (h *uwsgiAgent) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *uwsgiProxy) OnShutdown() {
+func (h *uwsgiAgent) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *uwsgiProxy) OnConfigure() {
+func (h *uwsgiAgent) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -55,13 +55,13 @@ func (h *uwsgiProxy) OnConfigure() {
 			} else if pBackend, ok := backend.(PBackend); ok {
 				h.backend = pBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiProxy\n", name)
+				UseExitf("incorrect backend '%s' for uwsgiAgent\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for uwsgiProxy")
+		UseExitln("toBackend is required for uwsgiAgent")
 	}
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
@@ -78,13 +78,13 @@ func (h *uwsgiProxy) OnConfigure() {
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
-func (h *uwsgiProxy) OnPrepare() {
+func (h *uwsgiAgent) OnPrepare() {
 }
 
-func (h *uwsgiProxy) IsProxy() bool { return true }
-func (h *uwsgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *uwsgiAgent) IsProxy() bool { return true }
+func (h *uwsgiAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *uwsgiProxy) Handle(req Request, resp Response) (next bool) {
+func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) {
 	// TODO: implementation, use PConn
 	resp.Send("uwsgi")
 	return

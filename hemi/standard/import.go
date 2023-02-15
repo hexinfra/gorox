@@ -7,10 +7,11 @@
 
 package standard
 
-import (
+import ( // preloaded standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/standard/dealets/tcps/hello"
+	_ "github.com/hexinfra/gorox/hemi/standard/editors/tcps/redis"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/favicon"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/https"

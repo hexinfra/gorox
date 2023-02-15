@@ -52,8 +52,7 @@ var (
 )
 
 func main() {
-	_, err := os.Stat("hemi")
-	if err != nil {
+	if _, err := os.Stat("cmds/derox"); err == nil {
 		fmt.Println("please use demake.")
 		return
 	}

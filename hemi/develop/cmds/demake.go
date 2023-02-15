@@ -40,6 +40,7 @@ TARGET
   all      # build all cmds in the directory
   clean    # clean binaries, logs, and temp files
   clear    # clear binaries, data, logs, and temp files
+  dist     # make distribution
 `
 
 var (
@@ -51,8 +52,7 @@ var (
 )
 
 func main() {
-	_, err := os.Stat("hemi")
-	if err == nil {
+	if _, err := os.Stat("cmds/gorox"); err == nil {
 		fmt.Println("please use gomake.")
 		return
 	}
@@ -67,6 +67,8 @@ func main() {
 		reset(false)
 	case "clear":
 		reset(true)
+	case "dist":
+		fmt.Println("dist is not implemented yet")
 	default: // build
 		if *fmt_ {
 			cmd := exec.Command("gofmt", "-w", "..")
@@ -114,6 +116,7 @@ func reset(withData bool) {
 		return
 	}
 	dirs := []string{
+		"dist",
 		"logs",
 		"temp",
 	}

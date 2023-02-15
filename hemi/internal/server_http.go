@@ -395,7 +395,7 @@ type Request interface {
 // httpRequest_ is the mixin for http[1-3]Request.
 type httpRequest_ struct { // incoming. needs parsing
 	// Mixins
-	httpInMessage_
+	httpIn_
 	// Stream states (buffers)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
@@ -464,7 +464,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 }
 
 func (r *httpRequest_) onUse() { // for non-zeros
-	r.httpInMessage_.onUse(false)
+	r.httpIn_.onUse(false)
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
@@ -493,7 +493,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool at return. so just set as nil
 	r.httpRequest0_ = httpRequest0_{}
 
-	r.httpInMessage_.onEnd()
+	r.httpIn_.onEnd()
 }
 
 func (r *httpRequest_) App() *App { return r.app }
@@ -2404,7 +2404,7 @@ type Response interface {
 	endChunked() error
 	finalizeChunked() error
 	sync1xx(resp response) bool               // used by proxies
-	sync(resp httpInMessage) error            // used by proxies
+	sync(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
@@ -2413,7 +2413,7 @@ type Response interface {
 // httpResponse_ is the mixin for http[1-3]Response.
 type httpResponse_ struct { // outgoing. needs building
 	// Mixins
-	httpOutMessage_
+	httpOut_
 	// Assocs
 	request Request // *http[1-3]Request
 	// Stream states (buffers)
@@ -2433,7 +2433,7 @@ type httpResponse0_ struct { // for fast reset, entirely
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
-	r.httpOutMessage_.onUse(false)
+	r.httpOut_.onUse(false)
 	r.status = StatusOK
 	r.lastModified = -1
 }
@@ -2441,7 +2441,7 @@ func (r *httpResponse_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
 	r.httpResponse0_ = httpResponse0_{}
-	r.httpOutMessage_.onEnd()
+	r.httpOut_.onEnd()
 }
 
 func (r *httpResponse_) Request() Request { return r.request }

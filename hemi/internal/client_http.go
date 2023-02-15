@@ -173,7 +173,7 @@ type request interface {
 // hRequest_ is the mixin for H[1-3]Request.
 type hRequest_ struct { // outgoing. needs building
 	// Mixins
-	httpOutMessage_
+	httpOut_
 	// Assocs
 	response response // the corresponding response
 	// Stream states (buffers)
@@ -192,13 +192,13 @@ type hRequest0_ struct { // for fast reset, entirely
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
-	r.httpOutMessage_.onUse(true)
+	r.httpOut_.onUse(true)
 	r.ifModifiedSince = -1
 	r.ifUnmodifiedSince = -1
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}
-	r.httpOutMessage_.onEnd()
+	r.httpOut_.onEnd()
 }
 
 func (r *hRequest_) Response() response { return r.response }
@@ -388,7 +388,7 @@ type response interface {
 // hResponse_ is the mixin for H[1-3]Response.
 type hResponse_ struct { // incoming. needs parsing
 	// Mixins
-	httpInMessage_
+	httpIn_
 	// Stream states (buffers)
 	stockSetCookies [4]setCookie // for r.setCookies
 	// Stream states (controlled)
@@ -426,7 +426,7 @@ type hResponse0_ struct { // for fast reset, entirely
 }
 
 func (r *hResponse_) onUse() { // for non-zeros
-	r.httpInMessage_.onUse(true)
+	r.httpIn_.onUse(true)
 	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
 }
 func (r *hResponse_) onEnd() { // for zeros
@@ -435,7 +435,7 @@ func (r *hResponse_) onEnd() { // for zeros
 		r.setCookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
-	r.httpInMessage_.onEnd()
+	r.httpIn_.onEnd()
 }
 
 func (r *hResponse_) Status() int16 { return r.status }
@@ -514,7 +514,7 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r.httpInMessage_.checkTransferEncoding(from, edge)
+	return r.httpIn_.checkTransferEncoding(from, edge)
 }
 func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"

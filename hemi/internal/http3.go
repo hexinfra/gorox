@@ -13,83 +13,83 @@ import (
 	"sync/atomic"
 )
 
-// http3InMessage_ is used by http3Request and H3Response.
+// http3In_ is used by http3Request and H3Response.
 
-func (r *httpInMessage_) _growHeaders3(size int32) bool {
+func (r *httpIn_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *httpInMessage_) readContent3() (p []byte, err error) {
+func (r *httpIn_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
 
-// http3OutMessage_ is used by http3Response and H3Request.
+// http3Out_ is used by http3Response and H3Request.
 
-func (r *httpOutMessage_) header3(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOutMessage_) hasHeader3(name []byte) bool {
+func (r *httpOut_) hasHeader3(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) addHeader3(name []byte, value []byte) bool {
+func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) delHeader3(name []byte) (deleted bool) {
+func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) delHeaderAt3(o uint8) {
+func (r *httpOut_) delHeaderAt3(o uint8) {
 	// TODO
 }
 
-func (r *httpOutMessage_) sendChain3(chain Chain, vector [][]byte) error {
+func (r *httpOut_) sendChain3(chain Chain, vector [][]byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) pushHeaders3() error {
+func (r *httpOut_) pushHeaders3() error {
 	// TODO
 	return nil
 }
-func (r *httpOutMessage_) pushChain3(chain Chain) error {
+func (r *httpOut_) pushChain3(chain Chain) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) trailer3(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOutMessage_) addTrailer3(name []byte, value []byte) bool {
+func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) trailers3() []byte {
+func (r *httpOut_) trailers3() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) syncBytes3(p []byte) error {
+func (r *httpOut_) syncBytes3(p []byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) finalizeChunked3() error {
+func (r *httpOut_) finalizeChunked3() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) writeBlock3(block *Block, chunked bool) error {
+func (r *httpOut_) writeBlock3(block *Block, chunked bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOutMessage_) writeVector3(vector *net.Buffers) error {
+func (r *httpOut_) writeVector3(vector *net.Buffers) error {
 	return nil
 }
 

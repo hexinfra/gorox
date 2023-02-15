@@ -14,9 +14,9 @@ import (
 	"time"
 )
 
-// http1InMessage_ is used by http1Request and H1Response.
+// http1In_ is used by http1Request and H1Response.
 
-func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *httpIn_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
@@ -52,7 +52,7 @@ func (r *httpInMessage_) growHead1() bool { // HTTP/1 is not a binary protocol, 
 	}
 	return false
 }
-func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
 	header := &r.field
@@ -181,14 +181,14 @@ func (r *httpInMessage_) recvHeaders1() bool { // *( field-name ":" OWS field-va
 	return true
 }
 
-func (r *httpInMessage_) readContent1() (p []byte, err error) {
+func (r *httpIn_) readContent1() (p []byte, err error) {
 	if r.contentSize >= 0 { // counted
 		return r._readCountedContent1()
 	} else { // must be -2 (chunked). -1 is excluded priorly
 		return r._readChunkedContent1()
 	}
 }
-func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
+func (r *httpIn_) _readCountedContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize {
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF
@@ -220,7 +220,7 @@ func (r *httpInMessage_) _readCountedContent1() (p []byte, err error) {
 	}
 	return r.bodyWindow[0:size], err
 }
-func (r *httpInMessage_) _readChunkedContent1() (p []byte, err error) {
+func (r *httpIn_) _readChunkedContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends
 	}
@@ -375,7 +375,7 @@ badRecv:
 	return nil, httpReadBadChunk
 }
 
-func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
+func (r *httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyWindow, r.bodyWindow[r.cFore:r.chunkEdge]) // slide to start
 	r.chunkEdge -= r.cFore
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
@@ -491,7 +491,7 @@ func (r *httpInMessage_) recvTrailers1() bool { // trailer-section = *( field-li
 	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true
 }
-func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *httpIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.cBack == 0 { // r.bodyWindow is full and we can't slide
 		return false
 	}
@@ -518,9 +518,9 @@ func (r *httpInMessage_) growChunked1() bool { // HTTP/1 is not a binary protoco
 	return false
 }
 
-// http1OutMessage_ is used by http1Response and H1Request.
+// http1Out_ is used by http1Response and H1Request.
 
-func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) header1(name []byte) (value []byte, ok bool) {
 	if r.nHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.nHeaders; i++ {
@@ -534,7 +534,7 @@ func (r *httpOutMessage_) header1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *httpOutMessage_) hasHeader1(name []byte) bool {
+func (r *httpOut_) hasHeader1(name []byte) bool {
 	if r.nHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.nHeaders; i++ {
@@ -548,7 +548,7 @@ func (r *httpOutMessage_) hasHeader1(name []byte) bool {
 	}
 	return false
 }
-func (r *httpOutMessage_) addHeader1(name []byte, value []byte) bool {
+func (r *httpOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -565,7 +565,7 @@ func (r *httpOutMessage_) addHeader1(name []byte, value []byte) bool {
 		return false
 	}
 }
-func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
+func (r *httpOut_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)
 	for i := uint8(1); i < r.nHeaders; {
 		edge := r.edges[i]
@@ -585,7 +585,7 @@ func (r *httpOutMessage_) delHeader1(name []byte) (deleted bool) {
 	}
 	return
 }
-func (r *httpOutMessage_) delHeaderAt1(o uint8) {
+func (r *httpOut_) delHeaderAt1(o uint8) {
 	if o == 0 {
 		BugExitln("delHeaderAt1: o == 0 must not happen!")
 	}
@@ -599,13 +599,13 @@ func (r *httpOutMessage_) delHeaderAt1(o uint8) {
 	r.fieldsEdge -= size
 	r.nHeaders--
 }
-func (r *httpOutMessage_) _addCRLFHeader1(from int) {
+func (r *httpOut_) _addCRLFHeader1(from int) {
 	r.fields[from] = '\r'
 	r.fields[from+1] = '\n'
 	r.edges[r.nHeaders] = uint16(from + 2)
 	r.nHeaders++
 }
-func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
+func (r *httpOut_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
 	r.fields[r.fieldsEdge] = ':'
 	r.fields[r.fieldsEdge+1] = ' '
@@ -616,7 +616,7 @@ func (r *httpOutMessage_) _addFixedHeader1(name []byte, value []byte) { // used 
 	r.fieldsEdge += 2
 }
 
-func (r *httpOutMessage_) sendChain1(chain Chain) error {
+func (r *httpOut_) sendChain1(chain Chain) error {
 	r.shell.finalizeHeaders()
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
@@ -683,7 +683,7 @@ func (r *httpOutMessage_) sendChain1(chain Chain) error {
 	return nil
 }
 
-func (r *httpOutMessage_) pushChain1(chain Chain, chunked bool) error {
+func (r *httpOut_) pushChain1(chain Chain, chunked bool) error {
 	for block := chain.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
@@ -692,7 +692,7 @@ func (r *httpOutMessage_) pushChain1(chain Chain, chunked bool) error {
 	return nil
 }
 
-func (r *httpOutMessage_) trailer1(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) trailer1(name []byte) (value []byte, ok bool) {
 	if r.nTrailers > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.nTrailers; i++ {
@@ -706,7 +706,7 @@ func (r *httpOutMessage_) trailer1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
+func (r *httpOut_) addTrailer1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -726,19 +726,19 @@ func (r *httpOutMessage_) addTrailer1(name []byte, value []byte) bool {
 		return false
 	}
 }
-func (r *httpOutMessage_) trailers1() []byte {
+func (r *httpOut_) trailers1() []byte {
 	// Headers and trailers are not present at the same time, so after headers is sent, r.fields is used by trailers.
 	return r.fields[0:r.fieldsEdge]
 }
 
-func (r *httpOutMessage_) syncBytes1(p []byte) error {
+func (r *httpOut_) syncBytes1(p []byte) error {
 	// TODO: use write() instead of writev()?
 	r.vector = r.fixedVector[0:1]
 	r.vector[0] = p
 	return r.writeVector1(&r.vector)
 }
 
-func (r *httpOutMessage_) finalizeChunked1() error {
+func (r *httpOut_) finalizeChunked1() error {
 	if r.nTrailers == 1 { // no trailers
 		r.vector = r.fixedVector[0:1]
 		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
@@ -751,7 +751,7 @@ func (r *httpOutMessage_) finalizeChunked1() error {
 	return r.writeVector1(&r.vector)
 }
 
-func (r *httpOutMessage_) writeHeaders1() error { // used by push and post
+func (r *httpOut_) writeHeaders1() error { // used by push and post
 	r.shell.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.shell.control()
@@ -771,7 +771,7 @@ func (r *httpOutMessage_) writeHeaders1() error { // used by push and post
 	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
 	return nil
 }
-func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
+func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
 	}
@@ -791,7 +791,7 @@ func (r *httpOutMessage_) writeVector1(vector *net.Buffers) error {
 		return nil
 	}
 }
-func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
+func (r *httpOut_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpWriteBroken
 	}
@@ -801,7 +801,7 @@ func (r *httpOutMessage_) writeBlock1(block *Block, chunked bool) error {
 		return r._writeFile1(block, chunked)
 	}
 }
-func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
+func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
 	nRead := int64(0)
@@ -846,7 +846,7 @@ func (r *httpOutMessage_) _writeFile1(block *Block, chunked bool) error {
 		}
 	}
 }
-func (r *httpOutMessage_) _writeBlob1(block *Block, chunked bool) error { // blob
+func (r *httpOut_) _writeBlob1(block *Block, chunked bool) error { // blob
 	if chunked { // HTTP/1.1
 		sizeBuffer := r.stream.smallBuffer() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)

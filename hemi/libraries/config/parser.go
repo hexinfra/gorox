@@ -135,6 +135,8 @@ func (l *lexer) scan() []Token {
 		case '\n': // new line
 			line++
 			l.index++
+		case '#': // shell comment
+			l.nextUntil('\n')
 		case '/': // line comment or stream comment
 			if c := l.mustNext(); c == '/' { // line comment
 				l.nextUntil('\n')

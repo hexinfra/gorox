@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 )
 
-// http2InMessage_ is used by http2Request and H2Response.
+// http2In_ is used by http2Request and H2Response.
 
-func (r *httpInMessage_) _growHeaders2(size int32) bool {
+func (r *httpIn_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
 		return true
@@ -32,75 +32,75 @@ func (r *httpInMessage_) _growHeaders2(size int32) bool {
 	return true
 }
 
-func (r *httpInMessage_) readContent2() (p []byte, err error) {
+func (r *httpIn_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
 
-// http2OutMessage_ is used by http2Response and H2Request.
+// http2Out_ is used by http2Response and H2Request.
 
-func (r *httpOutMessage_) header2(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOutMessage_) hasHeader2(name []byte) bool {
+func (r *httpOut_) hasHeader2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) addHeader2(name []byte, value []byte) bool {
+func (r *httpOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) delHeader2(name []byte) (deleted bool) {
+func (r *httpOut_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) delHeaderAt2(o uint8) {
+func (r *httpOut_) delHeaderAt2(o uint8) {
 	// TODO
 }
 
-func (r *httpOutMessage_) sendChain2(chain Chain, vector [][]byte) error {
+func (r *httpOut_) sendChain2(chain Chain, vector [][]byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) pushHeaders2() error {
+func (r *httpOut_) pushHeaders2() error {
 	// TODO
 	return nil
 }
-func (r *httpOutMessage_) pushChain2(chain Chain) error {
+func (r *httpOut_) pushChain2(chain Chain) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) trailer2(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) trailer2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOutMessage_) addTrailer2(name []byte, value []byte) bool {
+func (r *httpOut_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOutMessage_) trailers2() []byte {
+func (r *httpOut_) trailers2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) syncBytes2(p []byte) error {
+func (r *httpOut_) syncBytes2(p []byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) finalizeChunked2() error {
+func (r *httpOut_) finalizeChunked2() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOutMessage_) writeBlock2(block *Block, chunked bool) error {
+func (r *httpOut_) writeBlock2(block *Block, chunked bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOutMessage_) writeVector2(vector *net.Buffers) error {
+func (r *httpOut_) writeVector2(vector *net.Buffers) error {
 	return nil
 }
 

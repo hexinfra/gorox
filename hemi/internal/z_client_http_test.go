@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestMultipleResponseHeaders(t *testing.T) {
+func TestHResponseMultipleHeaders(t *testing.T) {
 	headers := bytes.Split(hResponseMultipleHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
@@ -25,7 +25,7 @@ func TestMultipleResponseHeaders(t *testing.T) {
 		}
 	}
 }
-func TestCriticalResponseHeaders(t *testing.T) {
+func TestHResponseCriticalHeaders(t *testing.T) {
 	headers := bytes.Split(hResponseCriticalHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)

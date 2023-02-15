@@ -6,3 +6,35 @@
 // Unit tests.
 
 package internal
+
+import (
+	"bytes"
+	"testing"
+)
+
+func TestFCGIResponseMultipleHeaders(t *testing.T) {
+	headers := bytes.Split(fcgiResponseMultipleHeaderNames, []byte(" "))
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}
+func TestFCGIResponseCriticalHeaders(t *testing.T) {
+	headers := bytes.Split(fcgiResponseCriticalHeaderNames, []byte(" "))
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}

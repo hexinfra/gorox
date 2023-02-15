@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestMultipleRequestHeaders(t *testing.T) {
+func TestHTTPRequestMultipleHeaders(t *testing.T) {
 	headers := bytes.Split(httpRequestMultipleHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)
@@ -25,7 +25,7 @@ func TestMultipleRequestHeaders(t *testing.T) {
 		}
 	}
 }
-func TestCriticalRequestHeaders(t *testing.T) {
+func TestHTTPRequestCriticalHeaders(t *testing.T) {
 	headers := bytes.Split(httpRequestCriticalHeaderNames, []byte(" "))
 	for _, header := range headers {
 		hash := bytesHash(header)

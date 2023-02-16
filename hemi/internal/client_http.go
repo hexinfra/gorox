@@ -636,39 +636,18 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool {
 func (r *hResponse_) hasSetCookies() bool { return len(r.setCookies) > 0 }
 
 func (r *hResponse_) checkHead() bool {
-	// Resolve r.keepAlive
+	// Determine r.keepAlive
 	if r.keepAlive == -1 { // no connection header
-		switch r.versionCode {
-		case Version1_0:
-			r.keepAlive = 0 // default is close for HTTP/1.0
-		case Version1_1:
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		}
+		r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 	}
-	// Resolve r.contentSize
-	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()
-	if r.transferChunked { // there is a transfer-encoding: chunked
-		if r.versionCode == Version1_0 {
-			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not used in http/1.0"
-			return false
-		}
-		if r.contentSize == -1 { // content-length does not exist
-			r.markUnsized()
-		} else {
-			// RFC 7230 (section 3.3.3):
-			// If a message is received with both a Transfer-Encoding and a
-			// Content-Length header field, the Transfer-Encoding overrides the
-			// Content-Length.  Such a message might indicate an attempt to
-			// perform request smuggling (Section 9.5) or response splitting
-			// (Section 9.4) and ought to be handled as an error.  A sender MUST
-			// remove the received Content-Length field prior to forwarding such
-			// a message downstream.
 
-			// We treat this as an error.
-			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
-			return false
-		}
-	} else if r.contentSize > r.maxContentSize {
+	if !r.determineContentMode() {
+		// r.headResult is set.
+		return false
+	}
+
+	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()
+	if r.contentSize > r.maxContentSize {
 		r.headResult = StatusContentTooLarge
 		return false
 	}

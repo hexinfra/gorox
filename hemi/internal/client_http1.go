@@ -512,11 +512,9 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 			}
 		}
 	}
-	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, httpBytesHTTP1_1) {
+	if bytes.Equal(r.input[r.pBack:r.pFore], httpBytesHTTP1_1) {
 		r.versionCode = Version1_1
-	} else if bytes.Equal(version, httpBytesHTTP1_0) {
-		r.versionCode = Version1_0
-	} else {
+	} else { // HTTP/1.0 is not supported in client side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}

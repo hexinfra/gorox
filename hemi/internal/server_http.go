@@ -1556,26 +1556,9 @@ func (r *httpRequest_) checkHead() bool {
 		}
 	}
 
-	// Resolve r.contentSize
-	if r.transferChunked { // there is a transfer-encoding: chunked
-		if r.contentSize != -1 { // there is a content-length: nnn
-			// RFC 7230 (section 3.3.3):
-			// If a message is received with both a Transfer-Encoding and a
-			// Content-Length header field, the Transfer-Encoding overrides the
-			// Content-Length.  Such a message might indicate an attempt to
-			// perform request smuggling (Section 9.5) or response splitting
-			// (Section 9.4) and ought to be handled as an error.  A sender MUST
-			// remove the received Content-Length field prior to forwarding such
-			// a message downstream.
-
-			// We treat this as an error.
-			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
-			return false
-		}
-		r.markUnsized()
-	} else if r.versionCode >= Version2 && r.contentSize == -1 {
-		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame.
-		r.markUnsized() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
+	if !r.determineContentMode() {
+		// r.headResult is set.
+		return false
 	}
 
 	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {

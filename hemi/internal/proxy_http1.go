@@ -99,7 +99,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasTrailers := req.HasTrailers()
 		err1 = req1.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err1 == nil && hasTrailers {
-			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
+			if !req.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req1.addTrailer(name, value)
 			}) {
 				stream1.markBroken()
@@ -178,7 +178,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			}
 			return
 		} else if hasTrailers1 {
-			if !resp1.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
+			if !resp1.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return resp.addTrailer(name, value)
 			}) {
 				return

@@ -292,24 +292,25 @@ type Request interface {
 	URI() string         // /encodedPath?queryString
 	Path() string        // /path
 	EncodedPath() string // /encodedPath
-
 	QueryString() string // including '?' if query string exists, otherwise empty
+
+	HasQueries() bool
+	AllQueries() (queries [][2]string)
 	Q(name string) string
 	Qstr(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
-	QueryList(name string) (list []string, ok bool)
-	Queries() (queries [][2]string)
+	Queries(name string) (values []string, ok bool)
 	HasQuery(name string) bool
 	AddQuery(name string, value string) bool
 	DelQuery(name string) (deleted bool)
 
+	AllHeaders() (headers [][2]string)
 	H(name string) string
 	Hstr(name string, defaultValue string) string
 	Hint(name string, defaultValue int) int
 	Header(name string) (value string, ok bool)
-	HeaderList(name string) (list []string, ok bool)
-	Headers() (headers [][2]string)
+	Headers(name string) (values []string, ok bool)
 	HasHeader(name string) bool
 	AddHeader(name string, value string) bool
 	DelHeader(name string) (deleted bool)
@@ -322,13 +323,13 @@ type Request interface {
 	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
 
+	HasCookies() bool
+	AllCookies() (cookies [][2]string)
 	C(name string) string
 	Cstr(name string, defaultValue string) string
 	Cint(name string, defaultValue int) int
 	Cookie(name string) (value string, ok bool)
-	CookieList(name string) (list []string, ok bool)
-	Cookies() (cookies [][2]string)
-	HasCookies() bool
+	Cookies(name string) (values []string, ok bool)
 	HasCookie(name string) bool
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
@@ -338,27 +339,29 @@ type Request interface {
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 
+	HasForms() bool
+	AllForms() (forms [][2]string)
 	F(name string) string
 	Fstr(name string, defaultValue string) string
 	Fint(name string, defaultValue int) int
 	Form(name string) (value string, ok bool)
-	FormList(name string) (list []string, ok bool)
-	Forms() (forms [][2]string)
+	Forms(name string) (values []string, ok bool)
 	HasForm(name string) bool
 
+	HasUploads() bool
+	AllUploads() (uploads []*Upload)
 	U(name string) *Upload
 	Upload(name string) (upload *Upload, ok bool)
-	UploadList(name string) (list []*Upload, ok bool)
-	Uploads() (uploads []*Upload)
+	Uploads(name string) (uploads []*Upload, ok bool)
 	HasUpload(name string) bool
 
 	HasTrailers() bool
+	AllTrailers() (trailers [][2]string)
 	T(name string) string
 	Tstr(name string, defaultValue string) string
 	Tint(name string, defaultValue int) int
 	Trailer(name string) (value string, ok bool)
-	TrailerList(name string) (list []string, ok bool)
-	Trailers() (trailers [][2]string)
+	Trailers(name string) (values []string, ok bool)
 	HasTrailer(name string) bool
 	AddTrailer(name string, value string) bool
 	DelTrailer(name string) (deleted bool)
@@ -389,15 +392,15 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	applyHeader(header *pair) bool
-	walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
 	applyTrailer(trailer *pair) bool
 	delHopTrailers()
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
@@ -662,13 +665,13 @@ func (r *httpRequest_) getPathInfo() os.FileInfo {
 	}
 	return r.pathInfo
 }
-
 func (r *httpRequest_) QueryString() string {
 	return string(r.UnsafeQueryString())
 }
 func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
+
 func (r *httpRequest_) addQuery(query *pair) bool {
 	if edge, ok := r.addPrime(query); ok {
 		r.queries.edge = edge
@@ -677,6 +680,12 @@ func (r *httpRequest_) addQuery(query *pair) bool {
 		r.headResult, r.headReason = StatusURITooLong, "too many queries"
 		return false
 	}
+}
+func (r *httpRequest_) HasQueries() bool {
+	return r.hasPairs(r.queries, extraQuery)
+}
+func (r *httpRequest_) AllQueries() (queries [][2]string) {
+	return r.allPairs(r.queries, extraQuery)
 }
 func (r *httpRequest_) Q(name string) string {
 	value, _ := r.Query(name)
@@ -703,11 +712,8 @@ func (r *httpRequest_) Query(name string) (value string, ok bool) {
 func (r *httpRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.queries, extraQuery)
 }
-func (r *httpRequest_) QueryList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.queries, extraQuery)
-}
-func (r *httpRequest_) Queries() (queries [][2]string) {
-	return r.getPairs(r.queries, extraQuery)
+func (r *httpRequest_) Queries(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.queries, extraQuery)
 }
 func (r *httpRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, extraQuery)
@@ -1396,6 +1402,12 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // cookie: xxx
 		return false
 	}
 }
+func (r *httpRequest_) HasCookies() bool {
+	return r.hasPairs(r.cookies, extraCookie)
+}
+func (r *httpRequest_) AllCookies() (cookies [][2]string) {
+	return r.allPairs(r.cookies, extraCookie)
+}
 func (r *httpRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
@@ -1421,14 +1433,8 @@ func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
 func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.cookies, extraCookie)
 }
-func (r *httpRequest_) CookieList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.cookies, extraCookie)
-}
-func (r *httpRequest_) Cookies() (cookies [][2]string) {
-	return r.getPairs(r.cookies, extraCookie)
-}
-func (r *httpRequest_) HasCookies() bool {
-	return r.hasPairs(r.cookies, extraCookie)
+func (r *httpRequest_) Cookies(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.cookies, extraCookie)
 }
 func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
@@ -1440,7 +1446,7 @@ func (r *httpRequest_) AddCookie(name string, value string) bool {
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, extraCookie)
 }
-func (r *httpRequest_) walkCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	return r.forPairs(r.cookies, extraCookie, fn)
 }
 
@@ -2184,6 +2190,14 @@ func (r *httpRequest_) addForm(form *pair) {
 	}
 	// Ignore too many forms
 }
+func (r *httpRequest_) HasForms() bool {
+	r.parseHTMLForm()
+	return r.hasPairs(r.forms, extraNoExtra)
+}
+func (r *httpRequest_) AllForms() (forms [][2]string) {
+	r.parseHTMLForm()
+	return r.allPairs(r.forms, extraNoExtra)
+}
 func (r *httpRequest_) F(name string) string {
 	value, _ := r.Form(name)
 	return value
@@ -2211,13 +2225,9 @@ func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
 	return r.getPair(name, 0, r.forms, extraNoExtra)
 }
-func (r *httpRequest_) FormList(name string) (list []string, ok bool) {
+func (r *httpRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
-	return r.getPairList(name, 0, r.forms, extraNoExtra)
-}
-func (r *httpRequest_) Forms() (forms [][2]string) {
-	r.parseHTMLForm()
-	return r.getPairs(r.forms, extraNoExtra)
+	return r.getPairs(name, 0, r.forms, extraNoExtra)
 }
 func (r *httpRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
@@ -2240,6 +2250,19 @@ func (r *httpRequest_) addUpload(upload *Upload) {
 	}
 	r.uploads = append(r.uploads, *upload)
 }
+func (r *httpRequest_) HasUploads() bool {
+	r.parseHTMLForm()
+	return len(r.uploads) != 0
+}
+func (r *httpRequest_) AllUploads() (uploads []*Upload) {
+	r.parseHTMLForm()
+	for i := 0; i < len(r.uploads); i++ {
+		upload := &r.uploads[i]
+		upload.setMeta(r.array)
+		uploads = append(uploads, upload)
+	}
+	return uploads
+}
 func (r *httpRequest_) U(name string) *Upload {
 	upload, _ := r.Upload(name)
 	return upload
@@ -2257,30 +2280,21 @@ func (r *httpRequest_) Upload(name string) (upload *Upload, ok bool) {
 	}
 	return
 }
-func (r *httpRequest_) UploadList(name string) (list []*Upload, ok bool) {
+func (r *httpRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.uploads); n > 0 && name != "" {
 		hash := stringHash(name)
 		for i := 0; i < n; i++ {
 			if upload := &r.uploads[i]; upload.hash == hash && upload.nameEqualString(r.array, name) {
 				upload.setMeta(r.array)
-				list = append(list, upload)
+				uploads = append(uploads, upload)
 			}
 		}
-		if len(list) > 0 {
+		if len(uploads) > 0 {
 			ok = true
 		}
 	}
 	return
-}
-func (r *httpRequest_) Uploads() (uploads []*Upload) {
-	r.parseHTMLForm()
-	for i := 0; i < len(r.uploads); i++ {
-		upload := &r.uploads[i]
-		upload.setMeta(r.array)
-		uploads = append(uploads, upload)
-	}
-	return uploads
 }
 func (r *httpRequest_) HasUpload(name string) bool {
 	r.parseHTMLForm()
@@ -2715,7 +2729,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	// copy crucial headers (excluding set-cookie) from resp
 
 	// copy remaining headers
-	if !resp.walkHeaders(func(hash uint16, name []byte, value []byte) bool {
+	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
 		if hash == httpHashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
 			return r.shell.addHeader(name, value)
 		} else {

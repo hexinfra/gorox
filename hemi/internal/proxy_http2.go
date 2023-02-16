@@ -102,7 +102,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasTrailers := req.HasTrailers()
 		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err2 == nil && hasTrailers {
-			if !req.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
+			if !req.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return req2.addTrailer(name, value)
 			}) {
 				stream2.markBroken()
@@ -173,7 +173,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			}
 			return
 		} else if hasTrailers2 {
-			if !resp2.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
+			if !resp2.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 				return resp.addTrailer(name, value)
 			}) {
 				return

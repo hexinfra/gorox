@@ -80,7 +80,7 @@ type httpIn interface {
 	readContent() (p []byte, err error)
 	applyTrailer(trailer *pair) bool
 	HasTrailers() bool
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 }
@@ -444,6 +444,9 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	return r.primes[r.iContentType].valueAt(r.input)
 }
 
+func (r *httpIn_) AllHeaders() (headers [][2]string) {
+	return r.allPairs(r.headers, extraHeader)
+}
 func (r *httpIn_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
@@ -469,11 +472,8 @@ func (r *httpIn_) Header(name string) (value string, ok bool) {
 func (r *httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.headers, extraHeader)
 }
-func (r *httpIn_) HeaderList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.headers, extraHeader)
-}
-func (r *httpIn_) Headers() (headers [][2]string) {
-	return r.getPairs(r.headers, extraHeader)
+func (r *httpIn_) Headers(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.headers, extraHeader)
 }
 func (r *httpIn_) HasHeader(name string) bool {
 	_, ok := r.getPair(name, 0, r.headers, extraHeader)
@@ -571,10 +571,10 @@ func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
 }
 func (r *httpIn_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, r.delHeader)
+	r._delHopFields(r.headers, extraHeader, r.delHeader)
 }
-func (r *httpIn_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r._walkFields(r.headers, extraHeader, fn)
+func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return r._forFields(r.headers, extraHeader, fn)
 }
 
 func (r *httpIn_) markChunked()    { r.contentSize = -2 }
@@ -719,6 +719,9 @@ badRecv:
 func (r *httpIn_) HasTrailers() bool {
 	return r.trailers.notEmpty()
 }
+func (r *httpIn_) AllTrailers() (trailers [][2]string) {
+	return r.allPairs(r.trailers, extraTrailer)
+}
 func (r *httpIn_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
@@ -744,18 +747,20 @@ func (r *httpIn_) Trailer(name string) (value string, ok bool) {
 func (r *httpIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.trailers, extraTrailer)
 }
-func (r *httpIn_) TrailerList(name string) (list []string, ok bool) {
-	return r.getPairList(name, 0, r.trailers, extraTrailer)
-}
-func (r *httpIn_) Trailers() (trailers [][2]string) {
-	return r.getPairs(r.trailers, extraTrailer)
+func (r *httpIn_) Trailers(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.trailers, extraTrailer)
 }
 func (r *httpIn_) HasTrailer(name string) bool {
 	_, ok := r.getPair(name, 0, r.trailers, extraTrailer)
 	return ok
 }
 func (r *httpIn_) AddTrailer(name string, value string) bool {
+	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraTrailer)
+}
+func (r *httpIn_) DelTrailer(name string) (deleted bool) {
+	// TODO: add restrictions on what trailers are allowed to delete?
+	return r.delPair(name, 0, r.trailers, extraTrailer)
 }
 func (r *httpIn_) addTrailer(trailer *pair) {
 	if edge, ok := r.addPrime(trailer); ok {
@@ -763,17 +768,14 @@ func (r *httpIn_) addTrailer(trailer *pair) {
 	}
 	// Ignore too many trailers
 }
-func (r *httpIn_) DelTrailer(name string) (deleted bool) {
-	return r.delPair(name, 0, r.trailers, extraTrailer)
-}
 func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, extraTrailer)
 }
 func (r *httpIn_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, r.delTrailer)
+	r._delHopFields(r.trailers, extraTrailer, r.delTrailer)
 }
-func (r *httpIn_) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r._walkFields(r.trailers, extraTrailer, fn)
+func (r *httpIn_) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return r._forFields(r.trailers, extraTrailer, fn)
 }
 
 func (r *httpIn_) arrayPush(b byte) {
@@ -884,6 +886,36 @@ func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
 	return true
 }
 
+func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
+	if primes.notEmpty() {
+		return true
+	}
+	if extraKind != extraNoExtra {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+				return true
+			}
+		}
+	}
+	return false
+}
+func (r *httpIn_) allPairs(primes zone, extraKind uint8) [][2]string {
+	var all [][2]string
+	for i := primes.from; i < primes.edge; i++ {
+		if prime := &r.primes[i]; prime.hash != 0 {
+			p := r._getPlace(prime)
+			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
+		}
+	}
+	if extraKind != extraNoExtra {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
+			}
+		}
+	}
+	return all
+}
 func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
 	if name != "" {
 		if hash == 0 {
@@ -910,7 +942,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind uint8
 	}
 	return
 }
-func (r *httpIn_) getPairList(name string, hash uint16, primes zone, extraKind uint8) (list []string, ok bool) {
+func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint8) (values []string, ok bool) {
 	if name != "" {
 		if hash == 0 {
 			hash = stringHash(name)
@@ -925,39 +957,22 @@ func (r *httpIn_) getPairList(name string, hash uint16, primes zone, extraKind u
 			}
 			p := r._getPlace(prime)
 			if prime.nameEqualString(p, name) {
-				list = append(list, string(prime.valueAt(p)))
+				values = append(values, string(prime.valueAt(p)))
 			}
 		}
 		if extraKind != extraNoExtra {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
-					list = append(list, string(extra.valueAt(r.array)))
+					values = append(values, string(extra.valueAt(r.array)))
 				}
 			}
 		}
-		if len(list) > 0 {
+		if len(values) > 0 {
 			ok = true
 		}
 	}
 	return
-}
-func (r *httpIn_) getPairs(primes zone, extraKind uint8) [][2]string {
-	var all [][2]string
-	for i := primes.from; i < primes.edge; i++ {
-		if prime := &r.primes[i]; prime.hash != 0 {
-			p := r._getPlace(prime)
-			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
-		}
-	}
-	if extraKind != extraNoExtra {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
-				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
-			}
-		}
-	}
-	return all
 }
 func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
@@ -980,19 +995,6 @@ func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, na
 		}
 	}
 	return true
-}
-func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
-	if primes.notEmpty() {
-		return true
-	}
-	if extraKind != extraNoExtra {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
-				return true
-			}
-		}
-	}
-	return false
 }
 func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8) (deleted bool) {
 	if name != "" {
@@ -1038,11 +1040,11 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _delHopFields(fields zone, delField func(name []byte, hash uint16)) {
+func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name []byte, hash uint16)) {
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(httpBytesProxyConnection, httpHashProxyConnection)
 	delField(httpBytesKeepAlive, httpHashKeepAlive)
-	if !r.asResponse {
+	if !r.asResponse { // as request
 		delField(httpBytesTE, httpHashTE)
 	}
 	delField(httpBytesTransferEncoding, httpHashTransferEncoding)
@@ -1055,8 +1057,8 @@ func (r *httpIn_) _delHopFields(fields zone, delField func(name []byte, hash uin
 		}
 		optionName := prime.valueAt(r.input)
 		optionHash := bytesHash(optionName)
-		if optionHash == httpHashConnection && bytes.Equal(optionName, httpBytesConnection) { // skip "connection: connection"
-			continue
+		if optionHash == httpHashConnection && bytes.Equal(optionName, httpBytesConnection) {
+			continue // skip "connection: connection"
 		}
 		for j := fields.from; j < fields.edge; j++ {
 			field := &r.primes[j]
@@ -1065,9 +1067,17 @@ func (r *httpIn_) _delHopFields(fields zone, delField func(name []byte, hash uin
 			}
 		}
 		// Note: we don't remove pair ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
+		if extraKind != extraNoExtra {
+			for i := 0; i < len(r.extras); i++ {
+				extra := &r.extras[i]
+				if extra.hash == optionHash && extra.isExtra(extraKind) && extra.nameEqualBytes(r.array, optionName) {
+					extra.zero()
+				}
+			}
+		}
 	}
 }
-func (r *httpIn_) _walkFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) _forFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
 			p := r._getPlace(field)
@@ -1405,7 +1415,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 		}
 	}
 	if in.HasTrailers() { // added trailers will be written eventually by upper code.
-		if !in.walkTrailers(func(hash uint16, name []byte, value []byte) bool {
+		if !in.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
 			return httpAddTrailerFailed

@@ -39,7 +39,7 @@ func (h *testHandlet) GET_json(req Request, resp Response) {
 	resp.SendJSON(user)
 }
 func (h *testHandlet) GET_multi(req Request, resp Response) {
-	accepts, ok := req.HeaderList("accept")
+	accepts, ok := req.Headers("accept")
 	if !ok {
 		resp.Send("please provide accept header")
 		return

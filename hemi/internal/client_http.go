@@ -367,7 +367,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy remaining headers from req
-	if !req.walkHeaders(r.shell.appendHeader) {
+	if !req.forHeaders(r.shell.appendHeader) {
 		return false
 	}
 
@@ -388,11 +388,11 @@ type response interface {
 	HasTrailers() bool
 
 	delHopHeaders()
-	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	setRecvTimeout(timeout time.Duration) // to defend against bad server
 	readContent() (p []byte, err error)
 	delHopTrailers()
-	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

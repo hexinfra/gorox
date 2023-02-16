@@ -998,7 +998,7 @@ func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok boo
 }
 
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	// TODO
 	return false
 }
@@ -1041,7 +1041,7 @@ func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi
 func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 
 func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
-func (r *fcgiResponse) walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
 

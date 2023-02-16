@@ -247,13 +247,13 @@ type httpStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *httpStream_) execTCPTun() {
+func (s *httpStream_) execTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *httpStream_) execUDPTun() {
+func (s *httpStream_) execUDPTun() { // upgrade: connect-udp
 	// TODO
 }
-func (s *httpStream_) execSocket() {
+func (s *httpStream_) execSocket() { // upgrade: websocket
 	// TODO
 }
 
@@ -337,7 +337,7 @@ type Request interface {
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 
 	HasContent() bool
-	isChunked() bool
+	isUnsized() bool
 	Content() string
 
 	HasForms() bool
@@ -1572,10 +1572,10 @@ func (r *httpRequest_) checkHead() bool {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
-		r.markChunked()
+		r.markUnsized()
 	} else if r.versionCode >= Version2 && r.contentSize == -1 {
 		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame.
-		r.markChunked() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as chunked
+		r.markUnsized() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
 	}
 
 	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
@@ -1635,7 +1635,7 @@ func (r *httpRequest_) checkHead() bool {
 			r.headResult, r.headReason = StatusLengthRequired, "POST and PUT must contain a content"
 			return false
 		}
-	} else { // content exists (counted or chunked)
+	} else { // content exists (sized or unsized)
 		// Content is not allowed in some methods, according to RFC 7231.
 		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
 			r.headResult, r.headReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
@@ -1837,19 +1837,18 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	} else { // content is not received
 		r.contentReceived = true
 		switch content := r.recvContent(true).(type) { // retain
-		case []byte: // (0, 64K1]. case happens when counted content <= 64K1
+		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentBlob = content
 			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
 			r.formWindow, r.formEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.formWindow refers to the exact r.content.
-		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when counted content > 64K1, or content is chunked.
+		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
 			tempFile = content.(*os.File)
 			defer func() {
 				tempFile.Close()
 				os.Remove(tempFile.Name())
 			}()
 			if r.sizeReceived == 0 {
-				// Chunked content can be empty.
-				return
+				return // unsized content can be empty
 			}
 			// We need a window to read and parse. An adaptive r.formWindow is used
 			r.formWindow = GetNK(r.sizeReceived) // max size of r.formWindow is 64K1
@@ -2303,7 +2302,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isChunked() }
+func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
 func (r *httpRequest_) Content() string {
 	return string(r.UnsafeContent())
 }
@@ -2425,8 +2424,8 @@ type Response interface {
 	pushHeaders() error
 	pushChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
-	endChunked() error
-	finalizeChunked() error
+	endUnsized() error
+	finalizeUnsized() error
 	sync1xx(resp response) bool               // used by proxies
 	sync(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
@@ -2681,7 +2680,7 @@ func (r *httpResponse_) checkPush() error {
 		return httpOutMixedContent
 	}
 	r.markSent()
-	r.markChunked()
+	r.markUnsized()
 	resp := r.shell.(Response)
 	if r.hasRevisers {
 		for _, id := range r.revisers {
@@ -2740,7 +2739,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	return true
 }
 
-func (r *httpResponse_) endChunked() error {
+func (r *httpResponse_) endUnsized() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -2754,7 +2753,7 @@ func (r *httpResponse_) endChunked() error {
 			reviser.FinishPush(resp.Request(), resp)
 		}
 	}
-	return resp.finalizeChunked()
+	return resp.finalizeUnsized()
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

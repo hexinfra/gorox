@@ -80,12 +80,12 @@ func (r *httpOut_) syncBytes3(p []byte) error {
 	return nil
 }
 
-func (r *httpOut_) finalizeChunked3() error {
+func (r *httpOut_) finalizeUnsized3() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) writeBlock3(block *Block, chunked bool) error {
+func (r *httpOut_) writeBlock3(block *Block, unsized bool) error {
 	// TODO
 	return nil
 }

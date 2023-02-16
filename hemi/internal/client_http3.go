@@ -271,6 +271,16 @@ func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
+func (s *H3Stream) StartTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *H3Stream) StartUDPTun() { // see RFC 9298
+	// TODO
+}
+func (s *H3Stream) StartSocket() { // see RFC 9220
+	// TODO
+}
+
 func (s *H3Stream) Request() *H3Request   { return &s.request }
 func (s *H3Stream) Response() *H3Response { return &s.response }
 func (s *H3Stream) Socket() *H3Socket     { return s.socket }
@@ -384,7 +394,7 @@ func (r *H3Request) syncBytes(p []byte) error {
 func (r *H3Request) finalizeHeaders() {
 	// TODO
 }
-func (r *H3Request) finalizeChunked() error {
+func (r *H3Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }

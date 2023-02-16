@@ -105,7 +105,7 @@ type httpIn_ struct {
 	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
 	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/255]
 	recvTimeout time.Duration // timeout to recv the whole message content
-	contentSize int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
+	contentSize int64         // info of content. >=0: content size, -1: no content, -2: unsized content
 	asResponse  bool          // treat the incoming message as response?
 	keepAlive   int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	headResult  int16         // result of receiving message head. values are same as http status for convenience
@@ -144,14 +144,14 @@ type httpIn0_ struct { // for fast reset, entirely
 	contentReceived  bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	receiving        int8  // currently receiving. see httpSectionXXX
-	maxContentSize   int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
-	sizeReceived     int64 // bytes of currently received content. for both counted & chunked content receiver
+	maxContentSize   int64 // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
+	sizeReceived     int64 // bytes of currently received content. for both sized & unsized content receiver
 	chunkSize        int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32 // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore            int32 // for parsing chunked elements. HTTP/1.1 chunked only
 	chunkEdge        int32 // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
 	transferChunked  bool  // transfer-encoding: chunked? HTTP/1.1 only
-	overChunked      bool  // for HTTP/1.1 requests, if chunked content receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
+	overChunked      bool  // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
 	trailers         zone  // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
@@ -195,7 +195,7 @@ func (r *httpIn_) onEnd() { // for zeros
 	r.headReason = ""
 
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
-		if r.overChunked { // only happens in HTTP/1.1 chunked content
+		if r.overChunked { // only happens in HTTP/1.1 chunked mode
 			// Use bytes over received in r.bodyWindow as new r.input.
 			// This means the size list for r.bodyWindow must sync with r.input!
 			if cap(r.input) != cap(r.stockInput) {
@@ -372,7 +372,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is chunked
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -577,8 +577,8 @@ func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) boo
 	return r._forFields(r.headers, extraHeader, fn)
 }
 
-func (r *httpIn_) markChunked()    { r.contentSize = -2 }
-func (r *httpIn_) isChunked() bool { return r.contentSize == -2 }
+func (r *httpIn_) markUnsized()    { r.contentSize = -2 }
+func (r *httpIn_) isUnsized() bool { return r.contentSize == -2 }
 
 func (r *httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
@@ -596,19 +596,19 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentBlob = content // real content is r.contentBlob[:r.sizeReceived]
 		r.contentBlobKind = httpContentBlobPool
-	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
+	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		tempFile := content.(*os.File)
-		if r.sizeReceived == 0 { // chunked content can has 0 size
+		if r.sizeReceived == 0 { // unsized content can has 0 size
 			r.contentBlob = r.input
 			r.contentBlobKind = httpContentBlobInput
 		} else { // > 0
-			if r.sizeReceived <= _64K1 { // must be chunked
+			if r.sizeReceived <= _64K1 { // must be unsized content
 				r.contentBlob = GetNK(r.sizeReceived) // real content is r.content[:r.sizeReceived]
 				r.contentBlobKind = httpContentBlobPool
-			} else { // > 64K1, can be counted or chunked. just alloc
+			} else { // > 64K1, content can be sized or unsized. just alloc
 				r.contentBlob = make([]byte, r.sizeReceived)
 				r.contentBlobKind = httpContentBlobMake
 			}
@@ -627,9 +627,9 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 }
 func (r *httpIn_) dropContent() {
 	switch content := r.recvContent(false).(type) { // don't retain
-	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
+	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		if content != FakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
@@ -648,11 +648,11 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentBlob = content
 		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
 		return r.contentBlob[0:r.sizeReceived]
-	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
+	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		r.contentHeld = content.(*os.File)
 		return r.contentHeld
 	case error: // i/o error
@@ -683,7 +683,7 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 		}
 		return content // []byte, fetched from pool
 	}
-	// (64K1, r.maxContentSize] when counted, or [0, r.maxContentSize] when chunked. save to TempFile
+	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile
 	content, err := r._newTempFile(retain)
 	if err != nil {
 		return err
@@ -1147,7 +1147,7 @@ type httpOut interface {
 	pushChain(chain Chain) error
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
-	finalizeChunked() error
+	finalizeUnsized() error
 	syncHeaders() error       // used by proxies
 	syncBytes(p []byte) error // used by proxies
 }
@@ -1166,7 +1166,7 @@ type httpOut_ struct {
 	fields      []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
 	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	sendTimeout time.Duration // timeout to send the whole message
-	contentSize int64         // -1: not set, -2: chunked encoding, >=0: size
+	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
 	asRequest   bool          // use message as request?
 	nHeaders    uint8         // num+1 of added headers, starts from 1
 	nTrailers   uint8         // num+1 of added trailers, starts from 1
@@ -1311,8 +1311,8 @@ func (r *httpOut_) removeDate() (deleted bool) {
 	return true
 }
 
-func (r *httpOut_) markChunked()    { r.contentSize = -2 }
-func (r *httpOut_) isChunked() bool { return r.contentSize == -2 }
+func (r *httpOut_) markUnsized()    { r.contentSize = -2 }
+func (r *httpOut_) isUnsized() bool { return r.contentSize == -2 }
 func (r *httpOut_) markSent()       { r.isSent = true }
 func (r *httpOut_) IsSent() bool    { return r.isSent }
 
@@ -1378,7 +1378,7 @@ func (r *httpOut_) AddTrailerBytesByBytes(name []byte, value []byte) bool {
 
 func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content directly
 	pass := r.shell.syncBytes
-	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use chunked output no matter the original content is counted or chunked
+	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
 		pass = r.PushBytes
 	} else { // size >= 0
 		r.isSent = true
@@ -1412,7 +1412,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 }
 func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
 	if contentBlob, ok := content.([]byte); ok {
-		if hasTrailers { // if (in the future) we supports holding chunked content in buffer, this happens
+		if hasTrailers { // if (in the future) we supports holding unsized content in buffer, this happens
 			return r.pushBlob(contentBlob)
 		} else {
 			return r.sendBlob(contentBlob)
@@ -1423,7 +1423,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			contentFile.Close()
 			return err
 		}
-		if hasTrailers { // we must use chunked
+		if hasTrailers { // we must use unsized
 			return r.pushFile(contentFile, fileInfo, false) // false to avoid twice close()
 		} else {
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()

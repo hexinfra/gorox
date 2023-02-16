@@ -1047,7 +1047,7 @@ func (r *http2Response) syncBytes(p []byte) error {
 func (r *http2Response) finalizeHeaders() {
 	// TODO
 }
-func (r *http2Response) finalizeChunked() error {
+func (r *http2Response) finalizeUnsized() error {
 	// TODO
 	return nil
 }

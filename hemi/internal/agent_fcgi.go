@@ -119,7 +119,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	)
 
 	hHasContent := hReq.HasContent()
-	if hHasContent && (h.bufferClientContent || hReq.isChunked()) { // including size 0
+	if hHasContent && (h.bufferClientContent || hReq.isUnsized()) { // including size 0
 		hContent = hReq.holdContent()
 		if hContent == nil {
 			hResp.SetStatus(StatusBadRequest)
@@ -153,7 +153,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 		hResp.SendBadGateway(nil)
 		return
 	}
-	if hHasContent && !h.bufferClientContent && !hReq.isChunked() {
+	if hHasContent && !h.bufferClientContent && !hReq.isUnsized() {
 		if fErr = fReq.sync(hReq); fErr != nil {
 			fStream.markBroken()
 		}
@@ -305,7 +305,7 @@ type fcgiRequest struct { // outgoing. needs building
 	stockParams [_2K]byte // for r.params
 	// States (non-zeros)
 	params      []byte        // place exactly one FCGI_PARAMS record
-	contentSize int64         // -1: not set, -2: chunked encoding, >=0: size
+	contentSize int64         // -1: not set, -2: unsized, >=0: size
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
@@ -361,7 +361,7 @@ func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool {
 
 func (r *fcgiRequest) setSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *fcgiRequest) sync(req Request) error { // only for counted (>0) content
+func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 	r.isSent = true
 	r.contentSize = req.ContentSize()
 	if err := r.syncParams(); err != nil {
@@ -396,7 +396,7 @@ func (r *fcgiRequest) syncBytes(p []byte) error {
 	// TODO: create a stdin record, sync
 	return nil
 }
-func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or chunked Request content
+func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
 	if contentBlob, ok := content.([]byte); ok {
 		return r.sendBlob(contentBlob)
 	} else if contentFile, ok := content.(*os.File); ok {
@@ -949,7 +949,7 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is chunked by default
+func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
 func (r *fcgiResponse) unsafeContentType() []byte {
 	if r.indexes.contentType == 0 {
 		return nil

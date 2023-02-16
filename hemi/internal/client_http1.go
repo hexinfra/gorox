@@ -304,6 +304,16 @@ func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	return nil
 }
 
+func (s *H1Stream) StartTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *H1Stream) StartUDPTun() { // upgrade: connect-udp
+	// TODO
+}
+func (s *H1Stream) StartSocket() { // upgrade: websocket
+	// TODO
+}
+
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
 func (s *H1Stream) Socket() *H1Socket     { return s.socket }
@@ -333,18 +343,10 @@ func (s *H1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *H1Stream) write(p []byte) (int, error) {
-	return s.conn.netConn.Write(p)
-}
-func (s *H1Stream) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(s.conn.netConn)
-}
-func (s *H1Stream) read(p []byte) (int, error) {
-	return s.conn.netConn.Read(p)
-}
-func (s *H1Stream) readFull(p []byte) (int, error) {
-	return io.ReadFull(s.conn.netConn, p)
-}
+func (s *H1Stream) write(p []byte) (int, error)               { return s.conn.netConn.Write(p) }
+func (s *H1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(s.conn.netConn) }
+func (s *H1Stream) read(p []byte) (int, error)                { return s.conn.netConn.Read(p) }
+func (s *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(s.conn.netConn, p) }
 
 func (s *H1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *H1Stream) markBroken()    { s.conn.markBroken() }
@@ -357,8 +359,8 @@ type H1Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool {
-	size := len(method) + 1 + len(uri) + 1 + len(httpBytesHTTP1_1) + len(httpBytesCRLF) // METHOD uri HTTP/1.1\r\n
+func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
+	size := len(method) + 1 + len(uri) + 1 + len(httpBytesHTTP1_1) + len(httpBytesCRLF)
 	if from, edge, ok := r._growFields(size); ok {
 		from += copy(r.fields[from:], method)
 		r.fields[from] = ' '
@@ -396,27 +398,13 @@ func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	}
 }
 
-func (r *H1Request) header(name []byte) (value []byte, ok bool) {
-	return r.header1(name)
-}
-func (r *H1Request) hasHeader(name []byte) bool {
-	return r.hasHeader1(name)
-}
-func (r *H1Request) addHeader(name []byte, value []byte) bool {
-	return r.addHeader1(name, value)
-}
-func (r *H1Request) delHeader(name []byte) (deleted bool) {
-	return r.delHeader1(name)
-}
-func (r *H1Request) delHeaderAt(o uint8) {
-	r.delHeaderAt1(o)
-}
-func (r *H1Request) addedHeaders() []byte {
-	return r.fields[r.controlEdge:r.fieldsEdge]
-}
-func (r *H1Request) fixedHeaders() []byte {
-	return http1BytesFixedRequestHeaders
-}
+func (r *H1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *H1Request) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
+func (r *H1Request) addedHeaders() []byte                       { return r.fields[r.controlEdge:r.fieldsEdge] }
+func (r *H1Request) fixedHeaders() []byte                       { return http1BytesFixedRequestHeaders }
 
 func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO
@@ -451,30 +439,16 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies
 	}
 }
 
-func (r *H1Request) sendChain(chain Chain) error {
-	return r.sendChain1(chain)
-}
+func (r *H1Request) sendChain(chain Chain) error { return r.sendChain1(chain) }
 
-func (r *H1Request) pushHeaders() error {
-	return r.writeHeaders1()
-}
-func (r *H1Request) pushChain(chain Chain) error {
-	return r.pushChain1(chain, true)
-}
+func (r *H1Request) pushHeaders() error          { return r.writeHeaders1() }
+func (r *H1Request) pushChain(chain Chain) error { return r.pushChain1(chain, true) }
 
-func (r *H1Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer1(name)
-}
-func (r *H1Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer1(name, value)
-}
+func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailer1(name, value) }
 
-func (r *H1Request) syncHeaders() error {
-	return r.writeHeaders1()
-}
-func (r *H1Request) syncBytes(p []byte) error {
-	return r.syncBytes1(p)
-}
+func (r *H1Request) syncHeaders() error       { return r.writeHeaders1() }
+func (r *H1Request) syncBytes(p []byte) error { return r.syncBytes1(p) }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT
@@ -482,7 +456,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		// TODO
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if r.isChunked() { // transfer-encoding: chunked
+		if r.isUnsized() { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else { // content-length: 12345
 			sizeBuffer := r.stream.smallBuffer() // enough for length
@@ -496,9 +470,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *H1Request) finalizeChunked() error {
-	return r.finalizeChunked1()
-}
+func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }
 
 // H1Response is the client-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
@@ -549,8 +521,9 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 		return false
 	}
 
+	// Skip SP
 	if r.input[r.pFore] != ' ' {
-		r.headResult, r.headReason = StatusBadRequest, "invalid SP"
+		goto invalid
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
@@ -560,36 +533,31 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	if b := r.input[r.pFore]; b >= '1' && b <= '9' {
 		r.status = int16(b-'0') * 100
 	} else {
-		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
-		return false
+		goto invalid
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
-
 	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
 		r.status += int16(b-'0') * 10
 	} else {
-		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
-		return false
+		goto invalid
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
-
 	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
 		r.status += int16(b - '0')
 	} else {
-		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
-		return false
+		goto invalid
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
+	// Skip SP
 	if r.input[r.pFore] != ' ' {
-		r.headResult, r.headReason = StatusBadRequest, "invalid character in status"
-		return false
+		goto invalid
 	}
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
@@ -609,8 +577,10 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
-
 	return true
+invalid:
+	r.headResult, r.headReason = StatusBadRequest, "invalid character in control"
+	return false
 }
 func (r *H1Response) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
@@ -629,9 +599,9 @@ func (r *H1Response) cleanInput() {
 		}
 		return
 	}
-	// content exists (counted or chunked)
+	// content exists (sized or unsized)
 	r.imme.set(r.pFore, r.inputEdge)
-	if r.contentSize >= 0 { // counted mode
+	if r.contentSize >= 0 { // sized mode
 		if immeSize := int64(r.imme.size()); immeSize >= r.contentSize {
 			r.contentReceived = true
 			if immeSize > r.contentSize { // still has data
@@ -641,14 +611,12 @@ func (r *H1Response) cleanInput() {
 			r.contentBlob = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
 			r.contentBlobKind = httpContentBlobInput
 		}
-	} else { // chunked mode
-		// We don't know the length of chunked content. Let chunked receivers to decide & clean r.input.
+	} else { // unsized mode
+		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.
 	}
 }
 
-func (r *H1Response) readContent() (p []byte, err error) {
-	return r.readContent1()
-}
+func (r *H1Response) readContent() (p []byte, err error) { return r.readContent1() }
 
 // H1Socket is the client-side HTTP/1 websocket.
 type H1Socket struct {

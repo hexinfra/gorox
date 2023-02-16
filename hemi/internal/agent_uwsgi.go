@@ -7,8 +7,8 @@
 
 // UWSGI is mainly for Python applications.
 
-// UWSGI doesn't allow chunked content in HTTP, so we must buffer content.
-// Until the whole content is buffered, we treat it as counted instead of chunked.
+// UWSGI doesn't allow unsized content in HTTP, so we must buffer content.
+// Until the whole content is buffered, we treat it as sized instead of unsized.
 
 // UWSGI 1.9.13 seems to have solved this problem:
 // https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html

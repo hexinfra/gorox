@@ -159,13 +159,13 @@ type hStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *hStream_) callTCPTun() {
+func (s *hStream_) callTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *hStream_) callUDPTun() {
+func (s *hStream_) callUDPTun() { // upgrade: connect-udp
 	// TODO
 }
-func (s *hStream_) callSocket() {
+func (s *hStream_) callSocket() { // upgrade: wegsocket
 	// TODO
 }
 
@@ -316,7 +316,7 @@ func (r *hRequest_) checkPush() error {
 		return httpOutMixedContent
 	}
 	r.markSent()
-	r.markChunked()
+	r.markUnsized()
 	return r.shell.pushHeaders()
 }
 func (r *hRequest_) push(chunk *Block) error {
@@ -375,11 +375,11 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	return true
 }
 
-func (r *hRequest_) endChunked() error {
+func (r *hRequest_) endUnsized() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.shell.finalizeChunked()
+	return r.shell.finalizeUnsized()
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.
@@ -653,7 +653,7 @@ func (r *hResponse_) checkHead() bool {
 			return false
 		}
 		if r.contentSize == -1 { // content-length does not exist
-			r.markChunked()
+			r.markUnsized()
 		} else {
 			// RFC 7230 (section 3.3.3):
 			// If a message is received with both a Transfer-Encoding and a
@@ -673,7 +673,7 @@ func (r *hResponse_) checkHead() bool {
 		return false
 	}
 	if r.status < StatusOK && r.contentSize != -1 {
-		r.headResult, r.headReason = StatusBadRequest, "1xx responses don't allow content"
+		r.headResult, r.headReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
 	return true
@@ -687,14 +687,10 @@ func (r *hResponse_) HasContent() bool {
 	}
 	// All other responses do include content, although that content might
 	// be of zero length.
-	return r.contentSize >= 0 || r.isChunked()
+	return r.contentSize >= 0 || r.isUnsized()
 }
-func (r *hResponse_) Content() string {
-	return string(r.unsafeContent())
-}
-func (r *hResponse_) UnsafeContent() []byte {
-	return r.unsafeContent()
-}
+func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
+func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
 func (r *hResponse_) applyTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)

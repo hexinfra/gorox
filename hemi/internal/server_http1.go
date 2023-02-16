@@ -299,10 +299,10 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
-	if !resp.IsSent() { // only happens on counted content.
+	if !resp.IsSent() { // only happens on sized content.
 		resp.sendChain(resp.content)
-	} else if resp.isChunked() { // write last chunk and trailers (if exist)
-		resp.endChunked()
+	} else if resp.isUnsized() { // write last chunk and trailers (if exist)
+		resp.endUnsized()
 	}
 	if !req.contentReceived {
 		req.dropContent()
@@ -805,9 +805,9 @@ func (r *http1Request) cleanInput() {
 		}
 		return
 	}
-	// content exists (counted or chunked)
+	// content exists (sized or unsized)
 	r.imme.set(r.pFore, r.inputEdge)
-	if r.contentSize >= 0 { // counted mode
+	if r.contentSize >= 0 { // sized mode
 		immeSize := int64(r.imme.size())
 		if immeSize == 0 || immeSize <= r.contentSize {
 			r.inputNext, r.inputEdge = 0, 0 // reset
@@ -826,14 +826,12 @@ func (r *http1Request) cleanInput() {
 		if r.contentSize == 0 {
 			r.formReceived = true // no content means no form
 		}
-	} else { // chunked mode
-		// We don't know the length of chunked content. Let chunked receivers to decide & clean r.input.
+	} else { // unsized mode
+		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.
 	}
 }
 
-func (r *http1Request) readContent() (p []byte, err error) {
-	return r.readContent1()
-}
+func (r *http1Request) readContent() (p []byte, err error) { return r.readContent1() }
 
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
@@ -858,27 +856,13 @@ func (r *http1Response) control() []byte {
 	return start
 }
 
-func (r *http1Response) header(name []byte) (value []byte, ok bool) {
-	return r.header1(name)
-}
-func (r *http1Response) hasHeader(name []byte) bool {
-	return r.hasHeader1(name)
-}
-func (r *http1Response) addHeader(name []byte, value []byte) bool {
-	return r.addHeader1(name, value)
-}
-func (r *http1Response) delHeader(name []byte) (deleted bool) {
-	return r.delHeader1(name)
-}
-func (r *http1Response) delHeaderAt(o uint8) {
-	r.delHeaderAt1(o)
-}
-func (r *http1Response) addedHeaders() []byte {
-	return r.fields[0:r.fieldsEdge]
-}
-func (r *http1Response) fixedHeaders() []byte {
-	return http1BytesFixedResponseHeaders
-}
+func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
+func (r *http1Response) addedHeaders() []byte                       { return r.fields[0:r.fieldsEdge] }
+func (r *http1Response) fixedHeaders() []byte                       { return http1BytesFixedResponseHeaders }
 
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	size := len(http1BytesLocationHTTPS)
@@ -1013,12 +997,8 @@ func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	r.onUse()
 	return true
 }
-func (r *http1Response) syncHeaders() error {
-	return r.writeHeaders1()
-}
-func (r *http1Response) syncBytes(p []byte) error {
-	return r.syncBytes1(p)
-}
+func (r *http1Response) syncHeaders() error       { return r.writeHeaders1() }
+func (r *http1Response) syncBytes(p []byte) error { return r.syncBytes1(p) }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT
@@ -1032,7 +1012,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r.fieldsEdge += uint16(clockLastModifiedSize)
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if !r.isChunked() { // content-length: >= 0
+		if !r.isUnsized() { // content-length: >= 0
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
@@ -1054,11 +1034,11 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
 }
-func (r *http1Response) finalizeChunked() error {
+func (r *http1Response) finalizeUnsized() error {
 	if r.request.VersionCode() == Version1_0 {
 		return nil
 	}
-	return r.finalizeChunked1()
+	return r.finalizeUnsized1()
 }
 
 // http1Socket is the server-side HTTP/1 websocket.

@@ -450,7 +450,7 @@ func (r *http3Response) syncBytes(p []byte) error {
 func (r *http3Response) finalizeHeaders() {
 	// TODO
 }
-func (r *http3Response) finalizeChunked() error {
+func (r *http3Response) finalizeUnsized() error {
 	// TODO
 	return nil
 }

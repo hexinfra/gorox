@@ -58,26 +58,26 @@ func (r *headReviser) OnPrepare() {
 
 func (r *headReviser) Rank() int8 { return RankHead }
 
-func (r *headReviser) BeforeRecv(req Request, resp Response) { // counted
+func (r *headReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *headReviser) BeforePull(req Request, resp Response) { // chunked
+func (r *headReviser) BeforePull(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *headReviser) FinishPull(req Request, resp Response) { // chunked
+func (r *headReviser) FinishPull(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *headReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
 	return chain, true
 }
 
-func (r *headReviser) BeforeSend(req Request, resp Response) { // counted
+func (r *headReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *headReviser) BeforePush(req Request, resp Response) { // chunked
+func (r *headReviser) BeforePush(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *headReviser) FinishPush(req Request, resp Response) { // chunked
+func (r *headReviser) FinishPush(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *headReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

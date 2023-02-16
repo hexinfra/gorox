@@ -299,6 +299,16 @@ func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
+func (s *H2Stream) StartTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *H2Stream) StartUDPTun() { // see RFC 9298
+	// TODO
+}
+func (s *H2Stream) StartSocket() { // see RFC 8441
+	// TODO
+}
+
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
 func (s *H2Stream) Socket() *H2Socket     { return s.socket }
@@ -412,7 +422,7 @@ func (r *H2Request) syncBytes(p []byte) error {
 func (r *H2Request) finalizeHeaders() {
 	// TODO
 }
-func (r *H2Request) finalizeChunked() error {
+func (r *H2Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }

@@ -49,26 +49,26 @@ func (r *replaceReviser) OnPrepare() {
 
 func (r *replaceReviser) Rank() int8 { return r.rank }
 
-func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // counted
+func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *replaceReviser) BeforePull(req Request, resp Response) { // chunked
+func (r *replaceReviser) BeforePull(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) FinishPull(req Request, resp Response) { // chunked
+func (r *replaceReviser) FinishPull(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *replaceReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
 	return chain, true
 }
 
-func (r *replaceReviser) BeforeSend(req Request, resp Response) { // counted
+func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *replaceReviser) BeforePush(req Request, resp Response) { // chunked
+func (r *replaceReviser) BeforePush(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) FinishPush(req Request, resp Response) { // chunked
+func (r *replaceReviser) FinishPush(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *replaceReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

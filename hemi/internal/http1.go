@@ -182,13 +182,13 @@ func (r *httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS
 }
 
 func (r *httpIn_) readContent1() (p []byte, err error) {
-	if r.contentSize >= 0 { // counted
-		return r._readCountedContent1()
-	} else { // must be -2 (chunked). -1 is excluded priorly
-		return r._readChunkedContent1()
+	if r.contentSize >= 0 { // sized
+		return r._readSizedContent1()
+	} else { // must be -2 (unsized). -1 is excluded priorly
+		return r._readUnsizedContent1()
 	}
 }
-func (r *httpIn_) _readCountedContent1() (p []byte, err error) {
+func (r *httpIn_) _readSizedContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize {
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF
@@ -220,7 +220,7 @@ func (r *httpIn_) _readCountedContent1() (p []byte, err error) {
 	}
 	return r.bodyWindow[0:size], err
 }
-func (r *httpIn_) _readChunkedContent1() (p []byte, err error) {
+func (r *httpIn_) _readUnsizedContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends
 	}
@@ -316,7 +316,7 @@ func (r *httpIn_) _readChunkedContent1() (p []byte, err error) {
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
-			r.cFore++ // now the whole chunked content is received and r.cFore is immediately after chunked content.
+			r.cFore++ // now the whole unsized content is received and r.cFore is immediately after the unsized content.
 			// Now we have found the end of current message, so determine r.inputNext and r.inputEdge.
 			if r.cFore < r.chunkEdge { // still has data, stream is pipelined
 				r.overChunked = true                            // so r.bodyWindow will be used as r.input on stream ends
@@ -683,9 +683,9 @@ func (r *httpOut_) sendChain1(chain Chain) error {
 	return nil
 }
 
-func (r *httpOut_) pushChain1(chain Chain, chunked bool) error {
+func (r *httpOut_) pushChain1(chain Chain, unsized bool) error {
 	for block := chain.head; block != nil; block = block.next {
-		if err := r.writeBlock1(block, chunked); err != nil {
+		if err := r.writeBlock1(block, unsized); err != nil {
 			return err
 		}
 	}
@@ -738,7 +738,7 @@ func (r *httpOut_) syncBytes1(p []byte) error {
 	return r.writeVector1(&r.vector)
 }
 
-func (r *httpOut_) finalizeChunked1() error {
+func (r *httpOut_) finalizeUnsized1() error {
 	if r.nTrailers == 1 { // no trailers
 		r.vector = r.fixedVector[0:1]
 		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
@@ -791,17 +791,17 @@ func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 		return nil
 	}
 }
-func (r *httpOut_) writeBlock1(block *Block, chunked bool) error {
+func (r *httpOut_) writeBlock1(block *Block, unsized bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
 	if block.IsBlob() {
-		return r._writeBlob1(block, chunked)
+		return r._writeBlob1(block, unsized)
 	} else {
-		return r._writeFile1(block, chunked)
+		return r._writeFile1(block, unsized)
 	}
 }
-func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
+func (r *httpOut_) _writeFile1(block *Block, unsized bool) error {
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
 	nRead := int64(0)
@@ -823,7 +823,7 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if chunked {
+		if unsized {
 			sizeBuffer := r.stream.smallBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
@@ -846,8 +846,8 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 		}
 	}
 }
-func (r *httpOut_) _writeBlob1(block *Block, chunked bool) error { // blob
-	if chunked { // HTTP/1.1
+func (r *httpOut_) _writeBlob1(block *Block, unsized bool) error { // blob
+	if unsized { // HTTP/1.1
 		sizeBuffer := r.stream.smallBuffer() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'

@@ -344,10 +344,6 @@ func (r *H2Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 	// TODO
 	return false
 }
-func (r *H2Request) control() []byte {
-	// TODO
-	return nil
-}
 func (r *H2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO
 	return false

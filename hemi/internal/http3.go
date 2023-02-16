@@ -268,6 +268,4 @@ type http3OutFrame struct {
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 var ( // HTTP/3 byteses, TODO
-	http3BytesFixedRequestHeaders  = []byte("user-agent gorox")
-	http3BytesFixedResponseHeaders = []byte("server gorox")
 )

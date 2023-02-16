@@ -963,6 +963,7 @@ type http2Response struct { // outgoing. needs building
 }
 
 func (r *http2Response) control() []byte {
+	// TODO
 	return nil
 }
 

@@ -173,7 +173,6 @@ func (s *hStream_) callSocket() {
 type request interface {
 	Response() response
 	SetSendTimeout(timeout time.Duration) // to defend against bad server
-
 	setControl(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	addHeader(name []byte, value []byte) bool
@@ -212,6 +211,8 @@ func (r *hRequest_) onEnd() { // for zeros
 }
 
 func (r *hRequest_) Response() response { return r.response }
+
+func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] }
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
 	// TODO
@@ -306,15 +307,15 @@ func (r *hRequest_) send() error {
 
 func (r *hRequest_) checkPush() error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
-	if r.isSent {
+	if r.IsSent() {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpMixedContentMode
+		return httpOutMixedContent
 	}
-	r.isSent = true
+	r.markSent()
 	r.markChunked()
 	return r.shell.pushHeaders()
 }
@@ -324,7 +325,7 @@ func (r *hRequest_) push(chunk *Block) error {
 	defer curChain.free()
 
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	return r.shell.pushChain(curChain)
 }
@@ -376,7 +377,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 
 func (r *hRequest_) endChunked() error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	return r.shell.finalizeChunked()
 }
@@ -385,11 +386,11 @@ func (r *hRequest_) endChunked() error {
 type response interface {
 	Status() int16
 	ContentSize() int64
+	SetRecvTimeout(timeout time.Duration) // to defend against bad server
 	HasTrailers() bool
 
 	delHopHeaders()
 	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
-	setRecvTimeout(timeout time.Duration) // to defend against bad server
 	readContent() (p []byte, err error)
 	delHopTrailers()
 	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
@@ -436,7 +437,8 @@ type hResponse0_ struct { // for fast reset, entirely
 }
 
 func (r *hResponse_) onUse() { // for non-zeros
-	r.httpIn_.onUse(true)
+	r.httpIn_.onUse(true) // asResponse = true
+
 	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
 }
 func (r *hResponse_) onEnd() { // for zeros
@@ -445,6 +447,7 @@ func (r *hResponse_) onEnd() { // for zeros
 		r.setCookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
+
 	r.httpIn_.onEnd()
 }
 

@@ -579,9 +579,8 @@ func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) boo
 
 func (r *httpIn_) markChunked()    { r.contentSize = -2 }
 func (r *httpIn_) isChunked() bool { return r.contentSize == -2 }
-func (r *httpIn_) setRecvTimeout(timeout time.Duration) {
-	r.recvTimeout = timeout
-}
+
+func (r *httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
 func (r *httpIn_) unsafeContent() []byte {
 	r.loadContent()
@@ -837,55 +836,6 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
-func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
-	if len(r.primes) == cap(r.primes) {
-		if cap(r.primes) == cap(r.stockPrimes) { // full
-			r.primes = get255Pairs()
-			r.primes = append(r.primes, r.stockPrimes[:]...)
-		} else { // overflow
-			return 0, false
-		}
-	}
-	r.primes = append(r.primes, *prime)
-	return uint8(len(r.primes)), true
-}
-func (r *httpIn_) delPrimeAt(i uint8) {
-	r.primes[i].zero()
-}
-func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
-	nameSize := int32(len(name))
-	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
-		return false
-	}
-	totalSize := nameSize + int32(len(value))
-	if totalSize < 0 {
-		return false
-	}
-	if !r._growArray(totalSize) {
-		return false
-	}
-	extra := &r.field
-	extra.zero()
-	extra.setExtra(extraKind)
-	extra.hash = stringHash(name)
-	extra.nameSize = uint8(nameSize)
-	extra.nameFrom = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.value.from = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.value.edge = r.arrayEdge
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) == cap(r.stockExtras) { // stock
-			r.extras = get255Pairs()
-			r.extras = append(r.extras, r.stockExtras[:]...)
-		} else { // too many extras!
-			return false
-		}
-	}
-	r.extras = append(r.extras, r.field)
-	return true
-}
-
 func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
 	if primes.notEmpty() {
 		return true
@@ -974,26 +924,49 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint
 	}
 	return
 }
-func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
-	for i := primes.from; i < primes.edge; i++ {
-		prime := &r.primes[i]
-		if prime.hash == 0 {
-			continue
+func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
+	if len(r.primes) == cap(r.primes) {
+		if cap(r.primes) == cap(r.stockPrimes) { // full
+			r.primes = get255Pairs()
+			r.primes = append(r.primes, r.stockPrimes[:]...)
+		} else { // overflow
+			return 0, false
 		}
-		p := r._getPlace(prime)
-		if !fn(prime.hash, prime.nameAt(p), prime.valueAt(p)) {
+	}
+	r.primes = append(r.primes, *prime)
+	return uint8(len(r.primes)), true
+}
+func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
+	nameSize := int32(len(name))
+	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
+		return false
+	}
+	totalSize := nameSize + int32(len(value))
+	if totalSize < 0 {
+		return false
+	}
+	if !r._growArray(totalSize) {
+		return false
+	}
+	extra := &r.field
+	extra.zero()
+	extra.setExtra(extraKind)
+	extra.hash = stringHash(name)
+	extra.nameSize = uint8(nameSize)
+	extra.nameFrom = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+	extra.value.edge = r.arrayEdge
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) == cap(r.stockExtras) { // stock
+			r.extras = get255Pairs()
+			r.extras = append(r.extras, r.stockExtras[:]...)
+		} else { // too many extras!
 			return false
 		}
 	}
-	if extraKind != extraNoExtra {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
-				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
+	r.extras = append(r.extras, r.field)
 	return true
 }
 func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8) (deleted bool) {
@@ -1023,6 +996,31 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8
 		}
 	}
 	return
+}
+func (r *httpIn_) delPrimeAt(i uint8) {
+	r.primes[i].zero()
+}
+func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
+	for i := primes.from; i < primes.edge; i++ {
+		prime := &r.primes[i]
+		if prime.hash == 0 {
+			continue
+		}
+		p := r._getPlace(prime)
+		if !fn(prime.hash, prime.nameAt(p), prime.valueAt(p)) {
+			return false
+		}
+	}
+	if extraKind != extraNoExtra {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 func (r *httpIn_) _getPlace(pair *pair) []byte {
 	var place []byte
@@ -1124,8 +1122,8 @@ const ( // HTTP content blob kinds
 )
 
 var ( // http incoming message errors
-	httpReadBadChunk = errors.New("bad chunk")
-	httpReadTooSlow  = errors.New("read too slow")
+	httpInBadChunk = errors.New("bad chunk")
+	httpInTooSlow  = errors.New("http incoming too slow")
 )
 
 // httpOut is a Response or request, used as shell by httpOut_.
@@ -1160,18 +1158,18 @@ type httpOut_ struct {
 	shell  httpOut // *http[1-3]Response or *H[1-3]Request
 	stream stream  // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockFields [1536]byte // for r.fields
+	stockFields [1600]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
 	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
+	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // -1: not set, -2: chunked encoding, >=0: size
 	asRequest   bool          // use message as request?
 	nHeaders    uint8         // num+1 of added headers, starts from 1
 	nTrailers   uint8         // num+1 of added trailers, starts from 1
-	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
@@ -1179,24 +1177,23 @@ type httpOut_ struct {
 	httpOut0_               // all values must be zero by default in this struct!
 }
 type httpOut0_ struct { // for fast reset, entirely
-	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target in HTTP/1
-	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers
+	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not present at the same time
 	hasRevisers   bool   // are there any revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
-	oContentType  uint8  // ...
-	oDate         uint8  // ...
+	oContentType  uint8  // position of content-type in r.edges
+	oDate         uint8  // position of date in r.edges
 }
 
 func (r *httpOut_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
+	r.content.PushTail(&r.stockBlock) // r.content has one block by default
 	r.sendTimeout = r.stream.keeper().SendTimeout()
 	r.contentSize = -1
 	r.asRequest = asRequest
-	r.nHeaders = 1  // r.edges[0] is not used
-	r.nTrailers = 1 // r.edges[0] is not used
-	r.content.PushTail(&r.stockBlock)
+	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
 }
 func (r *httpOut_) onEnd() { // for zeros
 	if cap(r.fields) != cap(r.stockFields) {
@@ -1211,9 +1208,7 @@ func (r *httpOut_) onEnd() { // for zeros
 	r.httpOut0_ = httpOut0_{}
 }
 
-func (r *httpOut_) unsafeMake(size int) []byte {
-	return r.stream.unsafeMake(size)
-}
+func (r *httpOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 
 func (r *httpOut_) Header(name string) (value string, ok bool) {
 	v, ok := r.shell.header(risky.ConstBytes(name))
@@ -1289,11 +1284,11 @@ func (r *httpOut_) appendContentType(contentType []byte) (ok bool) {
 	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
 		return false
 	}
-	r.oContentType = r.nHeaders - 1
+	r.oContentType = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
 func (r *httpOut_) removeContentType() (deleted bool) {
-	if r.oContentType == 0 {
+	if r.oContentType == 0 { // not exist
 		return false
 	}
 	r.shell.delHeaderAt(r.oContentType)
@@ -1308,7 +1303,7 @@ func (r *httpOut_) appendDate(date []byte) (ok bool) {
 	return true
 }
 func (r *httpOut_) removeDate() (deleted bool) {
-	if r.oDate == 0 {
+	if r.oDate == 0 { // not exist
 		return false
 	}
 	r.shell.delHeaderAt(r.oDate)
@@ -1316,21 +1311,17 @@ func (r *httpOut_) removeDate() (deleted bool) {
 	return true
 }
 
-func (r *httpOut_) IsSent() bool    { return r.isSent }
 func (r *httpOut_) markChunked()    { r.contentSize = -2 }
 func (r *httpOut_) isChunked() bool { return r.contentSize == -2 }
-func (r *httpOut_) SetSendTimeout(timeout time.Duration) {
-	r.sendTimeout = timeout
-}
+func (r *httpOut_) markSent()       { r.isSent = true }
+func (r *httpOut_) IsSent() bool    { return r.isSent }
 
-func (r *httpOut_) Send(content string) error {
-	return r.SendBytes(risky.ConstBytes(content))
-}
-func (r *httpOut_) SendBytes(content []byte) error {
-	return r.sendBlob(content)
-}
+func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
+
+func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
+func (r *httpOut_) SendBytes(content []byte) error { return r.sendBlob(content) }
 func (r *httpOut_) SendJSON(content any) error {
-	// TODO: optimize
+	// TODO: optimize & set content-type?
 	data, err := json.Marshal(content)
 	if err != nil {
 		return err
@@ -1350,12 +1341,8 @@ func (r *httpOut_) SendFile(contentPath string) error {
 	return r.sendFile(file, info, true)
 }
 
-func (r *httpOut_) Push(chunk string) error {
-	return r.PushBytes(risky.ConstBytes(chunk))
-}
-func (r *httpOut_) PushBytes(chunk []byte) error {
-	return r.pushBlob(chunk)
-}
+func (r *httpOut_) Push(chunk string) error      { return r.PushBytes(risky.ConstBytes(chunk)) }
+func (r *httpOut_) PushBytes(chunk []byte) error { return r.pushBlob(chunk) }
 func (r *httpOut_) PushFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
 	if err != nil {
@@ -1418,7 +1405,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 		if !in.forTrailers(func(hash uint16, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
-			return httpAddTrailerFailed
+			return httpOutTrailerFailed
 		}
 	}
 	return nil
@@ -1448,7 +1435,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 
 func (r *httpOut_) checkSend() error {
 	if r.isSent {
-		return httpAlreadySent
+		return httpOutAlreadySent
 	}
 	r.isSent = true
 	return nil
@@ -1476,9 +1463,9 @@ func (r *httpOut_) pushBlob(chunk []byte) error {
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
 		return nil
 	}
-	chunk_ := GetBlock()
-	chunk_.SetBlob(chunk)
-	return r.shell.push(chunk_)
+	block := GetBlock()
+	block.SetBlob(chunk)
+	return r.shell.push(block)
 }
 func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r.shell.checkPush(); err != nil {
@@ -1490,18 +1477,18 @@ func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
 		}
 		return nil
 	}
-	chunk_ := GetBlock()
-	chunk_.SetFile(chunk, info, shut)
-	return r.shell.push(chunk_)
+	block := GetBlock()
+	block.SetFile(chunk, info, shut)
+	return r.shell.push(block)
 }
 
-func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) {
+func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
 		return
 	}
 	return r._growFields(size)
 }
-func (r *httpOut_) growTrailer(size int) (from int, edge int, ok bool) {
+func (r *httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
 	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
 		return
 	}
@@ -1540,14 +1527,13 @@ func (r *httpOut_) _beforeWrite() error {
 }
 
 var ( // http outgoing message errors
-	httpWriteTooSlow     = errors.New("write too slow")
-	httpWriteBroken      = errors.New("write broken")
-	httpUnknownStatus    = errors.New("unknown status")
-	httpStatusForbidden  = errors.New("forbidden status")
-	httpAlreadySent      = errors.New("already sent")
-	httpContentTooLarge  = errors.New("content too large")
-	httpMixedContentMode = errors.New("mixed content mode")
-	httpAddTrailerFailed = errors.New("add trailer failed")
+	httpOutTooSlow       = errors.New("http outgoing too slow")
+	httpOutWriteBroken   = errors.New("write broken")
+	httpOutUnknownStatus = errors.New("unknown status")
+	httpOutAlreadySent   = errors.New("already sent")
+	httpOutTooLarge      = errors.New("content too large")
+	httpOutMixedContent  = errors.New("mixed content mode")
+	httpOutTrailerFailed = errors.New("add trailer failed")
 )
 
 var httpErrorPages = func() map[int16][]byte {
@@ -1580,6 +1566,16 @@ footer{padding:20px;}
 	}
 	return pages
 }()
+
+var httpMysterios = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'} // TODO: use struct?
+var httpControls = [...][]byte{                                                     // for both HTTP/2 and HTTP/3. TODO: use struct?
+	// 1XX
+	// 2XX
+	StatusOK: []byte(":status 200"),
+	// 3XX
+	// 4XX
+	// 5XX
+}
 
 // General HTTP protocol elements.
 
@@ -1740,7 +1736,7 @@ const ( // misc http types
 	httpModeSocket = 3 // upgrade: websocket
 
 	httpTargetOrigin    = 0 // must be 0
-	httpTargetAbsolute  = 1
+	httpTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]
 	httpTargetAuthority = 2 // hostname:port
 	httpTargetAsterisk  = 3 // *
 
@@ -1756,8 +1752,8 @@ const ( // misc http types
 	httpCodingBrotli   = 4
 
 	httpFormNotForm    = 0 // must be 0
-	httpFormURLEncoded = 1
-	httpFormMultipart  = 2
+	httpFormURLEncoded = 1 // application/x-www-form-urlencoded
+	httpFormMultipart  = 2 // multipart/form-data
 )
 
 const ( // hashes of http fields. value is calculated by adding all ASCII values.
@@ -1913,6 +1909,9 @@ var ( // misc http strings & byteses.
 	httpBytesHTMLUTF8       = []byte("text/html; charset=utf-8")
 	httpBytesTrailers       = []byte("trailers")
 	httpBytesWebSocket      = []byte("websocket")
+	// HTTP/2 and HTTP/3 byteses, TODO
+	httpBytesFixedRequestHeaders  = []byte("user-agent gorox")
+	httpBytesFixedResponseHeaders = []byte("server gorox")
 )
 
 var httpTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"

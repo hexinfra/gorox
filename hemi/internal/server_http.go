@@ -334,9 +334,10 @@ type Request interface {
 	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
+	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
+
 	HasContent() bool
 	isChunked() bool
-	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 
 	HasForms() bool
@@ -479,7 +480,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 }
 
 func (r *httpRequest_) onUse() { // for non-zeros
-	r.httpIn_.onUse(false)
+	r.httpIn_.onUse(false) // asResponse = false
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
@@ -505,7 +506,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.pathInfo = nil
 	r.app = nil
 	r.svc = nil
-	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool at return. so just set as nil
+	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.httpRequest0_ = httpRequest0_{}
 
 	r.httpIn_.onEnd()
@@ -2303,9 +2304,6 @@ func (r *httpRequest_) HasUpload(name string) bool {
 }
 
 func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isChunked() }
-func (r *httpRequest_) SetRecvTimeout(timeout time.Duration) {
-	r.setRecvTimeout(timeout)
-}
 func (r *httpRequest_) Content() string {
 	return string(r.UnsafeContent())
 }
@@ -2485,7 +2483,7 @@ func (r *httpResponse_) SetStatus(status int16) error {
 		}
 		return nil
 	} else { // 1xx are not allowed to set through SetStatus()
-		return httpUnknownStatus
+		return httpOutUnknownStatus
 	}
 }
 func (r *httpResponse_) Status() int16 {
@@ -2665,7 +2663,7 @@ func (r *httpResponse_) send() error {
 		for block := curChain.head; block != nil; block = block.next {
 			r.contentSize += block.size
 			if r.contentSize < 0 {
-				return httpContentTooLarge
+				return httpOutTooLarge
 			}
 		}
 	}
@@ -2674,15 +2672,15 @@ func (r *httpResponse_) send() error {
 
 func (r *httpResponse_) checkPush() error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
-	if r.isSent {
+	if r.IsSent() {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpMixedContentMode
+		return httpOutMixedContent
 	}
-	r.isSent = true
+	r.markSent()
 	r.markChunked()
 	resp := r.shell.(Response)
 	if r.hasRevisers {
@@ -2702,7 +2700,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 	defer curChain.free()
 
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	resp := r.shell.(Response)
 	if r.hasRevisers {
@@ -2744,7 +2742,7 @@ func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 
 func (r *httpResponse_) endChunked() error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	resp := r.shell.(Response)
 	if r.hasRevisers {

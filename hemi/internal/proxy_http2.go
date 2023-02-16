@@ -106,7 +106,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				return req2.addTrailer(name, value)
 			}) {
 				stream2.markBroken()
-				err2 = httpAddTrailerFailed
+				err2 = httpOutTrailerFailed
 			} else if err2 = req2.endChunked(); err2 != nil {
 				stream2.markBroken()
 			}

@@ -103,7 +103,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				return req1.addTrailer(name, value)
 			}) {
 				stream1.markBroken()
-				err1 = httpAddTrailerFailed
+				err1 = httpOutTrailerFailed
 			} else if err1 = req1.endChunked(); err1 != nil {
 				stream1.markBroken()
 			}

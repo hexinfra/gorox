@@ -733,6 +733,4 @@ func (f *http2OutFrame) encodeHeader() (header []byte) { // caller must ensure t
 }
 
 var ( // HTTP/2 byteses, TODO
-	http2BytesFixedRequestHeaders  = []byte("user-agent gorox")
-	http2BytesFixedResponseHeaders = []byte("server gorox")
 )

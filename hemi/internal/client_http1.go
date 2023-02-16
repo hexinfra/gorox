@@ -379,9 +379,6 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 		return false
 	}
 }
-func (r *H1Request) control() []byte {
-	return r.fields[0:r.controlEdge]
-}
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: if colonPort is default (:80 for http, :443 for https), omit it
 	size := len(httpBytesHost) + len(httpBytesColonSpace) + len(hostname) + len(colonPort) + len(httpBytesCRLF) // host: xxx\r\n

@@ -413,7 +413,7 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 
 func (r *fcgiRequest) checkSend() error {
 	if r.isSent {
-		return httpAlreadySent
+		return httpOutAlreadySent
 	}
 	r.isSent = true
 	return nil
@@ -996,7 +996,6 @@ func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok boo
 	}
 	return
 }
-
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	// TODO
@@ -1012,7 +1011,7 @@ func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
 
-func (r *fcgiResponse) setRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
+func (r *fcgiResponse) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
 func (r *fcgiResponse) hasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
@@ -1039,8 +1038,7 @@ func (r *fcgiResponse) growBody() {
 
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
-
-func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
+func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }

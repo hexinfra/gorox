@@ -38,6 +38,14 @@ func (h *testHandlet) GET_json(req Request, resp Response) {
 	}{"jack", 25}
 	resp.SendJSON(user)
 }
+func (h *testHandlet) GET_single(req Request, resp Response) {
+	accept, ok := req.Header("accept")
+	if !ok {
+		resp.Send("please provide accept header")
+		return
+	}
+	resp.Send(accept)
+}
 func (h *testHandlet) GET_multi(req Request, resp Response) {
 	accepts, ok := req.Headers("accept")
 	if !ok {

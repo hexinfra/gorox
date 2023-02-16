@@ -216,7 +216,7 @@ func (r *httpIn_) _readCountedContent1() (p []byte, err error) {
 	size, err := r.stream.readFull(r.bodyWindow[:recvSize])
 	r.sizeReceived += int64(size)
 	if err == nil && (r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout) {
-		err = httpReadTooSlow
+		err = httpInTooSlow
 	}
 	return r.bodyWindow[0:size], err
 }
@@ -372,7 +372,7 @@ func (r *httpIn_) _readChunkedContent1() (p []byte, err error) {
 		return r.bodyWindow[from:int(dataEdge)], nil
 	}
 badRecv:
-	return nil, httpReadBadChunk
+	return nil, httpInBadChunk
 }
 
 func (r *httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
@@ -506,7 +506,7 @@ func (r *httpIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we d
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		if e == nil {
 			if r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout {
-				e = httpReadTooSlow
+				e = httpInTooSlow
 			} else {
 				r.chunkEdge += int32(n)
 				return true
@@ -773,7 +773,7 @@ func (r *httpOut_) writeHeaders1() error { // used by push and post
 }
 func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	for {
 		if err := r._beforeWrite(); err != nil {
@@ -782,7 +782,7 @@ func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 		}
 		_, err := r.stream.writev(vector)
 		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
-			err = httpWriteTooSlow
+			err = httpOutTooSlow
 		}
 		if err != nil {
 			r.stream.markBroken()
@@ -793,7 +793,7 @@ func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 }
 func (r *httpOut_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
-		return httpWriteBroken
+		return httpOutWriteBroken
 	}
 	if block.IsBlob() {
 		return r._writeBlob1(block, chunked)
@@ -838,7 +838,7 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 			_, err = r.stream.write(buffer[0:n])
 		}
 		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
-			err = httpWriteTooSlow
+			err = httpOutTooSlow
 		}
 		if err != nil {
 			r.stream.markBroken()

@@ -316,10 +316,6 @@ func (r *H3Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 	// TODO
 	return false
 }
-func (r *H3Request) control() []byte {
-	// TODO
-	return nil
-}
 func (r *H3Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO
 	return false

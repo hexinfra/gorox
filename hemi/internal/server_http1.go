@@ -299,7 +299,7 @@ func (s *http1Stream) serveSocket() { // upgrade: websocket
 }
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
-	if !resp.isSent { // only happens on counted content.
+	if !resp.IsSent() { // only happens on counted content.
 		resp.sendChain(resp.content)
 	} else if resp.isChunked() { // write last chunk and trailers (if exist)
 		resp.endChunked()

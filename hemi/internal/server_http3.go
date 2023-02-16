@@ -366,6 +366,7 @@ type http3Response struct { // outgoing. needs building
 }
 
 func (r *http3Response) control() []byte {
+	// TODO
 	return nil
 }
 

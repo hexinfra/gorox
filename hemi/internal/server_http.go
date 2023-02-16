@@ -23,6 +23,9 @@ type httpServer interface {
 	Server
 	streamKeeper
 
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
+
 	linkApp(app *App)
 	findApp(hostname []byte) *App
 	linkSvc(svc *Svc)
@@ -47,6 +50,8 @@ type httpServer_ struct {
 	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
 	enableTCPTun bool                // allow CONNECT method?
 	enableUDPTun bool                // allow upgrade: connect-udp?
+	recvTimeout  time.Duration       // ...
+	sendTimeout  time.Duration       // ...
 }
 
 func (s *httpServer_) onCreate(name string, stage *Stage) {
@@ -62,11 +67,18 @@ func (s *httpServer_) onConfigure(shell Component) {
 	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
+	// recvTimeout
+	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
+	// sendTimeout
+	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
 }
 func (s *httpServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s.streamKeeper_.onPrepare(shell)
 }
+
+func (s *httpServer_) RecvTimeout() time.Duration { return s.recvTimeout }
+func (s *httpServer_) SendTimeout() time.Duration { return s.sendTimeout }
 
 func (s *httpServer_) linkApp(app *App) {
 	if s.tlsConfig != nil {
@@ -323,7 +335,7 @@ type Request interface {
 
 	HasContent() bool
 	isChunked() bool
-	SetMaxRecvTimeout(timeout time.Duration) // to defend against slowloris attack
+	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 	Content() string
 
 	F(name string) string
@@ -2277,8 +2289,8 @@ func (r *httpRequest_) HasUpload(name string) bool {
 }
 
 func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isChunked() }
-func (r *httpRequest_) SetMaxRecvTimeout(timeout time.Duration) {
-	r.setMaxRecvTimeout(timeout)
+func (r *httpRequest_) SetRecvTimeout(timeout time.Duration) {
+	r.setRecvTimeout(timeout)
 }
 func (r *httpRequest_) Content() string {
 	return string(r.UnsafeContent())
@@ -2364,7 +2376,7 @@ type Response interface {
 	DelHeaderByBytes(name []byte) bool
 
 	IsSent() bool
-	SetMaxSendTimeout(timeout time.Duration) // to defend against slowloris attack
+	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
 
 	Send(content string) error
 	SendBytes(content []byte) error

@@ -47,8 +47,8 @@ type fcgiAgent struct {
 	delRequestHeaders   [][]byte      // client request headers to delete
 	addResponseHeaders  [][2][]byte   // headers appended to server response
 	delResponseHeaders  [][]byte      // server response headers to delete
-	maxSendTimeout      time.Duration // max timeout to send request
-	maxRecvTimeout      time.Duration // max timeout to recv response
+	sendTimeout         time.Duration // timeout to send the whole request
+	recvTimeout         time.Duration // timeout to recv the whole response
 }
 
 func (h *fcgiAgent) onCreate(name string, stage *Stage, app *App) {
@@ -98,10 +98,10 @@ func (h *fcgiAgent) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// keepConn
 	h.ConfigureBool("keepConn", &h.keepConn, false)
-	// maxSendTimeout
-	h.ConfigureDuration("maxSendTimeout", &h.maxSendTimeout, func(value time.Duration) bool { return value >= 0 }, 0)
-	// maxRecvTimeout
-	h.ConfigureDuration("maxRecvTimeout", &h.maxRecvTimeout, func(value time.Duration) bool { return value >= 0 }, 0)
+	// sendTimeout
+	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
+	// recvTimeout
+	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 }
 func (h *fcgiAgent) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
@@ -304,9 +304,9 @@ type fcgiRequest struct { // outgoing. needs building
 	// States (buffers)
 	stockParams [_2K]byte // for r.params
 	// States (non-zeros)
-	params         []byte        // place exactly one FCGI_PARAMS record
-	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
-	maxSendTimeout time.Duration // max timeout to send request
+	params      []byte        // place exactly one FCGI_PARAMS record
+	contentSize int64         // -1: not set, -2: chunked encoding, >=0: size
+	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
 	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
@@ -324,7 +324,7 @@ func (r *fcgiRequest) onUse() {
 	r.params = r.stockParams[:]
 	copy(r.params, fcgiParamsHeader) // contentLen (r.params[4:6]) needs modification
 	r.contentSize = -1               // not set
-	r.maxSendTimeout = r.stream.agent.maxSendTimeout
+	r.sendTimeout = r.stream.agent.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -359,7 +359,7 @@ func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool {
 	return false
 }
 
-func (r *fcgiRequest) setMaxSendTimeout(timeout time.Duration) { r.maxSendTimeout = timeout }
+func (r *fcgiRequest) setSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
 func (r *fcgiRequest) sync(req Request) error { // only for counted (>0) content
 	r.isSent = true
@@ -491,11 +491,11 @@ type fcgiResponse struct { // incoming. needs parsing
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
-	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	headers        []pair        // fcgi response headers
-	maxRecvTimeout time.Duration // max timeout to recv response
-	headResult     int16         // result of receiving response head. values are same as http status for convenience
+	records     []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
+	input       []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	headers     []pair        // fcgi response headers
+	recvTimeout time.Duration // timeout to recv the whole response
+	headResult  int16         // result of receiving response head. values are same as http status for convenience
 	// States (zeros)
 	headReason    string    // the reason of head result
 	recvTime      time.Time // the time when receiving response
@@ -533,7 +533,7 @@ func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
-	r.maxRecvTimeout = r.stream.agent.maxRecvTimeout
+	r.recvTimeout = r.stream.agent.recvTimeout
 	r.headResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
@@ -1012,7 +1012,7 @@ func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
 
-func (r *fcgiResponse) setMaxRecvTimeout(timeout time.Duration) { r.maxRecvTimeout = timeout }
+func (r *fcgiResponse) setRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
 func (r *fcgiResponse) hasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.

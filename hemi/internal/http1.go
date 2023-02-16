@@ -215,7 +215,7 @@ func (r *httpIn_) _readCountedContent1() (p []byte, err error) {
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:recvSize])
 	r.sizeReceived += int64(size)
-	if err == nil && (r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout) {
+	if err == nil && (r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout) {
 		err = httpReadTooSlow
 	}
 	return r.bodyWindow[0:size], err
@@ -505,7 +505,7 @@ func (r *httpIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we d
 	if err == nil {
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		if e == nil {
-			if r.maxRecvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.maxRecvTimeout {
+			if r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout {
 				e = httpReadTooSlow
 			} else {
 				r.chunkEdge += int32(n)
@@ -781,7 +781,7 @@ func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 			return err
 		}
 		_, err := r.stream.writev(vector)
-		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
+		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {
@@ -837,7 +837,7 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 		} else {
 			_, err = r.stream.write(buffer[0:n])
 		}
-		if err == nil && (r.maxSendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.maxSendTimeout) {
+		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
 			err = httpWriteTooSlow
 		}
 		if err != nil {

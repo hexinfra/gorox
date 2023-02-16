@@ -26,6 +26,8 @@ type keeper interface {
 	TLSMode() bool
 	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
 }
 
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
@@ -76,10 +78,9 @@ type httpIn interface {
 	applyHeader(header *pair) bool
 	ContentSize() int64
 	readContent() (p []byte, err error)
-	HasTrailers() bool
 	applyTrailer(trailer *pair) bool
+	HasTrailers() bool
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
-
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 }
@@ -90,8 +91,8 @@ type httpIn_ struct {
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockInput  [1536]byte // for r.input
-	stockArray  [1024]byte // for r.array
+	stockInput  [1600]byte // for r.input
+	stockArray  [800]byte  // for r.array
 	stockPrimes [76]pair   // for r.primes
 	stockExtras [2]pair    // for r.extras
 	// Stream states (controlled)
@@ -99,19 +100,19 @@ type httpIn_ struct {
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
-	input          []byte        // bytes of incoming messages (for HTTP/1) or message heads (for HTTP/2 & HTTP/3). [<r.stockInput>/4K/16K]
-	array          []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes         []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
-	extras         []pair        // hold extra queries, headers, cookies, and trailers. always refers to r.array. [<r.stockExtras>/255]
-	contentSize    int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
-	maxRecvTimeout time.Duration // max timeout to recv message content
-	asResponse     bool          // treat message as response?
-	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	headResult     int16         // result of receiving message head. values are same as http status for convenience
+	input       []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	array       []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
+	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/255]
+	recvTimeout time.Duration // timeout to recv the whole message content
+	contentSize int64         // info of content. >=0: content-length, -1: no content, -2: chunked content
+	asResponse  bool          // treat the incoming message as response?
+	keepAlive   int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	headResult  int16         // result of receiving message head. values are same as http status for convenience
 	// Stream states (zeros)
 	headReason  string    // the reason of head result
-	inputNext   int32     // HTTP/1 only. next message begins from r.input[r.inputNext]. exists because HTTP/1 messages can be pipelined
-	inputEdge   int32     // edge position of current message (for HTTP/1) or head (for HTTP/2 & HTTP/3) is at r.input[r.inputEdge]
+	inputNext   int32     // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
+	inputEdge   int32     // edge position of current message head is at r.input[r.inputEdge]
 	bodyWindow  []byte    // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
@@ -125,7 +126,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	head             text  // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	headers          zone  // raw headers ->r.input
-	options          zone  // connection options ->r.input
+	options          zone  // connection options ->r.input. may be not continuous
 	versionCode      uint8 // Version1_0, Version1_1, Version2, Version3
 	nContentCodings  int8  // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8  // num of accept-encoding flags
@@ -137,11 +138,12 @@ type httpIn0_ struct { // for fast reset, entirely
 	iContentType     uint8 // content-type header in r.primes->r.input
 	acceptGzip       bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	_                bool  // padding
 	upgradeSocket    bool  // upgrade: websocket?
-	receiving        int8  // currently receiving. see httpSectionXXX
 	hasRevisers      bool  // are there any revisers hooked on this incoming message?
 	contentReceived  bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
+	receiving        int8  // currently receiving. see httpSectionXXX
 	maxContentSize   int64 // max content size allowed for current message. if content is chunked, size is calculated when receiving chunks
 	sizeReceived     int64 // bytes of currently received content. for both counted & chunked content receiver
 	chunkSize        int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
@@ -162,8 +164,8 @@ func (r *httpIn_) onUse(asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.contentSize = -1
-	r.maxRecvTimeout = r.stream.keeper().ReadTimeout() * 2 // what is the best default value?
 	r.asResponse = asResponse
 	r.keepAlive = -1
 	r.headResult = StatusOK
@@ -180,7 +182,7 @@ func (r *httpIn_) onEnd() { // for zeros
 	if r.arrayKind == arrayKindPool {
 		PutNK(r.array)
 	}
-	r.array = nil
+	r.array = nil // other array kinds are only references, just reset.
 	if cap(r.primes) != cap(r.stockPrimes) {
 		put255Pairs(r.primes)
 		r.primes = nil
@@ -218,7 +220,7 @@ func (r *httpIn_) onEnd() { // for zeros
 	}
 	r.contentBlob = nil // other blob kinds are only references, just reset.
 
-	if r.contentHeld != nil {
+	if r.contentHeld != nil { // r.holdContent() is called
 		r.contentHeld.Close()
 		os.Remove(r.contentHeld.Name())
 		r.contentHeld = nil
@@ -305,7 +307,7 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool {
 	// content-coding   = token
 	for i := from; i < edge; i++ {
 		if r.nContentCodings == int8(cap(r.contentCodings)) {
-			r.headResult, r.headReason = StatusBadRequest, "too many codings in content-encoding"
+			r.headResult, r.headReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
 		value := r.primes[i].valueAt(r.input)
@@ -370,7 +372,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if content is chunked
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is chunked
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -478,11 +480,11 @@ func (r *httpIn_) HasHeader(name string) bool {
 	return ok
 }
 func (r *httpIn_) AddHeader(name string, value string) bool {
-	// TODO: forbid some important headers, like: if-match, if-none-match, so we don't need to search them in extra.
+	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraHeader)
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
-	// TODO: forbid some important headers, so we don't need to search them in extra.
+	// TODO: add restrictions on what headers are allowed to delete?
 	return r.delPair(name, 0, r.headers, extraHeader)
 }
 func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool {
@@ -561,10 +563,9 @@ func (r *httpIn_) addHeader(header *pair) bool {
 	if edge, ok := r.addPrime(header); ok {
 		r.headers.edge = edge
 		return true
-	} else {
-		r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-		return false
 	}
+	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
@@ -578,8 +579,8 @@ func (r *httpIn_) walkHeaders(fn func(hash uint16, name []byte, value []byte) bo
 
 func (r *httpIn_) markChunked()    { r.contentSize = -2 }
 func (r *httpIn_) isChunked() bool { return r.contentSize == -2 }
-func (r *httpIn_) setMaxRecvTimeout(timeout time.Duration) {
-	r.maxRecvTimeout = timeout
+func (r *httpIn_) setRecvTimeout(timeout time.Duration) {
+	r.recvTimeout = timeout
 }
 
 func (r *httpIn_) unsafeContent() []byte {
@@ -597,15 +598,18 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when counted content <= 64K1
-		r.contentBlob = content                 // real content is r.contentBlob[:r.sizeReceived]
-		r.contentBlobKind = httpContentBlobPool // the returned content is got from pool. put back onEnd
+		r.contentBlob = content // real content is r.contentBlob[:r.sizeReceived]
+		r.contentBlobKind = httpContentBlobPool
 	case TempFile: // [0, r.maxContentSize]. case happens when counted content > 64K1, or content is chunked.
 		tempFile := content.(*os.File)
-		if r.sizeReceived > 0 { // chunked content may has 0 size, exclude that.
-			if r.sizeReceived <= _64K1 {
+		if r.sizeReceived == 0 { // chunked content can has 0 size
+			r.contentBlob = r.input
+			r.contentBlobKind = httpContentBlobInput
+		} else { // > 0
+			if r.sizeReceived <= _64K1 { // must be chunked
 				r.contentBlob = GetNK(r.sizeReceived) // real content is r.content[:r.sizeReceived]
 				r.contentBlobKind = httpContentBlobPool
-			} else { // > 64K1, just alloc
+			} else { // > 64K1, can be counted or chunked. just alloc
 				r.contentBlob = make([]byte, r.sizeReceived)
 				r.contentBlobKind = httpContentBlobMake
 			}
@@ -663,7 +667,7 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err
 		}
-		// Since content is small, r.bodyWindow is not needed, and TempFile is not used either.
+		// Since content is small, r.bodyWindow and TempFile are not needed.
 		content := GetNK(r.contentSize) // max size of content is 64K1
 		r.sizeReceived = int64(r.imme.size())
 		if r.sizeReceived > 0 {
@@ -1045,7 +1049,7 @@ func (r *httpIn_) _delHopFields(fields zone, delField func(name []byte, hash uin
 	delField(httpBytesUpgrade, httpHashUpgrade)
 	for i := r.options.from; i < r.options.edge; i++ {
 		prime := &r.primes[i]
-		// Skip primes that are not connection
+		// Skip fields that are not "connection"
 		if prime.hash != httpHashConnection || !prime.nameEqualBytes(r.input, httpBytesConnection) {
 			continue
 		}
@@ -1151,13 +1155,13 @@ type httpOut_ struct {
 	// Stream states (controlled)
 	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
-	fields         []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
-	contentSize    int64         // -1: not set, -2: chunked encoding, >=0: size
-	maxSendTimeout time.Duration // max timeout to send message
-	asRequest      bool          // use message as request?
-	nHeaders       uint8         // num+1 of added headers, starts from 1
-	nTrailers      uint8         // num+1 of added trailers, starts from 1
-	content        Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
+	fields      []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
+	sendTimeout time.Duration // timeout to send the whole message
+	contentSize int64         // -1: not set, -2: chunked encoding, >=0: size
+	asRequest   bool          // use message as request?
+	nHeaders    uint8         // num+1 of added headers, starts from 1
+	nTrailers   uint8         // num+1 of added trailers, starts from 1
+	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
@@ -1177,12 +1181,12 @@ type httpOut0_ struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.contentSize = -1                                      // not set
-	r.maxSendTimeout = r.stream.keeper().WriteTimeout() * 2 // what is the best default value?
+	r.sendTimeout = r.stream.keeper().SendTimeout()
+	r.contentSize = -1
 	r.asRequest = asRequest
-	r.nHeaders = 1                    // r.edges[0] is not used
-	r.nTrailers = 1                   // r.edges[0] is not used
-	r.content.PushTail(&r.stockBlock) // r.content has 1 block by default
+	r.nHeaders = 1  // r.edges[0] is not used
+	r.nTrailers = 1 // r.edges[0] is not used
+	r.content.PushTail(&r.stockBlock)
 }
 func (r *httpOut_) onEnd() { // for zeros
 	if cap(r.fields) != cap(r.stockFields) {
@@ -1305,8 +1309,8 @@ func (r *httpOut_) removeDate() (deleted bool) {
 func (r *httpOut_) IsSent() bool    { return r.isSent }
 func (r *httpOut_) markChunked()    { r.contentSize = -2 }
 func (r *httpOut_) isChunked() bool { return r.contentSize == -2 }
-func (r *httpOut_) SetMaxSendTimeout(timeout time.Duration) {
-	r.maxSendTimeout = timeout
+func (r *httpOut_) SetSendTimeout(timeout time.Duration) {
+	r.sendTimeout = timeout
 }
 
 func (r *httpOut_) Send(content string) error {

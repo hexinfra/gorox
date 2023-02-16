@@ -19,6 +19,8 @@ type httpClient interface {
 	streamKeeper
 	contentSaver
 	MaxContentSize() int64
+	SendTimeout() time.Duration
+	RecvTimeout() time.Duration
 }
 
 // httpClient_ is a mixin for httpOutgate_ and httpBackend_.
@@ -28,6 +30,8 @@ type httpClient_ struct {
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxContentSize int64
+	sendTimeout    time.Duration
+	recvTimeout    time.Duration
 }
 
 func (h *httpClient_) onCreate() {
@@ -38,13 +42,19 @@ func (h *httpClient_) onConfigure(shell Component, clientName string) {
 	h.contentSaver_.onConfigure(shell, TempDir()+"/"+clientName+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 }
 func (h *httpClient_) onPrepare(shell Component) {
 	h.streamKeeper_.onPrepare(shell)
 	h.contentSaver_.onPrepare(shell, 0755)
 }
 
-func (h *httpClient_) MaxContentSize() int64 { return h.maxContentSize }
+func (h *httpClient_) MaxContentSize() int64      { return h.maxContentSize }
+func (h *httpClient_) SendTimeout() time.Duration { return h.sendTimeout }
+func (h *httpClient_) RecvTimeout() time.Duration { return h.recvTimeout }
 
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
@@ -162,7 +172,7 @@ func (s *hStream_) callSocket() {
 // request is the client-side HTTP request and the interface for *H[1-3]Request.
 type request interface {
 	Response() response
-	SetMaxSendTimeout(timeout time.Duration) // to defend against bad server
+	SetSendTimeout(timeout time.Duration) // to defend against bad server
 
 	setControl(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
@@ -379,7 +389,7 @@ type response interface {
 
 	delHopHeaders()
 	walkHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
-	setMaxRecvTimeout(timeout time.Duration) // to defend against bad server
+	setRecvTimeout(timeout time.Duration) // to defend against bad server
 	readContent() (p []byte, err error)
 	delHopTrailers()
 	walkTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool

@@ -58,6 +58,8 @@ func (s *Server_) OnConfigure() {
 				UseExitln("bad address: " + address)
 			} else {
 				s.address = address
+				s.colonPort = address[p:]
+				s.colonPortBytes = []byte(s.colonPort)
 			}
 		} else {
 			UseExitln("address should be of string type")
@@ -65,9 +67,6 @@ func (s *Server_) OnConfigure() {
 	} else {
 		UseExitln("address is required for servers")
 	}
-	p := strings.IndexByte(s.address, ':')
-	s.colonPort = s.address[p:]
-	s.colonPortBytes = []byte(s.colonPort)
 	// tlsMode
 	s.ConfigureBool("tlsMode", &s.tlsMode, false)
 	if s.tlsMode {

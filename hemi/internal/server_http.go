@@ -2351,6 +2351,7 @@ type Response interface {
 	Status() int16
 
 	MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with `""`
+	SetExpires(expires int64) bool
 	SetLastModified(lastModified int64) bool
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
@@ -2420,6 +2421,7 @@ type httpResponse_ struct { // outgoing. needs building
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	status       int16 // 200, 302, 404, 500, ...
+	expires      int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
 	lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
 	// Stream states (zeros)
 	app            *App // associated app
@@ -2482,6 +2484,9 @@ func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	n = 1 + n + i64ToHex(fileSize, etag[n:])
 	p[n] = '"'
 	return p[0 : n+1], true
+}
+func (r *httpResponse_) SetExpires(expires int64) bool {
+	return r._setTimestamp(&r.expires, &r.indexes.expires, expires)
 }
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 	return r._setTimestamp(&r.lastModified, &r.indexes.lastModified, lastModified)
@@ -2666,7 +2671,7 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	return r._addSingleton(&r.indexes.expires, httpBytesExpires, expires)
+	return r._addTimestamp(&r.expires, &r.indexes.expires, httpBytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
 	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, httpBytesLastModified, lastModified)
@@ -2683,7 +2688,7 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *httpResponse_) _delExpires() (deleted bool) {
-	return r._delSingleton(&r.indexes.expires)
+	return r._delTimestamp(&r.expires, &r.indexes.expires)
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
 	return r._delTimestamp(&r.lastModified, &r.indexes.lastModified)

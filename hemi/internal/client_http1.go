@@ -278,6 +278,7 @@ func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
 	s.hStream_.onUse()
 	s.conn = conn
 	s.request.onUse()
+	s.response.versionCode = Version1_1 // explicitly set
 	s.response.onUse()
 }
 func (s *H1Stream) onEnd() { // for zeros
@@ -508,9 +509,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 			}
 		}
 	}
-	if bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) {
-		r.versionCode = Version1_1
-	} else { // HTTP/1.0 is not supported in client side
+	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // HTTP/1.0 is not supported in client side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}

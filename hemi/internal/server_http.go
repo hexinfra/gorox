@@ -556,9 +556,9 @@ func (r *httpRequest_) UnsafeColonPort() []byte {
 		return r.input[r.colonPort.from:r.colonPort.edge]
 	}
 	if r.schemeCode == SchemeHTTPS {
-		return httpBytesColonPort443
+		return bytesColonPort443
 	} else {
-		return httpBytesColonPort80
+		return bytesColonPort80
 	}
 }
 
@@ -573,7 +573,7 @@ func (r *httpRequest_) UnsafeURI() []byte {
 	if r.uri.notEmpty() {
 		return r.input[r.uri.from:r.uri.edge]
 	} else { // use "/"
-		return httpBytesSlash
+		return bytesSlash
 	}
 }
 func (r *httpRequest_) EncodedPath() string {
@@ -587,7 +587,7 @@ func (r *httpRequest_) UnsafeEncodedPath() []byte {
 	if r.encodedPath.notEmpty() {
 		return r.input[r.encodedPath.from:r.encodedPath.edge]
 	} else { // use "/"
-		return httpBytesSlash
+		return bytesSlash
 	}
 }
 func (r *httpRequest_) Path() string {
@@ -601,7 +601,7 @@ func (r *httpRequest_) UnsafePath() []byte {
 	if len(r.path) != 0 {
 		return r.path
 	} else { // use "/"
-		return httpBytesSlash
+		return bytesSlash
 	}
 }
 func (r *httpRequest_) cleanPath() {
@@ -811,7 +811,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
 	for i := from; i < edge; i++ {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
-		if bytes.Equal(value, httpBytesTrailers) {
+		if bytes.Equal(value, bytesTrailers) {
 			r.acceptTrailers = true
 		} else if r.versionCode > Version1_1 {
 			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
@@ -837,7 +837,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 		for i := from; i < edge; i++ {
 			value := r.primes[i].valueAt(r.input)
 			bytesToLower(value)
-			if bytes.Equal(value, httpBytesWebSocket) {
+			if bytes.Equal(value, bytesWebSocket) {
 				r.upgradeSocket = true
 			} else {
 				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
@@ -947,7 +947,7 @@ func (r *httpRequest_) checkExpect(header *pair, index uint8) bool {
 	// Expect = "100-continue"
 	value := header.valueAt(r.input)
 	bytesToLower(value) // the Expect field-value is case-insensitive.
-	if bytes.Equal(value, httpBytes100Continue) {
+	if bytes.Equal(value, bytes100Continue) {
 		if r.versionCode == Version1_0 {
 			// RFC 7231 (section 5.1.1):
 			// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
@@ -1023,8 +1023,8 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	// int-range    = first-pos "-" [ last-pos ]
 	// suffix-range = "-" suffix-length
 	rangeSet := header.valueAt(r.input)
-	nPrefix := len(httpBytesBytesEqual) // bytes=
-	if !bytes.Equal(rangeSet[0:nPrefix], httpBytesBytesEqual) {
+	nPrefix := len(bytesBytesEqual) // bytes=
+	if !bytes.Equal(rangeSet[0:nPrefix], bytesBytesEqual) {
 		r.headResult, r.headReason = StatusBadRequest, "unsupported range unit"
 		return false
 	}
@@ -1482,7 +1482,7 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 	}
 	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
+		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
 		}
 		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
@@ -1497,7 +1497,7 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	}
 	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
+		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
 			continue
 		}
 		if bytes.Equal(header.valueAt(r.input), etag) {
@@ -1575,11 +1575,11 @@ func (r *httpRequest_) checkHead() bool {
 		// involve the selection or modification of a selected representation,
 		// such as CONNECT, OPTIONS, or TRACE.
 		if r.ifMatch != 0 {
-			r.delHeader(httpBytesIfMatch, hashIfMatch)
+			r.delHeader(bytesIfMatch, hashIfMatch)
 			r.ifMatch = 0
 		}
 		if r.ifNoneMatch != 0 {
-			r.delHeader(httpBytesIfNoneMatch, hashIfNoneMatch)
+			r.delHeader(bytesIfNoneMatch, hashIfNoneMatch)
 			r.ifNoneMatch = 0
 		}
 		if r.indexes.ifModifiedSince != 0 {
@@ -1667,16 +1667,16 @@ func (r *httpRequest_) checkHead() bool {
 				typeParams.edge = vType.edge
 			}
 			bytesToLower(contentType)
-			if bytes.Equal(contentType, httpBytesURLEncodedForm) {
+			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
-			} else if bytes.Equal(contentType, httpBytesMultipartForm) {
+			} else if bytes.Equal(contentType, bytesMultipartForm) {
 				paras := make([]nava, 1) // doesn't escape
 				if _, ok := r.parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
 					r.headResult, r.headReason = StatusBadRequest, "invalid multipart/form-data params"
 					return false
 				}
 				para := &paras[0]
-				if bytes.Equal(r.input[para.name.from:para.name.edge], httpBytesBoundary) && para.value.notEmpty() && para.value.size() <= 70 && r.input[para.value.edge-1] != ' ' {
+				if bytes.Equal(r.input[para.name.from:para.name.edge], bytesBoundary) && para.value.notEmpty() && para.value.size() <= 70 && r.input[para.value.edge-1] != ' ' {
 					// boundary := 0*69<bchars> bcharsnospace
 					// bchars := bcharsnospace / " "
 					// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
@@ -1698,7 +1698,7 @@ func (r *httpRequest_) checkHead() bool {
 		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, httpBytesCookie) { // cookies may not be consecutive
+			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
 				continue
 			}
 			if !r.parseCookie(cookie.value) {
@@ -1945,14 +1945,14 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 			}
 			r.pBack = r.pFore // now r.formWindow is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
-			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, httpBytesContentDisposition) {
+			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) {
 				// form-data; name="avatar"; filename="michael.jpg"
 				for r.formWindow[r.pFore] != ';' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
 						return
 					}
 				}
-				if r.pBack == r.pFore || !bytes.Equal(r.formWindow[r.pBack:r.pFore], httpBytesFormData) {
+				if r.pBack == r.pFore || !bytes.Equal(r.formWindow[r.pBack:r.pFore], bytesFormData) {
 					r.stream.markBroken()
 					return
 				}
@@ -1978,7 +1978,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
 					para := &paras[i]
-					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, httpBytesName) { // name="avatar"
+					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
 						if n := para.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
@@ -1994,7 +1994,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 						for p := para.value.from; p < para.value.edge; p++ {
 							part.hash += uint16(r.formWindow[p])
 						}
-					} else if bytes.Equal(paraName, httpBytesFilename) { // filename="michael.jpg"
+					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
 						part.isFile = true
 						if n := para.value.size(); n > 0 && n <= 255 {
 							part.base.from = r.arrayEdge
@@ -2023,7 +2023,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 						return
 					}
 				}
-			} else if bytes.Equal(fieldName, httpBytesContentType) {
+			} else if bytes.Equal(fieldName, bytesContentType) {
 				// image/jpeg
 				for r.formWindow[r.pFore] != '\n' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
@@ -2502,7 +2502,7 @@ func (r *httpResponse_) SendNotFound(content []byte) error { // 404
 	return r.sendError(StatusNotFound, content)
 }
 func (r *httpResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
-	r.AddHeaderBytes(httpBytesAllow, risky.ConstBytes(allow))
+	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
 func (r *httpResponse_) SendInternalServerError(content []byte) error { // 500
@@ -2625,7 +2625,7 @@ func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 
 	// copy remaining headers
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
-		if hash == hashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
+		if hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) {
 			return r.shell.addHeader(name, value)
 		} else {
 			return r.shell.insertHeader(hash, name, value)
@@ -2671,10 +2671,10 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	return r._addTimestamp(&r.expires, &r.indexes.expires, httpBytesExpires, expires)
+	return r._addTimestamp(&r.expires, &r.indexes.expires, bytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
-	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, httpBytesLastModified, lastModified)
+	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {

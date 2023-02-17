@@ -790,20 +790,6 @@ func bytesToUpper(p []byte) {
 		}
 	}
 }
-func bytesTrimLeft(p []byte, b byte) []byte {
-	i := 0
-	for i < len(p) && p[i] == b {
-		i++
-	}
-	return p[i:]
-}
-func bytesTrimRight(p []byte, b byte) []byte {
-	i := len(p) - 1
-	for i >= 0 && p[i] == b {
-		i--
-	}
-	return p[:i+1]
-}
 func bytesHash(p []byte) uint16 {
 	hash := uint16(0)
 	for _, b := range p {

@@ -329,11 +329,11 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
-	resp.AddHeaderBytes(httpBytesContentType, httpBytesHTMLUTF8)
+	resp.AddHeaderBytes(bytesContentType, bytesHTMLUTF8)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
-		resp.AddHeaderBytes(httpBytesAllow, httpBytesGET)
+		resp.AddHeaderBytes(bytesAllow, bytesGET)
 	}
 	resp.finalizeHeaders()
 	if req.methodCode == MethodHEAD || resp.forbidContent { // yes, we follow the method semantic even we are in abnormal
@@ -482,9 +482,9 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					return false
 				}
 			}
-			if scheme := r.input[r.pBack:r.pFore]; bytes.Equal(scheme, httpBytesHTTP) {
+			if scheme := r.input[r.pBack:r.pFore]; bytes.Equal(scheme, bytesHTTP) {
 				r.schemeCode = SchemeHTTP
-			} else if bytes.Equal(scheme, httpBytesHTTPS) {
+			} else if bytes.Equal(scheme, bytesHTTPS) {
 				r.schemeCode = SchemeHTTPS
 			} else {
 				r.headResult, r.headReason = StatusBadRequest, "unknown scheme"
@@ -764,9 +764,9 @@ beforeVersion: // r.pFore is at ' '.
 			}
 		}
 	}
-	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, httpBytesHTTP1_1) {
+	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, bytesHTTP1_1) {
 		r.versionCode = Version1_1
-	} else if bytes.Equal(version, httpBytesHTTP1_0) {
+	} else if bytes.Equal(version, bytesHTTP1_0) {
 		r.versionCode = Version1_0
 	} else {
 		r.headResult = StatusHTTPVersionNotSupported
@@ -870,7 +870,7 @@ func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	} else {
 		size += len(authority)
 	}
-	size += len(r.request.UnsafeURI()) + len(httpBytesCRLF)
+	size += len(r.request.UnsafeURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], http1BytesLocationHTTPS)
 		if authority == "" {
@@ -895,7 +895,7 @@ func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 	size := len(prefix)
 	// TODO: remove colonPort if colonPort is default?
 	colonPort := r.request.UnsafeColonPort()
-	size += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(httpBytesCRLF)
+	size += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
@@ -916,7 +916,7 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 	}
 	req := r.request
 	size := len(prefix)
-	size += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(httpBytesCRLF)
+	size += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], req.UnsafeAuthority())
@@ -937,9 +937,9 @@ func (r *http1Response) SetCookie(setCookie *SetCookie) bool {
 	if setCookie.name == "" || setCookie.invalid {
 		return false
 	}
-	size := len(httpBytesSetCookie) + len(httpBytesColonSpace) + setCookie.size() + len(httpBytesCRLF) // set-cookie: cookie\r\n
+	size := len(bytesSetCookie) + len(bytesColonSpace) + setCookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
 	if from, _, ok := r.growHeader(size); ok {
-		from += copy(r.fields[from:], httpBytesSetCookie)
+		from += copy(r.fields[from:], bytesSetCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
@@ -983,7 +983,7 @@ func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.control()
 	r.vector[1] = r.addedHeaders()
-	r.vector[2] = httpBytesCRLF
+	r.vector[2] = bytesCRLF
 	// 1xx has no content.
 	if r.writeVector1(&r.vector) != nil {
 		return false
@@ -1011,7 +1011,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		if !r.isUnsized() { // content-length: >= 0
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
-			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
+			r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else {

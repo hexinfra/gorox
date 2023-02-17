@@ -257,7 +257,7 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
-		uri = httpBytesAsterisk
+		uri = bytesAsterisk
 	} else {
 		uri = req.UnsafeURI()
 	}
@@ -274,7 +274,7 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 	if custom := len(hostname) != 0 || len(colonPort) != 0; custom || req.IsAbsoluteForm() {
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
-			if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
+			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority
@@ -333,16 +333,16 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	return r.shell.addHeader(name, value)
 }
 func (r *hRequest_) _addHost(host []byte) (ok bool) {
-	return r._addSingleton(&r.indexes.host, httpBytesHost, host)
+	return r._addSingleton(&r.indexes.host, bytesHost, host)
 }
 func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
-	return r._addTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, httpBytesIfModifiedSince, since)
+	return r._addTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
 func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
-	return r._addSingleton(&r.indexes.ifRange, httpBytesIfRange, ifRange)
+	return r._addSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, httpBytesIfUnmodifiedSince, since)
+	return r._addTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
 
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {

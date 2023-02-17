@@ -254,17 +254,17 @@ func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
-		if bytes.HasPrefix(value, httpBytesGzip) {
+		if bytes.HasPrefix(value, bytesGzip) {
 			r.acceptGzip = true
 			coding = httpCodingGzip
-		} else if bytes.HasPrefix(value, httpBytesBrotli) {
+		} else if bytes.HasPrefix(value, bytesBrotli) {
 			r.acceptBrotli = true
 			coding = httpCodingBrotli
-		} else if bytes.HasPrefix(value, httpBytesDeflate) {
+		} else if bytes.HasPrefix(value, bytesDeflate) {
 			coding = httpCodingDeflate
-		} else if bytes.HasPrefix(value, httpBytesCompress) {
+		} else if bytes.HasPrefix(value, bytesCompress) {
 			coding = httpCodingCompress
-		} else if bytes.Equal(value, httpBytesIdentity) {
+		} else if bytes.Equal(value, bytesIdentity) {
 			coding = httpCodingIdentity
 		} else {
 			// Empty or unknown content-coding, ignored
@@ -290,9 +290,9 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool {
 	for i := from; i < edge; i++ {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value) // connection options are case-insensitive.
-		if bytes.Equal(value, httpBytesKeepAlive) {
+		if bytes.Equal(value, bytesKeepAlive) {
 			r.keepAlive = 1 // to be compatible with HTTP/1.0
-		} else if bytes.Equal(value, httpBytesClose) {
+		} else if bytes.Equal(value, bytesClose) {
 			// Furthermore, the header field-name "Close" has been registered as
 			// "reserved", since using that name as an HTTP header field might
 			// conflict with the "close" connection option of the Connection header
@@ -313,13 +313,13 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
-		if bytes.Equal(value, httpBytesGzip) {
+		if bytes.Equal(value, bytesGzip) {
 			coding = httpCodingGzip
-		} else if bytes.Equal(value, httpBytesBrotli) {
+		} else if bytes.Equal(value, bytesBrotli) {
 			coding = httpCodingBrotli
-		} else if bytes.Equal(value, httpBytesDeflate) {
+		} else if bytes.Equal(value, bytesDeflate) {
 			coding = httpCodingDeflate
-		} else if bytes.Equal(value, httpBytesCompress) {
+		} else if bytes.Equal(value, bytesCompress) {
 			coding = httpCodingCompress
 		} else {
 			// RFC 7231 (section 3.1.2.2):
@@ -346,7 +346,7 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool {
 	for i := from; i < edge; i++ {
 		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
-		if bytes.Equal(value, httpBytesChunked) {
+		if bytes.Equal(value, bytesChunked) {
 			r.transferChunked = true
 		} else {
 			// RFC 7230 (section 3.3.1):
@@ -1062,22 +1062,22 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 
 func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name []byte, hash uint16)) {
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
-	delField(httpBytesProxyConnection, hashProxyConnection)
-	delField(httpBytesKeepAlive, hashKeepAlive)
+	delField(bytesProxyConnection, hashProxyConnection)
+	delField(bytesKeepAlive, hashKeepAlive)
 	if !r.asResponse { // as request
-		delField(httpBytesTE, hashTE)
+		delField(bytesTE, hashTE)
 	}
-	delField(httpBytesTransferEncoding, hashTransferEncoding)
-	delField(httpBytesUpgrade, hashUpgrade)
+	delField(bytesTransferEncoding, hashTransferEncoding)
+	delField(bytesUpgrade, hashUpgrade)
 	for i := r.options.from; i < r.options.edge; i++ {
 		prime := &r.primes[i]
 		// Skip fields that are not "connection"
-		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, httpBytesConnection) {
+		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
 		}
 		optionName := prime.valueAt(r.input)
 		optionHash := bytesHash(optionName)
-		if optionHash == hashConnection && bytes.Equal(optionName, httpBytesConnection) {
+		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
 			continue // skip "connection: connection"
 		}
 		for j := fields.from; j < fields.edge; j++ {
@@ -1356,10 +1356,10 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 }
 
 func (r *httpOut_) _addContentType(contentType []byte) (ok bool) {
-	return r._addSingleton(&r.oContentType, httpBytesContentType, contentType)
+	return r._addSingleton(&r.oContentType, bytesContentType, contentType)
 }
 func (r *httpOut_) _addDate(date []byte) (ok bool) {
-	return r._addSingleton(&r.oDate, httpBytesDate, date)
+	return r._addSingleton(&r.oDate, bytesDate, date)
 }
 
 func (r *httpOut_) _delContentType() (deleted bool) {
@@ -1636,10 +1636,10 @@ var ( // version strings and byteses
 	httpStringHTTP1_1  = "HTTP/1.1"
 	httpStringHTTP2    = "HTTP/2"
 	httpStringHTTP3    = "HTTP/3"
-	httpBytesHTTP1_0   = []byte(httpStringHTTP1_0)
-	httpBytesHTTP1_1   = []byte(httpStringHTTP1_1)
-	httpBytesHTTP2     = []byte(httpStringHTTP2)
-	httpBytesHTTP3     = []byte(httpStringHTTP3)
+	bytesHTTP1_0       = []byte(httpStringHTTP1_0)
+	bytesHTTP1_1       = []byte(httpStringHTTP1_1)
+	bytesHTTP2         = []byte(httpStringHTTP2)
+	bytesHTTP3         = []byte(httpStringHTTP3)
 	httpVersionStrings = [...]string{
 		Version1_0: httpStringHTTP1_0,
 		Version1_1: httpStringHTTP1_1,
@@ -1647,10 +1647,10 @@ var ( // version strings and byteses
 		Version3:   httpStringHTTP3,
 	}
 	httpVersionByteses = [...][]byte{
-		Version1_0: httpBytesHTTP1_0,
-		Version1_1: httpBytesHTTP1_1,
-		Version2:   httpBytesHTTP2,
-		Version3:   httpBytesHTTP3,
+		Version1_0: bytesHTTP1_0,
+		Version1_1: bytesHTTP1_1,
+		Version2:   bytesHTTP2,
+		Version3:   bytesHTTP3,
 	}
 )
 
@@ -1662,15 +1662,15 @@ const ( // scheme codes. keep sync with ../hemi.go
 var ( // scheme strings and byteses
 	httpStringHTTP    = "http"
 	httpStringHTTPS   = "https"
-	httpBytesHTTP     = []byte(httpStringHTTP)
-	httpBytesHTTPS    = []byte(httpStringHTTPS)
+	bytesHTTP         = []byte(httpStringHTTP)
+	bytesHTTPS        = []byte(httpStringHTTPS)
 	httpSchemeStrings = [...]string{
 		SchemeHTTP:  httpStringHTTP,
 		SchemeHTTPS: httpStringHTTPS,
 	}
 	httpSchemeByteses = [...][]byte{
-		SchemeHTTP:  httpBytesHTTP,
-		SchemeHTTPS: httpBytesHTTPS,
+		SchemeHTTP:  bytesHTTP,
+		SchemeHTTPS: bytesHTTPS,
 	}
 )
 
@@ -1863,62 +1863,62 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 
 var ( // byteses of http fields.
 	// Pseudo headers
-	httpBytesAuthority = []byte(":authority")
-	httpBytesMethod    = []byte(":method")
-	httpBytesPath      = []byte(":path")
-	httpBytesProtocol  = []byte(":protocol")
-	httpBytesScheme    = []byte(":scheme")
-	httpBytesStatus    = []byte(":status")
+	bytesAuthority = []byte(":authority")
+	bytesMethod    = []byte(":method")
+	bytesPath      = []byte(":path")
+	bytesProtocol  = []byte(":protocol")
+	bytesScheme    = []byte(":scheme")
+	bytesStatus    = []byte(":status")
 	// General fields
-	httpBytesAcceptEncoding     = []byte("accept-encoding")
-	httpBytesCacheControl       = []byte("cache-control")
-	httpBytesConnection         = []byte("connection")
-	httpBytesContentDisposition = []byte("content-disposition")
-	httpBytesContentEncoding    = []byte("content-encoding")
-	httpBytesContentLanguage    = []byte("content-language")
-	httpBytesContentLength      = []byte("content-length")
-	httpBytesContentLocation    = []byte("content-location")
-	httpBytesContentRange       = []byte("content-range")
-	httpBytesContentType        = []byte("content-type")
-	httpBytesDate               = []byte("date")
-	httpBytesKeepAlive          = []byte("keep-alive")
-	httpBytesPragma             = []byte("pragma")
-	httpBytesTrailer            = []byte("trailer")
-	httpBytesTransferEncoding   = []byte("transfer-encoding")
-	httpBytesUpgrade            = []byte("upgrade")
-	httpBytesVia                = []byte("via")
+	bytesAcceptEncoding     = []byte("accept-encoding")
+	bytesCacheControl       = []byte("cache-control")
+	bytesConnection         = []byte("connection")
+	bytesContentDisposition = []byte("content-disposition")
+	bytesContentEncoding    = []byte("content-encoding")
+	bytesContentLanguage    = []byte("content-language")
+	bytesContentLength      = []byte("content-length")
+	bytesContentLocation    = []byte("content-location")
+	bytesContentRange       = []byte("content-range")
+	bytesContentType        = []byte("content-type")
+	bytesDate               = []byte("date")
+	bytesKeepAlive          = []byte("keep-alive")
+	bytesPragma             = []byte("pragma")
+	bytesTrailer            = []byte("trailer")
+	bytesTransferEncoding   = []byte("transfer-encoding")
+	bytesUpgrade            = []byte("upgrade")
+	bytesVia                = []byte("via")
 	// Request fields
-	httpBytesAccept             = []byte("accept")
-	httpBytesAcceptCharset      = []byte("accept-charset")
-	httpBytesAcceptLanguage     = []byte("accept-language")
-	httpBytesAuthorization      = []byte("authorization")
-	httpBytesCookie             = []byte("cookie")
-	httpBytesExpect             = []byte("expect")
-	httpBytesForwarded          = []byte("forwarded")
-	httpBytesHost               = []byte("host")
-	httpBytesIfMatch            = []byte("if-match")
-	httpBytesIfModifiedSince    = []byte("if-modified-since")
-	httpBytesIfNoneMatch        = []byte("if-none-match")
-	httpBytesIfRange            = []byte("if-range")
-	httpBytesIfUnmodifiedSince  = []byte("if-unmodified-since")
-	httpBytesProxyAuthorization = []byte("proxy-authorization")
-	httpBytesProxyConnection    = []byte("proxy-connection")
-	httpBytesRange              = []byte("range")
-	httpBytesTE                 = []byte("te")
-	httpBytesUserAgent          = []byte("user-agent")
+	bytesAccept             = []byte("accept")
+	bytesAcceptCharset      = []byte("accept-charset")
+	bytesAcceptLanguage     = []byte("accept-language")
+	bytesAuthorization      = []byte("authorization")
+	bytesCookie             = []byte("cookie")
+	bytesExpect             = []byte("expect")
+	bytesForwarded          = []byte("forwarded")
+	bytesHost               = []byte("host")
+	bytesIfMatch            = []byte("if-match")
+	bytesIfModifiedSince    = []byte("if-modified-since")
+	bytesIfNoneMatch        = []byte("if-none-match")
+	bytesIfRange            = []byte("if-range")
+	bytesIfUnmodifiedSince  = []byte("if-unmodified-since")
+	bytesProxyAuthorization = []byte("proxy-authorization")
+	bytesProxyConnection    = []byte("proxy-connection")
+	bytesRange              = []byte("range")
+	bytesTE                 = []byte("te")
+	bytesUserAgent          = []byte("user-agent")
 	// Response fields
-	httpBytesAcceptRanges      = []byte("accept-ranges")
-	httpBytesAge               = []byte("age")
-	httpBytesAllow             = []byte("allow")
-	httpBytesETag              = []byte("etag")
-	httpBytesExpires           = []byte("expires")
-	httpBytesLastModified      = []byte("last-modified")
-	httpBytesLocation          = []byte("location")
-	httpBytesProxyAuthenticate = []byte("proxy-authenticate")
-	httpBytesServer            = []byte("server")
-	httpBytesSetCookie         = []byte("set-cookie")
-	httpBytesVary              = []byte("vary")
-	httpBytesWWWAuthenticate   = []byte("www-authenticate")
+	bytesAcceptRanges      = []byte("accept-ranges")
+	bytesAge               = []byte("age")
+	bytesAllow             = []byte("allow")
+	bytesETag              = []byte("etag")
+	bytesExpires           = []byte("expires")
+	bytesLastModified      = []byte("last-modified")
+	bytesLocation          = []byte("location")
+	bytesProxyAuthenticate = []byte("proxy-authenticate")
+	bytesServer            = []byte("server")
+	bytesSetCookie         = []byte("set-cookie")
+	bytesVary              = []byte("vary")
+	bytesWWWAuthenticate   = []byte("www-authenticate")
 )
 
 var ( // misc http strings & byteses.
@@ -1928,36 +1928,36 @@ var ( // misc http strings & byteses.
 	httpStringSlash        = "/"
 	httpStringAsterisk     = "*"
 	// Byteses
-	httpBytesColonPort80    = []byte(httpStringColonPort80)
-	httpBytesColonPort443   = []byte(httpStringColonPort443)
-	httpBytesSlash          = []byte(httpStringSlash)
-	httpBytesAsterisk       = []byte(httpStringAsterisk)
-	httpBytesGET            = []byte("GET")
-	httpBytes100Continue    = []byte("100-continue")
-	httpBytesBoundary       = []byte("boundary")
-	httpBytesBytes          = []byte("bytes")
-	httpBytesBytesEqual     = []byte("bytes=")
-	httpBytesChunked        = []byte("chunked")
-	httpBytesClose          = []byte("close")
-	httpBytesColonSpace     = []byte(": ")
-	httpBytesCompress       = []byte("compress")
-	httpBytesCRLF           = []byte("\r\n")
-	httpBytesDeflate        = []byte("deflate")
-	httpBytesFilename       = []byte("filename")
-	httpBytesFormData       = []byte("form-data")
-	httpBytesGzip           = []byte("gzip")
-	httpBytesBrotli         = []byte("br")
-	httpBytesIdentity       = []byte("identity")
-	httpBytesURLEncodedForm = []byte("application/x-www-form-urlencoded")
-	httpBytesMultipartForm  = []byte("multipart/form-data")
-	httpBytesName           = []byte("name")
-	httpBytesNone           = []byte("none")
-	httpBytesHTMLUTF8       = []byte("text/html; charset=utf-8")
-	httpBytesTrailers       = []byte("trailers")
-	httpBytesWebSocket      = []byte("websocket")
+	bytesColonPort80    = []byte(httpStringColonPort80)
+	bytesColonPort443   = []byte(httpStringColonPort443)
+	bytesSlash          = []byte(httpStringSlash)
+	bytesAsterisk       = []byte(httpStringAsterisk)
+	bytesGET            = []byte("GET")
+	bytes100Continue    = []byte("100-continue")
+	bytesBoundary       = []byte("boundary")
+	bytesBytes          = []byte("bytes")
+	bytesBytesEqual     = []byte("bytes=")
+	bytesChunked        = []byte("chunked")
+	bytesClose          = []byte("close")
+	bytesColonSpace     = []byte(": ")
+	bytesCompress       = []byte("compress")
+	bytesCRLF           = []byte("\r\n")
+	bytesDeflate        = []byte("deflate")
+	bytesFilename       = []byte("filename")
+	bytesFormData       = []byte("form-data")
+	bytesGzip           = []byte("gzip")
+	bytesBrotli         = []byte("br")
+	bytesIdentity       = []byte("identity")
+	bytesURLEncodedForm = []byte("application/x-www-form-urlencoded")
+	bytesMultipartForm  = []byte("multipart/form-data")
+	bytesName           = []byte("name")
+	bytesNone           = []byte("none")
+	bytesHTMLUTF8       = []byte("text/html; charset=utf-8")
+	bytesTrailers       = []byte("trailers")
+	bytesWebSocket      = []byte("websocket")
 	// HTTP/2 and HTTP/3 byteses, TODO
-	httpBytesFixedRequestHeaders  = []byte("user-agent gorox")
-	httpBytesFixedResponseHeaders = []byte("server gorox")
+	bytesFixedRequestHeaders  = []byte("user-agent gorox")
+	bytesFixedResponseHeaders = []byte("server gorox")
 )
 
 var httpTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"

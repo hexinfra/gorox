@@ -356,7 +356,7 @@ type H1Request struct { // outgoing. needs building
 }
 
 func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
-	size := len(method) + 1 + len(uri) + 1 + len(httpBytesHTTP1_1) + len(httpBytesCRLF)
+	size := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
 	if from, edge, ok := r._growFields(size); ok {
 		from += copy(r.fields[from:], method)
 		r.fields[from] = ' '
@@ -364,7 +364,7 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 		from += copy(r.fields[from:], uri)
 		r.fields[from] = ' '
 		from++
-		from += copy(r.fields[from:], httpBytesHTTP1_1) // we always use HTTP/1.1
+		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
 		r.fields[from] = '\r'
 		r.fields[from+1] = '\n'
 		if !hasContent {
@@ -379,9 +379,9 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: if colonPort is default (:80 for http, :443 for https), omit it
-	size := len(httpBytesHost) + len(httpBytesColonSpace) + len(hostname) + len(colonPort) + len(httpBytesCRLF) // host: xxx\r\n
+	size := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(size); ok {
-		from += copy(r.fields[from:], httpBytesHost)
+		from += copy(r.fields[from:], bytesHost)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
@@ -407,13 +407,13 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 	return false
 }
 func (r *H1Request) passCookies(req Request) bool { // used by proxies
-	size := len(httpBytesCookie) + len(httpBytesColonSpace) // `cookie: `
+	size := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(hash uint16, name []byte, value []byte) bool {
 		size += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
 	if from, _, ok := r.growHeader(size); ok {
-		from += copy(r.fields[from:], httpBytesCookie)
+		from += copy(r.fields[from:], bytesCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
@@ -457,7 +457,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 		} else { // content-length: 12345
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
-			r._addFixedHeader1(httpBytesContentLength, sizeBuffer[from:edge])
+			r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 		}
 		if r.oContentType == 0 { // content-type: text/html; charset=utf-8
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
@@ -508,7 +508,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 			}
 		}
 	}
-	if bytes.Equal(r.input[r.pBack:r.pFore], httpBytesHTTP1_1) {
+	if bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) {
 		r.versionCode = Version1_1
 	} else { // HTTP/1.0 is not supported in client side
 		r.headResult = StatusHTTPVersionNotSupported

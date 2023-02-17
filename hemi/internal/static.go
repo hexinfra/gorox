@@ -186,8 +186,8 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
 		resp.SetLastModified(modTime)
-		resp.AddHeaderBytes(httpBytesETag, etag)
-		//resp.AddHeader(httpBytesAcceptRange, httpBytesBytes)
+		resp.AddHeaderBytes(bytesETag, etag)
+		//resp.AddHeader(bytesAcceptRange, bytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)
 		if pDot := strings.LastIndex(filePath, "."); pDot >= 0 {
@@ -196,7 +196,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 				contentType = mimeType
 			}
 		}
-		resp.AddHeaderBytes(httpBytesContentType, risky.ConstBytes(contentType))
+		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 		if entry.isSmall() {
 			if IsDebug(2) {
 				Debugln("static send blob")
@@ -211,7 +211,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {
-			resp.AddHeaderBytes(httpBytesETag, etag)
+			resp.AddHeaderBytes(bytesETag, etag)
 		}
 		resp.SendBytes(nil)
 	}

@@ -528,7 +528,7 @@ func (r *httpOut_) header1(name []byte) (value []byte, ok bool) {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
-				return header[p+len(httpBytesColonSpace) : len(header)-len(httpBytesCRLF)], true
+				return header[p+len(bytesColonSpace) : len(header)-len(bytesCRLF)], true
 			}
 			from = edge
 		}
@@ -553,7 +553,7 @@ func (r *httpOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
-	size := len(name) + len(httpBytesColonSpace) + len(value) + len(httpBytesCRLF) // name: value\r\n
+	size := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
@@ -700,7 +700,7 @@ func (r *httpOut_) trailer1(name []byte) (value []byte, ok bool) {
 			edge := r.edges[i]
 			trailer := r.fields[from:edge]
 			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
-				return trailer[p+len(httpBytesColonSpace) : len(trailer)-len(httpBytesCRLF)], true
+				return trailer[p+len(bytesColonSpace) : len(trailer)-len(bytesCRLF)], true
 			}
 			from = edge
 		}
@@ -711,7 +711,7 @@ func (r *httpOut_) addTrailer1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
-	size := len(name) + len(httpBytesColonSpace) + len(value) + len(httpBytesCRLF) // name: value\r\n
+	size := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
 	if from, _, ok := r.growTrailer(size); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
@@ -747,7 +747,7 @@ func (r *httpOut_) finalizeUnsized1() error {
 		r.vector = r.fixedVector[0:3]
 		r.vector[0] = http1BytesZeroCRLF // 0\r\n
 		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
-		r.vector[2] = httpBytesCRLF      // \r\n
+		r.vector[2] = bytesCRLF          // \r\n
 	}
 	return r.writeVector1(&r.vector)
 }

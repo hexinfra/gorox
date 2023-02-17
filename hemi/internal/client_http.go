@@ -307,17 +307,17 @@ var ( // perfect hash table for request crucial headers
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {httpHashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
-		1:  {httpHashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
-		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
-		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
-		4:  {httpHashTransferEncoding, 103, 120, nil, nil}, // forbidden
-		5:  {httpHashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
-		6:  {httpHashCookie, 39, 45, nil, nil},        // forbidden
-		7:  {httpHashContentLength, 11, 25, nil, nil}, // forbidden
-		8:  {httpHashContentType, 26, 38, (*hRequest_)._addContentType, (*hRequest_)._delContentType},
-		9:  {httpHashConnection, 0, 10, nil, nil}, // forbidden
-		10: {httpHashUpgrade, 121, 128, nil, nil}, // forbidden
+		0:  {hashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
+		1:  {hashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
+		2:  {hashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
+		3:  {hashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
+		4:  {hashTransferEncoding, 103, 120, nil, nil}, // forbidden
+		5:  {hashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
+		6:  {hashCookie, 39, 45, nil, nil},        // forbidden
+		7:  {hashContentLength, 11, 25, nil, nil}, // forbidden
+		8:  {hashContentType, 26, 38, (*hRequest_)._addContentType, (*hRequest_)._delContentType},
+		9:  {hashConnection, 0, 10, nil, nil}, // forbidden
+		10: {hashUpgrade, 121, 128, nil, nil}, // forbidden
 	}
 	hRequestCrucialHeaderFind = func(hash uint16) int { return (1685160 / int(hash)) % 11 }
 )
@@ -486,20 +486,20 @@ var ( // perfect hash table for response multiple headers
 		must  bool // true if 1#, false if #
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {httpHashVary, 148, 152, false, nil},
-		1:  {httpHashConnection, 50, 60, false, (*hResponse_).checkConnection},
-		2:  {httpHashAllow, 30, 35, false, nil},
-		3:  {httpHashTrailer, 114, 121, false, nil},
-		4:  {httpHashVia, 153, 156, false, nil},
-		5:  {httpHashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
-		6:  {httpHashAcceptRanges, 16, 29, false, nil},
-		7:  {httpHashProxyAuthenticate, 95, 113, false, nil},
-		8:  {httpHashTransferEncoding, 122, 139, false, (*hResponse_).checkTransferEncoding},
-		9:  {httpHashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
-		10: {httpHashContentLanguage, 78, 94, false, nil},
-		11: {httpHashWWWAuthenticate, 157, 173, false, nil},
-		12: {httpHashAcceptEncoding, 0, 15, false, nil},
-		13: {httpHashUpgrade, 140, 147, false, (*hResponse_).checkUpgrade},
+		0:  {hashVary, 148, 152, false, nil},
+		1:  {hashConnection, 50, 60, false, (*hResponse_).checkConnection},
+		2:  {hashAllow, 30, 35, false, nil},
+		3:  {hashTrailer, 114, 121, false, nil},
+		4:  {hashVia, 153, 156, false, nil},
+		5:  {hashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
+		6:  {hashAcceptRanges, 16, 29, false, nil},
+		7:  {hashProxyAuthenticate, 95, 113, false, nil},
+		8:  {hashTransferEncoding, 122, 139, false, (*hResponse_).checkTransferEncoding},
+		9:  {hashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
+		10: {hashContentLanguage, 78, 94, false, nil},
+		11: {hashWWWAuthenticate, 157, 173, false, nil},
+		12: {hashAcceptEncoding, 0, 15, false, nil},
+		13: {hashUpgrade, 140, 147, false, (*hResponse_).checkUpgrade},
 	}
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (4114134 / int(hash)) % 14 }
 )
@@ -535,16 +535,16 @@ var ( // perfect hash table for response critical headers
 		edge  uint8
 		check func(*hResponse_, *pair, uint8) bool
 	}{
-		0: {httpHashLocation, 74, 82, (*hResponse_).checkLocation},
-		1: {httpHashContentRange, 15, 28, (*hResponse_).checkContentRange},
-		2: {httpHashLastModified, 60, 73, (*hResponse_).checkLastModified},
-		3: {httpHashServer, 83, 89, (*hResponse_).checkServer},
-		4: {httpHashContentType, 29, 41, (*hResponse_).checkContentType},
-		5: {httpHashETag, 47, 51, (*hResponse_).checkETag},
-		6: {httpHashDate, 42, 46, (*hResponse_).checkDate},
-		7: {httpHashContentLength, 0, 14, (*hResponse_).checkContentLength},
-		8: {httpHashSetCookie, 90, 100, (*hResponse_).checkSetCookie},
-		9: {httpHashExpires, 52, 59, (*hResponse_).checkExpires},
+		0: {hashLocation, 74, 82, (*hResponse_).checkLocation},
+		1: {hashContentRange, 15, 28, (*hResponse_).checkContentRange},
+		2: {hashLastModified, 60, 73, (*hResponse_).checkLastModified},
+		3: {hashServer, 83, 89, (*hResponse_).checkServer},
+		4: {hashContentType, 29, 41, (*hResponse_).checkContentType},
+		5: {hashETag, 47, 51, (*hResponse_).checkETag},
+		6: {hashDate, 42, 46, (*hResponse_).checkDate},
+		7: {hashContentLength, 0, 14, (*hResponse_).checkContentLength},
+		8: {hashSetCookie, 90, 100, (*hResponse_).checkSetCookie},
+		9: {hashExpires, 52, 59, (*hResponse_).checkExpires},
 	}
 	hResponseCriticalHeaderFind = func(hash uint16) int { return (68805 / int(hash)) % 10 }
 )

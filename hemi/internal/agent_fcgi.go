@@ -893,9 +893,9 @@ var ( // perfect hash table for response multiple headers
 		edge  uint8
 		check func(*fcgiResponse, int, int) bool
 	}{
-		0: {httpHashTransferEncoding, 11, 28, (*fcgiResponse).checkTransferEncoding},
-		1: {httpHashConnection, 0, 10, (*fcgiResponse).checkConnection},
-		2: {httpHashUpgrade, 29, 36, (*fcgiResponse).checkUpgrade},
+		0: {hashTransferEncoding, 11, 28, (*fcgiResponse).checkTransferEncoding},
+		1: {hashConnection, 0, 10, (*fcgiResponse).checkConnection},
+		2: {hashUpgrade, 29, 36, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
@@ -925,9 +925,9 @@ var ( // perfect hash table for response critical headers
 		check func(*fcgiResponse, *pair, int) bool
 	}{
 		0: {fcgiHashStatus, 37, 43, (*fcgiResponse).checkStatus},
-		1: {httpHashContentLength, 0, 14, (*fcgiResponse).checkContentLength},
-		2: {httpHashContentType, 15, 27, (*fcgiResponse).checkContentType},
-		3: {httpHashLocation, 28, 36, (*fcgiResponse).checkLocation},
+		1: {hashContentLength, 0, 14, (*fcgiResponse).checkContentLength},
+		2: {hashContentType, 15, 27, (*fcgiResponse).checkContentType},
+		3: {hashLocation, 28, 36, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )

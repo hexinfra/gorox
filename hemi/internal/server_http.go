@@ -767,23 +767,23 @@ var ( // perfect hash table for request multiple headers
 		must  bool // true if 1#, false if #
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {httpHashAccept, 0, 6, false, nil},                                                // Accept = #( media-range [ accept-params ] )
-		1:  {httpHashForwarded, 113, 122, true, nil},                                          // Forwarded = 1#forwarded-element
-		2:  {httpHashUpgrade, 182, 189, true, (*httpRequest_).checkUpgrade},                   // Upgrade = 1#protocol
-		3:  {httpHashCacheControl, 54, 67, true, (*httpRequest_).checkCacheControl},           // Cache-Control = 1#cache-directive
-		4:  {httpHashAcceptLanguage, 38, 53, true, nil},                                       // Accept-Language = 1#( language-range [ weight ] )
-		5:  {httpHashTE, 153, 155, false, (*httpRequest_).checkTE},                            // TE = #t-codings
-		6:  {httpHashContentEncoding, 79, 95, true, (*httpRequest_).checkContentEncoding},     // Content-Encoding = 1#content-coding
-		7:  {httpHashAcceptEncoding, 22, 37, false, (*httpRequest_).checkAcceptEncoding},      // Accept-Encoding = #( codings [ weight ] )
-		8:  {httpHashVia, 190, 193, true, nil},                                                // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
-		9:  {httpHashContentLanguage, 96, 112, true, nil},                                     // Content-Language = 1#language-tag
-		10: {httpHashConnection, 68, 78, true, (*httpRequest_).checkConnection},               // Connection = 1#connection-option
-		11: {httpHashPragma, 146, 152, true, nil},                                             // Pragma = 1#pragma-directive
-		12: {httpHashTransferEncoding, 164, 181, true, (*httpRequest_).checkTransferEncoding}, // Transfer-Encoding = 1#transfer-coding
-		13: {httpHashTrailer, 156, 163, true, nil},                                            // Trailer = 1#field-name
-		14: {httpHashAcceptCharset, 7, 21, true, nil},                                         // Accept-Charset = 1#( ( charset / "*" ) [ weight ] )
-		15: {httpHashIfMatch, 123, 131, false, (*httpRequest_).checkIfMatch},                  // If-Match = "*" / #entity-tag
-		16: {httpHashIfNoneMatch, 132, 145, false, (*httpRequest_).checkIfNoneMatch},          // If-None-Match = "*" / #entity-tag
+		0:  {hashAccept, 0, 6, false, nil},                                                // Accept = #( media-range [ accept-params ] )
+		1:  {hashForwarded, 113, 122, true, nil},                                          // Forwarded = 1#forwarded-element
+		2:  {hashUpgrade, 182, 189, true, (*httpRequest_).checkUpgrade},                   // Upgrade = 1#protocol
+		3:  {hashCacheControl, 54, 67, true, (*httpRequest_).checkCacheControl},           // Cache-Control = 1#cache-directive
+		4:  {hashAcceptLanguage, 38, 53, true, nil},                                       // Accept-Language = 1#( language-range [ weight ] )
+		5:  {hashTE, 153, 155, false, (*httpRequest_).checkTE},                            // TE = #t-codings
+		6:  {hashContentEncoding, 79, 95, true, (*httpRequest_).checkContentEncoding},     // Content-Encoding = 1#content-coding
+		7:  {hashAcceptEncoding, 22, 37, false, (*httpRequest_).checkAcceptEncoding},      // Accept-Encoding = #( codings [ weight ] )
+		8:  {hashVia, 190, 193, true, nil},                                                // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
+		9:  {hashContentLanguage, 96, 112, true, nil},                                     // Content-Language = 1#language-tag
+		10: {hashConnection, 68, 78, true, (*httpRequest_).checkConnection},               // Connection = 1#connection-option
+		11: {hashPragma, 146, 152, true, nil},                                             // Pragma = 1#pragma-directive
+		12: {hashTransferEncoding, 164, 181, true, (*httpRequest_).checkTransferEncoding}, // Transfer-Encoding = 1#transfer-coding
+		13: {hashTrailer, 156, 163, true, nil},                                            // Trailer = 1#field-name
+		14: {hashAcceptCharset, 7, 21, true, nil},                                         // Accept-Charset = 1#( ( charset / "*" ) [ weight ] )
+		15: {hashIfMatch, 123, 131, false, (*httpRequest_).checkIfMatch},                  // If-Match = "*" / #entity-tag
+		16: {hashIfNoneMatch, 132, 145, false, (*httpRequest_).checkIfNoneMatch},          // If-None-Match = "*" / #entity-tag
 	}
 	httpRequestMultipleHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
 )
@@ -903,16 +903,16 @@ var ( // perfect hash table for request critical headers
 		edge  uint8
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0: {httpHashContentType, 15, 27, (*httpRequest_).checkContentType},
-		1: {httpHashRange, 94, 99, (*httpRequest_).checkRange},
-		2: {httpHashIfModifiedSince, 47, 64, (*httpRequest_).checkIfModifiedSince},
-		3: {httpHashIfUnmodifiedSince, 74, 93, (*httpRequest_).checkIfUnmodifiedSince},
-		4: {httpHashContentLength, 0, 14, (*httpRequest_).checkContentLength},
-		5: {httpHashIfRange, 65, 73, (*httpRequest_).checkIfRange},
-		6: {httpHashHost, 42, 46, (*httpRequest_).checkHost},
-		7: {httpHashUserAgent, 100, 110, (*httpRequest_).checkUserAgent},
-		8: {httpHashCookie, 28, 34, (*httpRequest_).checkCookie},
-		9: {httpHashExpect, 35, 41, (*httpRequest_).checkExpect},
+		0: {hashContentType, 15, 27, (*httpRequest_).checkContentType},
+		1: {hashRange, 94, 99, (*httpRequest_).checkRange},
+		2: {hashIfModifiedSince, 47, 64, (*httpRequest_).checkIfModifiedSince},
+		3: {hashIfUnmodifiedSince, 74, 93, (*httpRequest_).checkIfUnmodifiedSince},
+		4: {hashContentLength, 0, 14, (*httpRequest_).checkContentLength},
+		5: {hashIfRange, 65, 73, (*httpRequest_).checkIfRange},
+		6: {hashHost, 42, 46, (*httpRequest_).checkHost},
+		7: {hashUserAgent, 100, 110, (*httpRequest_).checkUserAgent},
+		8: {hashCookie, 28, 34, (*httpRequest_).checkCookie},
+		9: {hashExpect, 35, 41, (*httpRequest_).checkExpect},
 	}
 	httpRequestCriticalHeaderFind = func(hash uint16) int { return (252525 / int(hash)) % 10 }
 )
@@ -1482,7 +1482,7 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 	}
 	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != httpHashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
+		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, httpBytesIfMatch) {
 			continue
 		}
 		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
@@ -1497,7 +1497,7 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	}
 	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != httpHashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
+		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, httpBytesIfNoneMatch) {
 			continue
 		}
 		if bytes.Equal(header.valueAt(r.input), etag) {
@@ -1575,11 +1575,11 @@ func (r *httpRequest_) checkHead() bool {
 		// involve the selection or modification of a selected representation,
 		// such as CONNECT, OPTIONS, or TRACE.
 		if r.ifMatch != 0 {
-			r.delHeader(httpBytesIfMatch, httpHashIfMatch)
+			r.delHeader(httpBytesIfMatch, hashIfMatch)
 			r.ifMatch = 0
 		}
 		if r.ifNoneMatch != 0 {
-			r.delHeader(httpBytesIfNoneMatch, httpHashIfNoneMatch)
+			r.delHeader(httpBytesIfNoneMatch, hashIfNoneMatch)
 			r.ifNoneMatch = 0
 		}
 		if r.indexes.ifModifiedSince != 0 {
@@ -1698,7 +1698,7 @@ func (r *httpRequest_) checkHead() bool {
 		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
-			if cookie.hash != httpHashCookie || !cookie.nameEqualBytes(r.input, httpBytesCookie) { // cookies may not be consecutive
+			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, httpBytesCookie) { // cookies may not be consecutive
 				continue
 			}
 			if !r.parseCookie(cookie.value) {
@@ -2625,7 +2625,7 @@ func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 
 	// copy remaining headers
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
-		if hash == httpHashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
+		if hash == hashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
 			return r.shell.addHeader(name, value)
 		} else {
 			return r.shell.insertHeader(hash, name, value)
@@ -2646,16 +2646,16 @@ var ( // perfect hash table for response crucial headers
 		fAdd func(*httpResponse_, []byte) (ok bool)
 		fDel func(*httpResponse_) (deleted bool)
 	}{
-		0: {httpHashServer, 66, 72, nil, nil},    // forbidden
-		1: {httpHashSetCookie, 73, 83, nil, nil}, // forbidden
-		2: {httpHashUpgrade, 102, 109, nil, nil}, // forbidden
-		3: {httpHashDate, 39, 43, (*httpResponse_)._addDate, (*httpResponse_)._delDate},
-		4: {httpHashTransferEncoding, 84, 101, nil, nil}, // forbidden
-		5: {httpHashConnection, 0, 10, nil, nil},         // forbidden
-		6: {httpHashLastModified, 52, 65, (*httpResponse_)._addLastModified, (*httpResponse_)._delLastModified},
-		7: {httpHashExpires, 44, 51, (*httpResponse_)._addExpires, (*httpResponse_)._delExpires},
-		8: {httpHashContentLength, 11, 25, nil, nil}, // forbidden
-		9: {httpHashContentType, 26, 38, (*httpResponse_)._addContentType, (*httpResponse_)._delContentType},
+		0: {hashServer, 66, 72, nil, nil},    // forbidden
+		1: {hashSetCookie, 73, 83, nil, nil}, // forbidden
+		2: {hashUpgrade, 102, 109, nil, nil}, // forbidden
+		3: {hashDate, 39, 43, (*httpResponse_)._addDate, (*httpResponse_)._delDate},
+		4: {hashTransferEncoding, 84, 101, nil, nil}, // forbidden
+		5: {hashConnection, 0, 10, nil, nil},         // forbidden
+		6: {hashLastModified, 52, 65, (*httpResponse_)._addLastModified, (*httpResponse_)._delLastModified},
+		7: {hashExpires, 44, 51, (*httpResponse_)._addExpires, (*httpResponse_)._delExpires},
+		8: {hashContentLength, 11, 25, nil, nil}, // forbidden
+		9: {hashContentType, 26, 38, (*httpResponse_)._addContentType, (*httpResponse_)._delContentType},
 	}
 	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )

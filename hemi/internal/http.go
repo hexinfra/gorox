@@ -1062,22 +1062,22 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 
 func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name []byte, hash uint16)) {
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
-	delField(httpBytesProxyConnection, httpHashProxyConnection)
-	delField(httpBytesKeepAlive, httpHashKeepAlive)
+	delField(httpBytesProxyConnection, hashProxyConnection)
+	delField(httpBytesKeepAlive, hashKeepAlive)
 	if !r.asResponse { // as request
-		delField(httpBytesTE, httpHashTE)
+		delField(httpBytesTE, hashTE)
 	}
-	delField(httpBytesTransferEncoding, httpHashTransferEncoding)
-	delField(httpBytesUpgrade, httpHashUpgrade)
+	delField(httpBytesTransferEncoding, hashTransferEncoding)
+	delField(httpBytesUpgrade, hashUpgrade)
 	for i := r.options.from; i < r.options.edge; i++ {
 		prime := &r.primes[i]
 		// Skip fields that are not "connection"
-		if prime.hash != httpHashConnection || !prime.nameEqualBytes(r.input, httpBytesConnection) {
+		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, httpBytesConnection) {
 			continue
 		}
 		optionName := prime.valueAt(r.input)
 		optionHash := bytesHash(optionName)
-		if optionHash == httpHashConnection && bytes.Equal(optionName, httpBytesConnection) {
+		if optionHash == hashConnection && bytes.Equal(optionName, httpBytesConnection) {
 			continue // skip "connection: connection"
 		}
 		for j := fields.from; j < fields.edge; j++ {
@@ -1803,62 +1803,62 @@ const ( // misc http types
 
 const ( // hashes of http fields. value is calculated by adding all ASCII values.
 	// Pseudo headers
-	httpHashAuthority = 1059 // :authority
-	httpHashMethod    = 699  // :method
-	httpHashPath      = 487  // :path
-	httpHashProtocol  = 940  // :protocol
-	httpHashScheme    = 687  // :scheme
-	httpHashStatus    = 734  // :status
+	hashAuthority = 1059 // :authority
+	hashMethod    = 699  // :method
+	hashPath      = 487  // :path
+	hashProtocol  = 940  // :protocol
+	hashScheme    = 687  // :scheme
+	hashStatus    = 734  // :status
 	// General fields
-	httpHashAcceptEncoding     = 1508
-	httpHashCacheControl       = 1314
-	httpHashConnection         = 1072
-	httpHashContentDisposition = 2013
-	httpHashContentEncoding    = 1647
-	httpHashContentLanguage    = 1644
-	httpHashContentLength      = 1450
-	httpHashContentLocation    = 1665
-	httpHashContentRange       = 1333
-	httpHashContentType        = 1258
-	httpHashDate               = 414
-	httpHashKeepAlive          = 995
-	httpHashPragma             = 632
-	httpHashTrailer            = 755
-	httpHashTransferEncoding   = 1753
-	httpHashUpgrade            = 744
-	httpHashVia                = 320
+	hashAcceptEncoding     = 1508
+	hashCacheControl       = 1314
+	hashConnection         = 1072
+	hashContentDisposition = 2013
+	hashContentEncoding    = 1647
+	hashContentLanguage    = 1644
+	hashContentLength      = 1450
+	hashContentLocation    = 1665
+	hashContentRange       = 1333
+	hashContentType        = 1258
+	hashDate               = 414
+	hashKeepAlive          = 995
+	hashPragma             = 632
+	hashTrailer            = 755
+	hashTransferEncoding   = 1753
+	hashUpgrade            = 744
+	hashVia                = 320
 	// Request fields
-	httpHashAccept             = 624
-	httpHashAcceptCharset      = 1415
-	httpHashAcceptLanguage     = 1505
-	httpHashAuthorization      = 1425
-	httpHashCookie             = 634
-	httpHashExpect             = 649
-	httpHashForwarded          = 958
-	httpHashHost               = 446
-	httpHashIfMatch            = 777
-	httpHashIfModifiedSince    = 1660
-	httpHashIfNoneMatch        = 1254
-	httpHashIfRange            = 777
-	httpHashIfUnmodifiedSince  = 1887
-	httpHashProxyAuthorization = 2048
-	httpHashProxyConnection    = 1695
-	httpHashRange              = 525
-	httpHashTE                 = 217
-	httpHashUserAgent          = 1019
+	hashAccept             = 624
+	hashAcceptCharset      = 1415
+	hashAcceptLanguage     = 1505
+	hashAuthorization      = 1425
+	hashCookie             = 634
+	hashExpect             = 649
+	hashForwarded          = 958
+	hashHost               = 446
+	hashIfMatch            = 777
+	hashIfModifiedSince    = 1660
+	hashIfNoneMatch        = 1254
+	hashIfRange            = 777
+	hashIfUnmodifiedSince  = 1887
+	hashProxyAuthorization = 2048
+	hashProxyConnection    = 1695
+	hashRange              = 525
+	hashTE                 = 217
+	hashUserAgent          = 1019
 	// Response fields
-	httpHashAcceptRanges      = 1309
-	httpHashAge               = 301
-	httpHashAllow             = 543
-	httpHashETag              = 417
-	httpHashExpires           = 768
-	httpHashLastModified      = 1314
-	httpHashLocation          = 857
-	httpHashProxyAuthenticate = 1902
-	httpHashServer            = 663
-	httpHashSetCookie         = 1011
-	httpHashVary              = 450
-	httpHashWWWAuthenticate   = 1681
+	hashAcceptRanges      = 1309
+	hashAge               = 301
+	hashAllow             = 543
+	hashETag              = 417
+	hashExpires           = 768
+	hashLastModified      = 1314
+	hashLocation          = 857
+	hashProxyAuthenticate = 1902
+	hashServer            = 663
+	hashSetCookie         = 1011
+	hashVary              = 450
+	hashWWWAuthenticate   = 1681
 )
 
 var ( // byteses of http fields.

@@ -440,7 +440,7 @@ func (r *http3Response) syncBytes(p []byte) error {
 	return r.syncBytes3(p)
 }
 
-func (r *http3Response) finalizeHeaders() {
+func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
 func (r *http3Response) finalizeUnsized() error {

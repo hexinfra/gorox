@@ -47,7 +47,7 @@ type stream interface {
 	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 
-	isBroken() bool
+	isBroken() bool // if either side is broken, then the stream is broken
 	markBroken()
 }
 

@@ -824,7 +824,7 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if chunked {
+		if chunked { // HTTP/1.1
 			sizeBuffer := r.stream.smallBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
@@ -835,7 +835,7 @@ func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 			r.vector[1] = buffer[:n]
 			r.vector[2] = sizeBuffer[k-2 : k]
 			_, err = r.stream.writev(&r.vector)
-		} else {
+		} else { // HTTP/1.0, or identity content
 			_, err = r.stream.write(buffer[0:n])
 		}
 		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {

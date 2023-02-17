@@ -1038,7 +1038,7 @@ func (r *http2Response) syncBytes(p []byte) error {
 	return r.syncBytes2(p)
 }
 
-func (r *http2Response) finalizeHeaders() {
+func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
 func (r *http2Response) finalizeUnsized() error {

@@ -523,6 +523,7 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
 	return r.httpIn_.checkTransferEncoding(from, edge)
 }
 func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
+	// TODO: tcptun, udptun, socket?
 	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false
 }

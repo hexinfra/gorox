@@ -313,23 +313,23 @@ func (s *H2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)
 }
 
-func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *H2Stream) write(p []byte) (int, error) { // for content i/o only
+func (s *H2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (s *H2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H2Stream) read(p []byte) (int, error) { // for content i/o only
+func (s *H2Stream) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only
+func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
@@ -415,7 +415,7 @@ func (r *H2Request) syncBytes(p []byte) error {
 	return r.syncBytes2(p)
 }
 
-func (r *H2Request) finalizeHeaders() {
+func (r *H2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
 func (r *H2Request) finalizeUnsized() error {

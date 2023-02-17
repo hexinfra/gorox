@@ -1,7 +1,7 @@
 Develop
 =======
 
-  Develop is used to develop hemi.
+  Develop is used to develop Hemi.
 
 
 Build

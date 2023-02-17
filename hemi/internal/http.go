@@ -1356,35 +1356,17 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 }
 
 func (r *httpOut_) _addContentType(contentType []byte) (ok bool) {
-	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
-		return false
-	}
-	r.oContentType = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
+	return r._addSingleton(&r.oContentType, httpBytesContentType, contentType)
 }
 func (r *httpOut_) _addDate(date []byte) (ok bool) {
-	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
-		return false
-	}
-	r.oDate = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
+	return r._addSingleton(&r.oDate, httpBytesDate, date)
 }
 
 func (r *httpOut_) _delContentType() (deleted bool) {
-	if r.oContentType == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(r.oContentType)
-	r.oContentType = 0
-	return true
+	return r._delSingleton(&r.oContentType)
 }
 func (r *httpOut_) _delDate() (deleted bool) {
-	if r.oDate == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(r.oDate)
-	r.oDate = 0
-	return true
+	return r._delSingleton(&r.oDate)
 }
 
 func (r *httpOut_) _setTimestamp(pTimestamp *int64, pIndex *uint8, timestamp int64) bool {
@@ -1420,6 +1402,22 @@ func (r *httpOut_) _delTimestamp(pTimestamp *int64, pIndex *uint8) bool {
 		*pIndex = 0
 	}
 	*pTimestamp = -1
+	return true
+}
+
+func (r *httpOut_) _addSingleton(pIndex *uint8, name []byte, value []byte) bool {
+	if *pIndex > 0 || !r.shell.addHeader(name, value) {
+		return false
+	}
+	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+func (r *httpOut_) _delSingleton(pIndex *uint8) bool {
+	if *pIndex == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(*pIndex)
+	*pIndex = 0
 	return true
 }
 

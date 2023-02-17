@@ -2666,8 +2666,7 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	// TODO: use r.indexes.expires
-	return r.shell.addHeader(httpBytesExpires, expires)
+	return r._addSingleton(&r.indexes.expires, httpBytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
 	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, httpBytesLastModified, lastModified)
@@ -2684,8 +2683,7 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *httpResponse_) _delExpires() (deleted bool) {
-	// TODO: use r.indexes.expires
-	return r.shell.delHeader(httpBytesExpires)
+	return r._delSingleton(&r.indexes.expires)
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
 	return r._delTimestamp(&r.lastModified, &r.indexes.lastModified)

@@ -333,18 +333,13 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	return r.shell.addHeader(name, value)
 }
 func (r *hRequest_) _addHost(host []byte) (ok bool) {
-	if r.indexes.host > 0 || !r.shell.addHeader(httpBytesHost, host) {
-		return false
-	}
-	r.indexes.host = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
+	return r._addSingleton(&r.indexes.host, httpBytesHost, host)
 }
 func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
 	return r._addTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, httpBytesIfModifiedSince, since)
 }
 func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
-	// TODO: use r.indexes.ifRange
-	return r.shell.addHeader(httpBytesIfRange, ifRange)
+	return r._addSingleton(&r.indexes.ifRange, httpBytesIfRange, ifRange)
 }
 func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, httpBytesIfUnmodifiedSince, since)
@@ -361,19 +356,13 @@ func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *hRequest_) _delHost() (deleted bool) {
-	if r.indexes.host == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(r.indexes.host)
-	r.indexes.host = 0
-	return true
+	return r._delSingleton(&r.indexes.host)
 }
 func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
 	return r._delTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
 func (r *hRequest_) _delIfRange() (deleted bool) {
-	// TODO: use r.indexes.ifRange
-	return r.shell.delHeader(httpBytesIfRange)
+	return r._delSingleton(&r.indexes.ifRange)
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
 	return r._delTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)

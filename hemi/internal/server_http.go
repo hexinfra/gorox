@@ -1291,9 +1291,7 @@ func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []nav
 }
 
 func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *httpRequest_) UserAgent() string {
-	return string(r.UnsafeUserAgent())
-}
+func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
 func (r *httpRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
@@ -1310,7 +1308,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	var (
 		state  = 0
-		cookie pair // TODO: confirm not escape
+		cookie pair // TODO: confirm not escape, otherwise use r.field?
 	)
 	cookie.setPlace(placeInput) // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
@@ -1394,7 +1392,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	}
 	return true
 }
-func (r *httpRequest_) addCookie(cookie *pair) bool { // cookie: xxx
+func (r *httpRequest_) addCookie(cookie *pair) bool { // cookie: xxx=yyy
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1458,27 +1456,27 @@ func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool)
 	}
 	// See RFC 9110 (section 13.2.2).
 	if asOrigin { // proxies ignore these tests.
-		if r.ifMatch != 0 && !r.testIfMatch(etag) {
+		if r.ifMatch != 0 && !r._testIfMatch(etag) {
 			return StatusPreconditionFailed, false
 		}
-		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r.testIfUnmodifiedSince(modTime) {
+		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r._testIfUnmodifiedSince(modTime) {
 			return StatusPreconditionFailed, false
 		}
 	}
 	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 && !r.testIfNoneMatch(etag) {
+	if r.ifNoneMatch != 0 && !r._testIfNoneMatch(etag) {
 		if getOrHead {
 			return StatusNotModified, false
 		} else {
 			return StatusPreconditionFailed, false
 		}
 	}
-	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r.testIfModifiedSince(modTime) {
+	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r._testIfModifiedSince(modTime) {
 		return StatusNotModified, false
 	}
 	return StatusOK, true
 }
-func (r *httpRequest_) testIfMatch(etag []byte) (pass bool) {
+func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 	if r.ifMatch == -1 { // *
 		return true
 	}
@@ -1493,7 +1491,7 @@ func (r *httpRequest_) testIfMatch(etag []byte) (pass bool) {
 	}
 	return false
 }
-func (r *httpRequest_) testIfNoneMatch(etag []byte) (pass bool) {
+func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	if r.ifNoneMatch == -1 { // *
 		return false
 	}
@@ -1508,26 +1506,26 @@ func (r *httpRequest_) testIfNoneMatch(etag []byte) (pass bool) {
 	}
 	return true
 }
-func (r *httpRequest_) testIfModifiedSince(modTime int64) (pass bool) {
+func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
 	return modTime > r.ifModifiedTime
 }
-func (r *httpRequest_) testIfUnmodifiedSince(modTime int64) (pass bool) {
+func (r *httpRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
 	return modTime <= r.ifUnmodifiedTime
 }
 
 func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
 	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.ifRangeTime == 0 && r.testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r.testIfRangeTime(modTime)) {
+		if (r.ifRangeTime == 0 && r._testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r._testIfRangeTime(modTime)) {
 			return true // StatusPartialContent
 		}
 	}
 	return false // StatusOK
 }
-func (r *httpRequest_) testIfRangeETag(etag []byte) (pass bool) {
+func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	ifRange := &r.primes[r.indexes.ifRange]
 	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
 }
-func (r *httpRequest_) testIfRangeTime(modTime int64) (pass bool) {
+func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
 	return r.ifRangeTime == modTime
 }
 
@@ -1554,6 +1552,8 @@ func (r *httpRequest_) checkHead() bool {
 		if r.keepAlive == -1 { // no connection header
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
+	default: // HTTP/2 and HTTP/3
+		r.keepAlive = 1 // always keep alive
 	}
 
 	if !r.determineContentMode() {
@@ -2286,9 +2286,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 }
 
 func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
-func (r *httpRequest_) Content() string {
-	return string(r.UnsafeContent())
-}
+func (r *httpRequest_) Content() string  { return string(r.UnsafeContent()) }
 func (r *httpRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
@@ -2363,11 +2361,9 @@ type Response interface {
 	Header(name string) (value string, ok bool)
 	HasHeader(name string) bool
 	AddHeader(name string, value string) bool
-	AddHeaderBytes(name string, value []byte) bool
-	AddHeaderByBytes(name []byte, value string) bool
-	AddHeaderBytesByBytes(name []byte, value []byte) bool
+	AddHeaderBytes(name []byte, value []byte) bool
 	DelHeader(name string) bool
-	DelHeaderByBytes(name []byte) bool
+	DelHeaderBytes(name []byte) bool
 
 	IsSent() bool
 	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
@@ -2390,9 +2386,7 @@ type Response interface {
 	PushFile(chunkPath string) error
 
 	AddTrailer(name string, value string) bool
-	AddTrailerBytes(name string, value []byte) bool
-	AddTrailerByBytes(name []byte, value string) bool
-	AddTrailerBytesByBytes(name []byte, value []byte) bool
+	AddTrailerBytes(name []byte, value []byte) bool
 
 	// Internal only
 	setConnectionClose()
@@ -2501,83 +2495,6 @@ func (r *httpResponse_) SetLastModified(lastModified int64) bool {
 	return true
 }
 
-var ( // perfect hash table for response crucial headers
-	httpResponseCrucialHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
-	httpResponseCrucialHeaderTable = [10]struct {
-		hash uint16
-		from uint8
-		edge uint8
-		fAdd func(*httpResponse_, []byte) (ok bool)
-		fDel func(*httpResponse_) (deleted bool)
-	}{
-		0: {httpHashServer, 66, 72, nil, nil},
-		1: {httpHashSetCookie, 73, 83, nil, nil},
-		2: {httpHashUpgrade, 102, 109, nil, nil},
-		3: {httpHashDate, 39, 43, (*httpResponse_).appendDate, (*httpResponse_).removeDate},
-		4: {httpHashTransferEncoding, 84, 101, nil, nil},
-		5: {httpHashConnection, 0, 10, nil, nil},
-		6: {httpHashLastModified, 52, 65, (*httpResponse_).appendLastModified, (*httpResponse_).removeLastModified},
-		7: {httpHashExpires, 44, 51, (*httpResponse_).appendExpires, (*httpResponse_).removeExpires},
-		8: {httpHashContentLength, 11, 25, nil, nil},
-		9: {httpHashContentType, 26, 38, (*httpResponse_).appendContentType, (*httpResponse_).removeContentType},
-	}
-	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
-)
-
-func (r *httpResponse_) appendHeader(hash uint16, name []byte, value []byte) bool {
-	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fAdd == nil {
-			return true // pretend to be successful
-		}
-		return h.fAdd(r, value)
-	}
-	return r.shell.addHeader(name, value)
-}
-func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fDel == nil {
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.shell.delHeader(name)
-}
-
-func (r *httpResponse_) appendExpires(expires []byte) (ok bool) {
-	// TODO
-	return r.shell.addHeader(httpBytesExpires, expires)
-}
-func (r *httpResponse_) removeExpires() (deleted bool) {
-	// TODO
-	return true
-}
-func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
-	if r.lastModified == -2 {
-		r.shell.delHeaderAt(r.oLastModified)
-		r.oLastModified = 0
-	} else { // >= 0 or -1
-		r.lastModified = -2
-	}
-	if !r.shell.addHeader(httpBytesLastModified, lastModified) {
-		return false
-	}
-	r.oLastModified = r.nHeaders - 1
-	return true
-}
-func (r *httpResponse_) removeLastModified() (deleted bool) {
-	if r.lastModified == -1 {
-		return false
-	}
-	if r.lastModified == -2 {
-		r.shell.delHeaderAt(r.oLastModified)
-		r.oLastModified = 0
-	}
-	r.lastModified = -1
-	return true
-}
-
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
 	return r.sendError(StatusBadRequest, content)
 }
@@ -2588,7 +2505,7 @@ func (r *httpResponse_) SendNotFound(content []byte) error { // 404
 	return r.sendError(StatusNotFound, content)
 }
 func (r *httpResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
-	r.AddHeaderByBytes(httpBytesAllow, allow)
+	r.AddHeaderBytes(httpBytesAllow, risky.ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
 func (r *httpResponse_) SendInternalServerError(content []byte) error { // 500
@@ -2702,23 +2619,102 @@ func (r *httpResponse_) push(chunk *Block) error {
 }
 
 func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
+	// copy control
 	r.SetStatus(resp.Status())
 
 	resp.delHopHeaders()
 
-	// copy crucial headers (excluding set-cookie) from resp
+	// copy special headers (excluding set-cookie, which is copied as is) from resp
 
 	// copy remaining headers
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
 		if hash == httpHashSetCookie && bytes.Equal(name, httpBytesSetCookie) {
 			return r.shell.addHeader(name, value)
 		} else {
-			return r.shell.appendHeader(hash, name, value)
+			return r.shell.insertHeader(hash, name, value)
 		}
 	}) {
 		return false
 	}
 
+	return true
+}
+
+var ( // perfect hash table for response crucial headers
+	httpResponseCrucialHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
+	httpResponseCrucialHeaderTable = [10]struct {
+		hash uint16
+		from uint8
+		edge uint8
+		fAdd func(*httpResponse_, []byte) (ok bool)
+		fDel func(*httpResponse_) (deleted bool)
+	}{
+		0: {httpHashServer, 66, 72, nil, nil},    // forbidden
+		1: {httpHashSetCookie, 73, 83, nil, nil}, // forbidden
+		2: {httpHashUpgrade, 102, 109, nil, nil}, // forbidden
+		3: {httpHashDate, 39, 43, (*httpResponse_)._insertDate, (*httpResponse_)._removeDate},
+		4: {httpHashTransferEncoding, 84, 101, nil, nil}, // forbidden
+		5: {httpHashConnection, 0, 10, nil, nil},         // forbidden
+		6: {httpHashLastModified, 52, 65, (*httpResponse_)._insertLastModified, (*httpResponse_)._removeLastModified},
+		7: {httpHashExpires, 44, 51, (*httpResponse_)._insertExpires, (*httpResponse_)._removeExpires},
+		8: {httpHashContentLength, 11, 25, nil, nil}, // forbidden
+		9: {httpHashContentType, 26, 38, (*httpResponse_)._insertContentType, (*httpResponse_)._removeContentType},
+	}
+	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+)
+
+func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
+	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fAdd == nil { // mainly because this header is forbidden
+			return true // pretend to be successful
+		}
+		return h.fAdd(r, value)
+	}
+	return r.shell.addHeader(name, value)
+}
+func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
+	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fDel == nil { // mainly because this header is forbidden
+			return true // pretend to be successful
+		}
+		return h.fDel(r)
+	}
+	return r.shell.delHeader(name)
+}
+
+func (r *httpResponse_) _insertExpires(expires []byte) (ok bool) {
+	// TODO
+	return r.shell.addHeader(httpBytesExpires, expires)
+}
+func (r *httpResponse_) _insertLastModified(lastModified []byte) (ok bool) {
+	if r.lastModified == -2 {
+		r.shell.delHeaderAt(r.oLastModified)
+		r.oLastModified = 0
+	} else { // >= 0 or -1
+		r.lastModified = -2
+	}
+	if !r.shell.addHeader(httpBytesLastModified, lastModified) {
+		return false
+	}
+	r.oLastModified = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+
+func (r *httpResponse_) _removeExpires() (deleted bool) {
+	// TODO
+	return true
+}
+func (r *httpResponse_) _removeLastModified() (deleted bool) {
+	if r.lastModified == -1 {
+		return false
+	}
+	if r.lastModified == -2 {
+		r.shell.delHeaderAt(r.oLastModified)
+		r.oLastModified = 0
+	}
+	r.lastModified = -1
 	return true
 }
 

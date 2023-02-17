@@ -42,3 +42,12 @@ NOTES:
   * trailers must be small (<=16K), and only exist when contents exist and are unsized.
   * incoming messages need parsing.
   * outgoing messages need building.
+
+HTTP SERVER & HTTP PROXY & HTTP CLIENT
+
+  * we support HTTP/1.0 in server side, but we don't support HTTP/1.0 in client side.
+  * so HTTP/1 proxy doesn't support HTTP/1.0. it only supports HTTP/1.1.
+  * HTTP/1.1 pipelining is recognized in server side, but not optimized.
+  * HTTP/1.1 pipelining is not used or supported in client side.
+  * in HTTP/2 server side, streams are started passively.
+  * in HTTP/2 client side, streams are started actively.

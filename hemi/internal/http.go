@@ -165,9 +165,9 @@ func (r *httpIn_) onUse(asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
-	r.contentSize = -1
+	r.contentSize = -1 // no content
 	r.asResponse = asResponse
-	r.keepAlive = -1
+	r.keepAlive = -1 // no connection header
 	r.headResult = StatusOK
 }
 func (r *httpIn_) onEnd() { // for zeros
@@ -573,7 +573,7 @@ func (r *httpIn_) delHeader(name []byte, hash uint16) {
 func (r *httpIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, extraHeader, r.delHeader)
 }
-func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool { // excluding sub headers
 	return r._forFields(r.headers, extraHeader, fn)
 }
 
@@ -592,8 +592,8 @@ func (r *httpIn_) determineContentMode() bool {
 			return false
 		}
 		r.markUnsized()
-	} else if r.versionCode >= Version2 && r.contentSize == -1 {
-		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame.
+	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
+		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
 		r.markUnsized() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
 	}
 	return true
@@ -647,19 +647,6 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) dropContent() {
-	switch content := r.recvContent(false).(type) { // don't retain
-	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-		PutNK(content)
-	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
-		if content != FakeFile { // this must not happen!
-			BugExitln("temp file is not fake when dropping content")
-		}
-	case error: // i/o error
-		// TODO: log error?
-		r.stream.markBroken()
-	}
-}
 func (r *httpIn_) holdContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentHeld == nil { // content is either blob or file
@@ -682,6 +669,19 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	}
 	r.stream.markBroken()
 	return nil
+}
+func (r *httpIn_) dropContent() { // if message content is received, this will be called at last
+	switch content := r.recvContent(false).(type) { // don't retain
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		PutNK(content)
+	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+		if content != FakeFile { // this must not happen!
+			BugExitln("temp file is not fake when dropping content")
+		}
+	case error: // i/o error
+		// TODO: log error?
+		r.stream.markBroken()
+	}
 }
 func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
@@ -795,7 +795,7 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 func (r *httpIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, extraTrailer, r.delTrailer)
 }
-func (r *httpIn_) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // excluding sub trailers
 	return r._forFields(r.trailers, extraTrailer, fn)
 }
 
@@ -1156,7 +1156,7 @@ type httpOut interface {
 	delHeader(name []byte) (deleted bool)
 	delHeaderAt(o uint8)
 	addHeader(name []byte, value []byte) bool
-	appendHeader(hash uint16, name []byte, value []byte) bool
+	insertHeader(hash uint16, name []byte, value []byte) bool
 	removeHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
 	fixedHeaders() []byte
@@ -1240,15 +1240,9 @@ func (r *httpOut_) HasHeader(name string) bool {
 	return r.shell.hasHeader(risky.ConstBytes(name))
 }
 func (r *httpOut_) AddHeader(name string, value string) bool {
-	return r.AddHeaderBytesByBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+	return r.AddHeaderBytes(risky.ConstBytes(name), risky.ConstBytes(value))
 }
-func (r *httpOut_) AddHeaderBytes(name string, value []byte) bool {
-	return r.AddHeaderBytesByBytes(risky.ConstBytes(name), value)
-}
-func (r *httpOut_) AddHeaderByBytes(name []byte, value string) bool {
-	return r.AddHeaderBytesByBytes(name, risky.ConstBytes(value))
-}
-func (r *httpOut_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
+func (r *httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
@@ -1258,12 +1252,12 @@ func (r *httpOut_) AddHeaderBytesByBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.shell.appendHeader(hash, lower, value)
+	return r.shell.insertHeader(hash, lower, value)
 }
 func (r *httpOut_) DelHeader(name string) bool {
-	return r.DelHeaderByBytes(risky.ConstBytes(name))
+	return r.DelHeaderBytes(risky.ConstBytes(name))
 }
-func (r *httpOut_) DelHeaderByBytes(name []byte) bool {
+func (r *httpOut_) DelHeaderBytes(name []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
@@ -1300,37 +1294,6 @@ func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byt
 		buffer[i] = b
 	}
 	return hash, true, buffer[:n]
-}
-
-func (r *httpOut_) appendContentType(contentType []byte) (ok bool) {
-	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
-		return false
-	}
-	r.oContentType = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
-}
-func (r *httpOut_) removeContentType() (deleted bool) {
-	if r.oContentType == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(r.oContentType)
-	r.oContentType = 0
-	return true
-}
-func (r *httpOut_) appendDate(date []byte) (ok bool) {
-	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
-		return false
-	}
-	r.oDate = r.nHeaders - 1
-	return true
-}
-func (r *httpOut_) removeDate() (deleted bool) {
-	if r.oDate == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(r.oDate)
-	r.oDate = 0
-	return true
 }
 
 func (r *httpOut_) markUnsized()    { r.contentSize = -2 }
@@ -1383,19 +1346,45 @@ func (r *httpOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 func (r *httpOut_) AddTrailer(name string, value string) bool {
-	return r.AddTrailerBytesByBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
 }
-func (r *httpOut_) AddTrailerBytes(name string, value []byte) bool {
-	return r.AddTrailerBytesByBytes(risky.ConstBytes(name), value)
-}
-func (r *httpOut_) AddTrailerByBytes(name []byte, value string) bool {
-	return r.AddTrailerBytesByBytes(name, risky.ConstBytes(value))
-}
-func (r *httpOut_) AddTrailerBytesByBytes(name []byte, value []byte) bool {
+func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
 		return false
 	}
 	return r.shell.addTrailer(name, value)
+}
+
+func (r *httpOut_) _insertContentType(contentType []byte) (ok bool) {
+	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
+		return false
+	}
+	r.oContentType = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+func (r *httpOut_) _insertDate(date []byte) (ok bool) {
+	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
+		return false
+	}
+	r.oDate = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+
+func (r *httpOut_) _removeContentType() (deleted bool) {
+	if r.oContentType == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(r.oContentType)
+	r.oContentType = 0
+	return true
+}
+func (r *httpOut_) _removeDate() (deleted bool) {
+	if r.oDate == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(r.oDate)
+	r.oDate = 0
+	return true
 }
 
 func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content directly
@@ -1909,6 +1898,7 @@ var ( // misc http strings & byteses.
 	httpBytesColonPort443   = []byte(httpStringColonPort443)
 	httpBytesSlash          = []byte(httpStringSlash)
 	httpBytesAsterisk       = []byte(httpStringAsterisk)
+	httpBytesGET            = []byte("GET")
 	httpBytes100Continue    = []byte("100-continue")
 	httpBytesBoundary       = []byte("boundary")
 	httpBytesBytes          = []byte("bytes")

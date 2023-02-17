@@ -259,12 +259,8 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.httpStream_.onEnd()
 }
 
-func (s *http1Stream) keeper() keeper {
-	return s.conn.getServer()
-}
-func (s *http1Stream) peerAddr() net.Addr {
-	return s.conn.netConn.RemoteAddr()
-}
+func (s *http1Stream) keeper() keeper     { return s.conn.getServer() }
+func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.
@@ -333,11 +329,11 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
-	resp.AddHeaderBytesByBytes(httpBytesContentType, httpBytesHTMLUTF8)
+	resp.AddHeaderBytes(httpBytesContentType, httpBytesHTMLUTF8)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
-		resp.AddHeaderByBytes(httpBytesAllow, "GET")
+		resp.AddHeaderBytes(httpBytesAllow, httpBytesGET)
 	}
 	resp.finalizeHeaders()
 	if req.methodCode == MethodHEAD || resp.forbidContent { // yes, we follow the method semantic even we are in abnormal
@@ -864,6 +860,9 @@ func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeade
 func (r *http1Response) addedHeaders() []byte                       { return r.fields[0:r.fieldsEdge] }
 func (r *http1Response) fixedHeaders() []byte                       { return http1BytesFixedResponseHeaders }
 
+func (r *http1Response) setConnectionClose() {
+	r.stream.(*http1Stream).conn.keepConn = false // explicitly
+}
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	size := len(http1BytesLocationHTTPS)
 	if authority == "" {
@@ -933,9 +932,6 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *http1Response) setConnectionClose() {
-	r.stream.(*http1Stream).conn.keepConn = false // explicitly
-}
 
 func (r *http1Response) SetCookie(setCookie *SetCookie) bool {
 	if setCookie.name == "" || setCookie.invalid {
@@ -980,7 +976,7 @@ func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	r.status = resp.Status()
 	resp.delHopHeaders()
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
-		return r.appendHeader(hash, name, value)
+		return r.insertHeader(hash, name, value)
 	}) {
 		return false
 	}

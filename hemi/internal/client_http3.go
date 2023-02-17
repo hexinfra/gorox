@@ -256,13 +256,8 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.hStream_.onEnd()
 }
 
-func (s *H3Stream) keeper() keeper {
-	return s.conn.getClient()
-}
-func (s *H3Stream) peerAddr() net.Addr {
-	// TODO
-	return nil
-}
+func (s *H3Stream) keeper() keeper     { return s.conn.getClient() }
+func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
@@ -354,7 +349,7 @@ func (r *H3Request) fixedHeaders() []byte {
 }
 
 func (r *H3Request) AddCookie(name string, value string) bool {
-	// TODO
+	// TODO. need some space to place the cookie
 	return false
 }
 func (r *H3Request) copyCookies(req Request) bool { // used by proxies

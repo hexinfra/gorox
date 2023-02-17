@@ -1036,8 +1036,8 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 func (r *fcgiResponse) growBody() {
 }
 
-func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true

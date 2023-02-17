@@ -867,12 +867,8 @@ func (s *http2Stream) execute() { // goroutine
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) keeper() keeper {
-	return s.conn.getServer()
-}
-func (s *http2Stream) peerAddr() net.Addr {
-	return s.conn.netConn.RemoteAddr()
-}
+func (s *http2Stream) keeper() keeper     { return s.conn.getServer() }
+func (s *http2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) writeContinue() bool { // 100 continue
 	// TODO
@@ -1001,9 +997,7 @@ func (r *http2Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
-func (r *http2Response) setConnectionClose() {
-	BugExitln("not used in HTTP/2")
-}
+func (r *http2Response) setConnectionClose() { BugExitln("not used in HTTP/2") }
 
 func (r *http2Response) SetCookie(setCookie *SetCookie) bool {
 	// TODO

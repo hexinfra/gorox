@@ -285,12 +285,8 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.hStream_.onEnd()
 }
 
-func (s *H2Stream) keeper() keeper {
-	return s.conn.getClient()
-}
-func (s *H2Stream) peerAddr() net.Addr {
-	return s.conn.netConn.RemoteAddr()
-}
+func (s *H2Stream) keeper() keeper     { return s.conn.getClient() }
+func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
@@ -382,7 +378,7 @@ func (r *H2Request) fixedHeaders() []byte {
 }
 
 func (r *H2Request) AddCookie(name string, value string) bool {
-	// TODO
+	// TODO. need some space to place the cookie
 	return false
 }
 func (r *H2Request) copyCookies(req Request) bool { // used by proxies

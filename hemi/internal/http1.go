@@ -482,6 +482,7 @@ func (r *httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF
 		if !r.shell.applyTrailer(trailer) {
 			return false
 		}
+
 		// Trailer is successfully received. Skip '\n'
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
@@ -683,9 +684,9 @@ func (r *httpOut_) sendChain1(chain Chain) error {
 	return nil
 }
 
-func (r *httpOut_) pushChain1(chain Chain, unsized bool) error {
+func (r *httpOut_) pushChain1(chain Chain, chunked bool) error {
 	for block := chain.head; block != nil; block = block.next {
-		if err := r.writeBlock1(block, unsized); err != nil {
+		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
 		}
 	}
@@ -791,17 +792,17 @@ func (r *httpOut_) writeVector1(vector *net.Buffers) error {
 		return nil
 	}
 }
-func (r *httpOut_) writeBlock1(block *Block, unsized bool) error {
+func (r *httpOut_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
 	if block.IsBlob() {
-		return r._writeBlob1(block, unsized)
+		return r._writeBlob1(block, chunked)
 	} else {
-		return r._writeFile1(block, unsized)
+		return r._writeFile1(block, chunked)
 	}
 }
-func (r *httpOut_) _writeFile1(block *Block, unsized bool) error {
+func (r *httpOut_) _writeFile1(block *Block, chunked bool) error {
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
 	nRead := int64(0)
@@ -823,7 +824,7 @@ func (r *httpOut_) _writeFile1(block *Block, unsized bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if unsized {
+		if chunked {
 			sizeBuffer := r.stream.smallBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
@@ -846,8 +847,8 @@ func (r *httpOut_) _writeFile1(block *Block, unsized bool) error {
 		}
 	}
 }
-func (r *httpOut_) _writeBlob1(block *Block, unsized bool) error { // blob
-	if unsized { // HTTP/1.1
+func (r *httpOut_) _writeBlob1(block *Block, chunked bool) error { // blob
+	if chunked { // HTTP/1.1
 		sizeBuffer := r.stream.smallBuffer() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'

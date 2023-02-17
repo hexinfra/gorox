@@ -275,13 +275,8 @@ func (s *http3Stream) execute() { // goroutine
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) keeper() keeper {
-	return s.conn.getServer()
-}
-func (s *http3Stream) peerAddr() net.Addr {
-	// TODO
-	return nil
-}
+func (s *http3Stream) keeper() keeper     { return s.conn.getServer() }
+func (s *http3Stream) peerAddr() net.Addr { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
@@ -404,9 +399,7 @@ func (r *http3Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
-func (r *http3Response) setConnectionClose() {
-	BugExitln("not used in HTTP/3")
-}
+func (r *http3Response) setConnectionClose() { BugExitln("not used in HTTP/3") }
 
 func (r *http3Response) SetCookie(setCookie *SetCookie) bool {
 	// TODO

@@ -392,14 +392,14 @@ type Request interface {
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
-	applyHeader(header *pair) bool
+	adoptHeader(header *pair) bool
 	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
-	applyTrailer(trailer *pair) bool
+	adoptTrailer(trailer *pair) bool
 	delHopTrailers()
 	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -727,7 +727,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, extraQuery)
 }
 
-func (r *httpRequest_) applyHeader(header *pair) bool {
+func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
@@ -1553,7 +1553,7 @@ func (r *httpRequest_) checkHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
-		r.keepAlive = 1 // always keep alive
+		// Add here
 	}
 
 	if !r.determineContentMode() {
@@ -2294,7 +2294,7 @@ func (r *httpRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *httpRequest_) applyTrailer(trailer *pair) bool {
+func (r *httpRequest_) adoptTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
@@ -2652,13 +2652,13 @@ var ( // perfect hash table for response crucial headers
 		0: {httpHashServer, 66, 72, nil, nil},    // forbidden
 		1: {httpHashSetCookie, 73, 83, nil, nil}, // forbidden
 		2: {httpHashUpgrade, 102, 109, nil, nil}, // forbidden
-		3: {httpHashDate, 39, 43, (*httpResponse_)._insertDate, (*httpResponse_)._removeDate},
+		3: {httpHashDate, 39, 43, (*httpResponse_)._addDate, (*httpResponse_)._delDate},
 		4: {httpHashTransferEncoding, 84, 101, nil, nil}, // forbidden
 		5: {httpHashConnection, 0, 10, nil, nil},         // forbidden
-		6: {httpHashLastModified, 52, 65, (*httpResponse_)._insertLastModified, (*httpResponse_)._removeLastModified},
-		7: {httpHashExpires, 44, 51, (*httpResponse_)._insertExpires, (*httpResponse_)._removeExpires},
+		6: {httpHashLastModified, 52, 65, (*httpResponse_)._addLastModified, (*httpResponse_)._delLastModified},
+		7: {httpHashExpires, 44, 51, (*httpResponse_)._addExpires, (*httpResponse_)._delExpires},
 		8: {httpHashContentLength, 11, 25, nil, nil}, // forbidden
-		9: {httpHashContentType, 26, 38, (*httpResponse_)._insertContentType, (*httpResponse_)._removeContentType},
+		9: {httpHashContentType, 26, 38, (*httpResponse_)._addContentType, (*httpResponse_)._delContentType},
 	}
 	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
@@ -2673,22 +2673,11 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
-		if h.fDel == nil { // mainly because this header is forbidden
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.shell.delHeader(name)
-}
-
-func (r *httpResponse_) _insertExpires(expires []byte) (ok bool) {
-	// TODO
+func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
+	// TODO: use r.oExpires
 	return r.shell.addHeader(httpBytesExpires, expires)
 }
-func (r *httpResponse_) _insertLastModified(lastModified []byte) (ok bool) {
+func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
 	if r.lastModified == -2 {
 		r.shell.delHeaderAt(r.oLastModified)
 		r.oLastModified = 0
@@ -2702,11 +2691,21 @@ func (r *httpResponse_) _insertLastModified(lastModified []byte) (ok bool) {
 	return true
 }
 
-func (r *httpResponse_) _removeExpires() (deleted bool) {
-	// TODO
-	return true
+func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
+	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+		if h.fDel == nil { // mainly because this header is forbidden
+			return true // pretend to be successful
+		}
+		return h.fDel(r)
+	}
+	return r.shell.delHeader(name)
 }
-func (r *httpResponse_) _removeLastModified() (deleted bool) {
+func (r *httpResponse_) _delExpires() (deleted bool) {
+	// TODO: use r.oExpires
+	return r.shell.delHeader(httpBytesExpires)
+}
+func (r *httpResponse_) _delLastModified() (deleted bool) {
 	if r.lastModified == -1 {
 		return false
 	}

@@ -273,7 +273,11 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 	if custom := len(hostname) != 0 || len(colonPort) != 0; custom || req.IsAbsoluteForm() {
 		req.unsetHost()
-		if custom {
+		if req.IsAbsoluteForm() {
+			if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
+				return false
+			}
+		} else { // custom authority
 			if len(hostname) == 0 {
 				hostname = req.UnsafeHostname()
 			}
@@ -283,8 +287,6 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 			if !r.shell.(request).setAuthority(hostname, colonPort) {
 				return false
 			}
-		} else if !r.shell.addHeader(httpBytesHost, req.UnsafeAuthority()) {
-			return false
 		}
 	}
 
@@ -305,15 +307,15 @@ var ( // perfect hash table for request crucial headers
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {httpHashDate, 46, 50, (*hRequest_)._insertDate, (*hRequest_)._removeDate},
-		1:  {httpHashIfRange, 74, 82, (*hRequest_)._insertIfRange, (*hRequest_)._removeIfRange},
-		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_)._insertIfUnmodifiedSince, (*hRequest_)._removeIfUnmodifiedSince},
-		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_)._insertIfModifiedSince, (*hRequest_)._removeIfModifiedSince},
+		0:  {httpHashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
+		1:  {httpHashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
+		2:  {httpHashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
+		3:  {httpHashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
 		4:  {httpHashTransferEncoding, 103, 120, nil, nil}, // forbidden
-		5:  {httpHashHost, 51, 55, (*hRequest_)._insertHost, (*hRequest_)._removeHost},
+		5:  {httpHashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
 		6:  {httpHashCookie, 39, 45, nil, nil},        // forbidden
 		7:  {httpHashContentLength, 11, 25, nil, nil}, // forbidden
-		8:  {httpHashContentType, 26, 38, (*hRequest_)._insertContentType, (*hRequest_)._removeContentType},
+		8:  {httpHashContentType, 26, 38, (*hRequest_)._addContentType, (*hRequest_)._delContentType},
 		9:  {httpHashConnection, 0, 10, nil, nil}, // forbidden
 		10: {httpHashUpgrade, 121, 128, nil, nil}, // forbidden
 	}
@@ -330,6 +332,23 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	}
 	return r.shell.addHeader(name, value)
 }
+func (r *hRequest_) _addHost(host []byte) (ok bool) {
+	// TODO: use r.oHost
+	return r.shell.addHeader(httpBytesHost, host)
+}
+func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
+	// TODO: use r.oIfModifiedSince
+	return r.shell.addHeader(httpBytesIfModifiedSince, since)
+}
+func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
+	// TODO: use r.oIfRange
+	return r.shell.addHeader(httpBytesIfRange, ifRange)
+}
+func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
+	// TODO: use r.oIfUnmodifiedSince
+	return r.shell.addHeader(httpBytesIfUnmodifiedSince, since)
+}
+
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
@@ -340,39 +359,21 @@ func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-
-func (r *hRequest_) _insertHost(host []byte) (ok bool) {
-	// TODO
-	return r.shell.addHeader(httpBytesHost, host)
+func (r *hRequest_) _delHost() (deleted bool) {
+	// TODO: use r.oHost
+	return r.shell.delHeader(httpBytesHost)
 }
-func (r *hRequest_) _insertIfModifiedSince(since []byte) (ok bool) {
-	// TODO
-	return true
+func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
+	// TODO: use r.oIfModifiedSince
+	return r.shell.delHeader(httpBytesIfModifiedSince)
 }
-func (r *hRequest_) _insertIfRange(ifRange []byte) (ok bool) {
-	// TODO
-	return true
+func (r *hRequest_) _delIfRange() (deleted bool) {
+	// TODO: use r.oIfRange
+	return r.shell.delHeader(httpBytesIfRange)
 }
-func (r *hRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
-	// TODO
-	return true
-}
-
-func (r *hRequest_) _removeHost() (deleted bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) _removeIfModifiedSince() (deleted bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) _removeIfRange() (deleted bool) {
-	// TODO
-	return true
-}
-func (r *hRequest_) _removeIfUnmodifiedSince() (deleted bool) {
-	// TODO
-	return true
+func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
+	// TODO: use r.oIfUnmodifiedSince
+	return r.shell.delHeader(httpBytesIfUnmodifiedSince)
 }
 
 func (r *hRequest_) endUnsized() error {
@@ -453,7 +454,7 @@ func (r *hResponse_) onEnd() { // for zeros
 
 func (r *hResponse_) Status() int16 { return r.status }
 
-func (r *hResponse_) applyHeader(header *pair) bool {
+func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
 		if header.value.isEmpty() && h.must {
@@ -645,7 +646,7 @@ func (r *hResponse_) checkHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
-		r.keepAlive = 1 // always keep alive
+		// Add here
 	}
 
 	if !r.determineContentMode() {
@@ -678,7 +679,7 @@ func (r *hResponse_) HasContent() bool {
 func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
-func (r *hResponse_) applyTrailer(trailer *pair) bool {
+func (r *hResponse_) adoptTrailer(trailer *pair) bool {
 	r.addTrailer(trailer)
 	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
 	return true

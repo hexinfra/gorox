@@ -75,10 +75,10 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn is a Request or response, used as shell by httpIn_.
 type httpIn interface {
-	applyHeader(header *pair) bool
+	adoptHeader(header *pair) bool
 	ContentSize() int64
 	readContent() (p []byte, err error)
-	applyTrailer(trailer *pair) bool
+	adoptTrailer(trailer *pair) bool
 	HasTrailers() bool
 	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -479,15 +479,15 @@ func (r *httpIn_) HasHeader(name string) bool {
 	_, ok := r.getPair(name, 0, r.headers, extraHeader)
 	return ok
 }
-func (r *httpIn_) AddHeader(name string, value string) bool {
+func (r *httpIn_) AddHeader(name string, value string) bool { // extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraHeader)
 }
-func (r *httpIn_) DelHeader(name string) (deleted bool) {
+func (r *httpIn_) DelHeader(name string) (deleted bool) { // prime + extra
 	// TODO: add restrictions on what headers are allowed to delete?
 	return r.delPair(name, 0, r.headers, extraHeader)
 }
-func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool {
+func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool { // prime
 	// Add main header before sub headers.
 	if !r.addHeader(header) {
 		// r.headResult is set.
@@ -559,7 +559,7 @@ func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool {
 	}
 	return true
 }
-func (r *httpIn_) addHeader(header *pair) bool {
+func (r *httpIn_) addHeader(header *pair) bool { // prime
 	if edge, ok := r.addPrime(header); ok {
 		r.headers.edge = edge
 		return true
@@ -567,7 +567,7 @@ func (r *httpIn_) addHeader(header *pair) bool {
 	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *httpIn_) delHeader(name []byte, hash uint16) {
+func (r *httpIn_) delHeader(name []byte, hash uint16) { // prime + extra
 	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
 }
 func (r *httpIn_) delHopHeaders() { // used by proxies
@@ -775,21 +775,21 @@ func (r *httpIn_) HasTrailer(name string) bool {
 	_, ok := r.getPair(name, 0, r.trailers, extraTrailer)
 	return ok
 }
-func (r *httpIn_) AddTrailer(name string, value string) bool {
+func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraTrailer)
 }
-func (r *httpIn_) DelTrailer(name string) (deleted bool) {
+func (r *httpIn_) DelTrailer(name string) (deleted bool) { // prime + extra
 	// TODO: add restrictions on what trailers are allowed to delete?
 	return r.delPair(name, 0, r.trailers, extraTrailer)
 }
-func (r *httpIn_) addTrailer(trailer *pair) {
+func (r *httpIn_) addTrailer(trailer *pair) { // prime
 	if edge, ok := r.addPrime(trailer); ok {
 		r.trailers.edge = edge
 	}
 	// Ignore too many trailers
 }
-func (r *httpIn_) delTrailer(name []byte, hash uint16) {
+func (r *httpIn_) delTrailer(name []byte, hash uint16) { // prime + extra
 	r.delPair(risky.WeakString(name), hash, r.trailers, extraTrailer)
 }
 func (r *httpIn_) delHopTrailers() { // used by proxies
@@ -1355,14 +1355,14 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	return r.shell.addTrailer(name, value)
 }
 
-func (r *httpOut_) _insertContentType(contentType []byte) (ok bool) {
+func (r *httpOut_) _addContentType(contentType []byte) (ok bool) {
 	if r.oContentType > 0 || !r.shell.addHeader(httpBytesContentType, contentType) {
 		return false
 	}
 	r.oContentType = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
-func (r *httpOut_) _insertDate(date []byte) (ok bool) {
+func (r *httpOut_) _addDate(date []byte) (ok bool) {
 	if r.oDate > 0 || !r.shell.addHeader(httpBytesDate, date) {
 		return false
 	}
@@ -1370,7 +1370,7 @@ func (r *httpOut_) _insertDate(date []byte) (ok bool) {
 	return true
 }
 
-func (r *httpOut_) _removeContentType() (deleted bool) {
+func (r *httpOut_) _delContentType() (deleted bool) {
 	if r.oContentType == 0 { // not exist
 		return false
 	}
@@ -1378,7 +1378,7 @@ func (r *httpOut_) _removeContentType() (deleted bool) {
 	r.oContentType = 0
 	return true
 }
-func (r *httpOut_) _removeDate() (deleted bool) {
+func (r *httpOut_) _delDate() (deleted bool) {
 	if r.oDate == 0 { // not exist
 		return false
 	}

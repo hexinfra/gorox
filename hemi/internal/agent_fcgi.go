@@ -835,8 +835,8 @@ func (r *fcgiResponse) recvHeaders() bool {
 			header.value.zero()
 		}
 
-		// Header is received in general algorithm. Now apply it
-		if !r.applyHeader(header) {
+		// Header is received in general algorithm. Now adopt it
+		if !r.adoptHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -858,7 +858,7 @@ func (r *fcgiResponse) recvHeaders() bool {
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) applyHeader(header *pair) bool {
+func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
 		from := len(r.headers) + 1 // excluding original header. overflow doesn't matter
@@ -1036,7 +1036,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 func (r *fcgiResponse) growBody() {
 }
 
-func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers

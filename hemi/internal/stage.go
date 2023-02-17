@@ -543,7 +543,7 @@ func (s *Stage) linkSvcServers() {
 			} else if grpcServer, ok := server.(GRPCServer); ok {
 				grpcServer.LinkSvc(svc)
 			} else {
-				UseExitf("server '%s' is not an http server nor grpc server, cannot link svc to it", serverName)
+				UseExitf("server '%s' is not an hrpc server nor grpc server, cannot link svc to it", serverName)
 			}
 			if IsDebug(1) {
 				Debugf("svc %s is linked to rpc server %s\n", svc.name, serverName)

@@ -10,7 +10,7 @@ Welcome
     * Application Server for Go (Applications, Frameworks)
     * Microservice Server for Go (HRPC Services, gRPC Services)
     * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
-    * API Gateway (HTTP APIs, gRPC APIs, WAF)
+    * API Gateway (HTTP APIs, HRPC APIs, gRPC APIs, WAF)
     * Service Mesh (Data Plane, Control Plane)
     * ... and more through its highly extensible compoments design!
 

@@ -176,7 +176,7 @@ type request interface {
 	setControl(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	addHeader(name []byte, value []byte) bool
-	copyCookies(req Request) bool
+	passCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
 // hRequest_ is the mixin for H[1-3]Request.
@@ -188,22 +188,24 @@ type hRequest_ struct { // outgoing. needs building
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	ifModifiedSince   int64 // ...
-	ifUnmodifiedSince int64 // ...
+	ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
+	ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }
 type hRequest0_ struct { // for fast reset, entirely
-	oHost              uint8 // ...
-	oIfModifiedSince   uint8
-	oIfRange           uint8
-	oIfUnmodifiedSince uint8
+	indexes struct {
+		host              uint8
+		ifModifiedSince   uint8
+		ifRange           uint8
+		ifUnmodifiedSince uint8
+	}
 }
 
 func (r *hRequest_) onUse() { // for non-zeros
 	r.httpOut_.onUse(true)
-	r.ifModifiedSince = -1
-	r.ifUnmodifiedSince = -1
+	r.ifModifiedSince = -1   // not set
+	r.ifUnmodifiedSince = -1 // not set
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}
@@ -215,12 +217,10 @@ func (r *hRequest_) Response() response { return r.response }
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] }
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
-	// TODO
-	return false
+	return r._setTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, since)
 }
 func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
-	// TODO
-	return false
+	return r._setTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
 func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
@@ -250,7 +250,7 @@ func (r *hRequest_) push(chunk *Block) error {
 	return r.shell.pushChain(curChain)
 }
 
-func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
 	// copy control
 	var uri []byte
 	if req.IsAsteriskOptions() { // OPTIONS *
@@ -268,7 +268,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	req.delHopHeaders()
 
 	// copy special headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(request).passCookies(req) {
 		return false
 	}
 	if custom := len(hostname) != 0 || len(colonPort) != 0; custom || req.IsAbsoluteForm() {
@@ -333,20 +333,21 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	return r.shell.addHeader(name, value)
 }
 func (r *hRequest_) _addHost(host []byte) (ok bool) {
-	// TODO: use r.oHost
-	return r.shell.addHeader(httpBytesHost, host)
+	if r.indexes.host > 0 || !r.shell.addHeader(httpBytesHost, host) {
+		return false
+	}
+	r.indexes.host = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
 }
 func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
-	// TODO: use r.oIfModifiedSince
-	return r.shell.addHeader(httpBytesIfModifiedSince, since)
+	return r._addTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, httpBytesIfModifiedSince, since)
 }
 func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
-	// TODO: use r.oIfRange
+	// TODO: use r.indexes.ifRange
 	return r.shell.addHeader(httpBytesIfRange, ifRange)
 }
 func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
-	// TODO: use r.oIfUnmodifiedSince
-	return r.shell.addHeader(httpBytesIfUnmodifiedSince, since)
+	return r._addTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, httpBytesIfUnmodifiedSince, since)
 }
 
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
@@ -360,20 +361,22 @@ func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *hRequest_) _delHost() (deleted bool) {
-	// TODO: use r.oHost
-	return r.shell.delHeader(httpBytesHost)
+	if r.indexes.host == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(r.indexes.host)
+	r.indexes.host = 0
+	return true
 }
 func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
-	// TODO: use r.oIfModifiedSince
-	return r.shell.delHeader(httpBytesIfModifiedSince)
+	return r._delTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
 func (r *hRequest_) _delIfRange() (deleted bool) {
-	// TODO: use r.oIfRange
+	// TODO: use r.indexes.ifRange
 	return r.shell.delHeader(httpBytesIfRange)
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
-	// TODO: use r.oIfUnmodifiedSince
-	return r.shell.delHeader(httpBytesIfUnmodifiedSince)
+	return r._delTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
 func (r *hRequest_) endUnsized() error {

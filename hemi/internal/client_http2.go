@@ -381,7 +381,7 @@ func (r *H2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H2Request) copyCookies(req Request) bool { // used by proxies
+func (r *H2Request) passCookies(req Request) bool { // used by proxies
 	// TODO: one by one?
 	return true
 }

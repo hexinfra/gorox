@@ -483,7 +483,7 @@ func (r *httpIn_) AddHeader(name string, value string) bool { // extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraHeader)
 }
-func (r *httpIn_) DelHeader(name string) (deleted bool) { // prime + extra
+func (r *httpIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to delete?
 	return r.delPair(name, 0, r.headers, extraHeader)
 }
@@ -567,7 +567,7 @@ func (r *httpIn_) addHeader(header *pair) bool { // prime
 	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *httpIn_) delHeader(name []byte, hash uint16) { // prime + extra
+func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
 }
 func (r *httpIn_) delHopHeaders() { // used by proxies
@@ -779,7 +779,7 @@ func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	return r.addExtra(name, value, extraTrailer)
 }
-func (r *httpIn_) DelTrailer(name string) (deleted bool) { // prime + extra
+func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 	// TODO: add restrictions on what trailers are allowed to delete?
 	return r.delPair(name, 0, r.trailers, extraTrailer)
 }
@@ -789,7 +789,7 @@ func (r *httpIn_) addTrailer(trailer *pair) { // prime
 	}
 	// Ignore too many trailers
 }
-func (r *httpIn_) delTrailer(name []byte, hash uint16) { // prime + extra
+func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, extraTrailer)
 }
 func (r *httpIn_) delHopTrailers() { // used by proxies
@@ -1387,10 +1387,46 @@ func (r *httpOut_) _delDate() (deleted bool) {
 	return true
 }
 
+func (r *httpOut_) _setTimestamp(pTimestamp *int64, pIndex *uint8, timestamp int64) bool {
+	if timestamp < 0 {
+		return false
+	}
+	if *pTimestamp == -2 { // set through general api
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	}
+	*pTimestamp = timestamp
+	return true
+}
+func (r *httpOut_) _addTimestamp(pTimestamp *int64, pIndex *uint8, name []byte, timestamp []byte) bool {
+	if *pTimestamp == -2 {
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	} else { // >= 0 or -1
+		*pTimestamp = -2
+	}
+	if !r.shell.addHeader(name, timestamp) {
+		return false
+	}
+	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+func (r *httpOut_) _delTimestamp(pTimestamp *int64, pIndex *uint8) bool {
+	if *pTimestamp == -1 {
+		return false
+	}
+	if *pTimestamp == -2 {
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	}
+	*pTimestamp = -1
+	return true
+}
+
 func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content directly
-	pass := r.shell.syncBytes
+	sync := r.shell.syncBytes
 	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
-		pass = r.PushBytes
+		sync = r.PushBytes
 	} else { // size >= 0
 		r.isSent = true
 		r.contentSize = size
@@ -1401,7 +1437,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	for {
 		p, err := in.readContent()
 		if len(p) >= 0 {
-			if e := pass(p); e != nil {
+			if e := sync(p); e != nil {
 				return e
 			}
 		}

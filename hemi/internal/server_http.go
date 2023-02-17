@@ -673,7 +673,7 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
-func (r *httpRequest_) addQuery(query *pair) bool {
+func (r *httpRequest_) addQuery(query *pair) bool { // prime
 	if edge, ok := r.addPrime(query); ok {
 		r.queries.edge = edge
 		return true
@@ -720,7 +720,7 @@ func (r *httpRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, extraQuery)
 	return ok
 }
-func (r *httpRequest_) AddQuery(name string, value string) bool {
+func (r *httpRequest_) AddQuery(name string, value string) bool { // extra
 	return r.addExtra(name, value, extraQuery)
 }
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
@@ -1392,7 +1392,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	}
 	return true
 }
-func (r *httpRequest_) addCookie(cookie *pair) bool { // cookie: xxx=yyy
+func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1439,7 +1439,7 @@ func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
 	return ok
 }
-func (r *httpRequest_) AddCookie(name string, value string) bool {
+func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
 	return r.addExtra(name, value, extraCookie)
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
@@ -2167,7 +2167,7 @@ func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller ne
 	}
 }
 
-func (r *httpRequest_) addForm(form *pair) {
+func (r *httpRequest_) addForm(form *pair) { // prime
 	if edge, ok := r.addPrime(form); ok {
 		r.forms.edge = edge
 	}
@@ -2394,7 +2394,7 @@ type Response interface {
 	hasHeader(name []byte) bool
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
-	copyHead(resp response) bool // used by proxies
+	passHead(resp response) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
@@ -2427,15 +2427,17 @@ type httpResponse_ struct { // outgoing. needs building
 	httpResponse0_      // all values must be zero by default in this struct!
 }
 type httpResponse0_ struct { // for fast reset, entirely
-	revisers      [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	oExpires      uint8     // ...
-	oLastModified uint8     // ...
+	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
+	indexes  struct {
+		expires      uint8
+		lastModified uint8
+	}
 }
 
 func (r *httpResponse_) onUse() { // for non-zeros
 	r.httpOut_.onUse(false)
 	r.status = StatusOK
-	r.lastModified = -1
+	r.lastModified = -1 // not set
 }
 func (r *httpResponse_) onEnd() { // for zeros
 	r.app = nil
@@ -2462,9 +2464,7 @@ func (r *httpResponse_) SetStatus(status int16) error {
 		return httpOutUnknownStatus
 	}
 }
-func (r *httpResponse_) Status() int16 {
-	return r.status
-}
+func (r *httpResponse_) Status() int16 { return r.status }
 
 func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
 	if modTime < 0 || fileSize < 0 {
@@ -2484,15 +2484,7 @@ func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	return p[0 : n+1], true
 }
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
-	if lastModified < 0 {
-		return false
-	}
-	if r.lastModified == -2 {
-		r.shell.delHeaderAt(r.oLastModified)
-		r.oLastModified = 0
-	}
-	r.lastModified = lastModified
-	return true
+	return r._setTimestamp(&r.lastModified, &r.indexes.lastModified, lastModified)
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2618,7 +2610,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 	return resp.pushChain(curChain)
 }
 
-func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
+func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 	// copy control
 	r.SetStatus(resp.Status())
 
@@ -2674,21 +2666,11 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	// TODO: use r.oExpires
+	// TODO: use r.indexes.expires
 	return r.shell.addHeader(httpBytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
-	if r.lastModified == -2 {
-		r.shell.delHeaderAt(r.oLastModified)
-		r.oLastModified = 0
-	} else { // >= 0 or -1
-		r.lastModified = -2
-	}
-	if !r.shell.addHeader(httpBytesLastModified, lastModified) {
-		return false
-	}
-	r.oLastModified = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
+	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, httpBytesLastModified, lastModified)
 }
 
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
@@ -2702,19 +2684,11 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *httpResponse_) _delExpires() (deleted bool) {
-	// TODO: use r.oExpires
+	// TODO: use r.indexes.expires
 	return r.shell.delHeader(httpBytesExpires)
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
-	if r.lastModified == -1 {
-		return false
-	}
-	if r.lastModified == -2 {
-		r.shell.delHeaderAt(r.oLastModified)
-		r.oLastModified = 0
-	}
-	r.lastModified = -1
-	return true
+	return r._delTimestamp(&r.lastModified, &r.indexes.lastModified)
 }
 
 func (r *httpResponse_) endUnsized() error {

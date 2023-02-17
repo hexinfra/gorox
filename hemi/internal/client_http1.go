@@ -406,7 +406,7 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H1Request) copyCookies(req Request) bool { // used by proxies
+func (r *H1Request) passCookies(req Request) bool { // used by proxies
 	size := len(httpBytesCookie) + len(httpBytesColonSpace) // `cookie: `
 	req.forCookies(func(hash uint16, name []byte, value []byte) bool {
 		size += len(name) + 1 + len(value) + 2 // `name=value; `

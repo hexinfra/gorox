@@ -148,7 +148,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-	if !fReq.copyHead(hReq, h.scriptFilename) {
+	if !fReq.passHead(hReq, h.scriptFilename) {
 		fStream.markBroken()
 		hResp.SendBadGateway(nil)
 		return
@@ -206,7 +206,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 		}
 	}
 
-	if !hResp.copyHead(fResp) {
+	if !hResp.passHead(fResp) {
 		fStream.markBroken()
 		return
 	}
@@ -337,7 +337,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
+func (r *fcgiRequest) passHead(req Request, scriptFilename []byte) bool {
 	var value []byte
 	if len(scriptFilename) == 0 {
 		value = req.unsafeAbsPath()

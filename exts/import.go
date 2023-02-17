@@ -7,18 +7,7 @@
 
 package exts
 
-import ( // import more standard components here.
-	_ "github.com/hexinfra/gorox/hemi/standard/cachers/redis"
-	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/stat"
-	_ "github.com/hexinfra/gorox/hemi/standard/dealets/tcps/echo"
-	_ "github.com/hexinfra/gorox/hemi/standard/dealets/udps/dns"
-	_ "github.com/hexinfra/gorox/hemi/standard/editors/tcps/mysql"
-	_ "github.com/hexinfra/gorox/hemi/standard/handlets/referer"
-	_ "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
-	_ "github.com/hexinfra/gorox/hemi/standard/revisers/replace"
-	_ "github.com/hexinfra/gorox/hemi/standard/revisers/wrap"
-	_ "github.com/hexinfra/gorox/hemi/standard/servers/socks"
-	_ "github.com/hexinfra/gorox/hemi/standard/staters/redis"
+import ( // import contrib components here.
 )
 
 import ( // import vendor exts here.

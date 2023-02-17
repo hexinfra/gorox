@@ -1,4 +1,4 @@
 Standard components.
 
-Import (i.e. from your "exts/import.go") the components you need and rebuild.
-Some components are preloaded, see "import.go".
+Standard components are preloaded, you don't need to import them manually.
+If a new component is added, add it in "import.go" too.

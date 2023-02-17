@@ -9,7 +9,7 @@ package hemi
 
 import (
 	"github.com/hexinfra/gorox/hemi/internal"
-	_ "github.com/hexinfra/gorox/hemi/standard" // preloaded components
+	_ "github.com/hexinfra/gorox/hemi/standard"
 )
 
 const Version = "0.1.0-dev"

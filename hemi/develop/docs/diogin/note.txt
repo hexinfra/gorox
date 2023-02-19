@@ -1,2 +1,3 @@
-* data, temp, logs 三个目录一启动就建立
-* global.go
+* global.go 从 misc.go 抽出
+* bindApps 做在 httpServer 上，去掉 appServers
+* bindSvcs 做在 hrpcServer/grpcServer 上，去掉 svcServers

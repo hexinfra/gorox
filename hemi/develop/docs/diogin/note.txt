@@ -1,0 +1,2 @@
+* data, temp, logs 三个目录一启动就建立
+* global.go

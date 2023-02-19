@@ -132,18 +132,18 @@ type ( // core types
 
 	Block = internal.Block
 
-	App       = internal.App
-	Handlet   = internal.Handlet
-	Handle    = internal.Handle
-	Router    = internal.Router
-	Reviser   = internal.Reviser
-	Socklet   = internal.Socklet
-	Rule      = internal.Rule
-	Request   = internal.Request
-	Upload    = internal.Upload
-	Response  = internal.Response
-	SetCookie = internal.SetCookie
-	Socket    = internal.Socket
+	App      = internal.App
+	Handlet  = internal.Handlet
+	Handle   = internal.Handle
+	Router   = internal.Router
+	Reviser  = internal.Reviser
+	Socklet  = internal.Socklet
+	Rule     = internal.Rule
+	Request  = internal.Request
+	Upload   = internal.Upload
+	Response = internal.Response
+	Cookie   = internal.Cookie
+	Socket   = internal.Socket
 
 	Svc        = internal.Svc        // supports both HRPC and gRPC
 	GRPCServer = internal.GRPCServer // for implementing grpc server in exts

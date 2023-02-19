@@ -50,8 +50,8 @@ type httpServer_ struct {
 	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
 	enableTCPTun bool                // allow CONNECT method?
 	enableUDPTun bool                // allow upgrade: connect-udp?
-	recvTimeout  time.Duration       // ...
-	sendTimeout  time.Duration       // ...
+	recvTimeout  time.Duration       // timeout to recv the whole request content
+	sendTimeout  time.Duration       // timeout to send the whole response
 }
 
 func (s *httpServer_) onCreate(name string, stage *Stage) {
@@ -1289,16 +1289,6 @@ func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []nav
 		}
 	}
 }
-
-func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *httpRequest_) UnsafeUserAgent() []byte {
-	if r.indexes.userAgent == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.userAgent].valueAt(r.input)
-}
-
 func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-header = "Cookie:" OWS cookie-string OWS
 	// cookie-string = cookie-pair *( ";" SP cookie-pair )
@@ -1392,6 +1382,16 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	}
 	return true
 }
+
+func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
+func (r *httpRequest_) UnsafeUserAgent() []byte {
+	if r.indexes.userAgent == 0 {
+		return nil
+	}
+	return r.primes[r.indexes.userAgent].valueAt(r.input)
+}
+
 func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
@@ -2357,7 +2357,7 @@ type Response interface {
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
 
-	SetCookie(setCookie *SetCookie) bool
+	SetCookie(cookie *Cookie) bool
 
 	Header(name string) (value string, ok bool)
 	HasHeader(name string) bool
@@ -2715,8 +2715,8 @@ func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-// SetCookie is a "set-cookie" sent to client.
-type SetCookie struct {
+// Cookie is a "set-cookie" sent to client.
+type Cookie struct {
 	name     string
 	value    string
 	expires  time.Time
@@ -2733,7 +2733,7 @@ type SetCookie struct {
 	ageBuf   [19]byte
 }
 
-func (c *SetCookie) Set(name string, value string) bool {
+func (c *Cookie) Set(name string, value string) bool {
 	// cookie-name = 1*cookie-octet
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	if name == "" {
@@ -2764,12 +2764,12 @@ func (c *SetCookie) Set(name string, value string) bool {
 	return true
 }
 
-func (c *SetCookie) SetDomain(domain string) bool {
+func (c *Cookie) SetDomain(domain string) bool {
 	// TODO: check domain
 	c.domain = domain
 	return true
 }
-func (c *SetCookie) SetPath(path string) bool {
+func (c *Cookie) SetPath(path string) bool {
 	// path-value = *av-octet
 	// av-octet = %x20-3A / %x3C-7E
 	for i := 0; i < len(path); i++ {
@@ -2781,7 +2781,7 @@ func (c *SetCookie) SetPath(path string) bool {
 	c.path = path
 	return true
 }
-func (c *SetCookie) SetExpires(expires time.Time) bool {
+func (c *Cookie) SetExpires(expires time.Time) bool {
 	if expires.Year() < 1601 {
 		c.invalid = true
 		return false
@@ -2789,14 +2789,14 @@ func (c *SetCookie) SetExpires(expires time.Time) bool {
 	c.expires = expires
 	return true
 }
-func (c *SetCookie) SetMaxAge(maxAge int64) { c.maxAge = maxAge }
-func (c *SetCookie) SetSecure()             { c.secure = true }
-func (c *SetCookie) SetHttpOnly()           { c.httpOnly = true }
-func (c *SetCookie) SetSameSiteStrict()     { c.sameSite = "Strict" }
-func (c *SetCookie) SetSameSiteLax()        { c.sameSite = "Lax" }
-func (c *SetCookie) SetSameSiteNone()       { c.sameSite = "None" }
+func (c *Cookie) SetMaxAge(maxAge int64) { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()             { c.secure = true }
+func (c *Cookie) SetHttpOnly()           { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()     { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()        { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()       { c.sameSite = "None" }
 
-func (c *SetCookie) size() int {
+func (c *Cookie) size() int {
 	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
 	n := len(c.name) + 1 + len(c.value) // name=value
 	if c.quote {
@@ -2831,7 +2831,7 @@ func (c *SetCookie) size() int {
 	}
 	return n
 }
-func (c *SetCookie) writeTo(p []byte) int {
+func (c *Cookie) writeTo(p []byte) int {
 	i := copy(p, c.name)
 	p[i] = '='
 	i++

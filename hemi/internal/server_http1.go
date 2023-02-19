@@ -933,17 +933,17 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 	}
 }
 
-func (r *http1Response) SetCookie(setCookie *SetCookie) bool {
-	if setCookie.name == "" || setCookie.invalid {
+func (r *http1Response) SetCookie(cookie *Cookie) bool {
+	if cookie.name == "" || cookie.invalid {
 		return false
 	}
-	size := len(bytesSetCookie) + len(bytesColonSpace) + setCookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
+	size := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
 	if from, _, ok := r.growHeader(size); ok {
 		from += copy(r.fields[from:], bytesSetCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		from += setCookie.writeTo(r.fields[from:])
+		from += cookie.writeTo(r.fields[from:])
 		r._addCRLFHeader1(from)
 		return true
 	} else {

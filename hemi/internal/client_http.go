@@ -30,8 +30,8 @@ type httpClient_ struct {
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxContentSize int64
-	sendTimeout    time.Duration
-	recvTimeout    time.Duration
+	sendTimeout    time.Duration // timeout to send the whole request
+	recvTimeout    time.Duration // timeout to recv the whole response content
 }
 
 func (h *httpClient_) onCreate() {
@@ -393,10 +393,10 @@ type hResponse_ struct { // incoming. needs parsing
 	// Mixins
 	httpIn_
 	// Stream states (buffers)
-	stockSetCookies [4]setCookie // for r.setCookies
+	stockCookies [4]cookie // for r.cookies
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	setCookies []setCookie // hold setCookies->r.input. [<r.stockSetCookies>/(make=16/128)]
+	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=16/128)]
 	// Stream states (zeros)
 	hResponse0_ // all values must be zero by default in this struct!
 }
@@ -431,12 +431,12 @@ type hResponse0_ struct { // for fast reset, entirely
 func (r *hResponse_) onUse() { // for non-zeros
 	r.httpIn_.onUse(true) // asResponse = true
 
-	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
+	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }
 func (r *hResponse_) onEnd() { // for zeros
-	if cap(r.setCookies) != cap(r.stockSetCookies) {
+	if cap(r.cookies) != cap(r.stockCookies) {
 		// put?
-		r.setCookies = nil
+		r.cookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
 
@@ -578,7 +578,36 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
-	return r.parseSetCookie(header.value)
+	// set-cookie-header = "Set-Cookie:" SP set-cookie-string
+	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
+	// cookie-pair = token "=" cookie-value
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
+	// expires-av = "Expires=" sane-cookie-date
+	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
+	// domain-av = "Domain=" domain-value
+	// path-av = "Path=" path-value
+	// secure-av = "Secure"
+	// httponly-av = "HttpOnly"
+	// samesite-av = "SameSite=" samesite-value
+	// extension-av = <any CHAR except CTLs or ";">
+	var setCookie cookie
+	// TODO: parse header.value to setCookie
+	if len(r.cookies) == cap(r.cookies) {
+		if cap(r.cookies) == cap(r.stockCookies) {
+			cookies := make([]cookie, 0, 16)
+			r.cookies = append(cookies, r.cookies...)
+		} else if cap(r.cookies) == 16 {
+			cookies := make([]cookie, 0, 128)
+			r.cookies = append(cookies, r.cookies...)
+		} else {
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+	}
+	r.cookies = append(r.cookies, setCookie)
+	return true
 }
 
 func (r *hResponse_) unsafeDate() []byte {
@@ -594,39 +623,7 @@ func (r *hResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *hResponse_) parseSetCookie(setCookieString text) bool {
-	// set-cookie-header = "Set-Cookie:" SP set-cookie-string
-	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
-	// cookie-pair = token "=" cookie-value
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
-	// expires-av = "Expires=" sane-cookie-date
-	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
-	// domain-av = "Domain=" domain-value
-	// path-av = "Path=" path-value
-	// secure-av = "Secure"
-	// httponly-av = "HttpOnly"
-	// samesite-av = "SameSite=" samesite-value
-	// extension-av = <any CHAR except CTLs or ";">
-	var cookie setCookie
-	// TODO: parse to cookie
-	if len(r.setCookies) == cap(r.setCookies) {
-		if cap(r.setCookies) == cap(r.stockSetCookies) {
-			setCookies := make([]setCookie, 0, 16)
-			r.setCookies = append(setCookies, r.setCookies...)
-		} else if cap(r.setCookies) == 16 {
-			setCookies := make([]setCookie, 0, 128)
-			r.setCookies = append(setCookies, r.setCookies...)
-		} else {
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.setCookies = append(r.setCookies, cookie)
-	return true
-}
-func (r *hResponse_) hasSetCookies() bool { return len(r.setCookies) > 0 }
+func (r *hResponse_) hasCookies() bool { return len(r.cookies) > 0 }
 
 func (r *hResponse_) checkHead() bool {
 	// Basic checks against versions
@@ -695,8 +692,8 @@ func (r *hResponse_) saveContentFilesDir() string {
 	return r.stream.keeper().(httpClient).SaveContentFilesDir() // must ends with '/'
 }
 
-// setCookie is a "set-cookie" received from server.
-type setCookie struct { // 24 bytes. refers to r.input
+// cookie is a "set-cookie" received from server.
+type cookie struct { // 24 bytes. refers to r.input
 	nameFrom     int16 // foo
 	valueFrom    int16 // bar
 	valueEdge    int16

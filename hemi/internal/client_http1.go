@@ -484,7 +484,11 @@ func (r *H1Response) recvHead() { // control + headers
 		r.headResult = -1
 		return
 	}
-	if !r.growHead1() || !r.recvControl() || !r.recvHeaders1() || !r.checkHead() {
+	if !r.growHead1() { // r.input must be empty because we don't use pipelining in requests.
+		// r.headResult is set.
+		return
+	}
+	if !r.recvControl() || !r.recvHeaders1() || !r.checkHead() {
 		// r.headResult is set.
 		return
 	}

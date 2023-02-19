@@ -48,7 +48,7 @@ type fcgiAgent struct {
 	addResponseHeaders  [][2][]byte   // headers appended to server response
 	delResponseHeaders  [][]byte      // server response headers to delete
 	sendTimeout         time.Duration // timeout to send the whole request
-	recvTimeout         time.Duration // timeout to recv the whole response
+	recvTimeout         time.Duration // timeout to recv the whole response content
 }
 
 func (h *fcgiAgent) onCreate(name string, stage *Stage, app *App) {
@@ -494,7 +494,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	records     []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
 	input       []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	headers     []pair        // fcgi response headers
-	recvTimeout time.Duration // timeout to recv the whole response
+	recvTimeout time.Duration // timeout to recv the whole response content
 	headResult  int16         // result of receiving response head. values are same as http status for convenience
 	// States (zeros)
 	headReason    string    // the reason of head result

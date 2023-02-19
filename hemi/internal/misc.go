@@ -38,20 +38,29 @@ func LogsDir() string          { return _logsDir.Load().(string) }
 func TempDir() string          { return _tempDir.Load().(string) }
 
 func SetDebug(level int32)  { _debug.Store(level) }
-func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) } // only once
-func SetDataDir(dir string) { _dataOnce.Do(func() { _dataDir.Store(dir) }) } // only once
-func SetLogsDir(dir string) { _logsOnce.Do(func() { _logsDir.Store(dir) }) } // only once
-func SetTempDir(dir string) { _tempOnce.Do(func() { _tempDir.Store(dir) }) } // only once
+func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) }
+func SetDataDir(dir string) {
+	_mkdir(dir)
+	_dataOnce.Do(func() { _dataDir.Store(dir) })
+}
+func SetLogsDir(dir string) {
+	_mkdir(dir)
+	_logsOnce.Do(func() { _logsDir.Store(dir) })
+}
+func SetTempDir(dir string) {
+	_mkdir(dir)
+	_tempOnce.Do(func() { _tempDir.Store(dir) })
+}
+func _mkdir(dir string) {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Printf(err.Error())
+		os.Exit(0)
+	}
+}
 
-func Debug(args ...any) {
-	fmt.Print(args...)
-}
-func Debugln(args ...any) {
-	fmt.Println(args...)
-}
-func Debugf(format string, args ...any) {
-	fmt.Printf(format, args...)
-}
+func Debug(args ...any)                 { fmt.Print(args...) }
+func Debugln(args ...any)               { fmt.Println(args...) }
+func Debugf(format string, args ...any) { fmt.Printf(format, args...) }
 
 const ( // exit codes. keep sync with ../hemi.go
 	CodeBug = 20

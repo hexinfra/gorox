@@ -77,6 +77,7 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 type httpIn interface {
 	adoptHeader(header *pair) bool
 	ContentSize() int64
+	isUnsized() bool
 	readContent() (p []byte, err error)
 	adoptTrailer(trailer *pair) bool
 	HasTrailers() bool
@@ -591,14 +592,13 @@ func (r *httpIn_) determineContentMode() bool {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
-		r.markUnsized()
+		r.contentSize = -2
 	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
 		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
-		r.markUnsized() // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
+		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
 	}
 	return true
 }
-
 func (r *httpIn_) markUnsized()    { r.contentSize = -2 }
 func (r *httpIn_) isUnsized() bool { return r.contentSize == -2 }
 
@@ -1420,11 +1420,11 @@ func (r *httpOut_) _delTimestamp(pTimestamp *int64, pIndex *uint8) bool {
 
 func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content directly
 	sync := r.shell.syncBytes
-	if size := in.ContentSize(); size == -2 || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
+	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
 		sync = r.PushBytes
 	} else { // size >= 0
 		r.isSent = true
-		r.contentSize = size
+		r.contentSize = in.ContentSize()
 		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}

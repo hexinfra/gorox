@@ -631,13 +631,13 @@ func (r *hResponse_) checkHead() bool {
 		return false
 	}
 
+	if r.status < StatusOK && r.contentSize != -1 {
+		r.headResult, r.headReason = StatusBadRequest, "content is not allowed in 1xx responses"
+		return false
+	}
 	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()
 	if r.contentSize > r.maxContentSize {
 		r.headResult = StatusContentTooLarge
-		return false
-	}
-	if r.status < StatusOK && r.contentSize != -1 {
-		r.headResult, r.headReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
 	return true

@@ -949,14 +949,6 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
-func (r *fcgiResponse) unsafeContentType() []byte {
-	if r.indexes.contentType == 0 {
-		return nil
-	}
-	return r.headers[r.indexes.contentType].valueAt(r.input)
-}
-
 func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 	// Add main header before sub headers.
 	if !r.addHeader(header) {
@@ -1010,6 +1002,16 @@ func (r *fcgiResponse) checkHead() bool {
 func (r *fcgiResponse) cleanInput() {
 	// TODO
 }
+
+func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
+func (r *fcgiResponse) unsafeContentType() []byte {
+	if r.indexes.contentType == 0 {
+		return nil
+	}
+	return r.headers[r.indexes.contentType].valueAt(r.input)
+}
+
+func (r *fcgiResponse) isUnsized() bool { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 

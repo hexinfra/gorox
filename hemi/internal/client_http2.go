@@ -448,6 +448,9 @@ func (r *H2Response) appendTrailers(p []byte) bool {
 	return false
 }
 
+// poolH2Socket
+var poolH2Socket sync.Pool
+
 // H2Socket is the client-side HTTP/2 websocket.
 type H2Socket struct {
 	// Mixins

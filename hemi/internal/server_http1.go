@@ -1007,6 +1007,10 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		clockWriteLastModified(r.fields[r.fieldsEdge:r.fieldsEdge+uint16(clockLastModifiedSize)], r.lastModified)
 		r.fieldsEdge += uint16(clockLastModifiedSize)
 	}
+	// content-type: text/html; charset=utf-8
+	if r.oContentType == 0 {
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if !r.isUnsized() { // content-length: >= 0
 			sizeBuffer := r.stream.smallBuffer() // enough for length
@@ -1019,9 +1023,6 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			// response containing Transfer-Encoding unless the corresponding
 			// request indicates HTTP/1.1 (or later).
 			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
-		}
-		if r.oContentType == 0 { // content-type: text/html; charset=utf-8
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
 	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive
@@ -1036,6 +1037,9 @@ func (r *http1Response) finalizeUnsized() error {
 	}
 	return r.finalizeUnsized1()
 }
+
+// poolHTTP1Socket
+var poolHTTP1Socket sync.Pool
 
 // http1Socket is the server-side HTTP/1 websocket.
 type http1Socket struct {

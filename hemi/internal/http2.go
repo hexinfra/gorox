@@ -14,8 +14,9 @@ import (
 )
 
 // http2In_ is used by http2Request and H2Response.
+type http2In_ = httpIn_
 
-func (r *httpIn_) _growHeaders2(size int32) bool {
+func (r *http2In_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
 		return true
@@ -32,75 +33,76 @@ func (r *httpIn_) _growHeaders2(size int32) bool {
 	return true
 }
 
-func (r *httpIn_) readContent2() (p []byte, err error) {
+func (r *http2In_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
 
 // http2Out_ is used by http2Response and H2Request.
+type http2Out_ = httpOut_
 
-func (r *httpOut_) header2(name []byte) (value []byte, ok bool) {
+func (r *http2Out_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) hasHeader2(name []byte) bool {
+func (r *http2Out_) hasHeader2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) addHeader2(name []byte, value []byte) bool {
+func (r *http2Out_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeader2(name []byte) (deleted bool) {
+func (r *http2Out_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeaderAt2(o uint8) {
+func (r *http2Out_) delHeaderAt2(o uint8) {
 	// TODO
 }
 
-func (r *httpOut_) sendChain2(chain Chain, vector [][]byte) error {
+func (r *http2Out_) sendChain2(chain Chain, vector [][]byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) pushHeaders2() error {
+func (r *http2Out_) pushHeaders2() error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) pushChain2(chain Chain) error {
+func (r *http2Out_) pushChain2(chain Chain) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) trailer2(name []byte) (value []byte, ok bool) {
+func (r *http2Out_) trailer2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) addTrailer2(name []byte, value []byte) bool {
+func (r *http2Out_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) trailers2() []byte {
+func (r *http2Out_) trailers2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) syncBytes2(p []byte) error {
+func (r *http2Out_) syncBytes2(p []byte) error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) finalizeUnsized2() error {
+func (r *http2Out_) finalizeUnsized2() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) writeBlock2(block *Block, unsized bool) error {
+func (r *http2Out_) writeBlock2(block *Block, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) writeVector2(vector *net.Buffers) error {
+func (r *http2Out_) writeVector2(vector *net.Buffers) error {
 	return nil
 }
 

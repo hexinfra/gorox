@@ -448,6 +448,9 @@ func (r *http3Response) finalizeUnsized() error {
 	return nil
 }
 
+// poolHTTP3Socket
+var poolHTTP3Socket sync.Pool
+
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
 	// Mixins

@@ -1046,6 +1046,9 @@ func (r *http2Response) finalizeUnsized() error {
 	return nil
 }
 
+// poolHTTP2Socket
+var poolHTTP2Socket sync.Pool
+
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {
 	// Mixins

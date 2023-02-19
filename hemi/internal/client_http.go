@@ -249,6 +249,12 @@ func (r *hRequest_) push(chunk *Block) error {
 	}
 	return r.shell.pushChain(curChain)
 }
+func (r *hRequest_) endUnsized() error {
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	return r.shell.finalizeUnsized()
+}
 
 func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
 	// copy control
@@ -366,13 +372,6 @@ func (r *hRequest_) _delIfRange() (deleted bool) {
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
 	return r._delTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
-}
-
-func (r *hRequest_) endUnsized() error {
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	return r.shell.finalizeUnsized()
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.

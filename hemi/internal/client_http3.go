@@ -419,6 +419,9 @@ func (r *H3Response) appendTrailers(p []byte) bool {
 	return false
 }
 
+// poolH3Socket
+var poolH3Socket sync.Pool
+
 // H3Socket is the client-side HTTP/3 websocket.
 type H3Socket struct {
 	// Mixins

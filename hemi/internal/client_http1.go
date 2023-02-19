@@ -452,6 +452,10 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	if r.ifModifiedSince >= 0 {
 		// TODO
 	}
+	// content-type: text/html; charset=utf-8
+	if r.oContentType == 0 {
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+	}
 	if r.contentSize != -1 && !r.forbidFraming {
 		if r.isUnsized() { // transfer-encoding: chunked
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
@@ -459,9 +463,6 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
-		}
-		if r.oContentType == 0 { // content-type: text/html; charset=utf-8
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
 	// connection: keep-alive
@@ -610,6 +611,9 @@ func (r *H1Response) cleanInput() {
 }
 
 func (r *H1Response) readContent() (p []byte, err error) { return r.readContent1() }
+
+// poolH1Socket
+var poolH1Socket sync.Pool
 
 // H1Socket is the client-side HTTP/1 websocket.
 type H1Socket struct {

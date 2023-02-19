@@ -670,7 +670,7 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	r.stream.markBroken()
 	return nil
 }
-func (r *httpIn_) dropContent() { // if message content is received, this will be called at last
+func (r *httpIn_) dropContent() { // if message content is not received, this will be called at last
 	switch content := r.recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
@@ -737,9 +737,7 @@ badRecv:
 	return err
 }
 
-func (r *httpIn_) HasTrailers() bool {
-	return r.trailers.notEmpty()
-}
+func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
 	return r.allPairs(r.trailers, extraTrailer)
 }
@@ -1019,9 +1017,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8
 	}
 	return
 }
-func (r *httpIn_) delPrimeAt(i uint8) {
-	r.primes[i].zero()
-}
+func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
 func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
@@ -1071,14 +1067,15 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 	delField(bytesUpgrade, hashUpgrade)
 	for i := r.options.from; i < r.options.edge; i++ {
 		prime := &r.primes[i]
-		// Skip fields that are not "connection"
+		// Skip fields that are not "connection: xxx"
 		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
 		}
 		optionName := prime.valueAt(r.input)
 		optionHash := bytesHash(optionName)
+		// Also options that are "connection: connection"
 		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
-			continue // skip "connection: connection"
+			continue
 		}
 		for j := fields.from; j < fields.edge; j++ {
 			field := &r.primes[j]
@@ -1086,7 +1083,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 				field.zero()
 			}
 		}
-		// Note: we don't remove pair ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
+		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		if extraKind != extraNoExtra {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
@@ -1369,6 +1366,22 @@ func (r *httpOut_) _delDate() (deleted bool) {
 	return r._delSingleton(&r.oDate)
 }
 
+func (r *httpOut_) _addSingleton(pIndex *uint8, name []byte, value []byte) bool {
+	if *pIndex > 0 || !r.shell.addHeader(name, value) {
+		return false
+	}
+	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
+}
+func (r *httpOut_) _delSingleton(pIndex *uint8) bool {
+	if *pIndex == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(*pIndex)
+	*pIndex = 0
+	return true
+}
+
 func (r *httpOut_) _setTimestamp(pTimestamp *int64, pIndex *uint8, timestamp int64) bool {
 	if timestamp < 0 {
 		return false
@@ -1402,22 +1415,6 @@ func (r *httpOut_) _delTimestamp(pTimestamp *int64, pIndex *uint8) bool {
 		*pIndex = 0
 	}
 	*pTimestamp = -1
-	return true
-}
-
-func (r *httpOut_) _addSingleton(pIndex *uint8, name []byte, value []byte) bool {
-	if *pIndex > 0 || !r.shell.addHeader(name, value) {
-		return false
-	}
-	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
-	return true
-}
-func (r *httpOut_) _delSingleton(pIndex *uint8) bool {
-	if *pIndex == 0 { // not exist
-		return false
-	}
-	r.shell.delHeaderAt(*pIndex)
-	*pIndex = 0
 	return true
 }
 

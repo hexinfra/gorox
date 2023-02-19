@@ -2614,6 +2614,22 @@ func (r *httpResponse_) push(chunk *Block) error {
 	}
 	return resp.pushChain(curChain)
 }
+func (r *httpResponse_) endUnsized() error {
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	resp := r.shell.(Response)
+	if r.hasRevisers {
+		for _, id := range r.revisers {
+			if id == 0 { // reviser id is ensured to be > 0
+				continue
+			}
+			reviser := r.app.reviserByID(id)
+			reviser.FinishPush(resp.Request(), resp)
+		}
+	}
+	return resp.finalizeUnsized()
+}
 
 func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 	// copy control
@@ -2692,23 +2708,6 @@ func (r *httpResponse_) _delExpires() (deleted bool) {
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
 	return r._delTimestamp(&r.lastModified, &r.indexes.lastModified)
-}
-
-func (r *httpResponse_) endUnsized() error {
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	resp := r.shell.(Response)
-	if r.hasRevisers {
-		for _, id := range r.revisers {
-			if id == 0 { // reviser id is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.FinishPush(resp.Request(), resp)
-		}
-	}
-	return resp.finalizeUnsized()
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

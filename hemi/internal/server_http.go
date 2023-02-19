@@ -1383,152 +1383,6 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	return true
 }
 
-func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *httpRequest_) UnsafeUserAgent() []byte {
-	if r.indexes.userAgent == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.userAgent].valueAt(r.input)
-}
-
-func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
-	if edge, ok := r.addPrime(cookie); ok {
-		r.cookies.edge = edge
-		return true
-	} else {
-		r.headResult = StatusRequestHeaderFieldsTooLarge
-		return false
-	}
-}
-func (r *httpRequest_) HasCookies() bool {
-	return r.hasPairs(r.cookies, extraCookie)
-}
-func (r *httpRequest_) AllCookies() (cookies [][2]string) {
-	return r.allPairs(r.cookies, extraCookie)
-}
-func (r *httpRequest_) C(name string) string {
-	value, _ := r.Cookie(name)
-	return value
-}
-func (r *httpRequest_) Cstr(name string, defaultValue string) string {
-	if value, ok := r.Cookie(name); ok {
-		return value
-	}
-	return defaultValue
-}
-func (r *httpRequest_) Cint(name string, defaultValue int) int {
-	if value, ok := r.Cookie(name); ok {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return defaultValue
-}
-func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.cookies, extraCookie)
-	return string(v), ok
-}
-func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.cookies, extraCookie)
-}
-func (r *httpRequest_) Cookies(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.cookies, extraCookie)
-}
-func (r *httpRequest_) HasCookie(name string) bool {
-	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
-	return ok
-}
-func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
-	return r.addExtra(name, value, extraCookie)
-}
-func (r *httpRequest_) DelCookie(name string) (deleted bool) {
-	return r.delPair(name, 0, r.cookies, extraCookie)
-}
-func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r.forPairs(r.cookies, extraCookie, fn)
-}
-
-func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
-	// Get etag without ""
-	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
-		etag = etag[1 : n-1]
-	}
-	// See RFC 9110 (section 13.2.2).
-	if asOrigin { // proxies ignore these tests.
-		if r.ifMatch != 0 && !r._testIfMatch(etag) {
-			return StatusPreconditionFailed, false
-		}
-		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r._testIfUnmodifiedSince(modTime) {
-			return StatusPreconditionFailed, false
-		}
-	}
-	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 && !r._testIfNoneMatch(etag) {
-		if getOrHead {
-			return StatusNotModified, false
-		} else {
-			return StatusPreconditionFailed, false
-		}
-	}
-	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r._testIfModifiedSince(modTime) {
-		return StatusNotModified, false
-	}
-	return StatusOK, true
-}
-func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
-	if r.ifMatch == -1 { // *
-		return true
-	}
-	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
-			continue
-		}
-		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
-			return true
-		}
-	}
-	return false
-}
-func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
-	if r.ifNoneMatch == -1 { // *
-		return false
-	}
-	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
-			continue
-		}
-		if bytes.Equal(header.valueAt(r.input), etag) {
-			return false
-		}
-	}
-	return true
-}
-func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
-	return modTime > r.ifModifiedTime
-}
-func (r *httpRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
-	return modTime <= r.ifUnmodifiedTime
-}
-
-func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
-	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.ifRangeTime == 0 && r._testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r._testIfRangeTime(modTime)) {
-			return true // StatusPartialContent
-		}
-	}
-	return false // StatusOK
-}
-func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange]
-	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
-}
-func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
-	return r.ifRangeTime == modTime
-}
-
 func (r *httpRequest_) checkHead() bool {
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
 	// apply a request to the target resource until the entire request
@@ -1708,6 +1562,152 @@ func (r *httpRequest_) checkHead() bool {
 	}
 
 	return true
+}
+
+func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
+func (r *httpRequest_) UnsafeUserAgent() []byte {
+	if r.indexes.userAgent == 0 {
+		return nil
+	}
+	return r.primes[r.indexes.userAgent].valueAt(r.input)
+}
+
+func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
+	if edge, ok := r.addPrime(cookie); ok {
+		r.cookies.edge = edge
+		return true
+	} else {
+		r.headResult = StatusRequestHeaderFieldsTooLarge
+		return false
+	}
+}
+func (r *httpRequest_) HasCookies() bool {
+	return r.hasPairs(r.cookies, extraCookie)
+}
+func (r *httpRequest_) AllCookies() (cookies [][2]string) {
+	return r.allPairs(r.cookies, extraCookie)
+}
+func (r *httpRequest_) C(name string) string {
+	value, _ := r.Cookie(name)
+	return value
+}
+func (r *httpRequest_) Cstr(name string, defaultValue string) string {
+	if value, ok := r.Cookie(name); ok {
+		return value
+	}
+	return defaultValue
+}
+func (r *httpRequest_) Cint(name string, defaultValue int) int {
+	if value, ok := r.Cookie(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
+	}
+	return defaultValue
+}
+func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
+	v, ok := r.getPair(name, 0, r.cookies, extraCookie)
+	return string(v), ok
+}
+func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
+	return r.getPair(name, 0, r.cookies, extraCookie)
+}
+func (r *httpRequest_) Cookies(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.cookies, extraCookie)
+}
+func (r *httpRequest_) HasCookie(name string) bool {
+	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
+	return ok
+}
+func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
+	return r.addExtra(name, value, extraCookie)
+}
+func (r *httpRequest_) DelCookie(name string) (deleted bool) {
+	return r.delPair(name, 0, r.cookies, extraCookie)
+}
+func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	return r.forPairs(r.cookies, extraCookie, fn)
+}
+
+func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
+	// Get etag without ""
+	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
+		etag = etag[1 : n-1]
+	}
+	// See RFC 9110 (section 13.2.2).
+	if asOrigin { // proxies ignore these tests.
+		if r.ifMatch != 0 && !r._testIfMatch(etag) {
+			return StatusPreconditionFailed, false
+		}
+		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r._testIfUnmodifiedSince(modTime) {
+			return StatusPreconditionFailed, false
+		}
+	}
+	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
+	if r.ifNoneMatch != 0 && !r._testIfNoneMatch(etag) {
+		if getOrHead {
+			return StatusNotModified, false
+		} else {
+			return StatusPreconditionFailed, false
+		}
+	}
+	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r._testIfModifiedSince(modTime) {
+		return StatusNotModified, false
+	}
+	return StatusOK, true
+}
+func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
+	if r.ifMatch == -1 { // *
+		return true
+	}
+	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
+		header := &r.primes[i]
+		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
+			continue
+		}
+		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
+			return true
+		}
+	}
+	return false
+}
+func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
+	if r.ifNoneMatch == -1 { // *
+		return false
+	}
+	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
+		header := &r.primes[i]
+		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
+			continue
+		}
+		if bytes.Equal(header.valueAt(r.input), etag) {
+			return false
+		}
+	}
+	return true
+}
+func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
+	return modTime > r.ifModifiedTime
+}
+func (r *httpRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
+	return modTime <= r.ifUnmodifiedTime
+}
+
+func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
+	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
+		if (r.ifRangeTime == 0 && r._testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r._testIfRangeTime(modTime)) {
+			return true // StatusPartialContent
+		}
+	}
+	return false // StatusOK
+}
+func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
+	ifRange := &r.primes[r.indexes.ifRange]
+	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
+}
+func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
+	return r.ifRangeTime == modTime
 }
 
 func (r *httpRequest_) unsetHost() { // used by proxies

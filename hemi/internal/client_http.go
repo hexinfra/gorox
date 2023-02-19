@@ -406,16 +406,16 @@ type hResponse0_ struct { // for fast reset, entirely
 	lastModifiedTime int64    // parsed unix timestamp of last-modified
 	expiresTime      int64    // parsed unix timestamp of expires
 	cacheControl     struct { // the cache-control info
-		noCache         bool  // ...
-		noStore         bool  // ...
-		noTransform     bool  // ...
-		public          bool  // ...
-		private         bool  // ...
-		mustRevalidate  bool  // ...
-		mustUnderstand  bool  // ...
-		proxyRevalidate bool  // ...
-		maxAge          int32 // ...
-		sMaxAge         int32 // ...
+		noCache         bool  // no-cache directive in cache-control
+		noStore         bool  // no-store directive in cache-control
+		noTransform     bool  // no-transform directive in cache-control
+		public          bool  // public directive in cache-control
+		private         bool  // private directive in cache-control
+		mustRevalidate  bool  // must-revalidate directive in cache-control
+		mustUnderstand  bool  // must-understand directive in cache-control
+		proxyRevalidate bool  // proxy-revalidate directive in cache-control
+		maxAge          int32 // max-age directive in cache-control
+		sMaxage         int32 // s-maxage directive in cache-control
 	}
 	indexes struct { // indexes of some selected headers, for fast accessing
 		server       uint8 // server header ->r.input
@@ -435,7 +435,7 @@ func (r *hResponse_) onUse() { // for non-zeros
 }
 func (r *hResponse_) onEnd() { // for zeros
 	if cap(r.cookies) != cap(r.stockCookies) {
-		// put?
+		// TODO: put?
 		r.cookies = nil
 	}
 	r.hResponse0_ = hResponse0_{}
@@ -558,6 +558,7 @@ func (r *hResponse_) checkDate(header *pair, index uint8) bool {
 	return r._checkHTTPDate(header, index, &r.indexes.date, &r.dateTime)
 }
 func (r *hResponse_) checkETag(header *pair, index uint8) bool {
+	// ETag = entity-tag
 	r.indexes.etag = index
 	return true
 }
@@ -570,10 +571,12 @@ func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.lastModifiedTime)
 }
 func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
+	// Location = URI-reference
 	r.indexes.location = index
 	return true
 }
 func (r *hResponse_) checkServer(header *pair, index uint8) bool {
+	// Server = product *( RWS ( product / comment ) )
 	r.indexes.server = index
 	return true
 }
@@ -610,21 +613,6 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	return true
 }
 
-func (r *hResponse_) unsafeDate() []byte {
-	if r.indexes.date == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.date].valueAt(r.input)
-}
-func (r *hResponse_) unsafeLastModified() []byte {
-	if r.indexes.lastModified == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.lastModified].valueAt(r.input)
-}
-
-func (r *hResponse_) hasCookies() bool { return len(r.cookies) > 0 }
-
 func (r *hResponse_) checkHead() bool {
 	// Basic checks against versions
 	switch r.versionCode {
@@ -654,6 +642,21 @@ func (r *hResponse_) checkHead() bool {
 	}
 	return true
 }
+
+func (r *hResponse_) unsafeDate() []byte {
+	if r.indexes.date == 0 {
+		return nil
+	}
+	return r.primes[r.indexes.date].valueAt(r.input)
+}
+func (r *hResponse_) unsafeLastModified() []byte {
+	if r.indexes.lastModified == 0 {
+		return nil
+	}
+	return r.primes[r.indexes.lastModified].valueAt(r.input)
+}
+
+func (r *hResponse_) hasCookies() bool { return len(r.cookies) > 0 }
 
 func (r *hResponse_) HasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)

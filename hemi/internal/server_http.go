@@ -446,9 +446,9 @@ type httpRequest0_ struct { // for fast reset, entirely
 	asteriskOptions  bool     // OPTIONS *?
 	nRanges          int8     // num of ranges
 	boundary         text     // boundary param of "multipart/form-data" if exists -> r.input
-	ifRangeTime      int64    // parsed unix timestamp of if-range if is http-date format
-	ifModifiedTime   int64    // parsed unix timestamp of if-modified-since
-	ifUnmodifiedTime int64    // parsed unix timestamp of if-unmodified-since
+	ifRangeTime      int64    // parsed unix time of if-range if is http-date format
+	ifModifiedTime   int64    // parsed unix time of if-modified-since
+	ifUnmodifiedTime int64    // parsed unix time of if-unmodified-since
 	ifMatch          int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch      int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	ifMatches        zone     // the zone of if-match in r.primes
@@ -2421,8 +2421,8 @@ type httpResponse_ struct { // outgoing. needs building
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	status       int16 // 200, 302, 404, 500, ...
-	expires      int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
-	lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
+	expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	// Stream states (zeros)
 	app            *App // associated app
 	svc            *Svc // associated svc
@@ -2486,10 +2486,10 @@ func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	return p[0 : n+1], true
 }
 func (r *httpResponse_) SetExpires(expires int64) bool {
-	return r._setTimestamp(&r.expires, &r.indexes.expires, expires)
+	return r._setUnixTime(&r.expires, &r.indexes.expires, expires)
 }
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
-	return r._setTimestamp(&r.lastModified, &r.indexes.lastModified, lastModified)
+	return r._setUnixTime(&r.lastModified, &r.indexes.lastModified, lastModified)
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2687,10 +2687,10 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	return r._addTimestamp(&r.expires, &r.indexes.expires, bytesExpires, expires)
+	return r._addUnixTime(&r.expires, &r.indexes.expires, bytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
-	return r._addTimestamp(&r.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
+	return r._addUnixTime(&r.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
@@ -2704,10 +2704,10 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *httpResponse_) _delExpires() (deleted bool) {
-	return r._delTimestamp(&r.expires, &r.indexes.expires)
+	return r._delUnixTime(&r.expires, &r.indexes.expires)
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
-	return r._delTimestamp(&r.lastModified, &r.indexes.lastModified)
+	return r._delUnixTime(&r.lastModified, &r.indexes.lastModified)
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {
@@ -2782,6 +2782,7 @@ func (c *Cookie) SetPath(path string) bool {
 	return true
 }
 func (c *Cookie) SetExpires(expires time.Time) bool {
+	expires = expires.UTC()
 	if expires.Year() < 1601 {
 		c.invalid = true
 		return false
@@ -2846,7 +2847,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	}
 	if !c.expires.IsZero() {
 		i += copy(p[i:], "; Expires=")
-		i += clockWriteHTTPDate(c.expires, p[i:])
+		i += clockWriteHTTPDate(p[i:], c.expires)
 	}
 	if c.maxAge != 0 {
 		i += copy(p[i:], "; Max-Age=")

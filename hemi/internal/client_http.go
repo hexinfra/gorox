@@ -188,8 +188,8 @@ type hRequest_ struct { // outgoing. needs building
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
-	ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix timestamp in seconds
+	ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }
@@ -217,10 +217,10 @@ func (r *hRequest_) Response() response { return r.response }
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] }
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
-	return r._setTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, since)
+	return r._setUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince, since)
 }
 func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
-	return r._setTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
+	return r._setUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
 func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
@@ -342,13 +342,13 @@ func (r *hRequest_) _addHost(host []byte) (ok bool) {
 	return r._addSingleton(&r.indexes.host, bytesHost, host)
 }
 func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
-	return r._addTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
+	return r._addUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
 func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
 	return r._addSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
+	return r._addUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
 
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
@@ -365,13 +365,13 @@ func (r *hRequest_) _delHost() (deleted bool) {
 	return r._delSingleton(&r.indexes.host)
 }
 func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
-	return r._delTimestamp(&r.ifModifiedSince, &r.indexes.ifModifiedSince)
+	return r._delUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
 func (r *hRequest_) _delIfRange() (deleted bool) {
 	return r._delSingleton(&r.indexes.ifRange)
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
-	return r._delTimestamp(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+	return r._delUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.
@@ -402,9 +402,9 @@ type hResponse_ struct { // incoming. needs parsing
 }
 type hResponse0_ struct { // for fast reset, entirely
 	status           int16    // 200, 302, 404, ...
-	dateTime         int64    // parsed unix timestamp of date
-	lastModifiedTime int64    // parsed unix timestamp of last-modified
-	expiresTime      int64    // parsed unix timestamp of expires
+	dateTime         int64    // parsed unix time of date
+	lastModifiedTime int64    // parsed unix time of last-modified
+	expiresTime      int64    // parsed unix time of expires
 	cacheControl     struct { // the cache-control info
 		noCache         bool  // no-cache directive in cache-control
 		noStore         bool  // no-store directive in cache-control

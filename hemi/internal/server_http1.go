@@ -997,26 +997,24 @@ func (r *http1Response) syncHeaders() error       { return r.writeHeaders1() }
 func (r *http1Response) syncBytes(p []byte) error { return r.syncBytes1(p) }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
-	// date: Sun, 06 Nov 1994 08:49:37 GMT
+	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.oDate == 0 {
-		r.stream.keeper().Stage().clock.writeDate(r.fields[r.fieldsEdge : r.fieldsEdge+uint16(clockDateSize)])
-		r.fieldsEdge += uint16(clockDateSize)
+		r.fieldsEdge += uint16(r.stream.keeper().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
-	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT
+	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.lastModified >= 0 {
-		clockWriteLastModified(r.fields[r.fieldsEdge:r.fieldsEdge+uint16(clockLastModifiedSize)], r.lastModified)
-		r.fieldsEdge += uint16(clockLastModifiedSize)
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.lastModified))
 	}
-	// content-type: text/html; charset=utf-8
+	// content-type: text/html; charset=utf-8\r\n
 	if r.oContentType == 0 {
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if !r.isUnsized() { // content-length: >= 0
+		if !r.isUnsized() { // content-length: >=0\r\n
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
-		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked
+		} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked\r\n
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 		} else {
 			// RFC 7230 (section 3.3.1): A server MUST NOT send a
@@ -1025,9 +1023,9 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
 		}
 	}
-	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive
+	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
-	} else { // connection: close
+	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
 }

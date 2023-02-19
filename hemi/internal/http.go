@@ -1382,39 +1382,39 @@ func (r *httpOut_) _delSingleton(pIndex *uint8) bool {
 	return true
 }
 
-func (r *httpOut_) _setTimestamp(pTimestamp *int64, pIndex *uint8, timestamp int64) bool {
-	if timestamp < 0 {
+func (r *httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) bool {
+	if unixTime < 0 {
 		return false
 	}
-	if *pTimestamp == -2 { // set through general api
+	if *pUnixTime == -2 { // set through general api
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
-	*pTimestamp = timestamp
+	*pUnixTime = unixTime
 	return true
 }
-func (r *httpOut_) _addTimestamp(pTimestamp *int64, pIndex *uint8, name []byte, timestamp []byte) bool {
-	if *pTimestamp == -2 {
+func (r *httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
+	if *pUnixTime == -2 {
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	} else { // >= 0 or -1
-		*pTimestamp = -2
+		*pUnixTime = -2
 	}
-	if !r.shell.addHeader(name, timestamp) {
+	if !r.shell.addHeader(name, httpDate) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
-func (r *httpOut_) _delTimestamp(pTimestamp *int64, pIndex *uint8) bool {
-	if *pTimestamp == -1 {
+func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
+	if *pUnixTime == -1 {
 		return false
 	}
-	if *pTimestamp == -2 {
+	if *pUnixTime == -2 {
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
-	*pTimestamp = -1
+	*pUnixTime = -1
 	return true
 }
 
@@ -1422,9 +1422,10 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	sync := r.shell.syncBytes
 	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
 		sync = r.PushBytes
-	} else { // size >= 0
+	} else { // in is sized and there are no revisers
 		r.isSent = true
 		r.contentSize = in.ContentSize()
+		// TODO: optimize to reduce i/o syscalls?
 		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}

@@ -80,81 +80,101 @@ func (f *clockFixture) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *clockFixture) writeDate(p []byte) {
-	if len(p) < clockDateSize {
-		BugExitln("bad date buffer")
-	}
+func (f *clockFixture) writeDate1(p []byte) int {
+	i := copy(p, "date: ")
+	i += f.writeDate(p[i:])
+	p[i] = '\r'
+	p[i+1] = '\n'
+	return i + 2
+}
+func (f *clockFixture) writeDate(p []byte) int {
 	date := f.date.Load()
-	copy(p, "date: ")
 	s := clockDayString[3*(date>>8&0xf):]
-	p[6] = s[0] // 'S'
-	p[7] = s[1] // 'u'
-	p[8] = s[2] // 'n'
-	p[9] = ','
-	p[10] = ' '
-	p[11] = byte(date>>12&0xf) + '0' // '0'
-	p[12] = byte(date>>16&0xf) + '0' // '6'
-	p[13] = ' '
+	p[0] = s[0] // 'S'
+	p[1] = s[1] // 'u'
+	p[2] = s[2] // 'n'
+	p[3] = ','
+	p[4] = ' '
+	p[5] = byte(date>>12&0xf) + '0' // '0'
+	p[6] = byte(date>>16&0xf) + '0' // '6'
+	p[7] = ' '
 	s = clockMonthString[3*(date>>20&0xf-1):]
-	p[14] = s[0] // 'N'
-	p[15] = s[1] // 'o'
-	p[16] = s[2] // 'v'
-	p[17] = ' '
-	p[18] = byte(date>>24&0xf) + '0' // '1'
-	p[19] = byte(date>>28&0xf) + '0' // '9'
-	p[20] = byte(date>>32&0xf) + '0' // '9'
-	p[21] = byte(date>>36&0xf) + '0' // '4'
-	p[22] = ' '
-	p[23] = byte(date>>40&0xf) + '0' // '0'
-	p[24] = byte(date>>44&0xf) + '0' // '8'
-	p[25] = ':'
-	p[26] = byte(date>>48&0xf) + '0' // '4'
-	p[27] = byte(date>>52&0xf) + '0' // '9'
-	p[28] = ':'
-	p[29] = byte(date>>56&0xf) + '0' // '3'
-	p[30] = byte(date>>60&0xf) + '0' // '7'
-	copy(p[31:], " GMT\r\n")
+	p[8] = s[0]  // 'N'
+	p[9] = s[1]  // 'o'
+	p[10] = s[2] // 'v'
+	p[11] = ' '
+	p[12] = byte(date>>24&0xf) + '0' // '1'
+	p[13] = byte(date>>28&0xf) + '0' // '9'
+	p[14] = byte(date>>32&0xf) + '0' // '9'
+	p[15] = byte(date>>36&0xf) + '0' // '4'
+	p[16] = ' '
+	p[17] = byte(date>>40&0xf) + '0' // '0'
+	p[18] = byte(date>>44&0xf) + '0' // '8'
+	p[19] = ':'
+	p[20] = byte(date>>48&0xf) + '0' // '4'
+	p[21] = byte(date>>52&0xf) + '0' // '9'
+	p[22] = ':'
+	p[23] = byte(date>>56&0xf) + '0' // '3'
+	p[24] = byte(date>>60&0xf) + '0' // '7'
+	p[25] = ' '
+	p[26] = 'G'
+	p[27] = 'M'
+	p[28] = 'T'
+	return clockHTTPDateSize
 }
 
-func clockWriteLastModified(p []byte, modTime int64) {
-	if len(p) < clockLastModifiedSize {
-		BugExitln("bad last modified buffer")
-	}
-	t := time.Unix(modTime, 0)
-	t = t.UTC()
-	weekday := t.Weekday()       // weekday: 0-6
-	year, month, day := t.Date() // month: 1-12
-	hour, minute, second := t.Clock()
-	copy(p, "last-modified: ")
-	s := clockDayString[3*weekday:]
-	p[15] = s[0] // 'S'
-	p[16] = s[1] // 'u'
-	p[17] = s[2] // 'n'
-	p[18] = ','
-	p[19] = ' '
-	p[20] = byte('0' + day/10) // '0'
-	p[21] = byte('0' + day%10) // '6'
-	p[22] = ' '
-	s = clockMonthString[3*(month-1):]
-	p[23] = s[0] // 'N'
-	p[24] = s[1] // 'o'
-	p[25] = s[2] // 'v'
-	p[26] = ' '
-	p[27] = byte('0' + year/1000)   // '1'
-	p[28] = byte('0' + year/100%10) // '9'
-	p[29] = byte('0' + year/10%10)  // '9'
-	p[30] = byte('0' + year%10)     // '4'
-	p[31] = ' '
-	p[32] = byte('0' + hour/10) // '0'
-	p[33] = byte('0' + hour%10) // '8'
-	p[34] = ':'
-	p[35] = byte('0' + minute/10) // '4'
-	p[36] = byte('0' + minute%10) // '9'
-	p[37] = ':'
-	p[38] = byte('0' + second/10) // '3'
-	p[39] = byte('0' + second%10) // '7'
-	copy(p[40:], " GMT\r\n")
+func clockWriteHTTPDate1(p []byte, name []byte, unixTime int64) int {
+	i := copy(p, name)
+	p[i] = ':'
+	p[i+1] = ' '
+	i += 2
+	date := time.Unix(unixTime, 0)
+	date = date.UTC()
+	i += clockWriteHTTPDate(p[i:], date)
+	p[i] = '\r'
+	p[i+1] = '\n'
+	return i + 2
 }
+func clockWriteHTTPDate(p []byte, date time.Time) int {
+	if len(p) < clockHTTPDateSize {
+		BugExitln("invalid buffer for clockWriteHTTPDate")
+	}
+	s := clockDayString[3*date.Weekday():]
+	p[0] = s[0] // 'S'
+	p[1] = s[1] // 'u'
+	p[2] = s[2] // 'n'
+	p[3] = ','
+	p[4] = ' '
+	year, month, day := date.Date() // month: 1-12
+	p[5] = byte(day/10) + '0'       // '0'
+	p[6] = byte(day%10) + '0'       // '6'
+	p[7] = ' '
+	s = clockMonthString[3*(month-1):]
+	p[8] = s[0]  // 'N'
+	p[9] = s[1]  // 'o'
+	p[10] = s[2] // 'v'
+	p[11] = ' '
+	p[12] = byte(year/1000) + '0'   // '1'
+	p[13] = byte(year/100%10) + '0' // '9'
+	p[14] = byte(year/10%10) + '0'  // '9'
+	p[15] = byte(year%10) + '0'     // '4'
+	p[16] = ' '
+	hour, minute, second := date.Clock()
+	p[17] = byte(hour/10) + '0' // '0'
+	p[18] = byte(hour%10) + '0' // '8'
+	p[19] = ':'
+	p[20] = byte(minute/10) + '0' // '4'
+	p[21] = byte(minute%10) + '0' // '9'
+	p[22] = ':'
+	p[23] = byte(second/10) + '0' // '3'
+	p[24] = byte(second%10) + '0' // '7'
+	p[25] = ' '
+	p[26] = 'G'
+	p[27] = 'M'
+	p[28] = 'T'
+	return clockHTTPDateSize
+}
+
 func clockParseHTTPDate(date []byte) (int64, bool) {
 	// format 0: Sun, 06 Nov 1994 08:49:37 GMT
 	// format 1: Sunday, 06-Nov-94 08:49:37 GMT
@@ -291,54 +311,13 @@ func clockParseHTTPDate(date []byte) (int64, bool) {
 	days -= 719528    // total days between [0000-01-01 00:00:00, 1970-01-01 00:00:00)
 	return int64(days)*86400 + int64(hour*3600+minute*60+second), true
 }
-func clockWriteHTTPDate(date time.Time, p []byte) int {
-	if len(p) < clockHTTPDateSize {
-		BugExitln("invalid buffer for clockWriteHTTPDate")
-	}
-	s := clockDayString[3*date.Weekday():]
-	p[0] = s[0]
-	p[1] = s[1]
-	p[2] = s[2]
-	p[3] = ','
-	p[4] = ' '
-	year, month, day := date.Date()
-	p[5] = byte(day/10) + '0'
-	p[6] = byte(day%10) + '0'
-	p[7] = ' '
-	s = clockMonthString[3*(month-1):]
-	p[8] = s[0]
-	p[9] = s[1]
-	p[10] = s[2]
-	p[11] = ' '
-	p[12] = byte(year/1000) + '0'
-	p[13] = byte(year/100%10) + '0'
-	p[14] = byte(year/10%10) + '0'
-	p[15] = byte(year%10) + '0'
-	p[16] = ' '
-	hour, minute, second := date.Clock()
-	p[17] = byte(hour/10) + '0'
-	p[18] = byte(hour%10) + '0'
-	p[19] = ':'
-	p[20] = byte(minute/10) + '0'
-	p[21] = byte(minute%10) + '0'
-	p[22] = ':'
-	p[23] = byte(second/10) + '0'
-	p[24] = byte(second%10) + '0'
-	p[25] = ' '
-	p[26] = 'G'
-	p[27] = 'M'
-	p[28] = 'T'
-	return clockHTTPDateSize
-}
 
 const (
-	clockHTTPDateSize     = len("Sun, 06 Nov 1994 08:49:37 GMT")
-	clockASCTimeSize      = len("Sun Nov  6 08:49:37 1994")
-	clockDateSize         = len("date: Sun, 06 Nov 1994 08:49:37 GMT\r\n")
-	clockLastModifiedSize = len("last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n")
-	clockDayString        = "SunMonTueWedThuFriSat"
-	clockMonthString      = "JanFebMarAprMayJunJulAugSepOctNovDec"
-	clockDayFullString    = "Sunday Monday Tuesday Wednesday Thursday Friday Saturday"
+	clockHTTPDateSize  = len("Sun, 06 Nov 1994 08:49:37 GMT")
+	clockASCTimeSize   = len("Sun Nov  6 08:49:37 1994")
+	clockDayString     = "SunMonTueWedThuFriSat"
+	clockMonthString   = "JanFebMarAprMayJunJulAugSepOctNovDec"
+	clockDayFullString = "Sunday Monday Tuesday Wednesday Thursday Friday Saturday"
 )
 
 var ( // perfect hash table for months

@@ -448,24 +448,28 @@ func (r *H1Request) syncHeaders() error       { return r.writeHeaders1() }
 func (r *H1Request) syncBytes(p []byte) error { return r.syncBytes1(p) }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
-	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT
+	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.ifModifiedSince >= 0 {
-		// TODO
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.ifModifiedSince))
 	}
-	// content-type: text/html; charset=utf-8
+	// if-unmodified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.ifUnmodifiedSince >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.ifUnmodifiedSince))
+	}
+	// content-type: text/html; charset=utf-8\r\n
 	if r.oContentType == 0 {
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 	}
 	if r.contentSize != -1 && !r.forbidFraming {
-		if r.isUnsized() { // transfer-encoding: chunked
+		if r.isUnsized() { // transfer-encoding: chunked\r\n
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
-		} else { // content-length: 12345
+		} else { // content-length: >=0\r\n
 			sizeBuffer := r.stream.smallBuffer() // enough for length
 			from, edge := i64ToDec(r.contentSize, sizeBuffer)
 			r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 		}
 	}
-	// connection: keep-alive
+	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
 func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }

@@ -737,21 +737,19 @@ func (r *http1Out_) syncBytes1(p []byte) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	for {
-		if err := r._beforeWrite(); err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		_, err := r.stream.write(p)
-		if err == nil && r._tooSlow() {
-			err = httpOutTooSlow
-		}
-		if err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		return nil
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
 	}
+	_, err := r.stream.write(p)
+	if err == nil && r._tooSlow() {
+		err = httpOutTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	return nil
 }
 
 func (r *http1Out_) finalizeUnsized1() error {
@@ -791,21 +789,19 @@ func (r *http1Out_) writeVector1(vector *net.Buffers) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	for {
-		if err := r._beforeWrite(); err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		_, err := r.stream.writev(vector)
-		if err == nil && r._tooSlow() {
-			err = httpOutTooSlow
-		}
-		if err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		return nil
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
 	}
+	_, err := r.stream.writev(vector)
+	if err == nil && r._tooSlow() {
+		err = httpOutTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	return nil
 }
 func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {

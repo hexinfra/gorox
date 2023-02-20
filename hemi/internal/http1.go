@@ -100,12 +100,12 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		size := r.pFore - r.pBack
-		if size == 0 || size > 255 {
+		if size := r.pFore - r.pBack; size > 0 && size <= 255 {
+			header.nameFrom, header.nameSize = r.pBack, uint8(size)
+		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		header.nameFrom, header.nameSize = r.pBack, uint8(size)
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
@@ -418,11 +418,11 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		size := r.pFore - r.pBack
-		if size == 0 || size > 255 {
+		if size := r.pFore - r.pBack; size > 0 && size <= 255 {
+			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(size)
+		} else {
 			return false
 		}
-		trailer.nameFrom, trailer.nameSize = r.pBack, uint8(size)
 		// Skip ':'
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false

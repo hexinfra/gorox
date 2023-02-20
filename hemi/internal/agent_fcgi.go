@@ -779,12 +779,12 @@ func (r *fcgiResponse) recvHeaders() bool {
 				return false
 			}
 		}
-		size := r.pFore - r.pBack
-		if size == 0 || size > 255 {
+		if size := r.pFore - r.pBack; size > 0 && size <= 255 {
+			header.nameFrom, header.nameSize = r.pBack, uint8(size)
+		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		header.nameFrom, header.nameSize = r.pBack, uint8(size)
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 			return false

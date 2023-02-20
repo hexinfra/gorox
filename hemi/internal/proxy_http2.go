@@ -130,7 +130,11 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		//resp2.recvHead()
 		if resp2.headResult != StatusOK || resp2.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
 			stream2.markBroken()
-			resp.SendBadGateway(nil)
+			if resp2.headResult == StatusRequestTimeout {
+				resp.SendGatewayTimeout(nil)
+			} else {
+				resp.SendBadGateway(nil)
+			}
 			return
 		}
 		if resp2.Status() >= StatusOK {

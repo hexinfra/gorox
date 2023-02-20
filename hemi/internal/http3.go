@@ -84,6 +84,9 @@ func (r *http3Out_) syncBytes3(p []byte) error {
 
 func (r *http3Out_) finalizeUnsized3() error {
 	// TODO
+	if r.nTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
 	return nil
 }
 

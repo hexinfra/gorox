@@ -2808,12 +2808,13 @@ func (c *Cookie) SetExpires(expires time.Time) bool {
 	c.expires = expires
 	return true
 }
-func (c *Cookie) SetMaxAge(maxAge int64) { c.maxAge = maxAge }
-func (c *Cookie) SetSecure()             { c.secure = true }
-func (c *Cookie) SetHttpOnly()           { c.httpOnly = true }
-func (c *Cookie) SetSameSiteStrict()     { c.sameSite = "Strict" }
-func (c *Cookie) SetSameSiteLax()        { c.sameSite = "Lax" }
-func (c *Cookie) SetSameSiteNone()       { c.sameSite = "None" }
+func (c *Cookie) SetMaxAge(maxAge int64)  { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()              { c.secure = true }
+func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
 
 func (c *Cookie) size() int {
 	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict

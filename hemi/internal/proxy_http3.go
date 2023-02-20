@@ -130,7 +130,11 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		//resp3.recvHead()
 		if resp3.headResult != StatusOK || resp3.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
 			stream3.markBroken()
-			resp.SendBadGateway(nil)
+			if resp3.headResult == StatusRequestTimeout {
+				resp.SendGatewayTimeout(nil)
+			} else {
+				resp.SendBadGateway(nil)
+			}
 			return
 		}
 		if resp3.Status() >= StatusOK {

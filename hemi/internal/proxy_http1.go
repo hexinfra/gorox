@@ -127,7 +127,11 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		resp1.recvHead()
 		if resp1.headResult != StatusOK || resp1.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
 			stream1.markBroken()
-			resp.SendBadGateway(nil)
+			if resp1.headResult == StatusRequestTimeout {
+				resp.SendGatewayTimeout(nil)
+			} else {
+				resp.SendBadGateway(nil)
+			}
 			return
 		}
 		if resp1.Status() >= StatusOK {

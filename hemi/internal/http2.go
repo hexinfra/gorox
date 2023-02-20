@@ -95,6 +95,9 @@ func (r *http2Out_) syncBytes2(p []byte) error {
 
 func (r *http2Out_) finalizeUnsized2() error {
 	// TODO
+	if r.nTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
 	return nil
 }
 

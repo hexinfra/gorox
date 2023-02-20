@@ -10,198 +10,12 @@ package internal
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 )
-
-var ( // global variables shared between stages
-	_debug    atomic.Int32 // debug level
-	_baseOnce sync.Once    // protects _baseDir
-	_baseDir  atomic.Value // directory of the executable
-	_dataOnce sync.Once    // protects _dataDir
-	_dataDir  atomic.Value // directory of the run-time data
-	_logsOnce sync.Once    // protects _logsDir
-	_logsDir  atomic.Value // directory of the log files
-	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the temp files
-)
-
-func IsDebug(level int32) bool { return _debug.Load() >= level }
-func BaseDir() string          { return _baseDir.Load().(string) }
-func DataDir() string          { return _dataDir.Load().(string) }
-func LogsDir() string          { return _logsDir.Load().(string) }
-func TempDir() string          { return _tempDir.Load().(string) }
-
-func SetDebug(level int32)  { _debug.Store(level) }
-func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) }
-func SetDataDir(dir string) {
-	_mkdir(dir)
-	_dataOnce.Do(func() { _dataDir.Store(dir) })
-}
-func SetLogsDir(dir string) {
-	_mkdir(dir)
-	_logsOnce.Do(func() { _logsDir.Store(dir) })
-}
-func SetTempDir(dir string) {
-	_mkdir(dir)
-	_tempOnce.Do(func() { _tempDir.Store(dir) })
-}
-func _mkdir(dir string) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(0)
-	}
-}
-
-func Debug(args ...any)                 { fmt.Print(args...) }
-func Debugln(args ...any)               { fmt.Println(args...) }
-func Debugf(format string, args ...any) { fmt.Printf(format, args...) }
-
-const ( // exit codes. keep sync with ../hemi.go
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(args ...any) { exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any) { exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any) { exitln(CodeEnv, "[ENV] ", args...) }
-
-func BugExitf(format string, args ...any) { exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { exitf(CodeEnv, "[ENV] ", format, args...) }
-
-func exitln(exitCode int, prefix string, args ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
-	os.Exit(exitCode)
-}
-func exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
-	os.Exit(exitCode)
-}
-
-// waiter_
-type waiter_ struct {
-	subs sync.WaitGroup
-}
-
-func (w *waiter_) IncSub(n int) { w.subs.Add(n) }
-func (w *waiter_) WaitSubs()    { w.subs.Wait() }
-func (w *waiter_) SubDone()     { w.subs.Done() }
-
-// streamKeeper
-type streamKeeper interface {
-	MaxStreamsPerConn() int32
-}
-
-// streamKeeper_ is a mixin.
-type streamKeeper_ struct {
-	// States
-	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
-}
-
-func (s *streamKeeper_) onConfigure(shell Component, defaultMaxStreams int32) {
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, defaultMaxStreams)
-}
-func (s *streamKeeper_) onPrepare(shell Component) {
-}
-
-func (s *streamKeeper_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
-
-// contentSaver
-type contentSaver interface {
-	SaveContentFilesDir() string
-}
-
-// contentSaver_ is a mixin.
-type contentSaver_ struct {
-	// States
-	saveContentFilesDir string
-}
-
-func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
-	// saveContentFilesDir
-	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) bool { return value != "" }, defaultDir)
-}
-func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
-	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
-		EnvExitln(err.Error())
-	}
-	if s.saveContentFilesDir[len(s.saveContentFilesDir)-1] != '/' {
-		s.saveContentFilesDir += "/"
-	}
-}
-
-func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir }
-
-// loadBalancer_
-type loadBalancer_ struct {
-	// States
-	balancer  string       // roundRobin, ipHash, random, ...
-	indexGet  func() int64 // ...
-	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
-	numNodes  int64        // num of nodes
-}
-
-func (b *loadBalancer_) init() {
-	b.nodeIndex.Store(-1)
-}
-
-func (b *loadBalancer_) onConfigure(shell Component) {
-	// balancer
-	shell.ConfigureString("balancer", &b.balancer, func(value string) bool {
-		return value == "roundRobin" || value == "ipHash" || value == "random"
-	}, "roundRobin")
-}
-func (b *loadBalancer_) onPrepare(numNodes int) {
-	switch b.balancer {
-	case "roundRobin":
-		b.indexGet = b.getNextByRoundRobin
-	case "ipHash":
-		b.indexGet = b.getNextByIPHash
-	case "random":
-		b.indexGet = b.getNextByRandom
-	default:
-		BugExitln("this should not happen")
-	}
-	b.numNodes = int64(numNodes)
-}
-
-func (b *loadBalancer_) getNext() int64 { return b.indexGet() }
-
-func (b *loadBalancer_) getNextByRoundRobin() int64 {
-	index := b.nodeIndex.Add(1)
-	return index % b.numNodes
-}
-func (b *loadBalancer_) getNextByIPHash() int64 {
-	// TODO
-	return 0
-}
-func (b *loadBalancer_) getNextByRandom() int64 {
-	// TODO
-	return 0
-}
-
-// ider
-type ider interface {
-	ID() uint8
-	setID(id uint8)
-}
-
-// ider_ is a mixin.
-type ider_ struct {
-	id uint8
-}
-
-func (i *ider_) ID() uint8      { return i.id }
-func (i *ider_) setID(id uint8) { i.id = id }
 
 func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
 	ticker := time.NewTicker(interval)
@@ -215,6 +29,18 @@ func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
 		}
 	}
 }
+
+// hostnameTo
+type hostnameTo[T Component] struct {
+	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
+	target   T
+}
+
+const ( // array kinds
+	arrayKindStock = iota // refers to stock buffer. must be 0
+	arrayKindPool         // got from sync.Pool
+	arrayKindMake         // made from make([]byte)
+)
 
 // poolBlock
 var poolBlock sync.Pool
@@ -395,18 +221,6 @@ func (c *Chain) PushTail(block *Block) {
 	}
 	c.size++
 }
-
-// hostnameTo
-type hostnameTo[T Component] struct {
-	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	target   T
-}
-
-const ( // array kinds
-	arrayKindStock = iota // refers to stock buffer. must be 0
-	arrayKindPool         // got from sync.Pool
-	arrayKindMake         // made from make([]byte)
-)
 
 // pool255Pairs
 var pool255Pairs sync.Pool

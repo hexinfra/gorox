@@ -998,7 +998,6 @@ func (r *fcgiResponse) checkHead() bool {
 	// TODO
 	return false
 }
-
 func (r *fcgiResponse) cleanInput() {
 	// TODO
 }

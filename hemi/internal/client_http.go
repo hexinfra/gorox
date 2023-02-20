@@ -656,8 +656,6 @@ func (r *hResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *hResponse_) hasCookies() bool { return len(r.cookies) > 0 }
-
 func (r *hResponse_) HasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)
 	// responses do not include content.

@@ -27,8 +27,8 @@ type httpServer interface {
 	SendTimeout() time.Duration
 
 	linkApps()
-	findApp(hostname []byte) *App
 	linkSvcs()
+	findApp(hostname []byte) *App
 	findSvc(hostname []byte) *Svc
 }
 
@@ -123,28 +123,6 @@ func (s *httpServer_) linkApps() {
 		}
 	}
 }
-func (s *httpServer_) findApp(hostname []byte) *App {
-	// TODO: use hash table?
-	for _, exactMap := range s.exactApps {
-		if bytes.Equal(hostname, exactMap.hostname) {
-			return exactMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, suffixMap := range s.suffixApps {
-		if bytes.HasSuffix(hostname, suffixMap.hostname) {
-			return suffixMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, prefixMap := range s.prefixApps {
-		if bytes.HasPrefix(hostname, prefixMap.hostname) {
-			return prefixMap.target
-		}
-	}
-	return s.defaultApp
-}
-
 func (s *httpServer_) linkSvcs() {
 	for _, svcName := range s.forSvcs {
 		svc := s.stage.Svc(svcName)
@@ -165,6 +143,28 @@ func (s *httpServer_) linkSvcs() {
 			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
 		}
 	}
+}
+
+func (s *httpServer_) findApp(hostname []byte) *App {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactApps {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixApps {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixApps {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return s.defaultApp
 }
 func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	// TODO: use hash table?

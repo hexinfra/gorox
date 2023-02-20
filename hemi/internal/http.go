@@ -1132,6 +1132,9 @@ func (r *httpIn_) _beforeRead(toTime *time.Time) error {
 	}
 	return r.stream.setReadDeadline(now.Add(r.stream.keeper().ReadTimeout()))
 }
+func (r *httpIn_) _tooSlow() bool {
+	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
+}
 
 const ( // HTTP content blob kinds
 	httpContentBlobNone  = iota // must be 0
@@ -1567,6 +1570,9 @@ func (r *httpOut_) _beforeWrite() error {
 		r.sendTime = now
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.keeper().WriteTimeout()))
+}
+func (r *httpOut_) _tooSlow() bool {
+	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
 var ( // http outgoing message errors

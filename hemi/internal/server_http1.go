@@ -860,9 +860,6 @@ func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeade
 func (r *http1Response) addedHeaders() []byte                       { return r.fields[0:r.fieldsEdge] }
 func (r *http1Response) fixedHeaders() []byte                       { return http1BytesFixedResponseHeaders }
 
-func (r *http1Response) setConnectionClose() {
-	r.stream.(*http1Stream).conn.keepConn = false // explicitly
-}
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	size := len(http1BytesLocationHTTPS)
 	if authority == "" {
@@ -931,6 +928,9 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 	} else {
 		return false
 	}
+}
+func (r *http1Response) setConnectionClose() {
+	r.stream.(*http1Stream).conn.keepConn = false // explicitly
 }
 
 func (r *http1Response) SetCookie(cookie *Cookie) bool {

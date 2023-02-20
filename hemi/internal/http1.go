@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"io"
 	"net"
-	"time"
 )
 
 // http1In_ is used by http1Request and H1Response.
@@ -216,7 +215,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:recvSize])
 	r.sizeReceived += int64(size)
-	if err == nil && (r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout) {
+	if err == nil && r._tooSlow() {
 		err = httpInTooSlow
 	}
 	return r.bodyWindow[0:size], err
@@ -507,7 +506,7 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 	if err == nil {
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		if e == nil {
-			if r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout {
+			if r._tooSlow() {
 				e = httpInTooSlow
 			} else {
 				r.chunkEdge += int32(n)
@@ -620,6 +619,7 @@ func (r *http1Out_) _addFixedHeader1(name []byte, value []byte) { // used by fin
 }
 
 func (r *http1Out_) sendChain1(chain Chain) error {
+	// TODO: ranged content support. check r.asRequest. only applies for response
 	r.shell.finalizeHeaders()
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
@@ -642,7 +642,6 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		Debugf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
-	// TODO: ranged content support
 	for block := chain.head; block != nil; block = block.next {
 		if block.size == 0 {
 			continue
@@ -650,7 +649,7 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		if block.IsBlob() {
 			vector[vEdge] = block.Blob()
 			vEdge++
-		} else if block.size <= _16K { // small file
+		} else if block.size <= _16K { // small file, <= 16K
 			buffer := GetNK(block.size)
 			if err := block.copyTo(buffer); err != nil {
 				r.stream.markBroken()
@@ -666,15 +665,15 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 			}
 			PutNK(buffer)
 			vFrom, vEdge = 0, 0
-		} else { // large file
+		} else { // large file, > 16K
 			if vFrom < vEdge {
 				r.vector = vector[vFrom:vEdge]
-				if err := r.writeVector1(&r.vector); err != nil {
+				if err := r.writeVector1(&r.vector); err != nil { // blobs
 					return err
 				}
 				vFrom, vEdge = 0, 0
 			}
-			if err := r.writeBlock1(block, false); err != nil {
+			if err := r.writeBlock1(block, false); err != nil { // the file
 				return err
 			}
 		}
@@ -735,10 +734,24 @@ func (r *http1Out_) trailers1() []byte {
 }
 
 func (r *http1Out_) syncBytes1(p []byte) error {
-	// TODO: use write() instead of writev()?
-	r.vector = r.fixedVector[0:1]
-	r.vector[0] = p
-	return r.writeVector1(&r.vector)
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	for {
+		if err := r._beforeWrite(); err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		_, err := r.stream.write(p)
+		if err == nil && r._tooSlow() {
+			err = httpOutTooSlow
+		}
+		if err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		return nil
+	}
 }
 
 func (r *http1Out_) finalizeUnsized1() error {
@@ -784,7 +797,7 @@ func (r *http1Out_) writeVector1(vector *net.Buffers) error {
 			return err
 		}
 		_, err := r.stream.writev(vector)
-		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
+		if err == nil && r._tooSlow() {
 			err = httpOutTooSlow
 		}
 		if err != nil {
@@ -840,7 +853,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error {
 		} else { // HTTP/1.0, or identity content
 			_, err = r.stream.write(buffer[0:n])
 		}
-		if err == nil && (r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout) {
+		if err == nil && r._tooSlow() {
 			err = httpOutTooSlow
 		}
 		if err != nil {

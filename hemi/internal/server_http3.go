@@ -408,10 +408,10 @@ func (r *http3Response) SetCookie(cookie *Cookie) bool {
 
 func (r *http3Response) sendChain(chain Chain) error {
 	// TODO
-	return nil
+	return r.sendChain2(chain, nil)
 }
 
-func (r *http3Response) pushHeaders() error {
+func (r *http3Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
 	// TODO
 	return nil
 }
@@ -436,9 +436,7 @@ func (r *http3Response) syncHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http3Response) syncBytes(p []byte) error {
-	return r.syncBytes3(p)
-}
+func (r *http3Response) syncBytes(p []byte) error { return r.syncBytes3(p) }
 
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

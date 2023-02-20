@@ -359,7 +359,7 @@ func (r *H3Request) passCookies(req Request) bool { // used by proxies
 
 func (r *H3Request) sendChain(chain Chain) error {
 	// TODO
-	return nil
+	return r.sendChain3(chain, nil)
 }
 
 func (r *H3Request) pushHeaders() error {
@@ -382,9 +382,7 @@ func (r *H3Request) syncHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) syncBytes(p []byte) error {
-	return r.syncBytes3(p)
-}
+func (r *H3Request) syncBytes(p []byte) error { return r.syncBytes3(p) }
 
 func (r *H3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

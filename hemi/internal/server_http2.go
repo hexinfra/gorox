@@ -1009,7 +1009,7 @@ func (r *http2Response) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *http2Response) pushHeaders() error {
+func (r *http2Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
 	// TODO
 	return nil
 }
@@ -1034,9 +1034,7 @@ func (r *http2Response) syncHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http2Response) syncBytes(p []byte) error {
-	return r.syncBytes2(p)
-}
+func (r *http2Response) syncBytes(p []byte) error { return r.syncBytes2(p) }
 
 func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

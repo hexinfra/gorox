@@ -240,14 +240,14 @@ func (r *hRequest_) checkPush() error {
 	return r.shell.pushHeaders()
 }
 func (r *hRequest_) push(chunk *Block) error {
-	var curChain Chain
-	curChain.PushTail(chunk)
-	defer curChain.free()
+	var chain Chain
+	chain.PushTail(chunk)
+	defer chain.free()
 
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.shell.pushChain(curChain)
+	return r.shell.pushChain(chain)
 }
 func (r *hRequest_) endUnsized() error {
 	if r.stream.isBroken() {

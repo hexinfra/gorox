@@ -414,6 +414,7 @@ type Request interface {
 	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	getRanges() []span
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
@@ -1590,6 +1591,12 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	}
 	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
+func (r *httpRequest_) getRanges() []span {
+	if r.nRanges == 0 {
+		return nil
+	}
+	return r.ranges[:r.nRanges]
+}
 
 func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
 	if edge, ok := r.addPrime(cookie); ok {
@@ -2408,11 +2415,11 @@ type Response interface {
 	AddTrailerBytes(name []byte, value []byte) bool
 
 	// Internal only
-	setConnectionClose()
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
+	setConnectionClose()
 	passHead(resp response) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
@@ -2555,13 +2562,13 @@ func (r *httpResponse_) send() error {
 	if r.hasRevisers {
 		// Travel through revisers
 		for _, id := range r.revisers { // revise headers
-			if id == 0 { // reviser id is ensured to be > 0
+			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.app.reviserByID(id)
 			reviser.BeforeSend(resp.Request(), resp)
 		}
-		for _, id := range r.revisers { // revise content
+		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
 			}
@@ -2598,8 +2605,8 @@ func (r *httpResponse_) checkPush() error {
 	r.markUnsized()
 	resp := r.shell.(Response)
 	if r.hasRevisers {
-		for _, id := range r.revisers {
-			if id == 0 { // reviser id is ensured to be > 0
+		for _, id := range r.revisers { // revise headers
+			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.app.reviserByID(id)
@@ -2618,8 +2625,8 @@ func (r *httpResponse_) push(chunk *Block) error {
 	}
 	resp := r.shell.(Response)
 	if r.hasRevisers {
-		for _, id := range r.revisers {
-			if id == 0 { // reviser id is ensured to be > 0
+		for _, id := range r.revisers { // revise unsized content
+			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.app.reviserByID(id)
@@ -2638,8 +2645,8 @@ func (r *httpResponse_) endUnsized() error {
 	}
 	resp := r.shell.(Response)
 	if r.hasRevisers {
-		for _, id := range r.revisers {
-			if id == 0 { // reviser id is ensured to be > 0
+		for _, id := range r.revisers { // finish content
+			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.app.reviserByID(id)

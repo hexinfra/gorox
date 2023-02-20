@@ -388,7 +388,7 @@ func (r *H2Request) passCookies(req Request) bool { // used by proxies
 
 func (r *H2Request) sendChain(chain Chain) error {
 	// TODO
-	return nil
+	return r.sendChain2(chain, nil)
 }
 
 func (r *H2Request) pushHeaders() error {
@@ -411,9 +411,7 @@ func (r *H2Request) syncHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) syncBytes(p []byte) error {
-	return r.syncBytes2(p)
-}
+func (r *H2Request) syncBytes(p []byte) error { return r.syncBytes2(p) }
 
 func (r *H2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

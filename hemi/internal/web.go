@@ -817,6 +817,7 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 	return false
 }
 func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
+	// TODO
 	/*
 		if r.socklet == nil {
 			return

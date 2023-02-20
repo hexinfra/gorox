@@ -426,10 +426,3 @@ type H3Socket struct {
 	hSocket_
 	// Stream states (zeros)
 }
-
-func (s *H3Socket) onUse() {
-	s.hSocket_.onUse()
-}
-func (s *H3Socket) onEnd() {
-	s.hSocket_.onEnd()
-}

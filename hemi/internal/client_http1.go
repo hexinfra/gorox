@@ -631,10 +631,3 @@ type H1Socket struct {
 	hSocket_
 	// Stream states (zeros)
 }
-
-func (s *H1Socket) onUse() {
-	s.hSocket_.onUse()
-}
-func (s *H1Socket) onEnd() {
-	s.hSocket_.onEnd()
-}

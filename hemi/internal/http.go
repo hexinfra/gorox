@@ -1428,7 +1428,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	} else { // in is sized and there are no revisers
 		r.isSent = true
 		r.contentSize = in.ContentSize()
-		// TODO: optimize to reduce i/o syscalls?
+		// TODO: optimize to reduce i/o syscalls if content is small?
 		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}

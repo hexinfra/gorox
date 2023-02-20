@@ -455,10 +455,3 @@ type http3Socket struct {
 	httpSocket_
 	// Stream states (zeros)
 }
-
-func (s *http3Socket) onUse() {
-	s.httpSocket_.onUse()
-}
-func (s *http3Socket) onEnd() {
-	s.httpSocket_.onEnd()
-}

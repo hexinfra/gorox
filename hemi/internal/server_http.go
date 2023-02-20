@@ -265,6 +265,13 @@ type httpStream_ struct {
 	// Stream states (zeros)
 }
 
+func (s *httpStream_) onUse() {
+	s.stream_.onUse()
+}
+func (s *httpStream_) onEnd() {
+	s.stream_.onEnd()
+}
+
 func (s *httpStream_) execTCPTun() { // CONNECT method
 	// TODO
 }

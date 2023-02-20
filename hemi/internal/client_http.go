@@ -159,6 +159,13 @@ type hStream_ struct {
 	// Stream states (zeros)
 }
 
+func (s *hStream_) onUse() {
+	s.stream_.onUse()
+}
+func (s *hStream_) onEnd() {
+	s.stream_.onEnd()
+}
+
 func (s *hStream_) callTCPTun() { // CONNECT method
 	// TODO
 }

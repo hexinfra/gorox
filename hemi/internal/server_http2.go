@@ -1053,10 +1053,3 @@ type http2Socket struct {
 	httpSocket_
 	// Stream states (zeros)
 }
-
-func (s *http2Socket) onUse() {
-	s.httpSocket_.onUse()
-}
-func (s *http2Socket) onEnd() {
-	s.httpSocket_.onEnd()
-}

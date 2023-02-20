@@ -455,10 +455,3 @@ type H2Socket struct {
 	hSocket_
 	// Stream states (zeros)
 }
-
-func (s *H2Socket) onUse() {
-	s.hSocket_.onUse()
-}
-func (s *H2Socket) onEnd() {
-	s.hSocket_.onEnd()
-}

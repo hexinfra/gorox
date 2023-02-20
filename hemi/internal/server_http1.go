@@ -1047,10 +1047,3 @@ type http1Socket struct {
 	httpSocket_
 	// Stream states (zeros)
 }
-
-func (s *http1Socket) onUse() {
-	s.httpSocket_.onUse()
-}
-func (s *http1Socket) onEnd() {
-	s.httpSocket_.onEnd()
-}

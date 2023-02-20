@@ -26,9 +26,9 @@ type httpServer interface {
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 
-	linkApp(app *App)
+	linkApps()
 	findApp(hostname []byte) *App
-	linkSvc(svc *Svc)
+	linkSvcs()
 	findSvc(hostname []byte) *Svc
 }
 
@@ -41,9 +41,11 @@ type httpServer_ struct {
 	gates      []httpGate
 	defaultApp *App // fallback app
 	// States
+	forApps      []string            // for apps
 	exactApps    []*hostnameTo[*App] // like: ("example.com")
 	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
 	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
+	forSvcs      []string            // for svcs
 	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
 	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
 	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
@@ -61,6 +63,10 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.streamKeeper_.onConfigure(shell, 0)
+	// forApps
+	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
+	// forSvcs
+	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
 	// hrpcMode
 	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// enableTCPTun
@@ -80,35 +86,41 @@ func (s *httpServer_) onPrepare(shell Component) {
 func (s *httpServer_) RecvTimeout() time.Duration { return s.recvTimeout }
 func (s *httpServer_) SendTimeout() time.Duration { return s.sendTimeout }
 
-func (s *httpServer_) linkApp(app *App) {
-	if s.tlsConfig != nil {
-		if app.tlsCertificate == "" || app.tlsPrivateKey == "" {
-			UseExitln("apps that bound to tls server must have certificates and private keys")
+func (s *httpServer_) linkApps() {
+	for _, appName := range s.forApps {
+		app := s.stage.App(appName)
+		if app == nil {
+			continue
 		}
-		certificate, err := tls.LoadX509KeyPair(app.tlsCertificate, app.tlsPrivateKey)
-		if err != nil {
-			UseExitln(err.Error())
+		if s.tlsConfig != nil {
+			if app.tlsCertificate == "" || app.tlsPrivateKey == "" {
+				UseExitln("apps that bound to tls server must have certificates and private keys")
+			}
+			certificate, err := tls.LoadX509KeyPair(app.tlsCertificate, app.tlsPrivateKey)
+			if err != nil {
+				UseExitln(err.Error())
+			}
+			if IsDebug(1) {
+				Debugf("adding certificate to %s\n", s.ColonPort())
+			}
+			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		if IsDebug(1) {
-			Debugf("adding certificate to %s\n", s.ColonPort())
+		app.linkServer(s.shell.(httpServer))
+		if app.isDefault {
+			s.defaultApp = app
 		}
-		s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
-	}
-	app.linkServer(s.shell.(httpServer))
-	if app.isDefault {
-		s.defaultApp = app
-	}
-	// TODO: use hash table?
-	for _, hostname := range app.exactHostnames {
-		s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
-	}
-	// TODO: use radix trie?
-	for _, hostname := range app.suffixHostnames {
-		s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
-	}
-	// TODO: use radix trie?
-	for _, hostname := range app.prefixHostnames {
-		s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
+		// TODO: use hash table?
+		for _, hostname := range app.exactHostnames {
+			s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range app.suffixHostnames {
+			s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range app.prefixHostnames {
+			s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
+		}
 	}
 }
 func (s *httpServer_) findApp(hostname []byte) *App {
@@ -133,19 +145,25 @@ func (s *httpServer_) findApp(hostname []byte) *App {
 	return s.defaultApp
 }
 
-func (s *httpServer_) linkSvc(svc *Svc) {
-	svc.linkHRPC(s.shell.(httpServer))
-	// TODO: use hash table?
-	for _, hostname := range svc.exactHostnames {
-		s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
-	}
-	// TODO: use radix trie?
-	for _, hostname := range svc.suffixHostnames {
-		s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
-	}
-	// TODO: use radix trie?
-	for _, hostname := range svc.prefixHostnames {
-		s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+func (s *httpServer_) linkSvcs() {
+	for _, svcName := range s.forSvcs {
+		svc := s.stage.Svc(svcName)
+		if svc == nil {
+			continue
+		}
+		svc.linkHRPC(s.shell.(httpServer))
+		// TODO: use hash table?
+		for _, hostname := range svc.exactHostnames {
+			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.suffixHostnames {
+			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.prefixHostnames {
+			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
 	}
 }
 func (s *httpServer_) findSvc(hostname []byte) *Svc {

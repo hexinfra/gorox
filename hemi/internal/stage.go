@@ -57,17 +57,15 @@ type Stage struct {
 	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by sign
 	// States
-	logFile    string // stage's log file
-	logger     *log.Logger
-	cpuFile    string
-	hepFile    string
-	thrFile    string
-	grtFile    string
-	blkFile    string
-	appServers map[string][]string
-	svcServers map[string][]string
-	id         int32
-	numCPU     int32
+	logFile string // stage's log file
+	logger  *log.Logger
+	cpuFile string
+	hepFile string
+	thrFile string
+	grtFile string
+	blkFile string
+	id      int32
+	numCPU  int32
 }
 
 func (s *Stage) onCreate() {
@@ -107,9 +105,6 @@ func (s *Stage) onCreate() {
 	s.svcs = make(compDict[*Svc])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
-
-	s.appServers = make(map[string][]string)
-	s.svcServers = make(map[string][]string)
 }
 func (s *Stage) OnShutdown() {
 	if IsDebug(2) {
@@ -186,34 +181,6 @@ func (s *Stage) OnShutdown() {
 }
 
 func (s *Stage) OnConfigure() {
-	// appServers
-	if v, ok := s.Find("appServers"); ok {
-		appServers, ok := v.Dict()
-		if !ok {
-			UseExitln("invalid appServers")
-		}
-		for app, vServers := range appServers {
-			servers, ok := vServers.StringList()
-			if !ok {
-				UseExitln("invalid servers in appServers")
-			}
-			s.appServers[app] = servers
-		}
-	}
-	// svcServers
-	if v, ok := s.Find("svcServers"); ok {
-		svcServers, ok := v.Dict()
-		if !ok {
-			UseExitln("invalid svcServers")
-		}
-		for svc, vServers := range svcServers {
-			servers, ok := vServers.StringList()
-			if !ok {
-				UseExitln("invalid servers in svcServers")
-			}
-			s.svcServers[svc] = servers
-		}
-	}
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/worker.log")
 	tempDir := TempDir()
@@ -457,10 +424,8 @@ func (s *Stage) Start(id int32) {
 		UseExitln("no server/mesher provided, nothing to serve")
 	}
 
-	// Link apps to http servers
-	s.linkAppServers()
-	// Link svcs to http servers
-	s.linkSvcServers()
+	s.linkServerApps()
+	s.linkServerSvcs()
 
 	// Prepare all components
 	if err := s.prepare(); err != nil {
@@ -493,61 +458,25 @@ func (s *Stage) Quit() {
 	}
 }
 
-func (s *Stage) linkAppServers() {
+func (s *Stage) linkServerApps() {
 	if IsDebug(1) {
 		Debugln("link apps to http servers")
 	}
-	for _, app := range s.apps {
-		serverNames, ok := s.appServers[app.Name()]
-		if !ok {
-			if IsDebug(1) {
-				Debugf("no server is provided for app '%s'\n", app.name)
-			}
-			continue
-		}
-		for _, serverName := range serverNames {
-			server := s.servers[serverName]
-			if server == nil {
-				UseExitf("no server named '%s'", serverName)
-			}
-			if httpServer, ok := server.(httpServer); ok {
-				httpServer.linkApp(app)
-			} else {
-				UseExitf("server '%s' is not an http server, cannot link app to it", serverName)
-			}
-			if IsDebug(1) {
-				Debugf("app %s is linked to http server %s\n", app.name, serverName)
-			}
+	for _, server := range s.servers {
+		if httpServer, ok := server.(httpServer); ok {
+			httpServer.linkApps()
 		}
 	}
 }
-func (s *Stage) linkSvcServers() {
+func (s *Stage) linkServerSvcs() {
 	if IsDebug(1) {
 		Debugln("link svcs to http servers")
 	}
-	for _, svc := range s.svcs {
-		serverNames, ok := s.svcServers[svc.Name()]
-		if !ok {
-			if IsDebug(1) {
-				Debugf("no server is provided for svc '%s'\n", svc.name)
-			}
-			continue
-		}
-		for _, serverName := range serverNames {
-			server := s.servers[serverName]
-			if server == nil {
-				UseExitf("no server named '%s'", serverName)
-			}
-			if hrpcServer, ok := server.(httpServer); ok {
-				hrpcServer.linkSvc(svc)
-			} else if grpcServer, ok := server.(GRPCServer); ok {
-				grpcServer.LinkSvc(svc)
-			} else {
-				UseExitf("server '%s' is not an hrpc server nor grpc server, cannot link svc to it", serverName)
-			}
-			if IsDebug(1) {
-				Debugf("svc %s is linked to rpc server %s\n", svc.name, serverName)
-			}
+	for _, server := range s.servers {
+		if hrpcServer, ok := server.(httpServer); ok {
+			hrpcServer.linkSvcs()
+		} else if grpcServer, ok := server.(GRPCServer); ok {
+			grpcServer.LinkSvcs()
 		}
 	}
 }

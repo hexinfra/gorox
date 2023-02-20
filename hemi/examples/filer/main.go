@@ -26,12 +26,10 @@ stage {
             }
         }
     }
-    appServers = [
-        "filer": ("main"),
-    ]
     servers {
         httpxServer "main" {
             address = ":3080"
+            forApps = ("filer")
         }
     }
 }

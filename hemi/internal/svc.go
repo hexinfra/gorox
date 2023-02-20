@@ -18,7 +18,7 @@ import (
 type GRPCServer interface {
 	Server
 	RealServer() any
-	LinkSvc(svc *Svc)
+	LinkSvcs()
 }
 
 // Svc is the microservice.

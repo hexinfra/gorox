@@ -25,8 +25,6 @@ import ( // all standard components
 	_ "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/head"
-	_ "github.com/hexinfra/gorox/hemi/standard/revisers/replace"
-	_ "github.com/hexinfra/gorox/hemi/standard/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/standard/revisers/wrap"
 	_ "github.com/hexinfra/gorox/hemi/standard/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/standard/socklets/hello"

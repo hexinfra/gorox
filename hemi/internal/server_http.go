@@ -2558,8 +2558,8 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 }
 func (r *httpResponse_) send() error {
 	curChain := r.content
-	resp := r.shell.(Response)
 	if r.hasRevisers {
+		resp := r.shell.(Response)
 		// Travel through revisers
 		for _, id := range r.revisers { // revise headers
 			if id == 0 { // id of effective reviser is ensured to be > 0
@@ -2588,7 +2588,7 @@ func (r *httpResponse_) send() error {
 			}
 		}
 	}
-	return resp.sendChain(curChain)
+	return r.shell.sendChain(curChain)
 }
 
 func (r *httpResponse_) checkPush() error {
@@ -2603,8 +2603,8 @@ func (r *httpResponse_) checkPush() error {
 	}
 	r.markSent()
 	r.markUnsized()
-	resp := r.shell.(Response)
 	if r.hasRevisers {
+		resp := r.shell.(Response)
 		for _, id := range r.revisers { // revise headers
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2613,7 +2613,7 @@ func (r *httpResponse_) checkPush() error {
 			reviser.BeforePush(resp.Request(), resp)
 		}
 	}
-	return resp.pushHeaders()
+	return r.shell.pushHeaders()
 }
 func (r *httpResponse_) push(chunk *Block) error {
 	var curChain Chain
@@ -2623,8 +2623,8 @@ func (r *httpResponse_) push(chunk *Block) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	resp := r.shell.(Response)
 	if r.hasRevisers {
+		resp := r.shell.(Response)
 		for _, id := range r.revisers { // revise unsized content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2637,14 +2637,14 @@ func (r *httpResponse_) push(chunk *Block) error {
 			}
 		}
 	}
-	return resp.pushChain(curChain)
+	return r.shell.pushChain(curChain)
 }
 func (r *httpResponse_) endUnsized() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	resp := r.shell.(Response)
 	if r.hasRevisers {
+		resp := r.shell.(Response)
 		for _, id := range r.revisers { // finish content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2653,7 +2653,7 @@ func (r *httpResponse_) endUnsized() error {
 			reviser.FinishPush(resp.Request(), resp)
 		}
 	}
-	return resp.finalizeUnsized()
+	return r.shell.finalizeUnsized()
 }
 
 func (r *httpResponse_) passHead(resp response) bool { // used by proxies

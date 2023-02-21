@@ -425,26 +425,13 @@ func (r *H2Request) finalizeUnsized() error {
 type H2Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Assocs
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *H2Response) appendHeaders(p []byte) bool {
-	// TODO
-	return false
-}
-
-func (r *H2Response) readContent() (p []byte, err error) {
-	return r.readContent2()
-}
-
-func (r *H2Response) appendTrailers(p []byte) bool {
-	// TODO
-	return false
-}
+func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2() }
 
 // poolH2Socket
 var poolH2Socket sync.Pool
@@ -453,5 +440,8 @@ var poolH2Socket sync.Pool
 type H2Socket struct {
 	// Mixins
 	hSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

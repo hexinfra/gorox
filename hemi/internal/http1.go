@@ -733,24 +733,7 @@ func (r *http1Out_) trailers1() []byte {
 	return r.fields[0:r.fieldsEdge]
 }
 
-func (r *http1Out_) syncBytes1(p []byte) error {
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	if err := r._beforeWrite(); err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	_, err := r.stream.write(p)
-	if err == nil && r._tooSlow() {
-		err = httpOutTooSlow
-	}
-	if err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	return nil
-}
+func (r *http1Out_) syncBytes1(p []byte) error { return r.writeBytes1(p) }
 
 func (r *http1Out_) finalizeUnsized1() error {
 	if r.nTrailers == 1 { // no trailers
@@ -785,24 +768,6 @@ func (r *http1Out_) writeHeaders1() error { // used by push and post
 	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
 	return nil
 }
-func (r *http1Out_) writeVector1(vector *net.Buffers) error {
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	if err := r._beforeWrite(); err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	_, err := r.stream.writev(vector)
-	if err == nil && r._tooSlow() {
-		err = httpOutTooSlow
-	}
-	if err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	return nil
-}
 func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
@@ -813,7 +778,7 @@ func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 		return r._writeFile1(block, chunked)
 	}
 }
-func (r *http1Out_) _writeFile1(block *Block, chunked bool) error {
+func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 	buffer := GetNK(block.size)
 	defer PutNK(buffer)
 	nRead := int64(0)
@@ -874,6 +839,42 @@ func (r *http1Out_) _writeBlob1(block *Block, chunked bool) error { // blob
 		r.vector[0] = block.Blob()
 	}
 	return r.writeVector1(&r.vector)
+}
+func (r *http1Out_) writeBytes1(p []byte) error {
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	_, err := r.stream.write(p)
+	if err == nil && r._tooSlow() {
+		err = httpOutTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	return nil
+}
+func (r *http1Out_) writeVector1(vector *net.Buffers) error {
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	_, err := r.stream.writev(vector)
+	if err == nil && r._tooSlow() {
+		err = httpOutTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	return nil
 }
 
 // HTTP/1 protocol elements.

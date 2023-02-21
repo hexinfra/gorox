@@ -396,26 +396,13 @@ func (r *H3Request) finalizeUnsized() error {
 type H3Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Assocs
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *H3Response) appendHeaders(p []byte) bool {
-	// TODO
-	return false
-}
-
-func (r *H3Response) readContent() (p []byte, err error) {
-	return r.readContent3()
-}
-
-func (r *H3Response) appendTrailers(p []byte) bool {
-	// TODO
-	return false
-}
+func (r *H3Response) readContent() (p []byte, err error) { return r.readContent3() }
 
 // poolH3Socket
 var poolH3Socket sync.Pool
@@ -424,5 +411,8 @@ var poolH3Socket sync.Pool
 type H3Socket struct {
 	// Mixins
 	hSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

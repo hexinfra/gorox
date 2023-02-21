@@ -84,7 +84,8 @@ func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netCon
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.frames == nil {
-		c.allocFrames()
+		c.frames = getHTTP2Frames()
+		c.frames.incRef()
 	}
 	c.clientSettings = http2InitialSettings
 	c.table.init()
@@ -114,28 +115,6 @@ func (c *http2Conn) onPut() {
 	c.http2Conn0 = http2Conn0{}
 }
 
-func (c *http2Conn) allocFrames() {
-	c.frames = getHTTP2Frames()
-	c.frames.incRef()
-}
-
-func (c *http2Conn) receive() { // goroutine
-	if IsDebug(1) {
-		defer Debugf("conn=%d c.receive() quit\n", c.id)
-	}
-	for { // each incoming frame
-		inFrame, err := c.recvFrame()
-		if err != nil {
-			c.incoming <- err
-			return
-		}
-		if inFrame.kind == http2FrameGoaway {
-			c.incoming <- http2ErrorNoError
-			return
-		}
-		c.incoming <- inFrame
-	}
-}
 func (c *http2Conn) serve() { // goroutine
 	Debugf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
@@ -211,6 +190,24 @@ serve:
 	}
 	Debugf("conn=%d c.serve() quit\n", c.id)
 }
+func (c *http2Conn) receive() { // goroutine
+	if IsDebug(1) {
+		defer Debugf("conn=%d c.receive() quit\n", c.id)
+	}
+	for { // each incoming frame
+		inFrame, err := c.recvFrame()
+		if err != nil {
+			c.incoming <- err
+			return
+		}
+		if inFrame.kind == http2FrameGoaway {
+			c.incoming <- http2ErrorNoError
+			return
+		}
+		c.incoming <- inFrame
+	}
+}
+
 func (c *http2Conn) handshake() error {
 	// Set deadline for the first request headers
 	if err := c.setReadDeadline(time.Now().Add(c.server.ReadTimeout())); err != nil {
@@ -644,7 +641,8 @@ func (c *http2Conn) growFrame(size uint32) error {
 			c.framesEdge = uint32(copy(c.frames.buf[:], c.frames.buf[c.pBack:c.framesEdge]))
 		} else { // there are still streams referring to c.frames. use a new frames
 			frames := c.frames
-			c.allocFrames()
+			c.frames = getHTTP2Frames()
+			c.frames.incRef()
 			c.framesEdge = uint32(copy(c.frames.buf[:], frames.buf[c.pBack:c.framesEdge]))
 			frames.decRef()
 		}
@@ -725,7 +723,8 @@ func (c *http2Conn) growContinuation(size uint32, headers *http2InFrame) error {
 		// Now slide. Skip holes (if any) when sliding
 		frames := c.frames
 		if c.frames.getRef() != 1 { // there are still streams referring to c.frames. use a new frames
-			c.allocFrames()
+			c.frames = getHTTP2Frames()
+			c.frames.incRef()
 		}
 		c.pFore = uint32(copy(c.frames.buf[:], frames.buf[c.pBack:c.pFore]))
 		c.framesEdge = c.pFore + uint32(copy(c.frames.buf[c.pFore:], frames.buf[c.cBack:c.framesEdge]))
@@ -860,7 +859,7 @@ func (s *http2Stream) onEnd() { // for zeros
 }
 
 func (s *http2Stream) execute() { // goroutine
-	// do
+	// TODO ...
 	if IsDebug(2) {
 		Debugln("stream processing...")
 	}
@@ -922,7 +921,6 @@ func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 type http2Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Assocs
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1046,5 +1044,8 @@ var poolHTTP2Socket sync.Pool
 type http2Socket struct {
 	// Mixins
 	httpSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

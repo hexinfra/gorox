@@ -352,6 +352,8 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 type H1Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
+	// Stream states (buffers)
+	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
@@ -486,8 +488,10 @@ func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }
 type H1Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Assocs
+	// Stream states (buffers)
+	// Stream states (controlled)
 	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
 func (r *H1Response) recvHead() { // control + headers
@@ -635,5 +639,8 @@ var poolH1Socket sync.Pool
 type H1Socket struct {
 	// Mixins
 	hSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

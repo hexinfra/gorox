@@ -170,7 +170,8 @@ func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicCo
 	c.httpConn_.onGet(id, server, gate)
 	c.quicConn = quicConn
 	if c.frames == nil {
-		c.allocFrames()
+		c.frames = getHTTP3Frames()
+		c.frames.incRef()
 	}
 }
 func (c *http3Conn) onPut() {
@@ -182,15 +183,11 @@ func (c *http3Conn) onPut() {
 	c.http3Conn0 = http3Conn0{}
 }
 
-func (c *http3Conn) allocFrames() {
-	c.frames = getHTTP3Frames()
-	c.frames.incRef()
-}
-
-func (c *http3Conn) receive() {
-	// TODO
-}
 func (c *http3Conn) serve() { // goroutine
+	// TODO
+	// use go c.receive()?
+}
+func (c *http3Conn) receive() { // goroutine
 	// TODO
 }
 
@@ -271,7 +268,7 @@ func (s *http3Stream) onEnd() { // for zeros
 }
 
 func (s *http3Stream) execute() { // goroutine
-	// do
+	// TODO ...
 	putHTTP3Stream(s)
 }
 
@@ -330,24 +327,14 @@ func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 type http3Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Assocs
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http3Request) appendHeaders(p []byte) bool {
-	return false
-}
-
 func (r *http3Request) readContent() (p []byte, err error) {
 	return r.readContent3()
-}
-
-func (r *http3Request) appendTrailers(p []byte) bool {
-	// TODO: to r.array
-	return false
 }
 
 // http3Response is the server-side HTTP/3 response.
@@ -448,5 +435,8 @@ var poolHTTP3Socket sync.Pool
 type http3Socket struct {
 	// Mixins
 	httpSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

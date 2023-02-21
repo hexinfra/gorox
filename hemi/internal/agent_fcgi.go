@@ -303,9 +303,12 @@ type fcgiRequest struct { // outgoing. needs building
 	response *fcgiResponse
 	// States (buffers)
 	stockParams [_2K]byte // for r.params
+	// States (controlled)
+	paramsHeader [8]byte // used by params record
+	stdinHeader  [8]byte // used by stdin record
 	// States (non-zeros)
-	params      []byte        // place exactly one FCGI_PARAMS record
-	contentSize int64         // -1: not set, -2: unsized, >=0: size
+	params      []byte        // place the content of exactly one FCGI_PARAMS record
+	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
@@ -315,15 +318,16 @@ type fcgiRequest struct { // outgoing. needs building
 }
 type fcgiRequest0 struct { // for fast reset, entirely
 	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= fcgiMaxParams.
-	isSent        bool   // whether the request is sent
+	paramsSize    uint16 // contentLen of the params record
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
 }
 
 func (r *fcgiRequest) onUse() {
+	r.paramsHeader = fcgiParamsHeader // contentLen (r.paramsHeader[4:6]) needs modification
+	r.stdinHeader = fcgiStdinHeader   // contentLen (r.stdinHeader[4:6]) needs modification for every stdin record
 	r.params = r.stockParams[:]
-	copy(r.params, fcgiParamsHeader) // contentLen (r.params[4:6]) needs modification
-	r.contentSize = -1               // not set
+	r.contentSize = -1 // not set
 	r.sendTimeout = r.stream.agent.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
@@ -344,35 +348,47 @@ func (r *fcgiRequest) passHead(req Request, scriptFilename []byte) bool {
 	} else {
 		value = scriptFilename
 	}
-	if !r._addMetaParam(fcgiBytesScriptFilename, value) {
+	if !r._addMetaParam(fcgiBytesScriptFilename, value) { // SCRIPT_FILENAME
 		return false
 	}
-	// TODO
+	// TODO: add more params
+
+	r.paramsHeader[4] = byte(r.paramsSize >> 8)
+	r.paramsHeader[5] = byte(r.paramsSize)
 	return true
 }
-func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool {
-	// TODO
+func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
+	// TODO: use r._growParams(), r.params, update r.paramsSize
 	return false
 }
-func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool {
-	// TODO
+func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
+	// TODO: use r._growParams(), r.params, update r.paramsSize
 	return false
 }
 
 func (r *fcgiRequest) setSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
 func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
-	r.isSent = true
 	r.contentSize = req.ContentSize()
-	if err := r.syncParams(); err != nil {
-		return err
+	// TODO: build r.paramsHeader and r.params, sync beginRequest, r.paramsHeader, r.params, and fcgiEndParams using writev
+	r.vector = r.fixedVector[0:4]
+	if r.stream.agent.keepConn {
+		r.vector[0] = fcgiBeginKeepConn
+	} else {
+		r.vector[0] = fcgiBeginDontKeep
 	}
+	r.vector[1] = r.paramsHeader[:]
+	r.vector[2] = r.params[:r.paramsEdge] // effective content of the params record
+	r.vector[3] = fcgiEndParams
+	// TODO: writev
 	for {
 		p, err := req.readContent()
 		if len(p) >= 0 {
-			if e := r.syncBytes(p); e != nil {
-				return e
-			}
+			// TODO: build the stdin record, sync r.stdinHeader, and p using writev
+			size := len(p)
+			r.stdinHeader[4] = byte(size >> 8)
+			r.stdinHeader[5] = byte(size)
+			// TODO
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -381,25 +397,13 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 			return err
 		}
 	}
-	return nil
-}
-func (r *fcgiRequest) syncParams() error {
-	// TODO: build the params record, sync beginRequest and params
-	if r.stream.agent.keepConn {
-		// use fcgiBeginKeepConn
-	} else {
-		// use fcgiBeginDontKeep
-	}
-	return nil
-}
-func (r *fcgiRequest) syncBytes(p []byte) error {
-	// TODO: create a stdin record, sync
+	// TODO: fcgiEndStdin
 	return nil
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
-	if contentBlob, ok := content.([]byte); ok {
+	if contentBlob, ok := content.([]byte); ok { // blob
 		return r.sendBlob(contentBlob)
-	} else if contentFile, ok := content.(*os.File); ok {
+	} else if contentFile, ok := content.(*os.File); ok { // file
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
 			contentFile.Close()
@@ -411,25 +415,12 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 	}
 }
 
-func (r *fcgiRequest) checkSend() error {
-	if r.isSent {
-		return httpOutAlreadySent
-	}
-	r.isSent = true
+func (r *fcgiRequest) sendBlob(content []byte) error {
+	// TODO: beginRequest + params + stdin * N + fcgiEndStdin
 	return nil
 }
-func (r *fcgiRequest) sendBlob(content []byte) error { // with params
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	// TODO: beginRequest + params + stdin
-	return nil
-}
-func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error { // with params
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	// TODO: beginRequest + params + stdin
+func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
+	// TODO: beginRequest + params + stdin * N + fcgiEndStdin
 	return nil
 }
 
@@ -690,7 +681,7 @@ func (r *fcgiResponse) _slideRecords(records []byte) {
 		r.recordsFrom = 0
 	}
 }
-func (r *fcgiResponse) _switchRecords() { // for receiving response content
+func (r *fcgiResponse) _switchRecords() { // for performance when receiving response content, we need a 16K buffer
 	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
 		records := Get16K()
 		if imme := r.imme; imme.notEmpty() {
@@ -1156,9 +1147,16 @@ var ( // predefined request records
 		0, 1, 0, // role=responder, flags=dontKeep
 		0, 0, 0, 0, 0, // reserved
 	}
-	fcgiParamsHeader = []byte{ // 8 bytes
+	fcgiParamsHeader = [8]byte{ // 8 bytes
 		// header=8
 		1, fcgiTypeParams, // version, type
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0, reserved = 0
+	}
+	fcgiStdinHeader = [8]byte{ // 8 bytes
+		// header=8
+		1, fcgiTypeStdin, // version, type
 		0, 1, // request id = 1
 		0, 0, // content length = 0
 		0, 0, // padding length = 0, reserved = 0

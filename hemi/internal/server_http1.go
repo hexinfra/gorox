@@ -397,8 +397,10 @@ func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 type http1Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Assocs
+	// Stream states (buffers)
+	// Stream states (controlled)
 	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
 func (r *http1Request) recvHead() { // control + headers
@@ -1047,5 +1049,8 @@ var poolHTTP1Socket sync.Pool
 type http1Socket struct {
 	// Mixins
 	httpSocket_
+	// Stream states (buffers)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }

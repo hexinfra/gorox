@@ -317,7 +317,7 @@ type H3Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *H3Request) setControl(method []byte, uri []byte, hasContent bool) bool {
+func (r *H3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool {
 	// TODO
 	return false
 }

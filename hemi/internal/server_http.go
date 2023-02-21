@@ -573,9 +573,9 @@ func (r *httpRequest_) ColonPort() string {
 		return string(r.input[r.colonPort.from:r.colonPort.edge])
 	}
 	if r.schemeCode == SchemeHTTPS {
-		return httpStringColonPort443
+		return stringColonPort443
 	} else {
-		return httpStringColonPort80
+		return stringColonPort80
 	}
 }
 func (r *httpRequest_) UnsafeColonPort() []byte {
@@ -593,7 +593,7 @@ func (r *httpRequest_) URI() string {
 	if r.uri.notEmpty() {
 		return string(r.input[r.uri.from:r.uri.edge])
 	} else { // use "/"
-		return httpStringSlash
+		return stringSlash
 	}
 }
 func (r *httpRequest_) UnsafeURI() []byte {
@@ -607,7 +607,7 @@ func (r *httpRequest_) EncodedPath() string {
 	if r.encodedPath.notEmpty() {
 		return string(r.input[r.encodedPath.from:r.encodedPath.edge])
 	} else { // use "/"
-		return httpStringSlash
+		return stringSlash
 	}
 }
 func (r *httpRequest_) UnsafeEncodedPath() []byte {
@@ -621,7 +621,7 @@ func (r *httpRequest_) Path() string {
 	if len(r.path) != 0 {
 		return string(r.path)
 	} else { // use "/"
-		return httpStringSlash
+		return stringSlash
 	}
 }
 func (r *httpRequest_) UnsafePath() []byte {
@@ -2782,20 +2782,19 @@ func (r *httpResponse_) endUnsized() error {
 }
 
 func (r *httpResponse_) passHead(resp response) bool { // used by proxies
+	resp.delHopHeaders()
+
 	// copy control
 	r.SetStatus(resp.Status())
 
-	resp.delHopHeaders()
+	// copy special headers (excluding set-cookie, which is copied directly) from resp
 
-	// copy special headers (excluding set-cookie, which is copied as is) from resp
-
-	// copy remaining headers
+	// copy remaining headers from resp
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
-		if hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) {
+		if hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.shell.addHeader(name, value)
-		} else {
-			return r.shell.insertHeader(hash, name, value)
 		}
+		return r.shell.insertHeader(hash, name, value)
 	}) {
 		return false
 	}

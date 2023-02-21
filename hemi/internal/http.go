@@ -1696,19 +1696,19 @@ const ( // version codes. keep sync with ../hemi.go
 )
 
 var ( // version strings and byteses
-	httpStringHTTP1_0  = "HTTP/1.0"
-	httpStringHTTP1_1  = "HTTP/1.1"
-	httpStringHTTP2    = "HTTP/2"
-	httpStringHTTP3    = "HTTP/3"
-	bytesHTTP1_0       = []byte(httpStringHTTP1_0)
-	bytesHTTP1_1       = []byte(httpStringHTTP1_1)
-	bytesHTTP2         = []byte(httpStringHTTP2)
-	bytesHTTP3         = []byte(httpStringHTTP3)
+	stringHTTP1_0      = "HTTP/1.0"
+	stringHTTP1_1      = "HTTP/1.1"
+	stringHTTP2        = "HTTP/2"
+	stringHTTP3        = "HTTP/3"
+	bytesHTTP1_0       = []byte(stringHTTP1_0)
+	bytesHTTP1_1       = []byte(stringHTTP1_1)
+	bytesHTTP2         = []byte(stringHTTP2)
+	bytesHTTP3         = []byte(stringHTTP3)
 	httpVersionStrings = [...]string{
-		Version1_0: httpStringHTTP1_0,
-		Version1_1: httpStringHTTP1_1,
-		Version2:   httpStringHTTP2,
-		Version3:   httpStringHTTP3,
+		Version1_0: stringHTTP1_0,
+		Version1_1: stringHTTP1_1,
+		Version2:   stringHTTP2,
+		Version3:   stringHTTP3,
 	}
 	httpVersionByteses = [...][]byte{
 		Version1_0: bytesHTTP1_0,
@@ -1724,13 +1724,13 @@ const ( // scheme codes. keep sync with ../hemi.go
 )
 
 var ( // scheme strings and byteses
-	httpStringHTTP    = "http"
-	httpStringHTTPS   = "https"
-	bytesHTTP         = []byte(httpStringHTTP)
-	bytesHTTPS        = []byte(httpStringHTTPS)
+	stringHTTP        = "http"
+	stringHTTPS       = "https"
+	bytesHTTP         = []byte(stringHTTP)
+	bytesHTTPS        = []byte(stringHTTPS)
 	httpSchemeStrings = [...]string{
-		SchemeHTTP:  httpStringHTTP,
-		SchemeHTTPS: httpStringHTTPS,
+		SchemeHTTP:  stringHTTP,
+		SchemeHTTPS: stringHTTPS,
 	}
 	httpSchemeByteses = [...][]byte{
 		SchemeHTTP:  bytesHTTP,
@@ -1987,15 +1987,15 @@ var ( // byteses of http fields.
 
 var ( // misc http strings & byteses.
 	// Strings
-	httpStringColonPort80  = ":80"
-	httpStringColonPort443 = ":443"
-	httpStringSlash        = "/"
-	httpStringAsterisk     = "*"
+	stringColonPort80  = ":80"
+	stringColonPort443 = ":443"
+	stringSlash        = "/"
+	stringAsterisk     = "*"
 	// Byteses
-	bytesColonPort80    = []byte(httpStringColonPort80)
-	bytesColonPort443   = []byte(httpStringColonPort443)
-	bytesSlash          = []byte(httpStringSlash)
-	bytesAsterisk       = []byte(httpStringAsterisk)
+	bytesColonPort80    = []byte(stringColonPort80)
+	bytesColonPort443   = []byte(stringColonPort443)
+	bytesSlash          = []byte(stringSlash)
+	bytesAsterisk       = []byte(stringAsterisk)
 	bytesGET            = []byte("GET")
 	bytes100Continue    = []byte("100-continue")
 	bytesBoundary       = []byte("boundary")

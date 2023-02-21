@@ -180,7 +180,7 @@ func (s *hStream_) callSocket() { // upgrade: wegsocket
 type request interface {
 	Response() response
 	SetSendTimeout(timeout time.Duration) // to defend against bad server
-	setControl(method []byte, uri []byte, hasContent bool) bool
+	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	addHeader(name []byte, value []byte) bool
 	passCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -264,6 +264,8 @@ func (r *hRequest_) endUnsized() error {
 }
 
 func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
+	req.delHopHeaders()
+
 	// copy control
 	var uri []byte
 	if req.IsAsteriskOptions() { // OPTIONS *
@@ -274,23 +276,16 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 	} else {
 		uri = req.UnsafeURI()
 	}
-	if !r.shell.(request).setControl(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
-
-	req.delHopHeaders()
-
-	// copy special headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).passCookies(req) {
-		return false
-	}
-	if custom := len(hostname) != 0 || len(colonPort) != 0; custom || req.IsAbsoluteForm() {
+	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
 			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
 				return false
 			}
-		} else { // custom authority
+		} else { // custom authority (hostname or colonPort)
 			if len(hostname) == 0 {
 				hostname = req.UnsafeHostname()
 			}
@@ -302,9 +297,17 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 			}
 		}
 	}
+	// TODO: scheme?
+
+	// copy special headers (including cookie) from req
+	if req.HasCookies() && !r.shell.(request).passCookies(req) {
+		return false
+	}
 
 	// copy remaining headers from req
-	if !req.forHeaders(r.shell.insertHeader) {
+	if !req.forHeaders(func(hash uint16, name []byte, value []byte) bool {
+		return r.shell.insertHeader(hash, name, value)
+	}) {
 		return false
 	}
 

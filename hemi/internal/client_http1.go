@@ -356,7 +356,7 @@ type H1Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
+func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
 	size := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
 	if from, edge, ok := r._growFields(size); ok {
 		from += copy(r.fields[from:], method)

@@ -975,8 +975,8 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 }
 
 func (r *http1Response) sync1xx(resp response) bool { // used by proxies
-	r.status = resp.Status()
 	resp.delHopHeaders()
+	r.status = resp.Status()
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
 		return r.insertHeader(hash, name, value)
 	}) {

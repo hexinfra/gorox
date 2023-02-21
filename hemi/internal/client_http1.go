@@ -379,7 +379,13 @@ func (r *H1Request) setControl(method []byte, uri []byte, hasContent bool) bool 
 	}
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	// TODO: if colonPort is default (:80 for http, :443 for https), omit it
+	if r.stream.keeper().TLSMode() {
+		if bytes.Equal(colonPort, bytesColonPort443) {
+			colonPort = nil
+		}
+	} else if bytes.Equal(colonPort, bytesColonPort80) {
+		colonPort = nil
+	}
 	size := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(size); ok {
 		from += copy(r.fields[from:], bytesHost)

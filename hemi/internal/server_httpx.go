@@ -30,7 +30,7 @@ type httpxServer struct {
 	// Assocs
 	// States
 	forceScheme  int8 // scheme that must be used
-	strictScheme bool // use https scheme for TLS and http scheme for TCP?
+	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
 	enableHTTP2  bool // enable HTTP/2?
 	h2cMode      bool // if true, TCP runs HTTP/2 only. TLS is not affected. requires enableHTTP2
 }
@@ -58,8 +58,8 @@ func (s *httpxServer) OnConfigure() {
 	} else if scheme == "https" {
 		s.forceScheme = SchemeHTTPS
 	}
-	// strictScheme
-	s.ConfigureBool("strictScheme", &s.strictScheme, false)
+	// adjustScheme
+	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 	// enableHTTP2
 	s.ConfigureBool("enableHTTP2", &s.enableHTTP2, false) // TODO: change to true after HTTP/2 is fully implemented
 	// h2cMode

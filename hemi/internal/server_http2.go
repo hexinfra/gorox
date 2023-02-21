@@ -958,11 +958,6 @@ type http2Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http2Response) control() []byte {
-	// TODO
-	return nil
-}
-
 func (r *http2Response) header(name []byte) (value []byte, ok bool) {
 	return r.header2(name)
 }

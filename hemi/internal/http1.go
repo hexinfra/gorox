@@ -893,7 +893,7 @@ var ( // HTTP/1 byteses
 	http1BytesZeroCRLFCRLF         = []byte("0\r\n\r\n")
 )
 
-var http1Mysterious = [32]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', 'M', 'y', 's', 't', 'e', 'r', 'i', 'o', 'u', 's', ' ', 'S', 't', 'a', 't', 'u', 's', '\r', '\n'}
+var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', '?', '\r', '\n'}
 var http1Controls = [...][]byte{ // size: 512*24B=12K
 	// 1XX
 	StatusContinue:           []byte("HTTP/1.1 100 Continue\r\n"),

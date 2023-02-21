@@ -139,8 +139,8 @@ type httpIn0_ struct { // for fast reset, entirely
 	iContentType     uint8 // content-type header in r.primes->r.input
 	acceptGzip       bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	_                bool  // padding
 	upgradeSocket    bool  // upgrade: websocket?
+	upgradeUDPTun    bool  // upgrade: connect-udp?
 	hasRevisers      bool  // are there any revisers hooked on this incoming message?
 	contentReceived  bool  // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
@@ -1585,8 +1585,8 @@ var ( // http outgoing message errors
 	httpOutTrailerFailed = errors.New("add trailer failed")
 )
 
-var httpMysterios = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'} // TODO: use struct?
-var httpControls = [...][]byte{                                                     // for both HTTP/2 and HTTP/3. TODO: use struct?
+var httpTemplate = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
+var httpControls = [...][]byte{ // size: 512*24B=12K. for both HTTP/2 and HTTP/3
 	// 1XX
 	StatusContinue:           []byte(":status 100"),
 	StatusSwitchingProtocols: []byte(":status 101"),

@@ -360,11 +360,6 @@ type http3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http3Response) control() []byte {
-	// TODO
-	return nil
-}
-
 func (r *http3Response) header(name []byte) (value []byte, ok bool) {
 	return r.header3(name)
 }

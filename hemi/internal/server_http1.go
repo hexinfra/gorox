@@ -164,13 +164,14 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 
-	// TODO: upgradeUDPTun?
 	if req.methodCode == MethodCONNECT { // tcp tunnel mode?
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
 		s.httpMode = httpModeTCPTun
 		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
 		return
+	} else if req.upgradeUDPTun { // udp tunnel mode?
+		// TODO
 	}
 
 	server := conn.server.(*httpxServer)
@@ -181,13 +182,13 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	// URI.  Otherwise, if the request is received over a TLS-secured TCP
 	// connection, the effective request URI's scheme is "https"; if not,
 	// the scheme is "http".
-	if forceScheme := server.forceScheme; forceScheme != -1 {
-		req.schemeCode = uint8(forceScheme)
+	if server.forceScheme != -1 { // forceScheme is set
+		req.schemeCode = uint8(server.forceScheme)
 	} else if server.TLSMode() {
-		if req.schemeCode == SchemeHTTP {
+		if req.schemeCode == SchemeHTTP && server.adjustScheme {
 			req.schemeCode = SchemeHTTPS
 		}
-	} else if req.schemeCode == SchemeHTTPS && server.strictScheme {
+	} else if req.schemeCode == SchemeHTTPS && server.adjustScheme {
 		req.schemeCode = SchemeHTTP
 	}
 
@@ -833,15 +834,16 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 type http1Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
+	// Stream states (buffers)
 	// Stream states (controlled)
-	start [32]byte // exactly 32 bytes for "HTTP/1.1 xxx Mysterious Status\r\n"
 	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte {
+func (r *http1Response) control() []byte { // HTTP/1's own control()
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
-		r.start = http1Mysterious
+		r.start = http1Template
 		r.start[9] = byte(r.status/100 + '0')
 		r.start[10] = byte(r.status/10%10 + '0')
 		r.start[11] = byte(r.status%10 + '0')

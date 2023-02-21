@@ -10,6 +10,7 @@ package internal
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"net"
 	"os"
@@ -2375,6 +2376,108 @@ var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with va
 	(*httpRequest_).UnsafeContentType, // contentType
 }
 
+// Upload is a file uploaded by client.
+type Upload struct { // 48 bytes
+	hash     uint16 // hash of name, to support fast comparison
+	flags    uint8  // see upload flags
+	errCode  int8   // error code
+	nameSize uint8  // name size
+	baseSize uint8  // base size
+	typeSize uint8  // type size
+	pathSize uint8  // path size
+	nameFrom int32  // like: "avatar"
+	baseFrom int32  // like: "michael.jpg"
+	typeFrom int32  // like: "image/jpeg"
+	pathFrom int32  // like: "/path/to/391384576"
+	size     int64  // file size
+	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+}
+
+func (u *Upload) nameEqualString(p []byte, x string) bool {
+	if int(u.nameSize) != len(x) {
+		return false
+	}
+	if u.metaSet() {
+		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
+	}
+	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+}
+
+const ( // upload flags
+	uploadFlagMetaSet = 0b10000000
+	uploadFlagIsMoved = 0b01000000
+)
+
+func (u *Upload) setMeta(p []byte) {
+	if u.flags&uploadFlagMetaSet > 0 {
+		return
+	}
+	u.flags |= uploadFlagMetaSet
+	from := u.nameFrom
+	if u.baseFrom < from {
+		from = u.baseFrom
+	}
+	if u.pathFrom < from {
+		from = u.pathFrom
+	}
+	if u.typeFrom < from {
+		from = u.typeFrom
+	}
+	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
+	if u.pathFrom > max {
+		max = u.pathFrom
+		edge = u.pathFrom + int32(u.pathSize)
+	}
+	if u.baseFrom > max {
+		max = u.baseFrom
+		edge = u.baseFrom + int32(u.baseSize)
+	}
+	if u.nameFrom > max {
+		max = u.nameFrom
+		edge = u.nameFrom + int32(u.nameSize)
+	}
+	u.meta = string(p[from:edge]) // dup to avoid memory leak
+	u.nameFrom -= from
+	u.baseFrom -= from
+	u.typeFrom -= from
+	u.pathFrom -= from
+}
+func (u *Upload) metaSet() bool { return u.flags&uploadFlagMetaSet > 0 }
+func (u *Upload) setMoved()     { u.flags |= uploadFlagIsMoved }
+func (u *Upload) isMoved() bool { return u.flags&uploadFlagIsMoved > 0 }
+
+const ( // upload error codes
+	uploadOK        = 0
+	uploadError     = 1
+	uploadCantWrite = 2
+	uploadTooLarge  = 3
+	uploadPartial   = 4
+	uploadNoFile    = 5
+)
+
+var uploadErrors = [...]error{
+	nil, // no error
+	errors.New("general error"),
+	errors.New("cannot write"),
+	errors.New("too large"),
+	errors.New("partial"),
+	errors.New("no file"),
+}
+
+func (u *Upload) IsOK() bool   { return u.errCode == 0 }
+func (u *Upload) Error() error { return uploadErrors[u.errCode] }
+
+func (u *Upload) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *Upload) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *Upload) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *Upload) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *Upload) Size() int64  { return u.size }
+
+func (u *Upload) MoveTo(path string) error {
+	// TODO
+	return nil
+}
+
 // Response is the server-side HTTP response and is the interface for *http[1-3]Response.
 type Response interface {
 	Request() Request
@@ -2452,9 +2555,10 @@ type httpResponse_ struct { // outgoing. needs building
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	status       int16 // 200, 302, 404, 500, ...
-	expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	status       int16    // 200, 302, 404, 500, ...
+	start        [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
+	expires      int64    // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	lastModified int64    // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	// Stream states (zeros)
 	app            *App // associated app
 	svc            *Svc // associated svc
@@ -2481,6 +2585,20 @@ func (r *httpResponse_) onEnd() { // for zeros
 }
 
 func (r *httpResponse_) Request() Request { return r.request }
+
+func (r *httpResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 has its own control()
+	var start []byte
+	if r.status >= int16(len(httpControls)) || httpControls[r.status] == nil {
+		copy(r.start[:], httpTemplate[:])
+		r.start[8] = byte(r.status/100 + '0')
+		r.start[9] = byte(r.status/10%10 + '0')
+		r.start[10] = byte(r.status%10 + '0')
+		start = r.start[:len(httpTemplate)]
+	} else {
+		start = httpControls[r.status]
+	}
+	return start
+}
 
 func (r *httpResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {

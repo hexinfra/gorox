@@ -221,7 +221,7 @@ func (r *hRequest_) onEnd() { // for zeros
 
 func (r *hRequest_) Response() response { return r.response }
 
-func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] }
+func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
 	return r._setUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince, since)
@@ -379,6 +379,11 @@ func (r *hRequest_) _delIfRange() (deleted bool) {
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+}
+
+// upload is a file to be uploaded.
+type upload struct {
+	// TODO
 }
 
 // response is the client-side HTTP response and interface for *H[1-3]Response.

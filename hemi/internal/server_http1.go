@@ -182,7 +182,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	// URI.  Otherwise, if the request is received over a TLS-secured TCP
 	// connection, the effective request URI's scheme is "https"; if not,
 	// the scheme is "http".
-	if server.forceScheme != -1 { // forceScheme is set
+	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
 	} else if server.TLSMode() {
 		if req.schemeCode == SchemeHTTP && server.adjustScheme {

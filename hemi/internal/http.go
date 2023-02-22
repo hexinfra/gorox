@@ -2017,6 +2017,8 @@ var ( // misc http strings & byteses.
 	bytesTrailers       = []byte("trailers")
 	bytesWebSocket      = []byte("websocket")
 	// HTTP/2 and HTTP/3 byteses, TODO
+	bytesSchemeHTTP           = []byte(":scheme http")
+	bytesSchemeHTTPS          = []byte(":scheme https")
 	bytesFixedRequestHeaders  = []byte("user-agent gorox")
 	bytesFixedResponseHeaders = []byte("server gorox")
 )

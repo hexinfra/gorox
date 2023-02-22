@@ -2792,7 +2792,7 @@ func (r *httpResponse_) endUnsized() error {
 func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 
-	// copy control
+	// copy control (:status)
 	r.SetStatus(resp.Status())
 
 	// copy special headers (excluding set-cookie, which is copied directly) from resp

@@ -221,6 +221,10 @@ func (r *hRequest_) onEnd() { // for zeros
 
 func (r *hRequest_) Response() response { return r.response }
 
+func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
+	// TODO: copy scheme to fields
+	return false
+}
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
@@ -263,10 +267,10 @@ func (r *hRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte, versionCode uint8) bool { // used by proxies
 	req.delHopHeaders()
 
-	// copy control
+	// copy control (:method, :path, :authority, :scheme)
 	var uri []byte
 	if req.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
@@ -297,7 +301,17 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 			}
 		}
 	}
-	// TODO: scheme?
+	if versionCode >= Version2 { // we have no way to set scheme unless we use absolute-form for HTTP/1.1.
+		var scheme []byte
+		if r.stream.keeper().TLSMode() {
+			scheme = bytesSchemeHTTPS
+		} else {
+			scheme = bytesSchemeHTTP
+		}
+		if !r.setScheme(scheme) {
+			return false
+		}
+	}
 
 	// copy special headers (including cookie) from req
 	if req.HasCookies() && !r.shell.(request).passCookies(req) {

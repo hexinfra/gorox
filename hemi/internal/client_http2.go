@@ -347,11 +347,11 @@ type H2Request struct { // outgoing. needs building
 }
 
 func (r *H2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool {
-	// TODO
+	// TODO: set :method and :path
 	return false
 }
 func (r *H2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	// TODO
+	// TODO: set :authority
 	return false
 }
 

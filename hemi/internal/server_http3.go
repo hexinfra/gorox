@@ -407,7 +407,7 @@ func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *http3Response) sync1xx(resp response) bool { // used by proxies
+func (r *http3Response) sync1xx(resp hResponse) bool { // used by proxies
 	// TODO
 	r.onEnd()
 	r.onUse(Version3)

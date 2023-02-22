@@ -12,13 +12,13 @@ import (
 )
 
 func init() {
+	RegisterAppInit("iface", func(app *App) error {
+		return nil
+	})
 	RegisterHandlet("v1Handlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(v1Handlet)
 		h.onCreate(name, stage, app)
 		return h
-	})
-	RegisterAppInit("iface", func(app *App) error {
-		return nil
 	})
 }
 

@@ -176,8 +176,8 @@ func (s *hStream_) callSocket() { // upgrade: wegsocket
 	// TODO
 }
 
-// request is the client-side HTTP request and the interface for *H[1-3]Request.
-type request interface {
+// hRequest is the client-side HTTP request and the interface for *H[1-3]Request.
+type hRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
@@ -188,7 +188,7 @@ type hRequest_ struct { // outgoing. needs building
 	// Mixins
 	httpOut_
 	// Assocs
-	response response // the corresponding response
+	response hResponse // the corresponding response
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -216,7 +216,7 @@ func (r *hRequest_) onEnd() { // for zeros
 	r.httpOut_.onEnd()
 }
 
-func (r *hRequest_) Response() response { return r.response }
+func (r *hRequest_) Response() hResponse { return r.response }
 
 func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
 	// TODO: copy scheme to r.fields
@@ -277,7 +277,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	} else {
 		uri = req.UnsafeURI()
 	}
-	if !r.shell.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(hRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: HTTP/2 and HTTP/3?
@@ -293,7 +293,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 			if len(colonPort) == 0 {
 				colonPort = req.UnsafeColonPort()
 			}
-			if !r.shell.(request).setAuthority(hostname, colonPort) {
+			if !r.shell.(hRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -311,7 +311,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(hRequest).copyCookies(req) {
 		return false
 	}
 
@@ -400,8 +400,8 @@ type upload struct {
 	// TODO
 }
 
-// response is the client-side HTTP response and interface for *H[1-3]Response.
-type response interface {
+// hResponse is the client-side HTTP response and interface for *H[1-3]Response.
+type hResponse interface {
 	Status() int16
 	delHopHeaders()
 	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool

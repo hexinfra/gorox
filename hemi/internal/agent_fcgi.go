@@ -488,7 +488,7 @@ func putFCGIParams(params []byte) {
 	poolFCGIParams.Put(params)
 }
 
-// fcgiResponse must implements response interface.
+// fcgiResponse must implements httpIn and hResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream
@@ -909,15 +909,15 @@ var ( // perfect hash table for response multiple headers
 )
 
 func (r *fcgiResponse) checkConnection(from int, edge int) bool {
-	return r.delHeaders(from, edge)
+	return r._delHeaders(from, edge)
 }
 func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
-	return r.delHeaders(from, edge)
+	return r._delHeaders(from, edge)
 }
 func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
-	return r.delHeaders(from, edge)
+	return r._delHeaders(from, edge)
 }
-func (r *fcgiResponse) delHeaders(from int, edge int) bool {
+func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		r.headers[i].zero()
 	}
@@ -1011,12 +1011,6 @@ func (r *fcgiResponse) cleanInput() {
 }
 
 func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
-func (r *fcgiResponse) unsafeContentType() []byte {
-	if r.indexes.contentType == 0 {
-		return nil
-	}
-	return r.headers[r.indexes.contentType].valueAt(r.input)
-}
 
 func (r *fcgiResponse) isUnsized() bool { return true } // fcgi is unsized by default. we believe in framing
 
@@ -1040,8 +1034,6 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 	// TODO
 	return
 }
-func (r *fcgiResponse) growBody() {
-}
 
 func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
@@ -1050,7 +1042,7 @@ func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byt
 	return true
 }
 
-func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by response interface
+func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
 
 func (r *fcgiResponse) saveContentFilesDir() string {
 	return r.stream.agent.SaveContentFilesDir() // must ends with '/'

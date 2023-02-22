@@ -14,11 +14,6 @@ import (
 )
 
 func init() {
-	RegisterHandlet("boardHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(boardHandlet)
-		h.OnCreate(name, stage, app)
-		return h
-	})
 	RegisterAppInit("board", func(app *App) error {
 		logic := app.Handlet("logic")
 		if logic == nil {
@@ -30,6 +25,11 @@ func init() {
 		}
 		board.RegisterSite("front", pack.Pack{})
 		return nil
+	})
+	RegisterHandlet("boardHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(boardHandlet)
+		h.OnCreate(name, stage, app)
+		return h
 	})
 }
 

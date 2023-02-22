@@ -2542,7 +2542,7 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHead(resp response) bool // used by proxies
+	copyHead(resp hResponse) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
@@ -2551,7 +2551,7 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
-	sync1xx(resp response) bool               // used by proxies
+	sync1xx(resp hResponse) bool              // used by proxies
 	sync(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)
@@ -2793,7 +2793,7 @@ func (r *httpResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
+func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)

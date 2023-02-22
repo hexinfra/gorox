@@ -73,7 +73,7 @@ func (s *stream_) onEnd() { // for zeros
 func (s *stream_) smallBuffer() []byte        { return s.stockBuffer[:] }
 func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// httpIn is a Request or response, used as shell by httpIn_.
+// httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
 type httpIn interface {
 	adoptHeader(header *pair) bool
 	ContentSize() int64
@@ -1147,7 +1147,7 @@ var ( // http incoming message errors
 	httpInTooSlow  = errors.New("http incoming too slow")
 )
 
-// httpOut is a Response or request, used as shell by httpOut_.
+// httpOut is a *http[1-3]Response or *H[1-3]Request, used as shell by httpOut_.
 type httpOut interface {
 	control() []byte
 	header(name []byte) (value []byte, ok bool)

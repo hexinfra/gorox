@@ -10,13 +10,13 @@ import (
 )
 
 func init() {
+	RegisterAppInit("testee", func(app *App) error {
+		return nil
+	})
 	RegisterHandlet("testHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(testHandlet)
 		h.onCreate(name, stage, app)
 		return h
-	})
-	RegisterAppInit("testee", func(app *App) error {
-		return nil
 	})
 }
 

@@ -208,7 +208,7 @@ func (r *httpIn_) onEnd() { // for zeros
 		copy(r.input, r.input[r.inputNext:r.inputEdge]) // r.inputNext and r.inputEdge have already been set
 		r.inputEdge -= r.inputNext
 		r.inputNext = 0
-	} else if r.bodyWindow != nil { // r.bodyWindow was used to receive content and forgot to free. we free it here.
+	} else if r.bodyWindow != nil { // r.bodyWindow was used to receive content and failed to free. we free it here.
 		PutNK(r.bodyWindow)
 	}
 	r.bodyWindow = nil
@@ -622,11 +622,11 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		r.contentBlob = content // real content is r.contentBlob[:r.sizeReceived]
 		r.contentBlobKind = httpContentBlobPool
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
-		tempFile := content.(*os.File)
+		contentFile := content.(*os.File)
 		if r.sizeReceived == 0 { // unsized content can has 0 size
 			r.contentBlob = r.input
 			r.contentBlobKind = httpContentBlobInput
-		} else { // > 0
+		} else { // r.sizeReceived > 0
 			if r.sizeReceived <= _64K1 { // must be unsized content
 				r.contentBlob = GetNK(r.sizeReceived) // real content is r.content[:r.sizeReceived]
 				r.contentBlobKind = httpContentBlobPool
@@ -634,12 +634,12 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 				r.contentBlob = make([]byte, r.sizeReceived)
 				r.contentBlobKind = httpContentBlobMake
 			}
-			if _, err := io.ReadFull(tempFile, r.contentBlob[0:r.sizeReceived]); err != nil {
+			if _, err := io.ReadFull(contentFile, r.contentBlob[0:r.sizeReceived]); err != nil {
 				// TODO: r.app.log
 			}
 		}
-		tempFile.Close()
-		if err := os.Remove(tempFile.Name()); err != nil {
+		contentFile.Close()
+		if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.app.log
 		}
 	case error: // i/o error
@@ -689,50 +689,47 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 			return err
 		}
 		// Since content is small, r.bodyWindow and TempFile are not needed.
-		content := GetNK(r.contentSize) // max size of content is 64K1
+		contentBlob := GetNK(r.contentSize) // max size of content is 64K1
 		r.sizeReceived = int64(r.imme.size())
 		if r.sizeReceived > 0 {
-			copy(content, r.input[r.imme.from:r.imme.edge])
+			copy(contentBlob, r.input[r.imme.from:r.imme.edge])
 		}
-		for r.sizeReceived < r.contentSize {
-			n, err := r.stream.read(content[r.sizeReceived:r.contentSize])
+		if n, err := r.stream.readFull(contentBlob[r.sizeReceived:r.contentSize]); err == nil {
 			r.sizeReceived += int64(n)
-			// TODO: check io.EOF?
-			if err != nil {
-				PutNK(content)
-				return err
-			}
+		} else {
+			PutNK(contentBlob)
+			return err
 		}
-		return content // []byte, fetched from pool
+		return contentBlob // []byte, fetched from pool
 	}
 	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile
-	content, err := r._newTempFile(retain)
+	contentFile, err := r._newTempFile(retain)
 	if err != nil {
 		return err
 	}
 	var p []byte
 	for {
 		p, err = r.shell.readContent()
-		if len(p) > 0 { // skip 0, don't write
-			if _, e := content.Write(p); e != nil {
+		if len(p) > 0 { // skip 0, nothing to write
+			if _, e := contentFile.Write(p); e != nil {
 				err = e
-				goto badRecv
+				goto badRead
 			}
 		}
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			goto badRecv
+			goto badRead
 		}
 	}
-	if _, err = content.Seek(0, 0); err != nil {
-		goto badRecv
+	if _, err = contentFile.Seek(0, 0); err != nil {
+		goto badRead
 	}
-	return content // the TempFile
-badRecv:
-	content.Close()
+	return contentFile // the TempFile
+badRead:
+	contentFile.Close()
 	if retain { // the TempFile is not fake, so must remove.
-		os.Remove(content.Name())
+		os.Remove(contentFile.Name())
 	}
 	return err
 }
@@ -1428,7 +1425,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	} else { // in is sized and there are no revisers
 		r.isSent = true
 		r.contentSize = in.ContentSize()
-		// TODO: optimize to reduce i/o syscalls if content is small?
+		// TODO: find a way to optimize to reduce i/o syscalls if content is small?
 		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}

@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -1843,7 +1844,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 }
 func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
-	var tempFile *os.File
+	var contentFile *os.File
 	r.pBack, r.pFore = 0, 0
 	r.sizeConsumed = r.sizeReceived
 	if r.contentReceived { // (0, 64K1)
@@ -1858,10 +1859,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
 			r.formWindow, r.formEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.formWindow refers to the exact r.content.
 		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
-			tempFile = content.(*os.File)
+			contentFile = content.(*os.File)
 			defer func() {
-				tempFile.Close()
-				os.Remove(tempFile.Name())
+				contentFile.Close()
+				os.Remove(contentFile.Name())
 			}()
 			if r.sizeReceived == 0 {
 				return // unsized content can be empty
@@ -1874,7 +1875,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}()
 			r.formEdge = 0     // no initial data, will fill below
 			r.sizeConsumed = 0 // increases when we grow content
-			if !r._growMultipartForm(tempFile) {
+			if !r._growMultipartForm(contentFile) {
 				return
 			}
 		case error:
@@ -1891,7 +1892,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	for { // each part in multipart
 		// Now r.formWindow is used for receiving --boundary-- EOL or --boundary EOL
 		for r.formWindow[r.pFore] != '\n' {
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 				return
 			}
 		}
@@ -1914,7 +1915,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			return
 		}
 		// Skip '\n'
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 			return
 		}
 		// r.pFore is at fields of current part.
@@ -1934,7 +1935,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		for { // each field in current part
 			// End of part fields?
 			if b := r.formWindow[r.pFore]; b == '\r' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 					return
 				}
 				if r.formWindow[r.pFore] != '\n' {
@@ -1958,7 +1959,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					r.stream.markBroken()
 					return
 				}
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 					return
 				}
 			}
@@ -1968,12 +1969,12 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}
 			r.pFieldName.set(r.pBack, r.pFore) // in case of sliding r.formWindow when r._growMultipartForm()
 			// Skip ':'
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 				return
 			}
 			// Skip OWS before field value
 			for r.formWindow[r.pFore] == ' ' || r.formWindow[r.pFore] == '\t' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 					return
 				}
 			}
@@ -1981,7 +1982,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) {
 				// form-data; name="avatar"; filename="michael.jpg"
 				for r.formWindow[r.pFore] != ';' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 						return
 					}
 				}
@@ -1991,7 +1992,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 				r.pBack = r.pFore // now r.formWindow is used for receiving params and onward
 				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 						return
 					}
 				}
@@ -2059,7 +2060,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			} else if bytes.Equal(fieldName, bytesContentType) {
 				// image/jpeg
 				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 						return
 					}
 				}
@@ -2081,13 +2082,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 			} else { // other fields are ignored
 				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 						return
 					}
 				}
 			}
 			// Skip '\n' and goto next field or end of fields
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 				return
 			}
 		}
@@ -2096,7 +2097,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			return
 		}
 		// Now all fields of the part are received. Skip end of fields and goto part data
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(tempFile) {
+		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 			return
 		}
 		if part.isFile {
@@ -2170,13 +2171,13 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				r.pBack, r.formEdge = 0, 0 // pure data, clean r.formWindow. need more and continue
 			}
 			// Grow more
-			if !r._growMultipartForm(tempFile) {
+			if !r._growMultipartForm(contentFile) {
 				return
 			}
 		}
 	}
 }
-func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller needs more data.
+func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller needs more data.
 	if r.sizeConsumed == r.sizeReceived || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
@@ -2190,14 +2191,21 @@ func (r *httpRequest_) _growMultipartForm(tempFile *os.File) bool { // caller ne
 		}
 		r.pBack = 0
 	}
-	if n, err := tempFile.Read(r.formWindow[r.formEdge:]); err == nil {
-		r.formEdge += int32(n)
-		r.sizeConsumed += int64(n)
-		return true
-	} else {
+	n, err := contentFile.Read(r.formWindow[r.formEdge:])
+	r.formEdge += int32(n)
+	r.sizeConsumed += int64(n)
+	if err == io.EOF {
+		if r.sizeConsumed == r.sizeReceived {
+			err = nil
+		} else {
+			err = io.ErrUnexpectedEOF
+		}
+	}
+	if err != nil {
 		r.stream.markBroken()
 		return false
 	}
+	return true
 }
 
 func (r *httpRequest_) addForm(form *pair) { // prime

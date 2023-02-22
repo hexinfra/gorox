@@ -9,6 +9,7 @@ package echo
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
+	"io"
 )
 
 func init() {
@@ -44,16 +45,7 @@ func (d *echoDealet) OnPrepare() {
 }
 
 func (d *echoDealet) Deal(conn *TCPSConn) (next bool) {
-	p := make([]byte, 4096)
-	for {
-		n, err := conn.Read(p)
-		if err != nil {
-			break
-		}
-		if _, err := conn.Write(p[:n]); err != nil {
-			break
-		}
-	}
-	conn.Close()
+	// TODO: deadline?
+	io.Copy(conn, conn)
 	return false
 }

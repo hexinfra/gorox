@@ -369,8 +369,8 @@ func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool { // HTTP_CO
 func (r *fcgiRequest) setSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
 func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
+	// TODO: timeout
 	r.contentSize = req.ContentSize()
-	// TODO: build r.paramsHeader and r.params, sync beginRequest, r.paramsHeader, r.params, and fcgiEndParams using writev
 	r.vector = r.fixedVector[0:4]
 	if r.stream.agent.keepConn {
 		r.vector[0] = fcgiBeginKeepConn
@@ -380,15 +380,31 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 	r.vector[1] = r.paramsHeader[:]
 	r.vector[2] = r.params[:r.paramsEdge] // effective content of the params record
 	r.vector[3] = fcgiEndParams
-	// TODO: writev
+	if _, err := r.stream.writev(&r.vector); err != nil {
+		return err
+	}
 	for {
 		p, err := req.readContent()
-		if len(p) >= 0 {
-			// TODO: build the stdin record, sync r.stdinHeader, and p using writev
+		if len(p) > 0 {
 			size := len(p)
 			r.stdinHeader[4] = byte(size >> 8)
 			r.stdinHeader[5] = byte(size)
-			// TODO
+			if err == io.EOF { // EOF is immediate, write with fcgiEndStdin
+				// TODO
+				r.vector = r.fixedVector[0:3]
+				r.vector[0] = r.stdinHeader[:]
+				r.vector[1] = p
+				r.vector[2] = fcgiEndStdin
+				_, e := r.stream.writev(&r.vector)
+				return e
+			}
+			// EOF is not immediate, err must be nil.
+			r.vector = r.fixedVector[0:2]
+			r.vector[0] = r.stdinHeader[:]
+			r.vector[1] = p
+			if _, e := r.stream.writev(&r.vector); e != nil {
+				return e
+			}
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -397,8 +413,8 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 			return err
 		}
 	}
-	// TODO: fcgiEndStdin
-	return nil
+	_, err := r.stream.write(fcgiEndStdin)
+	return err
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
 	if contentBlob, ok := content.([]byte); ok { // blob

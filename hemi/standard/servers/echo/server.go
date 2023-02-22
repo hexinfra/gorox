@@ -11,6 +11,7 @@ import (
 	"context"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"io"
 	"net"
 	"sync"
 	"syscall"
@@ -178,16 +179,8 @@ func (c *echoConn) onPut() {
 
 func (c *echoConn) serve() { // goroutine
 	defer putEchoConn(c)
-	for {
-		// TODO: set deadline?
-		n, err := c.netConn.Read(c.buffer[:])
-		if err != nil {
-			break
-		}
-		if _, err := c.netConn.Write(c.buffer[:n]); err != nil {
-			break
-		}
-	}
+	// TODO: deadline?
+	io.CopyBuffer(c.netConn, c.netConn, c.buffer[:])
 	c.closeConn()
 }
 

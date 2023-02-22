@@ -47,7 +47,7 @@ func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don
 		return true
 	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		r.headResult = StatusRequestTimeout
-	} else { // i/o error
+	} else { // i/o error or unexpected io.EOF
 		r.headResult = -1
 	}
 	return false
@@ -184,19 +184,21 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 func (r *http1In_) readContent1() (p []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContent1()
-	} else { // must be -2 (unsized). -1 is excluded priorly
+	} else { // must be -2 (unsized). -1 (no content) is excluded priorly
 		return r._readUnsizedContent1()
 	}
 }
 func (r *http1In_) _readSizedContent1() (p []byte, err error) {
-	if r.sizeReceived == r.contentSize {
+	if r.sizeReceived == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF
 		}
+		// r.bodyWindow is used.
 		PutNK(r.bodyWindow)
 		r.bodyWindow = nil
 		return nil, io.EOF
 	}
+	// Need more content data.
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends
 	}
@@ -209,16 +211,19 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	if err = r._beforeRead(&r.bodyTime); err != nil {
 		return nil, err
 	}
-	recvSize := int64(cap(r.bodyWindow))
-	if sizeLeft := r.contentSize - r.sizeReceived; sizeLeft < recvSize {
-		recvSize = sizeLeft
+	readSize := int64(cap(r.bodyWindow))
+	if sizeLeft := r.contentSize - r.sizeReceived; sizeLeft < readSize {
+		readSize = sizeLeft
 	}
-	size, err := r.stream.readFull(r.bodyWindow[:recvSize])
-	r.sizeReceived += int64(size)
-	if err == nil && r._tooSlow() {
+	size, err := r.stream.readFull(r.bodyWindow[:readSize])
+	if err == nil {
+		if !r._tooSlow() {
+			r.sizeReceived += int64(size)
+			return r.bodyWindow[:size], nil
+		}
 		err = httpInTooSlow
 	}
-	return r.bodyWindow[0:size], err
+	return nil, err
 }
 func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
@@ -229,23 +234,23 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		r.imme.zero()
 	}
 	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyWindow is empty. must fill
-		goto badRecv
+		goto badRead
 	}
 	switch r.chunkSize { // size left in receiving current chunk
 	case -2: // got chunk-data. needs CRLF or LF
 		if r.bodyWindow[r.cFore] == '\r' {
 			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-				goto badRecv
+				goto badRead
 			}
 		}
 		fallthrough
 	case -1: // got chunk-data CR. needs LF
 		if r.bodyWindow[r.cFore] != '\n' {
-			goto badRecv
+			goto badRead
 		}
 		// Skip '\n'
 		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-			goto badRecv
+			goto badRead
 		}
 		fallthrough
 	case 0: // start a new chunk = chunk-size [chunk-ext] CRLF chunk-data CRLF
@@ -265,37 +270,37 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			chunkSize <<= 4
 			chunkSize += int64(b)
 			if r.cFore++; r.cFore-r.cBack >= 16 || (r.cFore == r.chunkEdge && !r.growChunked1()) {
-				goto badRecv
+				goto badRead
 			}
 		}
 		if chunkSize < 0 { // bad chunk size.
-			goto badRecv
+			goto badRead
 		}
 		if b := r.bodyWindow[r.cFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
 			for r.bodyWindow[r.cFore] != '\n' {
 				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-					goto badRecv
+					goto badRead
 				}
 			}
 		} else if b == '\r' {
 			// Skip '\r'
 			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-				goto badRecv
+				goto badRead
 			}
 		}
 		if r.bodyWindow[r.cFore] != '\n' {
-			goto badRecv
+			goto badRead
 		}
 		// Check target size
 		if targetSize := r.sizeReceived + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
 			r.chunkSize = chunkSize
 		} else { // invalid target size.
 			// TODO: log error?
-			goto badRecv
+			goto badRead
 		}
 		// Skip '\n' at the end of chunk-size [chunk-ext] CRLF
 		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-			goto badRecv
+			goto badRead
 		}
 		// Last chunk?
 		if r.chunkSize == 0 { // last-chunk = 1*("0") [chunk-ext] CRLF
@@ -303,15 +308,15 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			if r.bodyWindow[r.cFore] == '\r' {
 				// Skip '\r'
 				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
-					goto badRecv
+					goto badRead
 				}
 				if r.bodyWindow[r.cFore] != '\n' {
-					goto badRecv
+					goto badRead
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
 				if !r.recvTrailers1() {
-					goto badRecv
+					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
 			}
@@ -352,7 +357,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				} else if b == '\n' { // exact chunk-data LF
 					r.chunkSize = 0
 				} else { // chunk-data X
-					goto badRecv
+					goto badRead
 				}
 				r.cFore, r.chunkEdge = 0, 0 // all data taken
 			} else if r.bodyWindow[dataEdge] == '\r' && r.bodyWindow[dataEdge+1] == '\n' { // chunk-data CRLF..
@@ -366,12 +371,12 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				r.chunkSize = 0
 				r.cFore = dataEdge + 1
 			} else { // >= 2, chunk-data XX
-				goto badRecv
+				goto badRead
 			}
 		}
 		return r.bodyWindow[from:int(dataEdge)], nil
 	}
-badRecv:
+badRead:
 	return nil, httpInBadChunk
 }
 
@@ -505,15 +510,14 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 	err := r._beforeRead(&r.bodyTime)
 	if err == nil {
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
+		r.chunkEdge += int32(n)
 		if e == nil {
-			if r._tooSlow() {
-				e = httpInTooSlow
-			} else {
-				r.chunkEdge += int32(n)
+			if !r._tooSlow() {
 				return true
 			}
+			e = httpInTooSlow
 		}
-		err = e
+		err = e // including io.EOF which is unexpected
 	}
 	// err != nil. TODO: log err
 	return false
@@ -843,6 +847,9 @@ func (r *http1Out_) _writeBlob1(block *Block, chunked bool) error { // blob
 func (r *http1Out_) writeBytes1(p []byte) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
+	}
+	if len(p) == 0 {
+		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
 		r.stream.markBroken()

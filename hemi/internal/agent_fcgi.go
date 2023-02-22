@@ -148,7 +148,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-	if !fReq.passHead(hReq, h.scriptFilename) {
+	if !fReq.copyHead(hReq, h.scriptFilename) {
 		fStream.markBroken()
 		hResp.SendBadGateway(nil)
 		return
@@ -206,7 +206,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 		}
 	}
 
-	if !hResp.passHead(fResp) {
+	if !hResp.copyHead(fResp) {
 		fStream.markBroken()
 		return
 	}
@@ -250,7 +250,7 @@ type fcgiStream struct {
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
 	// Stream states (buffers)
-	stockBuffer [256]byte
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	agent  *fcgiAgent // associated agent
@@ -341,7 +341,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) passHead(req Request, scriptFilename []byte) bool {
+func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 	var value []byte
 	if len(scriptFilename) == 0 {
 		value = req.unsafeAbsPath()
@@ -349,6 +349,9 @@ func (r *fcgiRequest) passHead(req Request, scriptFilename []byte) bool {
 		value = scriptFilename
 	}
 	if !r._addMetaParam(fcgiBytesScriptFilename, value) { // SCRIPT_FILENAME
+		return false
+	}
+	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
 	// TODO: add more params
@@ -365,8 +368,25 @@ func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool { // HTTP_CO
 	// TODO: use r._growParams(), r.params, update r.paramsSize
 	return false
 }
-
-func (r *fcgiRequest) setSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
+func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
+	if size <= 0 || size > _16K { // size allowed: (0, 16K]
+		BugExitln("invalid size in growParams")
+	}
+	from = int(r.paramsEdge)
+	last := r.paramsEdge + uint16(size)
+	if last > _16K || last < r.paramsEdge {
+		// Overflow
+		return
+	}
+	if last > uint16(cap(r.params)) { // last <= _16K
+		params := getFCGIParams()
+		copy(params, r.params[0:r.paramsEdge])
+		r.params = params
+	}
+	r.paramsEdge = last
+	edge, ok = int(r.paramsEdge), true
+	return
+}
 
 func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 	// TODO: timeout
@@ -437,27 +457,8 @@ func (r *fcgiRequest) sendBlob(content []byte) error {
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	// TODO: beginRequest + params + stdin * N + fcgiEndStdin
+	// TODO: use a buffer, for content, read to buffer, write buffer
 	return nil
-}
-
-func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
-	if size <= 0 || size > _16K { // size allowed: (0, 16K]
-		BugExitln("invalid size in growParams")
-	}
-	from = int(r.paramsEdge)
-	last := r.paramsEdge + uint16(size)
-	if last > _16K || last < r.paramsEdge {
-		// Overflow
-		return
-	}
-	if last > uint16(cap(r.params)) { // last <= _16K
-		params := getFCGIParams()
-		copy(params, r.params[0:r.paramsEdge])
-		r.params = params
-	}
-	r.paramsEdge = last
-	edge, ok = int(r.paramsEdge), true
-	return
 }
 
 func (r *fcgiRequest) _beforeWrite() error {
@@ -1019,8 +1020,6 @@ func (r *fcgiResponse) unsafeContentType() []byte {
 
 func (r *fcgiResponse) isUnsized() bool { return true } // fcgi is unsized by default. we believe in framing
 
-func (r *fcgiResponse) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
-
 func (r *fcgiResponse) hasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
 	if r.status == StatusNoContent || r.status == StatusNotModified {
@@ -1124,6 +1123,7 @@ var ( // fcgi params
 	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
 	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
 	fcgiBytesHTTPS            = []byte("HTTPS")
+	fcgiBytesON               = []byte("on")
 	fcgiBytesPathInfo         = []byte("PATH_INFO")
 	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
 	fcgiBytesQueryString      = []byte("QUERY_STRING")

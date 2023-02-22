@@ -1868,7 +1868,11 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				return // unsized content can be empty
 			}
 			// We need a window to read and parse. An adaptive r.formWindow is used
-			r.formWindow = GetNK(r.sizeReceived) // max size of r.formWindow is 64K1
+			if r.sizeReceived <= _4K {
+				r.formWindow = Get4K()
+			} else {
+				r.formWindow = Get16K()
+			}
 			defer func() {
 				PutNK(r.formWindow)
 				r.formWindow = nil
@@ -2538,7 +2542,7 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	passHead(resp response) bool // used by proxies
+	copyHead(resp response) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
@@ -2789,7 +2793,7 @@ func (r *httpResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *httpResponse_) passHead(resp response) bool { // used by proxies
+func (r *httpResponse_) copyHead(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)

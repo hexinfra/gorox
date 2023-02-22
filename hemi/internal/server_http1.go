@@ -964,10 +964,10 @@ func (r *http1Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer1(name)
 }
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
-	if r.request.VersionCode() == Version1_0 { // HTTP/1.0 doesn't support trailer.
-		return true
+	if r.request.VersionCode() == Version1_1 {
+		return r.addTrailer1(name, value)
 	}
-	return r.addTrailer1(name, value)
+	return true // HTTP/1.0 doesn't support trailer.
 }
 
 func (r *http1Response) sync1xx(resp response) bool { // used by proxies
@@ -1030,10 +1030,10 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	}
 }
 func (r *http1Response) finalizeUnsized() error {
-	if r.request.VersionCode() == Version1_0 { // HTTP/1.0 does nothing.
-		return nil
+	if r.request.VersionCode() == Version1_1 {
+		return r.finalizeUnsized1()
 	}
-	return r.finalizeUnsized1()
+	return nil // HTTP/1.0 does nothing.
 }
 
 // poolHTTP1Socket

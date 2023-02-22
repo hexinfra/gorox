@@ -178,12 +178,9 @@ func (s *hStream_) callSocket() { // upgrade: wegsocket
 
 // request is the client-side HTTP request and the interface for *H[1-3]Request.
 type request interface {
-	Response() response
-	SetSendTimeout(timeout time.Duration) // to defend against bad server
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
-	addHeader(name []byte, value []byte) bool
-	passCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
 // hRequest_ is the mixin for H[1-3]Request.
@@ -222,7 +219,7 @@ func (r *hRequest_) onEnd() { // for zeros
 func (r *hRequest_) Response() response { return r.response }
 
 func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
-	// TODO: copy scheme to fields
+	// TODO: copy scheme to r.fields
 	return false
 }
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
@@ -267,7 +264,7 @@ func (r *hRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -314,7 +311,7 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).passCookies(req) {
+	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
 		return false
 	}
 
@@ -406,13 +403,8 @@ type upload struct {
 // response is the client-side HTTP response and interface for *H[1-3]Response.
 type response interface {
 	Status() int16
-	ContentSize() int64
-	SetRecvTimeout(timeout time.Duration) // to defend against bad server
-	HasTrailers() bool
-
 	delHopHeaders()
 	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
-	readContent() (p []byte, err error)
 	delHopTrailers()
 	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
 }

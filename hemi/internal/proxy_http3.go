@@ -93,7 +93,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	// TODO: use stream3.ForwardProxy() or stream3.ReverseProxy()
 
 	req3 := stream3.Request()
-	if !req3.passHead(req, h.hostname, h.colonPort) {
+	if !req3.copyHead(req, h.hostname, h.colonPort) {
 		stream3.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -165,7 +165,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.passHead(resp3) {
+	if !resp.copyHead(resp3) {
 		stream3.markBroken()
 		return
 	}

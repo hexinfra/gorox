@@ -654,7 +654,7 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 			vector[vEdge] = block.Blob()
 			vEdge++
 		} else if block.size <= _16K { // small file, <= 16K
-			buffer := GetNK(block.size)
+			buffer := GetNK(block.size) // 4K/16K
 			if err := block.copyTo(buffer); err != nil {
 				r.stream.markBroken()
 				PutNK(buffer)
@@ -783,7 +783,7 @@ func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	}
 }
 func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
-	buffer := GetNK(block.size)
+	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
 	nRead := int64(0)
 	for { // we don't use sendfile(2).
@@ -804,7 +804,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 			r.stream.markBroken()
 			return err
 		}
-		if chunked { // HTTP/1.1
+		if chunked { // use HTTP/1.1 chunked mode
 			sizeBuffer := r.stream.smallBuffer()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'

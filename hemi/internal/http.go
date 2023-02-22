@@ -94,7 +94,7 @@ type httpIn_ struct {
 	// Stream states (buffers)
 	stockInput  [1600]byte // for r.input
 	stockArray  [800]byte  // for r.array
-	stockPrimes [76]pair   // for r.primes
+	stockPrimes [80]pair   // for r.primes
 	stockExtras [2]pair    // for r.extras
 	// Stream states (controlled)
 	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers and trailers
@@ -131,6 +131,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	options          zone  // connection options ->r.input. may be not continuous
 	nContentCodings  int8  // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8  // num of accept-encoding flags
+	_                byte  // padding
 	arrayKind        int8  // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	iContentLength   uint8 // content-length header in r.primes->r.input
@@ -629,7 +630,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 			r.contentBlobKind = httpContentBlobInput
 		} else { // r.sizeReceived > 0
 			if r.sizeReceived <= _64K1 { // must be unsized content
-				r.contentBlob = GetNK(r.sizeReceived) // real content is r.content[:r.sizeReceived]
+				r.contentBlob = GetNK(r.sizeReceived) // 4K/16K/64K1. real content is r.content[:r.sizeReceived]
 				r.contentBlobKind = httpContentBlobPool
 			} else { // > 64K1, content can be sized or unsized. just alloc
 				r.contentBlob = make([]byte, r.sizeReceived)
@@ -690,7 +691,7 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 			return err
 		}
 		// Since content is small, r.bodyWindow and TempFile are not needed.
-		contentBlob := GetNK(r.contentSize) // max size of content is 64K1
+		contentBlob := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
 		r.sizeReceived = int64(r.imme.size())
 		if r.sizeReceived > 0 {
 			copy(contentBlob, r.input[r.imme.from:r.imme.edge])
@@ -813,7 +814,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	var array []byte
 	if edge <= _64K1 { // (stock, 64K1]
 		r.arrayKind = arrayKindPool
-		array = GetNK(int64(edge))
+		array = GetNK(int64(edge)) // 4K/16K/64K1
 	} else { // > _64K1
 		r.arrayKind = arrayKindMake
 		if edge <= _128K {
@@ -1474,8 +1475,8 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 		} else {
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
 		}
-	} else { // nil means no content, but we have to send, so send nil.
-		return r.sendBlob(nil)
+	} else { // nil means no content.
+		return r.sendHead()
 	}
 }
 
@@ -1485,6 +1486,13 @@ func (r *httpOut_) checkSend() error {
 	}
 	r.isSent = true
 	return nil
+}
+func (r *httpOut_) sendHead() error {
+	if err := r.checkSend(); err != nil {
+		return err
+	}
+	r.forbidContent = true
+	return r.shell.send()
 }
 func (r *httpOut_) sendBlob(content []byte) error {
 	if err := r.checkSend(); err != nil {

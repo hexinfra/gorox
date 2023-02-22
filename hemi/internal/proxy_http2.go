@@ -93,7 +93,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	// TODO: use stream2.ForwardProxy() or stream2.ReverseProxy()
 
 	req2 := stream2.Request()
-	if !req2.passHead(req, h.hostname, h.colonPort, Version2) {
+	if !req2.passHead(req, h.hostname, h.colonPort) {
 		stream2.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -149,7 +149,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			return
 		}
 		resp2.onEnd()
-		resp2.onUse()
+		resp2.onUse(Version2)
 	}
 
 	hasContent2 := false

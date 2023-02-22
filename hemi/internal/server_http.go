@@ -507,8 +507,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 	sizeConsumed int64     // bytes of consumed content when consuming received TempFile. used by, for example, _recvMultipartForm.
 }
 
-func (r *httpRequest_) onUse() { // for non-zeros
-	r.httpIn_.onUse(false) // asResponse = false
+func (r *httpRequest_) onUse(versionCode uint8) { // for non-zeros
+	r.httpIn_.onUse(versionCode, false) // asResponse = false
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
@@ -2580,8 +2580,8 @@ type httpResponse0_ struct { // for fast reset, entirely
 	}
 }
 
-func (r *httpResponse_) onUse() { // for non-zeros
-	r.httpOut_.onUse(false)
+func (r *httpResponse_) onUse(versionCode uint8) { // for non-zeros
+	r.httpOut_.onUse(versionCode, false) // asRequest = false
 	r.status = StatusOK
 	r.lastModified = -1 // not set
 }
@@ -2795,7 +2795,7 @@ func (r *httpResponse_) passHead(resp response) bool { // used by proxies
 	// copy control (:status)
 	r.SetStatus(resp.Status())
 
-	// copy special headers (excluding set-cookie, which is copied directly) from resp
+	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
 
 	// copy remaining headers from resp
 	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {

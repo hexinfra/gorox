@@ -254,9 +254,8 @@ func (s *http3Stream) onUse(conn *http3Conn, quicStream *quix.Stream) { // for n
 	s.httpStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
-	s.request.versionCode = Version3 // explicitly set
-	s.request.onUse()
-	s.response.onUse()
+	s.request.onUse(Version3)
+	s.response.onUse(Version3)
 }
 func (s *http3Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -411,7 +410,7 @@ func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 func (r *http3Response) sync1xx(resp response) bool { // used by proxies
 	// TODO
 	r.onEnd()
-	r.onUse()
+	r.onUse(Version3)
 	return false
 }
 func (r *http3Response) syncHeaders() error {

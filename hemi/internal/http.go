@@ -107,6 +107,7 @@ type httpIn_ struct {
 	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/255]
 	recvTimeout time.Duration // timeout to recv the whole message content
 	contentSize int64         // info of content. >=0: content size, -1: no content, -2: unsized content
+	versionCode uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse  bool          // treat the incoming message as response?
 	keepAlive   int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	headResult  int16         // result of receiving message head. values are same as http status for convenience
@@ -128,7 +129,6 @@ type httpIn0_ struct { // for fast reset, entirely
 	imme             text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	headers          zone  // raw headers ->r.input
 	options          zone  // connection options ->r.input. may be not continuous
-	versionCode      uint8 // Version1_0, Version1_1, Version2, Version3
 	nContentCodings  int8  // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8  // num of accept-encoding flags
 	arrayKind        int8  // kind of current r.array. see arrayKindXXX
@@ -156,8 +156,8 @@ type httpIn0_ struct { // for fast reset, entirely
 	trailers         zone  // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
-func (r *httpIn_) onUse(asResponse bool) { // for non-zeros
-	if r.versionCode >= Version2 || asResponse { // for HTTP/2 and HTTP/3, r.versionCode is explicitly set in streams. default is 0, means HTTP/1.0
+func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
+	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
 		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
@@ -167,6 +167,7 @@ func (r *httpIn_) onUse(asResponse bool) { // for non-zeros
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.contentSize = -1 // no content
+	r.versionCode = versionCode
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
 	r.headResult = StatusOK
@@ -592,7 +593,7 @@ func (r *httpIn_) determineContentMode() bool {
 			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
-		r.contentSize = -2
+		r.contentSize = -2 // unsized
 	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
 		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
@@ -1186,6 +1187,7 @@ type httpOut_ struct {
 	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
+	versionCode uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // use message as request?
 	nHeaders    uint8         // num+1 of added headers, starts from 1
 	nTrailers   uint8         // num+1 of added trailers, starts from 1
@@ -1206,11 +1208,12 @@ type httpOut0_ struct { // for fast reset, entirely
 	oDate         uint8  // position of date in r.edges
 }
 
-func (r *httpOut_) onUse(asRequest bool) { // for non-zeros
+func (r *httpOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
 	r.content.PushTail(&r.stockBlock) // r.content has one block by default
 	r.sendTimeout = r.stream.keeper().SendTimeout()
 	r.contentSize = -1
+	r.versionCode = versionCode
 	r.asRequest = asRequest
 	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
 }
@@ -1422,10 +1425,10 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	sync := r.shell.syncBytes
 	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
 		sync = r.PushBytes
-	} else { // in is sized and there are no revisers
+	} else { // in is sized and there are no revisers, use syncBytes
 		r.isSent = true
 		r.contentSize = in.ContentSize()
-		// TODO: find a way to optimize to reduce i/o syscalls if content is small?
+		// TODO: find a way to reduce i/o syscalls if content is small?
 		if err := r.shell.syncHeaders(); err != nil {
 			return err
 		}

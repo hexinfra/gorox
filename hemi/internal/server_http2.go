@@ -846,9 +846,8 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
-	s.request.versionCode = Version2 // explicitly set
-	s.request.onUse()
-	s.response.onUse()
+	s.request.onUse(Version2)
+	s.response.onUse(Version2)
 }
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -1020,7 +1019,7 @@ func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 func (r *http2Response) sync1xx(resp response) bool { // used by proxies
 	// TODO
 	r.onEnd()
-	r.onUse()
+	r.onUse(Version2)
 	return false
 }
 func (r *http2Response) syncHeaders() error {

@@ -242,9 +242,8 @@ func (s *H3Stream) onUse(conn *H3Conn, quicStream *quix.Stream) { // for non-zer
 	s.hStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
-	s.request.onUse()
-	s.response.versionCode = Version3 // explicitly set
-	s.response.onUse()
+	s.request.onUse(Version3)
+	s.response.onUse(Version3)
 }
 func (s *H3Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -317,7 +316,7 @@ type H3Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *H3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool {
+func (r *H3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :path
 	return false
 }

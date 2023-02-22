@@ -272,9 +272,8 @@ func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
 	s.hStream_.onUse()
 	s.conn = conn
 	s.id = id
-	s.request.onUse()
-	s.response.versionCode = Version2 // explicitly set
-	s.response.onUse()
+	s.request.onUse(Version2)
+	s.response.onUse(Version2)
 }
 func (s *H2Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -346,7 +345,7 @@ type H2Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *H2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool {
+func (r *H2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :path
 	return false
 }

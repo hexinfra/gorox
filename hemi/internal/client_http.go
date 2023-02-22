@@ -209,10 +209,10 @@ type hRequest0_ struct { // for fast reset, entirely
 	}
 }
 
-func (r *hRequest_) onUse() { // for non-zeros
-	r.httpOut_.onUse(true)
-	r.ifModifiedSince = -1   // not set
-	r.ifUnmodifiedSince = -1 // not set
+func (r *hRequest_) onUse(versionCode uint8) { // for non-zeros
+	r.httpOut_.onUse(versionCode, true) // asRequest = true
+	r.ifModifiedSince = -1              // not set
+	r.ifUnmodifiedSince = -1            // not set
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}
@@ -267,7 +267,7 @@ func (r *hRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte, versionCode uint8) bool { // used by proxies
+func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -301,7 +301,7 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte, ver
 			}
 		}
 	}
-	if versionCode >= Version2 { // we have no way to set scheme unless we use absolute-form for HTTP/1.1.
+	if r.versionCode >= Version2 { // we have no way to set scheme unless we use absolute-form for HTTP/1.1, which is a risk that many servers don't support it.
 		var scheme []byte
 		if r.stream.keeper().TLSMode() {
 			scheme = bytesSchemeHTTPS
@@ -313,7 +313,7 @@ func (r *hRequest_) passHead(req Request, hostname []byte, colonPort []byte, ver
 		}
 	}
 
-	// copy special headers (including cookie) from req
+	// copy selective forbidden headers (including cookie) from req
 	if req.HasCookies() && !r.shell.(request).passCookies(req) {
 		return false
 	}
@@ -457,8 +457,8 @@ type hResponse0_ struct { // for fast reset, entirely
 	}
 }
 
-func (r *hResponse_) onUse() { // for non-zeros
-	r.httpIn_.onUse(true) // asResponse = true
+func (r *hResponse_) onUse(versionCode uint8) { // for non-zeros
+	r.httpIn_.onUse(versionCode, true) // asResponse = true
 
 	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }

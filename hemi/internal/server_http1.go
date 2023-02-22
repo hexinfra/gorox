@@ -250,8 +250,8 @@ func (s *http1Stream) execute(conn *http1Conn) {
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
 	s.httpStream_.onUse()
 	s.conn = conn
-	s.request.onUse()
-	s.response.onUse()
+	s.request.onUse(Version1_1)
+	s.response.onUse(Version1_1)
 }
 func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -988,7 +988,7 @@ func (r *http1Response) sync1xx(resp response) bool { // used by proxies
 	}
 	// For next use.
 	r.onEnd()
-	r.onUse()
+	r.onUse(Version1_1)
 	return true
 }
 func (r *http1Response) syncHeaders() error       { return r.writeHeaders1() }
@@ -1009,7 +1009,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 				sizeBuffer := r.stream.smallBuffer() // enough for length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
-			} else if r.request.VersionCode() != Version1_0 { // transfer-encoding: chunked\r\n
+			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else {
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
@@ -1030,7 +1030,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	}
 }
 func (r *http1Response) finalizeUnsized() error {
-	if r.request.VersionCode() == Version1_0 {
+	if r.request.VersionCode() == Version1_0 { // HTTP/1.0 does nothing.
 		return nil
 	}
 	return r.finalizeUnsized1()

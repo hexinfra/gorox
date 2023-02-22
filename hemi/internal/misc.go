@@ -484,7 +484,7 @@ func GetNK(n int64) []byte {
 		return getNK(&pool4K, _4K)
 	} else if n <= _16K {
 		return getNK(&pool16K, _16K)
-	} else {
+	} else { // n > _16K
 		return getNK(&pool64K1, _64K1)
 	}
 }

@@ -416,6 +416,7 @@ type hResponse_ struct { // incoming. needs parsing
 	// Stream states (buffers)
 	stockCookies [4]cookie // for r.cookies
 	// Stream states (controlled)
+	cookie cookie // to overcome the limitation of Go's escape analysis when receiving setCookies
 	// Stream states (non-zeros)
 	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=16/128)]
 	// Stream states (zeros)
@@ -602,6 +603,27 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
+	if !r.parseSetCookie(header.value) {
+		r.headResult = StatusBadRequest
+		return false
+	}
+	if len(r.cookies) == cap(r.cookies) {
+		if cap(r.cookies) == cap(r.stockCookies) {
+			cookies := make([]cookie, 0, 16)
+			r.cookies = append(cookies, r.cookies...)
+		} else if cap(r.cookies) == 16 {
+			cookies := make([]cookie, 0, 128)
+			r.cookies = append(cookies, r.cookies...)
+		} else {
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+	}
+	r.cookies = append(r.cookies, r.cookie)
+	return true
+}
+
+func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie: xxx
 	// set-cookie-header = "Set-Cookie:" SP set-cookie-string
 	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
@@ -616,21 +638,9 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	// httponly-av = "HttpOnly"
 	// samesite-av = "SameSite=" samesite-value
 	// extension-av = <any CHAR except CTLs or ";">
-	var setCookie cookie
-	// TODO: parse header.value to setCookie
-	if len(r.cookies) == cap(r.cookies) {
-		if cap(r.cookies) == cap(r.stockCookies) {
-			cookies := make([]cookie, 0, 16)
-			r.cookies = append(cookies, r.cookies...)
-		} else if cap(r.cookies) == 16 {
-			cookies := make([]cookie, 0, 128)
-			r.cookies = append(cookies, r.cookies...)
-		} else {
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.cookies = append(r.cookies, setCookie)
+	cookie := &r.cookie
+	cookie.zero()
+	// TODO
 	return true
 }
 
@@ -675,6 +685,34 @@ func (r *hResponse_) unsafeLastModified() []byte {
 		return nil
 	}
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
+}
+
+func (r *hResponse_) addCookie() {
+	// TODO
+}
+func (r *hResponse_) HasCookies() bool {
+	// TODO
+	return false
+}
+func (r *hResponse_) C(name string) string {
+	// TODO
+	return ""
+}
+func (r *hResponse_) Cookie(name string) (value string, ok bool) {
+	// TODO
+	return
+}
+func (r *hResponse_) UnsafeCookie(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *hResponse_) HasCookie(name string) bool {
+	// TODO
+	return false
+}
+func (r *hResponse_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+	// TODO
+	return false
 }
 
 func (r *hResponse_) HasContent() bool {
@@ -733,6 +771,8 @@ type cookie struct { // 24 bytes. refers to r.input
 	pathSize     uint8
 	sameSiteSize uint8
 }
+
+func (c *cookie) zero() { *c = cookie{} }
 
 // socket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
 type socket interface {

@@ -446,8 +446,9 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 			return err
 		}
 		return r.sendFile(contentFile, fileInfo)
-	} else { // nil, means no content
-		return r.sendBlob(nil)
+	} else { // nil means no content.
+		// TODO: beginRequest + params + fcgiEndStdin
+		return nil
 	}
 }
 
@@ -1093,18 +1094,18 @@ func putFCGIMaxRecords(maxRecords []byte) {
 // FCGI Record = FCGI Header(8) + content + padding
 // FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
 
-// Discrete records are standalone.
-// Stream records end with an empty record (contentLen=0).
-
 const ( // fcgi constants
 	fcgiHeaderSize = 8
 	fcgiMaxPadding = 255
 )
 
+// Discrete records are standalone.
+// Streamed records end with an empty record (contentLen=0).
+
 const ( // request record types
-	fcgiTypeBeginRequest = 1 // only one
-	fcgiTypeParams       = 4 // only one in our implementation (plus one empty params record)
-	fcgiTypeStdin        = 5 // many (ends with an empty stdin record)
+	fcgiTypeBeginRequest = 1 // [D] only one
+	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an empty params record)
+	fcgiTypeStdin        = 5 // [S] many (ends with an empty stdin record)
 )
 
 var ( // fcgi params
@@ -1188,9 +1189,9 @@ var ( // predefined request records
 )
 
 const ( // response record types
-	fcgiTypeStdout     = 6 // many
-	fcgiTypeStderr     = 7 // many
-	fcgiTypeEndRequest = 3 // only one
+	fcgiTypeStdout     = 6 // [S] many (ends with an empty stdout record)
+	fcgiTypeStderr     = 7 // [S] many (ends with an empty stderr record)
+	fcgiTypeEndRequest = 3 // [D] only one
 )
 
 const ( // fcgi hashes

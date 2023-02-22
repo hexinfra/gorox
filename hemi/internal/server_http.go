@@ -1324,12 +1324,11 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
-	var (
-		state  = 0
-		cookie pair // TODO: confirm not escape, otherwise use r.field?
-	)
+	cookie := &r.field
+	cookie.zero()
 	cookie.setPlace(placeInput) // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
+	state := 0
 	for p := cookieString.from; p < cookieString.edge; p++ {
 		b := r.input[p]
 		switch state {
@@ -1360,7 +1359,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 		case 2: // *cookie-octet, expecting ';'
 			if b == ';' {
 				cookie.value.edge = p
-				if !r.addCookie(&cookie) {
+				if !r.addCookie(cookie) {
 					return false
 				}
 				state = 5
@@ -1371,7 +1370,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
 			if b == '"' {
 				cookie.value.edge = p
-				if !r.addCookie(&cookie) {
+				if !r.addCookie(cookie) {
 					return false
 				}
 				state = 4
@@ -1397,11 +1396,11 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	}
 	if state == 2 { // ';' not found
 		cookie.value.edge = cookieString.edge
-		if !r.addCookie(&cookie) {
+		if !r.addCookie(cookie) {
 			return false
 		}
 	} else if state == 4 { // ';' not found
-		if !r.addCookie(&cookie) {
+		if !r.addCookie(cookie) {
 			return false
 		}
 	} else {
@@ -1746,6 +1745,15 @@ func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
 
 func (r *httpRequest_) unsetHost() { // used by proxies
 	r.delPrimeAt(r.indexes.host) // zero safe
+}
+
+func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
+func (r *httpRequest_) Content() string  { return string(r.UnsafeContent()) }
+func (r *httpRequest_) UnsafeContent() []byte {
+	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
+		return nil
+	}
+	return r.unsafeContent()
 }
 
 func (r *httpRequest_) parseHTMLForm() {
@@ -2328,15 +2336,6 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.Upload(name)
 	return ok
-}
-
-func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
-func (r *httpRequest_) Content() string  { return string(r.UnsafeContent()) }
-func (r *httpRequest_) UnsafeContent() []byte {
-	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
-		return nil
-	}
-	return r.unsafeContent()
 }
 
 func (r *httpRequest_) adoptTrailer(trailer *pair) bool {

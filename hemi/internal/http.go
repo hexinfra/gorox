@@ -97,7 +97,7 @@ type httpIn_ struct {
 	stockPrimes [80]pair   // for r.primes
 	stockExtras [2]pair    // for r.extras
 	// Stream states (controlled)
-	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers and trailers
+	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers, cookies, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
@@ -629,7 +629,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 			r.contentBlob = r.input
 			r.contentBlobKind = httpContentBlobInput
 		} else { // r.sizeReceived > 0
-			if r.sizeReceived <= _64K1 { // must be unsized content
+			if r.sizeReceived <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
 				r.contentBlob = GetNK(r.sizeReceived) // 4K/16K/64K1. real content is r.content[:r.sizeReceived]
 				r.contentBlobKind = httpContentBlobPool
 			} else { // > 64K1, content can be sized or unsized. just alloc
@@ -1476,7 +1476,11 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
 		}
 	} else { // nil means no content.
-		return r.sendHead()
+		if err := r.checkSend(); err != nil {
+			return err
+		}
+		r.forbidContent = true
+		return r.shell.send()
 	}
 }
 
@@ -1486,13 +1490,6 @@ func (r *httpOut_) checkSend() error {
 	}
 	r.isSent = true
 	return nil
-}
-func (r *httpOut_) sendHead() error {
-	if err := r.checkSend(); err != nil {
-		return err
-	}
-	r.forbidContent = true
-	return r.shell.send()
 }
 func (r *httpOut_) sendBlob(content []byte) error {
 	if err := r.checkSend(); err != nil {

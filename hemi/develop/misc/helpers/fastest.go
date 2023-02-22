@@ -16,8 +16,8 @@ func must(err error) {
 }
 
 func main() {
-	go server(":9999", handleBlob) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:9999/benchmark
-	go server(":8888", handleFile) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:8888/benchmark.html
+	go server(":9999", handleBlob) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:9999/hello
+	go server(":8888", handleFile) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:8888/hello.html
 	select {}
 }
 
@@ -37,7 +37,7 @@ func server(addr string, handle func(net.Conn)) {
 
 func handleBlob(conn net.Conn) { // 96% of nginx
 	defer conn.Close()
-	request := make([]byte, 52) // GET /benchmark HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
+	request := make([]byte, 48) // GET /hello HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
 	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html; charset=utf-8\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")
 	for {
 		if _, err := io.ReadFull(conn, request); err != nil { // syscall 1: read()
@@ -53,7 +53,7 @@ func handleBlob(conn net.Conn) { // 96% of nginx
 
 func handleFile(conn net.Conn) { // 70% of nginx
 	defer conn.Close()
-	request := make([]byte, 57) // GET /benchmark.html HTTP/1.1\r\nHost: 192.168.1.10:8888\r\n\r\n
+	request := make([]byte, 53) // GET /hello.html HTTP/1.1\r\nHost: 192.168.1.10:8888\r\n\r\n
 	head := []byte("HTTP/1.1 200 OK\r\ncontent-type: text/html\r\ndate: Sat, 08 Oct 2022 12:09:04 GMT\r\nlast-modified: Fri, 23 Sep 2022 18:21:12 GMT\r\netag: \"632df918-93\"\r\ncontent-length: 147\r\nconnection: keep-alive\r\naccept-ranges: bytes\r\nserver: gorox\r\n\r\n")
 	content := make([]byte, 147)
 	var response [2][]byte
@@ -62,7 +62,7 @@ func handleFile(conn net.Conn) { // 70% of nginx
 			fmt.Printf("io.ReadFull(1)=%s\n", err.Error())
 			return
 		}
-		file, err := os.Open("benchmark.html") // syscall 2: openat()
+		file, err := os.Open("hello.html") // syscall 2: openat()
 		if err != nil {
 			fmt.Printf("os.Open()=%s\n", err.Error())
 			return

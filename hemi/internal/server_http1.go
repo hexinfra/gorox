@@ -94,7 +94,7 @@ func (c *http1Conn) serve() { // goroutine
 	if stream.httpMode == httpModeNormal {
 		c.closeConn()
 	} else {
-		// It's switcher's responsibility to closeConn()
+		// It's switcher's responsibility to call c.closeConn()
 	}
 	putHTTP1Conn(c)
 }
@@ -126,7 +126,7 @@ func (c *http1Conn) closeConn() {
 		} else {
 			c.netConn.(*net.TCPConn).CloseWrite()
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Second)
 	}
 	c.netConn.Close()
 	c.gate.onConnectionClosed()
@@ -152,7 +152,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		if s.httpMode == httpModeNormal {
 			s.onEnd()
 		} else {
-			// It's switcher's responsibility to call onEnd()
+			// It's switcher's responsibility to call s.onEnd()
 		}
 	}()
 
@@ -164,13 +164,14 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 
-	if req.methodCode == MethodCONNECT { // tcp tunnel mode?
+	if req.methodCode == MethodCONNECT { // tcpTun mode?
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.serveTCPTun()
 		s.httpMode = httpModeTCPTun
 		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
 		return
-	} else if req.upgradeUDPTun { // udp tunnel mode?
+	}
+	if req.upgradeUDPTun { // udpTun mode?
 		// TODO
 	}
 
@@ -213,9 +214,9 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	}
 
 	// Normal mode.
-	if req.formKind == httpFormMultipart { // We allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+	if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 		req.maxContentSize = app.maxUploadContentSize
-	} else { // Other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
+	} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
 		req.maxContentSize = int64(app.maxMemoryContentSize)
 	}
 	if req.contentSize > req.maxContentSize {
@@ -227,6 +228,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		s.serveAbnormal(req, resp)
 		return
 	}
+
 	// Prepare response according to request
 	if req.methodCode == MethodHEAD {
 		resp.forbidContent = true
@@ -239,7 +241,6 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-
 	s.serveNormal(app, req, resp)
 
 	if s.isBroken() {

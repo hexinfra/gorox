@@ -135,8 +135,10 @@ type Component interface {
 	ConfigureInt8(name string, prop *int8, check func(value int8) bool, defaultValue int8)
 	ConfigureInt(name string, prop *int, check func(value int) bool, defaultValue int)
 	ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string)
+	ConfigureBytes(name string, prop *[]byte, check func(value []byte) bool, defaultValue []byte)
 	ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration)
 	ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string)
+	ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) bool, defaultValue [][]byte)
 	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string)
 
 	OnPrepare()

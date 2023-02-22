@@ -56,8 +56,8 @@ Performance
 
   Gorox is fast. You can use wrk to perform a simple benchmark:
 
-    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark
-    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/benchmark.html
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello.html
 
   Change the parameters and/or target URL to match your need.
 

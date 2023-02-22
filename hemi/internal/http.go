@@ -644,7 +644,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.app.log
 		}
-	case error: // i/o error
+	case error: // i/o error or unexpected EOF
 		// TODO: log error?
 		r.stream.markBroken()
 	}
@@ -666,7 +666,7 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		r.contentHeld = content.(*os.File)
 		return r.contentHeld
-	case error: // i/o error
+	case error: // i/o error or unexpected EOF
 		// TODO: log err?
 	}
 	r.stream.markBroken()
@@ -680,7 +680,7 @@ func (r *httpIn_) dropContent() { // if message content is not received, this wi
 		if content != FakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
-	case error: // i/o error
+	case error: // i/o error or unexpected EOF
 		// TODO: log error?
 		r.stream.markBroken()
 	}

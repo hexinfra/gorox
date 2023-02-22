@@ -731,7 +731,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head bytes to be append
 		_ = want
 	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		r.headResult = StatusRequestTimeout
-	} else { // i/o error
+	} else { // i/o error or unexpected EOF
 		r.headResult = -1
 	}
 	return false
@@ -950,8 +950,12 @@ func (r *fcgiResponse) checkContentType(header *pair, index int) bool {
 	return true
 }
 func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
-	// TODO
-	return true
+	if status, ok := decToI64(header.valueAt(r.input)); ok {
+		r.status = int16(status)
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad status"
+	return false
 }
 func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	// TODO
@@ -1091,24 +1095,7 @@ func putFCGIMaxRecords(maxRecords []byte) {
 
 // FCGI protocol elements.
 
-// FCGI Record = FCGI Header(8) + content + padding
-// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
-
-const ( // fcgi constants
-	fcgiHeaderSize = 8
-	fcgiMaxPadding = 255
-)
-
-// Discrete records are standalone.
-// Streamed records end with an empty record (contentLen=0).
-
-const ( // request record types
-	fcgiTypeBeginRequest = 1 // [D] only one
-	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an empty params record)
-	fcgiTypeStdin        = 5 // [S] many (ends with an empty stdin record)
-)
-
-var ( // fcgi params
+var ( // fcgi param names
 	fcgiBytesAuthType         = []byte("AUTH_TYPE")
 	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
 	fcgiBytesContentType      = []byte("CONTENT_TYPE")
@@ -1116,7 +1103,6 @@ var ( // fcgi params
 	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
 	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
 	fcgiBytesHTTPS            = []byte("HTTPS")
-	fcgiBytesON               = []byte("on")
 	fcgiBytesPathInfo         = []byte("PATH_INFO")
 	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
 	fcgiBytesQueryString      = []byte("QUERY_STRING")
@@ -1133,6 +1119,33 @@ var ( // fcgi params
 	fcgiBytesServerPort       = []byte("SERVER_PORT")
 	fcgiBytesServerProtocol   = []byte("SERVER_PROTOCOL")
 	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
+)
+
+var ( // fcgi param values
+	fcgiBytesCGI1_1 = []byte("CGI/1.1")
+	fcgiBytesON     = []byte("on")
+	fcgiBytesGorox  = []byte("gorox")
+)
+
+const ( // fcgi hashes
+	fcgiHashStatus = 676
+)
+
+// FCGI Record = FCGI Header(8) + content + padding
+// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
+
+const ( // fcgi constants
+	fcgiHeaderSize = 8
+	fcgiMaxPadding = 255
+)
+
+// Discrete records are standalone.
+// Streamed records end with an empty record (contentLen=0).
+
+const ( // request record types
+	fcgiTypeBeginRequest = 1 // [D] only one
+	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an empty params record)
+	fcgiTypeStdin        = 5 // [S] many (ends with an empty stdin record)
 )
 
 var ( // predefined request records
@@ -1163,13 +1176,6 @@ var ( // predefined request records
 		0, 0, // content length = 0
 		0, 0, // padding length = 0, reserved = 0
 	}
-	fcgiStdinHeader = [8]byte{ // 8 bytes
-		// header=8
-		1, fcgiTypeStdin, // version, type
-		0, 1, // request id = 1
-		0, 0, // content length = 0
-		0, 0, // padding length = 0, reserved = 0
-	}
 	fcgiEndParams = []byte{ // 8 bytes
 		// header=8
 		1, fcgiTypeParams, // version, type
@@ -1177,6 +1183,13 @@ var ( // predefined request records
 		0, 0, // content length = 0
 		0, 0, // padding length = 0, reserved = 0
 		// content=0
+	}
+	fcgiStdinHeader = [8]byte{ // 8 bytes
+		// header=8
+		1, fcgiTypeStdin, // version, type
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0, reserved = 0
 	}
 	fcgiEndStdin = []byte{ // 8 bytes
 		// header=8
@@ -1192,8 +1205,4 @@ const ( // response record types
 	fcgiTypeStdout     = 6 // [S] many (ends with an empty stdout record)
 	fcgiTypeStderr     = 7 // [S] many (ends with an empty stderr record)
 	fcgiTypeEndRequest = 3 // [D] only one
-)
-
-const ( // fcgi hashes
-	fcgiHashStatus = 676
 )

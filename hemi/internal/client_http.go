@@ -604,7 +604,7 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	if !r.parseSetCookie(header.value) {
-		r.headResult = StatusBadRequest
+		r.headResult, r.headReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
 	if len(r.cookies) == cap(r.cookies) {
@@ -754,25 +754,47 @@ func (r *hResponse_) saveContentFilesDir() string {
 
 // cookie is a "set-cookie" received from server.
 type cookie struct { // 24 bytes. refers to r.input
-	nameFrom     int16 // foo
-	valueFrom    int16 // bar
-	valueEdge    int16
-	expireFrom   int16 // Expires=Wed, 09 Jun 2021 10:18:14 GMT
-	maxAgeFrom   int16 // Max-Age=123
-	domainFrom   int16 // Domain=example.com
-	pathFrom     int16 // Path=/abc
-	sameSiteFrom int16 // SameSite=Lax
-	secure       bool  // Secure
-	httpOnly     bool  // HttpOnly
-	nameSize     uint8
-	expireSize   uint8
-	maxAgeSize   uint8
-	domainSize   uint8
-	pathSize     uint8
-	sameSiteSize uint8
+	hash         uint16 // hash of name
+	nameFrom     int16  // foo
+	valueFrom    int16  // bar
+	valueEdge    int16  // edge of value
+	expiresFrom  int16  // Expires=Wed, 09 Jun 2021 10:18:14 GMT (fixed value length=29)
+	maxAgeFrom   int16  // Max-Age=123
+	domainFrom   int16  // Domain=example.com
+	pathFrom     int16  // Path=/abc
+	sameSiteFrom int16  // SameSite=Lax|Strict|None
+	nameSize     uint8  // <= 255
+	maxAgeSize   uint8  // <= 255
+	domainSize   uint8  // <= 255
+	pathSize     uint8  // <= 255
+	sameSiteSize uint8  // <= 255
+	flags        uint8  // secure(1), httpOnly(1), reserved(6)
 }
 
 func (c *cookie) zero() { *c = cookie{} }
+func (c *cookie) nameAt(t []byte) []byte {
+	return t[c.nameFrom : c.nameFrom+int16(c.nameSize)]
+}
+func (c *cookie) valueAt(t []byte) []byte {
+	return t[c.valueFrom:c.valueEdge]
+}
+func (c *cookie) expiresAt(t []byte) []byte {
+	return t[c.expiresFrom : c.expiresFrom+29]
+}
+func (c *cookie) maxAgeAt(t []byte) []byte {
+	return t[c.maxAgeFrom : c.maxAgeFrom+int16(c.maxAgeSize)]
+}
+func (c *cookie) domainAt(t []byte) []byte {
+	return t[c.domainFrom : c.domainFrom+int16(c.domainSize)]
+}
+func (c *cookie) pathAt(t []byte) []byte {
+	return t[c.pathFrom : c.pathFrom+int16(c.pathSize)]
+}
+func (c *cookie) sameSiteAt(t []byte) []byte {
+	return t[c.sameSiteFrom : c.sameSiteFrom+int16(c.sameSiteSize)]
+}
+func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
+func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
 // socket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
 type socket interface {

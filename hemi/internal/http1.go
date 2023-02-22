@@ -47,7 +47,7 @@ func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don
 		return true
 	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		r.headResult = StatusRequestTimeout
-	} else { // i/o error or unexpected io.EOF
+	} else { // i/o error or unexpected EOF
 		r.headResult = -1
 	}
 	return false

@@ -1920,6 +1920,9 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashAcceptRanges      = 1309
 	hashAge               = 301
 	hashAllow             = 543
+	hashAltSvc            = 698
+	hashCacheStatus       = 1221
+	hashCDNCacheControl   = 1668
 	hashETag              = 417
 	hashExpires           = 768
 	hashLastModified      = 1314
@@ -1981,6 +1984,9 @@ var ( // byteses of http fields.
 	bytesAcceptRanges      = []byte("accept-ranges")
 	bytesAge               = []byte("age")
 	bytesAllow             = []byte("allow")
+	bytesAltSvc            = []byte("alt-svc")
+	bytesCacheStatus       = []byte("cache-status")
+	bytesCDNCacheControl   = []byte("cdn-cache-control")
 	bytesETag              = []byte("etag")
 	bytesExpires           = []byte("expires")
 	bytesLastModified      = []byte("last-modified")

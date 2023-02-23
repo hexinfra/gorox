@@ -200,7 +200,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	}
 	// Need more content data.
 	if r.bodyWindow == nil {
-		r.bodyWindow = Get16K() // will be freed on ends
+		r.bodyWindow = Get16K() // will be freed on ends. must be >= 16K so r.imme can fit
 	}
 	if r.imme.notEmpty() {
 		size := copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyWindow
@@ -227,7 +227,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 }
 func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
-		r.bodyWindow = Get16K() // will be freed on ends
+		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit trailers
 	}
 	if r.imme.notEmpty() {
 		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow

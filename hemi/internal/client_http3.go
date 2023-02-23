@@ -105,14 +105,14 @@ func (b *HTTP3Backend) StoreConn(conn *H3Conn) {
 // http3Node
 type http3Node struct {
 	// Mixins
-	node_
+	httpNode_
 	// Assocs
 	backend *HTTP3Backend
 	// States
 }
 
 func (n *http3Node) init(id int32, backend *HTTP3Backend) {
-	n.node_.init(id)
+	n.httpNode_.init(id)
 	n.backend = backend
 }
 

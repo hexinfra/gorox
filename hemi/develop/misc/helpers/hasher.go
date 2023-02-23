@@ -9,8 +9,9 @@ func main() {
 	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE"))
 	//calc([]byte("content-length content-type location status"))
 	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for"))
-
-	println(sum("x-forwarded-for"))
+	//calc([]byte("age content-length content-range content-type date etag expires last-modified location server set-cookie"))
+	calc([]byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate"))
+	//println(sum("cdn-cache-control"))
 }
 
 type Node struct {

@@ -452,7 +452,7 @@ type httpRequest_ struct { // incoming. needs parsing
 	pathInfo      os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
 	app           *App        // target app of this request. set before processing stream
 	svc           *Svc        // target svc of this request. set before processing stream
-	formWindow    []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.content/4K/16K/64K1]
+	formWindow    []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentBlob/4K/16K]
 	httpRequest0_             // all values must be zero by default in this struct!
 }
 type httpRequest0_ struct { // for fast reset, entirely
@@ -977,10 +977,6 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
 	// TODO
 	return true
 }
-func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
-	// TODO
-	return true
-}
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
 	if header.value.isEmpty() {
 		r.headResult, r.headReason = StatusBadRequest, "empty cookie"
@@ -1040,6 +1036,10 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool {
 	// If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.ifUnmodifiedTime)
+}
+func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
+	// TODO
+	return true
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
 	if r.methodCode != MethodGET {

@@ -207,7 +207,7 @@ var http2InitialSettings = http2Settings{ // default settings of remote peer
 	headerTableSize:      _4K,
 	enablePush:           true,
 	maxConcurrentStreams: 100,
-	initialWindowSize:    _64K1,
+	initialWindowSize:    _64K1, // this requires the size of content buffer must up to 64K1
 	maxFrameSize:         _16K,
 	maxHeaderListSize:    _16K,
 }

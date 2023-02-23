@@ -105,6 +105,17 @@ func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
+// httpNode_ is the mixin for http[1-3]Node.
+type httpNode_ struct {
+	// Mixins
+	node_
+	// States
+}
+
+func (n *httpNode_) init(id int32) {
+	n.node_.init(id)
+}
+
 // hConn is the interface for *H[1-3]Conn.
 type hConn interface {
 	getClient() httpClient
@@ -499,30 +510,33 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for response multiple headers
-	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate") // alt-svc?
-	hResponseMultipleHeaderTable = [14]struct {
+	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	hResponseMultipleHeaderTable = [17]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		must  bool // true if 1#, false if #
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {hashVary, 148, 152, false, nil},
-		1:  {hashConnection, 50, 60, false, (*hResponse_).checkConnection},
-		2:  {hashAllow, 30, 35, false, nil},
-		3:  {hashTrailer, 114, 121, false, nil},
-		4:  {hashVia, 153, 156, false, nil},
-		5:  {hashContentEncoding, 61, 77, false, (*hResponse_).checkContentEncoding},
-		6:  {hashAcceptRanges, 16, 29, false, nil},
-		7:  {hashProxyAuthenticate, 95, 113, false, nil},
-		8:  {hashTransferEncoding, 122, 139, false, (*hResponse_).checkTransferEncoding},
-		9:  {hashCacheControl, 36, 49, false, (*hResponse_).checkCacheControl},
-		10: {hashContentLanguage, 78, 94, false, nil},
-		11: {hashWWWAuthenticate, 157, 173, false, nil},
-		12: {hashAcceptEncoding, 0, 15, false, nil},
-		13: {hashUpgrade, 140, 147, false, (*hResponse_).checkUpgrade},
+		0:  {hashAcceptRanges, 16, 29, false, nil},
+		1:  {hashVia, 192, 195, false, nil},
+		2:  {hashWWWAuthenticate, 196, 212, false, nil},
+		3:  {hashConnection, 89, 99, false, (*hResponse_).checkConnection},
+		4:  {hashContentEncoding, 100, 116, false, (*hResponse_).checkContentEncoding},
+		5:  {hashAllow, 30, 35, false, nil},
+		6:  {hashTransferEncoding, 161, 178, false, (*hResponse_).checkTransferEncoding},
+		7:  {hashTrailer, 153, 160, false, nil},
+		8:  {hashVary, 187, 191, false, nil},
+		9:  {hashUpgrade, 179, 186, false, (*hResponse_).checkUpgrade},
+		10: {hashProxyAuthenticate, 134, 152, false, nil},
+		11: {hashCacheControl, 44, 57, false, (*hResponse_).checkCacheControl},
+		12: {hashAltSvc, 36, 43, false, nil},
+		13: {hashCDNCacheControl, 71, 88, false, nil},
+		14: {hashCacheStatus, 58, 70, false, nil},
+		15: {hashAcceptEncoding, 0, 15, false, nil},
+		16: {hashContentLanguage, 117, 133, false, nil},
 	}
-	hResponseMultipleHeaderFind = func(hash uint16) int { return (4114134 / int(hash)) % 14 }
+	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
@@ -550,28 +564,30 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 }
 
 var ( // perfect hash table for response critical headers
-	hResponseCriticalHeaderNames = []byte("content-length content-range content-type date etag expires last-modified location server set-cookie") // age?
-	hResponseCriticalHeaderTable = [10]struct {
+	hResponseCriticalHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location server set-cookie")
+	hResponseCriticalHeaderTable = [11]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		check func(*hResponse_, *pair, uint8) bool
 	}{
-		0: {hashLocation, 74, 82, (*hResponse_).checkLocation},
-		1: {hashContentRange, 15, 28, (*hResponse_).checkContentRange},
-		2: {hashLastModified, 60, 73, (*hResponse_).checkLastModified},
-		3: {hashServer, 83, 89, (*hResponse_).checkServer},
-		4: {hashContentType, 29, 41, (*hResponse_).checkContentType},
-		5: {hashETag, 47, 51, (*hResponse_).checkETag},
-		6: {hashDate, 42, 46, (*hResponse_).checkDate},
-		7: {hashContentLength, 0, 14, (*hResponse_).checkContentLength},
-		8: {hashSetCookie, 90, 100, (*hResponse_).checkSetCookie},
-		9: {hashExpires, 52, 59, (*hResponse_).checkExpires},
+		0:  {hashDate, 46, 50, (*hResponse_).checkDate},
+		1:  {hashLastModified, 64, 77, (*hResponse_).checkLastModified},
+		2:  {hashServer, 87, 93, (*hResponse_).checkServer},
+		3:  {hashContentRange, 19, 32, (*hResponse_).checkContentRange},
+		4:  {hashContentLength, 4, 18, (*hResponse_).checkContentLength},
+		5:  {hashSetCookie, 94, 104, (*hResponse_).checkSetCookie},
+		6:  {hashExpires, 56, 63, (*hResponse_).checkExpires},
+		7:  {hashETag, 51, 55, (*hResponse_).checkETag},
+		8:  {hashLocation, 78, 86, (*hResponse_).checkLocation},
+		9:  {hashContentType, 33, 45, (*hResponse_).checkContentType},
+		10: {hashAge, 0, 3, (*hResponse_).checkAge},
 	}
-	hResponseCriticalHeaderFind = func(hash uint16) int { return (68805 / int(hash)) % 10 }
+	hResponseCriticalHeaderFind = func(hash uint16) int { return (883779 / int(hash)) % 11 }
 )
 
 func (r *hResponse_) checkAge(header *pair, index uint8) bool {
+	// Age = delta-seconds
 	// TODO
 	return true
 }

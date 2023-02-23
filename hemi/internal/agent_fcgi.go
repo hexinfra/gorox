@@ -49,6 +49,7 @@ type fcgiAgent struct {
 	delResponseHeaders  [][]byte      // server response headers to delete
 	sendTimeout         time.Duration // timeout to send the whole request
 	recvTimeout         time.Duration // timeout to recv the whole response content
+	maxContentSize      int64         // max content size allowed
 }
 
 func (h *fcgiAgent) onCreate(name string, stage *Stage, app *App) {
@@ -102,6 +103,8 @@ func (h *fcgiAgent) OnConfigure() {
 	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 	// recvTimeout
 	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
+	// maxContentSize
+	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 }
 func (h *fcgiAgent) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
@@ -526,7 +529,6 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	pFore           int32    // element spanning to. for parsing header elements
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
-	contentReceived bool     // is content received? if response has no content, it is true (received)
 	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
 	maxContentSize  int64    // max content size allowed for current response
 	sizeReceived    int64    // bytes of currently received content
@@ -924,11 +926,9 @@ func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 			}
 			subHeader.value = value
 		}
-		if subHeader.value.notEmpty() {
-			if !r.addHeader(&subHeader) {
-				// r.headResult is set.
-				return false
-			}
+		if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
+			// r.headResult is set.
+			return false
 		}
 		value.from = value.edge
 		needComma = true
@@ -962,12 +962,15 @@ func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte
 }
 
 func (r *fcgiResponse) checkHead() bool {
-	// TODO
-	r.maxContentSize = 123
-	return false
+	r.maxContentSize = r.stream.agent.maxContentSize
+	return true
 }
 func (r *fcgiResponse) cleanInput() {
-	// TODO
+	if !r.hasContent() {
+		return
+	}
+	r.imme.set(r.pFore, r.inputEdge)
+	// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
 }
 
 func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
@@ -983,13 +986,6 @@ func (r *fcgiResponse) hasContent() bool {
 	return true
 }
 func (r *fcgiResponse) holdContent() any {
-	if r.contentReceived {
-		if r.contentHeld == nil {
-			return r.contentBlob // immediate
-		}
-		return r.contentHeld
-	}
-	r.contentReceived = true
 	switch content := r.recvContent().(type) {
 	case TempFile: // [0, r.maxContentSize]
 		r.contentHeld = content.(*os.File)

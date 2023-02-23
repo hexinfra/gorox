@@ -46,8 +46,10 @@ type Bytes struct { // same as []byte, 24 bytes
 }
 
 func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* change s through p!
-	h := (*Refer)(unsafe.Pointer(&s))
-	return *(*[]byte)(unsafe.Pointer(&Bytes{h.Ptr, h.Len, h.Len}))
+	sh := (*Refer)(unsafe.Pointer(&s))
+	ph := (*Bytes)(unsafe.Pointer(&p))
+	ph.Ptr, ph.Len, ph.Cap = sh.Ptr, sh.Len, sh.Len
+	return
 }
 func WeakString(p []byte) (s string) { // WARNING: *DO NOT* change p while using s!
 	return *(*string)(unsafe.Pointer(&p))

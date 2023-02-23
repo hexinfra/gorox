@@ -306,13 +306,13 @@ func (s *H1Stream) StartTCPTun() { // CONNECT method
 func (s *H1Stream) StartUDPTun() { // upgrade: connect-udp
 	// TODO
 }
-func (s *H1Stream) StartSocket() { // upgrade: websocket
+func (s *H1Stream) StartSocket() *H1Socket { // upgrade: websocket
 	// TODO
+	return s.socket
 }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
-func (s *H1Stream) Socket() *H1Socket     { return s.socket }
 
 func (s *H1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)

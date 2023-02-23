@@ -110,20 +110,21 @@ func (h *fcgiAgent) OnPrepare() {
 func (h *fcgiAgent) IsProxy() bool { return true }
 func (h *fcgiAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
+func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 	var (
-		hContent any
+		content  any
 		fConn    PConn
 		fErr     error
 		fContent any
 	)
 
-	hHasContent := hReq.HasContent()
-	if hHasContent && (h.bufferClientContent || hReq.isUnsized()) { // including size 0
-		hContent = hReq.holdContent()
-		if hContent == nil { // hold failed
-			hResp.SetStatus(StatusBadRequest)
-			hResp.SendBytes(nil)
+	hasContent := req.HasContent()
+	if hasContent && (h.bufferClientContent || req.isUnsized()) { // including size 0
+		content = req.holdContent()
+		if content == nil { // hold failed
+			// stream is marked as broken
+			resp.SetStatus(StatusBadRequest)
+			resp.SendBytes(nil)
 			return
 		}
 	}
@@ -131,14 +132,14 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	if h.keepConn {
 		fConn, fErr = h.backend.FetchConn()
 		if fErr != nil {
-			hResp.SendBadGateway(nil)
+			resp.SendBadGateway(nil)
 			return
 		}
 		defer h.backend.StoreConn(fConn)
 	} else {
 		fConn, fErr = h.backend.Dial()
 		if fErr != nil {
-			hResp.SendBadGateway(nil)
+			resp.SendBadGateway(nil)
 			return
 		}
 		defer fConn.Close()
@@ -148,20 +149,20 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-	if !fReq.copyHead(hReq, h.scriptFilename) {
+	if !fReq.copyHead(req, h.scriptFilename) {
 		fStream.markBroken()
-		hResp.SendBadGateway(nil)
+		resp.SendBadGateway(nil)
 		return
 	}
-	if hHasContent && !h.bufferClientContent && !hReq.isUnsized() {
-		if fErr = fReq.sync(hReq); fErr != nil {
+	if hasContent && !h.bufferClientContent && !req.isUnsized() {
+		if fErr = fReq.sync(req); fErr != nil {
 			fStream.markBroken()
 		}
-	} else if fErr = fReq.post(hContent); fErr != nil {
+	} else if fErr = fReq.post(content); fErr != nil {
 		fStream.markBroken()
 	}
 	if fErr != nil {
-		hResp.SendBadGateway(nil)
+		resp.SendBadGateway(nil)
 		return
 	}
 
@@ -170,22 +171,22 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 		fResp.recvHead()
 		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
 			fStream.markBroken()
-			hResp.SendBadGateway(nil)
+			resp.SendBadGateway(nil)
 			return
 		}
 		if fResp.status >= StatusOK {
 			break
 		}
 		// We got 1xx
-		if hReq.VersionCode() == Version1_0 {
+		if req.VersionCode() == Version1_0 {
 			fStream.markBroken()
-			hResp.SendBadGateway(nil)
+			resp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !hResp.sync1xx(fResp) {
+		if !resp.sync1xx(fResp) {
 			fStream.markBroken()
 			return
 		}
@@ -194,28 +195,28 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	}
 
 	fHasContent := false
-	if hReq.MethodCode() != MethodHEAD {
+	if req.MethodCode() != MethodHEAD {
 		fHasContent = fResp.hasContent()
 	}
 	if fHasContent && h.bufferServerContent { // including size 0
 		fContent = fResp.holdContent()
 		if fContent == nil { // hold failed
 			// fStream is marked as broken
-			hResp.SendBadGateway(nil)
+			resp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !hResp.copyHead(fResp) {
+	if !resp.copyHead(fResp) {
 		fStream.markBroken()
 		return
 	}
 	if fHasContent && !h.bufferServerContent {
-		if err := hResp.sync(fResp); err != nil {
+		if err := resp.sync(fResp); err != nil {
 			fStream.markBroken()
 			return
 		}
-	} else if err := hResp.post(fContent, false); err != nil { // false means no trailers
+	} else if err := resp.post(fContent, false); err != nil { // false means no trailers
 		return
 	}
 
@@ -516,6 +517,8 @@ type fcgiResponse struct { // incoming. needs parsing
 type fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
+	stdoutFrom      int32    // if record content is too large to be appended to r.input, use this to mark the next position
+	stdoutEdge      int32    // see above
 	inputEdge       int32    // edge position of current input
 	head            text     // for debugging
 	imme            text     // immediate bytes in r.records that is content
@@ -585,131 +588,6 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
-func (r *fcgiResponse) _readStdout() (int32, int32, error) {
-	for { // only for stdout records
-		kind, from, edge, err := r._recvRecord()
-		if err != nil {
-			return 0, 0, err
-		}
-		if kind == fcgiTypeStdout {
-			return from, edge, nil
-		}
-		if kind != fcgiTypeStderr {
-			return 0, 0, fcgiReadBadRecord
-		}
-		if IsDebug(2) && edge > from {
-			Debugf("fcgi stderr=%s\n", r.records[from:edge])
-		}
-	}
-}
-func (r *fcgiResponse) _readEndRequest() (appStatus int32, err error) {
-	for { // only for endRequest records
-		kind, from, edge, err := r._recvRecord()
-		if err != nil {
-			return 0, err
-		}
-		if kind != fcgiTypeEndRequest {
-			if IsDebug(2) {
-				Debugf("fcgi type=%d data=%s\n", kind, r.records[from:edge])
-			}
-			continue
-		}
-		if edge-from != 8 { // contentLen of endRequest
-			return 0, fcgiReadBadRecord
-		}
-		appStatus = int32(r.records[from+3])
-		appStatus += int32(r.records[from+2]) << 8
-		appStatus += int32(r.records[from+1]) << 16
-		appStatus += int32(r.records[from]) << 24
-		return appStatus, nil
-	}
-}
-func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) {
-	remainSize := r.recordsEdge - r.recordsFrom
-	// At least an fcgi header must be immediate
-	if remainSize < fcgiHeaderSize {
-		if n, e := r._growRecords(fcgiHeaderSize - int(remainSize)); e == nil {
-			remainSize += int32(n)
-		} else {
-			err = e
-			return
-		}
-	}
-	// FCGI header is immediate.
-	contentLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
-	recordSize := fcgiHeaderSize + contentLen + int32(r.records[r.recordsFrom+6])
-	// Is the whole record immediate?
-	if recordSize > remainSize { // not immediate, we need to make it immediate by reading the missing bytes
-		// Shoud we switch to a larger r.records?
-		if recordSize > int32(cap(r.records)) { // yes, the record is too large
-			var records []byte
-			if recordSize > _16K {
-				records = getFCGIMaxRecords()
-			} else { // recordSize <= _16K
-				records = Get16K()
-			}
-			r._slideRecords(records)
-			if cap(r.records) != cap(r.stockRecords) {
-				PutNK(r.records) // must be 16K
-			}
-			r.records = records
-		}
-		// Now r.records is large enough. we can read the missing bytes of this record
-		if n, e := r._growRecords(int(recordSize - remainSize)); e == nil {
-			remainSize += int32(n)
-		} else {
-			err = e
-			return
-		}
-	}
-	// Now recordSize <= remainSize, the record is immediate.
-	kind = r.records[r.recordsFrom+1]
-	from = r.recordsFrom + fcgiHeaderSize
-	edge = from + contentLen
-	if recordSize == remainSize { // all remain data are consumed, reset positions
-		r.recordsFrom = 0
-		r.recordsEdge = 0
-	} else { // recordSize < remainSize, extra records exist, mark it for next read
-		r.recordsFrom += recordSize
-	}
-	if contentLen == 0 && (kind == fcgiTypeStdout || kind == fcgiTypeStderr) {
-		err = io.EOF
-	}
-	return
-}
-func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is large enough.
-	// Should we slide to get enough space to grow?
-	if size > cap(r.records)-int(r.recordsEdge) { // yes
-		r._slideRecords(r.records)
-	}
-	// We now have enough space to grow.
-	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
-	if err != nil {
-		return 0, err
-	}
-	r.recordsEdge += int32(n)
-	return n, nil
-}
-func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to grow
-	if r.recordsFrom > 0 {
-		copy(records, r.records[r.recordsFrom:r.recordsEdge])
-		r.recordsEdge -= r.recordsFrom
-		if r.imme.notEmpty() {
-			r.imme.sub(r.recordsFrom)
-		}
-		r.recordsFrom = 0
-	}
-}
-func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K buffer
-	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
-		records := Get16K()
-		if imme := r.imme; imme.notEmpty() {
-			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
-		}
-		r.records = records
-	}
-}
-
 func (r *fcgiResponse) recvHead() {
 	// The entire response head must be received within one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
@@ -722,20 +600,47 @@ func (r *fcgiResponse) recvHead() {
 	}
 	r.cleanInput()
 }
-func (r *fcgiResponse) growHead() bool { // we need more head bytes to be appended to r.input
-	if r.inputEdge == _16K {
-		return false
+func (r *fcgiResponse) growHead() bool { // we need more head data to be appended to r.input
+	// Is r.input full?
+	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
+		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+		// r.input size < 16K. We switch to a larger input (stock -> 4K -> 16K)
+		stockSize := int32(cap(r.stockInput))
+		var input []byte
+		if inputSize == stockSize {
+			input = Get4K()
+		} else { // 4K
+			input = Get16K()
+		}
+		copy(input, r.input) // copy all
+		if inputSize != stockSize {
+			PutNK(r.input)
+		}
+		r.input = input // a larger input is now used
 	}
-	if from, edge, err := r._readStdout(); err == nil {
-		size := edge - from
-		want := r.inputEdge + size
-		_ = want
-	} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-		r.headResult = StatusRequestTimeout
-	} else { // i/o error or unexpected EOF
-		r.headResult = -1
+	// r.input is not full.
+	if r.stdoutFrom == r.stdoutEdge { // no existing stdout data, receive one stdout record
+		from, edge, err := r._recvStdout()
+		if err != nil || from == edge { // i/o error on unexpected EOF
+			r.headResult = -1
+			return false
+		}
+		r.stdoutFrom, r.stdoutEdge = from, edge
 	}
-	return false
+	spaceSize := int32(cap(r.input)) - r.inputEdge
+	stdoutSize := r.stdoutEdge - r.stdoutFrom
+	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:]) // this is the cost. sucks!
+	if stdoutSize > spaceSize {
+		r.inputEdge += spaceSize
+		r.stdoutFrom += spaceSize
+	} else { // stdoutSize <= spaceSize
+		r.inputEdge += stdoutSize
+		r.stdoutFrom, r.stdoutEdge = 0, 0
+	}
+	return true
 }
 func (r *fcgiResponse) recvHeaders() bool {
 	// generic-response = 1*header-field NL [ response-body ]
@@ -985,23 +890,6 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	r.headers = append(r.headers, *header)
 	return true
 }
-func (r *fcgiResponse) getHeader(name string, hash uint16) (value []byte, ok bool) {
-	if name != "" {
-		if hash == 0 {
-			hash = stringHash(name)
-		}
-		for i := 0; i < len(r.headers); i++ {
-			header := &r.headers[i]
-			if header.hash != hash {
-				continue
-			}
-			if header.nameEqualString(r.input, name) {
-				return header.valueAt(r.input), true
-			}
-		}
-	}
-	return
-}
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
 	// TODO
@@ -1010,6 +898,7 @@ func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte
 
 func (r *fcgiResponse) checkHead() bool {
 	// TODO
+	r.maxContentSize = 123
 	return false
 }
 func (r *fcgiResponse) cleanInput() {
@@ -1029,15 +918,58 @@ func (r *fcgiResponse) hasContent() bool {
 	return true
 }
 func (r *fcgiResponse) holdContent() any {
-	// TODO
+	if r.contentReceived {
+		if r.contentHeld == nil {
+			return r.contentBlob // immediate
+		}
+		return r.contentHeld
+	}
+	r.contentReceived = true
+	switch content := r.recvContent().(type) {
+	case TempFile: // [0, r.maxContentSize]
+		r.contentHeld = content.(*os.File)
+		return r.contentHeld
+	case error: // i/o error or unexpected EOF
+		// TODO: log err?
+	}
+	r.stream.markBroken()
 	return nil
 }
-func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or TempFile (for large content)
-	// TODO
-	return nil
+func (r *fcgiResponse) recvContent() any { // to TempFile
+	contentFile, err := r._newTempFile()
+	if err != nil {
+		return err
+	}
+	var p []byte
+	for {
+		p, err = r.readContent()
+		if len(p) > 0 {
+			if _, e := contentFile.Write(p); e != nil {
+				err = e
+				goto badRead
+			}
+		}
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			goto badRead
+		}
+	}
+	if _, err = contentFile.Seek(0, 0); err != nil {
+		goto badRead
+	}
+	return contentFile // the TempFile
+badRead:
+	contentFile.Close()
+	os.Remove(contentFile.Name())
+	return err
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
 	// TODO
+	if r.imme.notEmpty() {
+		// copy ...
+		r.imme.zero()
+	}
 	return
 }
 
@@ -1069,6 +1001,131 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 		*toTime = now
 	}
 	return r.stream.setReadDeadline(now.Add(r.stream.agent.backend.ReadTimeout()))
+}
+
+func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
+	for { // only for stdout records
+		kind, from, edge, err := r._recvRecord()
+		if err != nil {
+			return 0, 0, err
+		}
+		if kind == fcgiTypeStdout {
+			return from, edge, nil
+		}
+		if kind != fcgiTypeStderr {
+			return 0, 0, fcgiReadBadRecord
+		}
+		if IsDebug(2) && edge > from {
+			Debugf("fcgi stderr=%s\n", r.records[from:edge])
+		}
+	}
+}
+func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after empty stdout, endRequest is followed.
+	for { // only for endRequest records
+		kind, from, edge, err := r._recvRecord()
+		if err != nil {
+			return 0, err
+		}
+		if kind != fcgiTypeEndRequest {
+			if IsDebug(2) {
+				Debugf("fcgi unexpected type=%d data=%s\n", kind, r.records[from:edge])
+			}
+			continue
+		}
+		if edge-from != 8 { // contentLen of endRequest
+			return 0, fcgiReadBadRecord
+		}
+		appStatus = int32(r.records[from+3])
+		appStatus += int32(r.records[from+2]) << 8
+		appStatus += int32(r.records[from+1]) << 16
+		appStatus += int32(r.records[from]) << 24
+		return appStatus, nil
+	}
+}
+
+func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record data.
+	remainSize := r.recordsEdge - r.recordsFrom
+	// At least an fcgi header must be immediate
+	if remainSize < fcgiHeaderSize {
+		if n, e := r._growRecords(fcgiHeaderSize - int(remainSize)); e == nil {
+			remainSize += int32(n)
+		} else {
+			err = e
+			return
+		}
+	}
+	// FCGI header is immediate.
+	contentLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
+	recordSize := fcgiHeaderSize + contentLen + int32(r.records[r.recordsFrom+6]) // with padding
+	// Is the whole record immediate?
+	if recordSize > remainSize { // not immediate, we need to make it immediate by reading the missing bytes
+		// Shoud we switch to a larger r.records?
+		if recordSize > int32(cap(r.records)) { // yes, because this record is too large
+			var records []byte
+			if recordSize <= _16K {
+				records = Get16K()
+			} else { // recordSize > _16K
+				records = getFCGIMaxRecords()
+			}
+			r._slideRecords(records)
+			if cap(r.records) != cap(r.stockRecords) {
+				PutNK(r.records) // must be 16K
+			}
+			r.records = records
+		}
+		// Now r.records is large enough to place this record, we can read the missing bytes of this record
+		if n, e := r._growRecords(int(recordSize - remainSize)); e == nil {
+			remainSize += int32(n)
+		} else {
+			err = e
+			return
+		}
+	}
+	// Now recordSize <= remainSize, the record is immediate, so continue parsing it.
+	kind = r.records[r.recordsFrom+1]
+	from = r.recordsFrom + fcgiHeaderSize
+	edge = from + contentLen
+	// Clean up positions.
+	if recordSize == remainSize { // all remain data are consumed, reset positions
+		r.recordsFrom, r.recordsEdge = 0, 0
+	} else { // recordSize < remainSize, extra records exist, mark it for next recv
+		r.recordsFrom += recordSize
+	}
+	return
+}
+func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is large enough.
+	// Should we slide to get enough space to grow?
+	if size > cap(r.records)-int(r.recordsEdge) { // yes
+		r._slideRecords(r.records)
+	}
+	// We now have enough space to grow.
+	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
+	if err != nil {
+		return 0, err
+	}
+	r.recordsEdge += int32(n)
+	return n, nil
+}
+func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to grow
+	if r.recordsFrom > 0 {
+		copy(records, r.records[r.recordsFrom:r.recordsEdge])
+		r.recordsEdge -= r.recordsFrom
+		if r.imme.notEmpty() {
+			r.imme.sub(r.recordsFrom)
+		}
+		r.recordsFrom = 0
+	}
+}
+func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K or larger buffer
+	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
+		records := Get16K()
+		if imme := r.imme; imme.notEmpty() {
+			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+		}
+		r.records = records
+	} else {
+		// Has been 16K or fcgiMaxRecords already, do nothing.
+	}
 }
 
 var ( // fcgi response errors

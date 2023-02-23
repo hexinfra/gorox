@@ -300,13 +300,13 @@ func (s *H2Stream) StartTCPTun() { // CONNECT method
 func (s *H2Stream) StartUDPTun() { // see RFC 9298
 	// TODO
 }
-func (s *H2Stream) StartSocket() { // see RFC 8441
+func (s *H2Stream) StartSocket() *H2Socket { // see RFC 8441
 	// TODO
+	return s.socket
 }
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
-func (s *H2Stream) Socket() *H2Socket     { return s.socket }
 
 func (s *H2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
 	return s.conn.makeTempName(p, stamp)

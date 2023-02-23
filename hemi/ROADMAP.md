@@ -2,7 +2,6 @@ Roadmap
 =======
 
   * [TODO] fetch config through url.
-  * [TODO] shutdown support.
   * [TODO] mesher system design and implementation.
   * [TODO] fcgi handlet.
   * [TODO] websocket support.
@@ -10,7 +9,7 @@ Roadmap
   * [TODO] http/2 support.
   * [TODO] http/3 support.
   * [TODO] http cache support.
-  * [TODO] web mvc framework. needs a strong standard like jakarta servlet.
+  * [TODO] web mvc framework. requires a strong standard like jakarta servlet.
   * [TODO] documentation.
   * [TODO] official sites.
   * [TODO] filesys cache.

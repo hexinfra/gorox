@@ -61,7 +61,7 @@ func (s *httpxServer) OnConfigure() {
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 	// enableHTTP2
-	s.ConfigureBool("enableHTTP2", &s.enableHTTP2, false) // TODO: change to true after HTTP/2 is fully implemented
+	s.ConfigureBool("enableHTTP2", &s.enableHTTP2, false) // TODO: change to true after HTTP/2 server is fully implemented
 	// h2cMode
 	s.ConfigureBool("h2cMode", &s.h2cMode, false)
 }

@@ -183,7 +183,7 @@ func (s *hStream_) callTCPTun() { // CONNECT method
 func (s *hStream_) callUDPTun() { // upgrade: connect-udp
 	// TODO
 }
-func (s *hStream_) callSocket() { // upgrade: wegsocket
+func (s *hStream_) callSocket() { // upgrade: websocket
 	// TODO
 }
 

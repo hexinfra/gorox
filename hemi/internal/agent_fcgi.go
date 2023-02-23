@@ -574,11 +574,12 @@ func (r *fcgiResponse) onEnd() {
 
 	if r.contentHeld != nil {
 		r.contentHeld.Close()
-		os.Remove(r.contentHeld.Name())
-		r.contentHeld = nil
 		if IsDebug(2) {
-			Debugln("contentHeld is closed and removed!!")
+			Debugln("contentHeld is left as is!")
+		} else if err := os.Remove(r.contentHeld.Name()); err != nil {
+			// TODO: log?
 		}
+		r.contentHeld = nil
 	}
 
 	r.fcgiResponse0 = fcgiResponse0{}

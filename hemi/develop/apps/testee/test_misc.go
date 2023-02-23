@@ -56,3 +56,7 @@ func (h *testHandlet) GET_multi(req Request, resp Response) {
 		resp.Push(accept + "<br>")
 	}
 }
+func (h *testHandlet) PUT_file(req Request, resp Response) {
+	content := req.Content()
+	resp.Send(content)
+}

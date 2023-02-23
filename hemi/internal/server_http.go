@@ -1875,7 +1875,11 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			contentFile = content.(*os.File)
 			defer func() {
 				contentFile.Close()
-				os.Remove(contentFile.Name())
+				if IsDebug(2) {
+					Debugln("contentFile is left as is!")
+				} else if err := os.Remove(contentFile.Name()); err != nil {
+					// TODO: app log?
+				}
 			}()
 			if r.sizeReceived == 0 {
 				return // unsized content can be empty

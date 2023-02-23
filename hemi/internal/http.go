@@ -225,11 +225,12 @@ func (r *httpIn_) onEnd() { // for zeros
 
 	if r.contentHeld != nil { // r.holdContent() is called
 		r.contentHeld.Close()
-		os.Remove(r.contentHeld.Name())
-		r.contentHeld = nil
 		if IsDebug(2) {
-			Debugln("contentHeld is closed and removed!!")
+			Debugln("contentHeld is left as is!")
+		} else if err := os.Remove(r.contentHeld.Name()); err != nil {
+			// TODO: log?
 		}
+		r.contentHeld = nil
 	}
 
 	r.httpIn0_ = httpIn0_{}
@@ -641,7 +642,9 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 			}
 		}
 		contentFile.Close()
-		if err := os.Remove(contentFile.Name()); err != nil {
+		if IsDebug(2) {
+			Debugln("contentFile is left as is!")
+		} else if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.app.log
 		}
 	case error: // i/o error or unexpected EOF

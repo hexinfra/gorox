@@ -322,7 +322,6 @@ type fcgiRequest struct { // outgoing. needs building
 }
 type fcgiRequest0 struct { // for fast reset, entirely
 	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= fcgiMaxParams.
-	paramsSize    uint16 // contentLen of the params record
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
 }
@@ -360,17 +359,55 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 	}
 	// TODO: add more params
 
-	r.paramsHeader[4] = byte(r.paramsSize >> 8)
-	r.paramsHeader[5] = byte(r.paramsSize)
+	r.paramsHeader[4] = byte(r.paramsEdge >> 8)
+	r.paramsHeader[5] = byte(r.paramsEdge)
 	return true
 }
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
-	// TODO: use r._growParams(), r.params, update r.paramsSize
-	return false
+	return r._addParam(nil, name, value)
 }
 func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
-	// TODO: use r._growParams(), r.params, update r.paramsSize
-	return false
+	// TODO: avoid name conflicts with header which is like "content_length"
+	return r._addParam(fcgiBytesHTTP_, name, value)
+}
+func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte) bool {
+	nameLen, valueLen := len(prefix)+len(name), len(value)
+	size := 2 + nameLen + valueLen
+	if nameLen > 127 {
+		size += 3
+	}
+	if valueLen > 127 {
+		size += 3
+	}
+	from, edge, ok := r._growParams(size)
+	if !ok {
+		return false
+	}
+	if nameLen > 127 {
+		r.params[from] = byte(nameLen>>24) | 0x80
+		r.params[from+1] = byte(nameLen >> 16)
+		r.params[from+2] = byte(nameLen >> 8)
+		from += 3
+	}
+	r.params[from] = byte(nameLen)
+	from++
+	if valueLen > 127 {
+		r.params[from] = byte(valueLen>>24) | 0x80
+		r.params[from+1] = byte(valueLen >> 16)
+		r.params[from+2] = byte(valueLen >> 8)
+		from += 3
+	}
+	r.params[from] = byte(valueLen)
+	from++
+	if len(prefix) > 0 {
+		from += copy(r.params[from:], prefix)
+	}
+	from += copy(r.params[from:], name)
+	from += copy(r.params[from:], value)
+	if from != edge {
+		BugExitln("fcgi: from != edge")
+	}
+	return true
 }
 func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
@@ -384,7 +421,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 	}
 	if last > uint16(cap(r.params)) { // last <= _16K
 		params := getFCGIParams()
-		copy(params, r.params[0:r.paramsEdge])
+		copy(params, r.params[:r.paramsEdge])
 		r.params = params
 	}
 	r.paramsEdge = last
@@ -1270,6 +1307,7 @@ var ( // request param names
 	fcgiBytesDocumentRoot     = []byte("DOCUMENT_ROOT")
 	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
 	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
+	fcgiBytesHTTP_            = []byte("HTTP_")
 	fcgiBytesHTTPS            = []byte("HTTPS")
 	fcgiBytesPathInfo         = []byte("PATH_INFO")
 	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")

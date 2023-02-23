@@ -517,11 +517,11 @@ type fcgiResponse struct { // incoming. needs parsing
 type fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
-	stdoutFrom      int32    // if record content is too large to be appended to r.input, use this to mark the next position
-	stdoutEdge      int32    // see above
-	inputEdge       int32    // edge position of current input
+	stdoutFrom      int32    // if stdout content is too large to be appended to r.input, use this to note current from position
+	stdoutEdge      int32    // see above, to note current edge position
+	inputEdge       int32    // edge position of r.input
 	head            text     // for debugging
-	imme            text     // immediate bytes in r.records that is content
+	imme            text     // immediate bytes in r.input that is content
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
 	status          int16    // 200, 302, 404, ...
@@ -552,7 +552,7 @@ func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
 		if cap(r.records) == fcgiMaxRecords {
 			putFCGIMaxRecords(r.records)
-		} else {
+		} else { // 16K
 			PutNK(r.records)
 		}
 		r.records = nil
@@ -621,7 +621,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 		}
 		r.input = input // a larger input is now used
 	}
-	// r.input is not full.
+	// r.input is not full. Are there any existing stdout data?
 	if r.stdoutFrom == r.stdoutEdge { // no existing stdout data, receive one stdout record
 		from, edge, err := r._recvStdout()
 		if err != nil || from == edge { // i/o error on unexpected EOF
@@ -630,13 +630,14 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 		}
 		r.stdoutFrom, r.stdoutEdge = from, edge
 	}
+	// There are some existing stdout data.
 	spaceSize := int32(cap(r.input)) - r.inputEdge
 	stdoutSize := r.stdoutEdge - r.stdoutFrom
-	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:]) // this is the cost. sucks!
-	if stdoutSize > spaceSize {
+	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:r.stdoutEdge]) // this is the cost. sucks!
+	if spaceSize < stdoutSize {
 		r.inputEdge += spaceSize
 		r.stdoutFrom += spaceSize
-	} else { // stdoutSize <= spaceSize
+	} else { // space >= stdoutSize, take all stdout data
 		r.inputEdge += stdoutSize
 		r.stdoutFrom, r.stdoutEdge = 0, 0
 	}

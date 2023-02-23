@@ -34,8 +34,10 @@ func ReferTo(p []byte) Refer {
 func (r *Refer) Reset() {
 	r.Ptr, r.Len = nil, 0
 }
-func (r Refer) Bytes() []byte {
-	return *(*[]byte)(unsafe.Pointer(&Bytes{r.Ptr, r.Len, r.Len}))
+func (r Refer) Bytes() (p []byte) {
+	h := (*Bytes)(unsafe.Pointer(&p))
+	h.Ptr, h.Len, h.Cap = r.Ptr, r.Len, r.Len
+	return
 }
 
 // Bytes

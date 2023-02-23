@@ -10,20 +10,21 @@ package internal
 import (
 	"errors"
 	"fmt"
-	. "github.com/hexinfra/gorox/hemi/libraries/config"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func ApplyText(text string) (*Stage, error) {
-	c := getConfig()
+	c := _getConfig()
 	return c.applyText(text)
 }
 func ApplyFile(base string, file string) (*Stage, error) {
-	c := getConfig()
+	c := _getConfig()
 	return c.applyFile(base, file)
 }
-func getConfig() (c config) {
+func _getConfig() (c config) {
 	constants := map[string]string{
 		"baseDir": BaseDir(),
 		"dataDir": DataDir(),
@@ -109,15 +110,22 @@ func signComp(sign string, comp int16) {
 	signedComps[sign] = comp
 }
 
-// config parses configuration and creates a new stage.
+// config applies configuration and creates a new stage.
 type config struct {
-	// Mixins
-	Parser_
 	// States
+	constants   map[string]string // defined constants
+	varCodes    map[string]int16  // defined var codes
+	signedComps map[string]int16  // defined signed comps
+	tokens      []token           // the token list
+	index       int               // token index
+	limit       int               // limit of token index
+	counter     int               // the name for components without a name
 }
 
 func (c *config) init(constants map[string]string, varCodes map[string]int16, signedComps map[string]int16) {
-	c.Parser_.Init(constants, varCodes, signedComps)
+	c.constants = constants
+	c.varCodes = varCodes
+	c.signedComps = signedComps
 }
 
 func (c *config) applyText(text string) (stage *Stage, err error) {
@@ -126,8 +134,10 @@ func (c *config) applyText(text string) (stage *Stage, err error) {
 			err = x.(error)
 		}
 	}()
-	c.ScanText(text)
-	return c.parse()
+	var l lexer
+	c.tokens = l.scanText(text)
+	c.process()
+	return c.apply()
 }
 func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
@@ -135,12 +145,72 @@ func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 			err = x.(error)
 		}
 	}()
-	c.ScanFile(base, path)
-	return c.parse()
+	var l lexer
+	c.tokens = l.scanFile(base, path)
+	c.process()
+	return c.apply()
 }
 
-func (c *config) parse() (stage *Stage, err error) {
-	if current := c.Current(); current.Kind != TokenWord || current.Info != compStage {
+func (c *config) show() {
+	for _, token := range c.tokens {
+		fmt.Println(token.String())
+	}
+}
+func (c *config) process() {
+	for i := 0; i < len(c.tokens); i++ {
+		token := &c.tokens[i]
+		switch token.Kind {
+		case tokenWord: // some words are component signs
+			if comp, ok := c.signedComps[token.Text]; ok {
+				token.Info = comp
+			}
+		case tokenConstant: // evaluate constants
+			if text, ok := c.constants[token.Text]; ok {
+				token.Kind = tokenString
+				token.Text = text
+			}
+		case tokenVariable: // evaluate variable codes
+			if code, ok := c.varCodes[token.Text]; ok {
+				token.Info = code
+			}
+		}
+	}
+}
+
+func (c *config) current() token            { return c.tokens[c.index] }
+func (c *config) currentIs(kind int16) bool { return c.tokens[c.index].Kind == kind }
+func (c *config) nextIs(kind int16) bool {
+	if c.index == c.limit {
+		return false
+	}
+	return c.tokens[c.index+1].Kind == kind
+}
+func (c *config) expect(kind int16) token {
+	current := c.tokens[c.index]
+	if current.Kind != kind {
+		panic(fmt.Errorf("config: expect %s, but get %s=%s (in line %d)\n", tokenNames[kind], tokenNames[current.Kind], current.Text, current.Line))
+	}
+	return current
+}
+func (c *config) forwardExpect(kind int16) token {
+	if c.index++; c.index == c.limit {
+		panic(errors.New("config: unexpected EOF"))
+	}
+	return c.expect(kind)
+}
+func (c *config) forward() token {
+	if c.index++; c.index == c.limit {
+		panic(errors.New("config: unexpected EOF"))
+	}
+	return c.tokens[c.index]
+}
+func (c *config) newName() string {
+	c.counter++
+	return strconv.Itoa(c.counter)
+}
+
+func (c *config) apply() (stage *Stage, err error) {
+	if current := c.current(); current.Kind != tokenWord || current.Info != compStage {
 		panic(errors.New("config error: root component is not stage"))
 	}
 	stage = createStage()
@@ -150,16 +220,16 @@ func (c *config) parse() (stage *Stage, err error) {
 }
 
 func (c *config) parseStage(stage *Stage) { // stage {}
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.Name(), current.Text, current.Line))
 		}
-		if c.NextIs(TokenEqual) { // =
+		if c.nextIs(tokenEqual) { // =
 			c.parseAssign(current, stage)
 		} else {
 			switch current.Text {
@@ -189,54 +259,54 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-func (c *config) parseContainer0(comp int16, parseComponent func(sign Token, stage *Stage), compName string, stage *Stage) { // fixtures, unitures, backends, staters, cachers, apps, svcs, servers, cronjobs {}
-	c.ForwardExpect(TokenLeftBrace) // {
+func (c *config) parseContainer0(comp int16, parseComponent func(sign token, stage *Stage), compName string, stage *Stage) { // fixtures, unitures, backends, staters, cachers, apps, svcs, servers, cronjobs {}
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord || current.Info != comp {
+		if current.Kind != tokenWord || current.Info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, stage)
 	}
 }
 
-func (c *config) parseFixture(sign Token, stage *Stage) { // xxxFixture {}
+func (c *config) parseFixture(sign token, stage *Stage) { // xxxFixture {}
 	fixtureSign := sign.Text
 	fixture := stage.fixture(fixtureSign)
 	if fixture == nil {
 		panic(errors.New("config error: unknown fixture: " + fixtureSign))
 	}
 	fixture.setParent(stage)
-	c.Forward()
+	c.forward()
 	c.parseAssigns(fixture)
 }
-func (c *config) parseUniture(sign Token, stage *Stage) { // xxxUniture {}
+func (c *config) parseUniture(sign token, stage *Stage) { // xxxUniture {}
 	uniture := stage.createUniture(sign.Text)
 	uniture.setParent(stage)
-	c.Forward()
+	c.forward()
 	c.parseAssigns(uniture)
 }
-func (c *config) parseBackend(sign Token, stage *Stage) { // xxxBackend <name> {}
+func (c *config) parseBackend(sign token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func parseComponent0[T Component](c *config, sign Token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
-	name := c.ForwardExpect(TokenString)
+func parseComponent0[T Component](c *config, sign token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
+	name := c.forwardExpect(tokenString)
 	component := create(sign.Text, name.Text)
 	component.setParent(stage)
-	c.Forward()
+	c.forward()
 	c.parseAssigns(component)
 }
 func (c *config) parseMeshers(stage *Stage) { // meshers {}
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(errors.New("config error: only meshers are allowed in meshers"))
 		}
 		switch current.Info {
@@ -252,19 +322,19 @@ func (c *config) parseMeshers(stage *Stage) { // meshers {}
 	}
 }
 func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
-	mesherName := c.ForwardExpect(TokenString)
+	mesherName := c.forwardExpect(tokenString)
 	mesher := stage.createQUICMesher(mesherName.Text)
 	mesher.setParent(stage)
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.Name(), current.Text, current.Line))
 		}
-		if c.NextIs(TokenEqual) { // =
+		if c.nextIs(tokenEqual) { // =
 			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
@@ -280,26 +350,26 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		}
 	}
 }
-func (c *config) parseQUICDealet(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqDealet <name> {}, qqqDealet {}
+func (c *config) parseQUICDealet(sign token, mesher *QUICMesher, kase *quicCase) { // qqqDealet <name> {}, qqqDealet {}
 	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseQUICEditor(sign Token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
+func (c *config) parseQUICEditor(sign token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
-	mesherName := c.ForwardExpect(TokenString)
+	mesherName := c.forwardExpect(tokenString)
 	mesher := stage.createTCPSMesher(mesherName.Text)
 	mesher.setParent(stage)
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.Name(), current.Text, current.Line))
 		}
-		if c.NextIs(TokenEqual) { // =
+		if c.nextIs(tokenEqual) { // =
 			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
@@ -315,26 +385,26 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseTCPSDealet(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
+func (c *config) parseTCPSDealet(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
 	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseTCPSEditor(sign Token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
+func (c *config) parseTCPSEditor(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
-	mesherName := c.ForwardExpect(TokenString)
+	mesherName := c.forwardExpect(tokenString)
 	mesher := stage.createUDPSMesher(mesherName.Text)
 	mesher.setParent(stage)
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.Name(), current.Text, current.Line))
 		}
-		if c.NextIs(TokenEqual) { // =
+		if c.nextIs(tokenEqual) { // =
 			c.parseAssign(current, mesher)
 		} else {
 			switch current.Text {
@@ -350,32 +420,32 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseUDPSDealet(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
+func (c *config) parseUDPSDealet(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
 	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseUDPSEditor(sign Token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
+func (c *config) parseUDPSEditor(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
-func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign Token, mesher M, kase *C), compName string) { // dealets, editors {}
-	c.ForwardExpect(TokenLeftBrace) // {
+func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign token, mesher M, kase *C), compName string) { // dealets, editors {}
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord || current.Info != comp {
+		if current.Kind != tokenWord || current.Info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, mesher, nil) // not in case
 	}
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign Token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
+func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
 	name := sign.Text
-	if current := c.Forward(); current.Kind == TokenString {
+	if current := c.forward(); current.Kind == tokenString {
 		name = current.Text
-		c.Forward()
+		c.forward()
 	} else if kase != nil { // in case
-		name = c.NewName()
+		name = c.newName()
 	}
 	component := create(sign.Text, name)
 	component.setParent(mesher)
@@ -386,13 +456,13 @@ func parseComponent1[M Component, T Component, C any](c *config, sign Token, mes
 }
 
 func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases {}
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord || current.Info != compCase {
+		if current.Kind != tokenWord || current.Info != compCase {
 			panic(errors.New("config error: only cases are allowed in cases"))
 		}
 		parseCase(mesher)
@@ -400,27 +470,27 @@ func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases 
 }
 
 func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase := mesher.createCase(c.newName()) // use a temp name by default
 	kase.setParent(mesher)
-	c.Forward()
-	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.Current().Text; caseName != "" {
+	c.forward()
+	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.current().Text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.Forward()
+			c.forward()
 		}
-		if !c.CurrentIs(TokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.ForwardExpect(TokenLeftBrace)
+			c.forwardExpect(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compQUICEditor {
@@ -431,27 +501,27 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 	}
 }
 func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase := mesher.createCase(c.newName()) // use a temp name by default
 	kase.setParent(mesher)
-	c.Forward()
-	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.Current().Text; caseName != "" {
+	c.forward()
+	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.current().Text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.Forward()
+			c.forward()
 		}
-		if !c.CurrentIs(TokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.ForwardExpect(TokenLeftBrace)
+			c.forwardExpect(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compTCPSEditor {
@@ -462,27 +532,27 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 	}
 }
 func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.NewName()) // use a temp name by default
+	kase := mesher.createCase(c.newName()) // use a temp name by default
 	kase.setParent(mesher)
-	c.Forward()
-	if !c.CurrentIs(TokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.CurrentIs(TokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.Current().Text; caseName != "" {
+	c.forward()
+	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.current().Text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.Forward()
+			c.forward()
 		}
-		if !c.CurrentIs(TokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.ForwardExpect(TokenLeftBrace)
+			c.forwardExpect(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.Name(), current.Text, current.Line))
 		}
 		if current.Info == compUDPSEditor {
@@ -493,31 +563,31 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 	}
 }
 func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
-	variable := c.Expect(TokenVariable)
-	c.Forward()
+	variable := c.expect(tokenVariable)
+	c.forward()
 	cond := caseCond{varCode: variable.Info}
-	var compare Token
-	if c.CurrentIs(TokenFSCheck) {
+	var compare token
+	if c.currentIs(tokenFSCheck) {
 		panic(errors.New("config error: fs check is not allowed in case"))
 	}
-	compare = c.Expect(TokenCompare)
+	compare = c.expect(tokenCompare)
 	patterns := []string{}
-	if current := c.Forward(); current.Kind == TokenString {
+	if current := c.forward(); current.Kind == tokenString {
 		patterns = append(patterns, current.Text)
-	} else if current.Kind == TokenLeftParen { // (
+	} else if current.Kind == tokenLeftParen { // (
 		for { // each element
-			current = c.Forward()
-			if current.Kind == TokenRightParen { // )
+			current = c.forward()
+			if current.Kind == tokenRightParen { // )
 				break
-			} else if current.Kind == TokenString {
+			} else if current.Kind == tokenString {
 				patterns = append(patterns, current.Text)
 			} else {
 				panic(errors.New("config error: only strings are allowed in cond"))
 			}
-			current = c.Forward()
-			if current.Kind == TokenRightParen { // )
+			current = c.forward()
+			if current.Kind == tokenRightParen { // )
 				break
-			} else if current.Kind != TokenComma {
+			} else if current.Kind != tokenComma {
 				panic(errors.New("config error: bad string list in cond"))
 			}
 		}
@@ -529,28 +599,28 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	kase.setInfo(cond)
 }
 
-func (c *config) parseStater(sign Token, stage *Stage) { // xxxStater <name> {}
+func (c *config) parseStater(sign token, stage *Stage) { // xxxStater <name> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
 
-func (c *config) parseCacher(sign Token, stage *Stage) { // xxxCacher <name> {}
+func (c *config) parseCacher(sign token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
 
-func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
-	appName := c.ForwardExpect(TokenString)
+func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
+	appName := c.forwardExpect(tokenString)
 	app := stage.createApp(appName.Text)
 	app.setParent(stage)
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.Name(), current.Text, current.Line))
 		}
-		if c.NextIs(TokenEqual) { // =
+		if c.nextIs(tokenEqual) { // =
 			c.parseAssign(current, app)
 		} else {
 			switch current.Text {
@@ -568,36 +638,36 @@ func (c *config) parseApp(sign Token, stage *Stage) { // app <name> {}
 		}
 	}
 }
-func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign Token, app *App, rule *Rule), compName string) { // handlets, revisers, socklets {}
-	c.ForwardExpect(TokenLeftBrace) // {
+func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign token, app *App, rule *Rule), compName string) { // handlets, revisers, socklets {}
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord || current.Info != comp {
+		if current.Kind != tokenWord || current.Info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, app, nil) // not in rule
 	}
 }
 
-func (c *config) parseHandlet(sign Token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+func (c *config) parseHandlet(sign token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
 	parseComponent2(c, sign, app, app.createHandlet, rule, rule.addHandlet)
 }
-func (c *config) parseReviser(sign Token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
+func (c *config) parseReviser(sign token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
 	parseComponent2(c, sign, app, app.createReviser, rule, rule.addReviser)
 }
-func (c *config) parseSocklet(sign Token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
+func (c *config) parseSocklet(sign token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
 }
-func parseComponent2[T Component](c *config, sign Token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+func parseComponent2[T Component](c *config, sign token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.Text
-	if current := c.Forward(); current.Kind == TokenString {
+	if current := c.forward(); current.Kind == tokenString {
 		name = current.Text
-		c.Forward()
+		c.forward()
 	} else if rule != nil { // in rule
-		name = c.NewName()
+		name = c.newName()
 	}
 	component := create(sign.Text, name)
 	component.setParent(app)
@@ -608,13 +678,13 @@ func parseComponent2[T Component](c *config, sign Token, app *App, create func(s
 }
 
 func (c *config) parseRules(app *App) { // rules {}
-	c.ForwardExpect(TokenLeftBrace) // {
+	c.forwardExpect(tokenLeftBrace) // {
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord || current.Info != compRule {
+		if current.Kind != tokenWord || current.Info != compRule {
 			panic(errors.New("config error: only rules are allowed in rules"))
 		}
 		c.parseRule(app)
@@ -622,27 +692,27 @@ func (c *config) parseRules(app *App) { // rules {}
 }
 
 func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
-	rule := app.createRule(c.NewName()) // use a temp name by default
+	rule := app.createRule(c.newName()) // use a temp name by default
 	rule.setParent(app)
-	c.Forward()
-	if !c.CurrentIs(TokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
-		if c.CurrentIs(TokenString) { // rule <name> {}, rule <name> <cond> {}
-			if ruleName := c.Current().Text; ruleName != "" {
+	c.forward()
+	if !c.currentIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
+		if c.currentIs(tokenString) { // rule <name> {}, rule <name> <cond> {}
+			if ruleName := c.current().Text; ruleName != "" {
 				rule.setName(ruleName) // change name
 			}
-			c.Forward()
+			c.forward()
 		}
-		if !c.CurrentIs(TokenLeftBrace) { // rule <name> <cond> {}
+		if !c.currentIs(tokenLeftBrace) { // rule <name> <cond> {}
 			c.parseRuleCond(rule)
-			c.ForwardExpect(TokenLeftBrace)
+			c.forwardExpect(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBrace { // }
+		current := c.forward()
+		if current.Kind == tokenRightBrace { // }
 			return
 		}
-		if current.Kind != TokenWord {
+		if current.Kind != tokenWord {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.Name(), current.Text, current.Line))
 		}
 		switch current.Info {
@@ -658,34 +728,34 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 	}
 }
 func (c *config) parseRuleCond(rule *Rule) {
-	variable := c.Expect(TokenVariable)
-	c.Forward()
+	variable := c.expect(tokenVariable)
+	c.forward()
 	cond := ruleCond{varCode: variable.Info}
-	var compare Token
-	if c.CurrentIs(TokenFSCheck) {
+	var compare token
+	if c.currentIs(tokenFSCheck) {
 		if variable.Text != "path" {
 			panic(fmt.Errorf("config error: only path is allowed to test against file system, but got %s\n", variable.Text))
 		}
-		compare = c.Current()
+		compare = c.current()
 	} else {
-		compare = c.Expect(TokenCompare)
+		compare = c.expect(tokenCompare)
 		patterns := []string{}
-		if current := c.Forward(); current.Kind == TokenString {
+		if current := c.forward(); current.Kind == tokenString {
 			patterns = append(patterns, current.Text)
-		} else if current.Kind == TokenLeftParen { // (
+		} else if current.Kind == tokenLeftParen { // (
 			for { // each element
-				current = c.Forward()
-				if current.Kind == TokenRightParen { // )
+				current = c.forward()
+				if current.Kind == tokenRightParen { // )
 					break
-				} else if current.Kind == TokenString {
+				} else if current.Kind == tokenString {
 					patterns = append(patterns, current.Text)
 				} else {
 					panic(errors.New("config error: only strings are allowed in cond"))
 				}
-				current = c.Forward()
-				if current.Kind == TokenRightParen { // )
+				current = c.forward()
+				if current.Kind == tokenRightParen { // )
 					break
-				} else if current.Kind != TokenComma {
+				} else if current.Kind != tokenComma {
 					panic(errors.New("config error: bad string list in cond"))
 				}
 			}
@@ -698,54 +768,54 @@ func (c *config) parseRuleCond(rule *Rule) {
 	rule.setInfo(cond)
 }
 
-func (c *config) parseSvc(sign Token, stage *Stage) { // svc <name> {}
-	svcName := c.ForwardExpect(TokenString)
+func (c *config) parseSvc(sign token, stage *Stage) { // svc <name> {}
+	svcName := c.forwardExpect(tokenString)
 	svc := stage.createSvc(svcName.Text)
 	svc.setParent(stage)
-	c.Forward()
+	c.forward()
 	c.parseAssigns(svc)
 }
 
-func (c *config) parseServer(sign Token, stage *Stage) { // xxxServer <name> {}
+func (c *config) parseServer(sign token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
-func (c *config) parseCronjob(sign Token, stage *Stage) { // xxxCronjob {}
+func (c *config) parseCronjob(sign token, stage *Stage) { // xxxCronjob {}
 	cronjob := stage.createCronjob(sign.Text)
 	cronjob.setParent(stage)
-	c.Forward()
+	c.forward()
 	c.parseAssigns(cronjob)
 }
 
 func (c *config) parseAssigns(component Component) {
-	c.Expect(TokenLeftBrace) // {
+	c.expect(tokenLeftBrace) // {
 	for {
-		switch current := c.Forward(); current.Kind {
-		case TokenWord:
+		switch current := c.forward(); current.Kind {
+		case tokenWord:
 			c.parseAssign(current, component)
-		case TokenRightBrace: // }
+		case tokenRightBrace: // }
 			return
 		default:
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.Name(), current.Text, current.Line))
 		}
 	}
 }
-func (c *config) parseAssign(prop Token, component Component) {
-	if c.NextIs(TokenLeftBrace) { // {
+func (c *config) parseAssign(prop token, component Component) {
+	if c.nextIs(tokenLeftBrace) { // {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.Text, prop.Line))
 	}
-	c.ForwardExpect(TokenEqual)
-	c.Forward()
+	c.forwardExpect(tokenEqual)
+	c.forward()
 	var value Value
 	c.parseValue(component, prop.Text, &value)
 	component.setProp(prop.Text, value)
 }
 
 func (c *config) parseValue(component Component, prop string, value *Value) {
-	current := c.Current()
+	current := c.current()
 	switch current.Kind {
-	case TokenBool:
-		*value = Value{TokenBool, current.Text == "true"}
-	case TokenInteger:
+	case tokenBool:
+		*value = Value{tokenBool, current.Text == "true"}
+	case tokenInteger:
 		last := current.Text[len(current.Text)-1]
 		if byteIsDigit(last) {
 			n64, err := strconv.ParseInt(current.Text, 10, 64)
@@ -755,7 +825,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			if n64 < 0 {
 				panic(errors.New("config error: negative integers are not allowed"))
 			}
-			*value = Value{TokenInteger, n64}
+			*value = Value{tokenInteger, n64}
 		} else {
 			size, err := strconv.ParseInt(current.Text[:len(current.Text)-1], 10, 64)
 			if err != nil {
@@ -774,11 +844,11 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			case 'T':
 				size *= T
 			}
-			*value = Value{TokenInteger, size}
+			*value = Value{tokenInteger, size}
 		}
-	case TokenString:
-		*value = Value{TokenString, current.Text}
-	case TokenDuration:
+	case tokenString:
+		*value = Value{tokenString, current.Text}
+	case tokenDuration:
 		last := len(current.Text) - 1
 		n, err := strconv.ParseInt(current.Text[:last], 10, 64)
 		if err != nil {
@@ -798,12 +868,12 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		case 'd':
 			d = time.Duration(n) * 24 * time.Hour
 		}
-		*value = Value{TokenDuration, d}
-	case TokenLeftParen: // (...)
+		*value = Value{tokenDuration, d}
+	case tokenLeftParen: // (...)
 		c.parseList(component, prop, value)
-	case TokenLeftBracket: // [...]
+	case tokenLeftBracket: // [...]
 		c.parseDict(component, prop, value)
-	case TokenWord:
+	case tokenWord:
 		if propRef := current.Text; prop == "" || prop == propRef {
 			panic(errors.New("config error: cannot refer to self"))
 		} else if valueRef, ok := component.Find(propRef); !ok {
@@ -815,33 +885,33 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		panic(fmt.Errorf("config error: expect a value, but get token %s=%s (in line %d)\n", current.Name(), current.Text, current.Line))
 	}
 
-	if value.Kind != TokenString {
+	if value.Kind != tokenString {
 		// Currently only strings can be concatenated
 		return
 	}
 
 	for {
 		// Any concatenations?
-		if !c.NextIs(TokenPlus) {
+		if !c.nextIs(tokenPlus) {
 			// No
 			break
 		}
 		// Yes.
-		c.Forward() // +
-		current = c.Forward()
+		c.forward() // +
+		current = c.forward()
 		var str Value
 		isString := false
-		if c.CurrentIs(TokenString) {
+		if c.currentIs(tokenString) {
 			isString = true
 			c.parseValue(component, prop, &str)
-		} else if c.CurrentIs(TokenWord) {
+		} else if c.currentIs(tokenWord) {
 			if propRef := current.Text; prop == "" || prop == propRef {
 				panic(errors.New("config error: cannot refer to self"))
 			} else if valueRef, ok := component.Find(propRef); !ok {
 				panic(errors.New("config error: refere to a prop that doesn't exist"))
 			} else {
 				str = valueRef
-				if str.Kind == TokenString {
+				if str.Kind == tokenString {
 					isString = true
 				}
 			}
@@ -849,53 +919,53 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		if isString {
 			value.Data = value.Data.(string) + str.Data.(string)
 		} else {
-			panic(errors.New("config error: cannot concat string with other types. token=" + c.Current().Text))
+			panic(errors.New("config error: cannot concat string with other types. token=" + c.current().Text))
 		}
 	}
 }
 func (c *config) parseList(component Component, prop string, value *Value) {
 	list := []Value{}
-	c.Expect(TokenLeftParen) // (
+	c.expect(tokenLeftParen) // (
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightParen { // )
+		current := c.forward()
+		if current.Kind == tokenRightParen { // )
 			break
 		}
 		var v Value
 		c.parseValue(component, prop, &v)
 		list = append(list, v)
-		current = c.Forward()
-		if current.Kind == TokenRightParen { // )
+		current = c.forward()
+		if current.Kind == tokenRightParen { // )
 			break
-		} else if current.Kind != TokenComma { // ,
+		} else if current.Kind != tokenComma { // ,
 			panic(fmt.Errorf("config error: bad list in line %d\n", current.Line))
 		}
 	}
-	value.Kind = TokenList
+	value.Kind = tokenList
 	value.Data = list
 }
 func (c *config) parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
-	c.Expect(TokenLeftBracket) // [
+	c.expect(tokenLeftBracket) // [
 	for {
-		current := c.Forward()
-		if current.Kind == TokenRightBracket { // ]
+		current := c.forward()
+		if current.Kind == tokenRightBracket { // ]
 			break
 		}
-		k := c.Expect(TokenString)
-		c.ForwardExpect(TokenColon) // :
-		c.Forward()
+		k := c.expect(tokenString)
+		c.forwardExpect(tokenColon) // :
+		c.forward()
 		var v Value
 		c.parseValue(component, prop, &v)
 		dict[k.Text] = v
-		current = c.Forward()
-		if current.Kind == TokenRightBracket { // ]
+		current = c.forward()
+		if current.Kind == tokenRightBracket { // ]
 			break
-		} else if current.Kind != TokenComma { // ,
+		} else if current.Kind != tokenComma { // ,
 			panic(fmt.Errorf("config error: bad dict in line %d\n", current.Line))
 		}
 	}
-	value.Kind = TokenDict
+	value.Kind = tokenDict
 	value.Data = dict
 }
 
@@ -913,4 +983,429 @@ type ruleCond struct {
 	compType  int8     // todo, undefined. for fast comparison
 	compare   string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
 	patterns  []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+}
+
+// lexer
+type lexer struct {
+	config string // the config text
+	index  int
+	limit  int
+	base   string
+	file   string
+}
+
+func (l *lexer) scanText(text string) []token {
+	l.config = text
+	return l.scan()
+}
+func (l *lexer) scanFile(base string, file string) []token {
+	l.base = base
+	l.file = file
+	return l.scan()
+}
+
+func (l *lexer) scan() []token {
+	if l.file != "" {
+		l.config = l.load(l.base, l.file)
+	}
+	l.index = 0
+	l.limit = len(l.config)
+	var tokens []token
+	line := int32(1)
+	for l.index < l.limit {
+		from := l.index
+		switch b := l.config[l.index]; b {
+		case ' ', '\r', '\t': // blank, ignore
+			l.index++
+		case '\n': // new line
+			line++
+			l.index++
+		case '#': // shell comment
+			l.nextUntil('\n')
+		case '/': // line comment or stream comment
+			if c := l.mustNext(); c == '/' { // line comment
+				l.nextUntil('\n')
+			} else if c == '*' { // shell comment
+				l.index++
+				for l.index < l.limit {
+					if d := l.config[l.index]; d == '/' && l.config[l.index-1] == '*' {
+						break
+					} else {
+						if d == '\n' {
+							line++
+						}
+						l.index++
+					}
+				}
+				l.checkEOF()
+				l.index++
+			} else {
+				panic(fmt.Errorf("lexer: unknown character %c (ascii %v) in line %d (%s)\n", b, b, line, l.file))
+			}
+		case '=': // = or ==
+			if l.index++; l.index < l.limit && l.config[l.index] == '=' { // ==
+				tokens = append(tokens, token{tokenCompare, 0, line, l.file, "=="})
+				l.index++
+			} else { // =
+				tokens = append(tokens, token{tokenEqual, 0, line, l.file, "="})
+			}
+		case '"', '`': // "string" or `string`
+			s := l.config[l.index] // " or `
+			l.index++
+			l.nextUntil(s)
+			l.checkEOF()
+			tokens = append(tokens, token{tokenString, 0, line, l.file, l.config[from+1 : l.index]})
+			l.index++
+		case '<': // <includedFile>
+			if l.base == "" {
+				panic(errors.New("lexer: include is not allowed in text mode"))
+			} else {
+				l.index++
+				l.nextUntil('>')
+				l.checkEOF()
+				file := l.config[from+1 : l.index]
+				l.index++
+				var ll lexer
+				tokens = append(tokens, ll.scanFile(l.base, file)...)
+			}
+		case '@': // @constant
+			l.nextAlnums()
+			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.config[from+1 : l.index]})
+		case '%': // %variable
+			l.nextAlnums()
+			tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.config[from+1 : l.index]})
+		case '^', '$', '*', '~': // ^=, $=, *=, ~=
+			if l.mustNext() != '=' {
+				panic(fmt.Errorf("lexer: unknown character %c (ascii %v) in line %d (%s)\n", b, b, line, l.file))
+			}
+			l.index++
+			tokens = append(tokens, token{tokenCompare, 0, line, l.file, l.config[from:l.index]})
+		case '-': // -f, -d, -e, -D, -E
+			if c := l.mustNext(); c != 'f' && c != 'd' && c != 'e' && c != 'D' && c != 'E' {
+				panic(fmt.Errorf("lexer: not a valid FSCHECK in line %d (%s)\n", line, l.file))
+			}
+			l.index++
+			tokens = append(tokens, token{tokenFSCheck, 0, line, l.file, l.config[from:l.index]})
+		case '!': // !=, !^, !$, !*, !~, !f, !d, !e
+			if c := l.mustNext(); c == '=' || c == '^' || c == '$' || c == '*' || c == '~' {
+				tokens = append(tokens, token{tokenCompare, 0, line, l.file, l.config[from : l.index+1]})
+			} else if c == 'f' || c == 'd' || c == 'e' {
+				tokens = append(tokens, token{tokenFSCheck, 0, line, l.file, l.config[from : l.index+1]})
+			} else {
+				panic(fmt.Errorf("lexer: not a valid COMPARE or FSCHECK in line %d (%s)\n", line, l.file))
+			}
+			l.index++
+		case '&': // &&
+			if l.mustNext() != '&' {
+				panic(fmt.Errorf("lexer: not a valid AND in line %d (%s)\n", line, l.file))
+			}
+			tokens = append(tokens, token{tokenAND, 0, line, l.file, "&&"})
+			l.index++
+		case '|': // ||
+			if l.mustNext() != '|' {
+				panic(fmt.Errorf("lexer: not a valid OR in line %d (%s)\n", line, l.file))
+			}
+			tokens = append(tokens, token{tokenOR, 0, line, l.file, "||"})
+			l.index++
+		default:
+			if kind := soloKinds[b]; kind != 0 { // kind starts from 1
+				tokens = append(tokens, token{kind, 0, line, l.file, soloTexts[b]})
+				l.index++
+			} else if byteIsAlpha(b) {
+				l.nextAlnums()
+				if word := l.config[from:l.index]; word == "true" || word == "false" {
+					tokens = append(tokens, token{tokenBool, 0, line, l.file, word})
+				} else {
+					tokens = append(tokens, token{tokenWord, 0, line, l.file, word})
+				}
+			} else if byteIsDigit(b) {
+				l.nextDigits()
+				digits := true
+				if l.index < l.limit {
+					switch l.config[l.index] {
+					case 's', 'm', 'h', 'd':
+						digits = false
+						l.index++
+						tokens = append(tokens, token{tokenDuration, 0, line, l.file, l.config[from:l.index]})
+					case 'K', 'M', 'G', 'T':
+						digits = false
+						l.index++
+						tokens = append(tokens, token{tokenInteger, 0, line, l.file, l.config[from:l.index]})
+					}
+				}
+				if digits {
+					tokens = append(tokens, token{tokenInteger, 0, line, l.file, l.config[from:l.index]})
+				}
+			} else {
+				panic(fmt.Errorf("lexer: unknown character %c (ascii %v) in line %d (%s)\n", b, b, line, l.file))
+			}
+		}
+	}
+	return tokens
+}
+
+func (l *lexer) nextUntil(b byte) {
+	if i := strings.IndexByte(l.config[l.index:], b); i == -1 {
+		l.index = l.limit
+	} else {
+		l.index += i
+	}
+}
+func (l *lexer) mustNext() byte {
+	l.index++
+	l.checkEOF()
+	return l.config[l.index]
+}
+func (l *lexer) checkEOF() {
+	if l.index == l.limit {
+		panic(errors.New("lexer: unexpected eof"))
+	}
+}
+func (l *lexer) nextAlnums() {
+	for l.index++; l.index < l.limit && byteIsAlnum(l.config[l.index]); l.index++ {
+	}
+}
+func (l *lexer) nextDigits() {
+	for l.index++; l.index < l.limit && byteIsDigit(l.config[l.index]); l.index++ {
+	}
+}
+
+func (l *lexer) load(base string, file string) string {
+	if true { // TODO
+		return l._loadFS(base, file)
+	} else {
+		return l._loadURL(base, file)
+	}
+}
+func (l *lexer) _loadFS(base string, file string) string {
+	path := file
+	if file[0] != '/' {
+		if base[len(base)-1] == '/' {
+			path = base + file
+		} else {
+			path = base + "/" + file
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
+}
+func (l *lexer) _loadURL(base string, file string) string {
+	// TODO
+	return ""
+}
+
+// token
+type token struct { // 40 bytes
+	Kind int16  // TokenXXX
+	Info int16  // comp for words, or code for variables
+	Line int32  // at line number
+	File string // file path
+	Text string // text literal
+}
+
+func (t token) Name() string { return tokenNames[t.Kind] }
+func (t token) String() string {
+	return fmt.Sprintf("kind=%16s info=%2d line=%4d file=%s    %s", t.Name(), t.Info, t.Line, t.File, t.Text)
+}
+
+const ( // token list. if you change this list, change in tokenNames too.
+	// Word
+	tokenWord = 1 + iota // address, hostnames, ...
+	// Operators
+	tokenLeftBrace    // {
+	tokenRightBrace   // }
+	tokenLeftBracket  // [
+	tokenRightBracket // ]
+	tokenLeftParen    // (
+	tokenRightParen   // )
+	tokenComma        // ,
+	tokenColon        // :
+	tokenPlus         // +
+	tokenEqual        // =
+	tokenCompare      // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
+	tokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
+	tokenAND          // &&
+	tokenOR           // ||
+	// Constants
+	tokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
+	// Variables
+	tokenVariable // %method, %path, ...
+	// Values
+	tokenBool     // true, false
+	tokenInteger  // 123, 16K, 256M, ...
+	tokenString   // "", "abc", `def`, ...
+	tokenDuration // 1s, 2m, 3h, 4d, ...
+	tokenList     // lists: (...)
+	tokenDict     // dicts: [...]
+)
+
+var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
+	// Word
+	tokenWord: "word",
+	// Operators
+	tokenLeftBrace:    "leftBrace",
+	tokenRightBrace:   "rightBrace",
+	tokenLeftBracket:  "leftBracket",
+	tokenRightBracket: "rightBracket",
+	tokenLeftParen:    "leftParen",
+	tokenRightParen:   "rightParen",
+	tokenComma:        "comma",
+	tokenColon:        "colon",
+	tokenPlus:         "plus",
+	tokenEqual:        "equal",
+	tokenCompare:      "compare",
+	tokenFSCheck:      "fsCheck",
+	tokenAND:          "and",
+	tokenOR:           "or",
+	// Constants
+	tokenConstant: "constant",
+	// Variables
+	tokenVariable: "variable",
+	// Value literals
+	tokenBool:     "bool",
+	tokenInteger:  "integer",
+	tokenString:   "string",
+	tokenDuration: "duration",
+	tokenList:     "list",
+	tokenDict:     "dict",
+}
+
+var soloKinds = [256]int16{ // keep sync with soloTexts
+	'{': tokenLeftBrace,
+	'}': tokenRightBrace,
+	'[': tokenLeftBracket,
+	']': tokenRightBracket,
+	'(': tokenLeftParen,
+	')': tokenRightParen,
+	',': tokenComma,
+	':': tokenColon,
+	'+': tokenPlus,
+}
+var soloTexts = [...]string{ // keep sync with soloKinds
+	'{': "{",
+	'}': "}",
+	'[': "[",
+	']': "]",
+	'(': "(",
+	')': ")",
+	',': ",",
+	':': ":",
+	'+': "+",
+}
+
+// Value is a value in config file.
+type Value struct {
+	Kind int16 // TokenXXX in values
+	Data any   // bools, integers, strings, durations, lists, and dicts
+}
+
+func (v *Value) IsBool() bool     { return v.Kind == tokenBool }
+func (v *Value) IsInteger() bool  { return v.Kind == tokenInteger }
+func (v *Value) IsString() bool   { return v.Kind == tokenString }
+func (v *Value) IsDuration() bool { return v.Kind == tokenDuration }
+func (v *Value) IsList() bool     { return v.Kind == tokenList }
+func (v *Value) IsDict() bool     { return v.Kind == tokenDict }
+
+func (v *Value) Bool() (b bool, ok bool) {
+	b, ok = v.Data.(bool)
+	return
+}
+func (v *Value) Int64() (i64 int64, ok bool) {
+	i64, ok = v.Data.(int64)
+	return
+}
+func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
+	i64, ok := v.Int64()
+	i = T(i64)
+	if ok && int64(i) != i64 {
+		ok = false
+	}
+	return
+}
+func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
+func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
+func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
+func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
+func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
+func (v *Value) String() (s string, ok bool) {
+	s, ok = v.Data.(string)
+	return
+}
+func (v *Value) Bytes() (p []byte, ok bool) {
+	if s, isString := v.String(); isString {
+		return []byte(s), true
+	}
+	return
+}
+func (v *Value) Duration() (d time.Duration, ok bool) {
+	d, ok = v.Data.(time.Duration)
+	return
+}
+func (v *Value) List() (list []Value, ok bool) {
+	list, ok = v.Data.([]Value)
+	return
+}
+func (v *Value) ListN(n int) (list []Value, ok bool) {
+	list, ok = v.Data.([]Value)
+	if ok && n >= 0 && len(list) != n {
+		ok = false
+	}
+	return
+}
+func (v *Value) StringList() (list []string, ok bool) {
+	l, ok := v.Data.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, s)
+			}
+		}
+	}
+	return
+}
+func (v *Value) BytesList() (list [][]byte, ok bool) {
+	l, ok := v.Data.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, []byte(s))
+			}
+		}
+	}
+	return
+}
+func (v *Value) StringListN(n int) (list []string, ok bool) {
+	l, ok := v.Data.([]Value)
+	if !ok {
+		return
+	}
+	if n >= 0 && len(l) != n {
+		ok = false
+		return
+	}
+	for _, value := range l {
+		if s, ok := value.String(); ok {
+			list = append(list, s)
+		}
+	}
+	return
+}
+func (v *Value) Dict() (dict map[string]Value, ok bool) {
+	dict, ok = v.Data.(map[string]Value)
+	return
+}
+func (v *Value) StringDict() (dict map[string]string, ok bool) {
+	d, ok := v.Data.(map[string]Value)
+	if ok {
+		dict = make(map[string]string)
+		for name, value := range d {
+			if s, ok := value.String(); ok {
+				dict[name] = s
+			}
+		}
+	}
+	return
 }

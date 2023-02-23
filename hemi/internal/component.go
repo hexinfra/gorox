@@ -8,7 +8,6 @@
 package internal
 
 import (
-	. "github.com/hexinfra/gorox/hemi/libraries/config"
 	"sync"
 	"time"
 )

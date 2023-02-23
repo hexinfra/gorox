@@ -950,7 +950,7 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 }
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	for i := 0; i < len(r.headers); i++ {
+	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
 		header := &r.headers[i]
 		if header.hash != 0 && !header.isSubField() {
 			if !fn(header.hash, header.nameAt(r.input), header.valueAt(r.input)) {

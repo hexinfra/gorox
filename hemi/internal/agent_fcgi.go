@@ -308,7 +308,7 @@ type fcgiRequest struct { // outgoing. needs building
 	paramsHeader [8]byte // used by params record
 	stdinHeader  [8]byte // used by stdin record
 	// States (non-zeros)
-	params      []byte        // place the content of exactly one FCGI_PARAMS record
+	params      []byte        // place the content of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
 	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
@@ -325,8 +325,8 @@ type fcgiRequest0 struct { // for fast reset, entirely
 }
 
 func (r *fcgiRequest) onUse() {
-	r.paramsHeader = fcgiParamsHeader // contentLen (r.paramsHeader[4:6]) needs modification
-	r.stdinHeader = fcgiStdinHeader   // contentLen (r.stdinHeader[4:6]) needs modification for every stdin record
+	copy(r.paramsHeader[:], fcgiEmptyParams) // contentLen (r.paramsHeader[4:6]) needs modification
+	copy(r.stdinHeader[:], fcgiEmptyStdin)   // contentLen (r.stdinHeader[4:6]) needs modification for every stdin record
 	r.params = r.stockParams[:]
 	r.contentSize = -1 // not set
 	r.sendTimeout = r.stream.agent.sendTimeout
@@ -399,8 +399,8 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 		r.vector[0] = fcgiBeginDontKeep
 	}
 	r.vector[1] = r.paramsHeader[:]
-	r.vector[2] = r.params[:r.paramsEdge] // effective content of the params record
-	r.vector[3] = fcgiEndParams
+	r.vector[2] = r.params[:r.paramsEdge] // effective params
+	r.vector[3] = fcgiEmptyParams
 	if _, err := r.stream.writev(&r.vector); err != nil {
 		return err
 	}
@@ -410,12 +410,12 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 			size := len(p)
 			r.stdinHeader[4] = byte(size >> 8)
 			r.stdinHeader[5] = byte(size)
-			if err == io.EOF { // EOF is immediate, write with fcgiEndStdin
+			if err == io.EOF { // EOF is immediate, write with emptyStdin
 				// TODO
 				r.vector = r.fixedVector[0:3]
 				r.vector[0] = r.stdinHeader[:]
 				r.vector[1] = p
-				r.vector[2] = fcgiEndStdin
+				r.vector[2] = fcgiEmptyStdin
 				_, e := r.stream.writev(&r.vector)
 				return e
 			}
@@ -434,7 +434,7 @@ func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
 			return err
 		}
 	}
-	_, err := r.stream.write(fcgiEndStdin)
+	_, err := r.stream.write(fcgiEmptyStdin)
 	return err
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
@@ -448,17 +448,17 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 		}
 		return r.sendFile(contentFile, fileInfo)
 	} else { // nil means no content.
-		// TODO: beginRequest + params + fcgiEndStdin
+		// TODO: beginRequest + params + emptyParams + emptyStdin
 		return nil
 	}
 }
 
 func (r *fcgiRequest) sendBlob(content []byte) error {
-	// TODO: beginRequest + params + stdin * N + fcgiEndStdin
+	// TODO: beginRequest + params + emptyParams + stdin * N + emptyStdin
 	return nil
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	// TODO: beginRequest + params + stdin * N + fcgiEndStdin
+	// TODO: beginRequest + params + emptyParams + stdin * N + emptyStdin
 	// TODO: use a buffer, for content, read to buffer, write buffer
 	return nil
 }
@@ -474,7 +474,7 @@ func (r *fcgiRequest) _beforeWrite() error {
 // poolFCGIParams
 var poolFCGIParams sync.Pool
 
-const fcgiMaxParams = _16K // header + content
+const fcgiMaxParams = _16K // max effective params
 
 func getFCGIParams() []byte {
 	if x := poolFCGIParams.Get(); x == nil {
@@ -551,7 +551,7 @@ func (r *fcgiResponse) onUse() {
 func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
 		if cap(r.records) == fcgiMaxRecords {
-			putFCGIMaxRecords(r.records)
+			putFCGIRecords(r.records)
 		} else { // 16K
 			PutNK(r.records)
 		}
@@ -643,7 +643,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 	}
 	return true
 }
-func (r *fcgiResponse) recvHeaders() bool {
+func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-value OWS CRLF ) CRLF
 	// generic-response = 1*header-field NL [ response-body ]
 	// header-field    = CGI-field | generic-field
 	// CGI-field       = Content-Type | Location | Status
@@ -777,7 +777,7 @@ func (r *fcgiResponse) Status() int16 { return r.status }
 func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
-		from := len(r.headers) + 1 // excluding original header. overflow doesn't matter
+		from := len(r.headers) + 1 // excluding original header
 		if !r.addMultipleHeader(header) {
 			// r.headResult is set.
 			return false
@@ -865,7 +865,7 @@ func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
 	return false
 }
 func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
-	// TODO
+	r.indexes.location = uint8(index)
 	return true
 }
 
@@ -875,7 +875,64 @@ func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 		// r.headResult is set.
 		return false
 	}
-	// TODO
+	// RFC 7230 (section 7):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
+	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
+	subHeader := *header // clone header
+	subHeader.setSubField(true)
+	value := header.value
+	needComma := false
+	for { // each element
+		haveComma := false
+		for value.from < header.value.edge {
+			if b := r.input[value.from]; b == ',' {
+				haveComma = true
+				value.from++
+			} else if b == ' ' || b == '\t' {
+				value.from++
+			} else {
+				break
+			}
+		}
+		if value.from == header.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+			return false
+		}
+		value.edge = value.from
+		if r.input[value.edge] == '"' { // value is quoted?
+			value.edge++
+			for value.edge < header.value.edge && r.input[value.edge] != '"' {
+				value.edge++
+			}
+			if value.edge == header.value.edge {
+				subHeader.value = value // value is `"...`
+			} else { // got a `"`
+				subHeader.value.set(value.from+1, value.edge) // strip `""`
+				value.edge++
+			}
+		} else { // not a quoted value
+			for value.edge < header.value.edge {
+				if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
+					break
+				} else {
+					value.edge++
+				}
+			}
+			subHeader.value = value
+		}
+		if subHeader.value.notEmpty() {
+			if !r.addHeader(&subHeader) {
+				// r.headResult is set.
+				return false
+			}
+		}
+		value.from = value.edge
+		needComma = true
+	}
 	return true
 }
 func (r *fcgiResponse) addHeader(header *pair) bool {
@@ -893,8 +950,15 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 }
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	// TODO
-	return false
+	for i := 0; i < len(r.headers); i++ {
+		header := &r.headers[i]
+		if header.hash != 0 && !header.isSubField() {
+			if !fn(header.hash, header.nameAt(r.input), header.valueAt(r.input)) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (r *fcgiResponse) checkHead() bool {
@@ -1021,7 +1085,7 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 		}
 	}
 }
-func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after empty stdout, endRequest is followed.
+func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after emptyStdout, endRequest is followed.
 	for { // only for endRequest records
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
@@ -1066,7 +1130,7 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 			if recordSize <= _16K {
 				records = Get16K()
 			} else { // recordSize > _16K
-				records = getFCGIMaxRecords()
+				records = getFCGIRecords()
 			}
 			r._slideRecords(records)
 			if cap(r.records) != cap(r.stockRecords) {
@@ -1117,7 +1181,9 @@ func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to gro
 		r.recordsFrom = 0
 	}
 }
-func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K or larger buffer
+
+/*
+func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K or larger r.records
 	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
 		records := Get16K()
 		if imme := r.imme; imme.notEmpty() {
@@ -1128,33 +1194,80 @@ func (r *fcgiResponse) _switchRecords() { // for better performance when receivi
 		// Has been 16K or fcgiMaxRecords already, do nothing.
 	}
 }
+*/
 
 var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
 )
 
-// poolFCGIMaxRecords
-var poolFCGIMaxRecords sync.Pool
+// poolFCGIRecords
+var poolFCGIRecords sync.Pool
 
 const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max content + max padding
 
-func getFCGIMaxRecords() []byte {
-	if x := poolFCGIMaxRecords.Get(); x == nil {
+func getFCGIRecords() []byte {
+	if x := poolFCGIRecords.Get(); x == nil {
 		return make([]byte, fcgiMaxRecords)
 	} else {
 		return x.([]byte)
 	}
 }
-func putFCGIMaxRecords(maxRecords []byte) {
-	if cap(maxRecords) != fcgiMaxRecords {
-		BugExitln("fcgi: bad maxRecords")
+func putFCGIRecords(records []byte) {
+	if cap(records) != fcgiMaxRecords {
+		BugExitln("fcgi: bad records")
 	}
-	poolFCGIMaxRecords.Put(maxRecords)
+	poolFCGIRecords.Put(records)
 }
 
 // FCGI protocol elements.
 
-var ( // fcgi param names
+// FCGI Record = FCGI Header(8) + content + padding
+// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
+
+const ( // fcgi constants
+	fcgiHeaderSize = 8
+	fcgiMaxPadding = 255
+)
+
+// Discrete records are standalone.
+// Streamed records end with an empty record (contentLen=0).
+
+const ( // request record types
+	fcgiTypeBeginRequest = 1 // [D] only one
+	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an emptyParams record)
+	fcgiTypeStdin        = 5 // [S] many (ends with an emptyStdin record)
+)
+
+var ( // request records
+	fcgiBeginKeepConn = []byte{ // 16 bytes
+		1, fcgiTypeBeginRequest, // version, type
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
+		0, 8, // content length = 8
+		0, 0, // padding length = 0, reserved = 0
+		0, 1, 1, 0, 0, 0, 0, 0, // role=responder, flags=keepConn
+	}
+	fcgiBeginDontKeep = []byte{ // 16 bytes
+		1, fcgiTypeBeginRequest, // version, type
+		0, 1, // request id = 1
+		0, 8, // content length = 8
+		0, 0, // padding length = 0, reserved = 0
+		0, 1, 0, 0, 0, 0, 0, 0, // role=responder, flags=dontKeep
+	}
+	fcgiEmptyParams = []byte{ // 8 bytes
+		1, fcgiTypeParams, // version, type
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0, reserved = 0
+	}
+	fcgiEmptyStdin = []byte{ // 8 bytes
+		1, fcgiTypeStdin, // version, type
+		0, 1, // request id = 1
+		0, 0, // content length = 0
+		0, 0, // padding length = 0, reserved = 0
+	}
+)
+
+var ( // request param names
 	fcgiBytesAuthType         = []byte("AUTH_TYPE")
 	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
 	fcgiBytesContentType      = []byte("CONTENT_TYPE")
@@ -1180,88 +1293,18 @@ var ( // fcgi param names
 	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
 )
 
-var ( // fcgi param values
+var ( // request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
 	fcgiBytesGorox  = []byte("gorox")
 )
 
-const ( // fcgi hashes
-	fcgiHashStatus = 676
-)
-
-// FCGI Record = FCGI Header(8) + content + padding
-// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
-
-const ( // fcgi constants
-	fcgiHeaderSize = 8
-	fcgiMaxPadding = 255
-)
-
-// Discrete records are standalone.
-// Streamed records end with an empty record (contentLen=0).
-
-const ( // request record types
-	fcgiTypeBeginRequest = 1 // [D] only one
-	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an empty params record)
-	fcgiTypeStdin        = 5 // [S] many (ends with an empty stdin record)
-)
-
-var ( // predefined request records
-	fcgiBeginKeepConn = []byte{ // 16 bytes
-		// header=8
-		1, fcgiTypeBeginRequest, // version, type
-		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
-		0, 8, // content length = 8
-		0, 0, // padding length = 0, reserved = 0
-		// content=8
-		0, 1, 1, // role=responder, flags=keepConn
-		0, 0, 0, 0, 0, // reserved
-	}
-	fcgiBeginDontKeep = []byte{ // 16 bytes
-		// header=8
-		1, fcgiTypeBeginRequest, // version, type
-		0, 1, // request id = 1
-		0, 8, // content length = 8
-		0, 0, // padding length = 0, reserved = 0
-		// content=8
-		0, 1, 0, // role=responder, flags=dontKeep
-		0, 0, 0, 0, 0, // reserved
-	}
-	fcgiParamsHeader = [8]byte{ // 8 bytes
-		// header=8
-		1, fcgiTypeParams, // version, type
-		0, 1, // request id = 1
-		0, 0, // content length = 0
-		0, 0, // padding length = 0, reserved = 0
-	}
-	fcgiEndParams = []byte{ // 8 bytes
-		// header=8
-		1, fcgiTypeParams, // version, type
-		0, 1, // request id = 1
-		0, 0, // content length = 0
-		0, 0, // padding length = 0, reserved = 0
-		// content=0
-	}
-	fcgiStdinHeader = [8]byte{ // 8 bytes
-		// header=8
-		1, fcgiTypeStdin, // version, type
-		0, 1, // request id = 1
-		0, 0, // content length = 0
-		0, 0, // padding length = 0, reserved = 0
-	}
-	fcgiEndStdin = []byte{ // 8 bytes
-		// header=8
-		1, fcgiTypeStdin, // version, type
-		0, 1, // request id = 1
-		0, 0, // content length = 0
-		0, 0, // padding length = 0, reserved = 0
-		// content=0
-	}
-)
-
 const ( // response record types
-	fcgiTypeStdout     = 6 // [S] many (ends with an empty stdout record)
-	fcgiTypeStderr     = 7 // [S] many (ends with an empty stderr record)
+	fcgiTypeStdout     = 6 // [S] many (ends with an emptyStdout record)
+	fcgiTypeStderr     = 7 // [S] many (ends with an emptyStderr record)
 	fcgiTypeEndRequest = 3 // [D] only one
+)
+
+const ( // response header hashes
+	fcgiHashStatus = 676
 )

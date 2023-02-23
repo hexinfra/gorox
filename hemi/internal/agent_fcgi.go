@@ -39,8 +39,8 @@ type fcgiAgent struct {
 	backend PBackend // *TCPSBackend or *UnixBackend
 	cacher  Cacher   // the cache server which is used by this agent
 	// States
-	scriptFilename      []byte        // ...
-	bufferClientContent bool          // ...
+	scriptFilename      []byte        // for SCRIPT_FILENAME
+	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
 	keepConn            bool          // instructs FCGI server to keep conn?
 	addRequestHeaders   [][2][]byte   // headers appended to client request
@@ -584,8 +584,8 @@ func (r *fcgiResponse) onEnd() {
 	r.fcgiResponse0 = fcgiResponse0{}
 }
 
-func (r *fcgiResponse) _readStdout() (int32, int32, error) { // only for stdout records
-	for {
+func (r *fcgiResponse) _readStdout() (int32, int32, error) {
+	for { // only for stdout records
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, 0, err
@@ -601,8 +601,8 @@ func (r *fcgiResponse) _readStdout() (int32, int32, error) { // only for stdout 
 		}
 	}
 }
-func (r *fcgiResponse) _readEndRequest() (appStatus int32, err error) { // only for endRequest records
-	for {
+func (r *fcgiResponse) _readEndRequest() (appStatus int32, err error) {
+	for { // only for endRequest records
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, err
@@ -689,7 +689,7 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	r.recordsEdge += int32(n)
 	return n, nil
 }
-func (r *fcgiResponse) _slideRecords(records []byte) {
+func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to grow
 	if r.recordsFrom > 0 {
 		copy(records, r.records[r.recordsFrom:r.recordsEdge])
 		r.recordsEdge -= r.recordsFrom
@@ -699,7 +699,7 @@ func (r *fcgiResponse) _slideRecords(records []byte) {
 		r.recordsFrom = 0
 	}
 }
-func (r *fcgiResponse) _switchRecords() { // for performance when receiving response content, we need a 16K buffer
+func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K buffer
 	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
 		records := Get16K()
 		if imme := r.imme; imme.notEmpty() {

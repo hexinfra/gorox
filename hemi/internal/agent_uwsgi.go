@@ -27,13 +27,14 @@ func init() {
 type uwsgiAgent struct {
 	// Mixins
 	Handlet_
+	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage
-	app     *App
+	stage   *Stage   // current stage
+	app     *App     // the app to which the agent belongs
 	backend PBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher
+	cacher  Cacher   // the cache server which is used by this agent
 	// States
-	bufferClientContent bool // ...
+	bufferClientContent bool // client content is buffered anyway?
 	bufferServerContent bool // server content is buffered anyway?
 }
 
@@ -47,6 +48,7 @@ func (h *uwsgiAgent) OnShutdown() {
 }
 
 func (h *uwsgiAgent) OnConfigure() {
+	h.contentSaver_.onConfigure(h, TempDir()+"/uwsgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -75,10 +77,13 @@ func (h *uwsgiAgent) OnConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
+	// bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
 func (h *uwsgiAgent) OnPrepare() {
+	h.contentSaver_.onPrepare(h, 0755)
 }
 
 func (h *uwsgiAgent) IsProxy() bool { return true }

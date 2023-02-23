@@ -5,17 +5,12 @@ import (
 )
 
 func main() {
-	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE PATCH LINK UNLINK QUERY"))
-	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via"))
-	//calc([]byte("accept-encoding accept-ranges allow cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate"))
 	//calc([]byte("content-length content-range content-type date etag expires last-modified location server set-cookie"))
-	//calc([]byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent"))
-	//calc([]byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade"))
-	//calc([]byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade"))
 	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE"))
-	//calc([]byte("connection transfer-encoding upgrade"))
-	calc([]byte("content-length content-type location status"))
-	//println(sum("proxy-authenticate"))
+	//calc([]byte("content-length content-type location status"))
+	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for"))
+
+	println(sum("x-forwarded-for"))
 }
 
 type Node struct {
@@ -53,7 +48,7 @@ func calc(s []byte) {
 	this := make([]int, size)
 	good := 0
 search:
-	for k := 1; k < 48924604; k++ {
+	for k := 1; k < 1148924604; k++ {
 		copy(this, zero)
 		for _, node := range nodes {
 			i := k / node.hash % size
@@ -69,6 +64,26 @@ search:
 
 	fmt.Printf("good=%d size=%d\n", good, size)
 	for _, node := range nodes {
-		fmt.Printf("%d:{%d, %d, %d, %s},\n", good/node.hash%size, node.hash, node.from, node.edge, s[node.from:node.edge])
+		name := showName(string(s[node.from:node.edge]))
+		fmt.Printf("%d:{%s, %d, %d, %s},\n", good/node.hash%size, "hash"+name, node.from, node.edge, "check"+name)
 	}
+}
+
+func showName(name string) string {
+	s := ""
+	upper := true
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if c == '-' {
+			upper = true
+			continue
+		}
+		if upper {
+			s += string(c - 0x20)
+			upper = false
+		} else {
+			s += string(c)
+		}
+	}
+	return s
 }

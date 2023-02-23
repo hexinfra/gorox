@@ -1915,6 +1915,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashRange              = 525
 	hashTE                 = 217
 	hashUserAgent          = 1019
+	hashXForwardedFor      = 1495
 	// Response fields
 	hashAcceptRanges      = 1309
 	hashAge               = 301
@@ -1975,6 +1976,7 @@ var ( // byteses of http fields.
 	bytesRange              = []byte("range")
 	bytesTE                 = []byte("te")
 	bytesUserAgent          = []byte("user-agent")
+	bytesXForwardedFor      = []byte("x-forwarded-for")
 	// Response fields
 	bytesAcceptRanges      = []byte("accept-ranges")
 	bytesAge               = []byte("age")

@@ -787,33 +787,35 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 }
 
 var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via")
-	httpRequestMultipleHeaderTable = [17]struct {
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestMultipleHeaderTable = [19]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		must  bool // true if 1#, false if #
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {hashAccept, 0, 6, false, nil},                                                // Accept = #( media-range [ accept-params ] )
-		1:  {hashForwarded, 113, 122, true, nil},                                          // Forwarded = 1#forwarded-element
-		2:  {hashUpgrade, 182, 189, true, (*httpRequest_).checkUpgrade},                   // Upgrade = 1#protocol
-		3:  {hashCacheControl, 54, 67, true, (*httpRequest_).checkCacheControl},           // Cache-Control = 1#cache-directive
-		4:  {hashAcceptLanguage, 38, 53, true, nil},                                       // Accept-Language = 1#( language-range [ weight ] )
-		5:  {hashTE, 153, 155, false, (*httpRequest_).checkTE},                            // TE = #t-codings
-		6:  {hashContentEncoding, 79, 95, true, (*httpRequest_).checkContentEncoding},     // Content-Encoding = 1#content-coding
-		7:  {hashAcceptEncoding, 22, 37, false, (*httpRequest_).checkAcceptEncoding},      // Accept-Encoding = #( codings [ weight ] )
-		8:  {hashVia, 190, 193, true, nil},                                                // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
-		9:  {hashContentLanguage, 96, 112, true, nil},                                     // Content-Language = 1#language-tag
-		10: {hashConnection, 68, 78, true, (*httpRequest_).checkConnection},               // Connection = 1#connection-option
-		11: {hashPragma, 146, 152, true, nil},                                             // Pragma = 1#pragma-directive
-		12: {hashTransferEncoding, 164, 181, true, (*httpRequest_).checkTransferEncoding}, // Transfer-Encoding = 1#transfer-coding
-		13: {hashTrailer, 156, 163, true, nil},                                            // Trailer = 1#field-name
-		14: {hashAcceptCharset, 7, 21, true, nil},                                         // Accept-Charset = 1#( ( charset / "*" ) [ weight ] )
-		15: {hashIfMatch, 123, 131, false, (*httpRequest_).checkIfMatch},                  // If-Match = "*" / #entity-tag
-		16: {hashIfNoneMatch, 132, 145, false, (*httpRequest_).checkIfNoneMatch},          // If-None-Match = "*" / #entity-tag
+		0:  {hashTE, 160, 162, false, (*httpRequest_).checkTE},
+		1:  {hashAcceptLanguage, 38, 53, true, nil},
+		2:  {hashForwarded, 120, 129, true, nil},
+		3:  {hashTransferEncoding, 171, 188, true, (*httpRequest_).checkTransferEncoding},
+		4:  {hashConnection, 68, 78, true, (*httpRequest_).checkConnection},
+		5:  {hashXForwardedFor, 201, 216, true, (*httpRequest_).checkXForwardedFor},
+		6:  {hashVia, 197, 200, true, nil},
+		7:  {hashContentEncoding, 79, 95, true, (*httpRequest_).checkContentEncoding},
+		8:  {hashIfNoneMatch, 139, 152, false, (*httpRequest_).checkIfNoneMatch},
+		9:  {hashCacheControl, 54, 67, true, (*httpRequest_).checkCacheControl},
+		10: {hashTrailer, 163, 170, true, nil},
+		11: {hashAcceptEncoding, 22, 37, false, (*httpRequest_).checkAcceptEncoding},
+		12: {hashAccept, 0, 6, false, nil},
+		13: {hashExpect, 113, 119, false, (*httpRequest_).checkExpect},
+		14: {hashAcceptCharset, 7, 21, true, nil},
+		15: {hashContentLanguage, 96, 112, true, nil},
+		16: {hashIfMatch, 130, 138, false, (*httpRequest_).checkIfMatch},
+		17: {hashPragma, 153, 159, true, nil},
+		18: {hashUpgrade, 189, 196, true, (*httpRequest_).checkUpgrade},
 	}
-	httpRequestMultipleHeaderFind = func(hash uint16) int { return (48924603 / int(hash)) % 17 }
+	httpRequestMultipleHeaderFind = func(hash uint16) int { return (710644505 / int(hash)) % 19 }
 )
 
 func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
@@ -821,6 +823,27 @@ func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
+	}
+	return true
+}
+func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool {
+	// Expect = #expectation
+	if r.versionCode >= Version1_1 {
+		for i := from; i < edge; i++ {
+			value := r.primes[i].valueAt(r.input)
+			bytesToLower(value) // the Expect field-value is case-insensitive.
+			if bytes.Equal(value, bytes100Continue) {
+				r.expectContinue = true
+			} else {
+				// Unknown expectation, ignored.
+			}
+		}
+	} else { // HTTP/1.0
+		// RFC 7231 (section 5.1.1):
+		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
+		for i := from; i < edge; i++ {
+			r.delPrimeAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+		}
 	}
 	return true
 }
@@ -880,6 +903,10 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
 	}
 	return true
 }
+func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
 func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {
 	if matches.isEmpty() {
 		matches.from = from
@@ -924,25 +951,26 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 }
 
 var ( // perfect hash table for request critical headers
-	httpRequestCriticalHeaderNames = []byte("content-length content-type cookie expect host if-modified-since if-range if-unmodified-since range user-agent") // authorization? proxy-authorization?
-	httpRequestCriticalHeaderTable = [10]struct {
+	httpRequestCriticalHeaderNames = []byte("authorization content-length content-type cookie host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
+	httpRequestCriticalHeaderTable = [11]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0: {hashContentType, 15, 27, (*httpRequest_).checkContentType},
-		1: {hashRange, 94, 99, (*httpRequest_).checkRange},
-		2: {hashIfModifiedSince, 47, 64, (*httpRequest_).checkIfModifiedSince},
-		3: {hashIfUnmodifiedSince, 74, 93, (*httpRequest_).checkIfUnmodifiedSince},
-		4: {hashContentLength, 0, 14, (*httpRequest_).checkContentLength},
-		5: {hashIfRange, 65, 73, (*httpRequest_).checkIfRange},
-		6: {hashHost, 42, 46, (*httpRequest_).checkHost},
-		7: {hashUserAgent, 100, 110, (*httpRequest_).checkUserAgent},
-		8: {hashCookie, 28, 34, (*httpRequest_).checkCookie},
-		9: {hashExpect, 35, 41, (*httpRequest_).checkExpect},
+		0:  {hashAuthorization, 0, 13, (*httpRequest_).checkAuthorization},
+		1:  {hashHost, 49, 53, (*httpRequest_).checkHost},
+		2:  {hashContentLength, 14, 28, (*httpRequest_).checkContentLength},
+		3:  {hashContentType, 29, 41, (*httpRequest_).checkContentType},
+		4:  {hashIfRange, 72, 80, (*httpRequest_).checkIfRange},
+		5:  {hashProxyAuthorization, 101, 120, (*httpRequest_).checkProxyAuthorization},
+		6:  {hashRange, 121, 126, (*httpRequest_).checkRange},
+		7:  {hashCookie, 42, 48, (*httpRequest_).checkCookie},
+		8:  {hashUserAgent, 127, 137, (*httpRequest_).checkUserAgent},
+		9:  {hashIfUnmodifiedSince, 81, 100, (*httpRequest_).checkIfUnmodifiedSince},
+		10: {hashIfModifiedSince, 54, 71, (*httpRequest_).checkIfModifiedSince},
 	}
-	httpRequestCriticalHeaderFind = func(hash uint16) int { return (252525 / int(hash)) % 10 }
+	httpRequestCriticalHeaderFind = func(hash uint16) int { return (1678320 / int(hash)) % 11 }
 )
 
 func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
@@ -954,7 +982,6 @@ func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
-	// cookie-header = "Cookie:" OWS cookie-string OWS
 	if header.value.isEmpty() {
 		r.headResult, r.headReason = StatusBadRequest, "empty cookie"
 		return false
@@ -970,28 +997,6 @@ func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
 	// And we can't inject cookies into headers, so we postpone cookie parsing after the request head is entirely received.
 	r.cookies.edge = index + 1 // so only mark the edge
 	return true
-}
-func (r *httpRequest_) checkExpect(header *pair, index uint8) bool {
-	// Expect = "100-continue"
-	value := header.valueAt(r.input)
-	bytesToLower(value) // the Expect field-value is case-insensitive.
-	if bytes.Equal(value, bytes100Continue) {
-		if r.versionCode == Version1_0 {
-			// RFC 7231 (section 5.1.1):
-			// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-			r.delPrimeAt(index) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
-		} else {
-			r.expectContinue = true
-		}
-		return true
-	} else {
-		// RFC 7231 (section 5.1.1):
-		// A server that receives an Expect field-value other than 100-continue
-		// MAY respond with a 417 (Expectation Failed) status code to indicate
-		// that the unexpected expectation cannot be met.
-		r.headResult, r.headReason = StatusExpectationFailed, "only 100-continue is allowed in expect"
-		return false
-	}
 }
 func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 	// Host = host [ ":" port ]

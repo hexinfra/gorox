@@ -64,8 +64,8 @@
 			<tr><td>accept</td>             <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td></tr>
 			<tr><td>accept-language</td>    <td>9110</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Language = #( language-range [ weight ] )</td></tr>
 			<tr><td>authorization</td>      <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Authorization = credentials</td></tr>
-			<tr><td>cookie</td>             <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><td>expect</td>             <td>?</td><td>✗</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>Expect = #expectation</td></tr>
+			<tr><td>cookie</td>             <td>6265</td><td>✗</td><td>1/+</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>cookie-header = "Cookie:" OWS cookie-string OWS</td></tr>
+			<tr><td>expect</td>             <td>9110</td><td>✗</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>Expect = #expectation</td></tr>
 			<tr><td>forwarded</td>          <td>?</td><td>?</td><td>+</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Forwarded = 1#forwarded-element</td></tr>
 			<tr><td>host</td>               <td>?</td><td>✗</td><td>1</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Host = uri-host [ ":" port ]</td></tr>
 			<tr><td>if-match</td>           <td>?</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Match = "*" / #entity-tag</td></tr>
@@ -73,12 +73,12 @@
 			<tr><td>if-none-match</td>      <td>?</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-None-Match = "*" / #entity-tag</td></tr>
 			<tr><td>if-range</td>           <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Range = entity-tag / HTTP-date</td></tr>
 			<tr><td>if-unmodified-since</td><td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>If-Unmodified-Since = HTTP-date</td></tr>
-			<tr><td>max-forwards</td>       <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Max-Forwards = 1*DIGIT</td></tr>
-			<tr><td>proxy-authorization</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><td>range</td>              <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><td>referer</td>            <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><td>te</td>                 <td>?</td><td>✓</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>?</td></tr>
-			<tr><td>user-agent</td>         <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
+			<tr><td>max-forwards</td>       <td>9110</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Max-Forwards = 1*DIGIT</td></tr>
+			<tr><td>proxy-authorization</td><td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Proxy-Authorization = credentials</td></tr>
+			<tr><td>range</td>              <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Range = ranges-specifier</td></tr>
+			<tr><td>referer</td>            <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Referer = absolute-URI / partial-URI</td></tr>
+			<tr><td>te</td>                 <td>?</td><td>✓</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>TE = [ t-codings *( OWS "," OWS t-codings ) ]</td></tr>
+			<tr><td>user-agent</td>         <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
 			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 		</table>
 

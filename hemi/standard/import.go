@@ -7,7 +7,7 @@
 
 package standard
 
-import ( // all standard components
+import ( // all standard components are preloaded
 	_ "github.com/hexinfra/gorox/hemi/standard/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/standard/cronjobs/stat"

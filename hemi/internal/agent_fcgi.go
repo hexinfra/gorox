@@ -121,7 +121,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	hHasContent := hReq.HasContent()
 	if hHasContent && (h.bufferClientContent || hReq.isUnsized()) { // including size 0
 		hContent = hReq.holdContent()
-		if hContent == nil {
+		if hContent == nil { // hold failed
 			hResp.SetStatus(StatusBadRequest)
 			hResp.SendBytes(nil)
 			return
@@ -199,7 +199,7 @@ func (h *fcgiAgent) Handle(hReq Request, hResp Response) (next bool) {
 	}
 	if fHasContent && h.bufferServerContent { // including size 0
 		fContent = fResp.holdContent()
-		if fContent == nil {
+		if fContent == nil { // hold failed
 			// fStream is marked as broken
 			hResp.SendBadGateway(nil)
 			return
@@ -1035,7 +1035,7 @@ func (r *fcgiResponse) recvContent() any { // to []byte (for small content) or T
 	// TODO
 	return nil
 }
-func (r *fcgiResponse) readContent() (p []byte, err error) {
+func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
 	// TODO
 	return
 }

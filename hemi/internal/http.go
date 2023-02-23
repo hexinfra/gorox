@@ -615,7 +615,7 @@ func (r *httpIn_) unsafeContent() []byte {
 }
 func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
-		// Content is in r.content already.
+		// Content is in r.contentBlob already.
 		return
 	}
 	r.contentReceived = true
@@ -636,7 +636,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 				r.contentBlob = make([]byte, r.sizeReceived)
 				r.contentBlobKind = httpContentBlobMake
 			}
-			if _, err := io.ReadFull(contentFile, r.contentBlob[0:r.sizeReceived]); err != nil {
+			if _, err := io.ReadFull(contentFile, r.contentBlob[:r.sizeReceived]); err != nil {
 				// TODO: r.app.log
 			}
 		}
@@ -651,11 +651,10 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 }
 func (r *httpIn_) holdContent() any { // used by proxies
 	if r.contentReceived {
-		if r.contentHeld == nil { // content is either blob or file
-			return r.contentBlob
-		} else {
-			return r.contentHeld
+		if r.contentHeld == nil {
+			return r.contentBlob // immediate
 		}
+		return r.contentHeld
 	}
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
@@ -685,7 +684,7 @@ func (r *httpIn_) dropContent() { // if message content is not received, this wi
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content) or TempFile (for large content)
+func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or TempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err
@@ -693,18 +692,19 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 		// Since content is small, r.bodyWindow and TempFile are not needed.
 		contentBlob := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
 		r.sizeReceived = int64(r.imme.size())
-		if r.sizeReceived > 0 {
+		if r.sizeReceived > 0 { // r.imme has data
 			copy(contentBlob, r.input[r.imme.from:r.imme.edge])
+			r.imme.zero()
 		}
 		if n, err := r.stream.readFull(contentBlob[r.sizeReceived:r.contentSize]); err == nil {
 			r.sizeReceived += int64(n)
+			return contentBlob // []byte, fetched from pool
 		} else {
 			PutNK(contentBlob)
 			return err
 		}
-		return contentBlob // []byte, fetched from pool
 	}
-	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile
+	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile and return the file
 	contentFile, err := r._newTempFile(retain)
 	if err != nil {
 		return err

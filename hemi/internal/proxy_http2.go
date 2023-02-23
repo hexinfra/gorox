@@ -52,7 +52,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
 		content = req.holdContent()
-		if content == nil {
+		if content == nil { // hold failed
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
 			return
@@ -158,7 +158,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if hasContent2 && h.bufferServerContent { // including size 0
 		content2 = resp2.holdContent()
-		if content2 == nil {
+		if content2 == nil { // hold failed
 			// stream2 is marked as broken
 			resp.SendBadGateway(nil)
 			return

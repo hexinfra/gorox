@@ -192,11 +192,11 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	if r.sizeReceived == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentBlob[:r.sizeReceived], io.EOF
+		} else { // r.bodyWindow has been used.
+			PutNK(r.bodyWindow)
+			r.bodyWindow = nil
+			return nil, io.EOF
 		}
-		// r.bodyWindow is used.
-		PutNK(r.bodyWindow)
-		r.bodyWindow = nil
-		return nil, io.EOF
 	}
 	// Need more content data.
 	if r.bodyWindow == nil {
@@ -227,7 +227,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 }
 func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
-		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit trailers
+		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
 	if r.imme.notEmpty() {
 		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow
@@ -254,7 +254,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		}
 		fallthrough
 	case 0: // start a new chunk = chunk-size [chunk-ext] CRLF chunk-data CRLF
-		r.cBack = r.cFore // now r.bodyWindow is used for receiving chunk-size [chunk-ext] CRLF
+		r.cBack = r.cFore // now r.bodyWindow is used for receiving: chunk-size [chunk-ext] CRLF
 		chunkSize := int64(0)
 		for { // chunk-size = 1*HEXDIG
 			b := r.bodyWindow[r.cFore]
@@ -288,6 +288,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				goto badRead
 			}
 		}
+		// Must be LF
 		if r.bodyWindow[r.cFore] != '\n' {
 			goto badRead
 		}
@@ -298,7 +299,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			// TODO: log error?
 			goto badRead
 		}
-		// Skip '\n' at the end of chunk-size [chunk-ext] CRLF
+		// Skip '\n' at the end of: chunk-size [chunk-ext] CRLF
 		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
 			goto badRead
 		}
@@ -333,9 +334,9 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			}
 			return nil, io.EOF
 		}
-		// Not last chunk, now r.cFore is at the beginning of chunk-data CRLF
+		// Not last chunk, now r.cFore is at the beginning of: chunk-data CRLF
 		fallthrough
-	default: // r.chunkSize > 0, receiving chunk-data CRLF
+	default: // r.chunkSize > 0, receiving: chunk-data CRLF
 		r.cBack = 0 // so growChunked1() works correctly
 		from := int(r.cFore)
 		var dataEdge int32
@@ -381,7 +382,7 @@ badRead:
 }
 
 func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
-	copy(r.bodyWindow, r.bodyWindow[r.cFore:r.chunkEdge]) // slide to start
+	copy(r.bodyWindow, r.bodyWindow[r.cFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
 	r.chunkEdge -= r.cFore
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
 	r.pBack, r.pFore = 0, 0 // for parsing trailer fields
@@ -499,9 +500,9 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 }
 func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.cBack == 0 { // r.bodyWindow is full and we can't slide
-		return false
+		return false // element is too large
 	}
-	if r.cBack > 0 { // has previously used data. slide to start so we can read more data
+	if r.cBack > 0 { // has previously used data, but now useless. slide to start so we can read more
 		copy(r.bodyWindow, r.bodyWindow[r.cBack:r.chunkEdge])
 		r.chunkEdge -= r.cBack
 		r.cFore -= r.cBack

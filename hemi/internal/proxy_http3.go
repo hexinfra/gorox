@@ -52,7 +52,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
 		content = req.holdContent()
-		if content == nil {
+		if content == nil { // hold failed
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
 			return
@@ -158,7 +158,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if hasContent3 && h.bufferServerContent { // including size 0
 		content3 = resp3.holdContent()
-		if content3 == nil {
+		if content3 == nil { // hold failed
 			// stream3 is marked as broken
 			resp.SendBadGateway(nil)
 			return

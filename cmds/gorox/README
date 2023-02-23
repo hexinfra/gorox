@@ -6,7 +6,7 @@ Gorox
 Process Architecture
 ====================
 
-  Gorox has two processes: 1 leader and 1 worker.
+  Gorox has two processes: 1 leader process and 1 worker process.
 
 Program Dependencies
 ====================
@@ -17,7 +17,7 @@ Program Dependencies
                         |                             |
                         v                             v
   +------+   +----------------------+   +------+ +---------+
-  | libs |<--+     apps & svcs      +-->| exts | |<manager>|
+  | libs |<--+     apps & svcs      +-->| exts | |<process>|
   +------+   +--+----------------+--+   +--+---+ +----+----+
                 |                |         |          |
                 v                v         v          v

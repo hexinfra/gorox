@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Leader process of manager.
+// Leader process.
 
 // Some terms:
 //   admGate - Used by leader process, for receiving admConns from control agent
@@ -13,7 +13,7 @@
 //   cmdPipe - leader process <---> worker process
 //   cmcConn - leader goopsClient <---> goops
 
-package manager
+package process
 
 import (
 	"fmt"

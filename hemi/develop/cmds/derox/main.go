@@ -18,7 +18,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/develop/test"
 )
 
-import "github.com/hexinfra/gorox/hemi/manager"
+import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Derox (%s)
@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		manager.Main("derox", usage, 2, "127.0.0.1:9526")
+		process.Main("derox", usage, 2, "127.0.0.1:9526")
 	}
 }

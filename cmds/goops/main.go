@@ -14,7 +14,7 @@ import (
 	_ "github.com/hexinfra/gorox/cmds/goops/store"
 )
 
-import "github.com/hexinfra/gorox/hemi/manager"
+import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Goops (%s)
@@ -69,5 +69,5 @@ OPTIONS
 `
 
 func main() {
-	manager.Main("goops", usage, 0, "127.0.0.1:9528")
+	process.Main("goops", usage, 0, "127.0.0.1:9528")
 }

@@ -5,7 +5,7 @@
 
 // Leader control agent.
 
-package manager
+package process
 
 import (
 	"fmt"

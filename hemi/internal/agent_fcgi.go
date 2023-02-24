@@ -637,7 +637,7 @@ func (r *fcgiResponse) onEnd() {
 		r.input = nil
 	}
 	if cap(r.headers) != cap(r.stockHeaders) {
-		put255Pairs(r.headers)
+		putPairs(r.headers)
 		r.headers = nil
 	}
 
@@ -1013,7 +1013,7 @@ func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 func (r *fcgiResponse) addHeader(header *pair) bool {
 	if len(r.headers) == cap(r.headers) {
 		if cap(r.headers) == cap(r.stockHeaders) {
-			r.headers = get255Pairs()
+			r.headers = getPairs()
 			r.headers = append(r.headers, r.stockHeaders[:]...)
 		} else { // overflow
 			r.headResult = StatusRequestHeaderFieldsTooLarge

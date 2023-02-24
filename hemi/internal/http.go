@@ -187,11 +187,11 @@ func (r *httpIn_) onEnd() { // for zeros
 	}
 	r.array = nil // other array kinds are only references, just reset.
 	if cap(r.primes) != cap(r.stockPrimes) {
-		put255Pairs(r.primes)
+		putPairs(r.primes)
 		r.primes = nil
 	}
 	if cap(r.extras) != cap(r.stockExtras) {
-		put255Pairs(r.extras)
+		putPairs(r.extras)
 		r.extras = nil
 	}
 
@@ -955,7 +955,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint
 func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) {
 		if cap(r.primes) == cap(r.stockPrimes) { // full
-			r.primes = get255Pairs()
+			r.primes = getPairs()
 			r.primes = append(r.primes, r.stockPrimes[:]...)
 		} else { // overflow
 			return 0, false
@@ -988,7 +988,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
 	extra.value.edge = r.arrayEdge
 	if len(r.extras) == cap(r.extras) { // full
 		if cap(r.extras) == cap(r.stockExtras) { // stock
-			r.extras = get255Pairs()
+			r.extras = getPairs()
 			r.extras = append(r.extras, r.stockExtras[:]...)
 		} else { // too many extras!
 			return false

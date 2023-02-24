@@ -222,22 +222,22 @@ func (c *Chain) PushTail(block *Block) {
 	c.size++
 }
 
-// pool255Pairs
-var pool255Pairs sync.Pool
+// poolPairs
+var poolPairs sync.Pool
 
-func get255Pairs() []pair {
-	if x := pool255Pairs.Get(); x == nil {
-		return make([]pair, 0, 255)
+func getPairs() []pair {
+	if x := poolPairs.Get(); x == nil {
+		return make([]pair, 0, 204)
 	} else {
 		return x.([]pair)
 	}
 }
-func put255Pairs(pairs []pair) {
-	if cap(pairs) != 255 {
+func putPairs(pairs []pair) {
+	if cap(pairs) != 204 {
 		BugExitln("bad pairs")
 	}
-	pairs = pairs[0:0:255] // reset
-	pool255Pairs.Put(pairs)
+	pairs = pairs[0:0:204] // reset
+	poolPairs.Put(pairs)
 }
 
 // pair is used to hold queries, headers (and sub headers), cookies, forms, and trailers.

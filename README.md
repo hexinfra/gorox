@@ -43,12 +43,17 @@ Quickstart
 
   To build and run Gorox, see INSTALL.md file.
 
-  If you have latest Go installed and you are impatient, simply run:
+  If you have latest Go installed already and you are impatient, download the
+  source code, cd to this directory, build and run:
 
     shell> go build ./cmds/gorox
     shell> ./gorox -daemon
-    shell> curl -v http://localhost:3080
-    shell> ./gorox stop
+
+  To see the welcome page, visit: http://localhost:3080 . To exit gracefully:
+
+    shell> ./gorox quit
+
+  That's it. Isn't it very simple to start?
 
 
 Performance

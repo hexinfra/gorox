@@ -160,7 +160,7 @@ func (c *config) process() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
 		switch token.kind {
-		case tokenWord: // some words are component signs
+		case tokenIdentifier: // some identifiers are component signs
 			if comp, ok := c.signedComps[token.text]; ok {
 				token.info = comp
 			}
@@ -210,7 +210,7 @@ func (c *config) newName() string {
 }
 
 func (c *config) apply() (stage *Stage, err error) {
-	if current := c.current(); current.kind != tokenWord || current.info != compStage {
+	if current := c.current(); current.kind != tokenIdentifier || current.info != compStage {
 		panic(errors.New("config error: root component is not stage"))
 	}
 	stage = createStage()
@@ -226,7 +226,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
 		if c.nextIs(tokenEqual) { // =
@@ -266,7 +266,7 @@ func (c *config) parseContainer0(comp int16, parseComponent func(sign token, sta
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord || current.info != comp {
+		if current.kind != tokenIdentifier || current.info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, stage)
@@ -306,7 +306,7 @@ func (c *config) parseMeshers(stage *Stage) { // meshers {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(errors.New("config error: only meshers are allowed in meshers"))
 		}
 		switch current.info {
@@ -331,7 +331,7 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
 		if c.nextIs(tokenEqual) { // =
@@ -366,7 +366,7 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
 		if c.nextIs(tokenEqual) { // =
@@ -401,7 +401,7 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
 		if c.nextIs(tokenEqual) { // =
@@ -433,7 +433,7 @@ func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseC
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord || current.info != comp {
+		if current.kind != tokenIdentifier || current.info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, mesher, nil) // not in case
@@ -462,7 +462,7 @@ func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases 
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord || current.info != compCase {
+		if current.kind != tokenIdentifier || current.info != compCase {
 			panic(errors.New("config error: only cases are allowed in cases"))
 		}
 		parseCase(mesher)
@@ -490,7 +490,7 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		if current.info == compQUICEditor {
@@ -521,7 +521,7 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		if current.info == compTCPSEditor {
@@ -552,7 +552,7 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		if current.info == compUDPSEditor {
@@ -617,7 +617,7 @@ func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
 		if c.nextIs(tokenEqual) { // =
@@ -645,7 +645,7 @@ func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign 
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord || current.info != comp {
+		if current.kind != tokenIdentifier || current.info != comp {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
 		parseComponent(current, app, nil) // not in rule
@@ -684,7 +684,7 @@ func (c *config) parseRules(app *App) { // rules {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord || current.info != compRule {
+		if current.kind != tokenIdentifier || current.info != compRule {
 			panic(errors.New("config error: only rules are allowed in rules"))
 		}
 		c.parseRule(app)
@@ -712,7 +712,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenWord {
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
@@ -790,7 +790,7 @@ func (c *config) parseAssigns(component Component) {
 	c.expect(tokenLeftBrace) // {
 	for {
 		switch current := c.forward(); current.kind {
-		case tokenWord:
+		case tokenIdentifier:
 			c.parseAssign(current, component)
 		case tokenRightBrace: // }
 			return
@@ -873,7 +873,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		c.parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
 		c.parseDict(component, prop, value)
-	case tokenWord:
+	case tokenIdentifier:
 		if propRef := current.text; prop == "" || prop == propRef {
 			panic(errors.New("config error: cannot refer to self"))
 		} else if valueRef, ok := component.Find(propRef); !ok {
@@ -904,7 +904,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		if c.currentIs(tokenString) {
 			isString = true
 			c.parseValue(component, prop, &str)
-		} else if c.currentIs(tokenWord) {
+		} else if c.currentIs(tokenIdentifier) {
 			if propRef := current.text; prop == "" || prop == propRef {
 				panic(errors.New("config error: cannot refer to self"))
 			} else if valueRef, ok := component.Find(propRef); !ok {
@@ -1111,10 +1111,10 @@ func (l *lexer) scan() []token {
 				l.index++
 			} else if byteIsAlpha(b) {
 				l.nextAlnums()
-				if word := l.text[from:l.index]; word == "true" || word == "false" {
-					tokens = append(tokens, token{tokenBool, 0, line, l.file, word})
+				if identifier := l.text[from:l.index]; identifier == "true" || identifier == "false" {
+					tokens = append(tokens, token{tokenBool, 0, line, l.file, identifier})
 				} else {
-					tokens = append(tokens, token{tokenWord, 0, line, l.file, word})
+					tokens = append(tokens, token{tokenIdentifier, 0, line, l.file, identifier})
 				}
 			} else if byteIsDigit(b) {
 				l.nextDigits()
@@ -1198,7 +1198,7 @@ func (l *lexer) _loadURL(base string, file string) string {
 // token
 type token struct { // 40 bytes
 	kind int16  // tokenXXX
-	info int16  // comp for words, or code for variables
+	info int16  // comp for identifiers, or code for variables
 	line int32  // at line number
 	file string // file path
 	text string // text literal
@@ -1207,8 +1207,8 @@ type token struct { // 40 bytes
 func (t token) name() string { return tokenNames[t.kind] }
 
 const ( // token list. if you change this list, change in tokenNames too.
-	// Word
-	tokenWord = 1 + iota // address, hostnames, ...
+	// Identifier
+	tokenIdentifier = 1 + iota // address, hostnames, ...
 	// Operators
 	tokenLeftBrace    // {
 	tokenRightBrace   // }
@@ -1238,8 +1238,8 @@ const ( // token list. if you change this list, change in tokenNames too.
 )
 
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
-	// Word
-	tokenWord: "word",
+	// Identifier
+	tokenIdentifier: "identifier",
 	// Operators
 	tokenLeftBrace:    "leftBrace",
 	tokenRightBrace:   "rightBrace",

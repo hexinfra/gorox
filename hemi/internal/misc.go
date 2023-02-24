@@ -239,7 +239,7 @@ func bytesHash(p []byte) uint16 {
 	return hash
 }
 
-func stringIsWord(s string) bool {
+func stringIsIdentifier(s string) bool {
 	for i := 0; i < len(s); i++ {
 		// '0-9a-zA-Z-_'
 		if b := s[i]; !byteIsAlnum(b) && b != '-' && b != '_' {

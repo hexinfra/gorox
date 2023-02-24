@@ -478,9 +478,9 @@ func (c *http2Conn) _updateClientSettings(inFrame *http2InFrame) error {
 	settings := inFrame.effective()
 	windowDelta, j := int32(0), uint32(0)
 	for i, n := uint32(0), inFrame.length/6; i < n; i++ {
-		identifier := uint16(settings[j])<<8 | uint16(settings[j+1])
+		ident := uint16(settings[j])<<8 | uint16(settings[j+1])
 		value := uint32(settings[j+2])<<24 | uint32(settings[j+3])<<16 | uint32(settings[j+4])<<8 | uint32(settings[j+5])
-		switch identifier {
+		switch ident {
 		case http2SettingHeaderTableSize:
 			c.clientSettings.headerTableSize = value
 			// TODO: Dynamic Table Size Update

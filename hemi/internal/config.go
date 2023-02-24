@@ -136,7 +136,7 @@ func (c *config) applyText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	c.process()
+	c.evaluate()
 	return c.apply()
 }
 func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
@@ -147,7 +147,7 @@ func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	c.process()
+	c.evaluate()
 	return c.apply()
 }
 
@@ -156,11 +156,11 @@ func (c *config) show() {
 		fmt.Printf("kind=%16s info=%2d line=%4d file=%s    %s", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
-func (c *config) process() {
+func (c *config) evaluate() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
 		switch token.kind {
-		case tokenIdentifier: // some identifiers are component signs
+		case tokenIdentifier: // some identifiers are components
 			if comp, ok := c.signedComps[token.text]; ok {
 				token.info = comp
 			}
@@ -1210,7 +1210,7 @@ func (t token) name() string { return tokenNames[t.kind] }
 
 const ( // token list. if you change this list, change in tokenNames too.
 	// Identifier
-	tokenIdentifier = 1 + iota // address, hostnames, ...
+	tokenIdentifier = 1 + iota // stage, apps, httpxServer, ...
 	// Operators
 	tokenLeftBrace    // {
 	tokenRightBrace   // }

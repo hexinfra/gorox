@@ -239,15 +239,6 @@ func bytesHash(p []byte) uint16 {
 	return hash
 }
 
-func stringIsIdentifier(s string) bool {
-	for i := 0; i < len(s); i++ {
-		// '0-9a-zA-Z-_'
-		if b := s[i]; !byteIsAlnum(b) && b != '-' && b != '_' {
-			return false
-		}
-	}
-	return true
-}
 func stringTrimLeft(s string, b byte) string {
 	i := 0
 	for i < len(s) && s[i] == b {

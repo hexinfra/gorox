@@ -1019,12 +1019,10 @@ func (l *lexer) scan() []token {
 		case '\n': // new line
 			line++
 			l.index++
-		case '#': // shell comment
-			l.nextUntil('\n')
 		case '/': // line comment or stream comment
 			if c := l.mustNext(); c == '/' { // line comment
 				l.nextUntil('\n')
-			} else if c == '*' { // shell comment
+			} else if c == '*' { // stream comment
 				l.index++
 				for l.index < l.limit {
 					if d := l.text[l.index]; d == '/' && l.text[l.index-1] == '*' {
@@ -1067,7 +1065,7 @@ func (l *lexer) scan() []token {
 				var ll lexer
 				tokens = append(tokens, ll.scanFile(l.base, file)...)
 			}
-		case '@': // @constant
+		case '#': // #constant
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.text[from+1 : l.index]})
 		case '.': // .property
@@ -1229,7 +1227,7 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenAND          // &&
 	tokenOR           // ||
 	// Constants
-	tokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
+	tokenConstant // #baseDir, #dataDir, #logsDir, #tempDir
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
 	// Variables

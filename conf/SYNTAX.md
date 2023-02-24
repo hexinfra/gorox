@@ -18,38 +18,26 @@ Values
   Lists are like    : (), ("a", "b"), ("c", 2, [])
   Dicts are like    : [], ["a" : 1, "b" : ("two")]
 
-References
+Properties
 ----------
 
-  You can refer to another property in one property, like:
+  Properties are prefixed a ".", like:
 
-    abc = "hello, world"
-    def = abc
-
-  Here, property "def" has the same values as "abc".
-
-String concatenation
---------------------
-
-  Values of strings can be concatenated. For example:
-
-    abc = "world"
-    def = "hello," + " " + abc + " " + @baseDir
-
-  Here, property "def" is a concatenation of five string values.
+    .listen
+    .maxSize
 
 Constants
 ---------
 
   Predefined string constants are:
 
-    @baseDir : Containing directory of the gorox executable
-    @dataDir : Containing directory of the gorox run-time data
-    @logsDir : Containing directory of the gorox log files
-    @tempDir : Containing directory of the gorox temp files
+    #baseDir : Containing directory of the gorox executable
+    #dataDir : Containing directory of the gorox run-time data
+    #logsDir : Containing directory of the gorox log files
+    #tempDir : Containing directory of the gorox temp files
 
 Variables
---------------------
+---------
 
   Defined rule variables are:
 
@@ -83,3 +71,22 @@ Comparisons
 
     ==, ^=
 
+References
+----------
+
+  You can refer to another property in one property, like:
+
+    .abc = "hello, world"
+    .def = .abc
+
+  Here, property "def" has the same values as "abc".
+
+String concatenation
+--------------------
+
+  Values of strings can be concatenated. For example:
+
+    .abc = "world"
+    .def = "hello," + " " + .abc + " " + #baseDir
+
+  Here, property "def" is a concatenation of five string values.

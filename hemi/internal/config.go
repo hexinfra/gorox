@@ -210,13 +210,13 @@ func (c *config) newName() string {
 }
 
 func (c *config) apply() (stage *Stage, err error) {
-	if current := c.current(); current.kind != tokenIdentifier || current.info != compStage {
-		panic(errors.New("config error: root component is not stage"))
+	if current := c.current(); current.kind == tokenIdentifier && current.info == compStage {
+		stage = createStage()
+		stage.setParent(nil)
+		c.parseStage(stage)
+		return stage, nil
 	}
-	stage = createStage()
-	stage.setParent(nil)
-	c.parseStage(stage)
-	return stage, nil
+	panic(errors.New("config error: root component is not stage"))
 }
 
 func (c *config) parseStage(stage *Stage) { // stage {}
@@ -226,12 +226,9 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
-		}
-		if c.nextIs(tokenEqual) { // =
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, stage)
-		} else {
+		} else if current.kind == tokenIdentifier {
 			switch current.text {
 			case "fixtures":
 				c.parseContainer0(compFixture, c.parseFixture, current.text, stage)
@@ -256,6 +253,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			default:
 				panic(fmt.Errorf("unknown container '%s' in stage\n", current.text))
 			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -266,10 +265,11 @@ func (c *config) parseContainer0(comp int16, parseComponent func(sign token, sta
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier || current.info != comp {
+		if current.kind == tokenIdentifier && current.info == comp {
+			parseComponent(current, stage)
+		} else {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
-		parseComponent(current, stage)
 	}
 }
 
@@ -306,18 +306,19 @@ func (c *config) parseMeshers(stage *Stage) { // meshers {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind == tokenIdentifier {
+			switch current.info {
+			case compQUICMesher:
+				c.parseQUICMesher(stage)
+			case compTCPSMesher:
+				c.parseTCPSMesher(stage)
+			case compUDPSMesher:
+				c.parseUDPSMesher(stage)
+			default:
+				panic(errors.New("config error: only quicMesher, tcpsMesher, and udpsMesher are allowed in meshers"))
+			}
+		} else {
 			panic(errors.New("config error: only meshers are allowed in meshers"))
-		}
-		switch current.info {
-		case compQUICMesher:
-			c.parseQUICMesher(stage)
-		case compTCPSMesher:
-			c.parseTCPSMesher(stage)
-		case compUDPSMesher:
-			c.parseUDPSMesher(stage)
-		default:
-			panic(errors.New("config error: only quicMesher, tcpsMesher, and udpsMesher are allowed in meshers"))
 		}
 	}
 }
@@ -331,12 +332,9 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
-		}
-		if c.nextIs(tokenEqual) { // =
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, mesher)
-		} else {
+		} else if current.kind == tokenIdentifier {
 			switch current.text {
 			case "dealets":
 				parseContainer1(c, mesher, compQUICDealet, c.parseQUICDealet, current.text)
@@ -347,6 +345,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			default:
 				panic(fmt.Errorf("unknown container '%s' in quicMesher\n", current.text))
 			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -366,12 +366,9 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
-		}
-		if c.nextIs(tokenEqual) { // =
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, mesher)
-		} else {
+		} else if current.kind == tokenIdentifier {
 			switch current.text {
 			case "dealets":
 				parseContainer1(c, mesher, compTCPSDealet, c.parseTCPSDealet, current.text)
@@ -382,6 +379,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			default:
 				panic(fmt.Errorf("unknown container '%s' in tcpsMesher\n", current.text))
 			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -401,12 +400,9 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
-		}
-		if c.nextIs(tokenEqual) { // =
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, mesher)
-		} else {
+		} else if current.kind == tokenIdentifier {
 			switch current.text {
 			case "dealets":
 				parseContainer1(c, mesher, compUDPSDealet, c.parseUDPSDealet, current.text)
@@ -417,6 +413,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			default:
 				panic(fmt.Errorf("unknown container '%s' in udpsMesher\n", current.text))
 			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -433,10 +431,11 @@ func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseC
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier || current.info != comp {
+		if current.kind == tokenIdentifier && current.info == comp {
+			parseComponent(current, mesher, nil) // not in case
+		} else {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
-		parseComponent(current, mesher, nil) // not in case
 	}
 }
 func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
@@ -462,10 +461,11 @@ func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases 
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier || current.info != compCase {
+		if current.kind == tokenIdentifier && current.info == compCase {
+			parseCase(mesher)
+		} else {
 			panic(errors.New("config error: only cases are allowed in cases"))
 		}
-		parseCase(mesher)
 	}
 }
 
@@ -490,13 +490,12 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
-		}
-		if current.info == compQUICEditor {
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, kase)
+		} else if current.kind == tokenIdentifier && current.info == compQUICEditor {
 			c.parseQUICEditor(current, mesher, kase)
 		} else {
-			c.parseAssign(current, kase)
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -521,13 +520,12 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
-		}
-		if current.info == compTCPSEditor {
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, kase)
+		} else if current.kind == tokenIdentifier && current.info == compTCPSEditor {
 			c.parseTCPSEditor(current, mesher, kase)
 		} else {
-			c.parseAssign(current, kase)
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -552,13 +550,12 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
-		}
-		if current.info == compUDPSEditor {
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, kase)
+		} else if current.kind == tokenIdentifier && current.info == compUDPSEditor {
 			c.parseUDPSEditor(current, mesher, kase)
 		} else {
-			c.parseAssign(current, kase)
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -617,12 +614,9 @@ func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
-		}
-		if c.nextIs(tokenEqual) { // =
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, app)
-		} else {
+		} else if current.kind == tokenIdentifier {
 			switch current.text {
 			case "handlets":
 				c.parseContainer2(app, compHandlet, c.parseHandlet, current.text)
@@ -635,6 +629,8 @@ func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 			default:
 				panic(fmt.Errorf("unknown container '%s' in app\n", current.text))
 			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -645,10 +641,11 @@ func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign 
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier || current.info != comp {
+		if current.kind == tokenIdentifier && current.info == comp {
+			parseComponent(current, app, nil) // not in rule
+		} else {
 			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
 		}
-		parseComponent(current, app, nil) // not in rule
 	}
 }
 
@@ -684,10 +681,11 @@ func (c *config) parseRules(app *App) { // rules {}
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier || current.info != compRule {
+		if current.kind == tokenIdentifier && current.info == compRule {
+			c.parseRule(app)
+		} else {
 			panic(errors.New("config error: only rules are allowed in rules"))
 		}
-		c.parseRule(app)
 	}
 }
 
@@ -712,18 +710,21 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		if current.kind == tokenRightBrace { // }
 			return
 		}
-		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
-		}
-		switch current.info {
-		case compHandlet:
-			c.parseHandlet(current, app, rule)
-		case compReviser:
-			c.parseReviser(current, app, rule)
-		case compSocklet:
-			c.parseSocklet(current, app, rule)
-		default:
+		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, rule)
+		} else if current.kind == tokenIdentifier {
+			switch current.info {
+			case compHandlet:
+				c.parseHandlet(current, app, rule)
+			case compReviser:
+				c.parseReviser(current, app, rule)
+			case compSocklet:
+				c.parseSocklet(current, app, rule)
+			default:
+				panic(fmt.Errorf("config error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
+			}
+		} else {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -790,7 +791,7 @@ func (c *config) parseAssigns(component Component) {
 	c.expect(tokenLeftBrace) // {
 	for {
 		switch current := c.forward(); current.kind {
-		case tokenIdentifier:
+		case tokenProperty:
 			c.parseAssign(current, component)
 		case tokenRightBrace: // }
 			return
@@ -803,7 +804,7 @@ func (c *config) parseAssign(prop token, component Component) {
 	if c.nextIs(tokenLeftBrace) { // {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
-	c.forwardExpect(tokenEqual)
+	c.forwardExpect(tokenEqual) // =
 	c.forward()
 	var value Value
 	c.parseValue(component, prop.text, &value)
@@ -873,7 +874,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		c.parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
 		c.parseDict(component, prop, value)
-	case tokenIdentifier:
+	case tokenProperty: // .property
 		if propRef := current.text; prop == "" || prop == propRef {
 			panic(errors.New("config error: cannot refer to self"))
 		} else if valueRef, ok := component.Find(propRef); !ok {
@@ -904,7 +905,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		if c.currentIs(tokenString) {
 			isString = true
 			c.parseValue(component, prop, &str)
-		} else if c.currentIs(tokenIdentifier) {
+		} else if c.currentIs(tokenProperty) {
 			if propRef := current.text; prop == "" || prop == propRef {
 				panic(errors.New("config error: cannot refer to self"))
 			} else if valueRef, ok := component.Find(propRef); !ok {
@@ -1069,6 +1070,9 @@ func (l *lexer) scan() []token {
 		case '@': // @constant
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.text[from+1 : l.index]})
+		case '.': // .property
+			l.nextAlnums()
+			tokens = append(tokens, token{tokenProperty, 0, line, l.file, l.text[from+1 : l.index]})
 		case '%': // %variable
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.text[from+1 : l.index]})
@@ -1226,6 +1230,8 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenOR           // ||
 	// Constants
 	tokenConstant // @baseDir, @dataDir, @logsDir, @tempDir
+	// Properties
+	tokenProperty // .listen, .maxSize, ...
 	// Variables
 	tokenVariable // %method, %path, ...
 	// Values
@@ -1257,6 +1263,8 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenOR:           "or",
 	// Constants
 	tokenConstant: "constant",
+	// Properties
+	tokenProperty: "property",
 	// Variables
 	tokenVariable: "variable",
 	// Value literals

@@ -11,10 +11,11 @@ Welcome
     * Microservice Server for Go (HRPC Services, gRPC Services)
     * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
     * API Gateway (HTTP APIs, HRPC APIs, gRPC APIs, WAF)
-    * Service Mesh (Data Plane, Control Plane)
+    * Service Mesh (Data Plane)
     * ... and more through its highly extensible compoments design!
 
-  There is also a Goops which can optionally manage your Gorox cluster.
+  There is also a control plane program called Goops which is distributed
+  together with Gorox and can optionally manage your Gorox cluster.
 
   For more details about Gorox, please see: https://gorox.io/
 

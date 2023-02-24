@@ -240,9 +240,13 @@ func put255Pairs(pairs []pair) {
 	pool255Pairs.Put(pairs)
 }
 
-// pair is used to hold queries, headers (and sub headers), cookies, forms (but not uploads), and trailers.
-type pair struct { // 16 bytes
+// pair is used to hold queries, headers (and sub headers), cookies, forms, and trailers.
+type pair struct { // 20 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
+	kind     int8   // ...
+	place    int8   // ...
+	mode     int8   // ...
+	many     bool   // ...
 	flags    uint8  // see pair flags
 	nameSize uint8  // name size, <= 255
 	nameFrom int32  // like: "content-type"

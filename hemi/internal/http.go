@@ -94,7 +94,7 @@ type httpIn_ struct {
 	// Stream states (buffers)
 	stockInput  [1600]byte // for r.input
 	stockArray  [800]byte  // for r.array
-	stockPrimes [80]pair   // for r.primes
+	stockPrimes [64]pair   // for r.primes
 	stockExtras [2]pair    // for r.extras
 	// Stream states (controlled)
 	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers, cookies, and trailers

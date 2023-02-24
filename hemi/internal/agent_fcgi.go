@@ -398,14 +398,14 @@ func (r *fcgiRequest) _addHTTPParam(hash uint16, underscore bool, name []byte, v
 }
 func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUpper bool) bool {
 	nameLen, valueLen := len(prefix)+len(name), len(value)
-	size := 2 + nameLen + valueLen
+	paramSize := 1 + 1 + nameLen + valueLen
 	if nameLen > 127 {
-		size += 3
+		paramSize += 3
 	}
 	if valueLen > 127 {
-		size += 3
+		paramSize += 3
 	}
-	from, edge, ok := r._growParams(size)
+	from, edge, ok := r._growParams(paramSize)
 	if !ok {
 		return false
 	}

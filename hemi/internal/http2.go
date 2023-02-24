@@ -543,6 +543,7 @@ type http2InFrame struct { // 32 bytes
 }
 
 func (f *http2InFrame) zero() { *f = http2InFrame{} }
+
 func (f *http2InFrame) decodeHeader(header []byte) error {
 	f.length = uint32(header[0])<<16 | uint32(header[1])<<8 | uint32(header[2])
 	if f.length > http2FrameMaxSize {
@@ -711,6 +712,7 @@ type http2OutFrame struct { // 64 bytes
 }
 
 func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
+
 func (f *http2OutFrame) encodeHeader() (header []byte) { // caller must ensure the frame is legal.
 	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
 		BugExitln("push promise and continuation are not allowed as out frame")

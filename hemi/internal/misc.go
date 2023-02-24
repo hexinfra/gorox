@@ -227,7 +227,7 @@ var poolPairs sync.Pool
 
 func getPairs() []pair {
 	if x := poolPairs.Get(); x == nil {
-		return make([]pair, 0, 204)
+		return make([]pair, 0, 204) // 20B*204=4080B
 	} else {
 		return x.([]pair)
 	}
@@ -243,10 +243,10 @@ func putPairs(pairs []pair) {
 // pair is used to hold queries, headers (and sub headers), cookies, forms, and trailers.
 type pair struct { // 20 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
-	kind     int8   // ...
-	place    int8   // ...
-	mode     int8   // ...
-	many     bool   // ...
+	extra    int8   // extraXXX
+	place    int8   // placeXXX
+	mode     int8   // modeXXX
+	_        byte   // padding
 	flags    uint8  // see pair flags
 	nameSize uint8  // name size, <= 255
 	nameFrom int32  // like: "content-type"
@@ -254,12 +254,9 @@ type pair struct { // 20 bytes
 }
 
 func (p *pair) zero() { *p = pair{} }
-func (p *pair) nameAt(t []byte) []byte {
-	return t[p.nameFrom : p.nameFrom+int32(p.nameSize)]
-}
-func (p *pair) valueAt(t []byte) []byte {
-	return t[p.value.from:p.value.edge]
-}
+
+func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 func (p *pair) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
 }
@@ -267,37 +264,57 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
 
-const ( // pair flags
-	pairMaskExtra = 0b11000000 // kind of extra pairs, values below
-	extraQuery    = 0b00000000 // extra queries
-	extraHeader   = 0b01000000 // extra headers
-	extraCookie   = 0b10000000 // extra cookies
-	extraTrailer  = 0b11000000 // extra trailers
-	extraNone     = 0b11111111 // no extra, for comparison only
-
-	pairMaskPlace = 0b00110000 // place where pair data is stored. values below
-	placeInput    = 0b00000000 // in r.input
-	placeArray    = 0b00010000 // in r.array
-	placeStatic2  = 0b00100000 // in HTTP/2 static table
-	placeStatic3  = 0b00110000 // in HTTP/3 static table
-
-	flagWeakETag   = 0b00001000 // weak etag or not
-	flagLiteral    = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00000010 // name contains '_' or not
-	flagSubField   = 0b00000001 // sub field or not. currently only used by headers
+const ( // extra kinds
+	extraNone = iota
+	extraQuery
+	extraHeader
+	extraCookie
+	extraTrailer
 )
 
-func (p *pair) setExtra(extra uint8)     { p.flags = p.flags&^pairMaskExtra | extra }
-func (p *pair) isExtra(extra uint8) bool { return p.flags&pairMaskExtra == extra }
+func (p *pair) setExtra(extra int8)     { p.extra = extra }
+func (p *pair) isExtra(extra int8) bool { return p.extra == extra }
 
-func (p *pair) setPlace(place uint8)     { p.flags = p.flags&^pairMaskPlace | place }
-func (p *pair) inPlace(place uint8) bool { return p.flags&pairMaskPlace == place }
+const ( // pair places
+	placeInput = iota
+	placeArray
+	placeStatic2
+	placeStatic3
+)
+
+func (p *pair) setPlace(place int8)     { p.place = place }
+func (p *pair) inPlace(place int8) bool { return p.place == place }
+
+const ( // pair modes
+	modeAlone   = iota // content-length, ...
+	modeSpecial        // date, ...
+	mode0Plus          // #value
+	mode1Plus          // 1#value
+)
+
+func (p *pair) setMode(mode int8)     { p.mode = mode }
+func (p *pair) isMode(mode int8) bool { return p.mode == mode }
+
+const ( // pair flags
+	flagMultivalued = 0b10000000 // multivalued or not
+	flagWeakETag    = 0b01000000 // weak etag or not
+	flagLiteral     = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo      = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagUnderscore  = 0b00001000 // pair name contains '_' or not
+	flagSubField    = 0b00000100 // sub field or not. currently only used by headers
+)
+
+func (p *pair) setMultivalued(multivalued bool) { p._setFlag(flagMultivalued, multivalued) }
+func (p *pair) isMultivalued() bool             { return p.flags&flagMultivalued > 0 }
 
 func (p *pair) setWeakETag(weak bool) { p._setFlag(flagWeakETag, weak) }
 func (p *pair) isWeakETag() bool      { return p.flags&flagWeakETag > 0 }
 
 func (p *pair) setLiteral(literal bool) { p._setFlag(flagLiteral, literal) }
 func (p *pair) isLiteral() bool         { return p.flags&flagLiteral > 0 }
+
+func (p *pair) setPseudo(pseudo bool) { p._setFlag(flagPseudo, pseudo) }
+func (p *pair) isPseudo() bool        { return p.flags&flagPseudo > 0 }
 
 func (p *pair) setUnderscore(underscore bool) { p._setFlag(flagUnderscore, underscore) }
 func (p *pair) isUnderscore() bool            { return p.flags&flagUnderscore > 0 }
@@ -323,7 +340,8 @@ type zone struct { // 2 bytes
 	from, edge uint8 // edge is ensured to be <= 255
 }
 
-func (z *zone) zero()          { *z = zone{} }
+func (z *zone) zero() { *z = zone{} }
+
 func (z *zone) size() int      { return int(z.edge - z.from) }
 func (z *zone) isEmpty() bool  { return z.from == z.edge }
 func (z *zone) notEmpty() bool { return z.from != z.edge }
@@ -333,7 +351,8 @@ type text struct { // 8 bytes
 	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
 }
 
-func (t *text) zero()          { *t = text{} }
+func (t *text) zero() { *t = text{} }
+
 func (t *text) size() int      { return int(t.edge - t.from) }
 func (t *text) isEmpty() bool  { return t.from == t.edge }
 func (t *text) notEmpty() bool { return t.from != t.edge }

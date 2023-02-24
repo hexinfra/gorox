@@ -864,7 +864,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
-func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
+func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 	if primes.notEmpty() {
 		return true
 	}
@@ -877,7 +877,7 @@ func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
 	}
 	return false
 }
-func (r *httpIn_) allPairs(primes zone, extraKind uint8) [][2]string {
+func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
 	for i := primes.from; i < primes.edge; i++ {
 		if prime := &r.primes[i]; prime.hash != 0 {
@@ -894,7 +894,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind uint8) [][2]string {
 	}
 	return all
 }
-func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind uint8) (value []byte, ok bool) {
+func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
 	if name != "" {
 		if hash == 0 {
 			hash = stringHash(name)
@@ -920,7 +920,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind uint8
 	}
 	return
 }
-func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint8) (values []string, ok bool) {
+func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
 	if name != "" {
 		if hash == 0 {
 			hash = stringHash(name)
@@ -964,7 +964,7 @@ func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
 	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
 }
-func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
+func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	nameSize := int32(len(name))
 	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
 		return false
@@ -997,7 +997,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind uint8) bool {
 	r.extras = append(r.extras, r.field)
 	return true
 }
-func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8) (deleted bool) {
+func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
 	if name != "" {
 		if hash == 0 {
 			hash = stringHash(name)
@@ -1026,7 +1026,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8
 	return
 }
 func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
-func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
 		if prime.hash == 0 {
@@ -1064,7 +1064,7 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name []byte, hash uint16)) {
+func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) {
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -1102,7 +1102,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 		}
 	}
 }
-func (r *httpIn_) _forFields(fields zone, extraKind uint8, fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
+func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
 			p := r._getPlace(field)

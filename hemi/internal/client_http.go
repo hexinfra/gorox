@@ -788,6 +788,7 @@ type cookie struct { // 24 bytes. refers to r.input
 }
 
 func (c *cookie) zero() { *c = cookie{} }
+
 func (c *cookie) nameAt(t []byte) []byte {
 	return t[c.nameFrom : c.nameFrom+int16(c.nameSize)]
 }

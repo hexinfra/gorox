@@ -813,7 +813,7 @@ func (r *http1Request) cleanInput() {
 				r.imme.set(r.pFore, edge)
 				r.inputNext = edge // mark the beginning of next request
 			}
-			r.sizeReceived = r.contentSize        // content is received entirely.
+			r.receivedSize = r.contentSize        // content is received entirely.
 			r.contentBlob = r.input[r.pFore:edge] // exact.
 			r.contentBlobKind = httpContentBlobInput
 		}

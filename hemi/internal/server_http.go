@@ -410,6 +410,7 @@ type Request interface {
 	UnsafeHeader(name string) (value []byte, ok bool)
 	UnsafeCookie(name string) (value []byte, ok bool)
 	UnsafeUserAgent() []byte
+	UnsafeContentLength() []byte
 	UnsafeContentType() []byte
 	UnsafeContent() []byte
 	UnsafeForm(name string) (value []byte, ok bool)
@@ -1786,7 +1787,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	)
 	form.setPlace(placeArray)
 	form.nameFrom = r.arrayEdge
-	for i := int64(0); i < r.sizeReceived; i++ { // TODO: use a better algorithm to improve performance
+	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
 		switch state {
 		case 2: // expecting '=' to get a name
@@ -1859,7 +1860,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
 	var contentFile *os.File
 	r.pBack, r.pFore = 0, 0
-	r.sizeConsumed = r.sizeReceived
+	r.sizeConsumed = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
 		// r.contentBlob is set, r.contentBlobKind == httpContentBlobInput. r.formWindow refers to the exact r.contentBlob.
 		r.formWindow = r.contentBlob
@@ -1870,7 +1871,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentBlob = content
 			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
-			r.formWindow, r.formEdge = r.contentBlob[0:r.sizeReceived], int32(r.sizeReceived) // r.formWindow refers to the exact r.content.
+			r.formWindow, r.formEdge = r.contentBlob[0:r.receivedSize], int32(r.receivedSize) // r.formWindow refers to the exact r.content.
 		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
 			contentFile = content.(*os.File)
 			defer func() {
@@ -1881,11 +1882,11 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					// TODO: app log?
 				}
 			}()
-			if r.sizeReceived == 0 {
+			if r.receivedSize == 0 {
 				return // unsized content can be empty
 			}
 			// We need a window to read and parse. An adaptive r.formWindow is used
-			if r.sizeReceived <= _4K {
+			if r.receivedSize <= _4K {
 				r.formWindow = Get4K()
 			} else {
 				r.formWindow = Get16K()
@@ -2201,7 +2202,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	}
 }
 func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller needs more data.
-	if r.sizeConsumed == r.sizeReceived || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
+	if r.sizeConsumed == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
 	}
@@ -2218,7 +2219,7 @@ func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller
 	r.formEdge += int32(n)
 	r.sizeConsumed += int64(n)
 	if err == io.EOF {
-		if r.sizeConsumed == r.sizeReceived {
+		if r.sizeConsumed == r.receivedSize {
 			err = nil
 		} else {
 			err = io.ErrUnexpectedEOF

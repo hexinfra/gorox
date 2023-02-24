@@ -191,9 +191,9 @@ func (r *http1In_) readContent1() (p []byte, err error) {
 	}
 }
 func (r *http1In_) _readSizedContent1() (p []byte, err error) {
-	if r.sizeReceived == r.contentSize { // content is entirely received
+	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
-			return r.contentBlob[:r.sizeReceived], io.EOF
+			return r.contentBlob[:r.receivedSize], io.EOF
 		} else { // r.bodyWindow has been used.
 			PutNK(r.bodyWindow)
 			r.bodyWindow = nil
@@ -206,7 +206,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	}
 	if r.imme.notEmpty() {
 		size := copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyWindow
-		r.sizeReceived = int64(size)
+		r.receivedSize = int64(size)
 		r.imme.zero()
 		return r.bodyWindow[0:size], nil
 	}
@@ -214,13 +214,13 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 		return nil, err
 	}
 	readSize := int64(cap(r.bodyWindow))
-	if sizeLeft := r.contentSize - r.sizeReceived; sizeLeft < readSize {
+	if sizeLeft := r.contentSize - r.receivedSize; sizeLeft < readSize {
 		readSize = sizeLeft
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:readSize])
 	if err == nil {
 		if !r._tooSlow() {
-			r.sizeReceived += int64(size)
+			r.receivedSize += int64(size)
 			return r.bodyWindow[:size], nil
 		}
 		err = httpInTooSlow
@@ -295,7 +295,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			goto badRead
 		}
 		// Check target size
-		if targetSize := r.sizeReceived + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
+		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
 			r.chunkSize = chunkSize
 		} else { // invalid target size.
 			// TODO: log error?
@@ -343,7 +343,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		from := int(r.cFore)
 		var dataEdge int32
 		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
-			r.sizeReceived += haveSize
+			r.receivedSize += haveSize
 			dataEdge = r.chunkEdge
 			if haveSize == r.chunkSize { // exact chunk-data
 				r.chunkSize = -2 // got chunk-data, needs CRLF or LF
@@ -352,7 +352,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			}
 			r.cFore, r.chunkEdge = 0, 0 // all data taken
 		} else { // haveSize > r.chunkSize, more than chunk-data
-			r.sizeReceived += r.chunkSize
+			r.receivedSize += r.chunkSize
 			dataEdge = r.cFore + int32(r.chunkSize)
 			if sizeLeft := r.chunkEdge - dataEdge; sizeLeft == 1 { // chunk-data ?
 				if b := r.bodyWindow[dataEdge]; b == '\r' { // exact chunk-data CR

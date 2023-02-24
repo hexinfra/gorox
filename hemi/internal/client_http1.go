@@ -414,7 +414,7 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H1Request) copyCookies(req Request) bool { // used by proxies
+func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header
 	size := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(hash uint16, name []byte, value []byte) bool {
 		size += len(name) + 1 + len(value) + 2 // `name=value; `
@@ -620,7 +620,7 @@ func (r *H1Response) cleanInput() {
 			if immeSize > r.contentSize { // still has data
 				// TODO: log? possible response splitting
 			}
-			r.sizeReceived = r.contentSize
+			r.receivedSize = r.contentSize
 			r.contentBlob = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
 			r.contentBlobKind = httpContentBlobInput
 		}

@@ -5,7 +5,11 @@
 
 // FCGI agent handlet passes requests to backend FastCGI servers and cache responses.
 
-// FastCGI is mainly used by PHP applications. It does not support HTTP trailers and request-side chunking.
+// FastCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
+// And we don't use request-side chunking due to the limitation of CGI/1.1 even
+// though FastCGI can do that through its framing protocol. Perhaps most FastCGI
+// applications don't implement this feature either.
+
 // To avoid ambiguity, the term "content" in FastCGI specification is called "payload" in our implementation.
 
 package internal
@@ -51,6 +55,7 @@ type fcgiAgent struct {
 	sendTimeout         time.Duration // timeout to send the whole request
 	recvTimeout         time.Duration // timeout to recv the whole response content
 	maxContentSize      int64         // max content size allowed
+	preferUnderscore    bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 }
 
 func (h *fcgiAgent) onCreate(name string, stage *Stage, app *App) {
@@ -106,6 +111,8 @@ func (h *fcgiAgent) OnConfigure() {
 	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 	// maxContentSize
 	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	// preferUnderscore
+	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 }
 func (h *fcgiAgent) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
@@ -352,18 +359,29 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 	} else {
 		value = scriptFilename
 	}
+	// Add meta params
 	if !r._addMetaParam(fcgiBytesScriptFilename, value) { // SCRIPT_FILENAME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesScriptName, req.UnsafePath()) { // SCRIPT_NAME
+		return false
+	}
+	if value = req.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
+		return false
+	}
+	if value = req.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
 		return false
 	}
 	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
-	// TODO: add more params
+	// Add http params
 	if !req.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
 		return r._addHTTPParam(hash, underscore, name, value)
 	}) {
 		return false
 	}
+	// Finalize params
 	r.paramsHeader[4] = byte(r.paramsEdge >> 8)
 	r.paramsHeader[5] = byte(r.paramsEdge)
 	return true
@@ -372,10 +390,10 @@ func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT
 	return r._addParam(nil, name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(hash uint16, underscore bool, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
-	if !underscore {
+	if !underscore || !r.stream.agent.preferUnderscore {
 		return r._addParam(fcgiBytesHTTP_, name, value, true)
 	}
-	// TODO: avoid name conflicts with header which is like "content_length"
+	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
 	return true
 }
 func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUpper bool) bool {
@@ -568,7 +586,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	headReason    string    // the reason of head result
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
-	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.sizeReceived]
+	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.receivedSize]
 	contentHeld   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
@@ -586,7 +604,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
 	maxContentSize  int64    // max content size allowed for current response
-	sizeReceived    int64    // bytes of currently received content
+	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected headers, for fast accessing
 		contentType  uint8
 		xPoweredBy   uint8
@@ -1009,7 +1027,7 @@ func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
 		header := &r.headers[i]
-		if header.hash != 0 && !header.isSubField() {
+		if header.hash != 0 && !header.isSubField() { // skip sub fields, only collect main fields
 			if !fn(header.hash, false, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}

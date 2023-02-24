@@ -118,7 +118,7 @@ type httpIn_ struct {
 	bodyWindow  []byte    // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
-	contentBlob []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.sizeReceived]. [<none>/r.input/4K/16K/64K1/(make)]
+	contentBlob []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentHeld *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	httpIn0_              // all values must be zero by default in this struct!
 }
@@ -147,7 +147,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
 	receiving        int8  // currently receiving. see httpSectionXXX
 	maxContentSize   int64 // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
-	sizeReceived     int64 // bytes of currently received content. for both sized & unsized content receiver
+	receivedSize     int64 // bytes of currently received content. for both sized & unsized content receiver
 	chunkSize        int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32 // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore            int32 // for parsing chunked elements. HTTP/1.1 chunked only
@@ -438,6 +438,12 @@ func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTim
 }
 
 func (r *httpIn_) ContentSize() int64 { return r.contentSize }
+func (r *httpIn_) UnsafeContentLength() []byte {
+	if r.iContentLength == 0 {
+		return nil
+	}
+	return r.primes[r.iContentLength].valueAt(r.input)
+}
 func (r *httpIn_) ContentType() string {
 	return string(r.UnsafeContentType())
 }
@@ -612,7 +618,7 @@ func (r *httpIn_) unsafeContent() []byte {
 	if r.stream.isBroken() {
 		return nil
 	}
-	return r.contentBlob[0:r.sizeReceived]
+	return r.contentBlob[0:r.receivedSize]
 }
 func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
@@ -622,22 +628,22 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	r.contentReceived = true
 	switch content := r.recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-		r.contentBlob = content // real content is r.contentBlob[:r.sizeReceived]
+		r.contentBlob = content // real content is r.contentBlob[:r.receivedSize]
 		r.contentBlobKind = httpContentBlobPool
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		contentFile := content.(*os.File)
-		if r.sizeReceived == 0 { // unsized content can has 0 size
+		if r.receivedSize == 0 { // unsized content can has 0 size
 			r.contentBlob = r.input
 			r.contentBlobKind = httpContentBlobInput
-		} else { // r.sizeReceived > 0
-			if r.sizeReceived <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
-				r.contentBlob = GetNK(r.sizeReceived) // 4K/16K/64K1. real content is r.content[:r.sizeReceived]
+		} else { // r.receivedSize > 0
+			if r.receivedSize <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
+				r.contentBlob = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
 				r.contentBlobKind = httpContentBlobPool
 			} else { // > 64K1, content can be sized or unsized. just alloc
-				r.contentBlob = make([]byte, r.sizeReceived)
+				r.contentBlob = make([]byte, r.receivedSize)
 				r.contentBlobKind = httpContentBlobMake
 			}
-			if _, err := io.ReadFull(contentFile, r.contentBlob[:r.sizeReceived]); err != nil {
+			if _, err := io.ReadFull(contentFile, r.contentBlob[:r.receivedSize]); err != nil {
 				// TODO: r.app.log
 			}
 		}
@@ -664,7 +670,7 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentBlob = content
 		r.contentBlobKind = httpContentBlobPool // so r.contentBlob can be freed on end
-		return r.contentBlob[0:r.sizeReceived]
+		return r.contentBlob[0:r.receivedSize]
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		r.contentHeld = content.(*os.File)
 		return r.contentHeld
@@ -694,13 +700,13 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 		}
 		// Since content is small, r.bodyWindow and TempFile are not needed.
 		contentBlob := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
-		r.sizeReceived = int64(r.imme.size())
-		if r.sizeReceived > 0 { // r.imme has data
+		r.receivedSize = int64(r.imme.size())
+		if r.receivedSize > 0 { // r.imme has data
 			copy(contentBlob, r.input[r.imme.from:r.imme.edge])
 			r.imme.zero()
 		}
-		if n, err := r.stream.readFull(contentBlob[r.sizeReceived:r.contentSize]); err == nil {
-			r.sizeReceived += int64(n)
+		if n, err := r.stream.readFull(contentBlob[r.receivedSize:r.contentSize]); err == nil {
+			r.receivedSize += int64(n)
 			return contentBlob // []byte, fetched from pool
 		} else {
 			PutNK(contentBlob)
@@ -924,7 +930,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint
 			if prime.hash != hash {
 				continue
 			}
-			if extraKind == extraHeader && !prime.isSubField() { // TODO: what about extraTrailer?
+			if extraKind == extraHeader && !prime.isSubField() { // skip main fields, only collect sub fields. TODO: what about extraTrailer?
 				continue
 			}
 			p := r._getPlace(prime)
@@ -1098,7 +1104,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 }
 func (r *httpIn_) _forFields(fields zone, extraKind uint8, fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
+		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
 			p := r._getPlace(field)
 			if !fn(field.hash, field.isUnderscore(), field.nameAt(p), field.valueAt(p)) {
 				return false

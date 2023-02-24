@@ -3,8 +3,8 @@ Welcome
 
   Welcome to Gorox!
 
-  Gorox is a high-performance HTTP server, application server, microservice
-  server, and proxy server. It can be used as:
+  Gorox is an advanced HTTP server, application server, microservice server, and
+  proxy server. It can be used as:
 
     * HTTP Server (HTTP 1/2/3, WebSocket, TLS, FastCGI, uwsgi)
     * Application Server for Go (Applications, Frameworks)

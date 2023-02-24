@@ -422,14 +422,14 @@ type Request interface {
 	adoptHeader(header *pair) bool
 	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
 	getRanges() []span
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
 	adoptTrailer(trailer *pair) bool
 	delHopTrailers()
-	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
@@ -1974,6 +1974,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					// Fast path, do nothing
 				} else if t == 2 { // A-Z
 					r.formWindow[r.pFore] = b + 0x20 // to lower
+				} else if t == 3 { // '_'
+					// For forms, do nothing
 				} else if b == ':' {
 					break
 				} else {
@@ -2810,7 +2812,7 @@ func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
 	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
 
 	// copy remaining headers from resp
-	if !resp.forHeaders(func(hash uint16, name []byte, value []byte) bool {
+	if !resp.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
 		if hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.shell.addHeader(name, value)
 		}

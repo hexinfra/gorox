@@ -88,6 +88,8 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
 				r.input[r.pFore] = b
+			} else if t == 3 { // '_'
+				header.setUnderscore(true)
 			} else if b == ':' {
 				break
 			} else {
@@ -413,6 +415,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
 				r.bodyWindow[r.pFore] = b
+			} else if t == 3 { // '_'
+				trailer.setUnderscore(true)
 			} else if b == ':' {
 				break
 			} else {

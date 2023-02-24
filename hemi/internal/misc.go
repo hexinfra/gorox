@@ -277,10 +277,10 @@ const ( // pair flags
 	placeStatic2  = 0b00100000 // in HTTP/2 static table
 	placeStatic3  = 0b00110000 // in HTTP/3 static table
 
-	flagWeakETag = 0b00001000 // weak etag or not
-	flagLiteral  = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo   = 0b00000010 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagSubField = 0b00000001 // sub field or not. currently only used by headers
+	flagWeakETag   = 0b00001000 // weak etag or not
+	flagLiteral    = 0b00000100 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00000010 // name contains '_' or not
+	flagSubField   = 0b00000001 // sub field or not. currently only used by headers
 )
 
 func (p *pair) setExtra(extra uint8)     { p.flags = p.flags&^pairMaskExtra | extra }
@@ -295,8 +295,8 @@ func (p *pair) isWeakETag() bool      { return p.flags&flagWeakETag > 0 }
 func (p *pair) setLiteral(literal bool) { p._setFlag(flagLiteral, literal) }
 func (p *pair) isLiteral() bool         { return p.flags&flagLiteral > 0 }
 
-func (p *pair) setPseudo(pseudo bool) { p._setFlag(flagPseudo, pseudo) }
-func (p *pair) isPseudo() bool        { return p.flags&flagPseudo > 0 }
+func (p *pair) setUnderscore(underscore bool) { p._setFlag(flagUnderscore, underscore) }
+func (p *pair) isUnderscore() bool            { return p.flags&flagUnderscore > 0 }
 
 func (p *pair) setSubField(subField bool) { p._setFlag(flagSubField, subField) }
 func (p *pair) isSubField() bool          { return p.flags&flagSubField > 0 }
@@ -609,7 +609,7 @@ func bytesToLower(p []byte) {
 func bytesToUpper(p []byte) {
 	for i := 0; i < len(p); i++ {
 		if b := p[i]; b >= 'a' && b <= 'z' {
-			p[i] = b - 0x20 // to lower
+			p[i] = b - 0x20 // to upper
 		}
 	}
 }

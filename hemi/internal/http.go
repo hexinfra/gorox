@@ -81,7 +81,7 @@ type httpIn interface {
 	readContent() (p []byte, err error)
 	adoptTrailer(trailer *pair) bool
 	HasTrailers() bool
-	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 }
@@ -577,7 +577,7 @@ func (r *httpIn_) delHeader(name []byte, hash uint16) {
 func (r *httpIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, extraHeader, r.delHeader)
 }
-func (r *httpIn_) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool { // excluding sub headers
+func (r *httpIn_) forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool { // excluding sub headers
 	return r._forFields(r.headers, extraHeader, fn)
 }
 
@@ -795,7 +795,7 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 func (r *httpIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, extraTrailer, r.delTrailer)
 }
-func (r *httpIn_) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // excluding sub trailers
+func (r *httpIn_) forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool { // excluding sub trailers
 	return r._forFields(r.trailers, extraTrailer, fn)
 }
 
@@ -1096,18 +1096,18 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 		}
 	}
 }
-func (r *httpIn_) _forFields(fields zone, extraKind uint8, fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) _forFields(fields zone, extraKind uint8, fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
 			p := r._getPlace(field)
-			if !fn(field.hash, field.nameAt(p), field.valueAt(p)) {
+			if !fn(field.hash, field.isUnderscore(), field.nameAt(p), field.valueAt(p)) {
 				return false
 			}
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
 		if field := &r.extras[i]; field.hash != 0 && field.isExtra(extraKind) {
-			if !fn(field.hash, field.nameAt(r.array), field.valueAt(r.array)) {
+			if !fn(field.hash, field.isUnderscore(), field.nameAt(r.array), field.valueAt(r.array)) {
 				return false
 			}
 		}
@@ -1452,7 +1452,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 		}
 	}
 	if in.HasTrailers() { // added trailers will be written eventually by upper code.
-		if !in.forTrailers(func(hash uint16, name []byte, value []byte) bool {
+		if !in.forTrailers(func(hash uint16, underscore bool, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
 			return httpOutTrailerFailed
@@ -2048,7 +2048,7 @@ var httpTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&
 	0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, //   !   # $ % & '     * +   - .
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, // 0 1 2 3 4 5 6 7 8 9
 	0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, //   A B C D E F G H I J K L M N O
-	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 1, 1, // P Q R S T U V W X Y Z       ^ _
+	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 1, 3, // P Q R S T U V W X Y Z       ^ _
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // ` a b c d e f g h i j k l m n o
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, // p q r s t u v w x y z   |   ~
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

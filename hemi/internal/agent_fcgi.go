@@ -6,6 +6,7 @@
 // FCGI agent handlets pass requests to backend FastCGI servers and cache responses.
 
 // FastCGI is mainly used by PHP applications. It does not support HTTP trailers and request-side chunking.
+// To avoid ambiguity, the term "content" in FastCGI specification is called "payload" in our implementation.
 
 package internal
 
@@ -311,7 +312,7 @@ type fcgiRequest struct { // outgoing. needs building
 	paramsHeader [8]byte // used by params record
 	stdinHeader  [8]byte // used by stdin record
 	// States (non-zeros)
-	params      []byte        // place the content of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
+	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
 	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
@@ -327,8 +328,8 @@ type fcgiRequest0 struct { // for fast reset, entirely
 }
 
 func (r *fcgiRequest) onUse() {
-	copy(r.paramsHeader[:], fcgiEmptyParams) // contentLen (r.paramsHeader[4:6]) needs modification
-	copy(r.stdinHeader[:], fcgiEmptyStdin)   // contentLen (r.stdinHeader[4:6]) needs modification for every stdin record
+	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification
+	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record
 	r.params = r.stockParams[:]
 	r.contentSize = -1 // not set
 	r.sendTimeout = r.stream.agent.sendTimeout
@@ -358,19 +359,23 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 		return false
 	}
 	// TODO: add more params
-
+	if !req.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
+		return r._addHTTPParam(hash, underscore, name, value)
+	}) {
+		return false
+	}
 	r.paramsHeader[4] = byte(r.paramsEdge >> 8)
 	r.paramsHeader[5] = byte(r.paramsEdge)
 	return true
 }
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
-	return r._addParam(nil, name, value)
+	return r._addParam(nil, name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
+func (r *fcgiRequest) _addHTTPParam(hash uint16, underscore bool, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
 	// TODO: avoid name conflicts with header which is like "content_length"
-	return r._addParam(fcgiBytesHTTP_, name, value)
+	return r._addParam(fcgiBytesHTTP_, name, value, true)
 }
-func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte) bool {
+func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUpper bool) bool {
 	nameLen, valueLen := len(prefix)+len(name), len(value)
 	size := 2 + nameLen + valueLen
 	if nameLen > 127 {
@@ -402,7 +407,17 @@ func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte) bool {
 	if len(prefix) > 0 {
 		from += copy(r.params[from:], prefix)
 	}
-	from += copy(r.params[from:], name)
+	if toUpper {
+		last := from + copy(r.params[from:], name)
+		for i := from; i < last; i++ {
+			if b := r.params[i]; b >= 'a' && b <= 'z' {
+				r.params[i] = b - 0x20 // to upper
+			}
+		}
+		from = last
+	} else {
+		from += copy(r.params[from:], name)
+	}
 	from += copy(r.params[from:], value)
 	if from != edge {
 		BugExitln("fcgi: from != edge")
@@ -557,11 +572,11 @@ type fcgiResponse struct { // incoming. needs parsing
 type fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
-	stdoutFrom      int32    // if stdout content is too large to be appended to r.input, use this to note current from position
+	stdoutFrom      int32    // if stdout's payload is too large to be appended to r.input, use this to note current from position
 	stdoutEdge      int32    // see above, to note current edge position
 	inputEdge       int32    // edge position of r.input
 	head            text     // for debugging
-	imme            text     // immediate bytes in r.input that is content
+	imme            text     // immediate bytes in r.input that belongs to content
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
 	status          int16    // 200, 302, 404, ...
@@ -723,6 +738,8 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
 				r.input[r.pFore] = b
+			} else if t == 3 { // '_'
+				// For fcgi, do nothing
 			} else if b == ':' {
 				break
 			} else {
@@ -986,11 +1003,11 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	return true
 }
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *fcgiResponse) forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
 		header := &r.headers[i]
 		if header.hash != 0 && !header.isSubField() {
-			if !fn(header.hash, header.nameAt(r.input), header.valueAt(r.input)) {
+			if !fn(header.hash, false, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}
 		}
@@ -1074,7 +1091,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
-func (r *fcgiResponse) forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
 
@@ -1126,11 +1143,11 @@ func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after
 		}
 		if kind != fcgiTypeEndRequest {
 			if IsDebug(2) {
-				Debugf("fcgi unexpected type=%d data=%s\n", kind, r.records[from:edge])
+				Debugf("fcgi unexpected type=%d payload=%s\n", kind, r.records[from:edge])
 			}
 			continue
 		}
-		if edge-from != 8 { // contentLen of endRequest
+		if edge-from != 8 { // payloadLen of endRequest
 			return 0, fcgiReadBadRecord
 		}
 		appStatus = int32(r.records[from+3])
@@ -1141,7 +1158,7 @@ func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after
 	}
 }
 
-func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record data.
+func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
 	remainSize := r.recordsEdge - r.recordsFrom
 	// At least an fcgi header must be immediate
 	if remainSize < fcgiHeaderSize {
@@ -1153,8 +1170,8 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 		}
 	}
 	// FCGI header is immediate.
-	contentLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
-	recordSize := fcgiHeaderSize + contentLen + int32(r.records[r.recordsFrom+6]) // with padding
+	payloadLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
+	recordSize := fcgiHeaderSize + payloadLen + int32(r.records[r.recordsFrom+6]) // with padding
 	// Is the whole record immediate?
 	if recordSize > remainSize { // not immediate, we need to make it immediate by reading the missing bytes
 		// Shoud we switch to a larger r.records?
@@ -1182,7 +1199,7 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	// Now recordSize <= remainSize, the record is immediate, so continue parsing it.
 	kind = r.records[r.recordsFrom+1]
 	from = r.recordsFrom + fcgiHeaderSize
-	edge = from + contentLen
+	edge = from + payloadLen
 	// Clean up positions.
 	if recordSize == remainSize { // all remain data are consumed, reset positions
 		r.recordsFrom, r.recordsEdge = 0, 0
@@ -1236,7 +1253,7 @@ var ( // fcgi response errors
 // poolFCGIRecords
 var poolFCGIRecords sync.Pool
 
-const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max content + max padding
+const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max payload + max padding
 
 func getFCGIRecords() []byte {
 	if x := poolFCGIRecords.Get(); x == nil {
@@ -1254,8 +1271,8 @@ func putFCGIRecords(records []byte) {
 
 // FCGI protocol elements.
 
-// FCGI Record = FCGI Header(8) + content + padding
-// FCGI Header = version(1) + type(1) + requestId(2) + contentLen(2) + paddingLen(1) + reserved(1)
+// FCGI Record = FCGI Header(8) + payload + padding
+// FCGI Header = version(1) + type(1) + requestId(2) + payloadLen(2) + paddingLen(1) + reserved(1)
 
 const ( // fcgi constants
 	fcgiHeaderSize = 8
@@ -1263,7 +1280,7 @@ const ( // fcgi constants
 )
 
 // Discrete records are standalone.
-// Streamed records end with an empty record (contentLen=0).
+// Streamed records end with an empty record (payloadLen=0).
 
 const ( // request record types
 	fcgiTypeBeginRequest = 1 // [D] only one
@@ -1275,27 +1292,27 @@ var ( // request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes
 		1, fcgiTypeBeginRequest, // version, type
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
-		0, 8, // content length = 8
+		0, 8, // payload length = 8
 		0, 0, // padding length = 0, reserved = 0
 		0, 1, 1, 0, 0, 0, 0, 0, // role=responder, flags=keepConn
 	}
 	fcgiBeginDontKeep = []byte{ // 16 bytes
 		1, fcgiTypeBeginRequest, // version, type
 		0, 1, // request id = 1
-		0, 8, // content length = 8
+		0, 8, // payload length = 8
 		0, 0, // padding length = 0, reserved = 0
 		0, 1, 0, 0, 0, 0, 0, 0, // role=responder, flags=dontKeep
 	}
 	fcgiEmptyParams = []byte{ // 8 bytes
 		1, fcgiTypeParams, // version, type
 		0, 1, // request id = 1
-		0, 0, // content length = 0
+		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
 	}
 	fcgiEmptyStdin = []byte{ // 8 bytes
 		1, fcgiTypeStdin, // version, type
 		0, 1, // request id = 1
-		0, 0, // content length = 0
+		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
 	}
 )

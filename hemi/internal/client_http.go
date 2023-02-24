@@ -37,9 +37,9 @@ type httpClient_ struct {
 func (h *httpClient_) onCreate() {
 }
 
-func (h *httpClient_) onConfigure(shell Component, clientName string) {
+func (h *httpClient_) onConfigure(shell Component, clientType string) {
 	h.streamKeeper_.onConfigure(shell, 1000)
-	h.contentSaver_.onConfigure(shell, TempDir()+"/"+clientName+"/"+shell.Name())
+	h.contentSaver_.onConfigure(shell, TempDir()+"/http/"+clientType+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 	// sendTimeout
@@ -71,7 +71,7 @@ func (f *httpOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *httpOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	f.httpClient_.onConfigure(shell, "outgates")
+	f.httpClient_.onConfigure(shell, "outgate")
 }
 func (f *httpOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
@@ -96,7 +96,7 @@ func (b *httpBackend_[N]) onCreate(name string, stage *Stage, creator interface{
 
 func (b *httpBackend_[N]) onConfigure(shell Component) {
 	b.backend_.onConfigure()
-	b.httpClient_.onConfigure(shell, "backends")
+	b.httpClient_.onConfigure(shell, "backend")
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {
@@ -327,7 +327,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy remaining headers from req
-	if !req.forHeaders(func(hash uint16, name []byte, value []byte) bool {
+	if !req.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
 		return r.shell.insertHeader(hash, name, value)
 	}) {
 		return false
@@ -415,9 +415,9 @@ type upload struct {
 type hResponse interface {
 	Status() int16
 	delHopHeaders()
-	forHeaders(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
 	delHopTrailers()
-	forTrailers(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

@@ -1065,16 +1065,20 @@ func (l *lexer) scan() []token {
 				var ll lexer
 				tokens = append(tokens, ll.scanFile(l.base, file)...)
 			}
-		case '_': // _constant
+		case '%': // %constant
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.text[from+1 : l.index]})
 		case '.': // .property
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenProperty, 0, line, l.file, l.text[from+1 : l.index]})
-		case '%': // %variable
-			l.nextAlnums()
-			tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.text[from+1 : l.index]})
-		case '^', '$', '*', '~': // ^=, $=, *=, ~=
+		case '$': // $variable
+			if !l.nextIs('=') {
+				l.nextAlnums()
+				tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.text[from+1 : l.index]})
+				break
+			}
+			fallthrough
+		case '^', '*', '~': // ^=, $=, *=, ~=
 			if l.mustNext() != '=' {
 				panic(fmt.Errorf("lexer: unknown character %c (ascii %v) in line %d (%s)\n", b, b, line, l.file))
 			}
@@ -1150,6 +1154,12 @@ func (l *lexer) nextUntil(b byte) {
 	} else {
 		l.index += i
 	}
+}
+func (l *lexer) nextIs(b byte) bool {
+	if next := l.index + 1; next != l.limit {
+		return l.text[next] == b
+	}
+	return false
 }
 func (l *lexer) mustNext() byte {
 	l.index++
@@ -1227,11 +1237,11 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenAND          // &&
 	tokenOR           // ||
 	// Constants
-	tokenConstant // _baseDir, _dataDir, _logsDir, _tempDir
+	tokenConstant // %baseDir, %dataDir, %logsDir, %tempDir
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
 	// Variables
-	tokenVariable // %method, %path, ...
+	tokenVariable // $method, $path, ...
 	// Values
 	tokenBool     // true, false
 	tokenInteger  // 123, 16K, 256M, ...

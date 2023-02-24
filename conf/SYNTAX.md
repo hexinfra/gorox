@@ -31,33 +31,33 @@ Constants
 
   Predefined string constants are:
 
-    _baseDir : Containing directory of the gorox executable
-    _dataDir : Containing directory of the gorox run-time data
-    _logsDir : Containing directory of the gorox log files
-    _tempDir : Containing directory of the gorox temp files
+    %baseDir : Containing directory of the gorox executable
+    %dataDir : Containing directory of the gorox run-time data
+    %logsDir : Containing directory of the gorox log files
+    %tempDir : Containing directory of the gorox temp files
 
 Variables
 ---------
 
   Defined rule variables are:
 
-    %method
-    %scheme
-    %authority
-    %hostname
-    %colonPort
-    %path
-    %uri
-    %encodedPath
-    %queryString
-    %contentType
+    $method
+    $scheme
+    $authority
+    $hostname
+    $colonPort
+    $path
+    $uri
+    $encodedPath
+    $queryString
+    $contentType
 
   Defined case variables are:
 
-    %srcHost
-    %srcPort
-    %transport
-    %hostname
+    $srcHost
+    $srcPort
+    $transport
+    $hostname
 
 Comparisons
 -----------
@@ -87,6 +87,6 @@ String concatenation
   Values of strings can be concatenated. For example:
 
     .abc = "world"
-    .def = "hello," + " " + .abc + " " + _baseDir
+    .def = "hello," + " " + .abc + " " + %baseDir
 
   Here, property "def" is a concatenation of five string values.

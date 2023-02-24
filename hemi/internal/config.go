@@ -1065,7 +1065,7 @@ func (l *lexer) scan() []token {
 				var ll lexer
 				tokens = append(tokens, ll.scanFile(l.base, file)...)
 			}
-		case '#': // #constant
+		case '_': // _constant
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.text[from+1 : l.index]})
 		case '.': // .property
@@ -1227,7 +1227,7 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenAND          // &&
 	tokenOR           // ||
 	// Constants
-	tokenConstant // #baseDir, #dataDir, #logsDir, #tempDir
+	tokenConstant // _baseDir, _dataDir, _logsDir, _tempDir
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
 	// Variables

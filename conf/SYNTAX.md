@@ -31,10 +31,10 @@ Constants
 
   Predefined string constants are:
 
-    #baseDir : Containing directory of the gorox executable
-    #dataDir : Containing directory of the gorox run-time data
-    #logsDir : Containing directory of the gorox log files
-    #tempDir : Containing directory of the gorox temp files
+    _baseDir : Containing directory of the gorox executable
+    _dataDir : Containing directory of the gorox run-time data
+    _logsDir : Containing directory of the gorox log files
+    _tempDir : Containing directory of the gorox temp files
 
 Variables
 ---------
@@ -87,6 +87,6 @@ String concatenation
   Values of strings can be concatenated. For example:
 
     .abc = "world"
-    .def = "hello," + " " + .abc + " " + #baseDir
+    .def = "hello," + " " + .abc + " " + _baseDir
 
   Here, property "def" is a concatenation of five string values.

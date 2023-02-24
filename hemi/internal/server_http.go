@@ -2239,11 +2239,11 @@ func (r *httpRequest_) addForm(form *pair) { // prime
 }
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
-	return r.hasPairs(r.forms, extraNoExtra)
+	return r.hasPairs(r.forms, extraNone)
 }
 func (r *httpRequest_) AllForms() (forms [][2]string) {
 	r.parseHTMLForm()
-	return r.allPairs(r.forms, extraNoExtra)
+	return r.allPairs(r.forms, extraNone)
 }
 func (r *httpRequest_) F(name string) string {
 	value, _ := r.Form(name)
@@ -2265,20 +2265,20 @@ func (r *httpRequest_) Fint(name string, defaultValue int) int {
 }
 func (r *httpRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
-	v, ok := r.getPair(name, 0, r.forms, extraNoExtra)
+	v, ok := r.getPair(name, 0, r.forms, extraNone)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
-	return r.getPair(name, 0, r.forms, extraNoExtra)
+	return r.getPair(name, 0, r.forms, extraNone)
 }
 func (r *httpRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
-	return r.getPairs(name, 0, r.forms, extraNoExtra)
+	return r.getPairs(name, 0, r.forms, extraNone)
 }
 func (r *httpRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.getPair(name, 0, r.forms, extraNoExtra)
+	_, ok := r.getPair(name, 0, r.forms, extraNone)
 	return ok
 }
 
@@ -2562,7 +2562,7 @@ type Response interface {
 	endUnsized() error
 	finalizeUnsized() error
 	sync1xx(resp hResponse) bool              // used by proxies
-	sync(resp httpIn) error                   // used by proxies
+	pass(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte

@@ -114,7 +114,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		} else if hasTrailers {
 			stream3.markBroken()
 		}
-	} else if err3 = req3.sync(req); err3 != nil {
+	} else if err3 = req3.pass(req); err3 != nil {
 		stream3.markBroken()
 	} else if req3.isUnsized() { // write last chunk and trailers (if exist)
 		if err3 = req3.endUnsized(); err3 != nil {
@@ -184,7 +184,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				return
 			}
 		}
-	} else if err := resp.sync(resp3); err != nil {
+	} else if err := resp.pass(resp3); err != nil {
 		stream3.markBroken()
 		return
 	}

@@ -269,7 +269,7 @@ const ( // pair flags
 	extraHeader   = 0b01000000 // extra headers
 	extraCookie   = 0b10000000 // extra cookies
 	extraTrailer  = 0b11000000 // extra trailers
-	extraNoExtra  = 0b11111111 // no extra, for comparison only
+	extraNone     = 0b11111111 // no extra, for comparison only
 
 	pairMaskPlace = 0b00110000 // place where pair data is stored. values below
 	placeInput    = 0b00000000 // in r.input

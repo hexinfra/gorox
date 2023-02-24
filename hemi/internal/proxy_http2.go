@@ -114,7 +114,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		} else if hasTrailers {
 			stream2.markBroken()
 		}
-	} else if err2 = req2.sync(req); err2 != nil {
+	} else if err2 = req2.pass(req); err2 != nil {
 		stream2.markBroken()
 	} else if req2.isUnsized() { // write last chunk and trailers (if exist)
 		if err2 = req2.endUnsized(); err2 != nil {
@@ -184,7 +184,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				return
 			}
 		}
-	} else if err := resp.sync(resp2); err != nil {
+	} else if err := resp.pass(resp2); err != nil {
 		stream2.markBroken()
 		return
 	}

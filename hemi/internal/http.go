@@ -862,7 +862,7 @@ func (r *httpIn_) hasPairs(primes zone, extraKind uint8) bool {
 	if primes.notEmpty() {
 		return true
 	}
-	if extraKind != extraNoExtra {
+	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				return true
@@ -879,7 +879,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind uint8) [][2]string {
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
 	}
-	if extraKind != extraNoExtra {
+	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
@@ -903,7 +903,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind uint8
 				return prime.valueAt(p), true
 			}
 		}
-		if extraKind != extraNoExtra {
+		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
@@ -932,7 +932,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind uint
 				values = append(values, string(prime.valueAt(p)))
 			}
 		}
-		if extraKind != extraNoExtra {
+		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
@@ -1007,7 +1007,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind uint8
 				deleted = true
 			}
 		}
-		if extraKind != extraNoExtra {
+		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
@@ -1031,7 +1031,7 @@ func (r *httpIn_) forPairs(primes zone, extraKind uint8, fn func(hash uint16, na
 			return false
 		}
 	}
-	if extraKind != extraNoExtra {
+	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
@@ -1086,7 +1086,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind uint8, delField func(name
 			}
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
-		if extraKind != extraNoExtra {
+		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == optionHash && extra.isExtra(extraKind) && extra.nameEqualBytes(r.array, optionName) {
@@ -1425,10 +1425,10 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	return true
 }
 
-func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content directly
-	sync := r.shell.syncBytes
+func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content directly
+	pass := r.shell.syncBytes
 	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
-		sync = r.PushBytes
+		pass = r.PushBytes
 	} else { // in is sized and there are no revisers, use syncBytes
 		r.isSent = true
 		r.contentSize = in.ContentSize()
@@ -1440,7 +1440,7 @@ func (r *httpOut_) sync(in httpIn) error { // used by proxes, to sync content di
 	for {
 		p, err := in.readContent()
 		if len(p) >= 0 {
-			if e := sync(p); e != nil {
+			if e := pass(p); e != nil {
 				return e
 			}
 		}

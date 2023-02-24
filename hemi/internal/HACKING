@@ -2,7 +2,7 @@ Internal is the core of hemi.
 
 
 --http[1-3]Stream-->                        ----H[1-3]Stream--->
-[REVISERS]      ^    -------sync/post----->                 ^
+[REVISERS]      ^    -------pass/post----->                 ^
                 |                                           |
 httpIn_         | stream                    httpOut_        | stream
 ^ - stream -----+                           ^ - stream -----+
@@ -21,7 +21,7 @@ httpIn_         | stream                    httpOut_        | stream
                 /          /         \
                           /           \
 <--http[1-3]Stream--                        <---H[1-3]Stream----
-[REVISERS]       ^   <------sync/post------                ^
+[REVISERS]       ^   <------pass/post------                ^
                  |                                         |
 httpOut_         | stream                   httpIn_        | stream
 ^ - stream ------+                          ^ - stream ----+

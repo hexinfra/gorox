@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI agent handlets pass requests to backend FastCGI servers and cache responses.
+// FCGI agent handlet passes requests to backend FastCGI servers and cache responses.
 
 // FastCGI is mainly used by PHP applications. It does not support HTTP trailers and request-side chunking.
 // To avoid ambiguity, the term "content" in FastCGI specification is called "payload" in our implementation.
@@ -159,7 +159,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		return
 	}
 	if hasContent && !h.bufferClientContent && !req.isUnsized() {
-		if fErr = fReq.sync(req); fErr != nil {
+		if fErr = fReq.pass(req); fErr != nil {
 			fStream.markBroken()
 		}
 	} else if fErr = fReq.post(content); fErr != nil {
@@ -216,7 +216,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		return
 	}
 	if fHasContent && !h.bufferServerContent {
-		if err := resp.sync(fResp); err != nil {
+		if err := resp.pass(fResp); err != nil {
 			fStream.markBroken()
 			return
 		}
@@ -372,8 +372,11 @@ func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT
 	return r._addParam(nil, name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(hash uint16, underscore bool, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
+	if !underscore {
+		return r._addParam(fcgiBytesHTTP_, name, value, true)
+	}
 	// TODO: avoid name conflicts with header which is like "content_length"
-	return r._addParam(fcgiBytesHTTP_, name, value, true)
+	return true
 }
 func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUpper bool) bool {
 	nameLen, valueLen := len(prefix)+len(name), len(value)
@@ -444,7 +447,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 	return
 }
 
-func (r *fcgiRequest) sync(req Request) error { // only for sized (>0) content
+func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 	// TODO: timeout
 	r.contentSize = req.ContentSize()
 	r.vector = r.fixedVector[0:4]

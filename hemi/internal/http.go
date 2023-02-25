@@ -870,7 +870,7 @@ func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 	}
 	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
 				return true
 			}
 		}
@@ -887,7 +887,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	}
 	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 			}
 		}
@@ -912,7 +912,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
 			}
@@ -941,7 +941,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
 					values = append(values, string(extra.valueAt(r.array)))
 				}
 			}
@@ -978,7 +978,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	}
 	extra := &r.field
 	extra.zero()
-	extra.setExtra(extraKind)
+	extra.extra = extraKind
 	extra.hash = stringHash(name)
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
@@ -1016,7 +1016,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.isExtra(extraKind) && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1039,7 +1039,7 @@ func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, nam
 	}
 	if extraKind != extraNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.isExtra(extraKind) {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -1050,13 +1050,13 @@ func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, nam
 }
 func (r *httpIn_) _getPlace(pair *pair) []byte {
 	var place []byte
-	if pair.inPlace(placeInput) {
+	if pair.place == placeInput {
 		place = r.input
-	} else if pair.inPlace(placeArray) {
+	} else if pair.place == placeArray {
 		place = r.array
-	} else if pair.inPlace(placeStatic2) {
+	} else if pair.place == placeStatic2 {
 		place = http2BytesStatic
-	} else if pair.inPlace(placeStatic3) {
+	} else if pair.place == placeStatic3 {
 		place = http3BytesStatic
 	} else {
 		BugExitln("unknown place")
@@ -1095,7 +1095,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		if extraKind != extraNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == optionHash && extra.isExtra(extraKind) && extra.nameEqualBytes(r.array, optionName) {
+				if extra.hash == optionHash && extra.extra == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}
 			}
@@ -1112,7 +1112,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
-		if field := &r.extras[i]; field.hash != 0 && field.isExtra(extraKind) {
+		if field := &r.extras[i]; field.hash != 0 && field.extra == extraKind {
 			if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
 				return false
 			}

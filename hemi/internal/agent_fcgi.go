@@ -730,7 +730,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	// field-content   = *( token | separator | quoted-string )
 	header := &r.header
 	header.zero()
-	header.setPlace(placeInput) // all received headers are in r.input
+	header.place = placeInput // all received headers are in r.input
 	// r.pFore is at headers (if any) or end of headers (if none).
 	for { // each header
 		// End of headers?

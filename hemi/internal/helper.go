@@ -323,7 +323,7 @@ type pair struct { // 20 bytes
 	mode     int8   // modeXXX
 	extra    int8   // extraXXX
 	place    int8   // placeXXX
-	_        byte   // padding
+	copied   bool   // if pair is copied to the other side, set true
 	flags    uint8  // see pair flags
 	nameSize uint8  // name size, <= 255
 	nameFrom int32  // like: "content-type"
@@ -347,9 +347,6 @@ const ( // pair modes
 	mode1Plus        // 1#value
 )
 
-func (p *pair) setMode(mode int8)     { p.mode = mode }
-func (p *pair) isMode(mode int8) bool { return p.mode == mode }
-
 const ( // extra kinds
 	extraNone = iota
 	extraQuery
@@ -358,18 +355,12 @@ const ( // extra kinds
 	extraTrailer
 )
 
-func (p *pair) setExtra(extra int8)     { p.extra = extra }
-func (p *pair) isExtra(extra int8) bool { return p.extra == extra }
-
 const ( // pair places
 	placeInput = iota
 	placeArray
 	placeStatic2
 	placeStatic3
 )
-
-func (p *pair) setPlace(place int8)     { p.place = place }
-func (p *pair) inPlace(place int8) bool { return p.place == place }
 
 const ( // pair flags
 	flagMultivalued = 0b10000000 // multivalued or not

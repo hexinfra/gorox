@@ -1332,7 +1332,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	cookie := &r.field
 	cookie.zero()
-	cookie.setPlace(placeInput) // all received cookies are in r.input
+	cookie.place = placeInput // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
 	state := 0
 	for p := cookieString.from; p < cookieString.edge; p++ {
@@ -1785,7 +1785,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		octet byte
 		form  pair
 	)
-	form.setPlace(placeArray)
+	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
@@ -1953,8 +1953,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			form   pair     // if part is a form, this is used
 			upload Upload   // if part is a file, this is used. zeroed
 		}
-		part.form.setPlace(placeArray)
-		for { // each field in current part
+		part.form.place = placeArray // all received forms are placed in r.array
+		for {                        // each field in current part
 			// End of part fields?
 			if b := r.formWindow[r.pFore]; b == '\r' {
 				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {

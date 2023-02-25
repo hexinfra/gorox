@@ -376,8 +376,8 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 		return false
 	}
 	// Add http params
-	if !req.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
-		return r._addHTTPParam(hash, underscore, name, value)
+	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r._addHTTPParam(header, name, value)
 	}) {
 		return false
 	}
@@ -389,8 +389,8 @@ func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
 	return r._addParam(nil, name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(hash uint16, underscore bool, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
-	if !underscore || !r.stream.agent.preferUnderscore {
+func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
+	if !header.isUnderscore() || !r.stream.agent.preferUnderscore {
 		return r._addParam(fcgiBytesHTTP_, name, value, true)
 	}
 	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
@@ -1024,11 +1024,11 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	return true
 }
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool {
+func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
 		header := &r.headers[i]
 		if header.hash != 0 && !header.isSubField() { // skip sub fields, only collect main fields
-			if !fn(header.hash, false, header.nameAt(r.input), header.valueAt(r.input)) {
+			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}
 		}
@@ -1112,7 +1112,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
-func (r *fcgiResponse) forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
 

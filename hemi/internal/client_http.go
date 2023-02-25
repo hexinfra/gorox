@@ -327,8 +327,8 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	}
 
 	// copy remaining headers from req
-	if !req.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
-		return r.shell.insertHeader(hash, name, value)
+	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r.shell.insertHeader(header.hash, name, value)
 	}) {
 		return false
 	}
@@ -415,9 +415,9 @@ type upload struct {
 type hResponse interface {
 	Status() int16
 	delHopHeaders()
-	forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
+	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
 	delHopTrailers()
-	forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
+	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
 }
 
 // hResponse_ is the mixin for H[1-3]Response.

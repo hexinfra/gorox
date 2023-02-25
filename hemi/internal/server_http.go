@@ -423,14 +423,14 @@ type Request interface {
 	adoptHeader(header *pair) bool
 	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
 	delHopHeaders()
-	forHeaders(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
+	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
 	getRanges() []span
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
 	adoptTrailer(trailer *pair) bool
 	delHopTrailers()
-	forTrailers(fn func(hash uint16, underscore bool, name []byte, value []byte) bool) bool
+	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
@@ -2813,11 +2813,11 @@ func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
 	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
 
 	// copy remaining headers from resp
-	if !resp.forHeaders(func(hash uint16, underscore bool, name []byte, value []byte) bool {
-		if hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
+	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.shell.addHeader(name, value)
 		}
-		return r.shell.insertHeader(hash, name, value)
+		return r.shell.insertHeader(header.hash, name, value)
 	}) {
 		return false
 	}

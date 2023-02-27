@@ -758,7 +758,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
-		if header.value.isEmpty() && h.must {
+		if header.isEmptyValue() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
 		}
@@ -935,15 +935,12 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 			// *match is 0 by default
 			*match++
 			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
-				header.setWeakETag(true)
-				header.value.from += 3
-				header.value.edge--
-			} else { // strong etag
-				header.setWeakETag(false)
-				if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
-					header.value.from++
-					header.value.edge--
-				}
+				header.setWeakETag()
+				header.valueSkip += 3 // won't overflow since we reserved some bytes
+				header.valueEdge--
+			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
+				header.valueSkip++
+				header.valueEdge--
 			}
 		}
 	}
@@ -978,7 +975,7 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
 	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
-	if header.value.isEmpty() {
+	if header.isEmptyValue() {
 		r.headResult, r.headReason = StatusBadRequest, "empty cookie"
 		return false
 	}
@@ -1003,7 +1000,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 		r.headResult, r.headReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
-	value := header.value
+	value := header.valueText()
 	if value.notEmpty() {
 		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
@@ -1331,6 +1328,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	cookie := &r.field
 	cookie.zero()
+	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
 	state := 0
@@ -1339,13 +1337,13 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 		switch state {
 		case 0: // expecting '=' to get cookie-name
 			if b == '=' {
-				if size := p - cookie.nameFrom; size > 0 && size <= 255 {
-					cookie.nameSize = uint8(size)
+				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
+					cookie.nameSize = uint8(nameSize)
 				} else {
 					r.headResult, r.headReason = StatusBadRequest, "cookie name out of range"
 					return false
 				}
-				cookie.value.from = p + 1
+				cookie.valueSkip = 1 // =
 				state = 1
 			} else if httpTchar[b] != 0 {
 				cookie.hash += uint16(b)
@@ -1355,7 +1353,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 1: // DQUOTE or not?
 			if b == '"' {
-				cookie.value.from++
+				cookie.valueSkip++
 				state = 3
 				continue
 			}
@@ -1363,7 +1361,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			fallthrough
 		case 2: // *cookie-octet, expecting ';'
 			if b == ';' {
-				cookie.value.edge = p
+				cookie.valueEdge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1374,7 +1372,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
 			if b == '"' {
-				cookie.value.edge = p
+				cookie.valueEdge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1394,13 +1392,13 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 				r.headResult, r.headReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
-			cookie.hash = 0
+			cookie.hash, cookie.flags = 0, 0 // reset for next cookie
 			cookie.nameFrom = p + 1
 			state = 0
 		}
 	}
 	if state == 2 { // ';' not found
-		cookie.value.edge = cookieString.edge
+		cookie.valueEdge = cookieString.edge
 		if !r.addCookie(cookie) {
 			return false
 		}
@@ -1530,7 +1528,7 @@ func (r *httpRequest_) checkHead() bool {
 				typeParams  text
 				contentType []byte
 			)
-			vType := r.primes[r.iContentType].value
+			vType := r.primes[r.iContentType].valueText()
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParams.from = vType.edge
 				typeParams.edge = vType.edge
@@ -1587,7 +1585,7 @@ func (r *httpRequest_) checkHead() bool {
 			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
 				continue
 			}
-			if !r.parseCookie(cookie.value) {
+			if !r.parseCookie(cookie.valueText()) {
 				return false
 			}
 		}
@@ -1785,6 +1783,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		octet byte
 		form  pair
 	)
+	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
@@ -1797,7 +1796,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 				} else {
 					return
 				}
-				form.value.from = r.arrayEdge
+				form.valueSkip = 0
 				state = 3
 			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
@@ -1812,11 +1811,11 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			}
 		case 3: // expecting '&' to get a value
 			if b == '&' {
-				form.value.edge = r.arrayEdge
+				form.valueEdge = r.arrayEdge
 				if form.nameSize > 0 {
 					r.addForm(&form)
 				}
-				form.hash = 0 // reset hash for next form
+				form.hash, form.flags = 0, 0 // reset for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'
@@ -1849,7 +1848,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 	// Reaches end of content.
 	if state == 3 { // '&' not found
-		form.value.edge = r.arrayEdge
+		form.valueEdge = r.arrayEdge
 		if form.nameSize > 0 {
 			r.addForm(&form)
 		}
@@ -1953,6 +1952,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			form   pair     // if part is a form, this is used
 			upload Upload   // if part is a file, this is used. zeroed
 		}
+		part.form.kind = kindForm
 		part.form.place = placeArray // all received forms are placed in r.array
 		for {                        // each field in current part
 			// End of part fields?
@@ -2145,7 +2145,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		} else {
 			part.form.hash = part.hash
 			part.form.nameSize, part.form.nameFrom = uint8(part.name.size()), part.name.from
-			part.form.value.from = r.arrayEdge
+			part.form.valueSkip = 0
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
 		for {             // each partial in current part
@@ -2171,7 +2171,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					return
 				}
 				if mode == 1 { // form part ends
-					part.form.value.edge = r.arrayEdge
+					part.form.valueEdge = r.arrayEdge
 					r.addForm(&part.form)
 				}
 			} else if part.osFile != nil {

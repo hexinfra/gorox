@@ -397,7 +397,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
 	// TODO
-	if r.iContentLocation == 0 && header.value.notEmpty() {
+	if r.iContentLocation == 0 && !header.isEmptyValue() {
 		r.iContentLocation = index
 		return true
 	}
@@ -406,7 +406,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
 }
 func (r *httpIn_) checkContentRange(header *pair, index uint8) bool {
 	// TODO
-	if r.iContentRange == 0 && header.value.notEmpty() {
+	if r.iContentRange == 0 && !header.isEmptyValue() {
 		r.iContentRange = index
 		return true
 	}
@@ -419,7 +419,7 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool {
 	// type = token
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
-	if r.iContentType == 0 && header.value.notEmpty() {
+	if r.iContentType == 0 && !header.isEmptyValue() {
 		r.iContentType = index
 		return true
 	}
@@ -504,70 +504,72 @@ func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool { // prime
 		// r.headResult is set.
 		return false
 	}
-	// RFC 7230 (section 7):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-	subHeader := *header // clone header
-	subHeader.setSubField(true)
-	added := uint8(0) // how many subHeaders have been added?
-	value := header.value
-	needComma := false
-	for { // each element
-		haveComma := false
-		for value.from < header.value.edge {
-			if b := r.input[value.from]; b == ',' {
-				haveComma = true
-				value.from++
-			} else if b == ' ' || b == '\t' {
-				value.from++
-			} else {
-				break
-			}
-		}
-		if value.from == header.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
-			return false
-		}
-		value.edge = value.from
-		if r.input[value.edge] == '"' { // value is quoted?
-			value.edge++
-			for value.edge < header.value.edge && r.input[value.edge] != '"' {
-				value.edge++
-			}
-			if value.edge == header.value.edge {
-				subHeader.value = value // value is `"...`
-			} else { // got a `"`
-				subHeader.value.set(value.from+1, value.edge) // strip `""`
-				value.edge++
-			}
-		} else { // not a quoted value
-			for value.edge < header.value.edge {
-				if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
-					break
+	/*
+		// RFC 7230 (section 7):
+		// In other words, a recipient MUST accept lists that satisfy the following syntax:
+		// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
+		// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
+		subHeader := *header // clone header
+		subHeader.setSubField()
+		added := uint8(0) // how many subHeaders have been added?
+		value := header.value
+		needComma := false
+		for { // each element
+			haveComma := false
+			for value.from < header.value.edge {
+				if b := r.input[value.from]; b == ',' {
+					haveComma = true
+					value.from++
+				} else if b == ' ' || b == '\t' {
+					value.from++
 				} else {
-					value.edge++
+					break
 				}
 			}
-			subHeader.value = value
-		}
-		if subHeader.value.notEmpty() {
-			if !r.addHeader(&subHeader) {
-				// r.headResult is set.
+			if value.from == header.value.edge {
+				break
+			}
+			if needComma && !haveComma {
+				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
 				return false
 			}
-			added++
+			value.edge = value.from
+			if r.input[value.edge] == '"' { // value is quoted?
+				value.edge++
+				for value.edge < header.value.edge && r.input[value.edge] != '"' {
+					value.edge++
+				}
+				if value.edge == header.value.edge {
+					subHeader.value = value // value is `"...`
+				} else { // got a `"`
+					subHeader.value.set(value.from+1, value.edge) // strip `""`
+					value.edge++
+				}
+			} else { // not a quoted value
+				for value.edge < header.value.edge {
+					if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
+						break
+					} else {
+						value.edge++
+					}
+				}
+				subHeader.value = value
+			}
+			if subHeader.value.notEmpty() {
+				if !r.addHeader(&subHeader) {
+					// r.headResult is set.
+					return false
+				}
+				added++
+			}
+			value.from = value.edge
+			needComma = true
 		}
-		value.from = value.edge
-		needComma = true
-	}
-	if added == 0 && must {
-		r.headResult, r.headReason = StatusBadRequest, "empty element detected in 1#(element)"
-		return false
-	}
+		if added == 0 && must {
+			r.headResult, r.headReason = StatusBadRequest, "empty element detected in 1#(element)"
+			return false
+		}
+	*/
 	return true
 }
 func (r *httpIn_) addHeader(header *pair) bool { // prime
@@ -980,9 +982,9 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.value.from = r.arrayEdge
+	extra.valueSkip = 0
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.value.edge = r.arrayEdge
+	extra.valueEdge = r.arrayEdge
 	r.extras = append(r.extras, r.field)
 	r.hasExtras[extraKind] = true
 	return true

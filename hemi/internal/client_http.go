@@ -481,7 +481,7 @@ func (r *hResponse_) Status() int16 { return r.status }
 func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
-		if header.value.isEmpty() && h.must {
+		if header.isEmptyValue() && h.must {
 			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
 			return false
 		}
@@ -619,7 +619,7 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
-	if !r.parseSetCookie(header.value) {
+	if !r.parseSetCookie(header.valueText()) {
 		r.headResult, r.headReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}

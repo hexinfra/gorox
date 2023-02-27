@@ -730,6 +730,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	// field-content   = *( token | separator | quoted-string )
 	header := &r.header
 	header.zero()
+	header.kind = kindHeader
 	header.place = placeInput // all received headers are in r.input
 	// r.pFore is at headers (if any) or end of headers (if none).
 	for { // each header
@@ -750,7 +751,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash = 0
+		header.hash, header.flags = 0, 0 // reset for next header
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
@@ -772,24 +773,29 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		if size := r.pFore - r.pBack; size > 0 && size <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(size)
+		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
+			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
+		r.pBack = r.pFore // now r.pBack is for skip
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 			return false
 		}
-
 		// Skip OWS before field-value (and OWS after field-value, if field-value is empty)
 		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
-
+		if valueSkip := r.pFore - r.pBack; valueSkip <= 250 { // we have to reserve some bytes
+			header.valueSkip = uint8(valueSkip)
+		} else {
+			r.headResult, r.headReason = StatusBadRequest, "too many ows before field-value"
+			return false
+		}
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -819,13 +825,14 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		if r.input[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
-			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
+		if fore > r.pBack { // field-value is not empty
+			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
-			header.value.set(r.pBack, fore)
-		} else {
-			header.value.zero()
+			header.valueEdge = fore
+		} else { // field-value is empty
+			header.valueEdge = r.pBack
+			header.setEmptyValue()
 		}
 
 		// Header is received in general algorithm. Now adopt it
@@ -952,62 +959,64 @@ func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 		// r.headResult is set.
 		return false
 	}
-	// RFC 7230 (section 7):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-	subHeader := *header // clone header
-	subHeader.setSubField(true)
-	value := header.value
-	needComma := false
-	for { // each element
-		haveComma := false
-		for value.from < header.value.edge {
-			if b := r.input[value.from]; b == ',' {
-				haveComma = true
-				value.from++
-			} else if b == ' ' || b == '\t' {
-				value.from++
-			} else {
-				break
-			}
-		}
-		if value.from == header.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
-			return false
-		}
-		value.edge = value.from
-		if r.input[value.edge] == '"' { // value is quoted?
-			value.edge++
-			for value.edge < header.value.edge && r.input[value.edge] != '"' {
-				value.edge++
-			}
-			if value.edge == header.value.edge {
-				subHeader.value = value // value is `"...`
-			} else { // got a `"`
-				subHeader.value.set(value.from+1, value.edge) // strip `""`
-				value.edge++
-			}
-		} else { // not a quoted value
-			for value.edge < header.value.edge {
-				if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
-					break
+	/*
+		// RFC 7230 (section 7):
+		// In other words, a recipient MUST accept lists that satisfy the following syntax:
+		// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
+		// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
+		subHeader := *header // clone header
+		subHeader.setSubField()
+		value := header.value
+		needComma := false
+		for { // each element
+			haveComma := false
+			for value.from < header.value.edge {
+				if b := r.input[value.from]; b == ',' {
+					haveComma = true
+					value.from++
+				} else if b == ' ' || b == '\t' {
+					value.from++
 				} else {
-					value.edge++
+					break
 				}
 			}
-			subHeader.value = value
+			if value.from == header.value.edge {
+				break
+			}
+			if needComma && !haveComma {
+				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+				return false
+			}
+			value.edge = value.from
+			if r.input[value.edge] == '"' { // value is quoted?
+				value.edge++
+				for value.edge < header.value.edge && r.input[value.edge] != '"' {
+					value.edge++
+				}
+				if value.edge == header.value.edge {
+					subHeader.value = value // value is `"...`
+				} else { // got a `"`
+					subHeader.value.set(value.from+1, value.edge) // strip `""`
+					value.edge++
+				}
+			} else { // not a quoted value
+				for value.edge < header.value.edge {
+					if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
+						break
+					} else {
+						value.edge++
+					}
+				}
+				subHeader.value = value
+			}
+			if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
+				// r.headResult is set.
+				return false
+			}
+			value.from = value.edge
+			needComma = true
 		}
-		if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
-			// r.headResult is set.
-			return false
-		}
-		value.from = value.edge
-		needComma = true
-	}
+	*/
 	return true
 }
 func (r *fcgiResponse) addHeader(header *pair) bool {

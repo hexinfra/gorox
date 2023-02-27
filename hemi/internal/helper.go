@@ -36,10 +36,10 @@ func putPairs(pairs []pair) {
 // pair is used to hold queries, headers, cookies, forms, and trailers.
 type pair struct { // 20 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
-	mode     int8   // modeXXX
 	kind     int8   // kindXXX
+	mode     int8   // modeXXX
 	place    int8   // placeXXX
-	copied   bool   // if pair is copied to the other side, set true
+	copied   bool   // if field is copied to the other side, set true
 	flags    uint8  // see pair flags
 	nameSize uint8  // name size, <= 255
 	nameFrom int32  // like: "content-type"
@@ -57,19 +57,21 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
 
+const ( // extra kinds
+	kindUnknown = iota
+	kindQuery
+	kindHeader
+	kindCookie // cookie/setCookie
+	kindForm
+	kindTrailer
+	kindIfMatch
+	kindIfNoneMatch
+)
+
 const ( // pair modes
 	modeAlone = iota // singleton. like content-length, ...
 	mode0Plus        // #value
 	mode1Plus        // 1#value
-)
-
-const ( // extra kinds
-	kindNone = iota
-	kindQuery
-	kindHeader
-	kindCookie
-	kindForm
-	kindTrailer
 )
 
 const ( // pair places
@@ -79,7 +81,7 @@ const ( // pair places
 	placeStatic3
 )
 
-const ( // pair flags
+const ( // field flags
 	flagMultivalued = 0b10000000 // multivalued or not
 	flagWeakETag    = 0b01000000 // weak etag or not
 	flagLiteral     = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3

@@ -706,10 +706,9 @@ func (r *httpRequest_) addQuery(query *pair) bool { // prime
 	if edge, ok := r.addPrime(query); ok {
 		r.queries.edge = edge
 		return true
-	} else {
-		r.headResult, r.headReason = StatusURITooLong, "too many queries"
-		return false
 	}
+	r.headResult, r.headReason = StatusURITooLong, "too many queries"
+	return false
 }
 func (r *httpRequest_) HasQueries() bool {
 	return r.hasPairs(r.queries, kindQuery)
@@ -1616,10 +1615,9 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
-	} else {
-		r.headResult = StatusRequestHeaderFieldsTooLarge
-		return false
 	}
+	r.headResult = StatusRequestHeaderFieldsTooLarge
+	return false
 }
 func (r *httpRequest_) HasCookies() bool {
 	return r.hasPairs(r.cookies, kindCookie)
@@ -1709,6 +1707,7 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 			return true
 		}
 	}
+	// TODO: extra?
 	return false
 }
 func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
@@ -1724,6 +1723,7 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 			return false
 		}
 	}
+	// TODO: extra?
 	return true
 }
 func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {

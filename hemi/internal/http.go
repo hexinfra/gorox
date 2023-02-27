@@ -95,7 +95,7 @@ type httpIn_ struct {
 	stockInput  [1600]byte // for r.input
 	stockArray  [800]byte  // for r.array
 	stockPrimes [64]pair   // for r.primes
-	stockExtras [2]pair    // for r.extras
+	stockExtras [4]pair    // for r.extras
 	// Stream states (controlled)
 	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers, cookies, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
@@ -103,8 +103,8 @@ type httpIn_ struct {
 	// Stream states (non-zeros)
 	input       []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
 	array       []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/255]
-	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/255]
+	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/max]
+	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/max]
 	recvTimeout time.Duration // timeout to recv the whole message content
 	contentSize int64         // info of content. >=0: content size, -1: no content, -2: unsized content
 	versionCode uint8         // Version1_0, Version1_1, Version2, Version3
@@ -123,38 +123,39 @@ type httpIn_ struct {
 	httpIn0_              // all values must be zero by default in this struct!
 }
 type httpIn0_ struct { // for fast reset, entirely
-	pBack            int32 // element begins from. for parsing control & headers & content & trailers elements
-	pFore            int32 // element spanning to. for parsing control & headers & content & trailers elements
-	head             text  // head (control + headers) of current message -> r.input. set after head is received. only for debugging
-	imme             text  // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	headers          zone  // raw headers ->r.input
-	options          zone  // connection options ->r.input. may be not continuous
-	nContentCodings  int8  // num of content-encoding flags, controls r.contentCodings
-	nAcceptCodings   int8  // num of accept-encoding flags
-	_                byte  // padding
-	arrayKind        int8  // kind of current r.array. see arrayKindXXX
-	arrayEdge        int32 // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	iContentLength   uint8 // content-length header in r.primes->r.input
-	iContentLocation uint8 // content-location header in r.primes->r.input
-	iContentRange    uint8 // content-range header in r.primes->r.input
-	iContentType     uint8 // content-type header in r.primes->r.input
-	acceptGzip       bool  // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli     bool  // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	upgradeSocket    bool  // upgrade: websocket?
-	upgradeUDPTun    bool  // upgrade: connect-udp?
-	hasRevisers      bool  // are there any revisers hooked on this incoming message?
-	contentReceived  bool  // is content received? if message has no content, it is true (received)
-	contentBlobKind  int8  // kind of current r.contentBlob. see httpContentBlobXXX
-	receiving        int8  // currently receiving. see httpSectionXXX
-	maxContentSize   int64 // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
-	receivedSize     int64 // bytes of currently received content. for both sized & unsized content receiver
-	chunkSize        int64 // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
-	cBack            int32 // for parsing chunked elements. HTTP/1.1 chunked only
-	cFore            int32 // for parsing chunked elements. HTTP/1.1 chunked only
-	chunkEdge        int32 // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
-	transferChunked  bool  // transfer-encoding: chunked? HTTP/1.1 only
-	overChunked      bool  // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
-	trailers         zone  // raw trailers -> r.array. set after trailer section is received and parsed
+	pBack            int32   // element begins from. for parsing control & headers & content & trailers elements
+	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
+	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	hasExtras        [8]bool // 0:unknown 1:query 2:header 3:cookie 4:form 5:trailer 6:ifMatch 7:ifNoneMatch
+	headers          zone    // raw headers ->r.input
+	options          zone    // connection options ->r.input. may be not continuous
+	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
+	nAcceptCodings   int8    // num of accept-encoding flags
+	_                byte    // padding
+	arrayKind        int8    // kind of current r.array. see arrayKindXXX
+	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	iContentLength   uint8   // content-length header in r.primes->r.input
+	iContentLocation uint8   // content-location header in r.primes->r.input
+	iContentRange    uint8   // content-range header in r.primes->r.input
+	iContentType     uint8   // content-type header in r.primes->r.input
+	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	upgradeSocket    bool    // upgrade: websocket?
+	upgradeUDPTun    bool    // upgrade: connect-udp?
+	hasRevisers      bool    // are there any revisers hooked on this incoming message?
+	contentReceived  bool    // is content received? if message has no content, it is true (received)
+	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
+	receiving        int8    // currently receiving. see httpSectionXXX
+	maxContentSize   int64   // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
+	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
+	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
+	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	cFore            int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkEdge        int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
+	transferChunked  bool    // transfer-encoding: chunked? HTTP/1.1 only
+	overChunked      bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
+	trailers         zone    // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
 func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
@@ -865,17 +866,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 }
 
 func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
-	if primes.notEmpty() {
-		return true
-	}
-	if extraKind != kindNone {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
-				return true
-			}
-		}
-	}
-	return false
+	return primes.notEmpty() || r.hasExtras[extraKind]
 }
 func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
@@ -885,7 +876,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
 	}
-	if extraKind != kindNone {
+	if r.hasExtras[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
@@ -909,7 +900,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				return prime.valueAt(p), true
 			}
 		}
-		if extraKind != kindNone {
+		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
@@ -938,7 +929,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				values = append(values, string(prime.valueAt(p)))
 			}
 		}
-		if extraKind != kindNone {
+		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
@@ -953,13 +944,12 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 	return
 }
 func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
-	if len(r.primes) == cap(r.primes) {
-		if cap(r.primes) == cap(r.stockPrimes) { // full
-			r.primes = getPairs()
-			r.primes = append(r.primes, r.stockPrimes[:]...)
-		} else { // overflow
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // overflow
 			return 0, false
 		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
 	}
 	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
@@ -973,28 +963,28 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	if totalSize < 0 {
 		return false
 	}
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras!
+			return false
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
 	if !r._growArray(totalSize) {
 		return false
 	}
 	extra := &r.field
 	extra.zero()
-	extra.kind = extraKind
 	extra.hash = stringHash(name)
+	extra.kind = extraKind
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) == cap(r.stockExtras) { // stock
-			r.extras = getPairs()
-			r.extras = append(r.extras, r.stockExtras[:]...)
-		} else { // too many extras!
-			return false
-		}
-	}
 	r.extras = append(r.extras, r.field)
+	r.hasExtras[extraKind] = true
 	return true
 }
 func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
@@ -1013,7 +1003,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 				deleted = true
 			}
 		}
-		if extraKind != kindNone {
+		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
@@ -1037,7 +1027,7 @@ func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, nam
 			return false
 		}
 	}
-	if extraKind != kindNone {
+	if r.hasExtras[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
@@ -1092,7 +1082,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 			}
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
-		if extraKind != kindNone {
+		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
 				if extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
@@ -1111,10 +1101,12 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 			}
 		}
 	}
-	for i := 0; i < len(r.extras); i++ {
-		if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind {
-			if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
-				return false
+	if r.hasExtras[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind {
+				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+					return false
+				}
 			}
 		}
 	}

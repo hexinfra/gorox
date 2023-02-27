@@ -228,51 +228,41 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, stage)
-		} else if current.kind == tokenIdentifier {
-			switch current.text {
-			case "fixtures":
-				c.parseContainer0(compFixture, c.parseFixture, current.text, stage)
-			case "unitures":
-				c.parseContainer0(compUniture, c.parseUniture, current.text, stage)
-			case "backends":
-				c.parseContainer0(compBackend, c.parseBackend, current.text, stage)
-			case "meshers":
-				c.parseMeshers(stage)
-			case "staters":
-				c.parseContainer0(compStater, c.parseStater, current.text, stage)
-			case "cachers":
-				c.parseContainer0(compCacher, c.parseCacher, current.text, stage)
-			case "apps":
-				c.parseContainer0(compApp, c.parseApp, current.text, stage)
-			case "svcs":
-				c.parseContainer0(compSvc, c.parseSvc, current.text, stage)
-			case "servers":
-				c.parseContainer0(compServer, c.parseServer, current.text, stage)
-			case "cronjobs":
-				c.parseContainer0(compCronjob, c.parseCronjob, current.text, stage)
-			default:
-				panic(fmt.Errorf("unknown container '%s' in stage\n", current.text))
-			}
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
+		switch current.info {
+		case compFixture:
+			c.parseFixture(current, stage)
+		case compUniture:
+			c.parseUniture(current, stage)
+		case compBackend:
+			c.parseBackend(current, stage)
+		case compQUICMesher:
+			c.parseQUICMesher(stage)
+		case compTCPSMesher:
+			c.parseTCPSMesher(stage)
+		case compUDPSMesher:
+			c.parseUDPSMesher(stage)
+		case compStater:
+			c.parseStater(current, stage)
+		case compCacher:
+			c.parseCacher(current, stage)
+		case compApp:
+			c.parseApp(current, stage)
+		case compSvc:
+			c.parseSvc(current, stage)
+		case compServer:
+			c.parseServer(current, stage)
+		case compCronjob:
+			c.parseCronjob(current, stage)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in stage\n", current.text))
+		}
 	}
 }
-func (c *config) parseContainer0(comp int16, parseComponent func(sign token, stage *Stage), compName string, stage *Stage) { // fixtures, unitures, backends, staters, cachers, apps, svcs, servers, cronjobs {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier && current.info == comp {
-			parseComponent(current, stage)
-		} else {
-			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
-		}
-	}
-}
-
 func (c *config) parseFixture(sign token, stage *Stage) { // xxxFixture {}
 	fixtureSign := sign.text
 	fixture := stage.fixture(fixtureSign)
@@ -281,13 +271,13 @@ func (c *config) parseFixture(sign token, stage *Stage) { // xxxFixture {}
 	}
 	fixture.setParent(stage)
 	c.forward()
-	c.parseAssigns(fixture)
+	c.parseLeaf(fixture)
 }
 func (c *config) parseUniture(sign token, stage *Stage) { // xxxUniture {}
 	uniture := stage.createUniture(sign.text)
 	uniture.setParent(stage)
 	c.forward()
-	c.parseAssigns(uniture)
+	c.parseLeaf(uniture)
 }
 func (c *config) parseBackend(sign token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
@@ -297,7 +287,7 @@ func parseComponent0[T Component](c *config, sign token, stage *Stage, create fu
 	component := create(sign.text, name.text)
 	component.setParent(stage)
 	c.forward()
-	c.parseAssigns(component)
+	c.parseLeaf(component)
 }
 func (c *config) parseMeshers(stage *Stage) { // meshers {}
 	c.forwardExpect(tokenLeftBrace) // {
@@ -334,19 +324,20 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, mesher)
-		} else if current.kind == tokenIdentifier {
-			switch current.text {
-			case "dealets":
-				parseContainer1(c, mesher, compQUICDealet, c.parseQUICDealet, current.text)
-			case "editors":
-				parseContainer1(c, mesher, compQUICEditor, c.parseQUICEditor, current.text)
-			case "cases":
-				parseCases(c, mesher, c.parseQUICCase)
-			default:
-				panic(fmt.Errorf("unknown container '%s' in quicMesher\n", current.text))
-			}
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case compQUICDealet:
+			c.parseQUICDealet(current, mesher, nil)
+		case compQUICEditor:
+			c.parseQUICEditor(current, mesher, nil)
+		case compCase:
+			c.parseQUICCase(mesher)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in quicMesher\n", current.text))
 		}
 	}
 }
@@ -356,119 +347,6 @@ func (c *config) parseQUICDealet(sign token, mesher *QUICMesher, kase *quicCase)
 func (c *config) parseQUICEditor(sign token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
-func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
-	mesherName := c.forwardExpect(tokenString)
-	mesher := stage.createTCPSMesher(mesherName.text)
-	mesher.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, mesher)
-		} else if current.kind == tokenIdentifier {
-			switch current.text {
-			case "dealets":
-				parseContainer1(c, mesher, compTCPSDealet, c.parseTCPSDealet, current.text)
-			case "editors":
-				parseContainer1(c, mesher, compTCPSEditor, c.parseTCPSEditor, current.text)
-			case "cases":
-				parseCases(c, mesher, c.parseTCPSCase)
-			default:
-				panic(fmt.Errorf("unknown container '%s' in tcpsMesher\n", current.text))
-			}
-		} else {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
-		}
-	}
-}
-func (c *config) parseTCPSDealet(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
-	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
-}
-func (c *config) parseTCPSEditor(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
-}
-func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
-	mesherName := c.forwardExpect(tokenString)
-	mesher := stage.createUDPSMesher(mesherName.text)
-	mesher.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, mesher)
-		} else if current.kind == tokenIdentifier {
-			switch current.text {
-			case "dealets":
-				parseContainer1(c, mesher, compUDPSDealet, c.parseUDPSDealet, current.text)
-			case "editors":
-				parseContainer1(c, mesher, compUDPSEditor, c.parseUDPSEditor, current.text)
-			case "cases":
-				parseCases(c, mesher, c.parseUDPSCase)
-			default:
-				panic(fmt.Errorf("unknown container '%s' in udpsMesher\n", current.text))
-			}
-		} else {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
-		}
-	}
-}
-func (c *config) parseUDPSDealet(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
-	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
-}
-func (c *config) parseUDPSEditor(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
-}
-func parseContainer1[M Component, C any](c *config, mesher M, comp int16, parseComponent func(sign token, mesher M, kase *C), compName string) { // dealets, editors {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier && current.info == comp {
-			parseComponent(current, mesher, nil) // not in case
-		} else {
-			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
-		}
-	}
-}
-func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
-	name := sign.text
-	if current := c.forward(); current.kind == tokenString {
-		name = current.text
-		c.forward()
-	} else if kase != nil { // in case
-		name = c.newName()
-	}
-	component := create(sign.text, name)
-	component.setParent(mesher)
-	if kase != nil { // in case
-		assign(component)
-	}
-	c.parseAssigns(component)
-}
-
-func parseCases[M Component](c *config, mesher M, parseCase func(M)) { // cases {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier && current.info == compCase {
-			parseCase(mesher)
-		} else {
-			panic(errors.New("config error: only cases are allowed in cases"))
-		}
-	}
-}
-
 func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
 	kase.setParent(mesher)
@@ -492,12 +370,55 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, kase)
-		} else if current.kind == tokenIdentifier && current.info == compQUICEditor {
-			c.parseQUICEditor(current, mesher, kase)
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
+		switch current.info {
+		case compQUICDealet:
+			c.parseQUICDealet(current, mesher, kase)
+		case compQUICEditor:
+			c.parseQUICEditor(current, mesher, kase)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+		}
 	}
+}
+func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
+	mesherName := c.forwardExpect(tokenString)
+	mesher := stage.createTCPSMesher(mesherName.text)
+	mesher.setParent(stage)
+	c.forwardExpect(tokenLeftBrace) // {
+	for {
+		current := c.forward()
+		if current.kind == tokenRightBrace { // }
+			return
+		}
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, mesher)
+			continue
+		}
+		if current.kind != tokenIdentifier {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case compTCPSDealet:
+			c.parseTCPSDealet(current, mesher, nil)
+		case compTCPSEditor:
+			c.parseTCPSEditor(current, mesher, nil)
+		case compCase:
+			c.parseTCPSCase(mesher)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in tcpsMesher\n", current.text))
+		}
+	}
+}
+func (c *config) parseTCPSDealet(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
+	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
+}
+func (c *config) parseTCPSEditor(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
+	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -522,12 +443,55 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, kase)
-		} else if current.kind == tokenIdentifier && current.info == compTCPSEditor {
-			c.parseTCPSEditor(current, mesher, kase)
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
+		switch current.info {
+		case compTCPSDealet:
+			c.parseTCPSDealet(current, mesher, kase)
+		case compTCPSEditor:
+			c.parseTCPSEditor(current, mesher, kase)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+		}
 	}
+}
+func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
+	mesherName := c.forwardExpect(tokenString)
+	mesher := stage.createUDPSMesher(mesherName.text)
+	mesher.setParent(stage)
+	c.forwardExpect(tokenLeftBrace) // {
+	for {
+		current := c.forward()
+		if current.kind == tokenRightBrace { // }
+			return
+		}
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, mesher)
+			continue
+		}
+		if current.kind != tokenIdentifier {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case compUDPSDealet:
+			c.parseUDPSDealet(current, mesher, nil)
+		case compUDPSEditor:
+			c.parseUDPSEditor(current, mesher, nil)
+		case compCase:
+			c.parseUDPSCase(mesher)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in udpsMesher\n", current.text))
+		}
+	}
+}
+func (c *config) parseUDPSDealet(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
+	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
+}
+func (c *config) parseUDPSEditor(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
+	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -552,12 +516,35 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, kase)
-		} else if current.kind == tokenIdentifier && current.info == compUDPSEditor {
-			c.parseUDPSEditor(current, mesher, kase)
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
+		switch current.info {
+		case compUDPSDealet:
+			c.parseUDPSDealet(current, mesher, kase)
+		case compUDPSEditor:
+			c.parseUDPSEditor(current, mesher, kase)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+		}
 	}
+}
+func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
+	name := sign.text
+	if current := c.forward(); current.kind == tokenString {
+		name = current.text
+		c.forward()
+	} else if kase != nil { // in case
+		name = c.newName()
+	}
+	component := create(sign.text, name)
+	component.setParent(mesher)
+	if kase != nil { // in case
+		assign(component)
+	}
+	c.parseLeaf(component)
 }
 func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	variable := c.expect(tokenVariable)
@@ -595,15 +582,12 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	cond.compare = compare.text
 	kase.setInfo(cond)
 }
-
 func (c *config) parseStater(sign token, stage *Stage) { // xxxStater <name> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
-
 func (c *config) parseCacher(sign token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
-
 func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 	appName := c.forwardExpect(tokenString)
 	app := stage.createApp(appName.text)
@@ -616,39 +600,25 @@ func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, app)
-		} else if current.kind == tokenIdentifier {
-			switch current.text {
-			case "handlets":
-				c.parseContainer2(app, compHandlet, c.parseHandlet, current.text)
-			case "revisers":
-				c.parseContainer2(app, compReviser, c.parseReviser, current.text)
-			case "socklets":
-				c.parseContainer2(app, compSocklet, c.parseSocklet, current.text)
-			case "rules":
-				c.parseRules(app)
-			default:
-				panic(fmt.Errorf("unknown container '%s' in app\n", current.text))
-			}
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
-	}
-}
-func (c *config) parseContainer2(app *App, comp int16, parseComponent func(sign token, app *App, rule *Rule), compName string) { // handlets, revisers, socklets {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier && current.info == comp {
-			parseComponent(current, app, nil) // not in rule
-		} else {
-			panic(errors.New("config error: only " + compName + " are allowed in " + compName))
+		switch current.info {
+		case compHandlet:
+			c.parseHandlet(current, app, nil)
+		case compReviser:
+			c.parseReviser(current, app, nil)
+		case compSocklet:
+			c.parseSocklet(current, app, nil)
+		case compRule:
+			c.parseRule(app)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in app\n", current.text))
 		}
 	}
 }
-
 func (c *config) parseHandlet(sign token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
 	parseComponent2(c, sign, app, app.createHandlet, rule, rule.addHandlet)
 }
@@ -671,24 +641,8 @@ func parseComponent2[T Component](c *config, sign token, app *App, create func(s
 	if rule != nil { // in rule
 		assign(component)
 	}
-	c.parseAssigns(component)
+	c.parseLeaf(component)
 }
-
-func (c *config) parseRules(app *App) { // rules {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier && current.info == compRule {
-			c.parseRule(app)
-		} else {
-			panic(errors.New("config error: only rules are allowed in rules"))
-		}
-	}
-}
-
 func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
 	rule := app.createRule(c.newName()) // use a temp name by default
 	rule.setParent(app)
@@ -712,19 +666,20 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		}
 		if current.kind == tokenProperty { // .property
 			c.parseAssign(current, rule)
-		} else if current.kind == tokenIdentifier {
-			switch current.info {
-			case compHandlet:
-				c.parseHandlet(current, app, rule)
-			case compReviser:
-				c.parseReviser(current, app, rule)
-			case compSocklet:
-				c.parseSocklet(current, app, rule)
-			default:
-				panic(fmt.Errorf("config error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
-			}
-		} else {
+			continue
+		}
+		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case compHandlet:
+			c.parseHandlet(current, app, rule)
+		case compReviser:
+			c.parseReviser(current, app, rule)
+		case compSocklet:
+			c.parseSocklet(current, app, rule)
+		default:
+			panic(fmt.Errorf("config error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 	}
 }
@@ -768,15 +723,13 @@ func (c *config) parseRuleCond(rule *Rule) {
 	cond.compare = compare.text
 	rule.setInfo(cond)
 }
-
 func (c *config) parseSvc(sign token, stage *Stage) { // svc <name> {}
 	svcName := c.forwardExpect(tokenString)
 	svc := stage.createSvc(svcName.text)
 	svc.setParent(stage)
 	c.forward()
-	c.parseAssigns(svc)
+	c.parseLeaf(svc)
 }
-
 func (c *config) parseServer(sign token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
@@ -784,20 +737,21 @@ func (c *config) parseCronjob(sign token, stage *Stage) { // xxxCronjob {}
 	cronjob := stage.createCronjob(sign.text)
 	cronjob.setParent(stage)
 	c.forward()
-	c.parseAssigns(cronjob)
+	c.parseLeaf(cronjob)
 }
 
-func (c *config) parseAssigns(component Component) {
+func (c *config) parseLeaf(component Component) {
 	c.expect(tokenLeftBrace) // {
 	for {
-		switch current := c.forward(); current.kind {
-		case tokenProperty:
-			c.parseAssign(current, component)
-		case tokenRightBrace: // }
+		current := c.forward()
+		if current.kind == tokenRightBrace { // }
 			return
-		default:
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
 		}
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, component)
+			continue
+		}
+		panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
 	}
 }
 func (c *config) parseAssign(prop token, component Component) {

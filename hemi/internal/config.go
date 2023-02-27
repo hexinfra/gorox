@@ -289,29 +289,6 @@ func parseComponent0[T Component](c *config, sign token, stage *Stage, create fu
 	c.forward()
 	c.parseLeaf(component)
 }
-func (c *config) parseMeshers(stage *Stage) { // meshers {}
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenIdentifier {
-			switch current.info {
-			case compQUICMesher:
-				c.parseQUICMesher(stage)
-			case compTCPSMesher:
-				c.parseTCPSMesher(stage)
-			case compUDPSMesher:
-				c.parseUDPSMesher(stage)
-			default:
-				panic(errors.New("config error: only quicMesher, tcpsMesher, and udpsMesher are allowed in meshers"))
-			}
-		} else {
-			panic(errors.New("config error: only meshers are allowed in meshers"))
-		}
-	}
-}
 func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 	mesherName := c.forwardExpect(tokenString)
 	mesher := stage.createQUICMesher(mesherName.text)
@@ -973,6 +950,8 @@ func (l *lexer) scan() []token {
 		case '\n': // new line
 			line++
 			l.index++
+		case '#': // shell comment
+			l.nextUntil('\n')
 		case '/': // line comment or stream comment
 			if c := l.mustNext(); c == '/' { // line comment
 				l.nextUntil('\n')

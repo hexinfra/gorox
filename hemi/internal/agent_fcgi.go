@@ -1035,11 +1035,8 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		header := &r.headers[i]
-		if header.hash != 0 && !header.isSubField() { // skip sub fields, only collect main fields
-			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
-				return false
-			}
+		if header := &r.headers[i]; header.hash != 0 && !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
+			return false
 		}
 	}
 	return true

@@ -587,7 +587,7 @@ func (r *httpIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
 func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
-	return r._forFields(r.headers, kindHeader, fn)
+	return r.forPairs(r.headers, kindHeader, fn)
 }
 
 func (r *httpIn_) determineContentMode() bool {
@@ -805,7 +805,7 @@ func (r *httpIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
 func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // excluding sub trailers
-	return r._forFields(r.trailers, kindTrailer, fn)
+	return r.forPairs(r.trailers, kindTrailer, fn)
 }
 
 func (r *httpIn_) arrayPush(b byte) {
@@ -893,13 +893,11 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 			hash = stringHash(name)
 		}
 		for i := primes.from; i < primes.edge; i++ {
-			prime := &r.primes[i]
-			if prime.hash != hash {
-				continue
-			}
-			p := r._getPlace(prime)
-			if prime.nameEqualString(p, name) {
-				return prime.valueAt(p), true
+			if prime := &r.primes[i]; prime.hash == hash {
+				p := r._getPlace(prime)
+				if prime.nameEqualString(p, name) {
+					return prime.valueAt(p), true
+				}
 			}
 		}
 		if r.hasExtras[extraKind] {
@@ -919,16 +917,11 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 			hash = stringHash(name)
 		}
 		for i := primes.from; i < primes.edge; i++ {
-			prime := &r.primes[i]
-			if prime.hash != hash {
-				continue
-			}
-			if extraKind == kindHeader && !prime.isSubField() { // skip main fields, only collect sub fields. TODO: what about kindTrailer?
-				continue
-			}
-			p := r._getPlace(prime)
-			if prime.nameEqualString(p, name) {
-				values = append(values, string(prime.valueAt(p)))
+			if prime := &r.primes[i]; prime.hash == hash {
+				p := r._getPlace(prime)
+				if prime.nameEqualString(p, name) {
+					values = append(values, string(prime.valueAt(p)))
+				}
 			}
 		}
 		if r.hasExtras[extraKind] {
@@ -972,7 +965,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 		r.extras = getPairs()
 		r.extras = append(r.extras, r.stockExtras[:]...)
 	}
-	if !r._growArray(totalSize) {
+	if !r._growArray(totalSize) { // extras are always placed in r.array
 		return false
 	}
 	extra := &r.stock
@@ -996,14 +989,12 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 			hash = stringHash(name)
 		}
 		for i := primes.from; i < primes.edge; i++ {
-			prime := &r.primes[i]
-			if prime.hash != hash {
-				continue
-			}
-			p := r._getPlace(prime)
-			if prime.nameEqualString(p, name) {
-				prime.zero()
-				deleted = true
+			if prime := &r.primes[i]; prime.hash == hash {
+				p := r._getPlace(prime)
+				if prime.nameEqualString(p, name) {
+					prime.zero()
+					deleted = true
+				}
 			}
 		}
 		if r.hasExtras[extraKind] {
@@ -1019,21 +1010,20 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 	return
 }
 func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
-func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(pair *pair, name []byte, value []byte) bool) bool {
 	for i := primes.from; i < primes.edge; i++ {
 		prime := &r.primes[i]
-		if prime.hash == 0 {
-			continue
-		}
-		p := r._getPlace(prime)
-		if !fn(prime.hash, prime.nameAt(p), prime.valueAt(p)) {
-			return false
+		if prime.hash != 0 {
+			p := r._getPlace(prime)
+			if !fn(prime, prime.nameAt(p), prime.valueAt(p)) {
+				return false
+			}
 		}
 	}
 	if r.hasExtras[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
-				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
+				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
 			}
@@ -1094,26 +1084,6 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 			}
 		}
 	}
-}
-func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
-	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
-			p := r._getPlace(field)
-			if !fn(field, field.nameAt(p), field.valueAt(p)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtras[extraKind] {
-		for i := 0; i < len(r.extras); i++ {
-			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind {
-				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save content to

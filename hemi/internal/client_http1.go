@@ -416,7 +416,7 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 }
 func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header
 	size := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	req.forCookies(func(hash uint16, name []byte, value []byte) bool {
+	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 		size += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
@@ -425,7 +425,7 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge in
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		req.forCookies(func(hash uint16, name []byte, value []byte) bool {
+		req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 			from += copy(r.fields[from:], name)
 			r.fields[from] = '='
 			from++

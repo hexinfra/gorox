@@ -92,7 +92,6 @@ const ( // field flags
 	flagLiteral     = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
 	flagPseudo      = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagUnderscore  = 0b00001000 // pair name contains '_' or not
-	flagSubField    = 0b00000100 // sub field or not. currently only used by headers
 	flagCopied      = 0b00000010 // field is copied to the other side or not
 	flagEmptyValue  = 0b00000001 // empty value or not
 )
@@ -111,9 +110,6 @@ func (p *pair) isPseudo() bool { return p.flags&flagPseudo > 0 }
 
 func (p *pair) setUnderscore()     { p.flags |= flagUnderscore }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
-
-func (p *pair) setSubField()     { p.flags |= flagSubField }
-func (p *pair) isSubField() bool { return p.flags&flagSubField > 0 }
 
 func (p *pair) setCopied()     { p.flags |= flagCopied }
 func (p *pair) isCopied() bool { return p.flags&flagCopied > 0 }

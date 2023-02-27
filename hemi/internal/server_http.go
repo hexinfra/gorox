@@ -421,7 +421,7 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	adoptHeader(header *pair) bool
-	forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool
+	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
 	getRanges() []span
@@ -1661,7 +1661,7 @@ func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
-func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
 	return r.forPairs(r.cookies, kindCookie, fn)
 }
 

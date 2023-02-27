@@ -726,7 +726,7 @@ func (r *hResponse_) HasCookie(name string) bool {
 	// TODO
 	return false
 }
-func (r *hResponse_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
+func (r *hResponse_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
 	// TODO
 	return false
 }

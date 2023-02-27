@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"encoding/binary"
 	"sync"
 	"time"
 )
@@ -32,22 +33,56 @@ func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
 	}
 }
 
-func makeTempName(p []byte, stageID int64, connID int64, stamp int64, counter int64) (from int, edge int) {
-	// TODO: improvement
-	stageID &= 0xff
-	connID &= 0xffff
-	stamp &= 0xffffffff
-	counter &= 0xff
-	// stageID(8) | connID(16) | seconds(32) | counter(8)
-	i64 := stageID<<56 | connID<<40 | stamp<<8 | counter
-	i64 &= 0x7fffffffffffffff // clear left-most bit
-	return i64ToDec(i64, p)
+// booker
+type booker struct {
 }
 
-// hostnameTo
-type hostnameTo[T Component] struct {
-	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	target   T
+// Region
+type Region struct { // 512B
+	blocks [][]byte  // the blocks. [<stocks>/make]
+	stocks [4][]byte // for blocks. 96B
+	block0 [392]byte // for blocks[0]
+}
+
+func (r *Region) Init() {
+	r.blocks = r.stocks[0:1:cap(r.stocks)]                    // block0 always at 0
+	r.stocks[0] = r.block0[:]                                 // first block is always block0
+	binary.BigEndian.PutUint16(r.block0[cap(r.block0)-2:], 0) // reset used size of block0
+}
+func (r *Region) Make(size int) []byte { // good for a lot of small buffers
+	if size <= 0 {
+		BugExitln("bad size")
+	}
+	block := r.blocks[len(r.blocks)-1]
+	edge := cap(block)
+	ceil := edge - 2
+	used := int(binary.BigEndian.Uint16(block[ceil:edge]))
+	want := used + size
+	if want <= 0 {
+		BugExitln("size too large")
+	}
+	if want <= ceil {
+		binary.BigEndian.PutUint16(block[ceil:edge], uint16(want))
+		return block[used:want]
+	}
+	ceil = _4K - 2
+	if size > ceil {
+		return make([]byte, size)
+	}
+	block = Get4K()
+	binary.BigEndian.PutUint16(block[ceil:_4K], uint16(size))
+	r.blocks = append(r.blocks, block)
+	return block[0:size]
+}
+func (r *Region) Free() {
+	for i := 1; i < len(r.blocks); i++ {
+		PutNK(r.blocks[i])
+		r.blocks[i] = nil
+	}
+	if cap(r.blocks) != cap(r.stocks) {
+		r.stocks = [cap(r.stocks)][]byte{}
+		r.blocks = nil
+	}
 }
 
 const ( // units

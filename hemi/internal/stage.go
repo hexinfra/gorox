@@ -395,13 +395,17 @@ func (s *Stage) Start(id int32) {
 
 	if IsDebug(2) {
 		Debugf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
-		Debugf("size of h1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
 		Debugf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
-		Debugf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
 		Debugf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
+		Debugf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
 		Debugf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
+		Debugf("size of H1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
+		Debugf("size of H2Conn = %d\n", unsafe.Sizeof(H2Conn{}))
+		Debugf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
+		Debugf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
+		Debugf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
 		Debugf("size of fcgiStream = %d\n", unsafe.Sizeof(fcgiStream{}))
-		Debugf("size of Block = %d\n", unsafe.Sizeof(Block{}))
+		Debugf("size of uwsgiStream = %d\n", unsafe.Sizeof(uwsgiStream{}))
 	}
 	if IsDebug(1) {
 		Debugf("stageID=%d\n", s.id)

@@ -712,10 +712,10 @@ func (r *httpRequest_) addQuery(query *pair) bool { // prime
 	}
 }
 func (r *httpRequest_) HasQueries() bool {
-	return r.hasPairs(r.queries, extraQuery)
+	return r.hasPairs(r.queries, kindQuery)
 }
 func (r *httpRequest_) AllQueries() (queries [][2]string) {
-	return r.allPairs(r.queries, extraQuery)
+	return r.allPairs(r.queries, kindQuery)
 }
 func (r *httpRequest_) Q(name string) string {
 	value, _ := r.Query(name)
@@ -736,24 +736,24 @@ func (r *httpRequest_) Qint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpRequest_) Query(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.queries, extraQuery)
+	v, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.queries, extraQuery)
+	return r.getPair(name, 0, r.queries, kindQuery)
 }
 func (r *httpRequest_) Queries(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.queries, extraQuery)
+	return r.getPairs(name, 0, r.queries, kindQuery)
 }
 func (r *httpRequest_) HasQuery(name string) bool {
-	_, ok := r.getPair(name, 0, r.queries, extraQuery)
+	_, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return ok
 }
 func (r *httpRequest_) AddQuery(name string, value string) bool { // extra
-	return r.addExtra(name, value, extraQuery)
+	return r.addExtra(name, value, kindQuery)
 }
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
-	return r.delPair(name, 0, r.queries, extraQuery)
+	return r.delPair(name, 0, r.queries, kindQuery)
 }
 
 func (r *httpRequest_) adoptHeader(header *pair) bool {
@@ -1253,7 +1253,7 @@ func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool {
 	}
 	return true
 }
-func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []nava) (int, bool) {
+func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []para) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -1557,7 +1557,7 @@ func (r *httpRequest_) checkHead() bool {
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
-				paras := make([]nava, 1) // doesn't escape
+				paras := make([]para, 1) // doesn't escape
 				if _, ok := r.parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
 					r.headResult, r.headReason = StatusBadRequest, "invalid multipart/form-data params"
 					return false
@@ -1622,10 +1622,10 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
 	}
 }
 func (r *httpRequest_) HasCookies() bool {
-	return r.hasPairs(r.cookies, extraCookie)
+	return r.hasPairs(r.cookies, kindCookie)
 }
 func (r *httpRequest_) AllCookies() (cookies [][2]string) {
-	return r.allPairs(r.cookies, extraCookie)
+	return r.allPairs(r.cookies, kindCookie)
 }
 func (r *httpRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
@@ -1646,27 +1646,27 @@ func (r *httpRequest_) Cint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.cookies, extraCookie)
+	v, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.cookies, extraCookie)
+	return r.getPair(name, 0, r.cookies, kindCookie)
 }
 func (r *httpRequest_) Cookies(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.cookies, extraCookie)
+	return r.getPairs(name, 0, r.cookies, kindCookie)
 }
 func (r *httpRequest_) HasCookie(name string) bool {
-	_, ok := r.getPair(name, 0, r.cookies, extraCookie)
+	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return ok
 }
 func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
-	return r.addExtra(name, value, extraCookie)
+	return r.addExtra(name, value, kindCookie)
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
-	return r.delPair(name, 0, r.cookies, extraCookie)
+	return r.delPair(name, 0, r.cookies, kindCookie)
 }
 func (r *httpRequest_) forCookies(fn func(hash uint16, name []byte, value []byte) bool) bool {
-	return r.forPairs(r.cookies, extraCookie, fn)
+	return r.forPairs(r.cookies, kindCookie, fn)
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
@@ -2028,7 +2028,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				paras := make([]nava, 2) // for name & filename. won't escape to heap
+				paras := make([]para, 2) // for name & filename. won't escape to heap
 				n, ok := r.parseParams(r.formWindow, r.pBack, fore, paras)
 				if !ok {
 					r.stream.markBroken()
@@ -2240,11 +2240,11 @@ func (r *httpRequest_) addForm(form *pair) { // prime
 }
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
-	return r.hasPairs(r.forms, extraNone)
+	return r.hasPairs(r.forms, kindForm)
 }
 func (r *httpRequest_) AllForms() (forms [][2]string) {
 	r.parseHTMLForm()
-	return r.allPairs(r.forms, extraNone)
+	return r.allPairs(r.forms, kindForm)
 }
 func (r *httpRequest_) F(name string) string {
 	value, _ := r.Form(name)
@@ -2266,21 +2266,27 @@ func (r *httpRequest_) Fint(name string, defaultValue int) int {
 }
 func (r *httpRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
-	v, ok := r.getPair(name, 0, r.forms, extraNone)
+	v, ok := r.getPair(name, 0, r.forms, kindForm)
 	return string(v), ok
 }
 func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
-	return r.getPair(name, 0, r.forms, extraNone)
+	return r.getPair(name, 0, r.forms, kindForm)
 }
 func (r *httpRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
-	return r.getPairs(name, 0, r.forms, extraNone)
+	return r.getPairs(name, 0, r.forms, kindForm)
 }
 func (r *httpRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.getPair(name, 0, r.forms, extraNone)
+	_, ok := r.getPair(name, 0, r.forms, kindForm)
 	return ok
+}
+func (r *httpRequest_) AddForm(name string, value string) bool { // extra
+	return r.addExtra(name, value, kindForm)
+}
+func (r *httpRequest_) DelForm(name string) (deleted bool) {
+	return r.delPair(name, 0, r.forms, kindForm)
 }
 
 func (r *httpRequest_) addUpload(upload *Upload) {

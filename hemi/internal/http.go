@@ -455,7 +455,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 }
 
 func (r *httpIn_) AllHeaders() (headers [][2]string) {
-	return r.allPairs(r.headers, extraHeader)
+	return r.allPairs(r.headers, kindHeader)
 }
 func (r *httpIn_) H(name string) string {
 	value, _ := r.Header(name)
@@ -476,26 +476,26 @@ func (r *httpIn_) Hint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpIn_) Header(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.headers, extraHeader)
+	v, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return string(v), ok
 }
 func (r *httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.headers, extraHeader)
+	return r.getPair(name, 0, r.headers, kindHeader)
 }
 func (r *httpIn_) Headers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.headers, extraHeader)
+	return r.getPairs(name, 0, r.headers, kindHeader)
 }
 func (r *httpIn_) HasHeader(name string) bool {
-	_, ok := r.getPair(name, 0, r.headers, extraHeader)
+	_, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return ok
 }
 func (r *httpIn_) AddHeader(name string, value string) bool { // extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
-	return r.addExtra(name, value, extraHeader)
+	return r.addExtra(name, value, kindHeader)
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to delete?
-	return r.delPair(name, 0, r.headers, extraHeader)
+	return r.delPair(name, 0, r.headers, kindHeader)
 }
 func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool { // prime
 	// Add main header before sub headers.
@@ -578,13 +578,13 @@ func (r *httpIn_) addHeader(header *pair) bool { // prime
 	return false
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.headers, extraHeader)
+	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
 }
 func (r *httpIn_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, extraHeader, r.delHeader)
+	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
 func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
-	return r._forFields(r.headers, extraHeader, fn)
+	return r._forFields(r.headers, kindHeader, fn)
 }
 
 func (r *httpIn_) determineContentMode() bool {
@@ -747,7 +747,7 @@ badRead:
 
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
-	return r.allPairs(r.trailers, extraTrailer)
+	return r.allPairs(r.trailers, kindTrailer)
 }
 func (r *httpIn_) T(name string) string {
 	value, _ := r.Trailer(name)
@@ -768,26 +768,26 @@ func (r *httpIn_) Tint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *httpIn_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.trailers, extraTrailer)
+	v, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return string(v), ok
 }
 func (r *httpIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.trailers, extraTrailer)
+	return r.getPair(name, 0, r.trailers, kindTrailer)
 }
 func (r *httpIn_) Trailers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.trailers, extraTrailer)
+	return r.getPairs(name, 0, r.trailers, kindTrailer)
 }
 func (r *httpIn_) HasTrailer(name string) bool {
-	_, ok := r.getPair(name, 0, r.trailers, extraTrailer)
+	_, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return ok
 }
 func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
-	return r.addExtra(name, value, extraTrailer)
+	return r.addExtra(name, value, kindTrailer)
 }
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 	// TODO: add restrictions on what trailers are allowed to delete?
-	return r.delPair(name, 0, r.trailers, extraTrailer)
+	return r.delPair(name, 0, r.trailers, kindTrailer)
 }
 func (r *httpIn_) addTrailer(trailer *pair) { // prime
 	if edge, ok := r.addPrime(trailer); ok {
@@ -796,13 +796,13 @@ func (r *httpIn_) addTrailer(trailer *pair) { // prime
 	// Ignore too many trailers
 }
 func (r *httpIn_) delTrailer(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.trailers, extraTrailer)
+	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
 }
 func (r *httpIn_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, extraTrailer, r.delTrailer)
+	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
 func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // excluding sub trailers
-	return r._forFields(r.trailers, extraTrailer, fn)
+	return r._forFields(r.trailers, kindTrailer, fn)
 }
 
 func (r *httpIn_) arrayPush(b byte) {
@@ -868,9 +868,9 @@ func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 	if primes.notEmpty() {
 		return true
 	}
-	if extraKind != extraNone {
+	if extraKind != kindNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 				return true
 			}
 		}
@@ -885,9 +885,9 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
 	}
-	if extraKind != extraNone {
+	if extraKind != kindNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 				all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 			}
 		}
@@ -909,10 +909,10 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				return prime.valueAt(p), true
 			}
 		}
-		if extraKind != extraNone {
+		if extraKind != kindNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
 			}
@@ -930,7 +930,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 			if prime.hash != hash {
 				continue
 			}
-			if extraKind == extraHeader && !prime.isSubField() { // skip main fields, only collect sub fields. TODO: what about extraTrailer?
+			if extraKind == kindHeader && !prime.isSubField() { // skip main fields, only collect sub fields. TODO: what about kindTrailer?
 				continue
 			}
 			p := r._getPlace(prime)
@@ -938,10 +938,10 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				values = append(values, string(prime.valueAt(p)))
 			}
 		}
-		if extraKind != extraNone {
+		if extraKind != kindNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					values = append(values, string(extra.valueAt(r.array)))
 				}
 			}
@@ -978,7 +978,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	}
 	extra := &r.field
 	extra.zero()
-	extra.extra = extraKind
+	extra.kind = extraKind
 	extra.hash = stringHash(name)
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
@@ -1013,10 +1013,10 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 				deleted = true
 			}
 		}
-		if extraKind != extraNone {
+		if extraKind != kindNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == hash && extra.extra == extraKind && extra.nameEqualString(r.array, name) {
+				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1037,9 +1037,9 @@ func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(hash uint16, nam
 			return false
 		}
 	}
-	if extraKind != extraNone {
+	if extraKind != kindNone {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.extra == extraKind {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 				if !fn(extra.hash, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -1092,10 +1092,10 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 			}
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
-		if extraKind != extraNone {
+		if extraKind != kindNone {
 			for i := 0; i < len(r.extras); i++ {
 				extra := &r.extras[i]
-				if extra.hash == optionHash && extra.extra == extraKind && extra.nameEqualBytes(r.array, optionName) {
+				if extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}
 			}
@@ -1112,7 +1112,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 		}
 	}
 	for i := 0; i < len(r.extras); i++ {
-		if field := &r.extras[i]; field.hash != 0 && field.extra == extraKind {
+		if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind {
 			if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
 				return false
 			}

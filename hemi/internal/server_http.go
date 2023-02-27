@@ -1326,7 +1326,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
-	cookie := &r.field
+	cookie := &r.stock
 	cookie.zero()
 	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
@@ -1781,8 +1781,9 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	var (
 		state = 2 // to be consistent with r.recvControl() in HTTP/1
 		octet byte
-		form  pair
 	)
+	form := &r.stock
+	form.zero()
 	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
@@ -1791,8 +1792,8 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
-				if size := r.arrayEdge - form.nameFrom; size <= 255 {
-					form.nameSize = uint8(size)
+				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
+					form.nameSize = uint8(nameSize)
 				} else {
 					return
 				}
@@ -1813,7 +1814,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			if b == '&' {
 				form.valueEdge = r.arrayEdge
 				if form.nameSize > 0 {
-					r.addForm(&form)
+					r.addForm(form)
 				}
 				form.hash, form.flags = 0, 0 // reset for next form
 				form.nameFrom = r.arrayEdge
@@ -1850,7 +1851,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	if state == 3 { // '&' not found
 		form.valueEdge = r.arrayEdge
 		if form.nameSize > 0 {
-			r.addForm(&form)
+			r.addForm(form)
 		}
 	} else { // '=' not found, or incomplete pct-encoded
 		// Do nothing, just ignore.

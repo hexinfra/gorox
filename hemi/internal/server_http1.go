@@ -561,9 +561,10 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		var (
 			state = 1   // in path
 			octet byte  // byte value of %xx
-			query pair  // plain query in r.array[query.from:query.edge]
 			qsOff int32 // offset of query string, if exists
 		)
+		query := &r.stock // plain query in r.array[query.from:query.edge]
+		query.zero()
 		query.kind = kindQuery
 		query.place = placeArray // all received queries are placed in r.array because queries are decoded
 
@@ -593,8 +594,8 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				}
 			case 2: // in query string and expecting '=' to get a name
 				if b == '=' {
-					if size := r.arrayEdge - query.nameFrom; size <= 255 {
-						query.nameSize = uint8(size)
+					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
+						query.nameSize = uint8(nameSize)
 					} else {
 						r.headResult, r.headReason = StatusBadRequest, "query name too long"
 						return false
@@ -616,7 +617,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			case 3: // in query string and expecting '&' to get a value
 				if b == '&' {
 					query.valueEdge = r.arrayEdge
-					if query.nameSize > 0 && !r.addQuery(&query) {
+					if query.nameSize > 0 && !r.addQuery(query) {
 						return false
 					}
 					query.hash, query.flags = 0, 0 // reset for next query
@@ -666,7 +667,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		} else if state == 3 { // in query string and no '&' found
 			r.queryString.set(r.pBack+qsOff, r.pFore)
 			query.valueEdge = r.arrayEdge
-			if query.nameSize > 0 && !r.addQuery(&query) {
+			if query.nameSize > 0 && !r.addQuery(query) {
 				return false
 			}
 		} else { // incomplete pct-encoded

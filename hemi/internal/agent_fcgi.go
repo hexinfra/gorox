@@ -752,7 +752,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		// field-name = token
 		// token = 1*tchar
 		header.hash, header.flags = 0, 0 // reset for next header
-		r.pBack = r.pFore // now r.pBack is at header-field
+		r.pBack = r.pFore                // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
 			if t := httpTchar[b]; t == 1 {

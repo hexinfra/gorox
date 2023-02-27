@@ -94,10 +94,10 @@ type httpIn_ struct {
 	// Stream states (buffers)
 	stockInput  [1600]byte // for r.input
 	stockArray  [800]byte  // for r.array
-	stockPrimes [64]pair   // for r.primes
+	stockPrimes [80]pair   // for r.primes
 	stockExtras [4]pair    // for r.extras
 	// Stream states (controlled)
-	field          pair     // to overcome the limitation of Go's escape analysis when receiving headers, cookies, and trailers
+	stock          pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
@@ -975,17 +975,18 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	if !r._growArray(totalSize) {
 		return false
 	}
-	extra := &r.field
+	extra := &r.stock
 	extra.zero()
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
+	extra.place = placeArray
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
 	extra.valueSkip = 0
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.valueEdge = r.arrayEdge
-	r.extras = append(r.extras, r.field)
+	r.extras = append(r.extras, r.stock)
 	r.hasExtras[extraKind] = true
 	return true
 }

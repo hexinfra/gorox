@@ -20,16 +20,16 @@ var poolPairs sync.Pool
 
 func getPairs() []pair {
 	if x := poolPairs.Get(); x == nil {
-		return make([]pair, 0, 204) // 20B*204=4080B
+		return make([]pair, 0, 250) // 16B*250=4000B
 	} else {
 		return x.([]pair)
 	}
 }
 func putPairs(pairs []pair) {
-	if cap(pairs) != 204 {
+	if cap(pairs) != 250 {
 		BugExitln("bad pairs")
 	}
-	pairs = pairs[0:0:204] // reset
+	pairs = pairs[0:0:250] // reset
 	poolPairs.Put(pairs)
 }
 
@@ -41,7 +41,7 @@ type pair struct { // 16 bytes
 	flags     uint8  // see pair flags
 	place     int8   // placeXXX
 	nameSize  uint8  // name size, <= 255
-	valueSkip uint8  // how many bytes does value skip from name's edge?
+	valueSkip uint8  // how many bytes does value skip from name's edge? <= 250
 	nameFrom  int32  // like: "content-type"
 	valueEdge int32  // like: "text/html; charset=utf-8"
 }

@@ -119,7 +119,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack)
+		header.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -158,11 +158,10 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
-			header.valueEdge = fore
 		} else { // field-value is empty
-			header.valueEdge = r.pBack
 			header.setEmptyValue()
 		}
+		header.valueEdge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.shell.addHeader(header) || !r.shell.checkHeader(header) {
@@ -445,8 +444,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		trailer.valueOff = uint16(r.pFore - r.pBack)
-		r.pBack = r.pFore // for field-value or EOL
+		trailer.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
+		r.pBack = r.pFore                            // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
@@ -472,15 +471,14 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if r.bodyWindow[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack {
+		if fore > r.pBack { // field-value is not empty
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
-			trailer.valueEdge = fore
-		} else {
-			trailer.valueEdge = r.pBack
+		} else { // field-value is empty
 			trailer.setEmptyValue()
 		}
+		trailer.valueEdge = fore
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
@@ -491,7 +489,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueOff, trailer.valueEdge = uint16(trailer.nameSize), r.arrayEdge
+		trailer.valueOff = uint16(trailer.nameSize) // adjust value offset
+		trailer.valueEdge = r.arrayEdge             // adjust value edge
 
 		// Trailer is received in general algorithm. Now adopt it
 		if !r.shell.adoptTrailer(trailer) {

@@ -483,6 +483,7 @@ func (r *hResponse_) checkHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
+		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding original header
 		if !r.addSubHeaders(header) {

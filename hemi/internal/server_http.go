@@ -763,6 +763,7 @@ func (r *httpRequest_) checkHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
+		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding original header
 		if !r.addSubHeaders(header) {
@@ -2153,9 +2154,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				}
 				part.osFile = nil
 			}
-		} else {
+		} else { // part must be a form
 			part.form.hash = part.hash
-			part.form.nameSize, part.form.nameFrom = uint8(part.name.size()), part.name.from
+			part.form.nameFrom = part.name.from
+			part.form.nameSize = uint8(part.name.size())
 			part.form.valueOff = uint16(part.form.nameSize)
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward

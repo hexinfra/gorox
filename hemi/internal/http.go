@@ -514,6 +514,8 @@ func (r *httpIn_) addHeader(header *pair) bool { // prime
 	return false
 }
 func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
+	//valueFrom := header.nameFrom + int32(header.valueOff)
+	//valueEdge := header.valueEdge
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -898,10 +900,10 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
 	extra.place = placeArray
-	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.nameSize = uint8(nameSize)
 	extra.valueOff = uint16(nameSize)
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.valueEdge = r.arrayEdge
 	r.extras = append(r.extras, r.stock)
@@ -916,8 +918,8 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
 	for i := primes.from; i < primes.edge; i++ {
 		if prime := &r.primes[i]; prime.hash != 0 {
-			if (extraKind == kindHeader || extraKind == kindTrailer) && prime.isSubField() {
-				continue // skip sub fields, only collect main fields
+			if prime.isSubField() { // skip sub fields, only collect main fields
+				continue
 			}
 			p := r._getPlace(prime)
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
@@ -963,8 +965,8 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		}
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
-				if (extraKind == kindHeader || extraKind == kindTrailer) && !prime.isSubField() {
-					continue // skip main fields, only collect sub fields
+				if prime.isCommaValue() { // skip comma fields, only collect fields without comma
+					continue
 				}
 				p := r._getPlace(prime)
 				if prime.nameEqualString(p, name) {
@@ -1030,7 +1032,10 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 
 func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub fields
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
+		if field := &r.primes[i]; field.hash != 0 {
+			if field.isSubField() { // skip sub fields, only collect main fields
+				continue
+			}
 			p := r._getPlace(field)
 			if !fn(field, field.nameAt(p), field.valueAt(p)) {
 				return false

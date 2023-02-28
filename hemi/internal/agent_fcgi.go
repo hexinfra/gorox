@@ -790,7 +790,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack)
+		header.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -824,11 +824,10 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
-			header.valueEdge = fore
 		} else { // field-value is empty
-			header.valueEdge = r.pBack
 			header.setEmptyValue()
 		}
+		header.valueEdge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.addHeader(header) || !r.checkHeader(header) {
@@ -874,6 +873,7 @@ func (r *fcgiResponse) checkHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
+		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := len(r.headers) + 1 // excluding original header
 		if !r.addSubHeaders(header) {
@@ -1023,7 +1023,10 @@ func (r *fcgiResponse) addSubHeaders(header *pair) bool {
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() { // skip sub headers, only collect main headers
+		if header := &r.headers[i]; header.hash != 0 {
+			if header.isSubField() { // skip sub headers, only collect main headers
+				continue
+			}
 			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}

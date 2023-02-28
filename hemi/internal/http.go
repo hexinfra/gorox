@@ -128,22 +128,23 @@ type httpIn0_ struct { // for fast reset, entirely
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtras        [8]bool // 0:unknown 1:query 2:header 3:cookie 4:form 5:trailer 6:ifMatch 7:ifNoneMatch
+	dateTime         int64   // parsed unix time of date
 	headers          zone    // raw headers ->r.input
 	options          zone    // connection options ->r.input. may be not continuous
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8    // num of accept-encoding flags
-	_                byte    // padding
+	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	iContentLength   uint8   // content-length header in r.primes->r.input
 	iContentLocation uint8   // content-location header in r.primes->r.input
 	iContentRange    uint8   // content-range header in r.primes->r.input
 	iContentType     uint8   // content-type header in r.primes->r.input
+	iDate            uint8   // date header in r.primes->r.input
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	upgradeSocket    bool    // upgrade: websocket?
 	upgradeUDPTun    bool    // upgrade: connect-udp?
-	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
 	receiving        int8    // currently receiving. see httpSectionXXX
@@ -426,6 +427,10 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool {
 	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
+func (r *httpIn_) checkDate(header *pair, index uint8) bool {
+	// Date = HTTP-date
+	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
+}
 func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool {
 	if *pIndex == 0 {
 		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
@@ -492,6 +497,7 @@ func (r *httpIn_) HasHeader(name string) bool {
 }
 func (r *httpIn_) AddHeader(name string, value string) bool { // extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// NOTICE: must add values without comma so r.getPairs() works correctly
 	return r.addExtra(name, value, kindHeader)
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
@@ -586,8 +592,8 @@ func (r *httpIn_) delHeader(name []byte, hash uint16) {
 func (r *httpIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
-func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
-	return r.forPairs(r.headers, kindHeader, fn)
+func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub headers
+	return r._forFields(r.headers, kindHeader, fn)
 }
 
 func (r *httpIn_) determineContentMode() bool {
@@ -786,6 +792,7 @@ func (r *httpIn_) HasTrailer(name string) bool {
 }
 func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// NOTICE: must add values without comma so r.getPairs() works correctly
 	return r.addExtra(name, value, kindTrailer)
 }
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
@@ -804,8 +811,8 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 func (r *httpIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
-func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // excluding sub trailers
-	return r.forPairs(r.trailers, kindTrailer, fn)
+func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub trailers
+	return r._forFields(r.trailers, kindTrailer, fn)
 }
 
 func (r *httpIn_) arrayPush(b byte) {
@@ -867,6 +874,53 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
+func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // overflow
+			return 0, false
+		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
+	}
+	r.primes = append(r.primes, *prime)
+	return uint8(len(r.primes)), true
+}
+func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
+func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
+	nameSize := int32(len(name))
+	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
+		return false
+	}
+	totalSize := nameSize + int32(len(value))
+	if totalSize < 0 {
+		return false
+	}
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras!
+			return false
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
+	if !r._growArray(totalSize) { // extras are always placed in r.array
+		return false
+	}
+	extra := &r.stock
+	extra.zero()
+	extra.hash = stringHash(name)
+	extra.kind = extraKind
+	extra.place = placeArray
+	extra.nameSize = uint8(nameSize)
+	extra.nameFrom = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.valueSkip = 0
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+	extra.valueEdge = r.arrayEdge
+	r.extras = append(r.extras, r.stock)
+	r.hasExtras[extraKind] = true
+	return true
+}
+
 func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 	return primes.notEmpty() || r.hasExtras[extraKind]
 }
@@ -874,6 +928,9 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
 	for i := primes.from; i < primes.edge; i++ {
 		if prime := &r.primes[i]; prime.hash != 0 {
+			if (extraKind == kindHeader || extraKind == kindTrailer) && prime.isSubField() {
+				continue // skip sub fields, only collect main fields
+			}
 			p := r._getPlace(prime)
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
@@ -918,6 +975,9 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		}
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
+				if (extraKind == kindHeader || extraKind == kindTrailer) && !prime.isSubField() {
+					continue // skip main fields, only collect sub fields
+				}
 				p := r._getPlace(prime)
 				if prime.nameEqualString(p, name) {
 					values = append(values, string(prime.valueAt(p)))
@@ -937,51 +997,6 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		}
 	}
 	return
-}
-func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
-	if len(r.primes) == cap(r.primes) { // full
-		if cap(r.primes) != cap(r.stockPrimes) { // overflow
-			return 0, false
-		}
-		r.primes = getPairs()
-		r.primes = append(r.primes, r.stockPrimes[:]...)
-	}
-	r.primes = append(r.primes, *prime)
-	return uint8(len(r.primes)), true
-}
-func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
-	nameSize := int32(len(name))
-	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
-		return false
-	}
-	totalSize := nameSize + int32(len(value))
-	if totalSize < 0 {
-		return false
-	}
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) != cap(r.stockExtras) { // too many extras!
-			return false
-		}
-		r.extras = getPairs()
-		r.extras = append(r.extras, r.stockExtras[:]...)
-	}
-	if !r._growArray(totalSize) { // extras are always placed in r.array
-		return false
-	}
-	extra := &r.stock
-	extra.zero()
-	extra.hash = stringHash(name)
-	extra.kind = extraKind
-	extra.place = placeArray
-	extra.nameSize = uint8(nameSize)
-	extra.nameFrom = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.valueSkip = 0
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.valueEdge = r.arrayEdge
-	r.extras = append(r.extras, r.stock)
-	r.hasExtras[extraKind] = true
-	return true
 }
 func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
 	if name != "" {
@@ -1009,28 +1024,6 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 	}
 	return
 }
-func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
-func (r *httpIn_) forPairs(primes zone, extraKind int8, fn func(pair *pair, name []byte, value []byte) bool) bool {
-	for i := primes.from; i < primes.edge; i++ {
-		prime := &r.primes[i]
-		if prime.hash != 0 {
-			p := r._getPlace(prime)
-			if !fn(prime, prime.nameAt(p), prime.valueAt(p)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtras[extraKind] {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
-				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
-}
 func (r *httpIn_) _getPlace(pair *pair) []byte {
 	var place []byte
 	if pair.place == placeInput {
@@ -1047,6 +1040,26 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
+func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub fields
+	for i := fields.from; i < fields.edge; i++ {
+		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
+			p := r._getPlace(field)
+			if !fn(field, field.nameAt(p), field.valueAt(p)) {
+				return false
+			}
+		}
+	}
+	if r.hasExtras[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind {
+				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) {
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
@@ -1902,6 +1915,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashLastModified      = 1314
 	hashLocation          = 857
 	hashProxyAuthenticate = 1902
+	hashRetryAfter        = 1141
 	hashServer            = 663
 	hashSetCookie         = 1011
 	hashVary              = 450
@@ -1966,6 +1980,7 @@ var ( // byteses of http fields.
 	bytesLastModified      = []byte("last-modified")
 	bytesLocation          = []byte("location")
 	bytesProxyAuthenticate = []byte("proxy-authenticate")
+	bytesRetryAfter        = []byte("retry-after")
 	bytesServer            = []byte("server")
 	bytesSetCookie         = []byte("set-cookie")
 	bytesVary              = []byte("vary")

@@ -751,8 +751,9 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash, header.flags = 0, 0 // reset for next header
-		r.pBack = r.pFore                // now r.pBack is at header-field
+		header.hash, header.fieldFlag = 0, 0 // reset for next header
+
+		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
 			if t := httpTchar[b]; t == 1 {
@@ -779,7 +780,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for skip
+		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 			return false

@@ -37,9 +37,9 @@ func putPairs(pairs []pair) {
 type pair struct { // 16 bytes
 	hash      uint16 // name hash, to support fast search. hash == 0 means empty
 	kind      int8   // kindXXX
-	mode      int8   // modeXXX
-	flags     uint8  // see pair flags
 	place     int8   // placeXXX
+	fieldFlag uint8  // see field flags
+	_         byte   // reserved (for fields?)
 	nameSize  uint8  // name size, <= 255
 	valueSkip uint8  // how many bytes does value skip from name's edge? <= 250
 	nameFrom  int32  // like: "content-type"
@@ -47,6 +47,56 @@ type pair struct { // 16 bytes
 }
 
 func (p *pair) zero() { *p = pair{} }
+
+const ( // pair kinds
+	kindQuery = iota
+	kindHeader
+	kindCookie
+	kindForm
+	kindTrailer
+)
+
+const ( // pair places
+	placeInput = iota // prime headers, prime cookies
+	placeArray        // prime queries, prime forms, prime trailers, extras
+	placeStatic2
+	placeStatic3
+)
+
+const ( // field flags
+	flagSingleMode = 0b10000000 // standalone or not. only fields has this restriction
+	flagUnderscore = 0b01000000 // field name contains '_' or not. some agents (like fcgi) need this
+	flagEmptyValue = 0b00100000 // value is empty or not. for convenience. only used by fields
+	flagSubField   = 0b00010000 // sub field or not. only used by fields
+	flagWeakETag   = 0b00001000 // weak etag or not. only used by fields
+	flagLiteral    = 0b00000100 // keep field literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo     = 0b00000010 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagCopied     = 0b00000001 // field is copied to the other side or not. used by proxies
+)
+
+func (p *pair) setSingleMode()     { p.fieldFlag |= flagSingleMode }
+func (p *pair) isSingleMode() bool { return p.fieldFlag&flagSingleMode > 0 }
+
+func (p *pair) setUnderscore()     { p.fieldFlag |= flagUnderscore }
+func (p *pair) isUnderscore() bool { return p.fieldFlag&flagUnderscore > 0 }
+
+func (p *pair) setEmptyValue()     { p.fieldFlag |= flagEmptyValue }
+func (p *pair) isEmptyValue() bool { return p.fieldFlag&flagEmptyValue > 0 }
+
+func (p *pair) setSubField()     { p.fieldFlag |= flagSubField }
+func (p *pair) isSubField() bool { return p.fieldFlag&flagSubField > 0 }
+
+func (p *pair) setWeakETag()     { p.fieldFlag |= flagWeakETag }
+func (p *pair) isWeakETag() bool { return p.fieldFlag&flagWeakETag > 0 }
+
+func (p *pair) setLiteral()     { p.fieldFlag |= flagLiteral }
+func (p *pair) isLiteral() bool { return p.fieldFlag&flagLiteral > 0 }
+
+func (p *pair) setPseudo()     { p.fieldFlag |= flagPseudo }
+func (p *pair) isPseudo() bool { return p.fieldFlag&flagPseudo > 0 }
+
+func (p *pair) setCopied()     { p.fieldFlag |= flagCopied }
+func (p *pair) isCopied() bool { return p.fieldFlag&flagCopied > 0 }
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) valueAt(t []byte) []byte {
@@ -61,61 +111,6 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 func (p *pair) valueText() text {
 	return text{p.nameFrom + int32(p.nameSize) + int32(p.valueSkip), p.valueEdge}
 }
-
-const ( // extra kinds
-	kindUnknown = iota
-	kindQuery
-	kindHeader
-	kindCookie
-	kindForm
-	kindTrailer
-	kindIfMatch     // TODO
-	kindIfNoneMatch // TODO
-)
-
-const ( // value modes
-	modeSingle = iota // singleton
-	mode0Plus         // #value
-	mode1Plus         // 1#value
-)
-
-const ( // pair places
-	placeInput = iota
-	placeArray
-	placeStatic2
-	placeStatic3
-)
-
-const ( // field flags
-	flagMultivalued = 0b10000000 // multivalued or not
-	flagWeakETag    = 0b01000000 // weak etag or not
-	flagLiteral     = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo      = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore  = 0b00001000 // pair name contains '_' or not
-	flagCopied      = 0b00000010 // field is copied to the other side or not
-	flagEmptyValue  = 0b00000001 // empty value or not
-)
-
-func (p *pair) setMultivalued()     { p.flags |= flagMultivalued }
-func (p *pair) isMultivalued() bool { return p.flags&flagMultivalued > 0 }
-
-func (p *pair) setWeakETag()     { p.flags |= flagWeakETag }
-func (p *pair) isWeakETag() bool { return p.flags&flagWeakETag > 0 }
-
-func (p *pair) setLiteral()     { p.flags |= flagLiteral }
-func (p *pair) isLiteral() bool { return p.flags&flagLiteral > 0 }
-
-func (p *pair) setPseudo()     { p.flags |= flagPseudo }
-func (p *pair) isPseudo() bool { return p.flags&flagPseudo > 0 }
-
-func (p *pair) setUnderscore()     { p.flags |= flagUnderscore }
-func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
-
-func (p *pair) setCopied()     { p.flags |= flagCopied }
-func (p *pair) isCopied() bool { return p.flags&flagCopied > 0 }
-
-func (p *pair) setEmptyValue()     { p.flags |= flagEmptyValue }
-func (p *pair) isEmptyValue() bool { return p.flags&flagEmptyValue > 0 }
 
 // TempFile is used to temporarily save request/response content in local file system.
 type TempFile interface {

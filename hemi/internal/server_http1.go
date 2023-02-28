@@ -620,7 +620,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					if query.nameSize > 0 && !r.addQuery(query) {
 						return false
 					}
-					query.hash, query.flags = 0, 0 // reset for next query
+					query.hash = 0 // reset for next query
 					query.nameFrom = r.arrayEdge
 					state = 2
 				} else if httpPchar[b] > 0 { // including '?'

@@ -10,8 +10,9 @@ func main() {
 	//calc([]byte("content-length content-type location status"))
 	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for"))
 	//calc([]byte("age content-length content-range content-type date etag expires last-modified location server set-cookie"))
-	calc([]byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate"))
-	//println(sum("cdn-cache-control"))
+	//calc([]byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie"))
+	calc([]byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent"))
+	//println(sum("retry-after"))
 }
 
 type Node struct {

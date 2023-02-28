@@ -80,8 +80,9 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash, header.flags = 0, 0 // reset for next header
-		r.pBack = r.pFore                // now r.pBack is at header-field
+		header.hash, header.fieldFlag = 0, 0 // reset for next header
+
+		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
 			if t := httpTchar[b]; t == 1 {
@@ -108,7 +109,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for skip
+		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
@@ -414,8 +415,9 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		} else if b == '\n' {
 			break
 		}
-		trailer.hash, trailer.flags = 0, 0 // reset for next trailer
-		r.pBack = r.pFore                  // for field-name
+		trailer.hash, trailer.fieldFlag = 0, 0 // reset for next trailer
+
+		r.pBack = r.pFore // for field-name
 		for {
 			b := r.bodyWindow[r.pFore]
 			if t := httpTchar[b]; t == 1 {
@@ -440,7 +442,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		} else {
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for skip
+		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false

@@ -435,7 +435,6 @@ type hResponse_ struct { // incoming. needs parsing
 }
 type hResponse0_ struct { // for fast reset, entirely
 	status           int16    // 200, 302, 404, ...
-	dateTime         int64    // parsed unix time of date
 	lastModifiedTime int64    // parsed unix time of last-modified
 	expiresTime      int64    // parsed unix time of expires
 	cacheControl     struct { // the cache-control info
@@ -452,7 +451,6 @@ type hResponse0_ struct { // for fast reset, entirely
 	}
 	indexes struct { // indexes of some selected headers, for fast accessing
 		server       uint8 // server header ->r.input
-		date         uint8 // date header ->r.input
 		lastModified uint8 // last-modified header ->r.input
 		expires      uint8 // expires header ->r.input
 		etag         uint8 // etag header ->r.input
@@ -564,36 +562,33 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 }
 
 var ( // perfect hash table for response critical headers
-	hResponseCriticalHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location server set-cookie")
-	hResponseCriticalHeaderTable = [11]struct {
+	hResponseCriticalHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie")
+	hResponseCriticalHeaderTable = [12]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		check func(*hResponse_, *pair, uint8) bool
 	}{
 		0:  {hashDate, 46, 50, (*hResponse_).checkDate},
-		1:  {hashLastModified, 64, 77, (*hResponse_).checkLastModified},
-		2:  {hashServer, 87, 93, (*hResponse_).checkServer},
-		3:  {hashContentRange, 19, 32, (*hResponse_).checkContentRange},
-		4:  {hashContentLength, 4, 18, (*hResponse_).checkContentLength},
-		5:  {hashSetCookie, 94, 104, (*hResponse_).checkSetCookie},
+		1:  {hashContentLength, 4, 18, (*hResponse_).checkContentLength},
+		2:  {hashAge, 0, 3, (*hResponse_).checkAge},
+		3:  {hashSetCookie, 106, 116, (*hResponse_).checkSetCookie},
+		4:  {hashLastModified, 64, 77, (*hResponse_).checkLastModified},
+		5:  {hashLocation, 78, 86, (*hResponse_).checkLocation},
 		6:  {hashExpires, 56, 63, (*hResponse_).checkExpires},
-		7:  {hashETag, 51, 55, (*hResponse_).checkETag},
-		8:  {hashLocation, 78, 86, (*hResponse_).checkLocation},
-		9:  {hashContentType, 33, 45, (*hResponse_).checkContentType},
-		10: {hashAge, 0, 3, (*hResponse_).checkAge},
+		7:  {hashContentRange, 19, 32, (*hResponse_).checkContentRange},
+		8:  {hashETag, 51, 55, (*hResponse_).checkETag},
+		9:  {hashServer, 99, 105, (*hResponse_).checkServer},
+		10: {hashContentType, 33, 45, (*hResponse_).checkContentType},
+		11: {hashRetryAfter, 87, 98, (*hResponse_).checkRetryAfter},
 	}
-	hResponseCriticalHeaderFind = func(hash uint16) int { return (883779 / int(hash)) % 11 }
+	hResponseCriticalHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
 
 func (r *hResponse_) checkAge(header *pair, index uint8) bool {
 	// Age = delta-seconds
 	// TODO
 	return true
-}
-func (r *hResponse_) checkDate(header *pair, index uint8) bool {
-	// Date = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.date, &r.dateTime)
 }
 func (r *hResponse_) checkETag(header *pair, index uint8) bool {
 	// ETag = entity-tag
@@ -611,6 +606,10 @@ func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
 	// Location = URI-reference
 	r.indexes.location = index
+	return true
+}
+func (r *hResponse_) checkRetryAfter(header *pair, index uint8) bool {
+	// Retry-After = HTTP-date / delay-seconds
 	return true
 }
 func (r *hResponse_) checkServer(header *pair, index uint8) bool {
@@ -691,10 +690,10 @@ func (r *hResponse_) checkHead() bool {
 }
 
 func (r *hResponse_) unsafeDate() []byte {
-	if r.indexes.date == 0 {
+	if r.iDate == 0 {
 		return nil
 	}
-	return r.primes[r.indexes.date].valueAt(r.input)
+	return r.primes[r.iDate].valueAt(r.input)
 }
 func (r *hResponse_) unsafeLastModified() []byte {
 	if r.indexes.lastModified == 0 {

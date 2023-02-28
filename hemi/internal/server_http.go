@@ -948,26 +948,27 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 }
 
 var ( // perfect hash table for request critical headers
-	httpRequestCriticalHeaderNames = []byte("authorization content-length content-type cookie host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
-	httpRequestCriticalHeaderTable = [11]struct {
+	httpRequestCriticalHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
+	httpRequestCriticalHeaderTable = [12]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {hashAuthorization, 0, 13, (*httpRequest_).checkAuthorization},
-		1:  {hashHost, 49, 53, (*httpRequest_).checkHost},
+		0:  {hashIfUnmodifiedSince, 86, 105, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {hashUserAgent, 132, 142, (*httpRequest_).checkUserAgent},
 		2:  {hashContentLength, 14, 28, (*httpRequest_).checkContentLength},
-		3:  {hashContentType, 29, 41, (*httpRequest_).checkContentType},
-		4:  {hashIfRange, 72, 80, (*httpRequest_).checkIfRange},
-		5:  {hashProxyAuthorization, 101, 120, (*httpRequest_).checkProxyAuthorization},
-		6:  {hashRange, 121, 126, (*httpRequest_).checkRange},
-		7:  {hashCookie, 42, 48, (*httpRequest_).checkCookie},
-		8:  {hashUserAgent, 127, 137, (*httpRequest_).checkUserAgent},
-		9:  {hashIfUnmodifiedSince, 81, 100, (*httpRequest_).checkIfUnmodifiedSince},
-		10: {hashIfModifiedSince, 54, 71, (*httpRequest_).checkIfModifiedSince},
+		3:  {hashRange, 126, 131, (*httpRequest_).checkRange},
+		4:  {hashDate, 49, 53, (*httpRequest_).checkDate},
+		5:  {hashHost, 54, 58, (*httpRequest_).checkHost},
+		6:  {hashCookie, 42, 48, (*httpRequest_).checkCookie},
+		7:  {hashContentType, 29, 41, (*httpRequest_).checkContentType},
+		8:  {hashIfRange, 77, 85, (*httpRequest_).checkIfRange},
+		9:  {hashIfModifiedSince, 59, 76, (*httpRequest_).checkIfModifiedSince},
+		10: {hashAuthorization, 0, 13, (*httpRequest_).checkAuthorization},
+		11: {hashProxyAuthorization, 106, 125, (*httpRequest_).checkProxyAuthorization},
 	}
-	httpRequestCriticalHeaderFind = func(hash uint16) int { return (1678320 / int(hash)) % 11 }
+	httpRequestCriticalHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
 
 func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
@@ -1353,7 +1354,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 1: // DQUOTE or not?
 			if b == '"' {
-				cookie.valueSkip++
+				cookie.valueSkip++ // "
 				state = 3
 				continue
 			}
@@ -1392,7 +1393,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 				r.headResult, r.headReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
-			cookie.hash, cookie.flags = 0, 0 // reset for next cookie
+			cookie.hash = 0 // reset for next cookie
 			cookie.nameFrom = p + 1
 			state = 0
 		}
@@ -1662,7 +1663,24 @@ func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
 func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
-	return r.forPairs(r.cookies, kindCookie, fn)
+	for i := r.cookies.from; i < r.cookies.edge; i++ {
+		cookie := &r.primes[i]
+		if cookie.hash != 0 {
+			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
+				return false
+			}
+		}
+	}
+	if r.hasExtras[kindCookie] {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
+				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func (r *httpRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
@@ -1816,7 +1834,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 				if form.nameSize > 0 {
 					r.addForm(form)
 				}
-				form.hash, form.flags = 0, 0 // reset for next form
+				form.hash = 0 // reset for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'

@@ -1163,11 +1163,11 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 			*match++
 			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
 				header.setWeakETag()
-				header.valueSkip += 3 // won't overflow since we reserved some bytes
-				header.valueEdge--
+				header.valueOff += 3 // skip `W/"`
+				header.valueEdge--   // skip '"'
 			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
-				header.valueSkip++
-				header.valueEdge--
+				header.valueOff++  // skip '"'
+				header.valueEdge-- // skip '"'
 			}
 		}
 	}
@@ -1332,11 +1332,11 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			if b == '=' {
 				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
 					cookie.nameSize = uint8(nameSize)
+					cookie.valueOff = uint16(nameSize) + 1 // skip '='
 				} else {
 					r.headResult, r.headReason = StatusBadRequest, "cookie name out of range"
 					return false
 				}
-				cookie.valueSkip = 1 // =
 				state = 1
 			} else if httpTchar[b] != 0 {
 				cookie.hash += uint16(b)
@@ -1346,7 +1346,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 1: // DQUOTE or not?
 			if b == '"' {
-				cookie.valueSkip++ // "
+				cookie.valueOff++ // skip '"'
 				state = 3
 				continue
 			}
@@ -1804,10 +1804,10 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			if b == '=' {
 				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
 					form.nameSize = uint8(nameSize)
+					form.valueOff = uint16(nameSize)
 				} else {
 					return
 				}
-				form.valueSkip = 0
 				state = 3
 			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
@@ -2156,7 +2156,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		} else {
 			part.form.hash = part.hash
 			part.form.nameSize, part.form.nameFrom = uint8(part.name.size()), part.name.from
-			part.form.valueSkip = 0
+			part.form.valueOff = uint16(part.form.nameSize)
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
 		for {             // each partial in current part

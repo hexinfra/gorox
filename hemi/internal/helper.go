@@ -39,9 +39,8 @@ type pair struct { // 16 bytes
 	kind      int8   // kindXXX
 	place     int8   // placeXXX
 	fieldFlag uint8  // see field flags
-	_         byte   // reserved (for fields?)
 	nameSize  uint8  // name size, <= 255
-	valueSkip uint8  // how many bytes does value skip from name's edge? <= 250
+	valueOff  uint16 // value offset from nameFrom, <= 64K1
 	nameFrom  int32  // like: "content-type"
 	valueEdge int32  // like: "text/html; charset=utf-8"
 }
@@ -100,7 +99,7 @@ func (p *pair) isCopied() bool { return p.fieldFlag&flagCopied > 0 }
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) valueAt(t []byte) []byte {
-	return t[p.nameFrom+int32(p.nameSize)+int32(p.valueSkip) : p.valueEdge]
+	return t[p.nameFrom+int32(p.valueOff) : p.valueEdge]
 }
 func (p *pair) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
@@ -109,7 +108,7 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
 func (p *pair) valueText() text {
-	return text{p.nameFrom + int32(p.nameSize) + int32(p.valueSkip), p.valueEdge}
+	return text{p.nameFrom + int32(p.valueOff), p.valueEdge}
 }
 
 // TempFile is used to temporarily save request/response content in local file system.

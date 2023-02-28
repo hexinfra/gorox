@@ -780,7 +780,6 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 			return false
@@ -791,12 +790,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		if valueSkip := r.pFore - r.pBack; valueSkip <= 250 { // we have to reserve some bytes
-			header.valueSkip = uint8(valueSkip)
-		} else {
-			r.headResult, r.headReason = StatusBadRequest, "too many ows before field-value"
-			return false
-		}
+		header.valueOff = uint16(r.pFore - r.pBack)
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -858,6 +852,20 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 }
 
 func (r *fcgiResponse) Status() int16 { return r.status }
+
+func (r *fcgiResponse) addHeader(header *pair) bool {
+	if len(r.headers) == cap(r.headers) {
+		if cap(r.headers) == cap(r.stockHeaders) {
+			r.headers = getPairs()
+			r.headers = append(r.headers, r.stockHeaders[:]...)
+		} else { // overflow
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+	}
+	r.headers = append(r.headers, *header)
+	return true
+}
 
 func (r *fcgiResponse) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
@@ -950,19 +958,6 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) addHeader(header *pair) bool {
-	if len(r.headers) == cap(r.headers) {
-		if cap(r.headers) == cap(r.stockHeaders) {
-			r.headers = getPairs()
-			r.headers = append(r.headers, r.stockHeaders[:]...)
-		} else { // overflow
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.headers = append(r.headers, *header)
-	return true
-}
 func (r *fcgiResponse) addSubHeaders(header *pair) bool {
 	/*
 		// RFC 7230 (section 7):
@@ -1024,11 +1019,14 @@ func (r *fcgiResponse) addSubHeaders(header *pair) bool {
 	*/
 	return true
 }
+
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		if header := &r.headers[i]; header.hash != 0 && !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
-			return false
+		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() { // skip sub headers, only collect main headers
+			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
+				return false
+			}
 		}
 	}
 	return true

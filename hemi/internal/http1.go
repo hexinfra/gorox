@@ -109,7 +109,6 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
@@ -120,12 +119,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		if valueSkip := r.pFore - r.pBack; valueSkip <= 250 { // we have to reserve some bytes
-			header.valueSkip = uint8(valueSkip)
-		} else {
-			r.headResult, r.headReason = StatusBadRequest, "too many ows before field-value"
-			return false
-		}
+		header.valueOff = uint16(r.pFore - r.pBack)
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -442,7 +436,6 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		} else {
 			return false
 		}
-		r.pBack = r.pFore // now r.pBack is for ':OWS...'
 		// Skip ':'
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
@@ -452,11 +445,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		if valueSkip := r.pFore - r.pBack; valueSkip <= 250 { // we have to reserve some bytes
-			trailer.valueSkip = uint8(valueSkip)
-		} else {
-			return false
-		}
+		trailer.valueOff = uint16(r.pFore - r.pBack)
 		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
@@ -499,11 +488,10 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			return false
 		}
 		trailer.nameFrom = fore // adjust name from
-		fore = r.arrayEdge
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueSkip, trailer.valueEdge = 0, r.arrayEdge
+		trailer.valueOff, trailer.valueEdge = uint16(trailer.nameSize), r.arrayEdge
 
 		// Trailer is received in general algorithm. Now adopt it
 		if !r.shell.adoptTrailer(trailer) {

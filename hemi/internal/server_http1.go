@@ -596,11 +596,11 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				if b == '=' {
 					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
 						query.nameSize = uint8(nameSize)
+						query.valueOff = uint16(nameSize)
 					} else {
 						r.headResult, r.headReason = StatusBadRequest, "query name too long"
 						return false
 					}
-					query.valueSkip = 0
 					state = 3
 				} else if httpPchar[b] > 0 { // including '?'
 					if b == '+' {

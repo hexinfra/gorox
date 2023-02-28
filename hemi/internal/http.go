@@ -521,7 +521,6 @@ func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
 		// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
 		subHeader := *header // clone header
 		subHeader.setSubField()
-		added := uint8(0) // how many subHeaders have been added?
 		value := header.value
 		needComma := false
 		for { // each element
@@ -565,19 +564,12 @@ func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
 				}
 				subHeader.value = value
 			}
-			if subHeader.value.notEmpty() {
-				if !r.addHeader(&subHeader) {
-					// r.headResult is set.
-					return false
-				}
-				added++
+			if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
+				// r.headResult is set.
+				return false
 			}
 			value.from = value.edge
 			needComma = true
-		}
-		if added == 0 && must {
-			r.headResult, r.headReason = StatusBadRequest, "empty element detected in 1#(element)"
-			return false
 		}
 	*/
 	return true
@@ -909,7 +901,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.nameSize = uint8(nameSize)
 	extra.nameFrom = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.valueSkip = 0
+	extra.valueOff = uint16(nameSize)
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.valueEdge = r.arrayEdge
 	r.extras = append(r.extras, r.stock)

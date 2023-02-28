@@ -836,8 +836,8 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			header.setEmptyValue()
 		}
 
-		// Header is received in general algorithm. Now adopt it
-		if !r.adoptHeader(header) {
+		// Header is received in general algorithm. Now add and check it
+		if !r.addHeader(header) || !r.checkHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -859,60 +859,25 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) adoptHeader(header *pair) bool {
+func (r *fcgiResponse) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+	if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+		if h.check != nil && !h.check(r, header, len(r.headers)-1) {
+			// r.headResult is set.
+			return false
+		}
+	} else { // all other headers are treated as multiple headers
 		from := len(r.headers) + 1 // excluding original header
-		if !r.addMultipleHeader(header) {
+		if !r.addSubHeaders(header) {
 			// r.headResult is set.
 			return false
 		}
-		if h.check != nil && !h.check(r, from, len(r.headers)) {
-			// r.headResult is set.
-			return false
-		}
-	} else { // single-value response header
-		if !r.addHeader(header) {
-			// r.headResult is set.
-			return false
-		}
-		if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
-			if h.check != nil && !h.check(r, header, len(r.headers)-1) {
+		if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+			if h.check != nil && !h.check(r, from, len(r.headers)) {
 				// r.headResult is set.
 				return false
 			}
 		}
-	}
-	return true
-}
-
-var ( // perfect hash table for response multiple headers
-	fcgiResponseMultipleHeaderNames = []byte("connection transfer-encoding upgrade")
-	fcgiResponseMultipleHeaderTable = [3]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		check func(*fcgiResponse, int, int) bool
-	}{
-		0: {hashTransferEncoding, 11, 28, (*fcgiResponse).checkTransferEncoding},
-		1: {hashConnection, 0, 10, (*fcgiResponse).checkConnection},
-		2: {hashUpgrade, 29, 36, (*fcgiResponse).checkUpgrade},
-	}
-	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
-)
-
-func (r *fcgiResponse) checkConnection(from int, edge int) bool {
-	return r._delHeaders(from, edge)
-}
-func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
-	return r._delHeaders(from, edge)
-}
-func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
-	return r._delHeaders(from, edge)
-}
-func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
-	for i := from; i < edge; i++ {
-		r.headers[i].zero()
 	}
 	return true
 }
@@ -954,12 +919,51 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
-	// Add main header before sub headers.
-	if !r.addHeader(header) {
-		// r.headResult is set.
-		return false
+var ( // perfect hash table for response multiple headers
+	fcgiResponseMultipleHeaderNames = []byte("connection transfer-encoding upgrade")
+	fcgiResponseMultipleHeaderTable = [3]struct {
+		hash  uint16
+		from  uint8
+		edge  uint8
+		check func(*fcgiResponse, int, int) bool
+	}{
+		0: {hashTransferEncoding, 11, 28, (*fcgiResponse).checkTransferEncoding},
+		1: {hashConnection, 0, 10, (*fcgiResponse).checkConnection},
+		2: {hashUpgrade, 29, 36, (*fcgiResponse).checkUpgrade},
 	}
+	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
+)
+
+func (r *fcgiResponse) checkConnection(from int, edge int) bool {
+	return r._delHeaders(from, edge)
+}
+func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
+	return r._delHeaders(from, edge)
+}
+func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
+	return r._delHeaders(from, edge)
+}
+func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
+	for i := from; i < edge; i++ {
+		r.headers[i].zero()
+	}
+	return true
+}
+
+func (r *fcgiResponse) addHeader(header *pair) bool {
+	if len(r.headers) == cap(r.headers) {
+		if cap(r.headers) == cap(r.stockHeaders) {
+			r.headers = getPairs()
+			r.headers = append(r.headers, r.stockHeaders[:]...)
+		} else { // overflow
+			r.headResult = StatusRequestHeaderFieldsTooLarge
+			return false
+		}
+	}
+	r.headers = append(r.headers, *header)
+	return true
+}
+func (r *fcgiResponse) addSubHeaders(header *pair) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -1018,19 +1022,6 @@ func (r *fcgiResponse) addMultipleHeader(header *pair) bool {
 			needComma = true
 		}
 	*/
-	return true
-}
-func (r *fcgiResponse) addHeader(header *pair) bool {
-	if len(r.headers) == cap(r.headers) {
-		if cap(r.headers) == cap(r.stockHeaders) {
-			r.headers = getPairs()
-			r.headers = append(r.headers, r.stockHeaders[:]...)
-		} else { // overflow
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.headers = append(r.headers, *header)
 	return true
 }
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete

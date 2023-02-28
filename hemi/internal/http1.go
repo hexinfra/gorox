@@ -170,8 +170,8 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			header.setEmptyValue()
 		}
 
-		// Header is received in general algorithm. Now adopt it
-		if !r.shell.adoptHeader(header) {
+		// Header is received in general algorithm. Now add and check it
+		if !r.shell.addHeader(header) || !r.shell.checkHeader(header) {
 			// r.headResult is set.
 			return false
 		}

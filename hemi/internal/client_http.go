@@ -476,89 +476,27 @@ func (r *hResponse_) onEnd() { // for zeros
 
 func (r *hResponse_) Status() int16 { return r.status }
 
-func (r *hResponse_) adoptHeader(header *pair) bool {
+func (r *hResponse_) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
-		if header.isEmptyValue() && h.must {
-			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
-			return false
-		}
-		from := r.headers.edge + 1 // excluding original header. overflow doesn't matter
-		if !r.addMultipleHeader(header, h.must) {
+	if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+		if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
-		if h.check != nil && !h.check(r, from, r.headers.edge) {
+	} else { // all other headers are treated as multiple headers
+		from := r.headers.edge + 1 // excluding original header
+		if !r.addSubHeaders(header) {
 			// r.headResult is set.
 			return false
 		}
-	} else { // single-value response header
-		if !r.addHeader(header) {
-			// r.headResult is set.
-			return false
-		}
-		if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
-			if h.check != nil && !h.check(r, header, r.headers.edge-1) {
+		if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+			if h.check != nil && !h.check(r, from, r.headers.edge) {
 				// r.headResult is set.
 				return false
 			}
 		}
 	}
 	return true
-}
-
-var ( // perfect hash table for response multiple headers
-	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
-	hResponseMultipleHeaderTable = [17]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		must  bool // true if 1#, false if #
-		check func(*hResponse_, uint8, uint8) bool
-	}{
-		0:  {hashAcceptRanges, 16, 29, false, nil},
-		1:  {hashVia, 192, 195, false, nil},
-		2:  {hashWWWAuthenticate, 196, 212, false, nil},
-		3:  {hashConnection, 89, 99, false, (*hResponse_).checkConnection},
-		4:  {hashContentEncoding, 100, 116, false, (*hResponse_).checkContentEncoding},
-		5:  {hashAllow, 30, 35, false, nil},
-		6:  {hashTransferEncoding, 161, 178, false, (*hResponse_).checkTransferEncoding},
-		7:  {hashTrailer, 153, 160, false, nil},
-		8:  {hashVary, 187, 191, false, nil},
-		9:  {hashUpgrade, 179, 186, false, (*hResponse_).checkUpgrade},
-		10: {hashProxyAuthenticate, 134, 152, false, nil},
-		11: {hashCacheControl, 44, 57, false, (*hResponse_).checkCacheControl},
-		12: {hashAltSvc, 36, 43, false, nil},
-		13: {hashCDNCacheControl, 71, 88, false, nil},
-		14: {hashCacheStatus, 58, 70, false, nil},
-		15: {hashAcceptEncoding, 0, 15, false, nil},
-		16: {hashContentLanguage, 117, 133, false, nil},
-	}
-	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
-)
-
-func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
-	// Cache-Control   = 1#cache-directive
-	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
-		// TODO
-	}
-	return true
-}
-func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
-	if r.status < StatusOK || r.status == StatusNoContent {
-		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
-		return false
-	}
-	if r.status == StatusNotModified {
-		// TODO
-	}
-	return r.httpIn_.checkTransferEncoding(from, edge)
-}
-func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
-	// TODO: tcptun, udptun, socket?
-	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
-	return false
 }
 
 var ( // perfect hash table for response critical headers
@@ -636,6 +574,59 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
 	}
 	r.cookies = append(r.cookies, r.cookie)
 	return true
+}
+
+var ( // perfect hash table for response multiple headers
+	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	hResponseMultipleHeaderTable = [17]struct {
+		hash  uint16
+		from  uint8
+		edge  uint8
+		check func(*hResponse_, uint8, uint8) bool
+	}{
+		0:  {hashAcceptRanges, 16, 29, nil},
+		1:  {hashVia, 192, 195, nil},
+		2:  {hashWWWAuthenticate, 196, 212, nil},
+		3:  {hashConnection, 89, 99, (*hResponse_).checkConnection},
+		4:  {hashContentEncoding, 100, 116, (*hResponse_).checkContentEncoding},
+		5:  {hashAllow, 30, 35, nil},
+		6:  {hashTransferEncoding, 161, 178, (*hResponse_).checkTransferEncoding},
+		7:  {hashTrailer, 153, 160, nil},
+		8:  {hashVary, 187, 191, nil},
+		9:  {hashUpgrade, 179, 186, (*hResponse_).checkUpgrade},
+		10: {hashProxyAuthenticate, 134, 152, nil},
+		11: {hashCacheControl, 44, 57, (*hResponse_).checkCacheControl},
+		12: {hashAltSvc, 36, 43, nil},
+		13: {hashCDNCacheControl, 71, 88, nil},
+		14: {hashCacheStatus, 58, 70, nil},
+		15: {hashAcceptEncoding, 0, 15, nil},
+		16: {hashContentLanguage, 117, 133, nil},
+	}
+	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
+)
+
+func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
+	// Cache-Control   = 1#cache-directive
+	// cache-directive = token [ "=" ( token / quoted-string ) ]
+	for i := from; i < edge; i++ {
+		// TODO
+	}
+	return true
+}
+func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
+	if r.status < StatusOK || r.status == StatusNoContent {
+		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
+		return false
+	}
+	if r.status == StatusNotModified {
+		// TODO
+	}
+	return r.httpIn_.checkTransferEncoding(from, edge)
+}
+func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
+	// TODO: tcptun, udptun, socket?
+	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
+	return false
 }
 
 func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie: xxx

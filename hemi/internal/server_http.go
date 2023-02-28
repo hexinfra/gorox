@@ -420,7 +420,8 @@ type Request interface {
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
-	adoptHeader(header *pair) bool
+	addHeader(header *pair) bool
+	checkHeader(header *pair) bool
 	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
@@ -755,192 +756,23 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
 
-func (r *httpRequest_) adoptHeader(header *pair) bool {
+func (r *httpRequest_) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
-		if header.isEmptyValue() && h.must {
-			r.headResult, r.headReason = StatusBadRequest, "empty value detected for field value format 1#(value)"
-			return false
-		}
-		from := r.headers.edge + 1 // excluding original header. overflow doesn't matter
-		if !r.addMultipleHeader(header, h.must) {
+	if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
+		if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
-		if h.check != nil && !h.check(r, from, r.headers.edge) {
+	} else { // all other headers are treated as multiple headers
+		from := r.headers.edge + 1 // excluding original header
+		if !r.addSubHeaders(header) {
 			// r.headResult is set.
 			return false
 		}
-	} else { // single-value request header
-		if !r.addHeader(header) {
-			// r.headResult is set.
-			return false
-		}
-		if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
-			if h.check != nil && !h.check(r, header, r.headers.edge-1) {
+		if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
+			if h.check != nil && !h.check(r, from, r.headers.edge) {
 				// r.headResult is set.
 				return false
-			}
-		}
-	}
-	return true
-}
-
-var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
-	httpRequestMultipleHeaderTable = [19]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		must  bool // true if 1#, false if #
-		check func(*httpRequest_, uint8, uint8) bool
-	}{
-		0:  {hashTE, 160, 162, false, (*httpRequest_).checkTE},
-		1:  {hashAcceptLanguage, 38, 53, true, nil},
-		2:  {hashForwarded, 120, 129, true, nil},
-		3:  {hashTransferEncoding, 171, 188, true, (*httpRequest_).checkTransferEncoding},
-		4:  {hashConnection, 68, 78, true, (*httpRequest_).checkConnection},
-		5:  {hashXForwardedFor, 201, 216, true, (*httpRequest_).checkXForwardedFor},
-		6:  {hashVia, 197, 200, true, nil},
-		7:  {hashContentEncoding, 79, 95, true, (*httpRequest_).checkContentEncoding},
-		8:  {hashIfNoneMatch, 139, 152, false, (*httpRequest_).checkIfNoneMatch},
-		9:  {hashCacheControl, 54, 67, true, (*httpRequest_).checkCacheControl},
-		10: {hashTrailer, 163, 170, true, nil},
-		11: {hashAcceptEncoding, 22, 37, false, (*httpRequest_).checkAcceptEncoding},
-		12: {hashAccept, 0, 6, false, nil},
-		13: {hashExpect, 113, 119, false, (*httpRequest_).checkExpect},
-		14: {hashAcceptCharset, 7, 21, true, nil},
-		15: {hashContentLanguage, 96, 112, true, nil},
-		16: {hashIfMatch, 130, 138, false, (*httpRequest_).checkIfMatch},
-		17: {hashPragma, 153, 159, true, nil},
-		18: {hashUpgrade, 189, 196, true, (*httpRequest_).checkUpgrade},
-	}
-	httpRequestMultipleHeaderFind = func(hash uint16) int { return (710644505 / int(hash)) % 19 }
-)
-
-func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
-	// Cache-Control   = 1#cache-directive
-	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
-		// TODO
-	}
-	return true
-}
-func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool {
-	// Expect = #expectation
-	if r.versionCode >= Version1_1 {
-		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
-			bytesToLower(value) // the Expect field-value is case-insensitive.
-			if bytes.Equal(value, bytes100Continue) {
-				r.expectContinue = true
-			} else {
-				// Unknown expectation, ignored.
-			}
-		}
-	} else { // HTTP/1.0
-		// RFC 7231 (section 5.1.1):
-		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-		for i := from; i < edge; i++ {
-			r.delPrimeAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
-		}
-	}
-	return true
-}
-func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
-	// If-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
-}
-func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool {
-	// If-None-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
-}
-func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
-	// TE        = #t-codings
-	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
-	// t-ranking = OWS ";" OWS "q=" rank
-	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, bytesTrailers) {
-			r.acceptTrailers = true
-		} else if r.versionCode > Version1_1 {
-			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
-			return false
-		}
-	}
-	return true
-}
-func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
-	if r.versionCode == Version2 || r.versionCode == Version3 {
-		r.headResult, r.headReason = StatusBadRequest, "upgrade is only supported in http/1.1"
-		return false
-	}
-	if r.methodCode == MethodCONNECT {
-		// TODO: confirm this
-		return true
-	}
-	if r.versionCode == Version1_1 {
-		// Upgrade          = 1#protocol
-		// protocol         = protocol-name ["/" protocol-version]
-		// protocol-name    = token
-		// protocol-version = token
-		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
-			bytesToLower(value)
-			if bytes.Equal(value, bytesWebSocket) {
-				r.upgradeSocket = true
-			} else {
-				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
-			}
-		}
-	} else {
-		// RFC 7230 (section 6.7):
-		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
-		for i := from; i < edge; i++ {
-			r.delPrimeAt(i) // we delete it.
-		}
-	}
-	return true
-}
-func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool {
-	// TODO
-	return true
-}
-func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {
-	if matches.isEmpty() {
-		matches.from = from
-	}
-	matches.edge = edge
-	for i := from; i < edge; i++ {
-		header := &r.primes[i]
-		value := header.valueAt(r.input)
-		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(value) == 1 && value[0] == '*' {
-			if nMatch != 0 {
-				r.headResult, r.headReason = StatusBadRequest, "mix using of * and entity-tag"
-				return false
-			}
-			*match = -1 // *
-		} else { // entity-tag = [ weak ] opaque-tag
-			// opaque-tag = DQUOTE *etagc DQUOTE
-			if nMatch == -1 { // *
-				r.headResult, r.headReason = StatusBadRequest, "mix using of entity-tag and *"
-				return false
-			}
-			if nMatch > 63 {
-				r.headResult, r.headReason = StatusBadRequest, "too many entity-tag"
-				return false
-			}
-			// *match is 0 by default
-			*match++
-			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
-				header.setWeakETag()
-				header.valueSkip += 3 // won't overflow since we reserved some bytes
-				header.valueEdge--
-			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
-				header.valueSkip++
-				header.valueEdge--
 			}
 		}
 	}
@@ -1179,6 +1011,166 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 	}
 	r.ranges[r.nRanges] = span{from, last}
 	r.nRanges++
+	return true
+}
+
+var ( // perfect hash table for request multiple headers
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestMultipleHeaderTable = [19]struct {
+		hash  uint16
+		from  uint8
+		edge  uint8
+		check func(*httpRequest_, uint8, uint8) bool
+	}{
+		0:  {hashTE, 160, 162, (*httpRequest_).checkTE},
+		1:  {hashAcceptLanguage, 38, 53, nil},
+		2:  {hashForwarded, 120, 129, nil},
+		3:  {hashTransferEncoding, 171, 188, (*httpRequest_).checkTransferEncoding},
+		4:  {hashConnection, 68, 78, (*httpRequest_).checkConnection},
+		5:  {hashXForwardedFor, 201, 216, (*httpRequest_).checkXForwardedFor},
+		6:  {hashVia, 197, 200, nil},
+		7:  {hashContentEncoding, 79, 95, (*httpRequest_).checkContentEncoding},
+		8:  {hashIfNoneMatch, 139, 152, (*httpRequest_).checkIfNoneMatch},
+		9:  {hashCacheControl, 54, 67, (*httpRequest_).checkCacheControl},
+		10: {hashTrailer, 163, 170, nil},
+		11: {hashAcceptEncoding, 22, 37, (*httpRequest_).checkAcceptEncoding},
+		12: {hashAccept, 0, 6, nil},
+		13: {hashExpect, 113, 119, (*httpRequest_).checkExpect},
+		14: {hashAcceptCharset, 7, 21, nil},
+		15: {hashContentLanguage, 96, 112, nil},
+		16: {hashIfMatch, 130, 138, (*httpRequest_).checkIfMatch},
+		17: {hashPragma, 153, 159, nil},
+		18: {hashUpgrade, 189, 196, (*httpRequest_).checkUpgrade},
+	}
+	httpRequestMultipleHeaderFind = func(hash uint16) int { return (710644505 / int(hash)) % 19 }
+)
+
+func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool {
+	// Cache-Control   = 1#cache-directive
+	// cache-directive = token [ "=" ( token / quoted-string ) ]
+	for i := from; i < edge; i++ {
+		// TODO
+	}
+	return true
+}
+func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool {
+	// Expect = #expectation
+	if r.versionCode >= Version1_1 {
+		for i := from; i < edge; i++ {
+			value := r.primes[i].valueAt(r.input)
+			bytesToLower(value) // the Expect field-value is case-insensitive.
+			if bytes.Equal(value, bytes100Continue) {
+				r.expectContinue = true
+			} else {
+				// Unknown expectation, ignored.
+			}
+		}
+	} else { // HTTP/1.0
+		// RFC 7231 (section 5.1.1):
+		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
+		for i := from; i < edge; i++ {
+			r.delPrimeAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+		}
+	}
+	return true
+}
+func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
+	// If-Match = "*" / #entity-tag
+	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
+}
+func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool {
+	// If-None-Match = "*" / #entity-tag
+	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
+}
+func (r *httpRequest_) checkTE(from uint8, edge uint8) bool {
+	// TE        = #t-codings
+	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
+	// t-ranking = OWS ";" OWS "q=" rank
+	for i := from; i < edge; i++ {
+		value := r.primes[i].valueAt(r.input)
+		bytesToLower(value)
+		if bytes.Equal(value, bytesTrailers) {
+			r.acceptTrailers = true
+		} else if r.versionCode > Version1_1 {
+			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
+			return false
+		}
+	}
+	return true
+}
+func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool {
+	if r.versionCode == Version2 || r.versionCode == Version3 {
+		r.headResult, r.headReason = StatusBadRequest, "upgrade is only supported in http/1.1"
+		return false
+	}
+	if r.methodCode == MethodCONNECT {
+		// TODO: confirm this
+		return true
+	}
+	if r.versionCode == Version1_1 {
+		// Upgrade          = 1#protocol
+		// protocol         = protocol-name ["/" protocol-version]
+		// protocol-name    = token
+		// protocol-version = token
+		for i := from; i < edge; i++ {
+			value := r.primes[i].valueAt(r.input)
+			bytesToLower(value)
+			if bytes.Equal(value, bytesWebSocket) {
+				r.upgradeSocket = true
+			} else {
+				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
+			}
+		}
+	} else {
+		// RFC 7230 (section 6.7):
+		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
+		for i := from; i < edge; i++ {
+			r.delPrimeAt(i) // we delete it.
+		}
+	}
+	return true
+}
+func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {
+	if matches.isEmpty() {
+		matches.from = from
+	}
+	matches.edge = edge
+	for i := from; i < edge; i++ {
+		header := &r.primes[i]
+		value := header.valueAt(r.input)
+		nMatch := *match // -1:*, 0:nonexist, >0:num
+		if len(value) == 1 && value[0] == '*' {
+			if nMatch != 0 {
+				r.headResult, r.headReason = StatusBadRequest, "mix using of * and entity-tag"
+				return false
+			}
+			*match = -1 // *
+		} else { // entity-tag = [ weak ] opaque-tag
+			// opaque-tag = DQUOTE *etagc DQUOTE
+			if nMatch == -1 { // *
+				r.headResult, r.headReason = StatusBadRequest, "mix using of entity-tag and *"
+				return false
+			}
+			if nMatch > 63 {
+				r.headResult, r.headReason = StatusBadRequest, "too many entity-tag"
+				return false
+			}
+			// *match is 0 by default
+			*match++
+			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
+				header.setWeakETag()
+				header.valueSkip += 3 // won't overflow since we reserved some bytes
+				header.valueEdge--
+			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
+				header.valueSkip++
+				header.valueEdge--
+			}
+		}
+	}
 	return true
 }
 

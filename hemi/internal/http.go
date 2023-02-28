@@ -75,7 +75,8 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
 type httpIn interface {
-	adoptHeader(header *pair) bool
+	addHeader(header *pair) bool
+	checkHeader(header *pair) bool
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
@@ -504,12 +505,15 @@ func (r *httpIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to delete?
 	return r.delPair(name, 0, r.headers, kindHeader)
 }
-func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool { // prime
-	// Add main header before sub headers.
-	if !r.addHeader(header) {
-		// r.headResult is set.
-		return false
+func (r *httpIn_) addHeader(header *pair) bool { // prime
+	if edge, ok := r.addPrime(header); ok {
+		r.headers.edge = edge
+		return true
 	}
+	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
+}
+func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -577,14 +581,6 @@ func (r *httpIn_) addMultipleHeader(header *pair, must bool) bool { // prime
 		}
 	*/
 	return true
-}
-func (r *httpIn_) addHeader(header *pair) bool { // prime
-	if edge, ok := r.addPrime(header); ok {
-		r.headers.edge = edge
-		return true
-	}
-	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-	return false
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)

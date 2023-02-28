@@ -790,7 +790,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
+		header.valueSkip = uint16(r.pFore - r.pBack)
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {

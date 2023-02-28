@@ -514,66 +514,68 @@ func (r *httpIn_) addHeader(header *pair) bool { // prime
 	return false
 }
 func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
-	//valueFrom := header.nameFrom + int32(header.valueOff)
-	//valueEdge := header.valueEdge
-	/*
-		// RFC 7230 (section 7):
-		// In other words, a recipient MUST accept lists that satisfy the following syntax:
-		// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-		// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-		subHeader := *header // clone header
-		subHeader.setSubField()
-		value := header.value
-		needComma := false
-		for { // each element
-			haveComma := false
-			for value.from < header.value.edge {
-				if b := r.input[value.from]; b == ',' {
-					haveComma = true
-					value.from++
-				} else if b == ' ' || b == '\t' {
-					value.from++
-				} else {
-					break
-				}
-			}
-			if value.from == header.value.edge {
+	// RFC 7230 (section 7):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
+	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
+	subHeader := *header
+	subHeader.setSubField()
+	subValue := header.valueText()
+	added, needComma := 0, false
+	for { // each element
+		haveComma := false
+		for subValue.from < header.valueEdge {
+			if b := r.input[subValue.from]; b == ',' {
+				haveComma = true
+				subValue.from++
+			} else if b == ' ' || b == '\t' {
+				subValue.from++
+			} else {
 				break
 			}
-			if needComma && !haveComma {
-				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
-				return false
+		}
+		if subValue.from == header.valueEdge {
+			break
+		}
+		if needComma && !haveComma {
+			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+			return false
+		}
+		subHeader.valueSkip = uint16(subValue.from - header.nameFrom)
+		subValue.edge = subValue.from
+		if r.input[subValue.edge] == '"' { // subValue is quoted
+			subValue.edge++ // skip '"'
+			for subValue.edge < header.valueEdge && r.input[subValue.edge] != '"' {
+				subValue.edge++
 			}
-			value.edge = value.from
-			if r.input[value.edge] == '"' { // value is quoted?
-				value.edge++
-				for value.edge < header.value.edge && r.input[value.edge] != '"' {
-					value.edge++
-				}
-				if value.edge == header.value.edge {
-					subHeader.value = value // value is `"...`
-				} else { // got a `"`
-					subHeader.value.set(value.from+1, value.edge) // strip `""`
-					value.edge++
-				}
-			} else { // not a quoted value
-				for value.edge < header.value.edge {
-					if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
-						break
-					} else {
-						value.edge++
-					}
-				}
-				subHeader.value = value
+			subHeader.valueEdge = subValue.edge
+			if subValue.edge != header.valueEdge { // value is `".."`
+				subHeader.valueSkip++ // skip left '"'
+				subValue.edge++       // skip right '"'
 			}
-			if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
+		} else { // subValue is not quoted
+			for subValue.edge < header.valueEdge {
+				if b := r.input[subValue.edge]; b == ' ' || b == '\t' || b == ',' {
+					break
+				} else {
+					subValue.edge++
+				}
+			}
+			subHeader.valueEdge = subValue.edge
+		}
+		if subHeader.nameFrom+int32(subHeader.valueSkip) != subHeader.valueEdge { // subHeader is not empty
+			if !r.addHeader(&subHeader) {
 				// r.headResult is set.
 				return false
 			}
-			value.from = value.edge
-			needComma = true
+			added++
 		}
-	*/
+		subValue.from = subValue.edge
+		needComma = true
+	}
+	if added == 0 {
+		// TODO
+	}
 	return true
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
@@ -902,7 +904,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.place = placeArray
 	extra.nameFrom = r.arrayEdge
 	extra.nameSize = uint8(nameSize)
-	extra.valueOff = uint16(nameSize)
+	extra.valueSkip = uint16(nameSize)
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.valueEdge = r.arrayEdge

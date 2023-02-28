@@ -119,7 +119,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
+		header.valueSkip = uint16(r.pFore - r.pBack)
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -444,8 +444,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		trailer.valueOff = uint16(r.pFore - r.pBack) // ":OWS*"
-		r.pBack = r.pFore                            // for field-value or EOL
+		trailer.valueSkip = uint16(r.pFore - r.pBack)
+		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
@@ -489,8 +489,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueOff = uint16(trailer.nameSize) // adjust value offset
-		trailer.valueEdge = r.arrayEdge             // adjust value edge
+		trailer.valueSkip = uint16(trailer.nameSize) // adjust value offset
+		trailer.valueEdge = r.arrayEdge              // adjust value edge
 
 		// Trailer is received in general algorithm. Now adopt it
 		if !r.shell.adoptTrailer(trailer) {

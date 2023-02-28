@@ -41,18 +41,18 @@ type pair struct { // 16 bytes
 	nameFrom  int32  // like: "content-type"
 	fieldFlag uint8  // see field flags
 	nameSize  uint8  // name size, <= 255
-	valueOff  uint16 // value offset from nameFrom, <= 64K1
+	valueSkip uint16 // value skipped from nameFrom, <= 64K1
 	valueEdge int32  // like: "text/html; charset=utf-8"
 }
 
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery   = iota // prime->array. skip = 0
-	kindHeader         // prime->input, skip > 0 (:OWS...)
-	kindCookie         // prime->input, skip = 1 (=)
-	kindForm           // prime->array, skip = 0
-	kindTrailer        // prime->array, skip = 0
+	kindQuery   = iota // prime->array
+	kindHeader         // prime->input
+	kindCookie         // prime->input
+	kindForm           // prime->array
+	kindTrailer        // prime->array
 )
 
 const ( // pair places
@@ -92,14 +92,14 @@ func (p *pair) isWeakETag() bool   { return p.fieldFlag&flagWeakETag > 0 }
 func (p *pair) isEmptyValue() bool { return p.fieldFlag&flagEmptyValue > 0 }
 
 func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.nameFrom+int32(p.valueOff) : p.valueEdge] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.nameFrom+int32(p.valueSkip) : p.valueEdge] }
 func (p *pair) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
 }
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
-func (p *pair) valueText() text { return text{p.nameFrom + int32(p.valueOff), p.valueEdge} }
+func (p *pair) valueText() text { return text{p.nameFrom + int32(p.valueSkip), p.valueEdge} }
 
 // TempFile is used to temporarily save request/response content in local file system.
 type TempFile interface {

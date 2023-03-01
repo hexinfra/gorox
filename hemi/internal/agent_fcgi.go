@@ -775,7 +775,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -1023,10 +1023,7 @@ func (r *fcgiResponse) addSubHeaders(header *pair) bool {
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		if header := &r.headers[i]; header.hash != 0 {
-			if header.isSubField() { // skip sub headers, only collect main headers
-				continue
-			}
+		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() { // skip sub headers, only collect main headers
 			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}
@@ -1108,7 +1105,8 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 	return
 }
 
-func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) addTrailer(trailer *pair) bool   { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) checkTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers

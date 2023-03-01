@@ -104,7 +104,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -389,6 +389,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 	r.chunkEdge -= r.cFore
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
 	r.pBack, r.pFore = 0, 0 // for parsing trailer fields
+
 	r.trailers.from = uint8(len(r.primes))
 	r.trailers.edge = r.trailers.from
 	trailer := &r.stock
@@ -431,7 +432,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(nameSize)
+			trailer.from, trailer.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			return false
 		}
@@ -485,15 +486,15 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.nameFrom = fore // adjust name from
+		trailer.from = fore // adjust from
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
 		trailer.valueSkip = uint16(trailer.nameSize) // adjust value offset
 		trailer.valueEdge = r.arrayEdge              // adjust value edge
 
-		// Trailer is received in general algorithm. Now adopt it
-		if !r.shell.adoptTrailer(trailer) {
+		// Trailer is received in general algorithm. Now add and check it
+		if !r.shell.addTrailer(trailer) || !r.shell.checkTrailer(trailer) {
 			return false
 		}
 

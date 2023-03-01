@@ -38,26 +38,26 @@ type pair struct { // 16 bytes
 	hash      uint16 // name hash, to support fast search. hash == 0 means empty
 	kind      int8   // see pair kinds
 	place     int8   // see pair places
-	nameFrom  int32  // like: "content-type"
+	from      int32  // name-value begins from
 	fieldFlag uint8  // see field flags
-	nameSize  uint8  // name size, <= 255
-	valueSkip uint16 // value skipped from nameFrom, <= 64K1
+	nameSize  uint8  // like: "content-type". <= 255
+	valueSkip uint16 // value begins from from+valueSkip. <= 64K1
 	valueEdge int32  // like: "text/html; charset=utf-8"
 }
 
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery   = iota // prime->array
-	kindHeader         // prime->input
-	kindCookie         // prime->input
-	kindForm           // prime->array
-	kindTrailer        // prime->array
+	kindQuery   = iota // prime->array, offset = 0
+	kindHeader         // prime->input, offset > 0
+	kindCookie         // prime->input, offset = 1 (=)
+	kindForm           // prime->array, offset = 0
+	kindTrailer        // prime->array, offset = 0
 )
 
 const ( // pair places
 	placeInput = iota // prime headers, prime cookies
-	placeArray        // prime queries, prime forms, prime trailers, extras
+	placeArray        // prime queries, prime forms, prime trailers, all extras
 	placeStatic2
 	placeStatic3
 )
@@ -91,15 +91,15 @@ func (p *pair) isUnderscore() bool { return p.fieldFlag&flagUnderscore > 0 }
 func (p *pair) isWeakETag() bool   { return p.fieldFlag&flagWeakETag > 0 }
 func (p *pair) isEmptyValue() bool { return p.fieldFlag&flagEmptyValue > 0 }
 
-func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.nameFrom+int32(p.valueSkip) : p.valueEdge] }
+func (p *pair) nameAt(t []byte) []byte  { return t[p.from : p.from+int32(p.nameSize)] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueSkip) : p.valueEdge] }
 func (p *pair) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
+	return int(p.nameSize) == len(x) && string(t[p.from:p.from+int32(p.nameSize)]) == x
 }
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
 }
-func (p *pair) valueText() text { return text{p.nameFrom + int32(p.valueSkip), p.valueEdge} }
+func (p *pair) valueText() text { return text{p.from + int32(p.valueSkip), p.valueEdge} }
 
 // TempFile is used to temporarily save request/response content in local file system.
 type TempFile interface {

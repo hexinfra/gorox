@@ -332,6 +332,7 @@ type Request interface {
 	AddQuery(name string, value string) bool
 	DelQuery(name string) (deleted bool)
 
+	HasHeaders() bool
 	AllHeaders() (headers [][2]string)
 	H(name string) string
 	Hstr(name string, defaultValue string) string
@@ -429,7 +430,8 @@ type Request interface {
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
-	adoptTrailer(trailer *pair) bool
+	addTrailer(trailer *pair) bool
+	checkTrailer(trailer *pair) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -703,7 +705,7 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
-func (r *httpRequest_) addQuery(query *pair) bool { // prime
+func (r *httpRequest_) addQuery(query *pair) bool { // to primes
 	if edge, ok := r.addPrime(query); ok {
 		r.queries.edge = edge
 		return true
@@ -749,7 +751,7 @@ func (r *httpRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return ok
 }
-func (r *httpRequest_) AddQuery(name string, value string) bool { // extra
+func (r *httpRequest_) AddQuery(name string, value string) bool { // to extras
 	return r.addExtra(name, value, kindQuery)
 }
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
@@ -766,7 +768,7 @@ func (r *httpRequest_) checkHeader(header *pair) bool {
 		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding original header
-		if !r.addSubHeaders(header) {
+		if !r._addSubFields(header, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -1016,7 +1018,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 }
 
 var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
 	httpRequestMultipleHeaderTable = [19]struct {
 		hash  uint16
 		from  uint8
@@ -1025,11 +1027,11 @@ var ( // perfect hash table for request multiple headers
 	}{
 		0:  {hashTE, 160, 162, (*httpRequest_).checkTE},
 		1:  {hashAcceptLanguage, 38, 53, nil},
-		2:  {hashForwarded, 120, 129, nil},
+		2:  {hashForwarded, 120, 129, (*httpRequest_).checkForwarded},
 		3:  {hashTransferEncoding, 171, 188, (*httpRequest_).checkTransferEncoding},
 		4:  {hashConnection, 68, 78, (*httpRequest_).checkConnection},
 		5:  {hashXForwardedFor, 201, 216, (*httpRequest_).checkXForwardedFor},
-		6:  {hashVia, 197, 200, nil},
+		6:  {hashVia, 197, 200, (*httpRequest_).checkVia},
 		7:  {hashContentEncoding, 79, 95, (*httpRequest_).checkContentEncoding},
 		8:  {hashIfNoneMatch, 139, 152, (*httpRequest_).checkIfNoneMatch},
 		9:  {hashCacheControl, 54, 67, (*httpRequest_).checkCacheControl},
@@ -1073,6 +1075,10 @@ func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool {
 			r.delPrimeAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		}
 	}
+	return true
+}
+func (r *httpRequest_) checkForwarded(from uint8, edge uint8) bool {
+	// TODO
 	return true
 }
 func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool {
@@ -1324,14 +1330,14 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	cookie.zero()
 	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
-	cookie.nameFrom = cookieString.from
+	cookie.from = cookieString.from
 	state := 0
 	for p := cookieString.from; p < cookieString.edge; p++ {
 		b := r.input[p]
 		switch state {
 		case 0: // expecting '=' to get cookie-name
 			if b == '=' {
-				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
+				if nameSize := p - cookie.from; nameSize > 0 && nameSize <= 255 {
 					cookie.nameSize = uint8(nameSize)
 					cookie.valueSkip = uint16(nameSize) + 1 // skip '='
 				} else {
@@ -1387,7 +1393,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 				return false
 			}
 			cookie.hash = 0 // reset for next cookie
-			cookie.nameFrom = p + 1
+			cookie.from = p + 1
 			state = 0
 		}
 	}
@@ -1603,7 +1609,7 @@ func (r *httpRequest_) getRanges() []span {
 	return r.ranges[:r.nRanges]
 }
 
-func (r *httpRequest_) addCookie(cookie *pair) bool { // prime
+func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
 	if edge, ok := r.addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1649,7 +1655,7 @@ func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return ok
 }
-func (r *httpRequest_) AddCookie(name string, value string) bool { // extra
+func (r *httpRequest_) AddCookie(name string, value string) bool { // to extras
 	return r.addExtra(name, value, kindCookie)
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
@@ -1657,8 +1663,7 @@ func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 }
 func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
-		cookie := &r.primes[i]
-		if cookie.hash != 0 {
+		if cookie := &r.primes[i]; cookie.hash != 0 {
 			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
 				return false
 			}
@@ -1797,13 +1802,13 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	form.zero()
 	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
-	form.nameFrom = r.arrayEdge
+	form.from = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
-				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
+				if nameSize := r.arrayEdge - form.from; nameSize <= 255 {
 					form.nameSize = uint8(nameSize)
 					form.valueSkip = uint16(nameSize)
 				} else {
@@ -1828,7 +1833,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 					r.addForm(form)
 				}
 				form.hash = 0 // reset for next form
-				form.nameFrom = r.arrayEdge
+				form.from = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
@@ -2156,7 +2161,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}
 		} else { // part must be a form
 			part.form.hash = part.hash
-			part.form.nameFrom = part.name.from
+			part.form.from = part.name.from
 			part.form.nameSize = uint8(part.name.size())
 			part.form.valueSkip = uint16(part.form.nameSize)
 		}
@@ -2245,7 +2250,7 @@ func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller
 	return true
 }
 
-func (r *httpRequest_) addForm(form *pair) { // prime
+func (r *httpRequest_) addForm(form *pair) { // to primes
 	if edge, ok := r.addPrime(form); ok {
 		r.forms.edge = edge
 	}
@@ -2295,7 +2300,7 @@ func (r *httpRequest_) HasForm(name string) bool {
 	_, ok := r.getPair(name, 0, r.forms, kindForm)
 	return ok
 }
-func (r *httpRequest_) AddForm(name string, value string) bool { // extra
+func (r *httpRequest_) AddForm(name string, value string) bool { // to extras
 	return r.addExtra(name, value, kindForm)
 }
 func (r *httpRequest_) DelForm(name string) (deleted bool) {
@@ -2369,9 +2374,8 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) adoptTrailer(trailer *pair) bool {
-	r.addTrailer(trailer)
-	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
+func (r *httpRequest_) checkTrailer(trailer *pair) bool {
+	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 

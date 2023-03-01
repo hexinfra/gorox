@@ -486,7 +486,7 @@ func (r *hResponse_) checkHeader(header *pair) bool {
 		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding original header
-		if !r.addSubHeaders(header) {
+		if !r._addSubFields(header, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -586,7 +586,7 @@ var ( // perfect hash table for response multiple headers
 		check func(*hResponse_, uint8, uint8) bool
 	}{
 		0:  {hashAcceptRanges, 16, 29, nil},
-		1:  {hashVia, 192, 195, nil},
+		1:  {hashVia, 192, 195, (*hResponse_).checkVia},
 		2:  {hashWWWAuthenticate, 196, 212, nil},
 		3:  {hashConnection, 89, 99, (*hResponse_).checkConnection},
 		4:  {hashContentEncoding, 100, 116, (*hResponse_).checkContentEncoding},
@@ -600,7 +600,7 @@ var ( // perfect hash table for response multiple headers
 		12: {hashAltSvc, 36, 43, nil},
 		13: {hashCDNCacheControl, 71, 88, nil},
 		14: {hashCacheStatus, 58, 70, nil},
-		15: {hashAcceptEncoding, 0, 15, nil},
+		15: {hashAcceptEncoding, 0, 15, (*hResponse_).checkAcceptEncoding},
 		16: {hashContentLanguage, 117, 133, nil},
 	}
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
@@ -735,9 +735,8 @@ func (r *hResponse_) HasContent() bool {
 func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
-func (r *hResponse_) adoptTrailer(trailer *pair) bool {
-	r.addTrailer(trailer)
-	// TODO: check trailer? Pseudo-header fields MUST NOT appear in a trailer section.
+func (r *hResponse_) checkTrailer(trailer *pair) bool {
+	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 

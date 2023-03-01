@@ -80,7 +80,8 @@ type httpIn interface {
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
-	adoptTrailer(trailer *pair) bool
+	addTrailer(trailer *pair) bool
+	checkTrailer(trailer *pair) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -128,7 +129,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtras        [8]bool // 0:unknown 1:query 2:header 3:cookie 4:form 5:trailer 6:ifMatch 7:ifNoneMatch
+	hasExtras        [8]bool // 0:query 1:header 2:cookie 3:form 4:trailer
 	dateTime         int64   // parsed unix time of date
 	headers          zone    // raw headers ->r.input
 	options          zone    // connection options ->r.input. may be not continuous
@@ -250,6 +251,84 @@ func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
+func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
+	// Content-Length = 1*DIGIT
+	// RFC 7230 (section 3.3.2):
+	// If a message is received that has multiple Content-Length header
+	// fields with field-values consisting of the same decimal value, or a
+	// single Content-Length header field with a field value containing a
+	// list of identical decimal values (e.g., "Content-Length: 42, 42"),
+	// indicating that duplicate Content-Length header fields have been
+	// generated or combined by an upstream message processor, then the
+	// recipient MUST either reject the message as invalid or replace the
+	// duplicated field-values with a single valid Content-Length field
+	// containing that decimal value prior to determining the message body
+	// length or forwarding the message.
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
+		if size, ok := decToI64(header.valueAt(r.input)); ok {
+			r.contentSize = size
+			r.iContentLength = index
+			return true
+		}
+	}
+	// RFC 7230 (section 3.3.3):
+	// If a message is received without Transfer-Encoding and with
+	// either multiple Content-Length header fields having differing
+	// field-values or a single Content-Length header field having an
+	// invalid value, then the message framing is invalid and the
+	// recipient MUST treat it as an unrecoverable error.  If this is a
+	// request message, the server MUST respond with a 400 (Bad Request)
+	// status code and then close the connection.
+	r.headResult, r.headReason = StatusBadRequest, "bad content-length"
+	return false
+}
+func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
+	// TODO
+	if r.iContentLocation == 0 && !header.isEmptyValue() {
+		r.iContentLocation = index
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-location"
+	return false
+}
+func (r *httpIn_) checkContentRange(header *pair, index uint8) bool {
+	// TODO
+	if r.iContentRange == 0 && !header.isEmptyValue() {
+		r.iContentRange = index
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-range"
+	return false
+}
+func (r *httpIn_) checkContentType(header *pair, index uint8) bool {
+	// Content-Type = media-type
+	// media-type = type "/" subtype *( OWS ";" OWS parameter )
+	// type = token
+	// subtype = token
+	// parameter = token "=" ( token / quoted-string )
+	if r.iContentType == 0 && !header.isEmptyValue() {
+		r.iContentType = index
+		return true
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-type"
+	return false
+}
+func (r *httpIn_) checkDate(header *pair, index uint8) bool {
+	// Date = HTTP-date
+	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
+}
+func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool {
+	if *pIndex == 0 {
+		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+			*pIndex = index
+			*toTime = httpDate
+			return true
+		}
+	}
+	r.headResult, r.headReason = StatusBadRequest, "bad http-date"
+	return false
+}
+
 func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool {
 	// Accept-Encoding = #( codings [ weight ] )
 	// codings         = content-coding / "identity" / "*"
@@ -365,83 +444,9 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool {
 	}
 	return true
 }
-
-func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
-	// Content-Length = 1*DIGIT
-	// RFC 7230 (section 3.3.2):
-	// If a message is received that has multiple Content-Length header
-	// fields with field-values consisting of the same decimal value, or a
-	// single Content-Length header field with a field value containing a
-	// list of identical decimal values (e.g., "Content-Length: 42, 42"),
-	// indicating that duplicate Content-Length header fields have been
-	// generated or combined by an upstream message processor, then the
-	// recipient MUST either reject the message as invalid or replace the
-	// duplicated field-values with a single valid Content-Length field
-	// containing that decimal value prior to determining the message body
-	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
-		if size, ok := decToI64(header.valueAt(r.input)); ok {
-			r.contentSize = size
-			r.iContentLength = index
-			return true
-		}
-	}
-	// RFC 7230 (section 3.3.3):
-	// If a message is received without Transfer-Encoding and with
-	// either multiple Content-Length header fields having differing
-	// field-values or a single Content-Length header field having an
-	// invalid value, then the message framing is invalid and the
-	// recipient MUST treat it as an unrecoverable error.  If this is a
-	// request message, the server MUST respond with a 400 (Bad Request)
-	// status code and then close the connection.
-	r.headResult, r.headReason = StatusBadRequest, "bad content-length"
-	return false
-}
-func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
+func (r *httpIn_) checkVia(from uint8, edge uint8) bool {
 	// TODO
-	if r.iContentLocation == 0 && !header.isEmptyValue() {
-		r.iContentLocation = index
-		return true
-	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-location"
-	return false
-}
-func (r *httpIn_) checkContentRange(header *pair, index uint8) bool {
-	// TODO
-	if r.iContentRange == 0 && !header.isEmptyValue() {
-		r.iContentRange = index
-		return true
-	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-range"
-	return false
-}
-func (r *httpIn_) checkContentType(header *pair, index uint8) bool {
-	// Content-Type = media-type
-	// media-type = type "/" subtype *( OWS ";" OWS parameter )
-	// type = token
-	// subtype = token
-	// parameter = token "=" ( token / quoted-string )
-	if r.iContentType == 0 && !header.isEmptyValue() {
-		r.iContentType = index
-		return true
-	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-type"
-	return false
-}
-func (r *httpIn_) checkDate(header *pair, index uint8) bool {
-	// Date = HTTP-date
-	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
-}
-func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool {
-	if *pIndex == 0 {
-		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-			*pIndex = index
-			*toTime = httpDate
-			return true
-		}
-	}
-	r.headResult, r.headReason = StatusBadRequest, "bad http-date"
-	return false
+	return true
 }
 
 func (r *httpIn_) ContentSize() int64 { return r.contentSize }
@@ -461,6 +466,15 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	return r.primes[r.iContentType].valueAt(r.input)
 }
 
+func (r *httpIn_) addHeader(header *pair) bool { // to primes
+	if edge, ok := r.addPrime(header); ok {
+		r.headers.edge = edge
+		return true
+	}
+	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
+}
+func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
 func (r *httpIn_) AllHeaders() (headers [][2]string) {
 	return r.allPairs(r.headers, kindHeader)
 }
@@ -496,7 +510,7 @@ func (r *httpIn_) HasHeader(name string) bool {
 	_, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return ok
 }
-func (r *httpIn_) AddHeader(name string, value string) bool { // extra
+func (r *httpIn_) AddHeader(name string, value string) bool { // to extras
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// NOTICE: must add values without comma so r.getPairs() works correctly
 	return r.addExtra(name, value, kindHeader)
@@ -504,79 +518,6 @@ func (r *httpIn_) AddHeader(name string, value string) bool { // extra
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to delete?
 	return r.delPair(name, 0, r.headers, kindHeader)
-}
-func (r *httpIn_) addHeader(header *pair) bool { // prime
-	if edge, ok := r.addPrime(header); ok {
-		r.headers.edge = edge
-		return true
-	}
-	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-	return false
-}
-func (r *httpIn_) addSubHeaders(header *pair) bool { // prime
-	// RFC 7230 (section 7):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-	subHeader := *header
-	subHeader.setSubField()
-	subValue := header.valueText()
-	added, needComma := 0, false
-	for { // each element
-		haveComma := false
-		for subValue.from < header.valueEdge {
-			if b := r.input[subValue.from]; b == ',' {
-				haveComma = true
-				subValue.from++
-			} else if b == ' ' || b == '\t' {
-				subValue.from++
-			} else {
-				break
-			}
-		}
-		if subValue.from == header.valueEdge {
-			break
-		}
-		if needComma && !haveComma {
-			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
-			return false
-		}
-		subHeader.valueSkip = uint16(subValue.from - header.nameFrom)
-		subValue.edge = subValue.from
-		if r.input[subValue.edge] == '"' { // subValue is quoted
-			subValue.edge++ // skip '"'
-			for subValue.edge < header.valueEdge && r.input[subValue.edge] != '"' {
-				subValue.edge++
-			}
-			subHeader.valueEdge = subValue.edge
-			if subValue.edge != header.valueEdge { // value is `".."`
-				subHeader.valueSkip++ // skip left '"'
-				subValue.edge++       // skip right '"'
-			}
-		} else { // subValue is not quoted
-			for subValue.edge < header.valueEdge {
-				if b := r.input[subValue.edge]; b == ' ' || b == '\t' || b == ',' {
-					break
-				} else {
-					subValue.edge++
-				}
-			}
-			subHeader.valueEdge = subValue.edge
-		}
-		if subHeader.nameFrom+int32(subHeader.valueSkip) != subHeader.valueEdge { // subHeader is not empty
-			if !r.addHeader(&subHeader) {
-				// r.headResult is set.
-				return false
-			}
-			added++
-		}
-		subValue.from = subValue.edge
-		needComma = true
-	}
-	if added == 0 {
-		// TODO
-	}
-	return true
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
@@ -746,6 +687,14 @@ badRead:
 	return err
 }
 
+func (r *httpIn_) addTrailer(trailer *pair) bool { // to primes
+	if edge, ok := r.addPrime(trailer); ok {
+		r.trailers.edge = edge
+	} else {
+		// Ignore too many trailers
+	}
+	return true
+}
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
 	return r.allPairs(r.trailers, kindTrailer)
@@ -782,7 +731,7 @@ func (r *httpIn_) HasTrailer(name string) bool {
 	_, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return ok
 }
-func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
+func (r *httpIn_) AddTrailer(name string, value string) bool { // to extras
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// NOTICE: must add values without comma so r.getPairs() works correctly
 	return r.addExtra(name, value, kindTrailer)
@@ -790,12 +739,6 @@ func (r *httpIn_) AddTrailer(name string, value string) bool { // extra
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 	// TODO: add restrictions on what trailers are allowed to delete?
 	return r.delPair(name, 0, r.trailers, kindTrailer)
-}
-func (r *httpIn_) addTrailer(trailer *pair) { // prime
-	if edge, ok := r.addPrime(trailer); ok {
-		r.trailers.edge = edge
-	}
-	// Ignore too many trailers
 }
 func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
@@ -902,7 +845,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
 	extra.place = placeArray
-	extra.nameFrom = r.arrayEdge
+	extra.from = r.arrayEdge
 	extra.nameSize = uint8(nameSize)
 	extra.valueSkip = uint16(nameSize)
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
@@ -919,10 +862,7 @@ func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
 	for i := primes.from; i < primes.edge; i++ {
-		if prime := &r.primes[i]; prime.hash != 0 {
-			if prime.isSubField() { // skip sub fields, only collect main fields
-				continue
-			}
+		if prime := &r.primes[i]; prime.hash != 0 && !prime.isSubField() { // skip sub fields, only collect main fields
 			p := r._getPlace(prime)
 			all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 		}
@@ -943,8 +883,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
-				p := r._getPlace(prime)
-				if prime.nameEqualString(p, name) {
+				if p := r._getPlace(prime); prime.nameEqualString(p, name) {
 					return prime.valueAt(p), true
 				}
 			}
@@ -966,20 +905,15 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 			hash = stringHash(name)
 		}
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash == hash {
-				if prime.isCommaValue() { // skip comma fields, only collect fields without comma
-					continue
-				}
-				p := r._getPlace(prime)
-				if prime.nameEqualString(p, name) {
+			if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() { // skip comma fields, only collect fields without comma
+				if p := r._getPlace(prime); prime.nameEqualString(p, name) {
 					values = append(values, string(prime.valueAt(p)))
 				}
 			}
 		}
 		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				extra := &r.extras[i]
-				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					values = append(values, string(extra.valueAt(r.array)))
 				}
 			}
@@ -997,8 +931,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
-				p := r._getPlace(prime)
-				if prime.nameEqualString(p, name) {
+				if p := r._getPlace(prime); prime.nameEqualString(p, name) {
 					prime.zero()
 					deleted = true
 				}
@@ -1006,8 +939,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				extra := &r.extras[i]
-				if extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1027,17 +959,79 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	} else if pair.place == placeStatic3 {
 		place = http3BytesStatic
 	} else {
-		BugExitln("unknown place")
+		BugExitln("unknown pair.place")
 	}
 	return place
 }
 
+func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair) bool) bool { // to primes
+	// RFC 7230 (section 7):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
+	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
+	subField := *field
+	subField.setSubField()
+	subValue := field.valueText()
+	added, needComma := 0, false
+	for { // each element
+		haveComma := false
+		for subValue.from < field.valueEdge {
+			if b := p[subValue.from]; b == ',' {
+				haveComma = true
+				subValue.from++
+			} else if b == ' ' || b == '\t' {
+				subValue.from++
+			} else {
+				break
+			}
+		}
+		if subValue.from == field.valueEdge {
+			break
+		}
+		if needComma && !haveComma {
+			// TODO: if we are to use _addSubFields to trailers in future, confirm whether this line is ok to set
+			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+			return false
+		}
+		subField.valueSkip = uint16(subValue.from - field.from)
+		subValue.edge = subValue.from
+		if p[subValue.edge] == '"' { // subValue is quoted
+			subValue.edge++ // skip '"'
+			for subValue.edge < field.valueEdge && p[subValue.edge] != '"' {
+				subValue.edge++
+			}
+			subField.valueEdge = subValue.edge
+			if subValue.edge != field.valueEdge { // value is `".."`
+				subField.valueSkip++ // skip left '"'
+				subValue.edge++      // skip right '"'
+			}
+		} else { // subValue is not quoted
+			for subValue.edge < field.valueEdge {
+				if b := p[subValue.edge]; b == ' ' || b == '\t' || b == ',' {
+					break
+				} else {
+					subValue.edge++
+				}
+			}
+			subField.valueEdge = subValue.edge
+		}
+		if subField.from+int32(subField.valueSkip) != subField.valueEdge { // subField is not empty
+			if !addField(&subField) {
+				return false
+			}
+			added++
+		}
+		subValue.from = subValue.edge
+		needComma = true
+	}
+	if added == 0 {
+		// TODO
+	}
+	return true
+}
 func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub fields
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 {
-			if field.isSubField() { // skip sub fields, only collect main fields
-				continue
-			}
+		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() { // skip sub fields, only collect main fields
 			p := r._getPlace(field)
 			if !fn(field, field.nameAt(p), field.valueAt(p)) {
 				return false
@@ -1072,21 +1066,20 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		}
 		optionName := prime.valueAt(r.input)
 		optionHash := bytesHash(optionName)
-		// Also options that are "connection: connection"
+		// Skip options that are "connection: connection"
 		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
 			continue
 		}
+		// Now remove options in fields
 		for j := fields.from; j < fields.edge; j++ {
-			field := &r.primes[j]
-			if field.hash == optionHash && field.nameEqualBytes(r.input, optionName) {
+			if field := &r.primes[j]; field.hash == optionHash && field.nameEqualBytes(r.input, optionName) {
 				field.zero()
 			}
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		if r.hasExtras[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				extra := &r.extras[i]
-				if extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
+				if extra := &r.extras[i]; extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}
 			}

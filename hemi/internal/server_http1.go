@@ -585,7 +585,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					r.path = r.array[0:r.arrayEdge]
 					r.queries.from = uint8(len(r.primes))
 					r.queries.edge = r.queries.from
-					query.nameFrom = r.arrayEdge
+					query.from = r.arrayEdge
 					qsOff = r.pFore - r.pBack
 					state = 2
 				} else {
@@ -594,7 +594,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				}
 			case 2: // in query string and expecting '=' to get a name
 				if b == '=' {
-					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
+					if nameSize := r.arrayEdge - query.from; nameSize <= 255 {
 						query.nameSize = uint8(nameSize)
 						query.valueSkip = uint16(nameSize)
 					} else {
@@ -621,7 +621,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 						return false
 					}
 					query.hash = 0 // reset for next query
-					query.nameFrom = r.arrayEdge
+					query.from = r.arrayEdge
 					state = 2
 				} else if httpPchar[b] > 0 { // including '?'
 					if b == '+' {

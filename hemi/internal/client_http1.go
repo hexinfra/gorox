@@ -456,12 +456,12 @@ func (r *H1Request) syncBytes(p []byte) error { return r.syncBytes1(p) }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.ifModifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.ifModifiedSince))
+	if r.unixTimes.ifModifiedSince >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
 	}
 	// if-unmodified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.ifUnmodifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.ifUnmodifiedSince))
+	if r.unixTimes.ifUnmodifiedSince >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.unixTimes.ifUnmodifiedSince))
 	}
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {

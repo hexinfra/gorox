@@ -35,13 +35,22 @@ func putParas(paras []para) {
 
 // para
 type para struct { // 6 bytes
-	nameFrom  uint16
-	valueFrom uint16
-	nameSize  uint8 // <= 255
-	valueSize uint8 // <= 255
+	nameSize  uint8  // <= 255
+	valueSize uint8  // <= 255
+	nameFrom  uint16 // like: "charset"
+	valueFrom uint16 // like: "utf-8"
 }
 
 func (p *para) zero() { *p = para{} }
+
+func (p *para) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+uint16(p.nameSize)] }
+func (p *para) valueAt(t []byte) []byte { return t[p.valueFrom : p.valueFrom+uint16(p.valueSize)] }
+func (p *para) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+uint16(p.nameSize)]) == x
+}
+func (p *para) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+uint16(p.nameSize)], x)
+}
 
 // poolPairs
 var poolPairs sync.Pool
@@ -93,28 +102,28 @@ const ( // pair places
 const ( // field flags
 	flagSingleton  = 0b10000000 // singleton or not
 	flagSubField   = 0b01000000 // sub field or not
-	flagCommaValue = 0b00100000 // value has comma or not
-	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this
+	flagLiteral    = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo     = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00001000 // name contains '_' or not. some agents (like fcgi) need this
+	flagCommaValue = 0b00000100 // value has comma or not
 	flagWeakETag   = 0b00000010 // weak etag or not
 	flagReserved   = 0b00000001 // reserved for future use
 )
 
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
 func (p *pair) setSubField()   { p.flags |= flagSubField }
-func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
 func (p *pair) setLiteral()    { p.flags |= flagLiteral }
 func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
+func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
 func (p *pair) setWeakETag()   { p.flags |= flagWeakETag }
 
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
-func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }
 func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
+func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isWeakETag() bool   { return p.flags&flagWeakETag > 0 }
 
 func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
@@ -336,6 +345,20 @@ func (z *zone) size() int      { return int(z.edge - z.from) }
 func (z *zone) isEmpty() bool  { return z.from == z.edge }
 func (z *zone) notEmpty() bool { return z.from != z.edge }
 
+// span
+type span struct { // 4 bytes
+	from, edge uint16 // edge is ensured to be <= 65535
+}
+
+func (s *span) zero() { *s = span{} }
+
+func (s *span) size() int      { return int(s.edge - s.from) }
+func (s *span) isEmpty() bool  { return s.from == s.edge }
+func (s *span) notEmpty() bool { return s.from != s.edge }
+
+func (s *span) set(from uint16, edge uint16) { s.from, s.edge = from, edge }
+func (s *span) set32(from int32, edge int32) { s.from, s.edge = uint16(from), uint16(edge) }
+
 // text
 type text struct { // 8 bytes
 	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
@@ -357,8 +380,8 @@ func (t *text) sub(delta int32) {
 	}
 }
 
-// span defines a range.
-type span struct { // 16 bytes
+// rang defines a range.
+type rang struct { // 16 bytes
 	from, last int64 // [from, last]
 }
 

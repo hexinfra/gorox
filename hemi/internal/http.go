@@ -94,13 +94,14 @@ type httpIn_ struct {
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockInput  [1600]byte // for r.input
-	stockArray  [800]byte  // for r.array
+	stockInput  [1536]byte // for r.input
+	stockArray  [768]byte  // for r.array
 	stockPrimes [64]pair   // for r.primes
 	stockExtras [4]pair    // for r.extras
 	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
-	stock          pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, and trailers
+	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
+	_              [4]byte  // padding
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
@@ -847,7 +848,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	if !r._growArray(totalSize) { // extras are always placed in r.array
 		return false
 	}
-	extra := &r.stock
+	extra := &r.mainPair
 	extra.zero()
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
@@ -858,7 +859,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	r.extras = append(r.extras, r.stock)
+	r.extras = append(r.extras, r.mainPair)
 	r.hasExtras[extraKind] = true
 	return true
 }
@@ -972,11 +973,9 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 }
 
 func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair) bool) bool { // to primes
-	/*
-		if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
-			return true
-		}
-	*/
+	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+		return true
+	}
 	// RFC 7230 (section 7):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
@@ -1006,7 +1005,7 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 		}
 		if needComma && !haveComma {
 			if field.kind == kindHeader {
-				Debugf("%v|%v|%s|%s\n", *field, subField, field.nameAt(p), field.valueAt(p))
+				Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
 				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
 			}
 			return false
@@ -1019,13 +1018,13 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 			}
 			if subValue.edge == field.value.edge {
 				subField.value = subValue
-			} else {
+			} else { // got '"'
 				subField.value.set(subValue.from+1, subValue.edge)
-				subValue.edge++
+				subValue.edge++ // skip '"'
 			}
 		} else { // subValue is not quoted
 			for subValue.edge < field.value.edge {
-				if b := p[subValue.edge]; b == ' ' || b == '\t' || b == ',' || b == ';' {
+				if b := p[subValue.edge]; b == ',' || b == ';' {
 					break
 				} else {
 					subValue.edge++
@@ -1034,6 +1033,11 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 			subField.value = subValue
 		}
 		if subField.value.notEmpty() {
+			// parameters      = *( OWS ";" OWS [ parameter ] )
+			// parameter       = parameter-name "=" parameter-value
+			// parameter-name  = token
+			// parameter-value = ( token / quoted-string )
+
 			if numSubs == 0 { // 0 -> 1, save as backup
 				bakField = subField
 			} else { // numSubs >= 1, add backup and current one
@@ -1177,10 +1181,10 @@ type httpOut_ struct {
 	shell  httpOut // *http[1-3]Response or *H[1-3]Request
 	stream stream  // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockFields [1600]byte // for r.fields
+	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
-	edges [240]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [204]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
 	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
@@ -1878,7 +1882,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashStatus    = 734  // :status
 	// General fields
 	hashAcceptEncoding     = 1508
-	hashCacheControl       = 1314
+	hashCacheControl       = 1314 // same with hashLastModified
 	hashConnection         = 1072
 	hashContentDisposition = 2013
 	hashContentEncoding    = 1647
@@ -1923,7 +1927,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashCDNCacheControl   = 1668
 	hashETag              = 417
 	hashExpires           = 768
-	hashLastModified      = 1314
+	hashLastModified      = 1314 // same with hashCacheControl
 	hashLocation          = 857
 	hashProxyAuthenticate = 1902
 	hashRetryAfter        = 1141

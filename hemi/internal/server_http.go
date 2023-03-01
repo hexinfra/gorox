@@ -426,7 +426,7 @@ type Request interface {
 	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
-	getRanges() []span
+	getRanges() []rang
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
@@ -447,7 +447,7 @@ type httpRequest_ struct { // incoming. needs parsing
 	// Stream states (buffers)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
-	ranges [2]span // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
+	ranges [2]rang // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
@@ -484,7 +484,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 	ifNoneMatches   zone     // the zone of if-none-match in r.primes
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
-	httpDates       struct { // parsed http dates
+	unixTimes       struct { // parsed unixTimes
 		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
 		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
@@ -854,7 +854,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 }
 func (r *httpRequest_) checkIfModifiedSince(header *pair, index uint8) bool {
 	// If-Modified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.httpDates.ifModifiedSince)
+	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
 }
 func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 	// If-Range = entity-tag / HTTP-date
@@ -863,14 +863,14 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 		return false
 	}
 	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-		r.httpDates.ifRange = modTime
+		r.unixTimes.ifRange = modTime
 	}
 	r.indexes.ifRange = index
 	return true
 }
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool {
 	// If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.httpDates.ifUnmodifiedSince)
+	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
 func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 	// TODO
@@ -1014,7 +1014,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 		r.headResult, r.headReason = StatusBadRequest, "too many ranges"
 		return false
 	}
-	r.ranges[r.nRanges] = span{from, last}
+	r.ranges[r.nRanges] = rang{from, last}
 	r.nRanges++
 	return true
 }
@@ -1258,7 +1258,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
-	cookie := &r.stock
+	cookie := &r.mainPair
 	cookie.zero()
 	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
@@ -1534,7 +1534,7 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	}
 	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
-func (r *httpRequest_) getRanges() []span {
+func (r *httpRequest_) getRanges() []rang {
 	if r.nRanges == 0 {
 		return nil
 	}
@@ -1673,15 +1673,15 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	return true
 }
 func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
-	return modTime > r.httpDates.ifModifiedSince
+	return modTime > r.unixTimes.ifModifiedSince
 }
 func (r *httpRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
-	return modTime <= r.httpDates.ifUnmodifiedSince
+	return modTime <= r.unixTimes.ifUnmodifiedSince
 }
 
 func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
 	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.httpDates.ifRange == 0 && r._testIfRangeETag(etag)) || (r.httpDates.ifRange != 0 && r._testIfRangeTime(modTime)) {
+		if (r.unixTimes.ifRange == 0 && r._testIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._testIfRangeTime(modTime)) {
 			return true // StatusPartialContent
 		}
 	}
@@ -1692,7 +1692,7 @@ func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
 }
 func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
-	return r.httpDates.ifRange == modTime
+	return r.unixTimes.ifRange == modTime
 }
 
 func (r *httpRequest_) unsetHost() { // used by proxies
@@ -1730,7 +1730,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		state = 2 // to be consistent with r.recvControl() in HTTP/1
 		octet byte
 	)
-	form := &r.stock
+	form := &r.mainPair
 	form.zero()
 	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
@@ -2603,10 +2603,12 @@ type httpResponse_ struct { // outgoing. needs building
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	status       int16    // 200, 302, 404, 500, ...
-	start        [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
-	expires      int64    // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	lastModified int64    // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	status    int16    // 200, 302, 404, 500, ...
+	start     [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
+	unixTimes struct {
+		expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	}
 	// Stream states (zeros)
 	app            *App // associated app
 	svc            *Svc // associated svc
@@ -2623,7 +2625,8 @@ type httpResponse0_ struct { // for fast reset, entirely
 func (r *httpResponse_) onUse(versionCode uint8) { // for non-zeros
 	r.httpOut_.onUse(versionCode, false) // asRequest = false
 	r.status = StatusOK
-	r.lastModified = -1 // not set
+	r.unixTimes.expires = -1      // not set
+	r.unixTimes.lastModified = -1 // not set
 }
 func (r *httpResponse_) onEnd() { // for zeros
 	r.app = nil
@@ -2684,10 +2687,10 @@ func (r *httpResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, boo
 	return p[0 : n+1], true
 }
 func (r *httpResponse_) SetExpires(expires int64) bool {
-	return r._setUnixTime(&r.expires, &r.indexes.expires, expires)
+	return r._setUnixTime(&r.unixTimes.expires, &r.indexes.expires, expires)
 }
 func (r *httpResponse_) SetLastModified(lastModified int64) bool {
-	return r._setUnixTime(&r.lastModified, &r.indexes.lastModified, lastModified)
+	return r._setUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, lastModified)
 }
 
 func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
@@ -2884,10 +2887,10 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	return r.shell.addHeader(name, value)
 }
 func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
-	return r._addUnixTime(&r.expires, &r.indexes.expires, bytesExpires, expires)
+	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
 }
 func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
-	return r._addUnixTime(&r.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
+	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
@@ -2901,10 +2904,10 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	return r.shell.delHeader(name)
 }
 func (r *httpResponse_) _delExpires() (deleted bool) {
-	return r._delUnixTime(&r.expires, &r.indexes.expires)
+	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
 }
 func (r *httpResponse_) _delLastModified() (deleted bool) {
-	return r._delUnixTime(&r.lastModified, &r.indexes.lastModified)
+	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

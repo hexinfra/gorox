@@ -563,7 +563,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			octet byte  // byte value of %xx
 			qsOff int32 // offset of query string, if exists
 		)
-		query := &r.stock // plain query in r.array[query.from:query.edge]
+		query := &r.mainPair // plain query in r.array[query.from:query.edge]
 		query.zero()
 		query.kind = kindQuery
 		query.place = placeArray // all received queries are placed in r.array because queries are decoded
@@ -1002,9 +1002,13 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.oDate == 0 {
 		r.fieldsEdge += uint16(r.stream.keeper().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
+	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.unixTimes.expires >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesExpires, r.unixTimes.expires))
+	}
 	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.lastModified >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.lastModified))
+	if r.unixTimes.lastModified >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {

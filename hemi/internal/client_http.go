@@ -203,8 +203,10 @@ type hRequest_ struct { // outgoing. needs building
 	// Stream states (buffers)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	unixTimes struct {
+		ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	}
 	// Stream states (zeros)
 	hRequest0_ // all values must be zero by default in this struct!
 }
@@ -219,8 +221,8 @@ type hRequest0_ struct { // for fast reset, entirely
 
 func (r *hRequest_) onUse(versionCode uint8) { // for non-zeros
 	r.httpOut_.onUse(versionCode, true) // asRequest = true
-	r.ifModifiedSince = -1              // not set
-	r.ifUnmodifiedSince = -1            // not set
+	r.unixTimes.ifModifiedSince = -1    // not set
+	r.unixTimes.ifUnmodifiedSince = -1  // not set
 }
 func (r *hRequest_) onEnd() { // for zeros
 	r.hRequest0_ = hRequest0_{}
@@ -236,10 +238,10 @@ func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
 
 func (r *hRequest_) SetIfModifiedSince(since int64) bool {
-	return r._setUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince, since)
+	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
 }
 func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
-	return r._setUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
+	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
 func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
@@ -374,13 +376,13 @@ func (r *hRequest_) _addHost(host []byte) (ok bool) {
 	return r._addSingleton(&r.indexes.host, bytesHost, host)
 }
 func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
+	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
 func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
 	return r._addSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
+	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
 
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
@@ -397,13 +399,13 @@ func (r *hRequest_) _delHost() (deleted bool) {
 	return r._delSingleton(&r.indexes.host)
 }
 func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.ifModifiedSince, &r.indexes.ifModifiedSince)
+	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
 func (r *hRequest_) _delIfRange() (deleted bool) {
 	return r._delSingleton(&r.indexes.ifRange)
 }
 func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
 // upload is a file to be uploaded.
@@ -435,7 +437,7 @@ type hResponse_ struct { // incoming. needs parsing
 }
 type hResponse0_ struct { // for fast reset, entirely
 	status    int16    // 200, 302, 404, ...
-	httpDates struct { // parsed http dates
+	unixTimes struct { // parsed unix times
 		lastModified int64 // parsed unix time of last-modified
 		expires      int64 // parsed unix time of expires
 	}
@@ -538,11 +540,11 @@ func (r *hResponse_) checkETag(header *pair, index uint8) bool {
 }
 func (r *hResponse_) checkExpires(header *pair, index uint8) bool {
 	// Expires = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.httpDates.expires)
+	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.unixTimes.expires)
 }
 func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 	// Last-Modified = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.httpDates.lastModified)
+	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
 func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
 	// Location = URI-reference

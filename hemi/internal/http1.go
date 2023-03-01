@@ -55,7 +55,7 @@ func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don
 func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
-	header := &r.stock
+	header := &r.mainPair
 	header.zero()
 	header.kind = kindHeader
 	header.place = placeInput // all received headers are in r.input
@@ -391,7 +391,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 
 	r.trailers.from = uint8(len(r.primes))
 	r.trailers.edge = r.trailers.from
-	trailer := &r.stock
+	trailer := &r.mainPair
 	trailer.zero()
 	trailer.kind = kindTrailer
 	trailer.place = placeArray // all received trailers are placed in r.array

@@ -972,9 +972,11 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 }
 
 func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair) bool) bool { // to primes
-	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
-		return true
-	}
+	/*
+		if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+			return true
+		}
+	*/
 	// RFC 7230 (section 7):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
@@ -1004,7 +1006,7 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 		}
 		if needComma && !haveComma {
 			if field.kind == kindHeader {
-				//Debugf("%v|%v|%s|%s\n", *field, subField, field.nameAt(p), field.valueAt(p))
+				Debugf("%v|%v|%s|%s\n", *field, subField, field.nameAt(p), field.valueAt(p))
 				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
 			}
 			return false
@@ -1034,7 +1036,8 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 		if subField.value.notEmpty() {
 			if numSubs == 0 { // 0 -> 1, save as backup
 				bakField = subField
-			} else { // >=1, add backup and current one
+			} else { // numSubs >= 1, add backup and current one
+				field.setCommaValue()
 				if numSubs == 1 && !addField(&bakField) {
 					return false
 				}

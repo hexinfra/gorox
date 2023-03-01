@@ -15,88 +15,6 @@ import (
 	"sync"
 )
 
-// poolPairs
-var poolPairs sync.Pool
-
-func getPairs() []pair {
-	if x := poolPairs.Get(); x == nil {
-		return make([]pair, 0, 204) // 20B*204=4080B
-	} else {
-		return x.([]pair)
-	}
-}
-func putPairs(pairs []pair) {
-	if cap(pairs) != 204 {
-		BugExitln("bad pairs")
-	}
-	pairs = pairs[0:0:204] // reset
-	poolPairs.Put(pairs)
-}
-
-// pair is used to hold queries, headers, cookies, forms, and trailers.
-type pair struct { // 20 bytes
-	hash      uint16 // name hash, to support fast search. hash == 0 means empty
-	kind      int8   // see pair kinds
-	place     int8   // see pair places
-	nameFrom  int32  // name begins from
-	fieldFlag uint8  // see field flags
-	nameSize  uint8  // like: "content-type". <= 255
-	paras     zone   // value parameters
-	value     text   // like: "text/html; charset=utf-8"
-}
-
-func (p *pair) zero() { *p = pair{} }
-
-const ( // pair kinds
-	kindQuery   = iota // prime->array, offset = 0
-	kindHeader         // prime->input, offset > 0
-	kindCookie         // prime->input, offset = 1 (=)
-	kindForm           // prime->array, offset = 0
-	kindTrailer        // prime->array, offset = 0
-)
-
-const ( // pair places
-	placeInput = iota // prime headers, prime cookies
-	placeArray        // prime queries, prime forms, prime trailers, all extras
-	placeStatic2
-	placeStatic3
-)
-
-const ( // field flags
-	flagSingleton  = 0b10000000 // singleton or not
-	flagSubField   = 0b01000000 // sub field or not
-	flagCommaValue = 0b00100000 // value has comma or not
-	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this
-	flagWeakETag   = 0b00000010 // weak etag or not
-)
-
-func (p *pair) setSingleton()  { p.fieldFlag |= flagSingleton }
-func (p *pair) setSubField()   { p.fieldFlag |= flagSubField }
-func (p *pair) setCommaValue() { p.fieldFlag |= flagCommaValue }
-func (p *pair) setLiteral()    { p.fieldFlag |= flagLiteral }
-func (p *pair) setPseudo()     { p.fieldFlag |= flagPseudo }
-func (p *pair) setUnderscore() { p.fieldFlag |= flagUnderscore }
-func (p *pair) setWeakETag()   { p.fieldFlag |= flagWeakETag }
-
-func (p *pair) isSingleton() bool  { return p.fieldFlag&flagSingleton > 0 }
-func (p *pair) isSubField() bool   { return p.fieldFlag&flagSubField > 0 }
-func (p *pair) isCommaValue() bool { return p.fieldFlag&flagCommaValue > 0 }
-func (p *pair) isLiteral() bool    { return p.fieldFlag&flagLiteral > 0 }
-func (p *pair) isPseudo() bool     { return p.fieldFlag&flagPseudo > 0 }
-func (p *pair) isUnderscore() bool { return p.fieldFlag&flagUnderscore > 0 }
-func (p *pair) isWeakETag() bool   { return p.fieldFlag&flagWeakETag > 0 }
-
-func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
-func (p *pair) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
-}
-func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
-}
-
 // poolParas
 var poolParas sync.Pool
 
@@ -121,6 +39,91 @@ type para struct { // 6 bytes
 	valueFrom uint16
 	nameSize  uint8 // <= 255
 	valueSize uint8 // <= 255
+}
+
+func (p *para) zero() { *p = para{} }
+
+// poolPairs
+var poolPairs sync.Pool
+
+func getPairs() []pair {
+	if x := poolPairs.Get(); x == nil {
+		return make([]pair, 0, 204) // 20B*204=4080B
+	} else {
+		return x.([]pair)
+	}
+}
+func putPairs(pairs []pair) {
+	if cap(pairs) != 204 {
+		BugExitln("bad pairs")
+	}
+	pairs = pairs[0:0:204] // reset
+	poolPairs.Put(pairs)
+}
+
+// pair is used to hold queries, headers, cookies, forms, and trailers.
+type pair struct { // 20 bytes
+	hash     uint16 // name hash, to support fast search. hash == 0 means empty
+	kind     int8   // see pair kinds
+	place    int8   // see pair places
+	nameFrom int32  // name begins from
+	nameSize uint8  // like: "content-type". <= 255
+	flags    uint8  // see field flags
+	paras    zone   // like: "charset=utf-8"
+	value    text   // like: "text/html"
+}
+
+func (p *pair) zero() { *p = pair{} }
+
+const ( // pair kinds
+	kindQuery   = iota // prime->array, extra->array
+	kindHeader         // prime->input, extra->array
+	kindCookie         // prime->input, extra->array
+	kindForm           // prime->array, extra->array
+	kindTrailer        // prime->array, extra->array
+)
+
+const ( // pair places
+	placeInput = iota // prime headers, prime cookies
+	placeArray        // prime queries, prime forms, prime trailers, all extras
+	placeStatic2
+	placeStatic3
+)
+
+const ( // field flags
+	flagSingleton  = 0b10000000 // singleton or not
+	flagSubField   = 0b01000000 // sub field or not
+	flagCommaValue = 0b00100000 // value has comma or not
+	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this
+	flagWeakETag   = 0b00000010 // weak etag or not
+	flagReserved   = 0b00000001 // reserved for future use
+)
+
+func (p *pair) setSingleton()  { p.flags |= flagSingleton }
+func (p *pair) setSubField()   { p.flags |= flagSubField }
+func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
+func (p *pair) setLiteral()    { p.flags |= flagLiteral }
+func (p *pair) setPseudo()     { p.flags |= flagPseudo }
+func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
+func (p *pair) setWeakETag()   { p.flags |= flagWeakETag }
+
+func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
+func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
+func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
+func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }
+func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
+func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
+func (p *pair) isWeakETag() bool   { return p.flags&flagWeakETag > 0 }
+
+func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
+func (p *pair) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
+}
+func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
 
 // TempFile is used to temporarily save request/response content in local file system.

@@ -434,10 +434,12 @@ type hResponse_ struct { // incoming. needs parsing
 	hResponse0_ // all values must be zero by default in this struct!
 }
 type hResponse0_ struct { // for fast reset, entirely
-	status           int16    // 200, 302, 404, ...
-	lastModifiedTime int64    // parsed unix time of last-modified
-	expiresTime      int64    // parsed unix time of expires
-	cacheControl     struct { // the cache-control info
+	status    int16    // 200, 302, 404, ...
+	httpDates struct { // parsed http dates
+		lastModified int64 // parsed unix time of last-modified
+		expires      int64 // parsed unix time of expires
+	}
+	cacheControl struct { // the cache-control info
 		noCache         bool  // no-cache directive in cache-control
 		noStore         bool  // no-store directive in cache-control
 		noTransform     bool  // no-transform directive in cache-control
@@ -536,11 +538,11 @@ func (r *hResponse_) checkETag(header *pair, index uint8) bool {
 }
 func (r *hResponse_) checkExpires(header *pair, index uint8) bool {
 	// Expires = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.expiresTime)
+	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.httpDates.expires)
 }
 func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
 	// Last-Modified = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.lastModifiedTime)
+	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.httpDates.lastModified)
 }
 func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
 	// Location = URI-reference

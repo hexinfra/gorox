@@ -80,7 +80,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash, header.fieldFlag = 0, 0 // reset for next header
+		header.hash, header.flags = 0, 0 // reset for next header
 
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
@@ -408,7 +408,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		} else if b == '\n' {
 			break
 		}
-		trailer.hash, trailer.fieldFlag = 0, 0 // reset for next trailer
+		trailer.hash, trailer.flags = 0, 0 // reset for next trailer
 
 		r.pBack = r.pFore // for field-name
 		for {

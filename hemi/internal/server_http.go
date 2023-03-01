@@ -460,34 +460,36 @@ type httpRequest_ struct { // incoming. needs parsing
 	httpRequest0_             // all values must be zero by default in this struct!
 }
 type httpRequest0_ struct { // for fast reset, entirely
-	gotInput         bool     // got some input from client? for request timeout handling
-	pathInfoGot      bool     // is r.pathInfo got?
-	schemeCode       uint8    // SchemeHTTP, SchemeHTTPS
-	targetForm       int8     // http request-target form. see httpTargetXXX
-	methodCode       uint32   // known method code. 0: unknown method
-	method           text     // raw method -> r.input
-	authority        text     // raw hostname[:port] -> r.input
-	hostname         text     // raw hostname (without :port) -> r.input
-	colonPort        text     // raw colon port (:port, with ':') -> r.input
-	uri              text     // raw uri (raw path & raw query string) -> r.input
-	encodedPath      text     // raw path -> r.input
-	queryString      text     // raw query string (with '?') -> r.input
-	queries          zone     // decoded queries -> r.array
-	cookies          zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	forms            zone     // decoded forms -> r.array
-	asteriskOptions  bool     // OPTIONS *?
-	nRanges          int8     // num of ranges
-	boundary         text     // boundary param of "multipart/form-data" if exists -> r.input
-	ifRangeTime      int64    // parsed unix time of if-range if is http-date format
-	ifModifiedTime   int64    // parsed unix time of if-modified-since
-	ifUnmodifiedTime int64    // parsed unix time of if-unmodified-since
-	ifMatch          int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
-	ifNoneMatch      int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
-	ifMatches        zone     // the zone of if-match in r.primes
-	ifNoneMatches    zone     // the zone of if-none-match in r.primes
-	expectContinue   bool     // expect: 100-continue?
-	acceptTrailers   bool     // does client accept trailers? i.e. te: trailers, gzip
-	cacheControl     struct { // the cache-control info
+	gotInput        bool     // got some input from client? for request timeout handling
+	pathInfoGot     bool     // is r.pathInfo got?
+	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
+	targetForm      int8     // http request-target form. see httpTargetXXX
+	methodCode      uint32   // known method code. 0: unknown method
+	method          text     // raw method -> r.input
+	authority       text     // raw hostname[:port] -> r.input
+	hostname        text     // raw hostname (without :port) -> r.input
+	colonPort       text     // raw colon port (:port, with ':') -> r.input
+	uri             text     // raw uri (raw path & raw query string) -> r.input
+	encodedPath     text     // raw path -> r.input
+	queryString     text     // raw query string (with '?') -> r.input
+	queries         zone     // decoded queries -> r.array
+	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
+	forms           zone     // decoded forms -> r.array
+	asteriskOptions bool     // OPTIONS *?
+	nRanges         int8     // num of ranges
+	boundary        text     // boundary param of "multipart/form-data" if exists -> r.input
+	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
+	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
+	ifMatches       zone     // the zone of if-match in r.primes
+	ifNoneMatches   zone     // the zone of if-none-match in r.primes
+	expectContinue  bool     // expect: 100-continue?
+	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
+	httpDates       struct { // parsed http dates
+		ifRange           int64 // parsed unix time of if-range if is http-date format
+		ifModifiedSince   int64 // parsed unix time of if-modified-since
+		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
+	}
+	cacheControl struct { // the cache-control info
 		noCache      bool  // no-cache directive in cache-control
 		noStore      bool  // no-store directive in cache-control
 		noTransform  bool  // no-transform directive in cache-control
@@ -852,7 +854,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 }
 func (r *httpRequest_) checkIfModifiedSince(header *pair, index uint8) bool {
 	// If-Modified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.ifModifiedTime)
+	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.httpDates.ifModifiedSince)
 }
 func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 	// If-Range = entity-tag / HTTP-date
@@ -861,14 +863,14 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool {
 		return false
 	}
 	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-		r.ifRangeTime = modTime
+		r.httpDates.ifRange = modTime
 	}
 	r.indexes.ifRange = index
 	return true
 }
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool {
 	// If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.ifUnmodifiedTime)
+	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.httpDates.ifUnmodifiedSince)
 }
 func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 	// TODO
@@ -1671,15 +1673,15 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	return true
 }
 func (r *httpRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
-	return modTime > r.ifModifiedTime
+	return modTime > r.httpDates.ifModifiedSince
 }
 func (r *httpRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
-	return modTime <= r.ifUnmodifiedTime
+	return modTime <= r.httpDates.ifUnmodifiedSince
 }
 
 func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
 	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.ifRangeTime == 0 && r._testIfRangeETag(etag)) || (r.ifRangeTime != 0 && r._testIfRangeTime(modTime)) {
+		if (r.httpDates.ifRange == 0 && r._testIfRangeETag(etag)) || (r.httpDates.ifRange != 0 && r._testIfRangeTime(modTime)) {
 			return true // StatusPartialContent
 		}
 	}
@@ -1690,7 +1692,7 @@ func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
 }
 func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
-	return r.ifRangeTime == modTime
+	return r.httpDates.ifRange == modTime
 }
 
 func (r *httpRequest_) unsetHost() { // used by proxies

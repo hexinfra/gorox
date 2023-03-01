@@ -767,7 +767,7 @@ func (r *httpRequest_) checkHeader(header *pair) bool {
 		}
 		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
-		from := r.headers.edge + 1 // excluding original header
+		from := r.headers.edge + 1 // excluding main header
 		if !r._addSubFields(header, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
@@ -811,7 +811,7 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
 	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool {
-	if header.isEmptyValue() {
+	if header.value.isEmpty() {
 		r.headResult, r.headReason = StatusBadRequest, "empty cookie"
 		return false
 	}
@@ -836,7 +836,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool {
 		r.headResult, r.headReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
-	value := header.valueText()
+	value := header.value
 	if value.notEmpty() {
 		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
@@ -1170,11 +1170,11 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 			*match++
 			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
 				header.setWeakETag()
-				header.valueSkip += 3 // skip `W/"`
-				header.valueEdge--    // skip '"'
+				header.value.from += 3 // skip `W/"`
+				header.value.edge--    // skip '"'
 			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
-				header.valueSkip++ // skip '"'
-				header.valueEdge-- // skip '"'
+				header.value.from++ // skip '"'
+				header.value.edge-- // skip '"'
 			}
 		}
 	}
@@ -1249,76 +1249,6 @@ func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool {
 	}
 	return true
 }
-func (r *httpRequest_) parseParams(p []byte, from int32, edge int32, paras []para) (int, bool) {
-	// param-string = *( OWS ";" OWS param-pair )
-	// param-pair   = token "=" param-value
-	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
-	// param-octet  = ?
-	back, fore := from, from
-	nAdd := 0
-	for {
-		nSemicolon := 0
-		for fore < edge {
-			if b := p[fore]; b == ';' {
-				nSemicolon++
-				fore++
-			} else if b == ' ' || b == '\t' {
-				fore++
-			} else {
-				break
-			}
-		}
-		if fore == edge || nSemicolon != 1 {
-			// `; ` and ` ` and `;;` are invalid
-			return nAdd, false
-		}
-		back = fore // for name
-		for fore < edge {
-			if b := p[fore]; b == '=' {
-				break
-			} else if b == ';' || b == ' ' || b == '\t' {
-				// `; a; ` is invalid
-				return nAdd, false
-			} else {
-				fore++
-			}
-		}
-		if fore == edge || back == fore {
-			// `; a` and `; ="b"` are invalid
-			return nAdd, false
-		}
-		para := &paras[nAdd]
-		para.name.set(back, fore)
-		fore++ // skip '='
-		if fore == edge {
-			para.value.zero()
-			nAdd++
-			return nAdd, true
-		}
-		back = fore
-		if p[fore] == '"' {
-			fore++
-			for fore < edge && p[fore] != '"' {
-				fore++
-			}
-			if fore == edge {
-				para.value.set(back, fore) // value is "...
-			} else {
-				para.value.set(back+1, fore) // strip ""
-				fore++
-			}
-		} else {
-			for fore < edge && p[fore] != ';' && p[fore] != ' ' && p[fore] != '\t' {
-				fore++
-			}
-			para.value.set(back, fore)
-		}
-		nAdd++
-		if nAdd == len(paras) || fore == edge {
-			return nAdd, true
-		}
-	}
-}
 func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	// cookie-header = "Cookie:" OWS cookie-string OWS
 	// cookie-string = cookie-pair *( ";" SP cookie-pair )
@@ -1330,16 +1260,16 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 	cookie.zero()
 	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
-	cookie.from = cookieString.from
+	cookie.nameFrom = cookieString.from
 	state := 0
 	for p := cookieString.from; p < cookieString.edge; p++ {
 		b := r.input[p]
 		switch state {
 		case 0: // expecting '=' to get cookie-name
 			if b == '=' {
-				if nameSize := p - cookie.from; nameSize > 0 && nameSize <= 255 {
+				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
 					cookie.nameSize = uint8(nameSize)
-					cookie.valueSkip = uint16(nameSize) + 1 // skip '='
+					cookie.value.from = p + 1 // skip '='
 				} else {
 					r.headResult, r.headReason = StatusBadRequest, "cookie name out of range"
 					return false
@@ -1353,7 +1283,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 1: // DQUOTE or not?
 			if b == '"' {
-				cookie.valueSkip++ // skip '"'
+				cookie.value.from++ // skip '"'
 				state = 3
 				continue
 			}
@@ -1361,7 +1291,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			fallthrough
 		case 2: // *cookie-octet, expecting ';'
 			if b == ';' {
-				cookie.valueEdge = p
+				cookie.value.edge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1372,7 +1302,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 			}
 		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
 			if b == '"' {
-				cookie.valueEdge = p
+				cookie.value.edge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1393,12 +1323,12 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie: xxx
 				return false
 			}
 			cookie.hash = 0 // reset for next cookie
-			cookie.from = p + 1
+			cookie.nameFrom = p + 1
 			state = 0
 		}
 	}
 	if state == 2 { // ';' not found
-		cookie.valueEdge = cookieString.edge
+		cookie.value.edge = cookieString.edge
 		if !r.addCookie(cookie) {
 			return false
 		}
@@ -1528,7 +1458,7 @@ func (r *httpRequest_) checkHead() bool {
 				typeParams  text
 				contentType []byte
 			)
-			vType := r.primes[r.iContentType].valueText()
+			vType := r.primes[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParams.from = vType.edge
 				typeParams.edge = vType.edge
@@ -1554,8 +1484,8 @@ func (r *httpRequest_) checkHead() bool {
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
-				paras := make([]para, 1) // doesn't escape
-				if _, ok := r.parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
+				paras := make([]nava, 1) // doesn't escape
+				if _, ok := r._parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
 					r.headResult, r.headReason = StatusBadRequest, "invalid multipart/form-data params"
 					return false
 				}
@@ -1585,7 +1515,7 @@ func (r *httpRequest_) checkHead() bool {
 			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
 				continue
 			}
-			if !r.parseCookie(cookie.valueText()) {
+			if !r.parseCookie(cookie.value) {
 				return false
 			}
 		}
@@ -1802,15 +1732,15 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	form.zero()
 	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
-	form.from = r.arrayEdge
+	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
-				if nameSize := r.arrayEdge - form.from; nameSize <= 255 {
+				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
 					form.nameSize = uint8(nameSize)
-					form.valueSkip = uint16(nameSize)
+					form.value.from = r.arrayEdge
 				} else {
 					return
 				}
@@ -1828,12 +1758,12 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			}
 		case 3: // expecting '&' to get a value
 			if b == '&' {
-				form.valueEdge = r.arrayEdge
+				form.value.edge = r.arrayEdge
 				if form.nameSize > 0 {
 					r.addForm(form)
 				}
 				form.hash = 0 // reset for next form
-				form.from = r.arrayEdge
+				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
@@ -1865,7 +1795,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 	// Reaches end of content.
 	if state == 3 { // '&' not found
-		form.valueEdge = r.arrayEdge
+		form.value.edge = r.arrayEdge
 		if form.nameSize > 0 {
 			r.addForm(form)
 		}
@@ -2045,8 +1975,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				paras := make([]para, 2) // for name & filename. won't escape to heap
-				n, ok := r.parseParams(r.formWindow, r.pBack, fore, paras)
+				paras := make([]nava, 2) // for name & filename. won't escape to heap
+				n, ok := r._parseParams(r.formWindow, r.pBack, fore, paras)
 				if !ok {
 					r.stream.markBroken()
 					return
@@ -2161,9 +2091,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}
 		} else { // part must be a form
 			part.form.hash = part.hash
-			part.form.from = part.name.from
+			part.form.nameFrom = part.name.from
 			part.form.nameSize = uint8(part.name.size())
-			part.form.valueSkip = uint16(part.form.nameSize)
+			part.form.value.from = r.arrayEdge
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
 		for {             // each partial in current part
@@ -2189,7 +2119,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					return
 				}
 				if mode == 1 { // form part ends
-					part.form.valueEdge = r.arrayEdge
+					part.form.value.edge = r.arrayEdge
 					r.addForm(&part.form)
 				}
 			} else if part.osFile != nil {
@@ -2216,6 +2146,76 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			if !r._growMultipartForm(contentFile) {
 				return
 			}
+		}
+	}
+}
+func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, paras []nava) (int, bool) {
+	// param-string = *( OWS ";" OWS param-pair )
+	// param-pair   = token "=" param-value
+	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
+	// param-octet  = ?
+	back, fore := from, from
+	nAdd := 0
+	for {
+		nSemicolon := 0
+		for fore < edge {
+			if b := p[fore]; b == ';' {
+				nSemicolon++
+				fore++
+			} else if b == ' ' || b == '\t' {
+				fore++
+			} else {
+				break
+			}
+		}
+		if fore == edge || nSemicolon != 1 {
+			// `; ` and ` ` and `;;` are invalid
+			return nAdd, false
+		}
+		back = fore // for name
+		for fore < edge {
+			if b := p[fore]; b == '=' {
+				break
+			} else if b == ';' || b == ' ' || b == '\t' {
+				// `; a; ` is invalid
+				return nAdd, false
+			} else {
+				fore++
+			}
+		}
+		if fore == edge || back == fore {
+			// `; a` and `; ="b"` are invalid
+			return nAdd, false
+		}
+		para := &paras[nAdd]
+		para.name.set(back, fore)
+		fore++ // skip '='
+		if fore == edge {
+			para.value.zero()
+			nAdd++
+			return nAdd, true
+		}
+		back = fore
+		if p[fore] == '"' {
+			fore++
+			for fore < edge && p[fore] != '"' {
+				fore++
+			}
+			if fore == edge {
+				para.value.set(back, fore) // value is "...
+			} else {
+				para.value.set(back+1, fore) // strip ""
+				fore++
+			}
+		} else {
+			for fore < edge && p[fore] != ';' && p[fore] != ' ' && p[fore] != '\t' {
+				fore++
+			}
+			para.value.set(back, fore)
+		}
+		nAdd++
+		if nAdd == len(paras) || fore == edge {
+			return nAdd, true
 		}
 	}
 }

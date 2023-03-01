@@ -96,8 +96,9 @@ type httpIn_ struct {
 	// Stream states (buffers)
 	stockInput  [1600]byte // for r.input
 	stockArray  [800]byte  // for r.array
-	stockPrimes [80]pair   // for r.primes
+	stockPrimes [64]pair   // for r.primes
 	stockExtras [4]pair    // for r.extras
+	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
 	stock          pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
@@ -107,6 +108,7 @@ type httpIn_ struct {
 	array       []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/max]
 	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/max]
+	paras       []para        // ...
 	recvTimeout time.Duration // timeout to recv the whole message content
 	contentSize int64         // info of content. >=0: content size, -1: no content, -2: unsized content
 	versionCode uint8         // Version1_0, Version1_1, Version2, Version3
@@ -170,6 +172,7 @@ func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of prime indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
@@ -197,6 +200,10 @@ func (r *httpIn_) onEnd() { // for zeros
 	if cap(r.extras) != cap(r.stockExtras) {
 		putPairs(r.extras)
 		r.extras = nil
+	}
+	if cap(r.paras) != cap(r.stockParas) {
+		// TODO: put
+		r.paras = nil
 	}
 
 	r.headReason = ""
@@ -284,7 +291,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool {
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
 	// TODO
-	if r.iContentLocation == 0 && !header.isEmptyValue() {
+	if r.iContentLocation == 0 && header.value.notEmpty() {
 		r.iContentLocation = index
 		return true
 	}
@@ -293,7 +300,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
 }
 func (r *httpIn_) checkContentRange(header *pair, index uint8) bool {
 	// TODO
-	if r.iContentRange == 0 && !header.isEmptyValue() {
+	if r.iContentRange == 0 && header.value.notEmpty() {
 		r.iContentRange = index
 		return true
 	}
@@ -306,7 +313,7 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool {
 	// type = token
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
-	if r.iContentType == 0 && !header.isEmptyValue() {
+	if r.iContentType == 0 && header.value.notEmpty() {
 		r.iContentType = index
 		return true
 	}
@@ -845,12 +852,12 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
 	extra.place = placeArray
-	extra.from = r.arrayEdge
+	extra.nameFrom = r.arrayEdge
 	extra.nameSize = uint8(nameSize)
-	extra.valueSkip = uint16(nameSize)
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.valueEdge = r.arrayEdge
+	extra.value.edge = r.arrayEdge
 	r.extras = append(r.extras, r.stock)
 	r.hasExtras[extraKind] = true
 	return true
@@ -965,67 +972,80 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 }
 
 func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair) bool) bool { // to primes
+	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+		return true
+	}
 	// RFC 7230 (section 7):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
 	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
 	subField := *field
 	subField.setSubField()
-	subValue := field.valueText()
-	added, needComma := 0, false
-	for { // each element
+	var (
+		bakField  pair
+		subValue  = field.value
+		numSubs   = 0
+		needComma = false
+	)
+	for { // each sub value
 		haveComma := false
-		for subValue.from < field.valueEdge {
-			if b := p[subValue.from]; b == ',' {
-				haveComma = true
+		for subValue.from < field.value.edge {
+			if b := p[subValue.from]; b == ' ' || b == '\t' {
 				subValue.from++
-			} else if b == ' ' || b == '\t' {
+			} else if b == ',' {
+				haveComma = true
 				subValue.from++
 			} else {
 				break
 			}
 		}
-		if subValue.from == field.valueEdge {
+		if subValue.from == field.value.edge {
 			break
 		}
 		if needComma && !haveComma {
-			// TODO: if we are to use _addSubFields to trailers in future, confirm whether this line is ok to set
-			r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+			if field.kind == kindHeader {
+				//Debugf("%v|%v|%s|%s\n", *field, subField, field.nameAt(p), field.valueAt(p))
+				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+			}
 			return false
 		}
-		subField.valueSkip = uint16(subValue.from - field.from)
 		subValue.edge = subValue.from
 		if p[subValue.edge] == '"' { // subValue is quoted
 			subValue.edge++ // skip '"'
-			for subValue.edge < field.valueEdge && p[subValue.edge] != '"' {
+			for subValue.edge < field.value.edge && p[subValue.edge] != '"' {
 				subValue.edge++
 			}
-			subField.valueEdge = subValue.edge
-			if subValue.edge != field.valueEdge { // value is `".."`
-				subField.valueSkip++ // skip left '"'
-				subValue.edge++      // skip right '"'
+			if subValue.edge == field.value.edge {
+				subField.value = subValue
+			} else {
+				subField.value.set(subValue.from+1, subValue.edge)
+				subValue.edge++
 			}
 		} else { // subValue is not quoted
-			for subValue.edge < field.valueEdge {
-				if b := p[subValue.edge]; b == ' ' || b == '\t' || b == ',' {
+			for subValue.edge < field.value.edge {
+				if b := p[subValue.edge]; b == ' ' || b == '\t' || b == ',' || b == ';' {
 					break
 				} else {
 					subValue.edge++
 				}
 			}
-			subField.valueEdge = subValue.edge
+			subField.value = subValue
 		}
-		if subField.from+int32(subField.valueSkip) != subField.valueEdge { // subField is not empty
-			if !addField(&subField) {
-				return false
+		if subField.value.notEmpty() {
+			if numSubs == 0 { // 0 -> 1, save as backup
+				bakField = subField
+			} else { // >=1, add backup and current one
+				if numSubs == 1 && !addField(&bakField) {
+					return false
+				}
+				if !addField(&subField) {
+					return false
+				}
 			}
-			added++
+			numSubs++
 		}
 		subValue.from = subValue.edge
 		needComma = true
-	}
-	if added == 0 {
-		// TODO
 	}
 	return true
 }

@@ -104,7 +104,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.from, header.nameSize = r.pBack, uint8(nameSize)
+			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -119,7 +119,6 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		header.valueSkip = uint16(r.pFore - r.pBack)
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -158,10 +157,10 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
+			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			header.setEmptyValue()
+			header.value.zero()
 		}
-		header.valueEdge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.shell.addHeader(header) || !r.shell.checkHeader(header) {
@@ -432,7 +431,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			trailer.from, trailer.nameSize = r.pBack, uint8(nameSize)
+			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			return false
 		}
@@ -445,7 +444,6 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		trailer.valueSkip = uint16(r.pFore - r.pBack)
 		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
@@ -476,22 +474,21 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
+			trailer.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			trailer.setEmptyValue()
+			trailer.value.zero()
 		}
-		trailer.valueEdge = fore
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
 		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.from = fore // adjust from
+		trailer.nameFrom = fore // adjust name from
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueSkip = uint16(trailer.nameSize) // adjust value offset
-		trailer.valueEdge = r.arrayEdge              // adjust value edge
+		trailer.value.set(fore, r.arrayEdge) // adjust value
 
 		// Trailer is received in general algorithm. Now add and check it
 		if !r.shell.addTrailer(trailer) || !r.shell.checkTrailer(trailer) {

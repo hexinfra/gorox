@@ -485,7 +485,7 @@ func (r *hResponse_) checkHeader(header *pair) bool {
 		}
 		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
-		from := r.headers.edge + 1 // excluding original header
+		from := r.headers.edge + 1 // excluding main header
 		if !r._addSubFields(header, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
@@ -557,7 +557,7 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool {
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
-	if !r.parseSetCookie(header.valueText()) {
+	if !r.parseSetCookie(header.value) {
 		r.headResult, r.headReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}

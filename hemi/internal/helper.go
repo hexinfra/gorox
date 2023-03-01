@@ -20,29 +20,29 @@ var poolPairs sync.Pool
 
 func getPairs() []pair {
 	if x := poolPairs.Get(); x == nil {
-		return make([]pair, 0, 250) // 16B*250=4000B
+		return make([]pair, 0, 204) // 20B*204=4080B
 	} else {
 		return x.([]pair)
 	}
 }
 func putPairs(pairs []pair) {
-	if cap(pairs) != 250 {
+	if cap(pairs) != 204 {
 		BugExitln("bad pairs")
 	}
-	pairs = pairs[0:0:250] // reset
+	pairs = pairs[0:0:204] // reset
 	poolPairs.Put(pairs)
 }
 
 // pair is used to hold queries, headers, cookies, forms, and trailers.
-type pair struct { // 16 bytes
+type pair struct { // 20 bytes
 	hash      uint16 // name hash, to support fast search. hash == 0 means empty
 	kind      int8   // see pair kinds
 	place     int8   // see pair places
-	from      int32  // name-value begins from
+	nameFrom  int32  // name begins from
 	fieldFlag uint8  // see field flags
 	nameSize  uint8  // like: "content-type". <= 255
-	valueSkip uint16 // value begins from from+valueSkip. <= 64K1
-	valueEdge int32  // like: "text/html; charset=utf-8"
+	paras     zone   // value parameters
+	value     text   // like: "text/html; charset=utf-8"
 }
 
 func (p *pair) zero() { *p = pair{} }
@@ -70,7 +70,6 @@ const ( // field flags
 	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this
 	flagWeakETag   = 0b00000010 // weak etag or not
-	flagEmptyValue = 0b00000001 // value is empty or not. for convenience
 )
 
 func (p *pair) setSingleton()  { p.fieldFlag |= flagSingleton }
@@ -80,7 +79,6 @@ func (p *pair) setLiteral()    { p.fieldFlag |= flagLiteral }
 func (p *pair) setPseudo()     { p.fieldFlag |= flagPseudo }
 func (p *pair) setUnderscore() { p.fieldFlag |= flagUnderscore }
 func (p *pair) setWeakETag()   { p.fieldFlag |= flagWeakETag }
-func (p *pair) setEmptyValue() { p.fieldFlag |= flagEmptyValue }
 
 func (p *pair) isSingleton() bool  { return p.fieldFlag&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.fieldFlag&flagSubField > 0 }
@@ -89,17 +87,41 @@ func (p *pair) isLiteral() bool    { return p.fieldFlag&flagLiteral > 0 }
 func (p *pair) isPseudo() bool     { return p.fieldFlag&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.fieldFlag&flagUnderscore > 0 }
 func (p *pair) isWeakETag() bool   { return p.fieldFlag&flagWeakETag > 0 }
-func (p *pair) isEmptyValue() bool { return p.fieldFlag&flagEmptyValue > 0 }
 
-func (p *pair) nameAt(t []byte) []byte  { return t[p.from : p.from+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueSkip) : p.valueEdge] }
+func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 func (p *pair) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.from:p.from+int32(p.nameSize)]) == x
+	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
 }
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
-func (p *pair) valueText() text { return text{p.from + int32(p.valueSkip), p.valueEdge} }
+
+// poolParas
+var poolParas sync.Pool
+
+func getParas() []para {
+	if x := poolParas.Get(); x == nil {
+		return make([]para, 0, 128)
+	} else {
+		return x.([]para)
+	}
+}
+func putParas(paras []para) {
+	if cap(paras) != 128 {
+		BugExitln("bad paras")
+	}
+	paras = paras[0:0:128] // reset
+	poolParas.Put(paras)
+}
+
+// para
+type para struct { // 6 bytes
+	nameFrom  uint16
+	valueFrom uint16
+	nameSize  uint8 // <= 255
+	valueSize uint8 // <= 255
+}
 
 // TempFile is used to temporarily save request/response content in local file system.
 type TempFile interface {
@@ -337,8 +359,8 @@ type span struct { // 16 bytes
 	from, last int64 // [from, last]
 }
 
-// para is a name-value parameter.
-type para struct { // 16 bytes
+// nava is a name-value parameter.
+type nava struct { // 16 bytes
 	name, value text
 }
 

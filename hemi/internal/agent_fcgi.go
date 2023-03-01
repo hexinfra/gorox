@@ -775,7 +775,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.from, header.nameSize = r.pBack, uint8(nameSize)
+			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -790,7 +790,6 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		header.valueSkip = uint16(r.pFore - r.pBack)
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -824,10 +823,10 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
+			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			header.setEmptyValue()
+			header.value.zero()
 		}
-		header.valueEdge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.addHeader(header) || !r.checkHeader(header) {
@@ -875,8 +874,8 @@ func (r *fcgiResponse) checkHeader(header *pair) bool {
 		}
 		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
-		from := len(r.headers) + 1 // excluding original header
-		if !r.addSubHeaders(header) {
+		from := len(r.headers) + 1 // excluding main header
+		if !r._addSubHeaders(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -958,7 +957,7 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) addSubHeaders(header *pair) bool {
+func (r *fcgiResponse) _addSubHeaders(header *pair) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:

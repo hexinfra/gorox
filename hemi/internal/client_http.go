@@ -594,7 +594,7 @@ var ( // perfect hash table for response multiple headers
 		3:  {hashConnection, 89, 99, false, (*hResponse_).checkConnection},
 		4:  {hashContentEncoding, 100, 116, false, (*hResponse_).checkContentEncoding},
 		5:  {hashAllow, 30, 35, false, nil},
-		6:  {hashTransferEncoding, 161, 178, true, (*hResponse_).checkTransferEncoding},
+		6:  {hashTransferEncoding, 161, 178, false, (*hResponse_).checkTransferEncoding}, // deliberately false
 		7:  {hashTrailer, 153, 160, false, nil},
 		8:  {hashVary, 187, 191, false, nil},
 		9:  {hashUpgrade, 179, 186, false, (*hResponse_).checkUpgrade},
@@ -616,7 +616,7 @@ func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-C
 	}
 	return true
 }
-func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
+func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = 1#transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -626,7 +626,7 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool {
 	}
 	return r.httpIn_.checkTransferEncoding(from, edge)
 }
-func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
+func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 1#protocol
 	// TODO: tcptun, udptun, socket?
 	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false

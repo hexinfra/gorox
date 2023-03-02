@@ -289,7 +289,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	r.headResult, r.headReason = StatusBadRequest, "bad content-length"
 	return false
 }
-func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
+func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
 	// TODO
 	if r.iContentLocation == 0 && !header.isEmpty() {
 		r.iContentLocation = index
@@ -298,7 +298,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool {
 	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-location"
 	return false
 }
-func (r *httpIn_) checkContentRange(header *pair, index uint8) bool {
+func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
 	// TODO
 	if r.iContentRange == 0 && !header.isEmpty() {
 		r.iContentRange = index
@@ -322,7 +322,7 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-
 func (r *httpIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
 	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
 }
-func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool {
+func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
 	if *pIndex == 0 {
 		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
 			*pIndex = index
@@ -444,7 +444,7 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 	}
 	return true
 }
-func (r *httpIn_) checkVia(from uint8, edge uint8) bool {
+func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	// TODO
 	return true
 }

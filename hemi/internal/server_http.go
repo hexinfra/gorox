@@ -813,7 +813,7 @@ var ( // perfect hash table for request critical headers
 	httpRequestCriticalHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
 
-func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool {
+func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = credentials
 	// TODO
 	return true
 }
@@ -873,11 +873,11 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Rang
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
+func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = credentials
 	// TODO
 	return true
 }
-func (r *httpRequest_) checkRange(header *pair, index uint8) bool {
+func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
 		r.delPrimeAt(index)
 		return true
@@ -1001,7 +1001,7 @@ badRange:
 	r.headResult, r.headReason = StatusBadRequest, "invalid range"
 	return false
 }
-func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool {
+func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent == 0 {
 		r.indexes.userAgent = index
 		return true
@@ -1031,8 +1031,8 @@ var ( // perfect hash table for request multiple headers
 	}{
 		0:  {hashTE, 160, 162, true, (*httpRequest_).checkTE},
 		1:  {hashAcceptLanguage, 38, 53, true, nil},
-		2:  {hashForwarded, 120, 129, false, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		3:  {hashTransferEncoding, 171, 188, true, (*httpRequest_).checkTransferEncoding},
+		2:  {hashForwarded, 120, 129, false, (*httpRequest_).checkForwarded},               // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		3:  {hashTransferEncoding, 171, 188, false, (*httpRequest_).checkTransferEncoding}, // deliberately false
 		4:  {hashConnection, 68, 78, false, (*httpRequest_).checkConnection},
 		5:  {hashXForwardedFor, 201, 216, false, (*httpRequest_).checkXForwardedFor},
 		6:  {hashVia, 197, 200, false, (*httpRequest_).checkVia},
@@ -1139,7 +1139,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 	}
 	return true
 }
-func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool {
+func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
 	// TODO
 	return true
 }

@@ -614,38 +614,38 @@ var ( // perfect hash table for response multiple headers
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
-func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool {
+func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
 	// TODO
 	return true
 }
-func (r *hResponse_) checkAllow(from uint8, edge uint8) bool {
+func (r *hResponse_) checkAllow(from uint8, edge uint8) bool { // Allow = #method
 	// TODO
 	return true
 }
-func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool {
+func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
 	// TODO
 	return true
 }
-func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = 1#cache-directive
+func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *hResponse_) checkCacheStatus(from uint8, edge uint8) bool {
+func (r *hResponse_) checkCacheStatus(from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkCDNCacheControl(from uint8, edge uint8) bool {
+func (r *hResponse_) checkCDNCacheControl(from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkProxyAuthenticate(from uint8, edge uint8) bool {
+func (r *hResponse_) checkProxyAuthenticate(from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO
 	return true
 }
-func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = 1#transfer-coding
+func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -655,16 +655,16 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Tra
 	}
 	return r.httpIn_.checkTransferEncoding(from, edge)
 }
-func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 1#protocol
+func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
 	// TODO: tcptun, udptun, socket?
 	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false
 }
-func (r *hResponse_) checkVary(from uint8, edge uint8) bool {
+func (r *hResponse_) checkVary(from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
 	// TODO
 	return true
 }
-func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool {
+func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
 	// TODO
 	return true
 }

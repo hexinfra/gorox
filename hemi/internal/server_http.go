@@ -1075,7 +1075,7 @@ func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Acc
 	// TODO
 	return true
 }
-func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = 1#cache-directive
+func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
@@ -1131,7 +1131,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 	}
 	return true
 }
-func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 1#protocol
+func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode == Version2 || r.versionCode == Version3 {
 		r.headResult, r.headReason = StatusBadRequest, "upgrade is only supported in http/1.1"
 		return false

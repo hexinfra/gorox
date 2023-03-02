@@ -365,7 +365,7 @@ func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool { // Accept-E
 	}
 	return true
 }
-func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection = 1#connection-option
+func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection = #connection-option
 	if r.versionCode >= Version2 {
 		r.headResult, r.headReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
@@ -390,7 +390,7 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 	}
 	return true
 }
-func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content-Encoding = 1#content-coding
+func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nContentCodings == int8(cap(r.contentCodings)) {
@@ -432,7 +432,7 @@ func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #fiel
 	// TODO
 	return true
 }
-func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = 1#transfer-coding
+func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.versionCode != Version1_1 {
 		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false

@@ -790,20 +790,21 @@ var ( // perfect hash table for request critical headers
 		hash  uint16
 		from  uint8
 		edge  uint8
+		para  bool
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {hashIfUnmodifiedSince, 86, 105, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {hashUserAgent, 132, 142, (*httpRequest_).checkUserAgent},
-		2:  {hashContentLength, 14, 28, (*httpRequest_).checkContentLength},
-		3:  {hashRange, 126, 131, (*httpRequest_).checkRange},
-		4:  {hashDate, 49, 53, (*httpRequest_).checkDate},
-		5:  {hashHost, 54, 58, (*httpRequest_).checkHost},
-		6:  {hashCookie, 42, 48, (*httpRequest_).checkCookie},
-		7:  {hashContentType, 29, 41, (*httpRequest_).checkContentType},
-		8:  {hashIfRange, 77, 85, (*httpRequest_).checkIfRange},
-		9:  {hashIfModifiedSince, 59, 76, (*httpRequest_).checkIfModifiedSince},
-		10: {hashAuthorization, 0, 13, (*httpRequest_).checkAuthorization},
-		11: {hashProxyAuthorization, 106, 125, (*httpRequest_).checkProxyAuthorization},
+		0:  {hashIfUnmodifiedSince, 86, 105, false, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {hashUserAgent, 132, 142, false, (*httpRequest_).checkUserAgent},
+		2:  {hashContentLength, 14, 28, false, (*httpRequest_).checkContentLength},
+		3:  {hashRange, 126, 131, false, (*httpRequest_).checkRange},
+		4:  {hashDate, 49, 53, false, (*httpRequest_).checkDate},
+		5:  {hashHost, 54, 58, false, (*httpRequest_).checkHost},
+		6:  {hashCookie, 42, 48, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {hashContentType, 29, 41, true, (*httpRequest_).checkContentType},
+		8:  {hashIfRange, 77, 85, false, (*httpRequest_).checkIfRange},
+		9:  {hashIfModifiedSince, 59, 76, false, (*httpRequest_).checkIfModifiedSince},
+		10: {hashAuthorization, 0, 13, false, (*httpRequest_).checkAuthorization},
+		11: {hashProxyAuthorization, 106, 125, false, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestCriticalHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -1025,27 +1026,28 @@ var ( // perfect hash table for request multiple headers
 		hash  uint16
 		from  uint8
 		edge  uint8
+		para  bool
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {hashTE, 160, 162, (*httpRequest_).checkTE},
-		1:  {hashAcceptLanguage, 38, 53, nil},
-		2:  {hashForwarded, 120, 129, (*httpRequest_).checkForwarded},
-		3:  {hashTransferEncoding, 171, 188, (*httpRequest_).checkTransferEncoding},
-		4:  {hashConnection, 68, 78, (*httpRequest_).checkConnection},
-		5:  {hashXForwardedFor, 201, 216, (*httpRequest_).checkXForwardedFor},
-		6:  {hashVia, 197, 200, (*httpRequest_).checkVia},
-		7:  {hashContentEncoding, 79, 95, (*httpRequest_).checkContentEncoding},
-		8:  {hashIfNoneMatch, 139, 152, (*httpRequest_).checkIfNoneMatch},
-		9:  {hashCacheControl, 54, 67, (*httpRequest_).checkCacheControl},
-		10: {hashTrailer, 163, 170, nil},
-		11: {hashAcceptEncoding, 22, 37, (*httpRequest_).checkAcceptEncoding},
-		12: {hashAccept, 0, 6, nil},
-		13: {hashExpect, 113, 119, (*httpRequest_).checkExpect},
-		14: {hashAcceptCharset, 7, 21, nil},
-		15: {hashContentLanguage, 96, 112, nil},
-		16: {hashIfMatch, 130, 138, (*httpRequest_).checkIfMatch},
-		17: {hashPragma, 153, 159, nil},
-		18: {hashUpgrade, 189, 196, (*httpRequest_).checkUpgrade},
+		0:  {hashTE, 160, 162, true, (*httpRequest_).checkTE},
+		1:  {hashAcceptLanguage, 38, 53, true, nil},
+		2:  {hashForwarded, 120, 129, false, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		3:  {hashTransferEncoding, 171, 188, true, (*httpRequest_).checkTransferEncoding},
+		4:  {hashConnection, 68, 78, false, (*httpRequest_).checkConnection},
+		5:  {hashXForwardedFor, 201, 216, false, (*httpRequest_).checkXForwardedFor},
+		6:  {hashVia, 197, 200, false, (*httpRequest_).checkVia},
+		7:  {hashContentEncoding, 79, 95, false, (*httpRequest_).checkContentEncoding},
+		8:  {hashIfNoneMatch, 139, 152, false, (*httpRequest_).checkIfNoneMatch},
+		9:  {hashCacheControl, 54, 67, false, (*httpRequest_).checkCacheControl},
+		10: {hashTrailer, 163, 170, false, nil},
+		11: {hashAcceptEncoding, 22, 37, true, (*httpRequest_).checkAcceptEncoding},
+		12: {hashAccept, 0, 6, true, nil},
+		13: {hashExpect, 113, 119, true, (*httpRequest_).checkExpect},
+		14: {hashAcceptCharset, 7, 21, true, nil},
+		15: {hashContentLanguage, 96, 112, false, nil},
+		16: {hashIfMatch, 130, 138, false, (*httpRequest_).checkIfMatch},
+		17: {hashPragma, 153, 159, false, nil},
+		18: {hashUpgrade, 189, 196, false, (*httpRequest_).checkUpgrade},
 	}
 	httpRequestMultipleHeaderFind = func(hash uint16) int { return (710644505 / int(hash)) % 19 }
 )

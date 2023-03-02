@@ -510,20 +510,21 @@ var ( // perfect hash table for response critical headers
 		hash  uint16
 		from  uint8
 		edge  uint8
+		para  bool
 		check func(*hResponse_, *pair, uint8) bool
 	}{
-		0:  {hashDate, 46, 50, (*hResponse_).checkDate},
-		1:  {hashContentLength, 4, 18, (*hResponse_).checkContentLength},
-		2:  {hashAge, 0, 3, (*hResponse_).checkAge},
-		3:  {hashSetCookie, 106, 116, (*hResponse_).checkSetCookie},
-		4:  {hashLastModified, 64, 77, (*hResponse_).checkLastModified},
-		5:  {hashLocation, 78, 86, (*hResponse_).checkLocation},
-		6:  {hashExpires, 56, 63, (*hResponse_).checkExpires},
-		7:  {hashContentRange, 19, 32, (*hResponse_).checkContentRange},
-		8:  {hashETag, 51, 55, (*hResponse_).checkETag},
-		9:  {hashServer, 99, 105, (*hResponse_).checkServer},
-		10: {hashContentType, 33, 45, (*hResponse_).checkContentType},
-		11: {hashRetryAfter, 87, 98, (*hResponse_).checkRetryAfter},
+		0:  {hashDate, 46, 50, false, (*hResponse_).checkDate},
+		1:  {hashContentLength, 4, 18, false, (*hResponse_).checkContentLength},
+		2:  {hashAge, 0, 3, false, (*hResponse_).checkAge},
+		3:  {hashSetCookie, 106, 116, false, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {hashLastModified, 64, 77, false, (*hResponse_).checkLastModified},
+		5:  {hashLocation, 78, 86, false, (*hResponse_).checkLocation},
+		6:  {hashExpires, 56, 63, false, (*hResponse_).checkExpires},
+		7:  {hashContentRange, 19, 32, false, (*hResponse_).checkContentRange},
+		8:  {hashETag, 51, 55, false, (*hResponse_).checkETag},
+		9:  {hashServer, 99, 105, false, (*hResponse_).checkServer},
+		10: {hashContentType, 33, 45, true, (*hResponse_).checkContentType},
+		11: {hashRetryAfter, 87, 98, false, (*hResponse_).checkRetryAfter},
 	}
 	hResponseCriticalHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
@@ -587,25 +588,26 @@ var ( // perfect hash table for response multiple headers
 		hash  uint16
 		from  uint8
 		edge  uint8
+		para  bool
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {hashAcceptRanges, 16, 29, nil},
-		1:  {hashVia, 192, 195, (*hResponse_).checkVia},
-		2:  {hashWWWAuthenticate, 196, 212, nil},
-		3:  {hashConnection, 89, 99, (*hResponse_).checkConnection},
-		4:  {hashContentEncoding, 100, 116, (*hResponse_).checkContentEncoding},
-		5:  {hashAllow, 30, 35, nil},
-		6:  {hashTransferEncoding, 161, 178, (*hResponse_).checkTransferEncoding},
-		7:  {hashTrailer, 153, 160, nil},
-		8:  {hashVary, 187, 191, nil},
-		9:  {hashUpgrade, 179, 186, (*hResponse_).checkUpgrade},
-		10: {hashProxyAuthenticate, 134, 152, nil},
-		11: {hashCacheControl, 44, 57, (*hResponse_).checkCacheControl},
-		12: {hashAltSvc, 36, 43, nil},
-		13: {hashCDNCacheControl, 71, 88, nil},
-		14: {hashCacheStatus, 58, 70, nil},
-		15: {hashAcceptEncoding, 0, 15, (*hResponse_).checkAcceptEncoding},
-		16: {hashContentLanguage, 117, 133, nil},
+		0:  {hashAcceptRanges, 16, 29, false, nil},
+		1:  {hashVia, 192, 195, false, (*hResponse_).checkVia},
+		2:  {hashWWWAuthenticate, 196, 212, false, nil},
+		3:  {hashConnection, 89, 99, false, (*hResponse_).checkConnection},
+		4:  {hashContentEncoding, 100, 116, false, (*hResponse_).checkContentEncoding},
+		5:  {hashAllow, 30, 35, false, nil},
+		6:  {hashTransferEncoding, 161, 178, true, (*hResponse_).checkTransferEncoding},
+		7:  {hashTrailer, 153, 160, false, nil},
+		8:  {hashVary, 187, 191, false, nil},
+		9:  {hashUpgrade, 179, 186, false, (*hResponse_).checkUpgrade},
+		10: {hashProxyAuthenticate, 134, 152, false, nil},
+		11: {hashCacheControl, 44, 57, false, (*hResponse_).checkCacheControl},
+		12: {hashAltSvc, 36, 43, true, nil},
+		13: {hashCDNCacheControl, 71, 88, false, nil},
+		14: {hashCacheStatus, 58, 70, true, nil},
+		15: {hashAcceptEncoding, 0, 15, true, (*hResponse_).checkAcceptEncoding},
+		16: {hashContentLanguage, 117, 133, false, nil},
 	}
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )

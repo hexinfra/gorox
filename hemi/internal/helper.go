@@ -15,43 +15,6 @@ import (
 	"sync"
 )
 
-// poolParas
-var poolParas sync.Pool
-
-func getParas() []para {
-	if x := poolParas.Get(); x == nil {
-		return make([]para, 0, 128)
-	} else {
-		return x.([]para)
-	}
-}
-func putParas(paras []para) {
-	if cap(paras) != 128 {
-		BugExitln("bad paras")
-	}
-	paras = paras[0:0:128] // reset
-	poolParas.Put(paras)
-}
-
-// para
-type para struct { // 6 bytes
-	nameSize  uint8  // <= 255
-	valueSize uint8  // <= 255
-	nameFrom  uint16 // like: "charset"
-	valueFrom uint16 // like: "utf-8"
-}
-
-func (p *para) zero() { *p = para{} }
-
-func (p *para) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+uint16(p.nameSize)] }
-func (p *para) valueAt(t []byte) []byte { return t[p.valueFrom : p.valueFrom+uint16(p.valueSize)] }
-func (p *para) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+uint16(p.nameSize)]) == x
-}
-func (p *para) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+uint16(p.nameSize)], x)
-}
-
 // poolPairs
 var poolPairs sync.Pool
 
@@ -133,6 +96,45 @@ func (p *pair) nameEqualString(t []byte, x string) bool {
 }
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
+}
+
+// poolParas
+var poolParas sync.Pool
+
+func getParas() []para {
+	if x := poolParas.Get(); x == nil {
+		return make([]para, 0, 128)
+	} else {
+		return x.([]para)
+	}
+}
+func putParas(paras []para) {
+	if cap(paras) != 128 {
+		BugExitln("bad paras")
+	}
+	paras = paras[0:0:128] // reset
+	poolParas.Put(paras)
+}
+
+// para
+type para struct { // 6 bytes
+	nameSize uint8  // <= 255
+	gapSize  uint8  // 1(a=bb), 2(a="bb", "a"=bb), 3("a"="bb")
+	from     uint16 // like: a
+	edge     uint16 // like: bb
+}
+
+func (p *para) zero() { *p = para{} }
+
+func (p *para) nameAt(t []byte) []byte { return t[p.from : p.from+uint16(p.nameSize)] }
+func (p *para) valueAt(t []byte) []byte {
+	return t[p.from : p.from+uint16(p.nameSize)+uint16(p.gapSize)]
+}
+func (p *para) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.from:p.from+uint16(p.nameSize)]) == x
+}
+func (p *para) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+uint16(p.nameSize)], x)
 }
 
 // TempFile is used to temporarily save request/response content in local file system.

@@ -847,7 +847,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.place = placeArray
 	extra.from = r.arrayEdge
 	extra.nameSize = uint8(nameSize)
-	extra.valueOff = uint16(nameSize)
+	extra.valueOff = uint16(nameSize) // no gap
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.edge = r.arrayEdge

@@ -596,7 +596,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				if b == '=' {
 					if nameSize := r.arrayEdge - query.from; nameSize <= 255 {
 						query.nameSize = uint8(nameSize)
-						query.valueOff = uint16(nameSize)
+						query.valueOff = uint16(nameSize) // no gap
 					} else {
 						r.headResult, r.headReason = StatusBadRequest, "query name too long"
 						return false

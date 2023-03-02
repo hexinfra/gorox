@@ -112,13 +112,13 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
-		// Skip OWS before field-value (and OWS after field-value, if field-value is empty)
+		// Skip OWS before field-value (and OWS after field-value if it is empty)
 		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack)
+		header.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -438,13 +438,14 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
+		// Skip OWS before field-value (and OWS after field-value if it is empty)
 		for r.bodyWindow[r.pFore] == ' ' || r.bodyWindow[r.pFore] == '\t' {
 			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
-		trailer.valueOff = uint16(r.pFore - r.pBack)
-		r.pBack = r.pFore // for field-value or EOL
+		trailer.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
+		r.pBack = r.pFore                            // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
@@ -483,12 +484,12 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.from = fore // adjust from
+		trailer.from = fore
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueOff = uint16(trailer.nameSize) // adjust value off
-		trailer.edge = r.arrayEdge                  // adjust value edge
+		trailer.valueOff = uint16(trailer.nameSize) // no gap
+		trailer.edge = r.arrayEdge
 
 		// Trailer is received in general algorithm. Now add and check it
 		if !r.shell.addTrailer(trailer) || !r.shell.checkTrailer(trailer) {

@@ -783,13 +783,13 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 			return false
 		}
-		// Skip OWS before field-value (and OWS after field-value, if field-value is empty)
+		// Skip OWS before field-value (and OWS after field-value if it is empty)
 		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack)
+		header.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {

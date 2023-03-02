@@ -35,20 +35,32 @@ func putPairs(pairs []pair) {
 
 // pair is used to hold queries, headers, cookies, forms, and trailers.
 type pair struct { // 20 bytes
-	hash     uint16 // name hash, to support fast search. hash == 0 means empty
+	hash     uint16 // name hash, to support fast search. 0 means empty
 	kind     int8   // see pair kinds
 	place    int8   // see pair places
 	from     int32  // name begins from
 	flags    uint8  // see field flags
-	nameSize uint8  // name ends at from+nameSize. like: "content-type". <= 255
+	nameSize uint8  // name ends at from+nameSize. <= 255
 	valueOff uint16 // value begins from from+valueOff
-	backSize uint16 // pure value data without quote and paras. like: "text/html"
-	paras    zone   // like: "charset=utf-8"
+	backSize uint16 // value data without quote and paras
+	paras    zone   // refers to a zone of paras
 	edge     int32  // value ends at
 }
 
-// singleton: content-type: "text/html"; charset=utf-8; lang="en"
-// multiple : accept-encoding: gzip; q=1; c=dd, "br"; q="2"; g="hh"
+// A non-comma field looks like this:
+//
+//  [   name   ]   [     data    ][--------backSize--------]
+// +--------------------------------------------------------+
+// |content-type: "text/javascript"; charset="utf-8";lang=en|
+// +--------------------------------------------------------+
+//  ^           ^ ^^              ^[         paras         ]^
+//  |           | ||              |                         |
+//  from        | ||              edge-backSize          edge
+//  from+nameSize ||
+//    from+valueOff|
+//                 from+valueOff+(flags&flagQuoted)
+//
+// If data is quoted, flagQuoted is set, so flags&flagQuoted is 1.
 
 func (p *pair) zero() { *p = pair{} }
 
@@ -59,9 +71,9 @@ func (p *pair) nameEqualString(t []byte, x string) bool {
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
 }
-func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
 func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff), p.edge} }
 func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
+func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
 func (p *pair) dataAt(t []byte) []byte {
 	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.backSize)]
 }

@@ -1021,7 +1021,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 }
 
 var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
 	httpRequestMultipleHeaderTable = [19]struct {
 		hash  uint16
 		from  uint8
@@ -1158,8 +1158,7 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 				return false
 			}
 			*match = -1 // *
-		} else { // entity-tag = [ weak ] opaque-tag
-			// opaque-tag = DQUOTE *etagc DQUOTE
+		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
 			if nMatch == -1 { // *
 				r.headResult, r.headReason = StatusBadRequest, "mix using of entity-tag and *"
 				return false
@@ -1740,7 +1739,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			if b == '=' {
 				if nameSize := r.arrayEdge - form.from; nameSize <= 255 {
 					form.nameSize = uint8(nameSize)
-					form.valueOff = uint16(nameSize)
+					form.valueOff = uint16(nameSize) // no gap
 				} else {
 					return
 				}
@@ -2093,7 +2092,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			part.form.hash = part.hash
 			part.form.from = part.name.from
 			part.form.nameSize = uint8(part.name.size())
-			part.form.valueOff = uint16(part.form.nameSize)
+			part.form.valueOff = uint16(part.form.nameSize) // no gap
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
 		for {             // each partial in current part

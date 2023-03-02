@@ -47,11 +47,11 @@ type pair struct { // 20 bytes
 	edge     int32  // value ends at
 }
 
-// A non-comma field looks like this:
+// If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
 //
 //  [   name   ]   [     data    ][--------backSize--------]
 // +--------------------------------------------------------+
-// |content-type: "text/javascript"; charset="utf-8";lang=en|
+// |example-type: "text/javascript"; charset="utf-8";lang=en|
 // +--------------------------------------------------------+
 //  ^           ^ ^^              ^[         paras         ]^
 //  |           | ||              |                         |

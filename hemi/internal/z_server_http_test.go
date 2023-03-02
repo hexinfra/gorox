@@ -38,3 +38,16 @@ func TestHTTPRequestCriticalHeaders(t *testing.T) {
 		}
 	}
 }
+func TestHTTPResponseCrucialHeaders(t *testing.T) {
+	headers := bytes.Split(httpResponseCrucialHeaderNames, []byte(" "))
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}

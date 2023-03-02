@@ -12,6 +12,19 @@ import (
 	"testing"
 )
 
+func TestHRequestCrucialHeaders(t *testing.T) {
+	headers := bytes.Split(hRequestCrucialHeaderNames, []byte(" "))
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}
 func TestHResponseMultipleHeaders(t *testing.T) {
 	headers := bytes.Split(hResponseMultipleHeaderNames, []byte(" "))
 	for _, header := range headers {

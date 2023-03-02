@@ -76,12 +76,12 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 // httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
 type httpIn interface {
 	addHeader(header *pair) bool
-	checkHeader(header *pair) bool
+	adoptHeader(header *pair) bool
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
 	addTrailer(trailer *pair) bool
-	checkTrailer(trailer *pair) bool
+	adoptTrailer(trailer *pair) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -421,6 +421,15 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 		r.contentCodings[r.nContentCodings] = coding
 		r.nContentCodings++
 	}
+	return true
+}
+func (r *httpIn_) checkContentLanguage(from uint8, edge uint8) bool { // Content-Language = #language-tag
+	// TODO
+	return true
+}
+func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #field-name
+	// field-name = token
+	// TODO
 	return true
 }
 func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = 1#transfer-coding
@@ -1939,7 +1948,6 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashContentType        = 1258
 	hashDate               = 414
 	hashKeepAlive          = 995
-	hashPragma             = 632
 	hashTrailer            = 755
 	hashTransferEncoding   = 1753
 	hashUpgrade            = 744
@@ -2004,7 +2012,6 @@ var ( // byteses of http fields.
 	bytesContentType        = []byte("content-type")
 	bytesDate               = []byte("date")
 	bytesKeepAlive          = []byte("keep-alive")
-	bytesPragma             = []byte("pragma")
 	bytesTrailer            = []byte("trailer")
 	bytesTransferEncoding   = []byte("transfer-encoding")
 	bytesUpgrade            = []byte("upgrade")

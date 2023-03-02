@@ -327,6 +327,8 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 	if req.HasCookies() && !r.shell.(hRequest).copyCookies(req) {
 		return false
 	}
+	// TODO: An HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message and MAY send a Via header field in forwarded response messages.
+	// r.addHeader(via)
 
 	// copy remaining headers from req
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -339,27 +341,28 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 }
 
 var ( // perfect hash table for request crucial headers
-	hRequestCrucialHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade")
-	hRequestCrucialHeaderTable = [11]struct {
+	hRequestCrucialHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via")
+	hRequestCrucialHeaderTable = [12]struct {
 		hash uint16
 		from uint8
 		edge uint8
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
 	}{
-		0:  {hashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
-		1:  {hashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
-		2:  {hashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
-		3:  {hashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
-		4:  {hashTransferEncoding, 103, 120, nil, nil}, // forbidden
-		5:  {hashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
-		6:  {hashCookie, 39, 45, nil, nil},        // forbidden
-		7:  {hashContentLength, 11, 25, nil, nil}, // forbidden
+		0:  {hashContentLength, 11, 25, nil, nil}, // forbidden
+		1:  {hashConnection, 0, 10, nil, nil},     // forbidden
+		2:  {hashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
+		3:  {hashUpgrade, 121, 128, nil, nil}, // forbidden
+		4:  {hashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
+		6:  {hashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
+		7:  {hashTransferEncoding, 103, 120, nil, nil}, // forbidden
 		8:  {hashContentType, 26, 38, (*hRequest_)._addContentType, (*hRequest_)._delContentType},
-		9:  {hashConnection, 0, 10, nil, nil}, // forbidden
-		10: {hashUpgrade, 121, 128, nil, nil}, // forbidden
+		9:  {hashCookie, 39, 45, nil, nil}, // forbidden
+		10: {hashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
+		11: {hashVia, 129, 132, nil, nil}, // forbidden
 	}
-	hRequestCrucialHeaderFind = func(hash uint16) int { return (1685160 / int(hash)) % 11 }
+	hRequestCrucialHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
 )
 
 func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
@@ -480,7 +483,7 @@ func (r *hResponse_) onEnd() { // for zeros
 
 func (r *hResponse_) Status() int16 { return r.status }
 
-func (r *hResponse_) checkHeader(header *pair) bool {
+func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
@@ -514,21 +517,22 @@ var ( // perfect hash table for response critical headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*hResponse_, *pair, uint8) bool
 	}{
-		0:  {hashDate, 46, 50, false, (*hResponse_).checkDate},
-		1:  {hashContentLength, 4, 18, false, (*hResponse_).checkContentLength},
-		2:  {hashAge, 0, 3, false, (*hResponse_).checkAge},
-		3:  {hashSetCookie, 106, 116, false, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {hashLastModified, 64, 77, false, (*hResponse_).checkLastModified},
-		5:  {hashLocation, 78, 86, false, (*hResponse_).checkLocation},
-		6:  {hashExpires, 56, 63, false, (*hResponse_).checkExpires},
-		7:  {hashContentRange, 19, 32, false, (*hResponse_).checkContentRange},
-		8:  {hashETag, 51, 55, false, (*hResponse_).checkETag},
-		9:  {hashServer, 99, 105, false, (*hResponse_).checkServer},
-		10: {hashContentType, 33, 45, true, (*hResponse_).checkContentType},
-		11: {hashRetryAfter, 87, 98, false, (*hResponse_).checkRetryAfter},
+		0:  {hashDate, 46, 50, false, false, (*hResponse_).checkDate},
+		1:  {hashContentLength, 4, 18, false, false, (*hResponse_).checkContentLength},
+		2:  {hashAge, 0, 3, false, false, (*hResponse_).checkAge},
+		3:  {hashSetCookie, 106, 116, false, false, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {hashLastModified, 64, 77, false, false, (*hResponse_).checkLastModified},
+		5:  {hashLocation, 78, 86, false, false, (*hResponse_).checkLocation},
+		6:  {hashExpires, 56, 63, false, false, (*hResponse_).checkExpires},
+		7:  {hashContentRange, 19, 32, false, false, (*hResponse_).checkContentRange},
+		8:  {hashETag, 51, 55, false, false, (*hResponse_).checkETag},
+		9:  {hashServer, 99, 105, false, false, (*hResponse_).checkServer},
+		10: {hashContentType, 33, 45, false, true, (*hResponse_).checkContentType},
+		11: {hashRetryAfter, 87, 98, false, false, (*hResponse_).checkRetryAfter},
 	}
 	hResponseCriticalHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
@@ -585,35 +589,60 @@ var ( // perfect hash table for response multiple headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {hashAcceptRanges, 16, 29, false, nil},
-		1:  {hashVia, 192, 195, false, (*hResponse_).checkVia},
-		2:  {hashWWWAuthenticate, 196, 212, false, nil},
-		3:  {hashConnection, 89, 99, false, (*hResponse_).checkConnection},
-		4:  {hashContentEncoding, 100, 116, false, (*hResponse_).checkContentEncoding},
-		5:  {hashAllow, 30, 35, false, nil},
-		6:  {hashTransferEncoding, 161, 178, false, (*hResponse_).checkTransferEncoding}, // deliberately false
-		7:  {hashTrailer, 153, 160, false, nil},
-		8:  {hashVary, 187, 191, false, nil},
-		9:  {hashUpgrade, 179, 186, false, (*hResponse_).checkUpgrade},
-		10: {hashProxyAuthenticate, 134, 152, false, nil},
-		11: {hashCacheControl, 44, 57, false, (*hResponse_).checkCacheControl},
-		12: {hashAltSvc, 36, 43, true, nil},
-		13: {hashCDNCacheControl, 71, 88, false, nil},
-		14: {hashCacheStatus, 58, 70, true, nil},
-		15: {hashAcceptEncoding, 0, 15, true, (*hResponse_).checkAcceptEncoding},
-		16: {hashContentLanguage, 117, 133, false, nil},
+		0:  {hashAcceptRanges, 16, 29, false, false, (*hResponse_).checkAcceptRanges},
+		1:  {hashVia, 192, 195, false, false, (*hResponse_).checkVia},
+		2:  {hashWWWAuthenticate, 196, 212, false, false, (*hResponse_).checkWWWAuthenticate},
+		3:  {hashConnection, 89, 99, false, false, (*hResponse_).checkConnection},
+		4:  {hashContentEncoding, 100, 116, false, false, (*hResponse_).checkContentEncoding},
+		5:  {hashAllow, 30, 35, false, false, (*hResponse_).checkAllow},
+		6:  {hashTransferEncoding, 161, 178, false, false, (*hResponse_).checkTransferEncoding}, // deliberately false
+		7:  {hashTrailer, 153, 160, false, false, (*hResponse_).checkTrailer},
+		8:  {hashVary, 187, 191, false, false, (*hResponse_).checkVary},
+		9:  {hashUpgrade, 179, 186, false, false, (*hResponse_).checkUpgrade},
+		10: {hashProxyAuthenticate, 134, 152, false, false, (*hResponse_).checkProxyAuthenticate},
+		11: {hashCacheControl, 44, 57, false, false, (*hResponse_).checkCacheControl},
+		12: {hashAltSvc, 36, 43, false, true, (*hResponse_).checkAltSvc},
+		13: {hashCDNCacheControl, 71, 88, false, false, (*hResponse_).checkCDNCacheControl},
+		14: {hashCacheStatus, 58, 70, false, true, (*hResponse_).checkCacheStatus},
+		15: {hashAcceptEncoding, 0, 15, false, true, (*hResponse_).checkAcceptEncoding},
+		16: {hashContentLanguage, 117, 133, false, false, (*hResponse_).checkContentLanguage},
 	}
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
+func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *hResponse_) checkAllow(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = 1#cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
+	return true
+}
+func (r *hResponse_) checkCacheStatus(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *hResponse_) checkCDNCacheControl(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *hResponse_) checkProxyAuthenticate(from uint8, edge uint8) bool {
+	// TODO
 	return true
 }
 func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = 1#transfer-coding
@@ -630,6 +659,14 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 1#
 	// TODO: tcptun, udptun, socket?
 	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false
+}
+func (r *hResponse_) checkVary(from uint8, edge uint8) bool {
+	// TODO
+	return true
+}
+func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool {
+	// TODO
+	return true
 }
 
 func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
@@ -735,7 +772,7 @@ func (r *hResponse_) HasContent() bool {
 func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
-func (r *hResponse_) checkTrailer(trailer *pair) bool {
+func (r *hResponse_) adoptTrailer(trailer *pair) bool {
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

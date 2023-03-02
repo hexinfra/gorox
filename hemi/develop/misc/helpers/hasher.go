@@ -5,15 +5,9 @@ import (
 )
 
 func main() {
-	//calc([]byte("content-length content-range content-type date etag expires last-modified location server set-cookie"))
-	//calc([]byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE"))
-	//calc([]byte("content-length content-type location status"))
-	//calc([]byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for"))
-	//calc([]byte("age content-length content-range content-type date etag expires last-modified location server set-cookie"))
-	//calc([]byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie"))
-	//calc([]byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent"))
-	println(sum("cache-control"))
-	println(sum("last-modified"))
+	calc([]byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via"))
+	//println(sum("cache-control"))
+	//println(sum("last-modified"))
 }
 
 type Node struct {

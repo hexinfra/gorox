@@ -422,7 +422,7 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	addHeader(header *pair) bool
-	checkHeader(header *pair) bool
+	adoptHeader(header *pair) bool
 	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	delHopHeaders()
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
@@ -431,7 +431,7 @@ type Request interface {
 	readContent() (p []byte, err error)
 	holdContent() any
 	addTrailer(trailer *pair) bool
-	checkTrailer(trailer *pair) bool
+	adoptTrailer(trailer *pair) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -760,7 +760,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
 
-func (r *httpRequest_) checkHeader(header *pair) bool {
+func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
@@ -794,26 +794,30 @@ var ( // perfect hash table for request critical headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {hashIfUnmodifiedSince, 86, 105, false, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {hashUserAgent, 132, 142, false, (*httpRequest_).checkUserAgent},
-		2:  {hashContentLength, 14, 28, false, (*httpRequest_).checkContentLength},
-		3:  {hashRange, 126, 131, false, (*httpRequest_).checkRange},
-		4:  {hashDate, 49, 53, false, (*httpRequest_).checkDate},
-		5:  {hashHost, 54, 58, false, (*httpRequest_).checkHost},
-		6:  {hashCookie, 42, 48, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {hashContentType, 29, 41, true, (*httpRequest_).checkContentType},
-		8:  {hashIfRange, 77, 85, false, (*httpRequest_).checkIfRange},
-		9:  {hashIfModifiedSince, 59, 76, false, (*httpRequest_).checkIfModifiedSince},
-		10: {hashAuthorization, 0, 13, false, (*httpRequest_).checkAuthorization},
-		11: {hashProxyAuthorization, 106, 125, false, (*httpRequest_).checkProxyAuthorization},
+		0:  {hashIfUnmodifiedSince, 86, 105, false, false, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {hashUserAgent, 132, 142, false, false, (*httpRequest_).checkUserAgent},
+		2:  {hashContentLength, 14, 28, false, false, (*httpRequest_).checkContentLength},
+		3:  {hashRange, 126, 131, false, false, (*httpRequest_).checkRange},
+		4:  {hashDate, 49, 53, false, false, (*httpRequest_).checkDate},
+		5:  {hashHost, 54, 58, false, false, (*httpRequest_).checkHost},
+		6:  {hashCookie, 42, 48, false, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {hashContentType, 29, 41, false, true, (*httpRequest_).checkContentType},
+		8:  {hashIfRange, 77, 85, false, false, (*httpRequest_).checkIfRange},
+		9:  {hashIfModifiedSince, 59, 76, false, false, (*httpRequest_).checkIfModifiedSince},
+		10: {hashAuthorization, 0, 13, false, false, (*httpRequest_).checkAuthorization},
+		11: {hashProxyAuthorization, 106, 125, false, false, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestCriticalHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
 
-func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = credentials
+func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+	// auth-scheme = token
+	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
+	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
 	return true
 }
@@ -873,7 +877,10 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Rang
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = credentials
+func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+	// auth-scheme = token
+	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
+	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
 	return true
 }
@@ -1021,37 +1028,53 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 }
 
 var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match pragma te trailer transfer-encoding upgrade via x-forwarded-for")
-	httpRequestMultipleHeaderTable = [19]struct {
+	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestMultipleHeaderTable = [18]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {hashTE, 160, 162, true, (*httpRequest_).checkTE},
-		1:  {hashAcceptLanguage, 38, 53, true, nil},
-		2:  {hashForwarded, 120, 129, false, (*httpRequest_).checkForwarded},               // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		3:  {hashTransferEncoding, 171, 188, false, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		4:  {hashConnection, 68, 78, false, (*httpRequest_).checkConnection},
-		5:  {hashXForwardedFor, 201, 216, false, (*httpRequest_).checkXForwardedFor},
-		6:  {hashVia, 197, 200, false, (*httpRequest_).checkVia},
-		7:  {hashContentEncoding, 79, 95, false, (*httpRequest_).checkContentEncoding},
-		8:  {hashIfNoneMatch, 139, 152, false, (*httpRequest_).checkIfNoneMatch},
-		9:  {hashCacheControl, 54, 67, false, (*httpRequest_).checkCacheControl},
-		10: {hashTrailer, 163, 170, false, nil},
-		11: {hashAcceptEncoding, 22, 37, true, (*httpRequest_).checkAcceptEncoding},
-		12: {hashAccept, 0, 6, true, nil},
-		13: {hashExpect, 113, 119, true, (*httpRequest_).checkExpect},
-		14: {hashAcceptCharset, 7, 21, true, nil},
-		15: {hashContentLanguage, 96, 112, false, nil},
-		16: {hashIfMatch, 130, 138, false, (*httpRequest_).checkIfMatch},
-		17: {hashPragma, 153, 159, false, nil},
-		18: {hashUpgrade, 189, 196, false, (*httpRequest_).checkUpgrade},
+		0:  {hashTE, 153, 155, false, true, (*httpRequest_).checkTE},
+		1:  {hashTrailer, 156, 163, false, false, (*httpRequest_).checkTrailer},
+		2:  {hashExpect, 113, 119, false, true, (*httpRequest_).checkExpect},
+		3:  {hashContentLanguage, 96, 112, false, false, (*httpRequest_).checkContentLanguage},
+		4:  {hashTransferEncoding, 164, 181, false, false, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		5:  {hashAcceptCharset, 7, 21, false, true, (*httpRequest_).checkAcceptCharset},
+		6:  {hashCacheControl, 54, 67, false, false, (*httpRequest_).checkCacheControl},
+		7:  {hashXForwardedFor, 194, 209, false, false, (*httpRequest_).checkXForwardedFor},
+		8:  {hashVia, 190, 193, false, false, (*httpRequest_).checkVia},
+		9:  {hashForwarded, 120, 129, false, false, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		10: {hashIfMatch, 130, 138, false, false, (*httpRequest_).checkIfMatch},
+		11: {hashAccept, 0, 6, false, true, (*httpRequest_).checkAccept},
+		12: {hashAcceptEncoding, 22, 37, false, true, (*httpRequest_).checkAcceptEncoding},
+		13: {hashConnection, 68, 78, false, false, (*httpRequest_).checkConnection},
+		14: {hashIfNoneMatch, 139, 152, false, false, (*httpRequest_).checkIfNoneMatch},
+		15: {hashUpgrade, 182, 189, false, false, (*httpRequest_).checkUpgrade},
+		16: {hashContentEncoding, 79, 95, false, false, (*httpRequest_).checkContentEncoding},
+		17: {hashAcceptLanguage, 38, 53, false, true, (*httpRequest_).checkAcceptLanguage},
 	}
-	httpRequestMultipleHeaderFind = func(hash uint16) int { return (710644505 / int(hash)) % 19 }
+	httpRequestMultipleHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
 )
 
+func (r *httpRequest_) checkAccept(from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
+	// media-range    = ( "*/*" / ( type "/" "*" ) / ( type "/" subtype ) ) parameters
+	// TODO
+	return true
+}
+func (r *httpRequest_) checkAcceptCharset(from uint8, edge uint8) bool { // Accept-Charset = #( ( token / "*" ) [ weight ] )
+	// TODO
+	return true
+}
+func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+	// language-range = <language-range, see [RFC4647], Section 2.1>
+	// weight = OWS ";" OWS "q=" qvalue
+	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
+	// TODO
+	return true
+}
 func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = 1#cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
@@ -2373,7 +2396,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) checkTrailer(trailer *pair) bool {
+func (r *httpRequest_) adoptTrailer(trailer *pair) bool {
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

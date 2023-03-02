@@ -827,8 +827,8 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		}
 		header.edge = fore
 
-		// Header is received in general algorithm. Now add and check it
-		if !r.addHeader(header) || !r.checkHeader(header) {
+		// Header is received in general algorithm. Now add and adopt it
+		if !r.addHeader(header) || !r.adoptHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -865,7 +865,7 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	return true
 }
 
-func (r *fcgiResponse) checkHeader(header *pair) bool {
+func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
@@ -895,13 +895,14 @@ var ( // perfect hash table for response critical headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*fcgiResponse, *pair, int) bool
 	}{
-		0: {fcgiHashStatus, 37, 43, false, (*fcgiResponse).checkStatus},
-		1: {hashContentLength, 0, 14, false, (*fcgiResponse).checkContentLength},
-		2: {hashContentType, 15, 27, true, (*fcgiResponse).checkContentType},
-		3: {hashLocation, 28, 36, false, (*fcgiResponse).checkLocation},
+		0: {fcgiHashStatus, 37, 43, false, false, (*fcgiResponse).checkStatus},
+		1: {hashContentLength, 0, 14, false, false, (*fcgiResponse).checkContentLength},
+		2: {hashContentType, 15, 27, false, true, (*fcgiResponse).checkContentType},
+		3: {hashLocation, 28, 36, false, false, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -933,12 +934,13 @@ var ( // perfect hash table for response multiple headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		para  bool
+		quote bool // quote data or not
+		para  bool // has parameters or not
 		check func(*fcgiResponse, int, int) bool
 	}{
-		0: {hashTransferEncoding, 11, 28, false, (*fcgiResponse).checkTransferEncoding}, // deliberately false
-		1: {hashConnection, 0, 10, false, (*fcgiResponse).checkConnection},
-		2: {hashUpgrade, 29, 36, false, (*fcgiResponse).checkUpgrade},
+		0: {hashTransferEncoding, 11, 28, false, false, (*fcgiResponse).checkTransferEncoding}, // deliberately false
+		1: {hashConnection, 0, 10, false, false, (*fcgiResponse).checkConnection},
+		2: {hashUpgrade, 29, 36, false, false, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
@@ -1107,7 +1109,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 }
 
 func (r *fcgiResponse) addTrailer(trailer *pair) bool   { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) checkTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers

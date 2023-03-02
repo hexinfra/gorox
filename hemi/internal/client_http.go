@@ -483,11 +483,15 @@ func (r *hResponse_) Status() int16 { return r.status }
 func (r *hResponse_) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+		header.setSingleton()
+		if h.para && !r._parseParas(header) {
+			// r.headResult is set.
+			return false
+		}
 		if h.check != nil && !h.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
-		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding main header
 		if !r._addSubFields(header, r.input, r.addHeader) {
@@ -529,40 +533,33 @@ var ( // perfect hash table for response critical headers
 	hResponseCriticalHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
 
-func (r *hResponse_) checkAge(header *pair, index uint8) bool {
-	// Age = delta-seconds
+func (r *hResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
 	// TODO
 	return true
 }
-func (r *hResponse_) checkETag(header *pair, index uint8) bool {
-	// ETag = entity-tag
+func (r *hResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
 	r.indexes.etag = index
 	return true
 }
-func (r *hResponse_) checkExpires(header *pair, index uint8) bool {
-	// Expires = HTTP-date
+func (r *hResponse_) checkExpires(header *pair, index uint8) bool { // Expires = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.unixTimes.expires)
 }
-func (r *hResponse_) checkLastModified(header *pair, index uint8) bool {
-	// Last-Modified = HTTP-date
+func (r *hResponse_) checkLastModified(header *pair, index uint8) bool { // Last-Modified = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
-func (r *hResponse_) checkLocation(header *pair, index uint8) bool {
-	// Location = URI-reference
+func (r *hResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
 	r.indexes.location = index
 	return true
 }
-func (r *hResponse_) checkRetryAfter(header *pair, index uint8) bool {
-	// Retry-After = HTTP-date / delay-seconds
+func (r *hResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
 	return true
 }
-func (r *hResponse_) checkServer(header *pair, index uint8) bool {
-	// Server = product *( RWS ( product / comment ) )
+func (r *hResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
 	r.indexes.server = index
 	return true
 }
-func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool {
-	if !r.parseSetCookie(header.value) {
+func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
+	if !r.parseSetCookie(header.valueText()) {
 		r.headResult, r.headReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
@@ -612,8 +609,7 @@ var ( // perfect hash table for response multiple headers
 	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
-func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool {
-	// Cache-Control   = 1#cache-directive
+func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = 1#cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
@@ -636,9 +632,7 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool {
 	return false
 }
 
-func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie: xxx
-	// set-cookie-header = "Set-Cookie:" SP set-cookie-string
-	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
+func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E

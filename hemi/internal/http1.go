@@ -80,7 +80,6 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash, header.flags = 0, 0 // reset for next header
 
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
@@ -104,7 +103,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -119,6 +118,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
+		header.valueOff = uint16(r.pFore - r.pBack)
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -157,10 +157,9 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
-			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			header.value.zero()
 		}
+		header.edge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.shell.addHeader(header) || !r.shell.checkHeader(header) {
@@ -173,6 +172,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			return false
 		}
 		// r.pFore is now at the next header or end of headers.
+		header.hash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
@@ -408,7 +408,6 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		} else if b == '\n' {
 			break
 		}
-		trailer.hash, trailer.flags = 0, 0 // reset for next trailer
 
 		r.pBack = r.pFore // for field-name
 		for {
@@ -431,7 +430,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(nameSize)
+			trailer.from, trailer.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			return false
 		}
@@ -444,6 +443,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
+		trailer.valueOff = uint16(r.pFore - r.pBack)
 		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
@@ -474,21 +474,21 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
-			trailer.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			trailer.value.zero()
 		}
+		trailer.edge = fore
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
 		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.nameFrom = fore // adjust name from
+		trailer.from = fore // adjust from
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.value.set(fore, r.arrayEdge) // adjust value
+		trailer.valueOff = uint16(trailer.nameSize) // adjust value off
+		trailer.edge = r.arrayEdge                  // adjust value edge
 
 		// Trailer is received in general algorithm. Now add and check it
 		if !r.shell.addTrailer(trailer) || !r.shell.checkTrailer(trailer) {
@@ -500,6 +500,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			return false
 		}
 		// r.pFore is now at the next trailer or end of trailers.
+		trailer.hash, trailer.flags = 0, 0 // reset for next trailer
 	}
 	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true

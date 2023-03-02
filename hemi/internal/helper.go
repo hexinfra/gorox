@@ -38,14 +38,33 @@ type pair struct { // 20 bytes
 	hash     uint16 // name hash, to support fast search. hash == 0 means empty
 	kind     int8   // see pair kinds
 	place    int8   // see pair places
-	nameFrom int32  // name begins from
-	nameSize uint8  // like: "content-type". <= 255
+	from     int32  // name begins from
 	flags    uint8  // see field flags
+	nameSize uint8  // name ends at from+nameSize. like: "content-type". <= 255
+	valueOff uint16 // value begins from from+valueOff
+	backSize uint16 // pure value data without quote and paras. like: "text/html"
 	paras    zone   // like: "charset=utf-8"
-	value    text   // like: "text/html"
+	edge     int32  // value ends at
 }
 
+// singleton: content-type: "text/html"; charset=utf-8; lang="en"
+// multiple : accept-encoding: gzip; q=1; c=dd, "br"; q="2"; g="hh"
+
 func (p *pair) zero() { *p = pair{} }
+
+func (p *pair) nameAt(t []byte) []byte { return t[p.from : p.from+int32(p.nameSize)] }
+func (p *pair) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.from:p.from+int32(p.nameSize)]) == x
+}
+func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
+}
+func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
+func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff), p.edge} }
+func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
+func (p *pair) dataAt(t []byte) []byte {
+	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.backSize)]
+}
 
 const ( // pair kinds
 	kindQuery   = iota // prime->array, extra->array
@@ -70,7 +89,7 @@ const ( // field flags
 	flagUnderscore = 0b00001000 // name contains '_' or not. some agents (like fcgi) need this
 	flagCommaValue = 0b00000100 // value has comma or not
 	flagWeakETag   = 0b00000010 // weak etag or not
-	flagReserved   = 0b00000001 // reserved for future use
+	flagQuoted     = 0b00000001 // value is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
@@ -80,6 +99,7 @@ func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
 func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
 func (p *pair) setWeakETag()   { p.flags |= flagWeakETag }
+func (p *pair) setQuoted()     { p.flags |= flagQuoted }
 
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
@@ -88,15 +108,7 @@ func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
 func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isWeakETag() bool   { return p.flags&flagWeakETag > 0 }
-
-func (p *pair) nameAt(t []byte) []byte  { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
-func (p *pair) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
-}
-func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
-}
+func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 
 // poolParas
 var poolParas sync.Pool
@@ -119,7 +131,7 @@ func putParas(paras []para) {
 // para
 type para struct { // 6 bytes
 	nameSize uint8  // <= 255
-	gapSize  uint8  // 1(a=bb), 2(a="bb", "a"=bb), 3("a"="bb")
+	gapSize  uint8  // 1(`=` in `a=bb`), 2(`="` in `a="bb"`)
 	from     uint16 // like: a
 	edge     uint16 // like: bb
 }
@@ -128,7 +140,7 @@ func (p *para) zero() { *p = para{} }
 
 func (p *para) nameAt(t []byte) []byte { return t[p.from : p.from+uint16(p.nameSize)] }
 func (p *para) valueAt(t []byte) []byte {
-	return t[p.from : p.from+uint16(p.nameSize)+uint16(p.gapSize)]
+	return t[p.from+uint16(p.nameSize)+uint16(p.gapSize) : p.edge]
 }
 func (p *para) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.from:p.from+uint16(p.nameSize)]) == x

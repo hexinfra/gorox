@@ -751,7 +751,6 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 
 		// field-name = token
 		// token = 1*tchar
-		header.hash, header.flags = 0, 0 // reset for next header
 
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
@@ -775,7 +774,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
 			return false
@@ -790,6 +789,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
+		header.valueOff = uint16(r.pFore - r.pBack)
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -823,10 +823,9 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
-			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
-			header.value.zero()
 		}
+		header.edge = fore
 
 		// Header is received in general algorithm. Now add and check it
 		if !r.addHeader(header) || !r.checkHeader(header) {
@@ -839,6 +838,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			return false
 		}
 		// r.pFore is now at the next header or end of headers.
+		header.hash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
@@ -868,11 +868,11 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 func (r *fcgiResponse) checkHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+		header.setSingleton()
 		if h.check != nil && !h.check(r, header, len(r.headers)-1) {
 			// r.headResult is set.
 			return false
 		}
-		header.setSingleton()
 	} else { // all other headers are treated as multiple headers
 		from := len(r.headers) + 1 // excluding main header
 		if !r._addSubHeaders(header) {

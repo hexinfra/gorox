@@ -12,21 +12,11 @@ import (
 	"testing"
 )
 
-func TestHTTPRequestMultipleHeaders(t *testing.T) {
-	headers := bytes.Split(httpRequestMultipleHeaderNames, []byte(" "))
-	for _, header := range headers {
-		hash := bytesHash(header)
-		h := httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(hash)]
-		if h.hash != hash {
-			t.Error("hash invalid")
-		}
-		if !bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], header) {
-			t.Error("from edge invalid")
-		}
-	}
-}
 func TestHTTPRequestCriticalHeaders(t *testing.T) {
 	headers := bytes.Split(httpRequestCriticalHeaderNames, []byte(" "))
+	if len(headers) != len(httpRequestCriticalHeaderTable) {
+		t.Error("size mismatch")
+	}
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(hash)]
@@ -38,8 +28,27 @@ func TestHTTPRequestCriticalHeaders(t *testing.T) {
 		}
 	}
 }
+func TestHTTPRequestMultipleHeaders(t *testing.T) {
+	headers := bytes.Split(httpRequestMultipleHeaderNames, []byte(" "))
+	if len(headers) != len(httpRequestMultipleHeaderTable) {
+		t.Error("size mismatch")
+	}
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}
 func TestHTTPResponseCrucialHeaders(t *testing.T) {
 	headers := bytes.Split(httpResponseCrucialHeaderNames, []byte(" "))
+	if len(headers) != len(httpResponseCrucialHeaderTable) {
+		t.Error("size mismatch")
+	}
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]

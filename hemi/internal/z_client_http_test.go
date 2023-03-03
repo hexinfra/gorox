@@ -14,6 +14,9 @@ import (
 
 func TestHRequestCrucialHeaders(t *testing.T) {
 	headers := bytes.Split(hRequestCrucialHeaderNames, []byte(" "))
+	if len(headers) != len(hRequestCrucialHeaderTable) {
+		t.Error("size mismatch")
+	}
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
@@ -25,21 +28,11 @@ func TestHRequestCrucialHeaders(t *testing.T) {
 		}
 	}
 }
-func TestHResponseMultipleHeaders(t *testing.T) {
-	headers := bytes.Split(hResponseMultipleHeaderNames, []byte(" "))
-	for _, header := range headers {
-		hash := bytesHash(header)
-		h := hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(hash)]
-		if h.hash != hash {
-			t.Error("hash invalid")
-		}
-		if !bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], header) {
-			t.Error("from edge invalid")
-		}
-	}
-}
 func TestHResponseCriticalHeaders(t *testing.T) {
 	headers := bytes.Split(hResponseCriticalHeaderNames, []byte(" "))
+	if len(headers) != len(hResponseCriticalHeaderTable) {
+		t.Error("size mismatch")
+	}
 	for _, header := range headers {
 		hash := bytesHash(header)
 		h := hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(hash)]
@@ -47,6 +40,22 @@ func TestHResponseCriticalHeaders(t *testing.T) {
 			t.Error("hash invalid")
 		}
 		if !bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], header) {
+			t.Error("from edge invalid")
+		}
+	}
+}
+func TestHResponseMultipleHeaders(t *testing.T) {
+	headers := bytes.Split(hResponseMultipleHeaderNames, []byte(" "))
+	if len(headers) != len(hResponseMultipleHeaderTable) {
+		t.Error("size mismatch")
+	}
+	for _, header := range headers {
+		hash := bytesHash(header)
+		h := hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(hash)]
+		if h.hash != hash {
+			t.Error("hash invalid")
+		}
+		if !bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], header) {
 			t.Error("from edge invalid")
 		}
 	}

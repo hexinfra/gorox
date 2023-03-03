@@ -306,7 +306,7 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 		c.usedStreams.Add(1)
 		stream = getHTTP2Stream(c, streamID, c.clientSettings.initialWindowSize)
 		req = &stream.request
-		if !c._decodeFields(inFrame.effective(), req.appendHeaders) {
+		if !c._decodeFields(inFrame.effective(), req.joinHeaders) {
 			putHTTP2Stream(stream)
 			return http2ErrorCompression
 		}
@@ -331,7 +331,7 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 		}
 		req = &stream.request
 		req.receiving = httpSectionTrailers
-		if !c._decodeFields(inFrame.effective(), req.appendTrailers) {
+		if !c._decodeFields(inFrame.effective(), req.joinTrailers) {
 			return http2ErrorCompression
 		}
 	}
@@ -926,7 +926,7 @@ type http2Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *http2Request) appendHeaders(p []byte) bool {
+func (r *http2Request) joinHeaders(p []byte) bool {
 	if len(p) > 0 {
 		if !r._growHeaders2(int32(len(p))) {
 			return false
@@ -940,7 +940,7 @@ func (r *http2Request) readContent() (p []byte, err error) {
 	return r.readContent2()
 }
 
-func (r *http2Request) appendTrailers(p []byte) bool {
+func (r *http2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false
 }

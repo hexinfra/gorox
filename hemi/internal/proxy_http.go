@@ -42,6 +42,7 @@ type httpProxy_ struct {
 	// States
 	hostname            []byte      // ...
 	colonPort           []byte      // ...
+	viaName             []byte      // ...
 	bufferClientContent bool        // buffer client content into TempFile?
 	bufferServerContent bool        // buffer server content into TempFile?
 	addRequestHeaders   [][2][]byte // headers appended to client request
@@ -77,6 +78,8 @@ func (h *httpProxy_) onConfigure(shell Component) {
 	h.ConfigureBytes("hostname", &h.hostname, nil, nil)
 	// colonPort
 	h.ConfigureBytes("colonPort", &h.colonPort, nil, nil)
+	// viaName
+	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox)
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

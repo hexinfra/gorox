@@ -1294,6 +1294,10 @@ func (r *httpOut_) onEnd() { // for zeros
 
 func (r *httpOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 
+func (r *httpOut_) AddContentType(contentType string) bool {
+	return r.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+}
+
 func (r *httpOut_) Header(name string) (value string, ok bool) {
 	v, ok := r.shell.header(risky.ConstBytes(name))
 	return string(v), ok
@@ -1417,24 +1421,24 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	return false
 }
 
-func (r *httpOut_) _addContentType(contentType []byte) (ok bool) {
-	return r._addSingleton(&r.oContentType, bytesContentType, contentType)
+func (r *httpOut_) appendContentType(contentType []byte) (ok bool) {
+	return r._appendSingleton(&r.oContentType, bytesContentType, contentType)
 }
-func (r *httpOut_) _addDate(date []byte) (ok bool) {
-	return r._addSingleton(&r.oDate, bytesDate, date)
+func (r *httpOut_) appendDate(date []byte) (ok bool) {
+	return r._appendSingleton(&r.oDate, bytesDate, date)
 }
 
-func (r *httpOut_) _delContentType() (deleted bool) { return r._delSingleton(&r.oContentType) }
-func (r *httpOut_) _delDate() (deleted bool)        { return r._delSingleton(&r.oDate) }
+func (r *httpOut_) deleteContentType() (deleted bool) { return r._deleteSingleton(&r.oContentType) }
+func (r *httpOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.oDate) }
 
-func (r *httpOut_) _addSingleton(pIndex *uint8, name []byte, value []byte) bool {
+func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
 	if *pIndex > 0 || !r.shell.addHeader(name, value) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
-func (r *httpOut_) _delSingleton(pIndex *uint8) bool {
+func (r *httpOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
 	}
@@ -2089,6 +2093,7 @@ var ( // misc http strings & byteses.
 	bytesHTMLUTF8       = []byte("text/html; charset=utf-8")
 	bytesTrailers       = []byte("trailers")
 	bytesWebSocket      = []byte("websocket")
+	bytesGorox          = []byte("gorox")
 	// HTTP/2 and HTTP/3 byteses, TODO
 	bytesSchemeHTTP           = []byte(":scheme http")
 	bytesSchemeHTTPS          = []byte(":scheme https")

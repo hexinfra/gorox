@@ -1370,7 +1370,6 @@ var ( // request param names
 var ( // request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
-	fcgiBytesGorox  = []byte("gorox")
 )
 
 const ( // response record types

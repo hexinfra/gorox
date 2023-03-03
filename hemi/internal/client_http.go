@@ -277,7 +277,7 @@ func (r *hRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte, viaName []byte) bool { // used by proxies
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -328,7 +328,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte) boo
 		return false
 	}
 	// TODO: An HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message and MAY send a Via header field in forwarded response messages.
-	// r.addHeader(via)
+	// r.addHeader(viaName)
 
 	// copy remaining headers from req
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -351,15 +351,15 @@ var ( // perfect hash table for request crucial headers
 	}{
 		0:  {hashContentLength, 11, 25, nil, nil}, // forbidden
 		1:  {hashConnection, 0, 10, nil, nil},     // forbidden
-		2:  {hashIfRange, 74, 82, (*hRequest_)._addIfRange, (*hRequest_)._delIfRange},
+		2:  {hashIfRange, 74, 82, (*hRequest_).appendIfRange, (*hRequest_).deleteIfRange},
 		3:  {hashUpgrade, 121, 128, nil, nil}, // forbidden
-		4:  {hashIfModifiedSince, 56, 73, (*hRequest_)._addIfModifiedSince, (*hRequest_)._delIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, 83, 102, (*hRequest_)._addIfUnmodifiedSince, (*hRequest_)._delIfUnmodifiedSince},
-		6:  {hashHost, 51, 55, (*hRequest_)._addHost, (*hRequest_)._delHost},
+		4:  {hashIfModifiedSince, 56, 73, (*hRequest_).appendIfModifiedSince, (*hRequest_).deleteIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, 83, 102, (*hRequest_).appendIfUnmodifiedSince, (*hRequest_).deleteIfUnmodifiedSince},
+		6:  {hashHost, 51, 55, (*hRequest_).appendHost, (*hRequest_).deleteHost},
 		7:  {hashTransferEncoding, 103, 120, nil, nil}, // forbidden
-		8:  {hashContentType, 26, 38, (*hRequest_)._addContentType, (*hRequest_)._delContentType},
+		8:  {hashContentType, 26, 38, (*hRequest_).appendContentType, (*hRequest_).deleteContentType},
 		9:  {hashCookie, 39, 45, nil, nil}, // forbidden
-		10: {hashDate, 46, 50, (*hRequest_)._addDate, (*hRequest_)._delDate},
+		10: {hashDate, 46, 50, (*hRequest_).appendDate, (*hRequest_).deleteDate},
 		11: {hashVia, 129, 132, nil, nil}, // forbidden
 	}
 	hRequestCrucialHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
@@ -375,16 +375,16 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *hRequest_) _addHost(host []byte) (ok bool) {
-	return r._addSingleton(&r.indexes.host, bytesHost, host)
+func (r *hRequest_) appendHost(host []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.host, bytesHost, host)
 }
-func (r *hRequest_) _addIfModifiedSince(since []byte) (ok bool) {
+func (r *hRequest_) appendIfModifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
-func (r *hRequest_) _addIfRange(ifRange []byte) (ok bool) {
-	return r._addSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
+func (r *hRequest_) appendIfRange(ifRange []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
-func (r *hRequest_) _addIfUnmodifiedSince(since []byte) (ok bool) {
+func (r *hRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
 
@@ -398,16 +398,16 @@ func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-func (r *hRequest_) _delHost() (deleted bool) {
-	return r._delSingleton(&r.indexes.host)
+func (r *hRequest_) deleteHost() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.host)
 }
-func (r *hRequest_) _delIfModifiedSince() (deleted bool) {
+func (r *hRequest_) deleteIfModifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
-func (r *hRequest_) _delIfRange() (deleted bool) {
-	return r._delSingleton(&r.indexes.ifRange)
+func (r *hRequest_) deleteIfRange() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.ifRange)
 }
-func (r *hRequest_) _delIfUnmodifiedSince() (deleted bool) {
+func (r *hRequest_) deleteIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 

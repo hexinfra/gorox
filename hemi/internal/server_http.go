@@ -2557,6 +2557,7 @@ type Response interface {
 	MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with `""`
 	SetExpires(expires int64) bool
 	SetLastModified(lastModified int64) bool
+	AddContentType(contentType string) bool
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
@@ -2886,13 +2887,13 @@ var ( // perfect hash table for response crucial headers
 		0: {hashServer, 66, 72, nil, nil},    // forbidden
 		1: {hashSetCookie, 73, 83, nil, nil}, // forbidden
 		2: {hashUpgrade, 102, 109, nil, nil}, // forbidden
-		3: {hashDate, 39, 43, (*httpResponse_)._addDate, (*httpResponse_)._delDate},
+		3: {hashDate, 39, 43, (*httpResponse_).appendDate, (*httpResponse_).deleteDate},
 		4: {hashTransferEncoding, 84, 101, nil, nil}, // forbidden
 		5: {hashConnection, 0, 10, nil, nil},         // forbidden
-		6: {hashLastModified, 52, 65, (*httpResponse_)._addLastModified, (*httpResponse_)._delLastModified},
-		7: {hashExpires, 44, 51, (*httpResponse_)._addExpires, (*httpResponse_)._delExpires},
+		6: {hashLastModified, 52, 65, (*httpResponse_).appendLastModified, (*httpResponse_).deleteLastModified},
+		7: {hashExpires, 44, 51, (*httpResponse_).appendExpires, (*httpResponse_).deleteExpires},
 		8: {hashContentLength, 11, 25, nil, nil}, // forbidden
-		9: {hashContentType, 26, 38, (*httpResponse_)._addContentType, (*httpResponse_)._delContentType},
+		9: {hashContentType, 26, 38, (*httpResponse_).appendContentType, (*httpResponse_).deleteContentType},
 	}
 	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
@@ -2907,10 +2908,10 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *httpResponse_) _addExpires(expires []byte) (ok bool) {
+func (r *httpResponse_) appendExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
 }
-func (r *httpResponse_) _addLastModified(lastModified []byte) (ok bool) {
+func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
@@ -2924,10 +2925,10 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-func (r *httpResponse_) _delExpires() (deleted bool) {
+func (r *httpResponse_) deleteExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
 }
-func (r *httpResponse_) _delLastModified() (deleted bool) {
+func (r *httpResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 

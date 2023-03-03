@@ -236,7 +236,7 @@ func (n *node_) markDown()    { n.down.Store(true) }
 func (n *node_) markUp()      { n.down.Store(false) }
 func (n *node_) isDown() bool { return n.down.Load() }
 
-func (n *node_) takeConn() conn {
+func (n *node_) pullConn() conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()

@@ -171,7 +171,7 @@ func (n *udpsNode) dial() (*UConn, error) {
 	return nil, nil
 }
 func (n *udpsNode) fetchConn() (*UConn, error) {
-	conn := n.takeConn()
+	conn := n.pullConn()
 	if conn != nil {
 		uConn := conn.(*UConn)
 		if uConn.isAlive() {

@@ -42,20 +42,20 @@ type pair struct { // 20 bytes
 	flags    uint8  // see field flags
 	nameSize uint8  // name ends at from+nameSize. <= 255
 	valueOff uint16 // value begins from from+valueOff
-	backSize uint16 // value data without quote and paras
+	dataBack uint16 // value data without quote and paras
 	paras    zone   // refers to a zone of paras
 	edge     int32  // value ends at
 }
 
 // If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
 //
-//  [   name   ]   [     data    ][--------backSize--------]
+//  [   name   ]   [     data    ][--------dataBack--------]
 // +--------------------------------------------------------+
 // |example-type: "text/javascript"; charset="utf-8";lang=en|
 // +--------------------------------------------------------+
 //  ^           ^ ^^              ^[         paras         ]^
 //  |           | ||              |                         |
-//  from        | ||              edge-backSize          edge
+//  from        | ||              edge-dataBack          edge
 //  from+nameSize ||
 //    from+valueOff|
 //                 from+valueOff+(flags&flagQuoted)
@@ -75,7 +75,15 @@ func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff)
 func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
 func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
 func (p *pair) dataAt(t []byte) []byte {
-	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.backSize)]
+	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.dataBack)]
+}
+func (p *pair) paraAt(t []byte, name []byte) []byte {
+	if !p.paras.isEmpty() {
+		for i := p.paras.from; i < p.paras.edge; i++ {
+			// TODO
+		}
+	}
+	return nil
 }
 
 const ( // pair kinds
@@ -141,24 +149,19 @@ func putParas(paras []para) {
 }
 
 // para
-type para struct { // 6 bytes
-	nameSize uint8  // <= 255
-	gapSize  uint8  // 1(`=` in `a=bb`), 2(`="` in `a="bb"`)
-	from     uint16 // like: a
-	edge     uint16 // like: bb
+type para struct { // 8 bytes
+	name, value span
 }
 
 func (p *para) zero() { *p = para{} }
 
-func (p *para) nameAt(t []byte) []byte { return t[p.from : p.from+uint16(p.nameSize)] }
-func (p *para) valueAt(t []byte) []byte {
-	return t[p.from+uint16(p.nameSize)+uint16(p.gapSize) : p.edge]
-}
+func (p *para) nameAt(t []byte) []byte  { return t[p.name.from:p.name.edge] }
+func (p *para) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 func (p *para) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.from:p.from+uint16(p.nameSize)]) == x
+	return p.name.size() == len(x) && string(t[p.name.from:p.name.edge]) == x
 }
 func (p *para) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+uint16(p.nameSize)], x)
+	return p.name.size() == len(x) && bytes.Equal(t[p.name.from:p.name.edge], x)
 }
 
 // TempFile is used to temporarily save request/response content in local file system.
@@ -358,62 +361,6 @@ func (c *Chain) PushTail(block *Block) {
 		c.tail = block
 	}
 	c.size++
-}
-
-// zone
-type zone struct { // 2 bytes
-	from, edge uint8 // edge is ensured to be <= 255
-}
-
-func (z *zone) zero() { *z = zone{} }
-
-func (z *zone) size() int      { return int(z.edge - z.from) }
-func (z *zone) isEmpty() bool  { return z.from == z.edge }
-func (z *zone) notEmpty() bool { return z.from != z.edge }
-
-// span
-type span struct { // 4 bytes
-	from, edge uint16 // edge is ensured to be <= 65535
-}
-
-func (s *span) zero() { *s = span{} }
-
-func (s *span) size() int      { return int(s.edge - s.from) }
-func (s *span) isEmpty() bool  { return s.from == s.edge }
-func (s *span) notEmpty() bool { return s.from != s.edge }
-
-func (s *span) set(from uint16, edge uint16) { s.from, s.edge = from, edge }
-func (s *span) set32(from int32, edge int32) { s.from, s.edge = uint16(from), uint16(edge) }
-
-// text
-type text struct { // 8 bytes
-	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
-}
-
-func (t *text) zero() { *t = text{} }
-
-func (t *text) size() int      { return int(t.edge - t.from) }
-func (t *text) isEmpty() bool  { return t.from == t.edge }
-func (t *text) notEmpty() bool { return t.from != t.edge }
-
-func (t *text) set(from int32, edge int32) {
-	t.from, t.edge = from, edge
-}
-func (t *text) sub(delta int32) {
-	if t.from >= delta {
-		t.from -= delta
-		t.edge -= delta
-	}
-}
-
-// rang defines a range.
-type rang struct { // 16 bytes
-	from, last int64 // [from, last]
-}
-
-// nava is a name-value parameter.
-type nava struct { // 16 bytes
-	name, value text
 }
 
 func makeTempName(p []byte, stageID int64, connID int64, stamp int64, counter int64) (from int, edge int) {

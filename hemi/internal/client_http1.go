@@ -143,7 +143,7 @@ func (n *http1Node) maintain(shut chan struct{}) { // goroutine
 }
 
 func (n *http1Node) fetchConn() (*H1Conn, error) {
-	conn := n.takeConn()
+	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
 		hConn := conn.(*H1Conn)
@@ -415,12 +415,12 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 	return false
 }
 func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header
-	size := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
+	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
-		size += len(name) + 1 + len(value) + 2 // `name=value; `
+		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
-	if from, _, ok := r.growHeader(size); ok {
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], bytesCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
@@ -592,7 +592,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	}
 	return true
 invalid:
-	r.headResult, r.headReason = StatusBadRequest, "invalid character in control"
+	r.headResult, r.failReason = StatusBadRequest, "invalid character in control"
 	return false
 }
 func (r *H1Response) cleanInput() {

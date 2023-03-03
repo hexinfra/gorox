@@ -68,7 +68,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 			if r.input[r.pFore] != '\n' {
-				r.headResult, r.headReason = StatusBadRequest, "bad end of headers"
+				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
 				return false
 			}
 			break
@@ -94,7 +94,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			} else if b == ':' {
 				break
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "header name contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
 				return false
 			}
 			header.hash += uint16(b)
@@ -105,7 +105,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
 			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
-			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
+			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
 		}
 		// Skip ':'
@@ -137,14 +137,14 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 					return false
 				}
 				if r.input[r.pFore] != '\n' {
-					r.headResult, r.headReason = StatusBadRequest, "header value contains bad eol"
+					r.headResult, r.failReason = StatusBadRequest, "header value contains bad eol"
 					return false
 				}
 				break
 			} else if b == '\n' {
 				break
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "header value contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header value contains bad character"
 				return false
 			}
 		}
@@ -567,8 +567,8 @@ func (r *http1Out_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
-	size := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
-	if from, _, ok := r.growHeader(size); ok {
+	headerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

@@ -564,7 +564,7 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool { // Server = p
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
 	if !r.parseSetCookie(header.valueText()) {
-		r.headResult, r.headReason = StatusBadRequest, "bad set-cookie"
+		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
 	if len(r.cookies) == cap(r.cookies) {
@@ -647,7 +647,7 @@ func (r *hResponse_) checkProxyAuthenticate(from uint8, edge uint8) bool { // Pr
 }
 func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
-		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
+		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
 	}
 	if r.status == StatusNotModified {
@@ -657,7 +657,7 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Tra
 }
 func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
 	// TODO: tcptun, udptun, socket?
-	r.headResult, r.headReason = StatusBadRequest, "upgrade is not supported in normal mode"
+	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false
 }
 func (r *hResponse_) checkVary(from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
@@ -707,7 +707,7 @@ func (r *hResponse_) checkHead() bool {
 	}
 
 	if r.status < StatusOK && r.contentSize != -1 {
-		r.headResult, r.headReason = StatusBadRequest, "content is not allowed in 1xx responses"
+		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
 	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()

@@ -423,8 +423,8 @@ type Request interface {
 	makeAbsPath()
 	addHeader(header *pair) bool
 	adoptHeader(header *pair) bool
-	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	delHopHeaders()
+	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
 	getRanges() []rang
 	unsetHost()
@@ -461,9 +461,9 @@ type httpRequest_ struct { // incoming. needs parsing
 }
 type httpRequest0_ struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
-	pathInfoGot     bool     // is r.pathInfo got?
-	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	targetForm      int8     // http request-target form. see httpTargetXXX
+	asteriskOptions bool     // OPTIONS *?
+	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
 	method          text     // raw method -> r.input
 	authority       text     // raw hostname[:port] -> r.input
@@ -472,18 +472,18 @@ type httpRequest0_ struct { // for fast reset, entirely
 	uri             text     // raw uri (raw path & raw query string) -> r.input
 	encodedPath     text     // raw path -> r.input
 	queryString     text     // raw query string (with '?') -> r.input
+	boundary        text     // boundary param of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	forms           zone     // decoded forms -> r.array
-	asteriskOptions bool     // OPTIONS *?
-	nRanges         int8     // num of ranges
-	boundary        text     // boundary param of "multipart/form-data" if exists -> r.input
-	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
-	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	ifMatches       zone     // the zone of if-match in r.primes
 	ifNoneMatches   zone     // the zone of if-none-match in r.primes
+	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
+	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
+	_               [2]byte  // padding
+	nRanges         int8     // num of ranges
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
+	pathInfoGot     bool     // is r.pathInfo got?
 	unixTimes       struct { // parsed unixTimes
 		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -506,6 +506,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
+	forms        zone      // decoded forms -> r.array
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
@@ -712,7 +713,7 @@ func (r *httpRequest_) addQuery(query *pair) bool { // to primes
 		r.queries.edge = edge
 		return true
 	}
-	r.headResult, r.headReason = StatusURITooLong, "too many queries"
+	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
 func (r *httpRequest_) HasQueries() bool {
@@ -823,11 +824,11 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // A
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
 	if header.isEmpty() {
-		r.headResult, r.headReason = StatusBadRequest, "empty cookie"
+		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
 	}
 	if index == 255 {
-		r.headResult, r.headReason = StatusBadRequest, "too many pairs"
+		r.headResult, r.failReason = StatusBadRequest, "too many pairs"
 		return false
 	}
 	// HTTP/2 and HTTP/3 allows multiple cookie headers, so we have to mark all the cookie headers.
@@ -843,7 +844,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = hos
 	// HTTP/1.1 request message that lacks a Host header field and to any request message that
 	// contains more than one Host header field or a Host header field with an invalid field-value.
 	if r.indexes.host != 0 {
-		r.headResult, r.headReason = StatusBadRequest, "duplicate host header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
 	value := header.valueText()
@@ -853,7 +854,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = hos
 		// all other components are compared in a case-sensitive manner.
 		bytesToLower(r.input[value.from:value.edge])
 		if !r.parseAuthority(value.from, value.edge, r.authority.isEmpty()) {
-			r.headResult, r.headReason = StatusBadRequest, "bad host value"
+			r.headResult, r.failReason = StatusBadRequest, "bad host value"
 			return false
 		}
 	}
@@ -865,7 +866,7 @@ func (r *httpRequest_) checkIfModifiedSince(header *pair, index uint8) bool { //
 }
 func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
-		r.headResult, r.headReason = StatusBadRequest, "duplicated if-range"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range"
 		return false
 	}
 	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
@@ -890,7 +891,7 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = r
 		return true
 	}
 	if r.nRanges > 0 {
-		r.headResult, r.headReason = StatusBadRequest, "duplicated range"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated range"
 		return false
 	}
 	// Range        = range-unit "=" range-set
@@ -901,12 +902,12 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = r
 	rangeSet := header.valueAt(r.input)
 	nPrefix := len(bytesBytesEqual) // bytes=
 	if !bytes.Equal(rangeSet[0:nPrefix], bytesBytesEqual) {
-		r.headResult, r.headReason = StatusBadRequest, "unsupported range unit"
+		r.headResult, r.failReason = StatusBadRequest, "unsupported range unit"
 		return false
 	}
 	rangeSet = rangeSet[nPrefix:]
 	if len(rangeSet) == 0 {
-		r.headResult, r.headReason = StatusBadRequest, "empty range-set"
+		r.headResult, r.failReason = StatusBadRequest, "empty range-set"
 		return false
 	}
 	var from, last int64 // inclusive
@@ -1005,7 +1006,7 @@ func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = r
 	}
 	return true
 badRange:
-	r.headResult, r.headReason = StatusBadRequest, "invalid range"
+	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
 func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
@@ -1013,13 +1014,13 @@ func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-
 		r.indexes.userAgent = index
 		return true
 	} else {
-		r.headResult, r.headReason = StatusBadRequest, "duplicated user-agent"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent"
 		return false
 	}
 }
 func (r *httpRequest_) _addRange(from int64, last int64) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
-		r.headResult, r.headReason = StatusBadRequest, "too many ranges"
+		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
 	}
 	r.ranges[r.nRanges] = rang{from, last}
@@ -1125,7 +1126,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 		if bytes.Equal(value, bytesTrailers) {
 			r.acceptTrailers = true
 		} else if r.versionCode > Version1_1 {
-			r.headResult, r.headReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
+			r.headResult, r.failReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
 			return false
 		}
 	}
@@ -1133,7 +1134,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 }
 func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode == Version2 || r.versionCode == Version3 {
-		r.headResult, r.headReason = StatusBadRequest, "upgrade is only supported in http/1.1"
+		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
 		return false
 	}
 	if r.methodCode == MethodCONNECT {
@@ -1177,17 +1178,17 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 		nMatch := *match // -1:*, 0:nonexist, >0:num
 		if len(value) == 1 && value[0] == '*' {
 			if nMatch != 0 {
-				r.headResult, r.headReason = StatusBadRequest, "mix using of * and entity-tag"
+				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
 				return false
 			}
 			*match = -1 // *
 		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
 			if nMatch == -1 { // *
-				r.headResult, r.headReason = StatusBadRequest, "mix using of entity-tag and *"
+				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
 				return false
 			}
 			if nMatch > 63 {
-				r.headResult, r.headReason = StatusBadRequest, "too many entity-tag"
+				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
 				return false
 			}
 			// *match is 0 by default
@@ -1293,14 +1294,14 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 					cookie.nameSize = uint8(nameSize)
 					cookie.valueOff = uint16(nameSize) + 1 // skip '='
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "cookie name out of range"
+					r.headResult, r.failReason = StatusBadRequest, "cookie name out of range"
 					return false
 				}
 				state = 1
 			} else if httpTchar[b] != 0 {
 				cookie.hash += uint16(b)
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie name"
+				r.headResult, r.failReason = StatusBadRequest, "invalid cookie name"
 				return false
 			}
 		case 1: // DQUOTE or not?
@@ -1319,7 +1320,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 				}
 				state = 5
 			} else if b < 0x21 || b == '"' || b == ',' || b == '\\' || b > 0x7e {
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie value"
+				r.headResult, r.failReason = StatusBadRequest, "invalid cookie value"
 				return false
 			}
 		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
@@ -1330,18 +1331,18 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 				}
 				state = 4
 			} else if b < 0x20 || b == ';' || b == '\\' || b > 0x7e { // ` ` and `,` are allowed here!
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie value"
+				r.headResult, r.failReason = StatusBadRequest, "invalid cookie value"
 				return false
 			}
 		case 4: // expecting ';'
 			if b != ';' {
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie separator"
+				r.headResult, r.failReason = StatusBadRequest, "invalid cookie separator"
 				return false
 			}
 			state = 5
 		case 5: // expecting SP
 			if b != ' ' {
-				r.headResult, r.headReason = StatusBadRequest, "invalid cookie SP"
+				r.headResult, r.failReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
 			cookie.hash = 0     // reset for next cookie
@@ -1359,7 +1360,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 			return false
 		}
 	} else {
-		r.headResult, r.headReason = StatusBadRequest, "invalid cookie string"
+		r.headResult, r.failReason = StatusBadRequest, "invalid cookie string"
 		return false
 	}
 	return true
@@ -1382,7 +1383,7 @@ func (r *httpRequest_) checkHead() bool {
 		if r.indexes.host == 0 {
 			// RFC 7230 (section 5.4):
 			// A client MUST send a Host header field in all HTTP/1.1 request messages.
-			r.headResult, r.headReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
+			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
 			return false
 		}
 		if r.keepAlive == -1 { // no connection header
@@ -1400,7 +1401,7 @@ func (r *httpRequest_) checkHead() bool {
 	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
 		// RFC 6455 (section 4.1):
 		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		r.headResult, r.headReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
+		r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
 		return false
 	}
 	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
@@ -1445,24 +1446,37 @@ func (r *httpRequest_) checkHead() bool {
 			r.indexes.ifRange = 0
 		}
 	}
+	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
+		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
+		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
+		for i := cookies.from; i < cookies.edge; i++ {
+			cookie := &r.primes[i]
+			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
+				continue
+			}
+			if !r.parseCookie(cookie.valueText()) {
+				return false
+			}
+		}
+	}
 	if r.contentSize == -1 { // no content
 		if r.expectContinue { // expect is used to send large content.
-			r.headResult, r.headReason = StatusBadRequest, "cannot use expect header without content"
+			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header without content"
 			return false
 		}
 		if r.methodCode&(MethodPOST|MethodPUT) != 0 {
-			r.headResult, r.headReason = StatusLengthRequired, "POST and PUT must contain a content"
+			r.headResult, r.failReason = StatusLengthRequired, "POST and PUT must contain a content"
 			return false
 		}
 	} else { // content exists (sized or unsized)
 		// Content is not allowed in some methods, according to RFC 7231.
 		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
-			r.headResult, r.headReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
+			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
 			return false
 		}
 		if r.nContentCodings > 0 { // have content-encoding
 			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
-				r.headResult, r.headReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
+				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
 				return false
 			}
 		}
@@ -1472,10 +1486,10 @@ func (r *httpRequest_) checkHead() bool {
 				// A client that generates an OPTIONS request containing a payload body
 				// MUST send a valid Content-Type header field describing the
 				// representation media type.
-				r.headResult, r.headReason = StatusBadRequest, "OPTIONS with content but without a content-type"
+				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
 				return false
 			}
-		} else {
+		} else { // content-type exists
 			var (
 				typeParams  text
 				contentType []byte
@@ -1496,7 +1510,7 @@ func (r *httpRequest_) checkHead() bool {
 					}
 				}
 				if typeParams.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
-					r.headResult, r.headReason = StatusBadRequest, "content-type can't be an empty value"
+					r.headResult, r.failReason = StatusBadRequest, "content-type can't be an empty value"
 					return false
 				}
 				contentType = r.input[vType.from:typeParams.edge]
@@ -1508,7 +1522,7 @@ func (r *httpRequest_) checkHead() bool {
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
 				paras := make([]nava, 1) // doesn't escape
 				if _, ok := r._parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
-					r.headResult, r.headReason = StatusBadRequest, "invalid multipart/form-data params"
+					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data params"
 					return false
 				}
 				para := &paras[0]
@@ -1519,25 +1533,12 @@ func (r *httpRequest_) checkHead() bool {
 					r.boundary = para.value
 					r.formKind = httpFormMultipart
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "bad boundary"
+					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
 					return false
 				}
 			}
 			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
-				r.headResult, r.headReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
-				return false
-			}
-		}
-	}
-	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
-		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
-		for i := cookies.from; i < cookies.edge; i++ {
-			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
-				continue
-			}
-			if !r.parseCookie(cookie.valueText()) {
+				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
 				return false
 			}
 		}

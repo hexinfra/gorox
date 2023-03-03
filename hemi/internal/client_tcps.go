@@ -204,7 +204,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	}
 }
 func (n *tcpsNode) fetchConn() (*TConn, error) {
-	conn := n.takeConn()
+	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
 		tConn := conn.(*TConn)

@@ -196,7 +196,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
-		req.headResult, req.headReason = StatusNotFound, "app is not found in this http server"
+		req.headResult, req.failReason = StatusNotFound, "app is not found in this http server"
 		s.serveAbnormal(req, resp)
 		return
 	}
@@ -324,10 +324,10 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	var content []byte
 	if errorPage, ok := httpErrorPages[status]; !ok {
 		content = http1Controls[status]
-	} else if req.headReason == "" {
+	} else if req.failReason == "" {
 		content = errorPage
 	} else {
-		content = risky.ConstBytes(req.headReason)
+		content = risky.ConstBytes(req.failReason)
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
@@ -432,12 +432,12 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		} else if b == ' ' {
 			break
 		} else {
-			r.headResult, r.headReason = StatusBadRequest, "invalid character in method"
+			r.headResult, r.failReason = StatusBadRequest, "invalid character in method"
 			return false
 		}
 	}
 	if r.pBack == r.pFore {
-		r.headResult, r.headReason = StatusBadRequest, "empty method"
+		r.headResult, r.failReason = StatusBadRequest, "empty method"
 		return false
 	}
 	r.gotInput = true
@@ -473,7 +473,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				} else if b == ':' {
 					break
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "bad scheme"
+					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
 					return false
 				}
 				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
@@ -485,7 +485,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			} else if bytes.Equal(scheme, bytesHTTPS) {
 				r.schemeCode = SchemeHTTPS
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "unknown scheme"
+				r.headResult, r.failReason = StatusBadRequest, "unknown scheme"
 				return false
 			}
 			// Skip ':'
@@ -493,7 +493,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			if r.input[r.pFore] != '/' {
-				r.headResult, r.headReason = StatusBadRequest, "bad first slash"
+				r.headResult, r.failReason = StatusBadRequest, "bad first slash"
 				return false
 			}
 			// Skip '/'
@@ -501,7 +501,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			if r.input[r.pFore] != '/' {
-				r.headResult, r.headReason = StatusBadRequest, "bad second slash"
+				r.headResult, r.failReason = StatusBadRequest, "bad second slash"
 				return false
 			}
 			// Skip '/'
@@ -522,11 +522,11 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				}
 			}
 			if r.pBack == r.pFore {
-				r.headResult, r.headReason = StatusBadRequest, "empty authority is not allowed"
+				r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 				return false
 			}
 			if !r.parseAuthority(r.pBack, r.pFore, true) {
-				r.headResult, r.headReason = StatusBadRequest, "bad authority"
+				r.headResult, r.failReason = StatusBadRequest, "bad authority"
 				return false
 			}
 			if b == ' ' { // ends of request-target
@@ -589,7 +589,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					qsOff = r.pFore - r.pBack
 					state = 2
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "invalid path"
+					r.headResult, r.failReason = StatusBadRequest, "invalid path"
 					return false
 				}
 			case 2: // in query string and expecting '=' to get a name
@@ -598,7 +598,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 						query.nameSize = uint8(nameSize)
 						query.valueOff = uint16(nameSize) // no gap
 					} else {
-						r.headResult, r.headReason = StatusBadRequest, "query name too long"
+						r.headResult, r.failReason = StatusBadRequest, "query name too long"
 						return false
 					}
 					state = 3
@@ -611,7 +611,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				} else if b == '%' {
 					state = 0x2f // '2' means from state 2
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "invalid query name"
+					r.headResult, r.failReason = StatusBadRequest, "invalid query name"
 					return false
 				}
 			case 3: // in query string and expecting '&' to get a value
@@ -631,13 +631,13 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				} else if b == '%' {
 					state = 0x3f // '3' means from state 3
 				} else {
-					r.headResult, r.headReason = StatusBadRequest, "invalid query value"
+					r.headResult, r.failReason = StatusBadRequest, "invalid query value"
 					return false
 				}
 			default: // in query string and expecting HEXDIG
 				half, ok := byteFromHex(b)
 				if !ok {
-					r.headResult, r.headReason = StatusBadRequest, "invalid pct encoding"
+					r.headResult, r.failReason = StatusBadRequest, "invalid pct encoding"
 					return false
 				}
 				if state&0xf == 0xf { // Expecting the first HEXDIG
@@ -648,7 +648,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					if state == 0x20 { // in name
 						query.hash += uint16(octet)
 					} else if state == 0x10 && octet == 0x00 { // For security reasons, we reject "\x00" in path.
-						r.headResult, r.headReason = StatusBadRequest, "malformed path"
+						r.headResult, r.failReason = StatusBadRequest, "malformed path"
 						return false
 					}
 					r.arrayPush(octet)
@@ -671,7 +671,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 		} else { // incomplete pct-encoded
-			r.headResult, r.headReason = StatusBadRequest, "incomplete pct-encoded"
+			r.headResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
 			return false
 		}
 
@@ -688,7 +688,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		// The asterisk-form of request-target is only used for a server-wide
 		// OPTIONS request (Section 4.3.7 of [RFC7231]).
 		if r.methodCode != MethodOPTIONS {
-			r.headResult, r.headReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
+			r.headResult, r.failReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
 			return false
 		}
 		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
@@ -698,7 +698,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		r.asteriskOptions = true
 		// Expect SP
 		if r.input[r.pFore] != ' ' {
-			r.headResult, r.headReason = StatusBadRequest, "malformed asterisk-form"
+			r.headResult, r.failReason = StatusBadRequest, "malformed asterisk-form"
 			return false
 		}
 		// RFC 7230 (section 5.5):
@@ -728,11 +728,11 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			}
 		}
 		if r.pBack == r.pFore {
-			r.headResult, r.headReason = StatusBadRequest, "empty authority is not allowed"
+			r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 			return false
 		}
 		if !r.parseAuthority(r.pBack, r.pFore, true) {
-			r.headResult, r.headReason = StatusBadRequest, "invalid authority"
+			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
 			return false
 		}
 		// RFC 7230 (section 5.5):
@@ -778,7 +778,7 @@ beforeVersion: // r.pFore is at ' '.
 		}
 	}
 	if r.input[r.pFore] != '\n' {
-		r.headResult, r.headReason = StatusBadRequest, "bad eol of start line"
+		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
 		return false
 	}
 	r.receiving = httpSectionHeaders
@@ -862,14 +862,14 @@ func (r *http1Response) addedHeaders() []byte                       { return r.f
 func (r *http1Response) fixedHeaders() []byte                       { return http1BytesFixedResponseHeaders }
 
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
-	size := len(http1BytesLocationHTTPS)
+	headerSize := len(http1BytesLocationHTTPS)
 	if authority == "" {
-		size += len(r.request.UnsafeAuthority())
+		headerSize += len(r.request.UnsafeAuthority())
 	} else {
-		size += len(authority)
+		headerSize += len(authority)
 	}
-	size += len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(size); ok {
+	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], http1BytesLocationHTTPS)
 		if authority == "" {
 			from += copy(r.fields[from:], r.request.UnsafeAuthority())
@@ -890,11 +890,11 @@ func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 	} else {
 		prefix = http1BytesLocationHTTP
 	}
-	size := len(prefix)
+	headerSize := len(prefix)
 	// TODO: remove colonPort if colonPort is default?
 	colonPort := r.request.UnsafeColonPort()
-	size += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(size); ok {
+	headerSize += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
 		from += copy(r.fields[from:], colonPort)
@@ -913,9 +913,9 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		prefix = http1BytesLocationHTTP
 	}
 	req := r.request
-	size := len(prefix)
-	size += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
-	if from, _, ok := r.growHeader(size); ok {
+	headerSize := len(prefix)
+	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], req.UnsafeAuthority())
 		from += copy(r.fields[from:], req.UnsafeEncodedPath())
@@ -938,8 +938,8 @@ func (r *http1Response) SetCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
 		return false
 	}
-	size := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
-	if from, _, ok := r.growHeader(size); ok {
+	headerSize := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
+	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], bytesSetCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

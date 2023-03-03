@@ -582,8 +582,9 @@ type fcgiResponse struct { // incoming. needs parsing
 	headers     []pair        // fcgi response headers
 	recvTimeout time.Duration // timeout to recv the whole response content
 	headResult  int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult  int16         // result of receiving response body. values are same as http status for convenience
 	// States (zeros)
-	headReason    string    // the reason of head result
+	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
 	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.receivedSize]
@@ -622,6 +623,7 @@ func (r *fcgiResponse) onUse() {
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
 	r.recvTimeout = r.stream.agent.recvTimeout
 	r.headResult = StatusOK
+	r.bodyResult = StatusOK
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
@@ -641,7 +643,7 @@ func (r *fcgiResponse) onEnd() {
 		r.headers = nil
 	}
 
-	r.headReason = ""
+	r.failReason = ""
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
@@ -741,7 +743,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 			if r.input[r.pFore] != '\n' {
-				r.headResult, r.headReason = StatusBadRequest, "bad end of headers"
+				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
 				return false
 			}
 			break
@@ -765,7 +767,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			} else if b == ':' {
 				break
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "header name contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
 				return false
 			}
 			header.hash += uint16(b)
@@ -776,7 +778,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
 			header.from, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
-			r.headResult, r.headReason = StatusBadRequest, "header name out of range"
+			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
 		}
 		// Skip ':'
@@ -803,14 +805,14 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 					return false
 				}
 				if r.input[r.pFore] != '\n' {
-					r.headResult, r.headReason = StatusBadRequest, "header value contains bad eol"
+					r.headResult, r.failReason = StatusBadRequest, "header value contains bad eol"
 					return false
 				}
 				break
 			} else if b == '\n' {
 				break
 			} else {
-				r.headResult, r.headReason = StatusBadRequest, "header value contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header value contains bad character"
 				return false
 			}
 		}
@@ -920,7 +922,7 @@ func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
 		r.status = int16(status)
 		return true
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad status"
+	r.headResult, r.failReason = StatusBadRequest, "bad status"
 	return false
 }
 func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
@@ -987,7 +989,7 @@ func (r *fcgiResponse) _addSubHeaders(header *pair) bool {
 				break
 			}
 			if needComma && !haveComma {
-				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+				r.headResult, r.failReason = StatusBadRequest, "comma needed in multi-value header"
 				return false
 			}
 			value.edge = value.from

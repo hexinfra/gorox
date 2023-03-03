@@ -54,7 +54,7 @@ type stream interface {
 // stream is the mixin for httpStream_ and hStream_.
 type stream_ struct {
 	// Stream states (buffers)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	region Region // a region-based memory pool
@@ -89,14 +89,14 @@ type httpIn interface {
 }
 
 // httpIn_ is a mixin for httpRequest_ and hResponse_.
-type httpIn_ struct {
+type httpIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
-	stockPrimes [64]pair   // for r.primes
+	stockPrimes [72]pair   // for r.primes
 	stockExtras [4]pair    // for r.extras
 	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
@@ -109,15 +109,17 @@ type httpIn_ struct {
 	array       []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/max]
 	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/max]
-	paras       []para        // ...
+	paras       []para        // hold field parameters. [<r.stockParas>/max]
 	recvTimeout time.Duration // timeout to recv the whole message content
-	contentSize int64         // info of content. >=0: content size, -1: no content, -2: unsized content
+	contentSize int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
 	versionCode uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse  bool          // treat the incoming message as response?
 	keepAlive   int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_           byte          // padding
 	headResult  int16         // result of receiving message head. values are same as http status for convenience
+	bodyResult  int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
-	headReason  string    // the reason of head result
+	failReason  string    // the reason of headResult or bodyResult
 	inputNext   int32     // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge   int32     // edge position of current message head is at r.input[r.inputEdge]
 	bodyWindow  []byte    // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
@@ -137,7 +139,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	headers          zone    // raw headers ->r.input
 	options          zone    // connection options ->r.input. may be not continuous
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
-	nAcceptCodings   int8    // num of accept-encoding flags
+	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
 	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
@@ -180,6 +182,7 @@ func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
 	r.headResult = StatusOK
+	r.bodyResult = StatusOK
 }
 func (r *httpIn_) onEnd() { // for zeros
 	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, so responses are not pipelined.
@@ -207,7 +210,7 @@ func (r *httpIn_) onEnd() { // for zeros
 		r.paras = nil
 	}
 
-	r.headReason = ""
+	r.failReason = ""
 
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked mode
@@ -286,7 +289,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	// recipient MUST treat it as an unrecoverable error.  If this is a
 	// request message, the server MUST respond with a 400 (Bad Request)
 	// status code and then close the connection.
-	r.headResult, r.headReason = StatusBadRequest, "bad content-length"
+	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
@@ -295,7 +298,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Cont
 		r.iContentLocation = index
 		return true
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-location"
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
 	return false
 }
 func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
@@ -304,7 +307,7 @@ func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content
 		r.iContentRange = index
 		return true
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-range"
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
 	return false
 }
 func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-Type = media-type
@@ -316,7 +319,7 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-
 		r.iContentType = index
 		return true
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad or too many content-type"
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
 func (r *httpIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
@@ -330,7 +333,7 @@ func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTim
 			return true
 		}
 	}
-	r.headResult, r.headReason = StatusBadRequest, "bad http-date"
+	r.headResult, r.failReason = StatusBadRequest, "bad http-date"
 	return false
 }
 
@@ -367,7 +370,7 @@ func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool { // Accept-E
 }
 func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection = #connection-option
 	if r.versionCode >= Version2 {
-		r.headResult, r.headReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
+		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
 	if r.options.isEmpty() {
@@ -394,7 +397,7 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nContentCodings == int8(cap(r.contentCodings)) {
-			r.headResult, r.headReason = StatusBadRequest, "too many content codings applied to content"
+			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
 		value := r.primes[i].valueAt(r.input)
@@ -415,7 +418,7 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 			// coding that is not acceptable.
 
 			// TODO: but we can be proxies too...
-			r.headResult, r.headReason = StatusUnsupportedMediaType, "currently only gzip, deflate, compress, and br are supported"
+			r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip, deflate, compress, and br are supported"
 			return false
 		}
 		r.contentCodings[r.nContentCodings] = coding
@@ -434,7 +437,7 @@ func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #fiel
 }
 func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.versionCode != Version1_1 {
-		r.headResult, r.headReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
+		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
@@ -447,7 +450,7 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 			// RFC 7230 (section 3.3.1):
 			// A server that receives a request message with a transfer coding it
 			// does not understand SHOULD respond with 501 (Not Implemented).
-			r.headResult, r.headReason = StatusNotImplemented, "unknown transfer coding"
+			r.headResult, r.failReason = StatusNotImplemented, "unknown transfer coding"
 			return false
 		}
 	}
@@ -465,9 +468,7 @@ func (r *httpIn_) UnsafeContentLength() []byte {
 	}
 	return r.primes[r.iContentLength].valueAt(r.input)
 }
-func (r *httpIn_) ContentType() string {
-	return string(r.UnsafeContentType())
-}
+func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
 func (r *httpIn_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
@@ -480,7 +481,7 @@ func (r *httpIn_) addHeader(header *pair) bool { // to primes
 		r.headers.edge = edge
 		return true
 	}
-	r.headResult, r.headReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
 func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
@@ -549,7 +550,7 @@ func (r *httpIn_) determineContentMode() bool {
 			// (Section 9.4) and ought to be handled as an error.  A sender MUST
 			// remove the received Content-Length field prior to forwarding such
 			// a message downstream.
-			r.headResult, r.headReason = StatusBadRequest, "transfer-encoding conflits with content-length"
+			r.headResult, r.failReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
 		r.contentSize = -2 // unsized
@@ -699,10 +700,10 @@ badRead:
 func (r *httpIn_) addTrailer(trailer *pair) bool { // to primes
 	if edge, ok := r.addPrime(trailer); ok {
 		r.trailers.edge = edge
-	} else {
-		// Ignore too many trailers
+		return true
 	}
-	return true
+	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
+	return false
 }
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
@@ -1080,10 +1081,13 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 			break
 		}
 		if needComma && !haveComma {
+			Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
 			if field.kind == kindHeader {
-				Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
-				r.headResult, r.headReason = StatusBadRequest, "comma needed in multi-value header"
+				r.headResult = StatusBadRequest
+			} else {
+				r.bodyResult = StatusBadRequest
 			}
+			r.failReason = "comma needed in multi-value field"
 			return false
 		}
 		subValue.edge = subValue.from
@@ -1131,7 +1135,7 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 	}
 	return true
 }
-func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) {
+func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -1192,7 +1196,7 @@ func (r *httpIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-const ( // HTTP content blob kinds
+const ( // HTTP incoming content blob kinds
 	httpContentBlobNone  = iota // must be 0
 	httpContentBlobInput        // refers to r.input
 	httpContentBlobPool         // fetched from pool
@@ -1231,7 +1235,7 @@ type httpOut interface {
 }
 
 // httpOut_ is a mixin for httpResponse_ and hRequest_.
-type httpOut_ struct {
+type httpOut_ struct { // outgoing. needs building
 	// Assocs
 	shell  httpOut // *http[1-3]Response or *H[1-3]Request
 	stream stream  // *http[1-3]Stream or *H[1-3]Stream
@@ -1241,18 +1245,18 @@ type httpOut_ struct {
 	// Stream states (controlled)
 	edges [204]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
-	fields      []byte        // bytes of the headers or trailers. [<r.stockFields>/4K/16K]
+	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
 	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	sendTimeout time.Duration // timeout to send the whole message
-	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
+	contentSize int64         // info of outgoing content. -1: not set, -2: unsized, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // use message as request?
-	nHeaders    uint8         // num+1 of added headers, starts from 1
-	nTrailers   uint8         // num+1 of added trailers, starts from 1
+	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
+	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector [4][]byte   // for sending/pushing message. reset after stream. 96B
+	fixedVector [4][]byte   // for sending/pushing message. reset after stream
 	httpOut0_               // all values must be zero by default in this struct!
 }
 type httpOut0_ struct { // for fast reset, entirely
@@ -1268,9 +1272,9 @@ type httpOut0_ struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.content.PushTail(&r.stockBlock) // r.content has one block by default
+	r.content.PushTail(&r.stockBlock) // r.content has one block by default (but may not be used or sent actually)
 	r.sendTimeout = r.stream.keeper().SendTimeout()
-	r.contentSize = -1
+	r.contentSize = -1 // not set
 	r.versionCode = versionCode
 	r.asRequest = asRequest
 	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
@@ -1322,7 +1326,7 @@ func (r *httpOut_) DelHeaderBytes(name []byte) bool {
 	}
 	return r.shell.removeHeader(hash, lower)
 }
-func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) {
+func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
 	if n == 0 || n > 255 {
 		return 0, false, nil
@@ -1407,10 +1411,10 @@ func (r *httpOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
 }
 func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
-		return false
+	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
+		return r.shell.addTrailer(name, value)
 	}
-	return r.shell.addTrailer(name, value)
+	return false
 }
 
 func (r *httpOut_) _addContentType(contentType []byte) (ok bool) {
@@ -1420,12 +1424,8 @@ func (r *httpOut_) _addDate(date []byte) (ok bool) {
 	return r._addSingleton(&r.oDate, bytesDate, date)
 }
 
-func (r *httpOut_) _delContentType() (deleted bool) {
-	return r._delSingleton(&r.oContentType)
-}
-func (r *httpOut_) _delDate() (deleted bool) {
-	return r._delSingleton(&r.oDate)
-}
+func (r *httpOut_) _delContentType() (deleted bool) { return r._delSingleton(&r.oContentType) }
+func (r *httpOut_) _delDate() (deleted bool)        { return r._delSingleton(&r.oDate) }
 
 func (r *httpOut_) _addSingleton(pIndex *uint8, name []byte, value []byte) bool {
 	if *pIndex > 0 || !r.shell.addHeader(name, value) {

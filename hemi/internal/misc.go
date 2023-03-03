@@ -333,3 +333,59 @@ func bytesesFind(byteses [][]byte, elem []byte) bool {
 	}
 	return false
 }
+
+// zone
+type zone struct { // 2 bytes
+	from, edge uint8 // edge is ensured to be <= 255
+}
+
+func (z *zone) zero() { *z = zone{} }
+
+func (z *zone) size() int      { return int(z.edge - z.from) }
+func (z *zone) isEmpty() bool  { return z.from == z.edge }
+func (z *zone) notEmpty() bool { return z.from != z.edge }
+
+// span
+type span struct { // 4 bytes
+	from, edge uint16 // edge is ensured to be <= 65535
+}
+
+func (s *span) zero() { *s = span{} }
+
+func (s *span) size() int      { return int(s.edge - s.from) }
+func (s *span) isEmpty() bool  { return s.from == s.edge }
+func (s *span) notEmpty() bool { return s.from != s.edge }
+
+func (s *span) set(from uint16, edge uint16) { s.from, s.edge = from, edge }
+func (s *span) set32(from int32, edge int32) { s.from, s.edge = uint16(from), uint16(edge) }
+
+// text
+type text struct { // 8 bytes
+	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
+}
+
+func (t *text) zero() { *t = text{} }
+
+func (t *text) size() int      { return int(t.edge - t.from) }
+func (t *text) isEmpty() bool  { return t.from == t.edge }
+func (t *text) notEmpty() bool { return t.from != t.edge }
+
+func (t *text) set(from int32, edge int32) {
+	t.from, t.edge = from, edge
+}
+func (t *text) sub(delta int32) {
+	if t.from >= delta {
+		t.from -= delta
+		t.edge -= delta
+	}
+}
+
+// rang defines a range.
+type rang struct { // 16 bytes
+	from, last int64 // [from, last]
+}
+
+// nava is a name-value parameter.
+type nava struct { // 16 bytes
+	name, value text
+}

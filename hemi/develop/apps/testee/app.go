@@ -13,6 +13,9 @@ func init() {
 	RegisterAppInit("testee", func(app *App) error {
 		return nil
 	})
+}
+
+func init() {
 	RegisterHandlet("testHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(testHandlet)
 		h.onCreate(name, stage, app)

@@ -17,6 +17,9 @@ func init() {
 		app.AddSetting("name1", "value1") // add example setting
 		return nil
 	})
+}
+
+func init() {
 	// Register additional handlets for your app.
 	RegisterHandlet("helloHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(helloHandlet)
@@ -64,7 +67,7 @@ func (h *helloHandlet) Handle(req Request, resp Response) (next bool) {
 	return // request is handled, next = false
 }
 func (h *helloHandlet) notFound(req Request, resp Response) {
-	resp.Send("oops, not found!")
+	resp.Send("oops, target not found!")
 }
 
 func (h *helloHandlet) index(req Request, resp Response) {
@@ -79,6 +82,9 @@ func (h *helloHandlet) handleFoo(req Request, resp Response) {
 func (h *helloHandlet) GET_abc(req Request, resp Response) {
 	resp.Send("this is GET /abc")
 }
+func (h *helloHandlet) GET_def(req Request, resp Response) {
+	resp.Send("this is GET /def")
+}
 func (h *helloHandlet) POST_def(req Request, resp Response) {
 	resp.Send("this is POST /def")
 }
@@ -86,4 +92,5 @@ func (h *helloHandlet) GET_cookie(req Request, resp Response) {
 	cookie := new(Cookie)
 	cookie.Set("name1", "value1")
 	resp.SetCookie(cookie)
+	resp.Send("this is GET /cookie")
 }

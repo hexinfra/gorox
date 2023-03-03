@@ -26,6 +26,9 @@ func init() {
 		board.RegisterSite("front", pack.Pack{})
 		return nil
 	})
+}
+
+func init() {
 	RegisterHandlet("boardHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(boardHandlet)
 		h.OnCreate(name, stage, app)

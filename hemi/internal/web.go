@@ -411,14 +411,15 @@ type Handlet interface {
 type Handlet_ struct {
 	// Mixins
 	Component_
+	// Assocs
+	router Router
 	// States
 	rShell reflect.Value // the shell handlet
-	router Router
 }
 
 func (h *Handlet_) UseRouter(shell any, router Router) {
-	h.rShell = reflect.ValueOf(shell)
 	h.router = router
+	h.rShell = reflect.ValueOf(shell)
 }
 
 func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {

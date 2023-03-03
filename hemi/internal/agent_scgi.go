@@ -89,14 +89,17 @@ func (h *scgiAgent) Handle(req Request, resp Response) (next bool) {
 
 // scgiStream
 type scgiStream struct {
+	// TODO
 }
 
 // scgiRequest
 type scgiRequest struct { // outgoing. needs building
+	// TODO
 }
 
 // scgiResponse
 type scgiResponse struct { // incoming. needs parsing
+	// TODO
 }
 
 // SCGI protocol elements.

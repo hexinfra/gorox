@@ -97,14 +97,17 @@ func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) {
 
 // uwsgiStream
 type uwsgiStream struct {
+	// TODO
 }
 
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
+	// TODO
 }
 
 // uwsgiResponse
 type uwsgiResponse struct { // incoming. needs parsing
+	// TODO
 }
 
 // UWSGI protocol elements.

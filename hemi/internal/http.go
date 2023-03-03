@@ -833,11 +833,15 @@ func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
 func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
 func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	nameSize := int32(len(name))
-	if nameSize <= 0 || nameSize > 255 { // name size is limited at 255
+	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
 		return false
 	}
-	totalSize := nameSize + int32(len(value))
-	if totalSize < 0 {
+	valueSize := len(value)
+	if extraKind == kindForm { // for forms, max value size is 1G
+		if valueSize > _1G {
+			return false
+		}
+	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
 		return false
 	}
 	if len(r.extras) == cap(r.extras) { // full
@@ -847,7 +851,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 		r.extras = getPairs()
 		r.extras = append(r.extras, r.stockExtras[:]...)
 	}
-	if !r._growArray(totalSize) { // extras are always placed in r.array
+	if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
 		return false
 	}
 	extra := &r.mainPair

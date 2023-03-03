@@ -1,4 +1,4 @@
-This directory holds microservices of gorox, basically one svc per directory.
+This directory holds microservices in gorox, generally one svc one directory.
 
 Microservice support is under design, currently you can only implement them through apps.
 

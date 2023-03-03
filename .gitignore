@@ -25,15 +25,15 @@ desktop.ini
 /temp
 /vendor
 
-/gomake
-/goben
-/goops
-/gorox
-
 /hemi/develop/data
 /hemi/develop/logs
 /hemi/develop/temp
 /hemi/develop/vendor
+
+/gomake
+/goben
+/goops
+/gorox
 
 /hemi/develop/demake
 /hemi/develop/derox

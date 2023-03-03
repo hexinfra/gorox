@@ -10,10 +10,15 @@ To add a new cmd named "foo":
   1. Create a folder called "foo" inside this directory,
   2. Place your go files in it.
 
-To build cmds, use "gomake", like:
+To build cmd "foo", use "gomake", like:
 
   shell> go build cmds/gomake.go
   shell> ./gomake foo
+
+To build all cmds, use:
+
   shell> ./gomake all
 
-By default, gomake builds gorox.
+By default, gomake builds gorox:
+
+  shell> ./gomake

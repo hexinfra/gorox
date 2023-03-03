@@ -24,7 +24,7 @@ func init() {
 }
 
 // RocksServer
-type RocksServer struct {
+type RocksServer struct { // implements hemi.Server
 	// Mixins
 	Component_
 	// Assocs
@@ -117,7 +117,7 @@ func (s *RocksServer) TLSMode() bool               { return false }
 func (s *RocksServer) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *RocksServer) WriteTimeout() time.Duration { return s.writeTimeout }
 
-func (s *RocksServer) NumConns() int {
+func (s *RocksServer) NumConns() int { // used by apps
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return len(s.conns)
@@ -133,7 +133,7 @@ func (s *RocksServer) delConn(conn *goroxConn) {
 	delete(s.conns, conn.id)
 }
 
-// goroxConn
+// A goroxConn is a connection with a gorox leader instance.
 type goroxConn struct {
 	// Assocs
 	stage  *Stage

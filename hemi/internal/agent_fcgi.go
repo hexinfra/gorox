@@ -877,7 +877,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 		}
 	} else { // all other headers are treated as multiple headers
 		from := len(r.headers) + 1 // excluding main header
-		if !r._addSubHeaders(header) {
+		if !r._addSubHeaders(header, h.quote, h.para) {
 			// r.headResult is set.
 			return false
 		}
@@ -963,7 +963,7 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _addSubHeaders(header *pair) bool {
+func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, para bool) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:

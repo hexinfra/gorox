@@ -563,10 +563,10 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			octet byte  // byte value of %xx
 			qsOff int32 // offset of query string, if exists
 		)
-		query := &r.mainPair // plain query in r.array[query.from:query.edge]
+		query := &r.mainPair
 		query.zero()
 		query.kind = kindQuery
-		query.place = placeArray // all received queries are placed in r.array because queries are decoded
+		query.place = placeArray // all received queries are placed in r.array because queries have been decoded
 
 		// r.pFore is at '/'.
 		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.
@@ -652,7 +652,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 						return false
 					}
 					r.arrayPush(octet)
-					state >>= 4 // restore last state
+					state >>= 4 // restore previous state
 				}
 			}
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {

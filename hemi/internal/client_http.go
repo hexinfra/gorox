@@ -232,7 +232,7 @@ func (r *hRequest_) onEnd() { // for zeros
 func (r *hRequest_) Response() hResponse { return r.response }
 
 func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
-	// TODO: copy scheme to r.fields
+	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }
 func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
@@ -430,11 +430,11 @@ type hResponse_ struct { // incoming. needs parsing
 	// Mixins
 	httpIn_
 	// Stream states (buffers)
-	stockCookies [4]cookie // for r.cookies
+	stockCookies [8]cookie // for r.cookies
 	// Stream states (controlled)
 	cookie cookie // to overcome the limitation of Go's escape analysis when receiving setCookies
 	// Stream states (non-zeros)
-	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=16/128)]
+	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
 	hResponse0_ // all values must be zero by default in this struct!
 }
@@ -487,7 +487,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
-		if h.para && !r._parseParas(header) {
+		if h.para && !r._parseParas(header, h.quote) {
 			// r.headResult is set.
 			return false
 		}
@@ -497,7 +497,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 		}
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, r.input, r.addHeader) {
+		if !r._addSubFields(header, h.quote, h.para, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -731,8 +731,9 @@ func (r *hResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *hResponse_) addCookie() {
+func (r *hResponse_) addCookie(cookie *cookie) bool {
 	// TODO
+	return true
 }
 func (r *hResponse_) HasCookies() bool {
 	// TODO

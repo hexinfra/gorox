@@ -274,7 +274,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set in r.checkHead() if the content is unsized
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -1044,11 +1044,7 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _parseParas(field *pair) bool {
-	// TODO
-	return true
-}
-func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair) bool) bool { // to primes
+func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
 	return true
 	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
 		return true
@@ -1133,6 +1129,10 @@ func (r *httpIn_) _addSubFields(field *pair, p []byte, addField func(field *pair
 		subValue.from = subValue.edge
 		needComma = true
 	}
+	return true
+}
+func (r *httpIn_) _parseParas(field *pair, quote bool) bool {
+	// TODO
 	return true
 }
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance

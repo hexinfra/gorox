@@ -358,8 +358,8 @@ type H1Request struct { // outgoing. needs building
 }
 
 func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
-	size := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
-	if from, edge, ok := r._growFields(size); ok {
+	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
+	if from, edge, ok := r._growFields(controlSize); ok {
 		from += copy(r.fields[from:], method)
 		r.fields[from] = ' '
 		from++
@@ -387,8 +387,8 @@ func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	} else if bytes.Equal(colonPort, bytesColonPort80) {
 		colonPort = nil
 	}
-	size := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
-	if from, _, ok := r._growFields(size); ok {
+	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
+	if from, _, ok := r._growFields(headerSize); ok {
 		from += copy(r.fields[from:], bytesHost)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

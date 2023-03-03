@@ -765,7 +765,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
-		if h.para && !r._parseParas(header) {
+		if h.para && !r._parseParas(header, h.quote) {
 			// r.headResult is set.
 			return false
 		}
@@ -775,7 +775,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 		}
 	} else { // all other headers are treated as multiple headers
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, r.input, r.addHeader) {
+		if !r._addSubFields(header, h.quote, h.para, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}

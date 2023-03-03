@@ -205,10 +205,10 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 		r.bodyWindow = Get16K() // will be freed on ends. must be >= 16K so r.imme can fit
 	}
 	if r.imme.notEmpty() {
-		size := copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyWindow
-		r.receivedSize = int64(size)
+		immeSize := copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge]) // r.input is not larger than r.bodyWindow
+		r.receivedSize = int64(immeSize)
 		r.imme.zero()
-		return r.bodyWindow[0:size], nil
+		return r.bodyWindow[0:immeSize], nil
 	}
 	if err = r._beforeRead(&r.bodyTime); err != nil {
 		return nil, err
@@ -725,8 +725,8 @@ func (r *http1Out_) addTrailer1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
-	size := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
-	if from, _, ok := r.growTrailer(size); ok {
+	trailerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
+	if from, _, ok := r.growTrailer(trailerSize); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

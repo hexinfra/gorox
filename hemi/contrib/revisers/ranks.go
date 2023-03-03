@@ -8,6 +8,9 @@
 package revisers
 
 const (
+	RankWrap    = 3
 	RankReplace = 5
 	RankSSI     = 7
+	RankGzip    = 18
+	RankHead    = 19
 )

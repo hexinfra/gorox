@@ -8,8 +8,8 @@
 package wrap
 
 import (
+	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
-	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {

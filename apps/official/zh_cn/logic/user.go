@@ -6,7 +6,7 @@
 package model
 
 import (
-	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
+	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 )
 
 type User struct {

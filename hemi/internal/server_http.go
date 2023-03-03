@@ -716,12 +716,8 @@ func (r *httpRequest_) addQuery(query *pair) bool { // to primes
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *httpRequest_) HasQueries() bool {
-	return r.hasPairs(r.queries, kindQuery)
-}
-func (r *httpRequest_) AllQueries() (queries [][2]string) {
-	return r.allPairs(r.queries, kindQuery)
-}
+func (r *httpRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
+func (r *httpRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
 func (r *httpRequest_) Q(name string) string {
 	value, _ := r.Query(name)
 	return value

@@ -569,17 +569,15 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		query.place = placeArray // all received queries are placed in r.array because queries have been decoded
 
 		// r.pFore is at '/'.
+	uri:
 		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.
 			b := r.input[r.pFore]
-			if b == ' ' { // end of request-target
-				break
-			}
 			switch state {
 			case 1: // in path
 				if httpPchar[b] == 1 {
 					r.arrayPush(b)
 				} else if b == '%' {
-					state = 0x1f // '1' means from state 1
+					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG
 				} else if b == '?' {
 					// Path is over, switch to query string parsing
 					r.path = r.array[0:r.arrayEdge]
@@ -588,6 +586,8 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					query.from = r.arrayEdge
 					qsOff = r.pFore - r.pBack
 					state = 2
+				} else if b == ' ' { // end of request-target
+					break uri
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "invalid path"
 					return false
@@ -609,7 +609,9 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					query.hash += uint16(b)
 					r.arrayPush(b)
 				} else if b == '%' {
-					state = 0x2f // '2' means from state 2
+					state = 0x2f // '2' means from state 2, 'f' means first HEXDIG
+				} else if b == ' ' { // end of request-target
+					break uri
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "invalid query name"
 					return false
@@ -629,12 +631,17 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					}
 					r.arrayPush(b)
 				} else if b == '%' {
-					state = 0x3f // '3' means from state 3
+					state = 0x3f // '3' means from state 3, 'f' means first HEXDIG
+				} else if b == ' ' { // end of request-target
+					break uri
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "invalid query value"
 					return false
 				}
 			default: // in query string and expecting HEXDIG
+				if b == ' ' { // end of request-target
+					break uri
+				}
 				half, ok := byteFromHex(b)
 				if !ok {
 					r.headResult, r.failReason = StatusBadRequest, "invalid pct encoding"
@@ -647,7 +654,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					octet |= half
 					if state == 0x20 { // in name
 						query.hash += uint16(octet)
-					} else if state == 0x10 && octet == 0x00 { // For security reasons, we reject "\x00" in path.
+					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
 						r.headResult, r.failReason = StatusBadRequest, "malformed path"
 						return false
 					}

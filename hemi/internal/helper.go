@@ -47,6 +47,8 @@ type pair struct { // 20 bytes
 	edge     int32  // value ends at
 }
 
+func (p *pair) zero() { *p = pair{} }
+
 // If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
 //
 //  [   name   ]   [     data    ][--------dataBack--------]
@@ -62,20 +64,18 @@ type pair struct { // 20 bytes
 //
 // If data is quoted, flagQuoted is set, so flags&flagQuoted is 1.
 
-func (p *pair) zero() { *p = pair{} }
-
-func (p *pair) nameAt(t []byte) []byte { return t[p.from : p.from+int32(p.nameSize)] }
+func (p *pair) nameAt(t []byte) []byte  { return t[p.from : p.from+int32(p.nameSize)] }
+func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
+func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
+func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff), p.edge} }
+func (p *pair) dataAt(t []byte) []byte {
+	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.dataBack)]
+}
 func (p *pair) nameEqualString(t []byte, x string) bool {
 	return int(p.nameSize) == len(x) && string(t[p.from:p.from+int32(p.nameSize)]) == x
 }
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
-}
-func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff), p.edge} }
-func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
-func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
-func (p *pair) dataAt(t []byte) []byte {
-	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.dataBack)]
 }
 func (p *pair) paraAt(t []byte, name []byte) []byte {
 	if !p.paras.isEmpty() {
@@ -87,11 +87,11 @@ func (p *pair) paraAt(t []byte, name []byte) []byte {
 }
 
 const ( // pair kinds
-	kindQuery   = iota // prime->array, extra->array
-	kindHeader         // prime->input, extra->array
-	kindCookie         // prime->input, extra->array
-	kindForm           // prime->array, extra->array
-	kindTrailer        // prime->array, extra->array
+	kindQuery   = iota // prime->array, extra->array. valueSize <= _16K
+	kindHeader         // prime->input, extra->array. valueSize <= _16K
+	kindCookie         // prime->input, extra->array. valueSize <= _16K
+	kindForm           // prime->array, extra->array. valueSize <= _1G
+	kindTrailer        // prime->array, extra->array. valueSize <= _16K
 )
 
 const ( // pair places

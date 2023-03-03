@@ -3,11 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Import apps.
-
-package apps
+package diogin
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/diogin"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/testee"
+	. "github.com/hexinfra/gorox/hemi"
 )
+
+func init() {
+	RegisterSvcInit("diogin", func(svc *Svc) error {
+		return nil
+	})
+}

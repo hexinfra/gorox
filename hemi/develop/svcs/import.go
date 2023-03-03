@@ -8,5 +8,6 @@
 package svcs
 
 import (
+	_ "github.com/hexinfra/gorox/hemi/develop/svcs/diogin"
 	_ "github.com/hexinfra/gorox/hemi/develop/svcs/testee"
 )

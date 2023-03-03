@@ -6,7 +6,7 @@
 package logic
 
 import (
-	. "github.com/hexinfra/gorox/hemi/preload/handlets/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 type User struct {

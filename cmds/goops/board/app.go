@@ -10,7 +10,7 @@ import (
 	"github.com/hexinfra/gorox/cmds/goops/board/pack"
 	. "github.com/hexinfra/gorox/cmds/goops/rocks"
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/preload/handlets/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 func init() {

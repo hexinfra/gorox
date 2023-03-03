@@ -11,7 +11,7 @@ import (
 	"errors"
 	"github.com/hexinfra/gorox/apps/official/en_us/pack"
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/preload/handlets/sitex"
+	. "github.com/hexinfra/gorox/hemi/standard/handlets/sitex"
 )
 
 func init() {

@@ -1,0 +1,4 @@
+Standard components.
+
+Standard components are preloaded, you don't need to import them manually.
+If a new standard component is added, add it in "import.go" so it is preloaded.

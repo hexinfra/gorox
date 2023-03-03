@@ -9,7 +9,7 @@ package head
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
-	. "github.com/hexinfra/gorox/hemi/preload/revisers"
+	. "github.com/hexinfra/gorox/hemi/standard/revisers"
 )
 
 func init() {

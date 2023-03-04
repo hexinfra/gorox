@@ -36,57 +36,19 @@ func putPairs(pairs []pair) {
 }
 
 // pair is used to hold queries, headers, cookies, forms, and trailers.
-type pair struct { // 20 bytes
+type pair struct { // 24 bytes
 	hash     uint16 // name hash, to support fast search. 0 means empty
 	kind     int8   // see pair kinds
 	place    int8   // see pair places
-	from     int32  // name begins from
-	flags    uint8  // see field flags
-	nameSize uint8  // name ends at from+nameSize. <= 255
-	valueOff uint16 // value begins from from+valueOff
-	dataBack uint16 // value data without quote and paras
+	nameFrom int32  // name begins from
+	nameSize uint8  // name ends at from+nameSize
+	flags    byte   // see field flags
 	paras    zone   // refers to a zone of paras
-	edge     int32  // value ends at
+	dataEdge int32  // data ends at
+	value    text   // value
 }
 
 func (p *pair) zero() { *p = pair{} }
-
-// If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
-//
-//  [   name   ]   [     data    ][--------dataBack--------]
-// +--------------------------------------------------------+
-// |example-type: "text/javascript"; charset="utf-8";lang=en|
-// +--------------------------------------------------------+
-//  ^           ^ ^^              ^[         paras         ]^
-//  |           | ||              |                         |
-//  from        | ||              edge-dataBack          edge
-//  from+nameSize ||
-//    from+valueOff|
-//                 from+valueOff+(flags&flagQuoted)
-//
-// If data is quoted, flagQuoted is set, so flags&flagQuoted is 1.
-
-func (p *pair) nameAt(t []byte) []byte  { return t[p.from : p.from+int32(p.nameSize)] }
-func (p *pair) valueAt(t []byte) []byte { return t[p.from+int32(p.valueOff) : p.edge] }
-func (p *pair) isEmpty() bool           { return p.from+int32(p.valueOff) == p.edge }
-func (p *pair) valueText() text         { return text{p.from + int32(p.valueOff), p.edge} }
-func (p *pair) dataAt(t []byte) []byte {
-	return t[p.from+int32(p.valueOff)+int32(p.flags&flagQuoted) : p.edge-int32(p.dataBack)]
-}
-func (p *pair) nameEqualString(t []byte, x string) bool {
-	return int(p.nameSize) == len(x) && string(t[p.from:p.from+int32(p.nameSize)]) == x
-}
-func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
-	return int(p.nameSize) == len(x) && bytes.Equal(t[p.from:p.from+int32(p.nameSize)], x)
-}
-func (p *pair) paraAt(t []byte, name []byte) []byte {
-	if !p.paras.isEmpty() {
-		for i := p.paras.from; i < p.paras.edge; i++ {
-			// TODO
-		}
-	}
-	return nil
-}
 
 const ( // pair kinds
 	kindQuery   = iota // prime->array, extra->array. valueSize <= _16K
@@ -103,30 +65,65 @@ const ( // pair places
 	placeStatic3
 )
 
+// If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
+//
+//                      [             value                  )
+//        [   name    )  [  data   )
+//       +---------------------------------------------------+
+//       |example-type: "text/plain"; charset="utf-8";lang=en|
+//       +---------------------------------------------------+
+//        ^           ^ ^^         ^[         paras          )
+//        |           | ||         |                         ^
+// nameFrom           | ||  dataEdge                         |
+//    nameFrom+nameSize ||                          value.edge
+//             value.from|
+//                       value.from+(flags&flagQuoted)
+//
+// If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1.
+
+func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
+func (p *pair) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
+}
+func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
+}
+func (p *pair) dataAt(t []byte) []byte  { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
+func (p *pair) dataEmpty() bool         { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
+func (p *pair) paraAt(t []byte, name []byte) []byte {
+	if !p.paras.isEmpty() {
+		for i := p.paras.from; i < p.paras.edge; i++ {
+			// TODO
+		}
+	}
+	return nil
+}
+
 const ( // field flags
-	flagSingleton  = 0b10000000 // singleton or not
+	flagSingleton  = 0b10000000 // singleton or not. mainly checked by proxies
 	flagSubField   = 0b01000000 // sub field or not
 	flagLiteral    = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo     = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00001000 // name contains '_' or not. some agents (like fcgi) need this
+	flagUnderscore = 0b00010000 // name contains '_' or not. some agents (like fcgi) need this information
+	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagCommaValue = 0b00000100 // value has comma or not
 	flagReserved   = 0b00000010 // reserved for future use
-	flagQuoted     = 0b00000001 // value is quoted or not. for non comma-value field only. MUST be 0b00000001
+	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
 func (p *pair) setSubField()   { p.flags |= flagSubField }
 func (p *pair) setLiteral()    { p.flags |= flagLiteral }
-func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
+func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
 func (p *pair) setQuoted()     { p.flags |= flagQuoted }
 
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
 func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }
-func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
+func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 

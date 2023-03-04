@@ -103,7 +103,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.from, header.nameSize = r.pBack, uint8(nameSize)
+			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
@@ -118,7 +118,6 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
 		// field-value   = *field-content
 		// field-content = field-vchar [ 1*( %x20 / %x09 / field-vchar) field-vchar ]
 		// field-vchar   = %x21-7E / %x80-FF
@@ -157,9 +156,10 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
+			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
+			header.value.zero()
 		}
-		header.edge = fore
 
 		// Header is received in general algorithm. Now add and adopt it
 		if !r.shell.addHeader(header) || !r.shell.adoptHeader(header) {
@@ -430,7 +430,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			trailer.from, trailer.nameSize = r.pBack, uint8(nameSize)
+			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			return false
 		}
@@ -444,8 +444,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 				return false
 			}
 		}
-		trailer.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
-		r.pBack = r.pFore                            // for field-value or EOL
+		r.pBack = r.pFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
@@ -475,21 +474,22 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
+			trailer.value.set(r.pBack, fore)
 		} else { // field-value is empty
+			trailer.value.zero()
 		}
-		trailer.edge = fore
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
 		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.from = fore
+		trailer.nameFrom = fore
+		fore = r.arrayEdge
 		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.valueOff = uint16(trailer.nameSize) // no gap
-		trailer.edge = r.arrayEdge
+		trailer.value.set(fore, r.arrayEdge)
 
 		// Trailer is received in general algorithm. Now add and adopt it
 		if !r.shell.addTrailer(trailer) || !r.shell.adoptTrailer(trailer) {

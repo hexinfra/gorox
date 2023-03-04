@@ -759,7 +759,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpRequestCriticalHeaderTable[httpRequestCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestCriticalHeaderNames[h.from:h.edge], headerName) {
+	if h := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
 		if h.para && !r._parseParas(header, h.quote) {
 			// r.headResult is set.
@@ -775,7 +775,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &httpRequestMultipleHeaderTable[httpRequestMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestMultipleHeaderNames[h.from:h.edge], headerName) {
+		if h := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, from, r.headers.edge) {
 				// r.headResult is set.
 				return false
@@ -785,9 +785,9 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for request critical headers
-	httpRequestCriticalHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
-	httpRequestCriticalHeaderTable = [12]struct {
+var ( // perfect hash table for request singleton headers
+	httpRequestSingletonHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
+	httpRequestSingletonHeaderTable = [12]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -808,7 +808,7 @@ var ( // perfect hash table for request critical headers
 		10: {hashAuthorization, 0, 13, false, false, (*httpRequest_).checkAuthorization},
 		11: {hashProxyAuthorization, 106, 125, false, false, (*httpRequest_).checkProxyAuthorization},
 	}
-	httpRequestCriticalHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
+	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
 
 func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
@@ -819,7 +819,7 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // A
 	return true
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
-	if header.isEmpty() {
+	if header.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
 	}
@@ -843,7 +843,7 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = hos
 		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
-	value := header.valueText()
+	value := header.value
 	if value.notEmpty() {
 		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
@@ -1024,9 +1024,9 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 	return true
 }
 
-var ( // perfect hash table for request multiple headers
-	httpRequestMultipleHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for")
-	httpRequestMultipleHeaderTable = [18]struct {
+var ( // perfect hash table for request important headers
+	httpRequestImportantHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for")
+	httpRequestImportantHeaderTable = [18]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -1053,7 +1053,7 @@ var ( // perfect hash table for request multiple headers
 		16: {hashContentEncoding, 79, 95, false, false, (*httpRequest_).checkContentEncoding},
 		17: {hashAcceptLanguage, 38, 53, false, true, (*httpRequest_).checkAcceptLanguage},
 	}
-	httpRequestMultipleHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
+	httpRequestImportantHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
 )
 
 func (r *httpRequest_) checkAccept(from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
@@ -1270,16 +1270,16 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 	cookie.zero()
 	cookie.kind = kindCookie
 	cookie.place = placeInput // all received cookies are in r.input
-	cookie.from = cookieString.from
+	cookie.nameFrom = cookieString.from
 	state := 0
 	for p := cookieString.from; p < cookieString.edge; p++ {
 		b := r.input[p]
 		switch state {
 		case 0: // expecting '=' to get cookie-name
 			if b == '=' {
-				if nameSize := p - cookie.from; nameSize > 0 && nameSize <= 255 {
+				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
 					cookie.nameSize = uint8(nameSize)
-					cookie.valueOff = uint16(nameSize) + 1 // skip '='
+					cookie.value.from = p + 1 // skip '='
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "cookie name out of range"
 					return false
@@ -1293,7 +1293,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 			}
 		case 1: // DQUOTE or not?
 			if b == '"' {
-				cookie.valueOff++ // skip '"'
+				cookie.value.from++ // skip '"'
 				state = 3
 				continue
 			}
@@ -1301,7 +1301,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 			fallthrough
 		case 2: // *cookie-octet, expecting ';'
 			if b == ';' {
-				cookie.edge = p
+				cookie.value.edge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1312,7 +1312,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 			}
 		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
 			if b == '"' {
-				cookie.edge = p
+				cookie.value.edge = p
 				if !r.addCookie(cookie) {
 					return false
 				}
@@ -1332,13 +1332,13 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 				r.headResult, r.failReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
-			cookie.hash = 0     // reset for next cookie
-			cookie.from = p + 1 // skip ' '
+			cookie.hash = 0         // reset for next cookie
+			cookie.nameFrom = p + 1 // skip ' '
 			state = 0
 		}
 	}
 	if state == 2 { // ';' not found
-		cookie.edge = cookieString.edge
+		cookie.value.edge = cookieString.edge
 		if !r.addCookie(cookie) {
 			return false
 		}
@@ -1441,7 +1441,7 @@ func (r *httpRequest_) checkHead() bool {
 			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
 				continue
 			}
-			if !r.parseCookie(cookie.valueText()) {
+			if !r.parseCookie(cookie.value) {
 				return false
 			}
 		}
@@ -1481,7 +1481,7 @@ func (r *httpRequest_) checkHead() bool {
 				typeParams  text
 				contentType []byte
 			)
-			vType := r.primes[r.iContentType].valueText()
+			vType := r.primes[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParams.from = vType.edge
 				typeParams.edge = vType.edge
@@ -1747,15 +1747,15 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	form.zero()
 	form.kind = kindForm
 	form.place = placeArray // all received forms are placed in r.array
-	form.from = r.arrayEdge
+	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
 		b := r.contentBlob[i]
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
-				if nameSize := r.arrayEdge - form.from; nameSize <= 255 {
+				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
 					form.nameSize = uint8(nameSize)
-					form.valueOff = uint16(nameSize) // no gap
+					form.value.from = r.arrayEdge
 				} else {
 					return
 				}
@@ -1773,12 +1773,12 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			}
 		case 3: // expecting '&' to get a value
 			if b == '&' {
-				form.edge = r.arrayEdge
+				form.value.edge = r.arrayEdge
 				if form.nameSize > 0 {
 					r.addForm(form)
 				}
 				form.hash = 0 // reset for next form
-				form.from = r.arrayEdge
+				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
@@ -1810,7 +1810,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 	// Reaches end of content.
 	if state == 3 { // '&' not found
-		form.edge = r.arrayEdge
+		form.value.edge = r.arrayEdge
 		if form.nameSize > 0 {
 			r.addForm(form)
 		}
@@ -2106,9 +2106,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 			}
 		} else { // part must be a form
 			part.form.hash = part.hash
-			part.form.from = part.name.from
+			part.form.nameFrom = part.name.from
 			part.form.nameSize = uint8(part.name.size())
-			part.form.valueOff = uint16(part.form.nameSize) // no gap
+			part.form.value.from = r.arrayEdge
 		}
 		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
 		for {             // each partial in current part
@@ -2134,7 +2134,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					return
 				}
 				if mode == 1 { // form part ends
-					part.form.edge = r.arrayEdge
+					part.form.value.edge = r.arrayEdge
 					r.addForm(&part.form)
 				}
 			} else if part.osFile != nil {
@@ -2868,8 +2868,8 @@ func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
 }
 
 var ( // perfect hash table for response crucial headers
-	httpResponseCrucialHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
-	httpResponseCrucialHeaderTable = [10]struct {
+	httpResponseCriticalHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
+	httpResponseCriticalHeaderTable = [10]struct {
 		hash uint16
 		from uint8
 		edge uint8
@@ -2887,12 +2887,12 @@ var ( // perfect hash table for response crucial headers
 		8: {hashContentLength, 11, 25, nil, nil}, // forbidden
 		9: {hashContentType, 26, 38, (*httpResponse_).appendContentType, (*httpResponse_).deleteContentType},
 	}
-	httpResponseCrucialHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+	httpResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
 
 func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCriticalHeaderNames[h.from:h.edge], name) {
 		if h.fAdd == nil { // mainly because this header is forbidden
 			return true // pretend to be successful
 		}
@@ -2908,8 +2908,8 @@ func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
 }
 
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &httpResponseCrucialHeaderTable[httpResponseCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(httpResponseCrucialHeaderNames[h.from:h.edge], name) {
+	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(httpResponseCriticalHeaderNames[h.from:h.edge], name) {
 		if h.fDel == nil { // mainly because this header is forbidden
 			return true // pretend to be successful
 		}

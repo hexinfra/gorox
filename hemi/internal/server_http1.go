@@ -583,7 +583,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					r.path = r.array[0:r.arrayEdge]
 					r.queries.from = uint8(len(r.primes))
 					r.queries.edge = r.queries.from
-					query.from = r.arrayEdge
+					query.nameFrom = r.arrayEdge
 					qsOff = r.pFore - r.pBack
 					state = 2
 				} else if b == ' ' { // end of request-target
@@ -594,9 +594,9 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				}
 			case 2: // in query string and expecting '=' to get a name
 				if b == '=' {
-					if nameSize := r.arrayEdge - query.from; nameSize <= 255 {
+					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
 						query.nameSize = uint8(nameSize)
-						query.valueOff = uint16(nameSize) // no gap
+						query.value.from = r.arrayEdge
 					} else {
 						r.headResult, r.failReason = StatusBadRequest, "query name too long"
 						return false
@@ -618,12 +618,12 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				}
 			case 3: // in query string and expecting '&' to get a value
 				if b == '&' {
-					query.edge = r.arrayEdge
+					query.value.edge = r.arrayEdge
 					if query.nameSize > 0 && !r.addQuery(query) {
 						return false
 					}
 					query.hash = 0 // reset for next query
-					query.from = r.arrayEdge
+					query.nameFrom = r.arrayEdge
 					state = 2
 				} else if httpPchar[b] > 0 { // including '?'
 					if b == '+' {
@@ -673,7 +673,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			// Since there is no '=', we ignore this query
 		} else if state == 3 { // in query string and no '&' found
 			r.queryString.set(r.pBack+qsOff, r.pFore)
-			query.edge = r.arrayEdge
+			query.value.edge = r.arrayEdge
 			if query.nameSize > 0 && !r.addQuery(query) {
 				return false
 			}

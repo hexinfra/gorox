@@ -96,7 +96,7 @@ type httpIn_ struct { // incoming. needs parsing
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
-	stockPrimes [72]pair   // for r.primes
+	stockPrimes [64]pair   // for r.primes
 	stockExtras [4]pair    // for r.extras
 	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
@@ -294,7 +294,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
 	// TODO
-	if r.iContentLocation == 0 && !header.isEmpty() {
+	if r.iContentLocation == 0 && !header.dataEmpty() {
 		r.iContentLocation = index
 		return true
 	}
@@ -303,7 +303,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Cont
 }
 func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
 	// TODO
-	if r.iContentRange == 0 && !header.isEmpty() {
+	if r.iContentRange == 0 && !header.dataEmpty() {
 		r.iContentRange = index
 		return true
 	}
@@ -315,7 +315,7 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-
 	// type = token
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
-	if r.iContentType == 0 && !header.isEmpty() {
+	if r.iContentType == 0 && !header.dataEmpty() {
 		r.iContentType = index
 		return true
 	}
@@ -859,12 +859,12 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.hash = stringHash(name)
 	extra.kind = extraKind
 	extra.place = placeArray
-	extra.from = r.arrayEdge
+	extra.nameFrom = r.arrayEdge
 	extra.nameSize = uint8(nameSize)
-	extra.valueOff = uint16(nameSize) // no gap
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.edge = r.arrayEdge
+	extra.value.edge = r.arrayEdge
 	r.extras = append(r.extras, r.mainPair)
 	r.hasExtras[extraKind] = true
 	return true
@@ -1061,13 +1061,13 @@ func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, ad
 	subField.setSubField()
 	var (
 		bakField  pair
-		subValue  = field.valueText()
+		subValue  = field.value
 		numSubs   = 0
 		needComma = false
 	)
 	for { // each sub value
 		haveComma := false
-		for subValue.from < field.edge {
+		for subValue.from < field.value.edge {
 			if b := p[subValue.from]; b == ' ' || b == '\t' {
 				subValue.from++
 			} else if b == ',' {
@@ -1077,7 +1077,7 @@ func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, ad
 				break
 			}
 		}
-		if subValue.from == field.edge {
+		if subValue.from == field.value.edge {
 			break
 		}
 		if needComma && !haveComma {
@@ -1093,17 +1093,17 @@ func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, ad
 		subValue.edge = subValue.from
 		if p[subValue.edge] == '"' { // subValue is quoted
 			subValue.edge++ // skip '"'
-			for subValue.edge < field.edge && p[subValue.edge] != '"' {
+			for subValue.edge < field.value.edge && p[subValue.edge] != '"' {
 				subValue.edge++
 			}
-			if subValue.edge == field.edge {
+			if subValue.edge == field.value.edge {
 				//subField.value = subValue
 			} else { // got '"'
 				//subField.value.set(subValue.from+1, subValue.edge)
 				subValue.edge++ // skip '"'
 			}
 		} else { // subValue is not quoted
-			for subValue.edge < field.edge {
+			for subValue.edge < field.value.edge {
 				if b := p[subValue.edge]; b == ',' || b == ';' {
 					break
 				} else {
@@ -1112,7 +1112,7 @@ func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, ad
 			}
 			//subField.value = subValue
 		}
-		if !subField.isEmpty() {
+		if subField.value.notEmpty() {
 			// parameters      = *( OWS ";" OWS [ parameter ] )
 			// parameter       = parameter-name "=" parameter-value
 			// parameter-name  = token

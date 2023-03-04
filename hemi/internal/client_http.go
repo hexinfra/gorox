@@ -341,8 +341,8 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte, via
 }
 
 var ( // perfect hash table for request crucial headers
-	hRequestCrucialHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via")
-	hRequestCrucialHeaderTable = [12]struct {
+	hRequestCriticalHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via")
+	hRequestCriticalHeaderTable = [12]struct {
 		hash uint16
 		from uint8
 		edge uint8
@@ -362,12 +362,12 @@ var ( // perfect hash table for request crucial headers
 		10: {hashDate, 46, 50, (*hRequest_).appendDate, (*hRequest_).deleteDate},
 		11: {hashVia, 129, 132, nil, nil}, // forbidden
 	}
-	hRequestCrucialHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
+	hRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
 )
 
 func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
+	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(hRequestCriticalHeaderNames[h.from:h.edge], name) {
 		if h.fAdd == nil { // mainly because this header is forbidden
 			return true // pretend to be successful
 		}
@@ -389,8 +389,8 @@ func (r *hRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 }
 
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
-	h := &hRequestCrucialHeaderTable[hRequestCrucialHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(hRequestCrucialHeaderNames[h.from:h.edge], name) {
+	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(hRequestCriticalHeaderNames[h.from:h.edge], name) {
 		if h.fDel == nil { // mainly because this header is forbidden
 			return true // pretend to be successful
 		}
@@ -485,7 +485,7 @@ func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &hResponseCriticalHeaderTable[hResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+	if h := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseSingletonHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
 		if h.para && !r._parseParas(header, h.quote) {
 			// r.headResult is set.
@@ -501,7 +501,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &hResponseMultipleHeaderTable[hResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+		if h := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(hResponseImportantHeaderNames[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, from, r.headers.edge) {
 				// r.headResult is set.
 				return false
@@ -511,9 +511,9 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for response critical headers
-	hResponseCriticalHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie")
-	hResponseCriticalHeaderTable = [12]struct {
+var ( // perfect hash table for response singleton headers
+	hResponseSingletonHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie")
+	hResponseSingletonHeaderTable = [12]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -534,7 +534,7 @@ var ( // perfect hash table for response critical headers
 		10: {hashContentType, 33, 45, false, true, (*hResponse_).checkContentType},
 		11: {hashRetryAfter, 87, 98, false, false, (*hResponse_).checkRetryAfter},
 	}
-	hResponseCriticalHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
+	hResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
 
 func (r *hResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
@@ -563,7 +563,7 @@ func (r *hResponse_) checkServer(header *pair, index uint8) bool { // Server = p
 	return true
 }
 func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
-	if !r.parseSetCookie(header.valueText()) {
+	if !r.parseSetCookie(header.value) {
 		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
@@ -583,9 +583,9 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 	return true
 }
 
-var ( // perfect hash table for response multiple headers
-	hResponseMultipleHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
-	hResponseMultipleHeaderTable = [17]struct {
+var ( // perfect hash table for response important headers
+	hResponseImportantHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
+	hResponseImportantHeaderTable = [17]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -611,7 +611,7 @@ var ( // perfect hash table for response multiple headers
 		15: {hashAcceptEncoding, 0, 15, false, true, (*hResponse_).checkAcceptEncoding},
 		16: {hashContentLanguage, 117, 133, false, false, (*hResponse_).checkContentLanguage},
 	}
-	hResponseMultipleHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
+	hResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
 func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit

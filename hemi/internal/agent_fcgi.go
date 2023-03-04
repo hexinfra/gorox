@@ -776,7 +776,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			}
 		}
 		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.from, header.nameSize = r.pBack, uint8(nameSize)
+			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
 		} else {
 			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
@@ -791,7 +791,6 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		header.valueOff = uint16(r.pFore - r.pBack) // "name:OWS*"
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
@@ -825,9 +824,10 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
 				fore--
 			}
+			header.value.set(r.pBack, fore)
 		} else { // field-value is empty
+			header.value.zero()
 		}
-		header.edge = fore
 
 		// Header is received in general algorithm. Now add and adopt it
 		if !r.addHeader(header) || !r.adoptHeader(header) {
@@ -869,7 +869,7 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 
 func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &fcgiResponseCriticalHeaderTable[fcgiResponseCriticalHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseCriticalHeaderNames[h.from:h.edge], headerName) {
+	if h := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
 		if h.check != nil && !h.check(r, header, len(r.headers)-1) {
 			// r.headResult is set.
@@ -881,7 +881,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if h := &fcgiResponseMultipleHeaderTable[fcgiResponseMultipleHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseMultipleHeaderNames[h.from:h.edge], headerName) {
+		if h := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseImportantHeaderNames[h.from:h.edge], headerName) {
 			if h.check != nil && !h.check(r, from, len(r.headers)) {
 				// r.headResult is set.
 				return false
@@ -891,9 +891,9 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for response critical headers
-	fcgiResponseCriticalHeaderNames = []byte("content-length content-type location status")
-	fcgiResponseCriticalHeaderTable = [4]struct {
+var ( // perfect hash table for response singleton headers
+	fcgiResponseSingletonHeaderNames = []byte("content-length content-type location status")
+	fcgiResponseSingletonHeaderTable = [4]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -906,7 +906,7 @@ var ( // perfect hash table for response critical headers
 		2: {hashContentType, 15, 27, false, true, (*fcgiResponse).checkContentType},
 		3: {hashLocation, 28, 36, false, false, (*fcgiResponse).checkLocation},
 	}
-	fcgiResponseCriticalHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
+	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
@@ -930,9 +930,9 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	return true
 }
 
-var ( // perfect hash table for response multiple headers
-	fcgiResponseMultipleHeaderNames = []byte("connection transfer-encoding upgrade")
-	fcgiResponseMultipleHeaderTable = [3]struct {
+var ( // perfect hash table for response important headers
+	fcgiResponseImportantHeaderNames = []byte("connection transfer-encoding upgrade")
+	fcgiResponseImportantHeaderTable = [3]struct {
 		hash  uint16
 		from  uint8
 		edge  uint8
@@ -944,7 +944,7 @@ var ( // perfect hash table for response multiple headers
 		1: {hashConnection, 0, 10, false, false, (*fcgiResponse).checkConnection},
 		2: {hashUpgrade, 29, 36, false, false, (*fcgiResponse).checkUpgrade},
 	}
-	fcgiResponseMultipleHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
+	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
 
 func (r *fcgiResponse) checkConnection(from int, edge int) bool {

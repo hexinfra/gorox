@@ -2867,7 +2867,7 @@ func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
 	return true
 }
 
-var ( // perfect hash table for response crucial headers
+var ( // perfect hash table for response critical headers
 	httpResponseCriticalHeaderNames = []byte("connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade")
 	httpResponseCriticalHeaderTable = [10]struct {
 		hash uint16

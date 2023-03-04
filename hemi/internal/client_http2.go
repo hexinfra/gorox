@@ -354,27 +354,13 @@ func (r *H2Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	return false
 }
 
-func (r *H2Request) header(name []byte) (value []byte, ok bool) {
-	return r.header2(name)
-}
-func (r *H2Request) hasHeader(name []byte) bool {
-	return r.hasHeader2(name)
-}
-func (r *H2Request) addHeader(name []byte, value []byte) bool {
-	return r.addHeader2(name, value)
-}
-func (r *H2Request) delHeader(name []byte) (deleted bool) {
-	return r.delHeader2(name)
-}
-func (r *H2Request) delHeaderAt(o uint8) {
-	r.delHeaderAt2(o)
-}
-func (r *H2Request) addedHeaders() []byte {
-	return nil
-}
-func (r *H2Request) fixedHeaders() []byte {
-	return nil
-}
+func (r *H2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
+func (r *H2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
+func (r *H2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
+func (r *H2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
+func (r *H2Request) delHeaderAt(o uint8)                        { r.delHeaderAt2(o) }
+func (r *H2Request) addedHeaders() []byte                       { return nil }
+func (r *H2Request) fixedHeaders() []byte                       { return nil }
 
 func (r *H2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie

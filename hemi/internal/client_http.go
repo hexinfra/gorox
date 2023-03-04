@@ -340,7 +340,7 @@ func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte, via
 	return true
 }
 
-var ( // perfect hash table for request crucial headers
+var ( // perfect hash table for request critical headers
 	hRequestCriticalHeaderNames = []byte("connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via")
 	hRequestCriticalHeaderTable = [12]struct {
 		hash uint16

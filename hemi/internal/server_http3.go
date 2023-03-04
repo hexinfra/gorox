@@ -346,27 +346,13 @@ type http3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http3Response) header(name []byte) (value []byte, ok bool) {
-	return r.header3(name)
-}
-func (r *http3Response) hasHeader(name []byte) bool {
-	return r.hasHeader3(name)
-}
-func (r *http3Response) addHeader(name []byte, value []byte) bool {
-	return r.addHeader3(name, value)
-}
-func (r *http3Response) delHeader(name []byte) (deleted bool) {
-	return r.delHeader3(name)
-}
-func (r *http3Response) delHeaderAt(o uint8) {
-	r.delHeaderAt3(o)
-}
-func (r *http3Response) addedHeaders() []byte {
-	return nil
-}
-func (r *http3Response) fixedHeaders() []byte {
-	return nil
-}
+func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
+func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
+func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
+func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
+func (r *http3Response) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
+func (r *http3Response) addedHeaders() []byte                       { return nil }
+func (r *http3Response) fixedHeaders() []byte                       { return nil }
 
 func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO

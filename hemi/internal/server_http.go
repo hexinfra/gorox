@@ -1044,11 +1044,11 @@ var ( // perfect hash table for request multiple headers
 		7:  {hashXForwardedFor, 194, 209, false, false, (*httpRequest_).checkXForwardedFor},
 		8:  {hashVia, 190, 193, false, false, (*httpRequest_).checkVia},
 		9:  {hashForwarded, 120, 129, false, false, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		10: {hashIfMatch, 130, 138, false, false, (*httpRequest_).checkIfMatch},
+		10: {hashIfMatch, 130, 138, true, false, (*httpRequest_).checkIfMatch},
 		11: {hashAccept, 0, 6, false, true, (*httpRequest_).checkAccept},
 		12: {hashAcceptEncoding, 22, 37, false, true, (*httpRequest_).checkAcceptEncoding},
 		13: {hashConnection, 68, 78, false, false, (*httpRequest_).checkConnection},
-		14: {hashIfNoneMatch, 139, 152, false, false, (*httpRequest_).checkIfNoneMatch},
+		14: {hashIfNoneMatch, 139, 152, true, false, (*httpRequest_).checkIfNoneMatch},
 		15: {hashUpgrade, 182, 189, false, false, (*httpRequest_).checkUpgrade},
 		16: {hashContentEncoding, 79, 95, false, false, (*httpRequest_).checkContentEncoding},
 		17: {hashAcceptLanguage, 38, 53, false, true, (*httpRequest_).checkAcceptLanguage},
@@ -1183,20 +1183,11 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
 				return false
 			}
-			if nMatch > 63 {
+			if nMatch > 16 {
 				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
 				return false
 			}
-			// *match is 0 by default
-			*match++
-			if size := len(value); size >= 4 && value[0] == 'W' && value[1] == '/' && value[2] == '"' && value[size-1] == '"' { // W/"..."
-				header.setWeakETag()
-				header.valueOff += 3 // skip `W/"`
-				header.edge--        // skip '"'
-			} else if size >= 2 && value[0] == '"' && value[size-1] == '"' { // "..."
-				header.valueOff++ // skip '"'
-				header.edge--     // skip '"'
-			}
+			*match++ // *match is 0 by default
 		}
 	}
 	return true
@@ -1666,7 +1657,8 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
 		}
-		if !header.isWeakETag() && bytes.Equal(header.valueAt(r.input), etag) {
+		data := header.dataAt(r.input)
+		if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
 			return true
 		}
 	}
@@ -1706,7 +1698,11 @@ func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (
 }
 func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	ifRange := &r.primes[r.indexes.ifRange]
-	return !ifRange.isWeakETag() && bytes.Equal(ifRange.valueAt(r.input), etag)
+	data := ifRange.dataAt(r.input)
+	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
+		return true
+	}
+	return false
 }
 func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
 	return r.unixTimes.ifRange == modTime

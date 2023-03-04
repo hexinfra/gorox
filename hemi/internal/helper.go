@@ -18,18 +18,20 @@ import (
 // poolPairs
 var poolPairs sync.Pool
 
+const maxPairs = 204 // 20B*204=4080B
+
 func getPairs() []pair {
 	if x := poolPairs.Get(); x == nil {
-		return make([]pair, 0, 204) // 20B*204=4080B
+		return make([]pair, 0, maxPairs)
 	} else {
 		return x.([]pair)
 	}
 }
 func putPairs(pairs []pair) {
-	if cap(pairs) != 204 {
+	if cap(pairs) != maxPairs {
 		BugExitln("bad pairs")
 	}
-	pairs = pairs[0:0:204] // reset
+	pairs = pairs[0:0:maxPairs] // reset
 	poolPairs.Put(pairs)
 }
 
@@ -108,7 +110,7 @@ const ( // field flags
 	flagPseudo     = 0b00010000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagUnderscore = 0b00001000 // name contains '_' or not. some agents (like fcgi) need this
 	flagCommaValue = 0b00000100 // value has comma or not
-	flagWeakETag   = 0b00000010 // weak etag or not
+	flagReserved   = 0b00000010 // reserved for future use
 	flagQuoted     = 0b00000001 // value is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
@@ -118,7 +120,6 @@ func (p *pair) setLiteral()    { p.flags |= flagLiteral }
 func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
 func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
-func (p *pair) setWeakETag()   { p.flags |= flagWeakETag }
 func (p *pair) setQuoted()     { p.flags |= flagQuoted }
 
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
@@ -127,24 +128,25 @@ func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }
 func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
 func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
-func (p *pair) isWeakETag() bool   { return p.flags&flagWeakETag > 0 }
 func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 
 // poolParas
 var poolParas sync.Pool
 
+const maxParas = 128
+
 func getParas() []para {
 	if x := poolParas.Get(); x == nil {
-		return make([]para, 0, 128)
+		return make([]para, 0, maxParas)
 	} else {
 		return x.([]para)
 	}
 }
 func putParas(paras []para) {
-	if cap(paras) != 128 {
+	if cap(paras) != maxParas {
 		BugExitln("bad paras")
 	}
-	paras = paras[0:0:128] // reset
+	paras = paras[0:0:maxParas] // reset
 	poolParas.Put(paras)
 }
 

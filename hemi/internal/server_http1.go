@@ -408,7 +408,7 @@ func (r *http1Request) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	if !r.recvControl() || !r.recvHeaders1() || !r.checkHead() {
+	if !r.recvControl() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}

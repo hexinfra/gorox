@@ -671,7 +671,7 @@ func (r *fcgiResponse) recvHead() {
 		r.headResult = -1
 		return
 	}
-	if !r.growHead() || !r.recvHeaders() || !r.checkHead() {
+	if !r.growHead() || !r.recvHeaders() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -1046,7 +1046,7 @@ func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byt
 	return true
 }
 
-func (r *fcgiResponse) checkHead() bool {
+func (r *fcgiResponse) examineHead() bool {
 	r.maxContentSize = r.stream.agent.maxContentSize
 	return true
 }

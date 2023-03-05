@@ -246,7 +246,7 @@ func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
 
-func (r *hRequest_) checkPush() error {
+func (r *hRequest_) beforePush() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -698,7 +698,7 @@ func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie-s
 	return true
 }
 
-func (r *hResponse_) checkHead() bool {
+func (r *hResponse_) examineHead() bool {
 	// Basic checks against versions
 	switch r.versionCode {
 	case Version1_0: // we don't support HTTP/1.0 in client side

@@ -1359,7 +1359,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 	return true
 }
 
-func (r *httpRequest_) checkHead() bool {
+func (r *httpRequest_) examineHead() bool {
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
 	// apply a request to the target resource until the entire request
 	// header section is received, since later header fields might include
@@ -2739,7 +2739,7 @@ func (r *httpResponse_) SendGatewayTimeout(content []byte) error { // 504
 	return r.sendError(StatusGatewayTimeout, content)
 }
 func (r *httpResponse_) sendError(status int16, content []byte) error {
-	if err := r.checkSend(); err != nil {
+	if err := r.beforeSend(); err != nil {
 		return err
 	}
 	if err := r.SetStatus(status); err != nil {
@@ -2787,7 +2787,7 @@ func (r *httpResponse_) send() error {
 	return r.shell.sendChain(curChain)
 }
 
-func (r *httpResponse_) checkPush() error {
+func (r *httpResponse_) beforePush() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}

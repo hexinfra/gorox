@@ -68,14 +68,14 @@ const ( // pair places
 // If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
 //
 //                      [             value                  )
-//        [   name    )  [  data   )
+//        [   name    )  [  data   )[         paras          )
 //       +---------------------------------------------------+
 //       |example-type: "text/plain"; charset="utf-8";lang=en|
 //       +---------------------------------------------------+
-//        ^           ^ ^^         ^[         paras          )
-//        |           | ||         |                         ^
-// nameFrom           | ||  dataEdge                         |
-//    nameFrom+nameSize ||                          value.edge
+//        ^           ^ ^^         ^                         ^
+//        |           | ||         |                         |
+// nameFrom           | ||  dataEdge                value.edge
+//    nameFrom+nameSize ||
 //             value.from|
 //                       value.from+(flags&flagQuoted)
 //

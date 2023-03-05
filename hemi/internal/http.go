@@ -101,7 +101,6 @@ type httpIn_ struct { // incoming. needs parsing
 	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
-	_              [4]byte  // padding
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
@@ -274,7 +273,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set in r.checkHead() if the content is unsized
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set in r.examineHead() if the content is unsized
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -1230,7 +1229,7 @@ type httpOut interface {
 	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
-	checkPush() error
+	beforePush() error
 	pushHeaders() error
 	push(chunk *Block) error
 	pushChain(chain Chain) error
@@ -1544,7 +1543,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
 		}
 	} else { // nil means no content.
-		if err := r.checkSend(); err != nil {
+		if err := r.beforeSend(); err != nil {
 			return err
 		}
 		r.forbidContent = true
@@ -1552,7 +1551,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 	}
 }
 
-func (r *httpOut_) checkSend() error {
+func (r *httpOut_) beforeSend() error {
 	if r.isSent {
 		return httpOutAlreadySent
 	}
@@ -1560,7 +1559,7 @@ func (r *httpOut_) checkSend() error {
 	return nil
 }
 func (r *httpOut_) sendBlob(content []byte) error {
-	if err := r.checkSend(); err != nil {
+	if err := r.beforeSend(); err != nil {
 		return err
 	}
 	r.content.head.SetBlob(content)
@@ -1568,7 +1567,7 @@ func (r *httpOut_) sendBlob(content []byte) error {
 	return r.shell.send()
 }
 func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
-	if err := r.checkSend(); err != nil {
+	if err := r.beforeSend(); err != nil {
 		return err
 	}
 	r.content.head.SetFile(content, info, shut)
@@ -1576,7 +1575,7 @@ func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error
 	return r.shell.send()
 }
 func (r *httpOut_) pushBlob(chunk []byte) error {
-	if err := r.shell.checkPush(); err != nil {
+	if err := r.shell.beforePush(); err != nil {
 		return err
 	}
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
@@ -1587,7 +1586,7 @@ func (r *httpOut_) pushBlob(chunk []byte) error {
 	return r.shell.push(block)
 }
 func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
-	if err := r.shell.checkPush(); err != nil {
+	if err := r.shell.beforePush(); err != nil {
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks

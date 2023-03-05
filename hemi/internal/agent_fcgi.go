@@ -869,28 +869,29 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 
 func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[h.from:h.edge], headerName) {
+	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldData(header, h.quote, h.empty, h.para) {
+		if !r._setFieldData(header, sh.quote, sh.empty, sh.para) {
 			// r.headResult is set.
 			return false
 		}
-		if h.check != nil && !h.check(r, header, len(r.headers)-1) {
+		if sh.check != nil && !sh.check(r, header, len(r.headers)-1) {
 			// r.headResult is set.
 			return false
 		}
-	} else { // all other headers are treated as multiple headers
+	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(fcgiResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := len(r.headers) + 1 // excluding main header
-		if !r._addSubHeaders(header, h.quote, h.empty, h.para) {
+		if !r._addSubHeaders(header, mh.quote, mh.empty, mh.para) {
 			// r.headResult is set.
 			return false
 		}
-		if h := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseImportantHeaderNames[h.from:h.edge], headerName) {
-			if h.check != nil && !h.check(r, from, len(r.headers)) {
-				// r.headResult is set.
-				return false
-			}
+		if mh.check != nil && !mh.check(r, from, len(r.headers)) {
+			// r.headResult is set.
+			return false
 		}
+	} else if !r._addSubHeaders(header, true, false, true) {
+		// r.headResult is set.
+		return false
 	}
 	return true
 }

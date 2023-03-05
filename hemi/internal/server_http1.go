@@ -538,7 +538,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					// GET http://www.example.org HTTP/1.1
 					// Do nothing.
 				}
-				goto beforeVersion // request target is done, since origin-form always starts with '/'.
+				goto beforeVersion // request target is done, since origin-form always starts with '/', while b is ' ' here.
 			}
 			r.pBack = r.pFore // at '/'.
 		}
@@ -775,7 +775,7 @@ beforeVersion: // r.pFore is at ' '.
 		r.versionCode = Version1_1
 	} else if bytes.Equal(version, bytesHTTP1_0) {
 		r.versionCode = Version1_0
-	} else {
+	} else { // i don't believe there will be a HTTP/1.2 in the future.
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}

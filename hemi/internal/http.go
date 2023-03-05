@@ -460,6 +460,98 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
+func (r *httpIn_) _setFieldData(field *pair, quote bool, empty bool, para bool) bool {
+	// TODO
+	return true
+}
+func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
+	// TODO
+	return true
+	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+		return true
+	}
+	// RFC 9110 (section 5.6.1.2):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ element ] *( OWS "," OWS [ element ] )
+	subField := *field
+	subField.setSubField()
+	var (
+		bakField  pair
+		subValue  = field.value
+		numSubs   = 0
+		needComma = false
+	)
+	for { // each sub value
+		haveComma := false
+		for subValue.from < field.value.edge {
+			if b := p[subValue.from]; b == ' ' || b == '\t' {
+				subValue.from++
+			} else if b == ',' {
+				haveComma = true
+				subValue.from++
+			} else {
+				break
+			}
+		}
+		if subValue.from == field.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
+			if field.kind == kindHeader {
+				r.headResult = StatusBadRequest
+			} else {
+				r.bodyResult = StatusBadRequest
+			}
+			r.failReason = "comma needed in multi-value field"
+			return false
+		}
+		subValue.edge = subValue.from
+		if p[subValue.edge] == '"' { // subValue is quoted
+			subValue.edge++ // skip '"'
+			for subValue.edge < field.value.edge && p[subValue.edge] != '"' {
+				subValue.edge++
+			}
+			if subValue.edge == field.value.edge {
+				//subField.value = subValue
+			} else { // got '"'
+				//subField.value.set(subValue.from+1, subValue.edge)
+				subValue.edge++ // skip '"'
+			}
+		} else { // subValue is not quoted
+			for subValue.edge < field.value.edge {
+				if b := p[subValue.edge]; b == ',' || b == ';' {
+					break
+				} else {
+					subValue.edge++
+				}
+			}
+			//subField.value = subValue
+		}
+		if subField.value.notEmpty() {
+			// parameters      = *( OWS ";" OWS [ parameter ] )
+			// parameter       = parameter-name "=" parameter-value
+			// parameter-name  = token
+			// parameter-value = ( token / quoted-string )
+			if numSubs == 0 { // 0 -> 1, save as backup
+				bakField = subField
+			} else { // numSubs >= 1, add backup and current one
+				field.setCommaValue()
+				if numSubs == 1 && !addField(&bakField) {
+					return false
+				}
+				if !addField(&subField) {
+					return false
+				}
+			}
+			numSubs++
+		}
+		subValue.from = subValue.edge
+		needComma = true
+	}
+	return true
+}
+
 func (r *httpIn_) ContentSize() int64 { return r.contentSize }
 func (r *httpIn_) UnsafeContentLength() []byte {
 	if r.iContentLength == 0 {
@@ -1049,98 +1141,6 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _setFieldData(field *pair, quote bool, empty bool, para bool) bool {
-	// TODO
-	return true
-}
-func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
-	// TODO
-	return true
-	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
-		return true
-	}
-	// RFC 7230 (section 7):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-	// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-	subField := *field
-	subField.setSubField()
-	var (
-		bakField  pair
-		subValue  = field.value
-		numSubs   = 0
-		needComma = false
-	)
-	for { // each sub value
-		haveComma := false
-		for subValue.from < field.value.edge {
-			if b := p[subValue.from]; b == ' ' || b == '\t' {
-				subValue.from++
-			} else if b == ',' {
-				haveComma = true
-				subValue.from++
-			} else {
-				break
-			}
-		}
-		if subValue.from == field.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
-			if field.kind == kindHeader {
-				r.headResult = StatusBadRequest
-			} else {
-				r.bodyResult = StatusBadRequest
-			}
-			r.failReason = "comma needed in multi-value field"
-			return false
-		}
-		subValue.edge = subValue.from
-		if p[subValue.edge] == '"' { // subValue is quoted
-			subValue.edge++ // skip '"'
-			for subValue.edge < field.value.edge && p[subValue.edge] != '"' {
-				subValue.edge++
-			}
-			if subValue.edge == field.value.edge {
-				//subField.value = subValue
-			} else { // got '"'
-				//subField.value.set(subValue.from+1, subValue.edge)
-				subValue.edge++ // skip '"'
-			}
-		} else { // subValue is not quoted
-			for subValue.edge < field.value.edge {
-				if b := p[subValue.edge]; b == ',' || b == ';' {
-					break
-				} else {
-					subValue.edge++
-				}
-			}
-			//subField.value = subValue
-		}
-		if subField.value.notEmpty() {
-			// parameters      = *( OWS ";" OWS [ parameter ] )
-			// parameter       = parameter-name "=" parameter-value
-			// parameter-name  = token
-			// parameter-value = ( token / quoted-string )
-			if numSubs == 0 { // 0 -> 1, save as backup
-				bakField = subField
-			} else { // numSubs >= 1, add backup and current one
-				field.setCommaValue()
-				if numSubs == 1 && !addField(&bakField) {
-					return false
-				}
-				if !addField(&subField) {
-					return false
-				}
-			}
-			numSubs++
-		}
-		subValue.from = subValue.edge
-		needComma = true
-	}
-	return true
-}
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)

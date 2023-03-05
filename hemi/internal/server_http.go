@@ -759,28 +759,29 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
-	if h := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[h.from:h.edge], headerName) {
+	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldData(header, h.quote, h.empty, h.para) {
+		if !r._setFieldData(header, sh.quote, sh.empty, sh.para) {
 			// r.headResult is set.
 			return false
 		}
-		if h.check != nil && !h.check(r, header, r.headers.edge-1) {
+		if sh.check != nil && !sh.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
-	} else { // all other headers are treated as multiple headers
+	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, h.quote, h.empty, h.para, r.input, r.addHeader) {
+		if !r._addSubFields(header, mh.quote, mh.empty, mh.para, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
-		if h := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[h.from:h.edge], headerName) {
-			if h.check != nil && !h.check(r, from, r.headers.edge) {
-				// r.headResult is set.
-				return false
-			}
+		if mh.check != nil && !mh.check(r, from, r.headers.edge) {
+			// r.headResult is set.
+			return false
 		}
+	} else if !r._addSubFields(header, true, false, true, r.input, r.addHeader) {
+		// r.headResult is set.
+		return false
 	}
 	return true
 }
@@ -1487,6 +1488,7 @@ func (r *httpRequest_) examineHead() bool {
 				typeParams  text
 				contentType []byte
 			)
+			// TODO: refactor this. use general api of pairs
 			vType := r.primes[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParams.from = vType.edge

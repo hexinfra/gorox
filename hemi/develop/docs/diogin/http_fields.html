@@ -26,18 +26,18 @@
 			<li><a href="https://www.rfc-editor.org/rfc/rfc9111.html">RFC 9111：HTTP 缓存</a></li>
 			<li><a href="https://www.rfc-editor.org/rfc/rfc9112.html">RFC 9112：HTTP/1.1</a></li>
 			<li><a href="https://www.rfc-editor.org/rfc/rfc9113.html">RFC 9113：HTTP/2</a></li>
-			<li><a href="https://www.rfc-editor.org/rfc/rfc9114.html">RFC 9114：HTTP/3</a></li>
 			<li><a href="https://www.rfc-editor.org/rfc/rfc7541.html">RFC 7541：HPACK</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9114.html">RFC 9114：HTTP/3</a></li>
 			<li><a href="https://www.rfc-editor.org/rfc/rfc9204.html">RFC 9204：QPACK</a></li>
 		</ul>
 
 		<h2>通用</h2>
 		<table class="general">
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
-			<tr><td>accept-encoding</td>    <td>9110</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Encoding  = #( codings [ weight ] )</td></tr>
-			<tr><td>cache-control</td>      <td>?</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Cache-Control = #cache-directive</td></tr>
-			<tr><td>connection</td>         <td>9110</td><td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #connection-option</td></tr>
-			<tr><td>content-encoding</td>   <td>?</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Encoding = #content-coding</td></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><td>accept-encoding</td>    <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept-Encoding  = #( token / "identity" / "*" [ OWS ";" OWS "q=" qvalue ] )</td></tr>
+			<tr><td>cache-control</td>      <td>9111</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Cache-Control = #( token [ "=" ( token / quoted-string ) ] )</td></tr>
+			<tr><td>connection</td>         <td>9110</td><td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #token</td></tr>
+			<tr><td>content-encoding</td>   <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Content-Encoding = #token</td></tr>
 			<tr><td>content-language</td>   <td>?</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Language = #language-tag</td></tr>
 			<tr><td>content-length</td>     <td>9110</td><td>✗</td><td>1</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Content-Length = 1*DIGIT</td></tr>
 			<tr><td>content-location</td>   <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Content-Location = absolute-URI / partial-URI</td></tr>
@@ -49,12 +49,12 @@
 			<tr><td>transfer-encoding</td>  <td>9112</td><td>✓</td><td>*</td><td>✗</td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td>Transfer-Encoding = #transfer-coding</td></tr>
 			<tr><td>upgrade</td>            <td>?</td><td>✓</td><td>*</td><td>✗</td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td>Upgrade = #protocol</td></tr>
 			<tr><td>via</td>                <td>9110</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Via = #( received-protocol RWS received-by [ RWS comment ] )</td></tr>
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 		</table>
 
 		<h2>请求</h2>
 		<table class="request">
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 			<tr><td>:authority</td>         <td>9113</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>host [ ":" port ]</td></tr>
 			<tr><td>:method</td>            <td>9113</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>token</td></tr>
 			<tr><td>:path</td>              <td>9113</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>origin-form / absolute-form / authority-form / asterisk-form</td></tr>
@@ -78,12 +78,12 @@
 			<tr><td>referer</td>            <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Referer = absolute-URI / partial-URI</td></tr>
 			<tr><td>te</td>                 <td>?</td><td>✓</td><td>*</td><td>?</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>TE = [ t-codings *( OWS "," OWS t-codings ) ]</td></tr>
 			<tr><td>user-agent</td>         <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 		</table>
 
 		<h2>响应</h2>
 		<table class="response">
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 			<tr><td>:status</td>            <td>?</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>3DIGIT</td></tr>
 			<tr><td>accept-ranges</td>      <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Ranges = 1#range-unit</td></tr>
 			<tr><td>age</td>                <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
@@ -103,11 +103,8 @@
 			<tr><td>set-cookie</td>         <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
 			<tr><td>vary</td>               <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
 			<tr><td>www-authenticate</td>   <td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
-			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>多值</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
 		</table>
-
-		<h2>代理</h2>
-		<p>代理在转发消息时，有些已知字段，无论是否在 connection 里指定，都必须删除：proxy-connection、keep-alive、transfer-encoding、upgrade、te 等，包括 connection 本身。当后端为 HTTP/1 时，代理可以重新指定 connection，但当后端是 HTTP/2 或 HTTP/3 时，则必须不能使用 connection。后端为 HTTP/2 或 HTTP/3 时，可以加入 te，但是其值必须为 trailers。</p>
 
 	</body>
 </html>

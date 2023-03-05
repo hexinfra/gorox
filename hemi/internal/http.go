@@ -523,6 +523,7 @@ func (r *httpIn_) HasHeader(name string) bool {
 func (r *httpIn_) AddHeader(name string, value string) bool { // to extras
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// NOTICE: must add values without comma so r.getPairs() works correctly
+	// setFlags?
 	return r.addExtra(name, value, kindHeader)
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
@@ -744,6 +745,7 @@ func (r *httpIn_) HasTrailer(name string) bool {
 func (r *httpIn_) AddTrailer(name string, value string) bool { // to extras
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// NOTICE: must add values without comma so r.getPairs() works correctly
+	// setFlags?
 	return r.addExtra(name, value, kindTrailer)
 }
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
@@ -821,13 +823,13 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 
 func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
-		if cap(r.primes) != cap(r.stockPrimes) { // overflow
+		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
 			return 0, false
 		}
 		r.primes = getPairs()
 		r.primes = append(r.primes, r.stockPrimes[:]...)
 	}
-	r.primes = append(r.primes, *prime)
+	r.primes = append(r.primes, *prime) // TODO: eliminate this copy
 	return uint8(len(r.primes)), true
 }
 func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
@@ -865,7 +867,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	r.extras = append(r.extras, r.mainPair)
+	r.extras = append(r.extras, r.mainPair) // TODO: eliminate this copy
 	r.hasExtras[extraKind] = true
 	return true
 }
@@ -1048,7 +1050,12 @@ func (r *httpIn_) _getPlace(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
+func (r *httpIn_) _setFieldData(field *pair, quote bool, empty bool, para bool) bool {
+	// TODO
+	return true
+}
+func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
+	// TODO
 	return true
 	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
 		return true
@@ -1133,10 +1140,6 @@ func (r *httpIn_) _addSubFields(field *pair, quote bool, para bool, p []byte, ad
 		subValue.from = subValue.edge
 		needComma = true
 	}
-	return true
-}
-func (r *httpIn_) _parseParas(field *pair, quote bool) bool {
-	// TODO
 	return true
 }
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance

@@ -871,13 +871,17 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if h := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; h.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[h.from:h.edge], headerName) {
 		header.setSingleton()
+		if !r._setFieldData(header, h.quote, h.empty, h.para) {
+			// r.headResult is set.
+			return false
+		}
 		if h.check != nil && !h.check(r, header, len(r.headers)-1) {
 			// r.headResult is set.
 			return false
 		}
 	} else { // all other headers are treated as multiple headers
 		from := len(r.headers) + 1 // excluding main header
-		if !r._addSubHeaders(header, h.quote, h.para) {
+		if !r._addSubHeaders(header, h.quote, h.empty, h.para) {
 			// r.headResult is set.
 			return false
 		}
@@ -897,14 +901,15 @@ var ( // perfect hash table for response singleton headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		quote bool // quote data or not
-		para  bool // has parameters or not
+		quote bool // allow data quote or not
+		empty bool // allow empty data or not
+		para  bool // allow parameters or not
 		check func(*fcgiResponse, *pair, int) bool
 	}{
-		0: {fcgiHashStatus, 37, 43, false, false, (*fcgiResponse).checkStatus},
-		1: {hashContentLength, 0, 14, false, false, (*fcgiResponse).checkContentLength},
-		2: {hashContentType, 15, 27, false, true, (*fcgiResponse).checkContentType},
-		3: {hashLocation, 28, 36, false, false, (*fcgiResponse).checkLocation},
+		0: {fcgiHashStatus, 37, 43, false, false, false, (*fcgiResponse).checkStatus},
+		1: {hashContentLength, 0, 14, false, false, false, (*fcgiResponse).checkContentLength},
+		2: {hashContentType, 15, 27, false, false, true, (*fcgiResponse).checkContentType},
+		3: {hashLocation, 28, 36, false, false, false, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -936,13 +941,14 @@ var ( // perfect hash table for response important headers
 		hash  uint16
 		from  uint8
 		edge  uint8
-		quote bool // quote data or not
-		para  bool // has parameters or not
+		quote bool // allow data quote or not
+		empty bool // allow empty data or not
+		para  bool // allow parameters or not
 		check func(*fcgiResponse, int, int) bool
 	}{
-		0: {hashTransferEncoding, 11, 28, false, false, (*fcgiResponse).checkTransferEncoding}, // deliberately false
-		1: {hashConnection, 0, 10, false, false, (*fcgiResponse).checkConnection},
-		2: {hashUpgrade, 29, 36, false, false, (*fcgiResponse).checkUpgrade},
+		0: {hashTransferEncoding, 11, 28, false, false, false, (*fcgiResponse).checkTransferEncoding}, // deliberately false
+		1: {hashConnection, 0, 10, false, false, false, (*fcgiResponse).checkConnection},
+		2: {hashUpgrade, 29, 36, false, false, false, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
@@ -963,7 +969,10 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, para bool) bool {
+func (r *fcgiResponse) _setFieldData(header *pair, quote bool, empty bool, para bool) bool {
+	return false
+}
+func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, empty bool, para bool) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:

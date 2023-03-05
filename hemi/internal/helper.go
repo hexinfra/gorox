@@ -65,7 +65,20 @@ const ( // pair places
 	placeStatic3
 )
 
-// If "example-type" is defined as: quote=true, para=true, then a non-comma "example-type" field looks like this:
+// If "example-name" is not a field, and has a value "example-value", then it looks like this:
+//
+//       +-------------------------+
+//       |example-nameexample-value|
+//       +-------------------------+
+//        ^           ^            ^
+//        |           |            |
+// nameFrom           |            |
+//    nameFrom+nameSize            |
+//           value.from   value.edge
+//
+// flags, paras, and dataEdge are NOT used.
+//
+// If "example-type" field is defined as: `quote=true empty=false para=true`, then a non-comma "example-type" field may looks like this:
 //
 //                      [             value                  )
 //        [   name    )  [  data   )[         paras          )
@@ -79,7 +92,7 @@ const ( // pair places
 //             value.from|
 //                       value.from+(flags&flagQuoted)
 //
-// If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1.
+// If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) nameEqualString(t []byte, x string) bool {

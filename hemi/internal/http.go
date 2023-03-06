@@ -460,7 +460,7 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) _setFieldData(field *pair, quote bool, empty bool, para bool) bool {
+func (r *httpIn_) _setFieldInfo(field *pair, quote bool, empty bool, para bool) bool {
 	// TODO
 	return true
 }

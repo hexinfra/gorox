@@ -871,7 +871,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldData(header, sh.quote, sh.empty, sh.para) {
+		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.para) {
 			// r.headResult is set.
 			return false
 		}
@@ -970,7 +970,7 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _setFieldData(header *pair, quote bool, empty bool, para bool) bool {
+func (r *fcgiResponse) _setFieldInfo(header *pair, quote bool, empty bool, para bool) bool {
 	return false
 }
 func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, empty bool, para bool) bool {

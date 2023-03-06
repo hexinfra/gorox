@@ -761,7 +761,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldData(header, sh.quote, sh.empty, sh.para) {
+		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.para) {
 			// r.headResult is set.
 			return false
 		}

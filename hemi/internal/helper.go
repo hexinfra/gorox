@@ -18,7 +18,7 @@ import (
 // poolPairs
 var poolPairs sync.Pool
 
-const maxPairs = 204 // 20B*204=4080B
+const maxPairs = 250 // 24B*250=6000B
 
 func getPairs() []pair {
 	if x := poolPairs.Get(); x == nil {
@@ -41,7 +41,7 @@ type pair struct { // 24 bytes
 	kind     int8   // see pair kinds
 	place    int8   // see pair places
 	nameFrom int32  // name begins from
-	nameSize uint8  // name ends at from+nameSize
+	nameSize uint8  // name ends at nameFrom+nameSize
 	flags    byte   // see field flags
 	paras    zone   // refers to a zone of paras
 	dataEdge int32  // data ends at
@@ -61,12 +61,14 @@ const ( // pair kinds
 const ( // pair places
 	placeInput = iota // prime headers, prime cookies
 	placeArray        // prime queries, prime forms, prime trailers, all extras
-	placeStatic2
-	placeStatic3
+	placeStatic2      // HTTP/2 static table for headers and trailers
+	placeStatic3      // HTTP/3 static table for headers and trailers
 )
 
 // If "example-name" is not a field, and has a value "example-value", then it looks like this:
 //
+//                    [   value    )
+//        [   name    )
 //       +-------------------------+
 //       |example-nameexample-value|
 //       +-------------------------+
@@ -78,21 +80,27 @@ const ( // pair places
 //
 // flags, paras, and dataEdge are NOT used.
 //
-// If "example-type" field is defined as: `quote=true empty=false para=true`, then a non-comma "example-type" field may looks like this:
+// If "accept-type" field is defined as: `quote=true empty=false para=true`, then a non-comma "accept-type" field may looks like this:
 //
-//                      [             value                  )
-//        [   name    )  [  data   )[         paras          )
-//       +---------------------------------------------------+
-//       |example-type: "text/plain"; charset="utf-8";lang=en|
-//       +---------------------------------------------------+
-//        ^           ^ ^^         ^                         ^
-//        |           | ||         |                         |
-// nameFrom           | ||  dataEdge                value.edge
-//    nameFrom+nameSize ||
-//             value.from|
-//                       value.from+(flags&flagQuoted)
+//                     [             value                  )
+//        [   name   )  [  data   )[         paras          )
+//       +--------------------------------------------------+
+//       |accept-type: "text/plain"; charset="utf-8";lang=en|
+//       +--------------------------------------------------+
+//        ^          ^ ^^         ^                         ^
+//        |          | ||         |                         |
+// nameFrom          | ||  dataEdge                value.edge
+//   nameFrom+nameSize ||
+//            value.from|
+//                      value.from+(flags&flagQuoted)
 //
 // If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
+//
+// A has-comma "accept-type" field may looks like this (needs further parsing into sub fields):
+//
+// +-----------------------------------------------------------------------------------------------------+
+// |accept-type: "text/plain"; charset="utf-8";lang=en, text/html;charset=utf-8,,application/octet-stream|
+// +-----------------------------------------------------------------------------------------------------+
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) nameEqualString(t []byte, x string) bool {

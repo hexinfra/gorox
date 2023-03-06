@@ -24,7 +24,9 @@ import (
 type httpServer interface {
 	Server
 	streamKeeper
+	contentSaver
 
+	MaxContentSize() int64
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 
@@ -39,23 +41,25 @@ type httpServer_ struct {
 	// Mixins
 	Server_
 	streamKeeper_
+	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
 	gates      []httpGate
 	defaultApp *App // fallback app
 	// States
-	forApps      []string            // for apps
-	exactApps    []*hostnameTo[*App] // like: ("example.com")
-	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
-	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
-	forSvcs      []string            // for svcs
-	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
-	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
-	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
-	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
-	enableTCPTun bool                // allow CONNECT method?
-	enableUDPTun bool                // allow upgrade: connect-udp?
-	recvTimeout  time.Duration       // timeout to recv the whole request content
-	sendTimeout  time.Duration       // timeout to send the whole response
+	forApps        []string            // for apps
+	exactApps      []*hostnameTo[*App] // like: ("example.com")
+	suffixApps     []*hostnameTo[*App] // like: ("*.example.com")
+	prefixApps     []*hostnameTo[*App] // like: ("www.example.*")
+	forSvcs        []string            // for svcs
+	exactSvcs      []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs     []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs     []*hostnameTo[*Svc] // like: ("www.example.*")
+	hrpcMode       bool                // works as hrpc server and dispatches to svcs instead of apps?
+	enableTCPTun   bool                // allow CONNECT method?
+	enableUDPTun   bool                // allow upgrade: connect-udp?
+	maxContentSize int64               // max content size allowed. if request is dispatched to app, app has its own maxContentSize and will check again
+	recvTimeout    time.Duration       // timeout to recv the whole request content
+	sendTimeout    time.Duration       // timeout to send the whole response
 }
 
 func (s *httpServer_) onCreate(name string, stage *Stage) {
@@ -65,6 +69,7 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.streamKeeper_.onConfigure(shell, 0)
+	s.contentSaver_.onConfigure(shell, TempDir()+"/http/"+s.name)
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
 	// forSvcs
@@ -75,6 +80,8 @@ func (s *httpServer_) onConfigure(shell Component) {
 	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
+	// maxContentSize
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 	// recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
 	// sendTimeout
@@ -83,8 +90,10 @@ func (s *httpServer_) onConfigure(shell Component) {
 func (s *httpServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s.streamKeeper_.onPrepare(shell)
+	s.contentSaver_.onPrepare(shell, 0755)
 }
 
+func (s *httpServer_) MaxContentSize() int64      { return s.maxContentSize }
 func (s *httpServer_) RecvTimeout() time.Duration { return s.recvTimeout }
 func (s *httpServer_) SendTimeout() time.Duration { return s.sendTimeout }
 
@@ -472,7 +481,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 	uri             text     // raw uri (raw path & raw query string) -> r.input
 	encodedPath     text     // raw path -> r.input
 	queryString     text     // raw query string (with '?') -> r.input
-	boundary        text     // boundary param of "multipart/form-data" if exists -> r.input
+	boundary        text     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
 	ifMatches       zone     // the zone of if-match in r.primes
@@ -515,7 +524,7 @@ type httpRequest0_ struct { // for fast reset, entirely
 }
 
 func (r *httpRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.httpIn_.onUse(versionCode, false) // asResponse = false
+	r.httpIn_.onUse(r.stream.keeper().MaxContentSize(), versionCode, false) // asResponse = false
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
@@ -761,7 +770,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.para) {
+		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.paras) {
 			// r.headResult is set.
 			return false
 		}
@@ -771,7 +780,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, mh.quote, mh.empty, mh.para, r.input, r.addHeader) {
+		if !r._addSubFields(header, mh.quote, mh.empty, mh.paras, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -794,7 +803,7 @@ var ( // perfect hash table for request singleton headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
 		0:  {hashIfUnmodifiedSince, 86, 105, false, false, false, (*httpRequest_).checkIfUnmodifiedSince},
@@ -1034,7 +1043,7 @@ var ( // perfect hash table for request important headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
 		0:  {hashTE, 153, 155, false, false, true, (*httpRequest_).checkTE},
@@ -1391,6 +1400,10 @@ func (r *httpRequest_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
+	if r.contentSize > r.maxContentSize {
+		r.headResult = StatusContentTooLarge
+		return false
+	}
 
 	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
 		// RFC 6455 (section 4.1):
@@ -1515,17 +1528,17 @@ func (r *httpRequest_) examineHead() bool {
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
-				paras := make([]nava, 1) // doesn't escape
-				if _, ok := r._parseParams(r.input, typeParams.from, typeParams.edge, paras); !ok {
+				navas := make([]nava, 1) // doesn't escape
+				if _, ok := r._parseParams(r.input, typeParams.from, typeParams.edge, navas); !ok {
 					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data params"
 					return false
 				}
-				para := &paras[0]
-				if bytes.Equal(r.input[para.name.from:para.name.edge], bytesBoundary) && para.value.notEmpty() && para.value.size() <= 70 && r.input[para.value.edge-1] != ' ' {
+				nava := &navas[0]
+				if bytes.Equal(r.input[nava.name.from:nava.name.edge], bytesBoundary) && nava.value.notEmpty() && nava.value.size() <= 70 && r.input[nava.value.edge-1] != ' ' {
 					// boundary := 0*69<bchars> bcharsnospace
 					// bchars := bcharsnospace / " "
 					// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-					r.boundary = para.value
+					r.boundary = nava.value
 					r.formKind = httpFormMultipart
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
@@ -1839,8 +1852,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		switch content := r.recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentBlob = content
-			r.contentBlobKind = httpContentBlobPool                                           // so r.contentBlob can be freed on end
-			r.formWindow, r.formEdge = r.contentBlob[0:r.receivedSize], int32(r.receivedSize) // r.formWindow refers to the exact r.content.
+			r.contentBlobKind = httpContentBlobPool        // so r.contentBlob can be freed on end
+			r.formWindow = r.contentBlob[0:r.receivedSize] // r.formWindow refers to the exact r.content.
+			r.formEdge = int32(r.receivedSize)
 		case TempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
 			contentFile = content.(*os.File)
 			defer func() {
@@ -1913,7 +1927,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		var part struct { // current part
 			valid  bool     // true if "name" param in "content-disposition" field is found
 			isFile bool     // true if "filename" param in "content-disposition" field is found
-			hash   uint16   //
+			hash   uint16   // name hash
 			name   text     // to r.array. like: "avatar"
 			base   text     // to r.array. like: "michael.jpg", or empty if part is not a file
 			type_  text     // to r.array. like: "image/jpeg", or empty if part is not a file
@@ -1999,39 +2013,39 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				paras := make([]nava, 2) // for name & filename. won't escape to heap
-				n, ok := r._parseParams(r.formWindow, r.pBack, fore, paras)
+				navas := make([]nava, 2) // for name & filename. won't escape to heap
+				n, ok := r._parseParams(r.formWindow, r.pBack, fore, navas)
 				if !ok {
 					r.stream.markBroken()
 					return
 				}
-				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
-					para := &paras[i]
-					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
-						if n := para.value.size(); n == 0 || n > 255 {
+				for i := 0; i < n; i++ { // each nava in field (; name="avatar"; filename="michael.jpg")
+					nava := &navas[i]
+					if paraName := r.formWindow[nava.name.from:nava.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
+						if n := nava.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
 						}
 						part.valid = true // as long as we got a name, this part is valid
 						part.name.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "avatar"
+						if !r.arrayCopy(r.formWindow[nava.value.from:nava.value.edge]) { // add "avatar"
 							r.stream.markBroken()
 							return
 						}
 						part.name.edge = r.arrayEdge
 						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value to hint this?
-						for p := para.value.from; p < para.value.edge; p++ {
+						for p := nava.value.from; p < nava.value.edge; p++ {
 							part.hash += uint16(r.formWindow[p])
 						}
 					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
-						if n := para.value.size(); n == 0 || n > 255 {
+						if n := nava.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
 						}
 						part.isFile = true
 
 						part.base.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "michael.jpg"
+						if !r.arrayCopy(r.formWindow[nava.value.from:nava.value.edge]) { // add "michael.jpg"
 							r.stream.markBroken()
 							return
 						}
@@ -2178,7 +2192,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		}
 	}
 }
-func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, paras []nava) (int, bool) {
+func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, navas []nava) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -2216,11 +2230,11 @@ func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, paras []na
 			// `; a` and `; ="b"` are invalid
 			return nAdd, false
 		}
-		para := &paras[nAdd]
-		para.name.set(back, fore)
+		nava := &navas[nAdd]
+		nava.name.set(back, fore)
 		fore++ // skip '='
 		if fore == edge {
-			para.value.zero()
+			nava.value.zero()
 			nAdd++
 			return nAdd, true
 		}
@@ -2231,19 +2245,19 @@ func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, paras []na
 				fore++
 			}
 			if fore == edge {
-				para.value.set(back, fore) // value is "...
+				nava.value.set(back, fore) // value is "...
 			} else {
-				para.value.set(back+1, fore) // strip ""
+				nava.value.set(back+1, fore) // strip ""
 				fore++
 			}
 		} else {
 			for fore < edge && p[fore] != ';' && p[fore] != ' ' && p[fore] != '\t' {
 				fore++
 			}
-			para.value.set(back, fore)
+			nava.value.set(back, fore)
 		}
 		nAdd++
-		if nAdd == len(paras) || fore == edge {
+		if nAdd == len(navas) || fore == edge {
 			return nAdd, true
 		}
 	}
@@ -2425,7 +2439,13 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *httpRequest_) saveContentFilesDir() string { return r.app.SaveContentFilesDir() }
+func (r *httpRequest_) saveContentFilesDir() string {
+	if r.app != nil {
+		return r.app.SaveContentFilesDir()
+	} else {
+		return r.stream.keeper().SaveContentFilesDir()
+	}
+}
 
 func (r *httpRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true

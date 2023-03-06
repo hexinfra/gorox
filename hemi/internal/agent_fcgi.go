@@ -577,12 +577,13 @@ type fcgiResponse struct { // incoming. needs parsing
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	records     []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
-	input       []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	headers     []pair        // fcgi response headers
-	recvTimeout time.Duration // timeout to recv the whole response content
-	headResult  int16         // result of receiving response head. values are same as http status for convenience
-	bodyResult  int16         // result of receiving response body. values are same as http status for convenience
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
+	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	headers        []pair        // fcgi response headers
+	recvTimeout    time.Duration // timeout to recv the whole response content
+	maxContentSize int64         // max content size allowed for current response
+	headResult     int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// States (zeros)
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
@@ -604,7 +605,6 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
-	maxContentSize  int64    // max content size allowed for current response
 	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected headers, for fast accessing
 		contentType  uint8
@@ -622,6 +622,7 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
 	r.recvTimeout = r.stream.agent.recvTimeout
+	r.maxContentSize = r.stream.agent.maxContentSize
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -871,7 +872,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.para) {
+		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.paras) {
 			// r.headResult is set.
 			return false
 		}
@@ -881,7 +882,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 		}
 	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(fcgiResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := len(r.headers) + 1 // excluding main header
-		if !r._addSubHeaders(header, mh.quote, mh.empty, mh.para) {
+		if !r._addSubHeaders(header, mh.quote, mh.empty, mh.paras) {
 			// r.headResult is set.
 			return false
 		}
@@ -904,7 +905,7 @@ var ( // perfect hash table for response singleton headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*fcgiResponse, *pair, int) bool
 	}{
 		0: {fcgiHashStatus, 37, 43, false, false, false, (*fcgiResponse).checkStatus},
@@ -944,7 +945,7 @@ var ( // perfect hash table for response important headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*fcgiResponse, int, int) bool
 	}{
 		0: {hashTransferEncoding, 11, 28, false, false, false, (*fcgiResponse).checkTransferEncoding}, // deliberately false
@@ -970,10 +971,10 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _setFieldInfo(header *pair, quote bool, empty bool, para bool) bool {
+func (r *fcgiResponse) _setFieldInfo(header *pair, quote bool, empty bool, paras bool) bool {
 	return false
 }
-func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, empty bool, para bool) bool {
+func (r *fcgiResponse) _addSubHeaders(header *pair, quote bool, empty bool, paras bool) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -1048,7 +1049,7 @@ func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byt
 }
 
 func (r *fcgiResponse) examineHead() bool {
-	r.maxContentSize = r.stream.agent.maxContentSize
+	// content length is not known at this time, can't check.
 	return true
 }
 func (r *fcgiResponse) cleanInput() {

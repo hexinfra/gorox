@@ -26,6 +26,8 @@ type keeper interface {
 	TLSMode() bool
 	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
+	MaxContentSize() int64
+	SaveContentFilesDir() string
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 }
@@ -104,19 +106,20 @@ type httpIn_ struct { // incoming. needs parsing
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
-	input       []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array       []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes      []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/max]
-	extras      []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/max]
-	paras       []para        // hold field parameters. [<r.stockParas>/max]
-	recvTimeout time.Duration // timeout to recv the whole message content
-	contentSize int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
-	versionCode uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse  bool          // treat the incoming message as response?
-	keepAlive   int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	_           byte          // padding
-	headResult  int16         // result of receiving message head. values are same as http status for convenience
-	bodyResult  int16         // result of receiving message body. values are same as http status for convenience
+	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	array          []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes         []pair        // hold prime r.queries->r.array, r.headers->r.input, r.cookies->r.input, r.forms->r.array, and r.trailers->r.array. [<r.stockPrimes>/max]
+	extras         []pair        // hold extra queries & headers & cookies & trailers. always refers to r.array. [<r.stockExtras>/max]
+	paras          []para        // hold field parameters. [<r.stockParas>/max]
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
+	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
+	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse     bool          // treat the incoming message as response?
+	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_              byte          // padding
+	headResult     int16         // result of receiving message head. values are same as http status for convenience
+	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
 	inputNext   int32     // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
@@ -142,11 +145,11 @@ type httpIn0_ struct { // for fast reset, entirely
 	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	iContentLength   uint8   // content-length header in r.primes->r.input
-	iContentLocation uint8   // content-location header in r.primes->r.input
-	iContentRange    uint8   // content-range header in r.primes->r.input
-	iContentType     uint8   // content-type header in r.primes->r.input
-	iDate            uint8   // date header in r.primes->r.input
+	iContentLength   uint8   // index of content-length header in r.primes->r.input
+	iContentLocation uint8   // index of content-location header in r.primes->r.input
+	iContentRange    uint8   // index of content-range header in r.primes->r.input
+	iContentType     uint8   // index of content-type header in r.primes->r.input
+	iDate            uint8   // index of date header in r.primes->r.input
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	upgradeSocket    bool    // upgrade: websocket?
@@ -154,7 +157,6 @@ type httpIn0_ struct { // for fast reset, entirely
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
 	receiving        int8    // currently receiving. see httpSectionXXX
-	maxContentSize   int64   // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
 	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
@@ -165,7 +167,7 @@ type httpIn0_ struct { // for fast reset, entirely
 	trailers         zone    // raw trailers -> r.array. set after trailer section is received and parsed
 }
 
-func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
+func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool) { // for non-zeros
 	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
@@ -176,6 +178,7 @@ func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
+	r.maxContentSize = maxContentSize
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -460,11 +463,11 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) _setFieldInfo(field *pair, quote bool, empty bool, para bool) bool {
+func (r *httpIn_) _setFieldInfo(field *pair, quote bool, empty bool, paras bool) bool {
 	// TODO
 	return true
 }
-func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, para bool, p []byte, addField func(field *pair) bool) bool { // to primes
+func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, paras bool, p []byte, addField func(field *pair) bool) bool { // to primes
 	// TODO
 	return true
 	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {

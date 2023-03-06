@@ -80,7 +80,7 @@ const ( // pair places
 //
 // flags, paras, and dataEdge are NOT used.
 //
-// If "accept-type" field is defined as: `quote=true empty=false para=true`, then a non-comma "accept-type" field may looks like this:
+// If "accept-type" field is defined as: `quote=true empty=false paras=true`, then a non-comma "accept-type" field may looks like this:
 //
 //                     [             value                  )
 //        [   name   )  [  data   )[         paras          )
@@ -151,7 +151,7 @@ func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 // poolParas
 var poolParas sync.Pool
 
-const maxParas = 128
+const maxParas = 128 // 8B*128=1K
 
 func getParas() []para {
 	if x := poolParas.Get(); x == nil {

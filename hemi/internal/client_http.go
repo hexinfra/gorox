@@ -29,7 +29,7 @@ type httpClient_ struct {
 	streamKeeper_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxContentSize int64
+	maxContentSize int64         // max content size allowed
 	sendTimeout    time.Duration // timeout to send the whole request
 	recvTimeout    time.Duration // timeout to recv the whole response content
 }
@@ -467,7 +467,7 @@ type hResponse0_ struct { // for fast reset, entirely
 }
 
 func (r *hResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.httpIn_.onUse(versionCode, true) // asResponse = true
+	r.httpIn_.onUse(r.stream.keeper().MaxContentSize(), versionCode, true) // asResponse = true
 
 	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }
@@ -487,7 +487,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(hResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.para) {
+		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.paras) {
 			// r.headResult is set.
 			return false
 		}
@@ -497,7 +497,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(hResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, mh.quote, mh.empty, mh.para, r.input, r.addHeader) {
+		if !r._addSubFields(header, mh.quote, mh.empty, mh.paras, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -520,7 +520,7 @@ var ( // perfect hash table for response singleton headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*hResponse_, *pair, uint8) bool
 	}{
 		0:  {hashDate, 46, 50, false, false, false, (*hResponse_).checkDate},
@@ -593,7 +593,7 @@ var ( // perfect hash table for response important headers
 		edge  uint8
 		quote bool // allow data quote or not
 		empty bool // allow empty data or not
-		para  bool // allow parameters or not
+		paras bool // allow parameters or not
 		check func(*hResponse_, uint8, uint8) bool
 	}{
 		0:  {hashAcceptRanges, 16, 29, false, false, false, (*hResponse_).checkAcceptRanges},
@@ -716,16 +716,15 @@ func (r *hResponse_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
-
 	if r.status < StatusOK && r.contentSize != -1 {
 		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
-	r.maxContentSize = r.stream.keeper().(httpClient).MaxContentSize()
 	if r.contentSize > r.maxContentSize {
 		r.headResult = StatusContentTooLarge
 		return false
 	}
+
 	return true
 }
 
@@ -804,7 +803,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 }
 
 func (r *hResponse_) saveContentFilesDir() string {
-	return r.stream.keeper().(httpClient).SaveContentFilesDir()
+	return r.stream.keeper().SaveContentFilesDir()
 }
 
 // cookie is a "set-cookie" received from server.

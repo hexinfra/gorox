@@ -223,7 +223,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		if req.expectContinue {
 			req.headResult = StatusExpectationFailed
 		} else {
-			req.headResult = StatusContentTooLarge
+			req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds app's limit"
 		}
 		s.serveAbnormal(req, resp)
 		return

@@ -32,6 +32,18 @@ type keeper interface {
 	SendTimeout() time.Duration
 }
 
+// keeper_ is the mixin for httpServer_ and httpClient_.
+type keeper_ struct {
+	// States
+	maxContentSize int64         // max content size allowed
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	sendTimeout    time.Duration // timeout to send the whole message
+}
+
+func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
+func (k *keeper_) RecvTimeout() time.Duration { return k.recvTimeout }
+func (k *keeper_) SendTimeout() time.Duration { return k.sendTimeout }
+
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
 	keeper() keeper

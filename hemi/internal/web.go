@@ -339,9 +339,7 @@ func (a *App) Logf(format string, args ...any) {
 	}
 }
 
-func (a *App) linkServer(server httpServer) {
-	a.servers = append(a.servers, server)
-}
+func (a *App) linkServer(server httpServer) { a.servers = append(a.servers, server) }
 
 func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {

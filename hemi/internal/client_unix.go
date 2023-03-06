@@ -26,13 +26,13 @@ func init() {
 // unixClient is the interface for UnixOutgate and UnixBackend.
 type unixClient interface {
 	client
-	streamKeeper
+	streamHolder
 }
 
 // unixClient_
 type unixClient_ struct {
 	// Mixins
-	streamKeeper_
+	streamHolder_
 	// States
 }
 
@@ -40,10 +40,10 @@ func (u *unixClient_) onCreate() {
 }
 
 func (u *unixClient_) onConfigure(shell Component) {
-	u.streamKeeper_.onConfigure(shell, 1000)
+	u.streamHolder_.onConfigure(shell, 1000)
 }
 func (u *unixClient_) onPrepare(shell Component) {
-	u.streamKeeper_.onPrepare(shell)
+	u.streamHolder_.onPrepare(shell)
 }
 
 const signUnix = "unix"

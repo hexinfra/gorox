@@ -23,7 +23,7 @@ import (
 // httpServer is the interface for *httpxServer and *http3Server.
 type httpServer interface {
 	Server
-	streamKeeper
+	streamHolder
 	contentSaver
 
 	MaxContentSize() int64
@@ -40,26 +40,24 @@ type httpServer interface {
 type httpServer_ struct {
 	// Mixins
 	Server_
-	streamKeeper_
+	keeper_
+	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
 	gates      []httpGate
 	defaultApp *App // fallback app
 	// States
-	forApps        []string            // for apps
-	exactApps      []*hostnameTo[*App] // like: ("example.com")
-	suffixApps     []*hostnameTo[*App] // like: ("*.example.com")
-	prefixApps     []*hostnameTo[*App] // like: ("www.example.*")
-	forSvcs        []string            // for svcs
-	exactSvcs      []*hostnameTo[*Svc] // like: ("example.com")
-	suffixSvcs     []*hostnameTo[*Svc] // like: ("*.example.com")
-	prefixSvcs     []*hostnameTo[*Svc] // like: ("www.example.*")
-	hrpcMode       bool                // works as hrpc server and dispatches to svcs instead of apps?
-	enableTCPTun   bool                // allow CONNECT method?
-	enableUDPTun   bool                // allow upgrade: connect-udp?
-	maxContentSize int64               // max content size allowed. if request is dispatched to app, app has its own maxContentSize and will check again
-	recvTimeout    time.Duration       // timeout to recv the whole request content
-	sendTimeout    time.Duration       // timeout to send the whole response
+	forApps      []string            // for apps
+	exactApps    []*hostnameTo[*App] // like: ("example.com")
+	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
+	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
+	forSvcs      []string            // for svcs
+	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
+	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
+	enableTCPTun bool                // allow CONNECT method?
+	enableUDPTun bool                // allow upgrade: connect-udp?
 }
 
 func (s *httpServer_) onCreate(name string, stage *Stage) {
@@ -68,7 +66,7 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s.streamKeeper_.onConfigure(shell, 0)
+	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/http/"+s.name)
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
@@ -81,7 +79,7 @@ func (s *httpServer_) onConfigure(shell Component) {
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
 	// maxContentSize
-	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T) // app has its own maxContentSize and will check again
 	// recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
 	// sendTimeout
@@ -89,13 +87,9 @@ func (s *httpServer_) onConfigure(shell Component) {
 }
 func (s *httpServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
-	s.streamKeeper_.onPrepare(shell)
+	s.streamHolder_.onPrepare(shell)
 	s.contentSaver_.onPrepare(shell, 0755)
 }
-
-func (s *httpServer_) MaxContentSize() int64      { return s.maxContentSize }
-func (s *httpServer_) RecvTimeout() time.Duration { return s.recvTimeout }
-func (s *httpServer_) SendTimeout() time.Duration { return s.sendTimeout }
 
 func (s *httpServer_) linkApps() {
 	for _, appName := range s.forApps {
@@ -1362,7 +1356,7 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 		if !r.addCookie(cookie) {
 			return false
 		}
-	} else {
+	} else { // 0, 1, 3, 5
 		r.headResult, r.failReason = StatusBadRequest, "invalid cookie string"
 		return false
 	}
@@ -1401,7 +1395,7 @@ func (r *httpRequest_) examineHead() bool {
 		return false
 	}
 	if r.contentSize > r.maxContentSize {
-		r.headResult = StatusContentTooLarge
+		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http server's limit"
 		return false
 	}
 

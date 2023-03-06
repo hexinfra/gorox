@@ -31,6 +31,7 @@ type Svc struct {
 	grpcServers []GRPCServer
 	// States
 	hostnames       [][]byte // should be used by hrpc only
+	maxContentSize  int64    // max content size allowed
 	exactHostnames  [][]byte // like: ("example.com")
 	suffixHostnames [][]byte // like: ("*.example.com")
 	prefixHostnames [][]byte // like: ("www.example.*")
@@ -45,6 +46,8 @@ func (s *Svc) OnShutdown() {
 }
 
 func (s *Svc) OnConfigure() {
+	// maxContentSize
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 && value <= _1G }, _16M)
 }
 func (s *Svc) OnPrepare() {
 	initsLock.RLock()
@@ -57,14 +60,9 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) linkHRPC(server httpServer) {
-	s.hrpcServers = append(s.hrpcServers, server)
-}
-
-func (s *Svc) LinkGRPC(server GRPCServer) {
-	s.grpcServers = append(s.grpcServers, server)
-}
-func (s *Svc) GRPCServers() []GRPCServer { return s.grpcServers }
+func (s *Svc) linkHRPC(server httpServer) { s.hrpcServers = append(s.hrpcServers, server) }
+func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers, server) }
+func (s *Svc) GRPCServers() []GRPCServer  { return s.grpcServers }
 
 func (s *Svc) maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {

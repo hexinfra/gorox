@@ -16,7 +16,7 @@ import (
 // httpClient is the interface for http outgates and http backends.
 type httpClient interface {
 	client
-	streamKeeper
+	streamHolder
 	contentSaver
 	MaxContentSize() int64
 	SendTimeout() time.Duration
@@ -26,19 +26,17 @@ type httpClient interface {
 // httpClient_ is a mixin for httpOutgate_ and httpBackend_.
 type httpClient_ struct {
 	// Mixins
-	streamKeeper_
+	keeper_
+	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxContentSize int64         // max content size allowed
-	sendTimeout    time.Duration // timeout to send the whole request
-	recvTimeout    time.Duration // timeout to recv the whole response content
 }
 
 func (h *httpClient_) onCreate() {
 }
 
 func (h *httpClient_) onConfigure(shell Component, clientType string) {
-	h.streamKeeper_.onConfigure(shell, 1000)
+	h.streamHolder_.onConfigure(shell, 1000)
 	h.contentSaver_.onConfigure(shell, TempDir()+"/http/"+clientType+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
@@ -48,13 +46,9 @@ func (h *httpClient_) onConfigure(shell Component, clientType string) {
 	shell.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 }
 func (h *httpClient_) onPrepare(shell Component) {
-	h.streamKeeper_.onPrepare(shell)
+	h.streamHolder_.onPrepare(shell)
 	h.contentSaver_.onPrepare(shell, 0755)
 }
-
-func (h *httpClient_) MaxContentSize() int64      { return h.maxContentSize }
-func (h *httpClient_) SendTimeout() time.Duration { return h.sendTimeout }
-func (h *httpClient_) RecvTimeout() time.Duration { return h.recvTimeout }
 
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.
 type httpOutgate_ struct {
@@ -721,7 +715,7 @@ func (r *hResponse_) examineHead() bool {
 		return false
 	}
 	if r.contentSize > r.maxContentSize {
-		r.headResult = StatusContentTooLarge
+		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http client's limit"
 		return false
 	}
 

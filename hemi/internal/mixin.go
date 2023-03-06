@@ -55,7 +55,7 @@ type contentSaver_ struct {
 
 func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
 	// saveContentFilesDir
-	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) bool { return value != "" }, defaultDir)
+	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) bool { return value != "" && len(value) <= 232 }, defaultDir)
 }
 func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
@@ -66,7 +66,7 @@ func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	}
 }
 
-func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir }
+func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
 
 // loadBalancer_
 type loadBalancer_ struct {

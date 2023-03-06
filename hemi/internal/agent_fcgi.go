@@ -1130,12 +1130,10 @@ func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []b
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
 
-func (r *fcgiResponse) saveContentFilesDir() string {
-	return r.stream.agent.SaveContentFilesDir() // must ends with '/'
-}
+func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.agent.SaveContentFilesDir() }
 
 func (r *fcgiResponse) _newTempFile() (TempFile, error) { // to save content to
-	filesDir := r.saveContentFilesDir() // must ends with '/'
+	filesDir := r.saveContentFilesDir()
 	pathSize := len(filesDir)
 	filePath := r.stream.unsafeMake(pathSize + 19) // 19 bytes is enough for int64
 	copy(filePath, filesDir)

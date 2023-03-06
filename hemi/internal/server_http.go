@@ -1972,8 +1972,9 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					return
 				}
 			}
-			r.pBack = r.pFore // now r.formWindow is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
-			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) {
+			r.pBack = r.pFore
+			// Now r.formWindow is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
+			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) { // content-disposition
 				// form-data; name="avatar"; filename="michael.jpg"
 				for r.formWindow[r.pFore] != ';' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
@@ -2011,7 +2012,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 							r.stream.markBroken()
 							return
 						}
-						part.valid = true
+						part.valid = true // as long as we got a name, this part is valid
 						part.name.from = r.arrayEdge
 						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "avatar"
 							r.stream.markBroken()
@@ -2023,35 +2024,38 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 							part.hash += uint16(r.formWindow[p])
 						}
 					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
-						part.isFile = true
-						if n := para.value.size(); n > 0 && n <= 255 {
-							part.base.from = r.arrayEdge
-							if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "michael.jpg"
-								r.stream.markBroken()
-								return
-							}
-							part.base.edge = r.arrayEdge
-							part.path.from = r.arrayEdge
-							if !r.arrayCopy(risky.ConstBytes(r.app.SaveContentFilesDir())) { // add "/path/to/"
-								r.stream.markBroken()
-								return
-							}
-							tempName := r.stream.smallBuffer() // buffer is enough for tempName
-							from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
-							if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
-								r.stream.markBroken()
-								return
-							}
-							// TODO: ensure pathSize <= 255
-							part.path.edge = r.arrayEdge
+						if n := para.value.size(); n == 0 || n > 255 {
+							r.stream.markBroken()
+							return
 						}
+						part.isFile = true
+
+						part.base.from = r.arrayEdge
+						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "michael.jpg"
+							r.stream.markBroken()
+							return
+						}
+						part.base.edge = r.arrayEdge
+
+						part.path.from = r.arrayEdge
+						if !r.arrayCopy(risky.ConstBytes(r.app.SaveContentFilesDir())) { // add "/path/to/"
+							r.stream.markBroken()
+							return
+						}
+						tempName := r.stream.smallBuffer() // buffer is enough for tempName
+						from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
+						if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
+							r.stream.markBroken()
+							return
+						}
+						part.path.edge = r.arrayEdge // pathSize is ensured to be <= 255.
 					} else {
 						// Other parameters are invalid.
 						r.stream.markBroken()
 						return
 					}
 				}
-			} else if bytes.Equal(fieldName, bytesContentType) {
+			} else if bytes.Equal(fieldName, bytesContentType) { // content-type
 				// image/jpeg
 				for r.formWindow[r.pFore] != '\n' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
@@ -2066,14 +2070,16 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				if n := fore - r.pBack; n > 0 && n <= 255 {
-					part.type_.from = r.arrayEdge
-					if !r.arrayCopy(r.formWindow[r.pBack:fore]) { // add "image/jpeg"
-						r.stream.markBroken()
-						return
-					}
-					part.type_.edge = r.arrayEdge
+				if n := fore - r.pBack; n == 0 || n > 255 {
+					r.stream.markBroken()
+					return
 				}
+				part.type_.from = r.arrayEdge
+				if !r.arrayCopy(r.formWindow[r.pBack:fore]) { // add "image/jpeg"
+					r.stream.markBroken()
+					return
+				}
+				part.type_.edge = r.arrayEdge
 			} else { // other fields are ignored
 				for r.formWindow[r.pFore] != '\n' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
@@ -2419,9 +2425,7 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *httpRequest_) saveContentFilesDir() string {
-	return r.app.SaveContentFilesDir() // must ends with '/'
-}
+func (r *httpRequest_) saveContentFilesDir() string { return r.app.SaveContentFilesDir() }
 
 func (r *httpRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true

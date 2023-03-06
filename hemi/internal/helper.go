@@ -59,10 +59,10 @@ const ( // pair kinds
 )
 
 const ( // pair places
-	placeInput = iota // prime headers, prime cookies
-	placeArray        // prime queries, prime forms, prime trailers, all extras
-	placeStatic2      // HTTP/2 static table for headers and trailers
-	placeStatic3      // HTTP/3 static table for headers and trailers
+	placeInput   = iota // prime headers, prime cookies
+	placeArray          // prime queries, prime forms, prime trailers, all extras
+	placeStatic2        // HTTP/2 static table for headers and trailers
+	placeStatic3        // HTTP/3 static table for headers and trailers
 )
 
 // If "example-name" is not a field, and has a value "example-value", then it looks like this:

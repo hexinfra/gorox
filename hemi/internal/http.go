@@ -1183,7 +1183,7 @@ func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save conte
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
 		return FakeFile, nil
 	}
-	filesDir := r.shell.saveContentFilesDir() // must ends with '/'
+	filesDir := r.shell.saveContentFilesDir()
 	pathSize := len(filesDir)
 	filePath := r.UnsafeMake(pathSize + 19) // 19 bytes is enough for int64
 	copy(filePath, filesDir)

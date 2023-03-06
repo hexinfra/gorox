@@ -804,7 +804,7 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 }
 
 func (r *hResponse_) saveContentFilesDir() string {
-	return r.stream.keeper().(httpClient).SaveContentFilesDir() // must ends with '/'
+	return r.stream.keeper().(httpClient).SaveContentFilesDir()
 }
 
 // cookie is a "set-cookie" received from server.

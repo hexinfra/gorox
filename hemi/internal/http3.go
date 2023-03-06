@@ -245,7 +245,7 @@ var http3StaticTable = [99]pair{ // TODO
 // http3TableEntry is a dynamic table entry.
 type http3TableEntry struct { // 8 bytes
 	nameFrom  uint16
-	nameEdge  uint16 // nameEdge - nameFrom <= 255
+	nameEdge  uint16 // nameEdge - nameFrom <= 255?
 	valueEdge uint16
 	totalSize uint16 // nameSize + valueSize + 32
 }

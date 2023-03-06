@@ -342,7 +342,7 @@ func http2DynamicIndex(index uint32) uint32 { return index - 62 }
 // http2TableEntry is a dynamic table entry.
 type http2TableEntry struct { // 8 bytes
 	nameFrom  uint16
-	nameEdge  uint16 // nameEdge - nameFrom <= 255
+	nameEdge  uint16 // nameEdge - nameFrom <= 255?
 	valueEdge uint16
 	totalSize uint16 // nameSize + valueSize + 32
 }

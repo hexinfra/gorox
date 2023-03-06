@@ -574,7 +574,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			b := r.input[r.pFore]
 			switch state {
 			case 1: // in path
-				if httpPchar[b] == 1 {
+				if httpPchar[b] == 1 { // excluding '?'
 					r.arrayPush(b)
 				} else if b == '%' {
 					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG

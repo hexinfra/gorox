@@ -795,7 +795,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		// field-value = *( field-content | LWSP )
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
-			if b := r.input[r.pFore]; httpVchar[b] == 1 {
+			if b := r.input[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
 				if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 					return false
 				}

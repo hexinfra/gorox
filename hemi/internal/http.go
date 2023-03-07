@@ -477,17 +477,16 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 
 func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
 	if field.value.isEmpty() {
-		if !fDesc.empty {
+		if fDesc.empty {
+			field.dataEdge = field.value.edge
+			return true
+		} else {
 			r.failReason = "field can't be empty"
 			return false
 		}
-		field.dataEdge = field.value.edge
-		return true
 	}
 	text := field.value
 	if p[text.from] != '"' {
-		// Sun, 06 Nov 1994 08:49:37 GMT
-		// Basic realm="simple", title="Login to \"apps\""
 		for spat := int32(0); text.from < field.value.edge; text.from++ {
 			if b := p[text.from]; b == ' ' || b == '\t' {
 				if spat == 0 {
@@ -517,12 +516,13 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			return true
 		}
 	} else { // begins with '"'
-		text.from++
+		text.from++ // skip '"'
 		for text.from < field.value.edge && p[text.from] != '"' {
 			text.from++
 		}
 		if text.from == field.value.edge { // "...
 			field.dataEdge = text.from
+			Debugf("4=%s\n", string(field.dataAt(p)))
 			return true
 		}
 		// "..."
@@ -536,34 +536,32 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		}
 		field.setQuoted()
 		field.dataEdge = text.from
-		Debugln(string(field.dataAt(p)))
-		if text.from++; text.from == field.value.edge { // exact "..."
+		Debugf("5=%s\n", string(field.dataAt(p)))
+		text.from++                        // skip '"'
+		if text.from == field.value.edge { // exact "..."
 			return true
 		}
 		for text.from < field.value.edge {
 			if b := p[text.from]; b == ' ' || b == '\t' {
 				text.from++
-			} else if b == ',' {
-				if fully {
-					r.failReason = "malformed DQUOTE and normal text"
-					return false
-				}
+			} else if b == ';' {
+				break
+			} else if b == ',' && !fully {
 				field.value.edge = text.from
 				return true
-			} else { // ';' or other
-				break
+			} else {
+				r.failReason = "malformed DQUOTE and normal text"
+				return false
 			}
 		}
 	}
+	// text.from is at ';'
 	if !fDesc.paras {
+		//Debugln(string(field.valueAt(p)))
 		r.failReason = "paras is not allowed"
 		return false
 	}
-	// parameters      = *( OWS ";" OWS [ parameter ] )
-	// parameter       = parameter-name "=" parameter-value
-	// parameter-name  = token
-	// parameter-value = ( token / quoted-string )
-	for {
+	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
 		haveSemic := false
 		for text.from < field.value.edge {
 			if b := p[text.from]; b == ' ' || b == '\t' {
@@ -575,9 +573,10 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 				if fully {
 					r.failReason = "invalid parameter"
 					return false
+				} else {
+					field.value.edge = text.from
+					return true
 				}
-				field.value.edge = text.from
-				return true
 			} else {
 				break
 			}
@@ -594,30 +593,48 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 			text.edge++
 		}
-		if text.edge == field.value.edge {
-			r.failReason = "only parameter-name is provided"
-			return false
-		}
 		if text.from == text.edge {
 			r.failReason = "empty parameter-name is not allowed"
 			return false
 		}
-		if p[text.edge] != '=' {
-			r.failReason = "= required"
+		if text.edge == field.value.edge {
+			r.failReason = "only parameter-name is provided"
 			return false
 		}
-		Debugln(string(p[text.from:text.edge]))
+		if p[text.edge] != '=' {
+			r.failReason = "token '=' required"
+			return false
+		}
+		Debugf("6=%s\n", string(p[text.from:text.edge]))
 		text.edge++ // skip '='
 		// parameter-value
-		text.from = text.edge
-		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
-			text.edge++
-		}
 		if text.edge == field.value.edge {
-			r.failReason = "empty parameter-value is not allowed"
+			r.failReason = "missing parameter-value"
 			return false
 		}
-		Debugln(string(p[text.from:text.edge]))
+		if p[text.edge] == '"' {
+			text.edge++ // skip '"'
+			text.from = text.edge
+			for text.edge < field.value.edge && p[text.edge] != '"' {
+				text.edge++
+			}
+			if text.edge == field.value.edge {
+				r.failReason = "invalid quoted-string"
+				return false
+			}
+			Debugf("7=%s\n", string(p[text.from:text.edge]))
+			text.edge++ // skip '"'
+		} else {
+			text.from = text.edge
+			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+				text.edge++
+			}
+			if text.edge == field.value.edge {
+				r.failReason = "empty parameter-value is not allowed"
+				return false
+			}
+			Debugf("8=%s\n", string(p[text.from:text.edge]))
+		}
 		text.from = text.edge
 	}
 	if fully {
@@ -2272,24 +2289,6 @@ var httpPchar = [256]int8{ // pchar = ALPHA / DIGIT / "!" / "$" / "&" / "'" / "(
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-}
-var httpVchar = [256]int8{ // for field-value: (b >= 0x20 && b != 0x7F) || b == 0x09
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 }
 var httpKchar = [256]int8{ // cookie-octet = 0x21 / 0x23-0x2B / 0x2D-0x3A / 0x3C-0x5B / 0x5D-0x7E
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

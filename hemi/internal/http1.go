@@ -126,7 +126,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		// - if it is not empty, it starts and ends with field-vchar
 		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
-			if b := r.input[r.pFore]; httpVchar[b] == 1 {
+			if b := r.input[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
 				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
@@ -444,7 +444,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		}
 		r.pBack = r.pFore // for field-value or EOL
 		for {
-			if b := r.bodyWindow[r.pFore]; httpVchar[b] == 1 {
+			if b := r.bodyWindow[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
 				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}

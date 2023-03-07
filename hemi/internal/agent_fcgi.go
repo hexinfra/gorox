@@ -901,10 +901,10 @@ var ( // perfect hash table for response singleton headers
 		desc
 		check func(*fcgiResponse, *pair, int) bool
 	}{
-		0: {desc{fcgiHashStatus, 37, 43, false, false, false}, (*fcgiResponse).checkStatus},
-		1: {desc{hashContentLength, 0, 14, false, false, false}, (*fcgiResponse).checkContentLength},
-		2: {desc{hashContentType, 15, 27, false, false, true}, (*fcgiResponse).checkContentType},
-		3: {desc{hashLocation, 28, 36, false, false, false}, (*fcgiResponse).checkLocation},
+		0: {desc{fcgiHashStatus, 37, 43, false, false, false, false}, (*fcgiResponse).checkStatus},
+		1: {desc{hashContentLength, 0, 14, false, false, false, false}, (*fcgiResponse).checkContentLength},
+		2: {desc{hashContentType, 15, 27, false, false, true, false}, (*fcgiResponse).checkContentType},
+		3: {desc{hashLocation, 28, 36, false, false, false, false}, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -936,9 +936,9 @@ var ( // perfect hash table for response important headers
 		desc
 		check func(*fcgiResponse, int, int) bool
 	}{
-		0: {desc{hashTransferEncoding, 11, 28, false, false, false}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
-		1: {desc{hashConnection, 0, 10, false, false, false}, (*fcgiResponse).checkConnection},
-		2: {desc{hashUpgrade, 29, 36, false, false, false}, (*fcgiResponse).checkUpgrade},
+		0: {desc{hashTransferEncoding, 11, 28, false, false, false, false}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
+		1: {desc{hashConnection, 0, 10, false, false, false, false}, (*fcgiResponse).checkConnection},
+		2: {desc{hashUpgrade, 29, 36, false, false, false, false}, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )

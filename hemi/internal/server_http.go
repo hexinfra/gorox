@@ -765,7 +765,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
 		if !r._setFieldInfo(header, &sh.desc, r.input, true) {
-			// r.headResult is set.
+			r.headResult = StatusBadRequest
 			return false
 		}
 		if sh.check != nil && !sh.check(r, header, r.headers.edge-1) {
@@ -775,7 +775,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
 		if !r._addSubFields(header, &mh.desc, r.input, r.addHeader) {
-			// r.headResult is set.
+			r.headResult = StatusBadRequest
 			return false
 		}
 		if mh.check != nil && !mh.check(r, from, r.headers.edge) {
@@ -783,7 +783,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 			return false
 		}
 	} else if !r._addSubFields(header, &defaultDesc, r.input, r.addHeader) {
-		// r.headResult is set.
+		r.headResult = StatusBadRequest
 		return false
 	}
 	return true
@@ -795,18 +795,18 @@ var ( // perfect hash table for request singleton headers
 		desc
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false}, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {desc{hashUserAgent, 132, 142, false, false, false}, (*httpRequest_).checkUserAgent},
-		2:  {desc{hashContentLength, 14, 28, false, false, false}, (*httpRequest_).checkContentLength},
-		3:  {desc{hashRange, 126, 131, false, false, false}, (*httpRequest_).checkRange},
-		4:  {desc{hashDate, 49, 53, false, false, false}, (*httpRequest_).checkDate},
-		5:  {desc{hashHost, 54, 58, false, false, false}, (*httpRequest_).checkHost},
-		6:  {desc{hashCookie, 42, 48, false, false, false}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {desc{hashContentType, 29, 41, false, false, true}, (*httpRequest_).checkContentType},
-		8:  {desc{hashIfRange, 77, 85, false, false, false}, (*httpRequest_).checkIfRange},
-		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false}, (*httpRequest_).checkIfModifiedSince},
-		10: {desc{hashAuthorization, 0, 13, false, false, false}, (*httpRequest_).checkAuthorization},
-		11: {desc{hashProxyAuthorization, 106, 125, false, false, false}, (*httpRequest_).checkProxyAuthorization},
+		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false, true}, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {desc{hashUserAgent, 132, 142, false, false, false, false}, (*httpRequest_).checkUserAgent},
+		2:  {desc{hashContentLength, 14, 28, false, false, false, false}, (*httpRequest_).checkContentLength},
+		3:  {desc{hashRange, 126, 131, false, false, false, false}, (*httpRequest_).checkRange},
+		4:  {desc{hashDate, 49, 53, false, false, false, true}, (*httpRequest_).checkDate},
+		5:  {desc{hashHost, 54, 58, false, false, false, false}, (*httpRequest_).checkHost},
+		6:  {desc{hashCookie, 42, 48, false, false, false, false}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {desc{hashContentType, 29, 41, false, false, true, false}, (*httpRequest_).checkContentType},
+		8:  {desc{hashIfRange, 77, 85, false, false, false, true}, (*httpRequest_).checkIfRange},
+		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false, true}, (*httpRequest_).checkIfModifiedSince},
+		10: {desc{hashAuthorization, 0, 13, false, false, false, false}, (*httpRequest_).checkAuthorization},
+		11: {desc{hashProxyAuthorization, 106, 125, false, false, false, false}, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -1030,24 +1030,24 @@ var ( // perfect hash table for request important headers
 		desc
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {desc{hashTE, 153, 155, false, false, true}, (*httpRequest_).checkTE},
-		1:  {desc{hashTrailer, 156, 163, false, false, false}, (*httpRequest_).checkTrailer},
-		2:  {desc{hashExpect, 113, 119, false, false, true}, (*httpRequest_).checkExpect},
-		3:  {desc{hashContentLanguage, 96, 112, false, false, false}, (*httpRequest_).checkContentLanguage},
-		4:  {desc{hashTransferEncoding, 164, 181, false, false, false}, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		5:  {desc{hashAcceptCharset, 7, 21, false, false, true}, (*httpRequest_).checkAcceptCharset},
-		6:  {desc{hashCacheControl, 54, 67, false, false, false}, (*httpRequest_).checkCacheControl},
-		7:  {desc{hashXForwardedFor, 194, 209, false, false, false}, (*httpRequest_).checkXForwardedFor},
-		8:  {desc{hashVia, 190, 193, false, false, false}, (*httpRequest_).checkVia},
-		9:  {desc{hashForwarded, 120, 129, false, false, false}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		10: {desc{hashIfMatch, 130, 138, true, false, false}, (*httpRequest_).checkIfMatch},
-		11: {desc{hashAccept, 0, 6, false, false, true}, (*httpRequest_).checkAccept},
-		12: {desc{hashAcceptEncoding, 22, 37, false, true, true}, (*httpRequest_).checkAcceptEncoding},
-		13: {desc{hashConnection, 68, 78, false, false, false}, (*httpRequest_).checkConnection},
-		14: {desc{hashIfNoneMatch, 139, 152, true, false, false}, (*httpRequest_).checkIfNoneMatch},
-		15: {desc{hashUpgrade, 182, 189, false, false, false}, (*httpRequest_).checkUpgrade},
-		16: {desc{hashContentEncoding, 79, 95, false, false, false}, (*httpRequest_).checkContentEncoding},
-		17: {desc{hashAcceptLanguage, 38, 53, false, false, true}, (*httpRequest_).checkAcceptLanguage},
+		0:  {desc{hashTE, 153, 155, false, false, true, false}, (*httpRequest_).checkTE},
+		1:  {desc{hashTrailer, 156, 163, false, false, false, false}, (*httpRequest_).checkTrailer},
+		2:  {desc{hashExpect, 113, 119, false, false, true, false}, (*httpRequest_).checkExpect},
+		3:  {desc{hashContentLanguage, 96, 112, false, false, false, false}, (*httpRequest_).checkContentLanguage},
+		4:  {desc{hashTransferEncoding, 164, 181, false, false, false, false}, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		5:  {desc{hashAcceptCharset, 7, 21, false, false, true, false}, (*httpRequest_).checkAcceptCharset},
+		6:  {desc{hashCacheControl, 54, 67, false, false, false, false}, (*httpRequest_).checkCacheControl},
+		7:  {desc{hashXForwardedFor, 194, 209, false, false, false, false}, (*httpRequest_).checkXForwardedFor},
+		8:  {desc{hashVia, 190, 193, false, false, false, false}, (*httpRequest_).checkVia},
+		9:  {desc{hashForwarded, 120, 129, false, false, false, false}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		10: {desc{hashIfMatch, 130, 138, true, false, false, false}, (*httpRequest_).checkIfMatch},
+		11: {desc{hashAccept, 0, 6, false, false, true, false}, (*httpRequest_).checkAccept},
+		12: {desc{hashAcceptEncoding, 22, 37, false, true, true, false}, (*httpRequest_).checkAcceptEncoding},
+		13: {desc{hashConnection, 68, 78, false, false, false, false}, (*httpRequest_).checkConnection},
+		14: {desc{hashIfNoneMatch, 139, 152, true, false, false, false}, (*httpRequest_).checkIfNoneMatch},
+		15: {desc{hashUpgrade, 182, 189, false, false, false, false}, (*httpRequest_).checkUpgrade},
+		16: {desc{hashContentEncoding, 79, 95, false, false, false, false}, (*httpRequest_).checkContentEncoding},
+		17: {desc{hashAcceptLanguage, 38, 53, false, false, true, false}, (*httpRequest_).checkAcceptLanguage},
 	}
 	httpRequestImportantHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
 )
@@ -2214,18 +2214,18 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 	back, fore := from, from
 	nAdd := 0
 	for {
-		nSemicolon := 0
+		nSemic := 0
 		for fore < edge {
-			if b := p[fore]; b == ';' {
-				nSemicolon++
+			if b := p[fore]; b == ' ' || b == '\t' {
 				fore++
-			} else if b == ' ' || b == '\t' {
+			} else if b == ';' {
+				nSemic++
 				fore++
 			} else {
 				break
 			}
 		}
-		if fore == edge || nSemicolon != 1 {
+		if fore == edge || nSemic != 1 {
 			// `; ` and ` ` and `;;` are invalid
 			return nAdd, false
 		}

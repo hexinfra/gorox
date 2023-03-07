@@ -945,7 +945,7 @@ func (l *lexer) scan() []token {
 	for l.index < l.limit {
 		from := l.index
 		switch b := l.text[l.index]; b {
-		case ' ', '\r', '\t': // blank, ignore
+		case ' ', '\t', '\r': // blank, ignore
 			l.index++
 		case '\n': // new line
 			line++

@@ -414,11 +414,10 @@ type Handlet_ struct {
 	rShell reflect.Value // the shell handlet
 }
 
-func (h *Handlet_) SetRouter(shell any, router Router) {
+func (h *Handlet_) SetRouter(handlet any, router Router) {
 	h.router = router
-	h.rShell = reflect.ValueOf(shell)
+	h.rShell = reflect.ValueOf(handlet)
 }
-
 func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	if h.router != nil {
 		found := false

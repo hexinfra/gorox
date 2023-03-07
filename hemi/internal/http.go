@@ -478,58 +478,129 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool) bool { // data and paras
 	if field.value.isEmpty() {
 		if !fDesc.empty {
-			r.headResult, r.failReason = StatusBadRequest, "field can't be empty"
+			r.failReason = "field can't be empty"
 			return false
 		}
 		field.dataEdge = field.value.edge
 		return true
 	}
-	if b := p[field.value.from]; b == '"' {
-		if !fDesc.quote {
-			r.headResult, r.failReason = StatusBadRequest, "dquote is not allowed"
-			return false
+	Debugln(string(field.valueAt(p)))
+	text := field.value
+	if p[text.from] == '"' {
+		text.from++
+		for text.from < field.value.edge && p[text.from] != '"' {
+			text.from++
 		}
-		i := field.value.from + 1
-		for i < field.value.edge && p[i] != '"' {
-			i++
-		}
-		if i == field.value.edge {
+		if text.from == field.value.edge { // "...
+			field.dataEdge = text.from
 			return true
 		}
+		// "..."
+		if !fDesc.quote {
+			r.failReason = "DQUOTE is not allowed"
+			return false
+		}
+		if text.from-field.value.from == 1 && !fDesc.empty { // ""
+			r.failReason = "field cannot be empty"
+			return false
+		}
 		field.setQuoted()
-		field.dataEdge = i
+		field.dataEdge = text.from
+		Debugln(string(field.dataAt(p)))
+		if text.from++; text.from == field.value.edge { // exact "..."
+			return true
+		}
 	} else {
+		/*
+			spat := int32(0)
+			for text.from < field.value.edge {
+				if b := p[text.from]; b == ' ' || b == '\t' {
+					if spat == 0 {
+						spat = text.from
+					}
+					text.from++
+				} else if b == ',' {
 
+				}
+			}
+		*/
+		for text.from < field.value.edge && p[text.from] != ' ' && p[text.from] != '\t' && p[text.from] != ';' && p[text.from] != ',' {
+			text.from++
+		}
+		if text.from == field.value.edge { // exact data
+			field.dataEdge = text.from
+			Debugln(string(field.dataAt(p)))
+			return true
+		}
 	}
-	// TODO
+	if !fDesc.paras {
+		r.failReason = "paras is not allowed"
+		return false
+	}
 	// parameters      = *( OWS ";" OWS [ parameter ] )
 	// parameter       = parameter-name "=" parameter-value
 	// parameter-name  = token
 	// parameter-value = ( token / quoted-string )
-	/*
-		subValue.edge = subValue.from
-		if p[subValue.edge] == '"' { // subValue is quoted
-			subValue.edge++ // skip '"'
-			for subValue.edge < field.value.edge && p[subValue.edge] != '"' {
-				subValue.edge++
-			}
-			if subValue.edge == field.value.edge {
-				//subField.value = subValue
-			} else { // got '"'
-				//subField.value.set(subValue.from+1, subValue.edge)
-				subValue.edge++ // skip '"'
-			}
-		} else { // subValue is not quoted
-			for subValue.edge < field.value.edge {
-				if b := p[subValue.edge]; b == ',' || b == ';' {
-					break
-				} else {
-					subValue.edge++
+	for {
+		haveSemic := false
+		for text.from < field.value.edge {
+			if b := p[text.from]; b == ' ' || b == '\t' {
+				text.from++
+			} else if b == ',' {
+				if strict {
+					r.failReason = "singleton field got a comma"
+					return false
 				}
+				break
+			} else if b == ';' {
+				haveSemic = true
+				text.from++
+			} else {
+				break
 			}
-			//subField.value = subValue
 		}
-	*/
+		if text.from == field.value.edge { // no real paras
+			return true
+		}
+		if !haveSemic {
+			r.failReason = "semicolon required in parameters"
+			return false
+		}
+		text.edge = text.from
+		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+			text.edge++
+		}
+		if text.edge == field.value.edge {
+			r.failReason = "only parameter-name is provided"
+			return false
+		}
+		if text.from == text.edge {
+			r.failReason = "empty parameter-name is not allowed"
+			return false
+		}
+		if text.edge++; text.edge == field.value.edge || p[text.edge] != '=' {
+			r.failReason = "= required"
+			return false
+		}
+		Debugln(string(p[text.from:text.edge]))
+		if text.edge++; text.edge == field.value.edge {
+			r.failReason = "parameter-value not provided"
+			return false
+		}
+		text.from = text.edge
+		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+			text.edge++
+		}
+		Debugln(string(p[text.from:text.edge]))
+		if text.edge == field.value.edge {
+			return true
+		}
+	}
+	if strict {
+		r.failReason = "dirty value"
+		return false
+	}
+	field.value.edge = text.edge
 	return true
 }
 func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
@@ -559,24 +630,19 @@ func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField fun
 			break
 		}
 		if needComma && !haveComma {
-			if field.kind == kindHeader {
-				r.headResult = StatusBadRequest
-			} else {
-				r.bodyResult = StatusBadRequest
-			}
 			r.failReason = "comma needed in multi-value field"
 			return false
 		}
 		subField.value.edge = field.value.edge
 		if !r._setFieldInfo(&subField, fDesc, p, false) {
-			// r.headResult is set.
+			// r.failReason is set.
 			return false
 		}
 		if numSubs == 0 { // first sub, save as backup
 			bakField = subField
-		} else { // numSubs >= 1, add backup and current one
-			if numSubs == 1 {
-				field.setCommaValue() // main field marked as comma-value
+		} else { // numSubs >= 1, sub fields exist
+			if numSubs == 1 { // got the second sub field
+				field.setCommaValue() // mark main field as comma-value
 				if !addField(&bakField) {
 					return false
 				}
@@ -960,7 +1026,7 @@ func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
 		r.primes = getPairs()
 		r.primes = append(r.primes, r.stockPrimes[:]...)
 	}
-	r.primes = append(r.primes, *prime) // TODO: eliminate this copy
+	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
 }
 func (r *httpIn_) delPrimeAt(i uint8) { r.primes[i].zero() }
@@ -998,7 +1064,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	r.extras = append(r.extras, r.mainPair) // TODO: eliminate this copy
+	r.extras = append(r.extras, r.mainPair)
 	r.hasExtras[extraKind] = true
 	return true
 }

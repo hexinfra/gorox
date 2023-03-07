@@ -16,7 +16,7 @@ import (
 )
 
 // defaultDesc
-var defaultDesc = desc{0, 0, 0, true, false, true}
+var defaultDesc = desc{0, 0, 0, true, false, true, false}
 
 // desc
 type desc struct {
@@ -26,6 +26,7 @@ type desc struct {
 	quote bool // allow data quote or not
 	empty bool // allow empty data or not
 	paras bool // allow parameters or not
+	comma bool // has comma in value or not
 }
 
 // poolPairs
@@ -111,9 +112,9 @@ const ( // pair places
 //
 // A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
 //
-// +------------------------------------------------------------------------------------------------------+
-// |accept-types: "text/plain"; charset=utf-8;lang="en", text/html;; charset="" ,,application/octet-stream|
-// +------------------------------------------------------------------------------------------------------+
+// +-----------------------------------------------------------------------------------------------------------------+
+// |accept-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
+// +-----------------------------------------------------------------------------------------------------------------+
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) nameEqualString(t []byte, x string) bool {

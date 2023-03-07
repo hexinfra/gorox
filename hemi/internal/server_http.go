@@ -454,15 +454,15 @@ type httpRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
-	path          []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a text
-	absPath       []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
-	pathInfo      os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	app           *App        // target app of this request. set before processing stream
-	svc           *Svc        // target svc of this request. set before processing stream
-	formWindow    []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentBlob/4K/16K]
-	httpRequest0_             // all values must be zero by default in this struct!
+	path         []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a text
+	absPath      []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	pathInfo     os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
+	app          *App        // target app of this request. set before processing stream
+	svc          *Svc        // target svc of this request. set before processing stream
+	formWindow   []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentBlob/4K/16K]
+	httpRequest0             // all values must be zero by default in this struct!
 }
-type httpRequest0_ struct { // for fast reset, entirely
+type httpRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
 	targetForm      int8     // http request-target form. see httpTargetXXX
 	asteriskOptions bool     // OPTIONS *?
@@ -478,8 +478,8 @@ type httpRequest0_ struct { // for fast reset, entirely
 	boundary        text     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	ifMatches       zone     // the zone of if-match in r.primes
-	ifNoneMatches   zone     // the zone of if-none-match in r.primes
+	ifMatches       zone     // the zone of if-match in r.primes. may be not continuous
+	ifNoneMatches   zone     // the zone of if-none-match in r.primes. may be not continuous
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	_               [2]byte  // padding
@@ -545,7 +545,7 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
-	r.httpRequest0_ = httpRequest0_{}
+	r.httpRequest0 = httpRequest0{}
 
 	r.httpIn_.onEnd()
 }
@@ -764,7 +764,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.paras) {
+		if !r._setFieldInfo(header, &sh.desc, r.input) {
 			// r.headResult is set.
 			return false
 		}
@@ -774,7 +774,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(httpRequestImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, mh.quote, mh.empty, mh.paras, r.input, r.addHeader) {
+		if !r._addSubFields(header, &mh.desc, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -782,7 +782,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if !r._addSubFields(header, true, false, true, r.input, r.addHeader) {
+	} else if !r._addSubFields(header, &defaultDesc, r.input, r.addHeader) {
 		// r.headResult is set.
 		return false
 	}
@@ -792,26 +792,21 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
 	httpRequestSingletonHeaderTable = [12]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		quote bool // allow data quote or not
-		empty bool // allow empty data or not
-		paras bool // allow parameters or not
+		desc
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {hashIfUnmodifiedSince, 86, 105, false, false, false, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {hashUserAgent, 132, 142, false, false, false, (*httpRequest_).checkUserAgent},
-		2:  {hashContentLength, 14, 28, false, false, false, (*httpRequest_).checkContentLength},
-		3:  {hashRange, 126, 131, false, false, false, (*httpRequest_).checkRange},
-		4:  {hashDate, 49, 53, false, false, false, (*httpRequest_).checkDate},
-		5:  {hashHost, 54, 58, false, false, false, (*httpRequest_).checkHost},
-		6:  {hashCookie, 42, 48, false, false, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {hashContentType, 29, 41, false, false, true, (*httpRequest_).checkContentType},
-		8:  {hashIfRange, 77, 85, false, false, false, (*httpRequest_).checkIfRange},
-		9:  {hashIfModifiedSince, 59, 76, false, false, false, (*httpRequest_).checkIfModifiedSince},
-		10: {hashAuthorization, 0, 13, false, false, false, (*httpRequest_).checkAuthorization},
-		11: {hashProxyAuthorization, 106, 125, false, false, false, (*httpRequest_).checkProxyAuthorization},
+		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false}, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {desc{hashUserAgent, 132, 142, false, false, false}, (*httpRequest_).checkUserAgent},
+		2:  {desc{hashContentLength, 14, 28, false, false, false}, (*httpRequest_).checkContentLength},
+		3:  {desc{hashRange, 126, 131, false, false, false}, (*httpRequest_).checkRange},
+		4:  {desc{hashDate, 49, 53, false, false, false}, (*httpRequest_).checkDate},
+		5:  {desc{hashHost, 54, 58, false, false, false}, (*httpRequest_).checkHost},
+		6:  {desc{hashCookie, 42, 48, false, false, false}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {desc{hashContentType, 29, 41, false, false, true}, (*httpRequest_).checkContentType},
+		8:  {desc{hashIfRange, 77, 85, false, false, false}, (*httpRequest_).checkIfRange},
+		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false}, (*httpRequest_).checkIfModifiedSince},
+		10: {desc{hashAuthorization, 0, 13, false, false, false}, (*httpRequest_).checkAuthorization},
+		11: {desc{hashProxyAuthorization, 106, 125, false, false, false}, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -836,8 +831,8 @@ func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie =
 	if r.cookies.isEmpty() {
 		r.cookies.from = index
 	}
-	// And we can't inject cookies into headers, so we postpone cookie parsing after the request head is entirely received.
-	r.cookies.edge = index + 1 // so only mark the edge
+	// And we can't inject cookies into headers zone while receiving headers, this will break the continuous nature of headers zone.
+	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
 func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
@@ -1032,32 +1027,27 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderNames = []byte("accept accept-charset accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for")
 	httpRequestImportantHeaderTable = [18]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		quote bool // allow data quote or not
-		empty bool // allow empty data or not
-		paras bool // allow parameters or not
+		desc
 		check func(*httpRequest_, uint8, uint8) bool
 	}{
-		0:  {hashTE, 153, 155, false, false, true, (*httpRequest_).checkTE},
-		1:  {hashTrailer, 156, 163, false, false, false, (*httpRequest_).checkTrailer},
-		2:  {hashExpect, 113, 119, false, false, true, (*httpRequest_).checkExpect},
-		3:  {hashContentLanguage, 96, 112, false, false, false, (*httpRequest_).checkContentLanguage},
-		4:  {hashTransferEncoding, 164, 181, false, false, false, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		5:  {hashAcceptCharset, 7, 21, false, false, true, (*httpRequest_).checkAcceptCharset},
-		6:  {hashCacheControl, 54, 67, false, false, false, (*httpRequest_).checkCacheControl},
-		7:  {hashXForwardedFor, 194, 209, false, false, false, (*httpRequest_).checkXForwardedFor},
-		8:  {hashVia, 190, 193, false, false, false, (*httpRequest_).checkVia},
-		9:  {hashForwarded, 120, 129, false, false, false, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		10: {hashIfMatch, 130, 138, true, false, false, (*httpRequest_).checkIfMatch},
-		11: {hashAccept, 0, 6, false, false, true, (*httpRequest_).checkAccept},
-		12: {hashAcceptEncoding, 22, 37, false, true, true, (*httpRequest_).checkAcceptEncoding},
-		13: {hashConnection, 68, 78, false, false, false, (*httpRequest_).checkConnection},
-		14: {hashIfNoneMatch, 139, 152, true, false, false, (*httpRequest_).checkIfNoneMatch},
-		15: {hashUpgrade, 182, 189, false, false, false, (*httpRequest_).checkUpgrade},
-		16: {hashContentEncoding, 79, 95, false, false, false, (*httpRequest_).checkContentEncoding},
-		17: {hashAcceptLanguage, 38, 53, false, false, true, (*httpRequest_).checkAcceptLanguage},
+		0:  {desc{hashTE, 153, 155, false, false, true}, (*httpRequest_).checkTE},
+		1:  {desc{hashTrailer, 156, 163, false, false, false}, (*httpRequest_).checkTrailer},
+		2:  {desc{hashExpect, 113, 119, false, false, true}, (*httpRequest_).checkExpect},
+		3:  {desc{hashContentLanguage, 96, 112, false, false, false}, (*httpRequest_).checkContentLanguage},
+		4:  {desc{hashTransferEncoding, 164, 181, false, false, false}, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		5:  {desc{hashAcceptCharset, 7, 21, false, false, true}, (*httpRequest_).checkAcceptCharset},
+		6:  {desc{hashCacheControl, 54, 67, false, false, false}, (*httpRequest_).checkCacheControl},
+		7:  {desc{hashXForwardedFor, 194, 209, false, false, false}, (*httpRequest_).checkXForwardedFor},
+		8:  {desc{hashVia, 190, 193, false, false, false}, (*httpRequest_).checkVia},
+		9:  {desc{hashForwarded, 120, 129, false, false, false}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		10: {desc{hashIfMatch, 130, 138, true, false, false}, (*httpRequest_).checkIfMatch},
+		11: {desc{hashAccept, 0, 6, false, false, true}, (*httpRequest_).checkAccept},
+		12: {desc{hashAcceptEncoding, 22, 37, false, true, true}, (*httpRequest_).checkAcceptEncoding},
+		13: {desc{hashConnection, 68, 78, false, false, false}, (*httpRequest_).checkConnection},
+		14: {desc{hashIfNoneMatch, 139, 152, true, false, false}, (*httpRequest_).checkIfNoneMatch},
+		15: {desc{hashUpgrade, 182, 189, false, false, false}, (*httpRequest_).checkUpgrade},
+		16: {desc{hashContentEncoding, 79, 95, false, false, false}, (*httpRequest_).checkContentEncoding},
+		17: {desc{hashAcceptLanguage, 38, 53, false, false, true}, (*httpRequest_).checkAcceptLanguage},
 	}
 	httpRequestImportantHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
 )
@@ -1492,39 +1482,39 @@ func (r *httpRequest_) examineHead() bool {
 			}
 		} else { // content-type exists
 			var (
-				typeParams  text
+				typeParas   text
 				contentType []byte
 			)
 			// TODO: refactor this. use general api of pairs
 			vType := r.primes[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
-				typeParams.from = vType.edge
-				typeParams.edge = vType.edge
+				typeParas.from = vType.edge
+				typeParas.edge = vType.edge
 				contentType = r.input[vType.from:vType.edge]
 			} else {
-				typeParams.from = vType.from + int32(i)
-				typeParams.edge = typeParams.from  // too lazy to alloc a new variable. reuse typeParams.edge
-				for typeParams.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
-					if b := r.input[typeParams.edge-1]; b == ' ' || b == '\t' {
-						typeParams.edge--
+				typeParas.from = vType.from + int32(i)
+				typeParas.edge = typeParas.from   // too lazy to alloc a new variable. reuse typeParas.edge
+				for typeParas.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
+					if b := r.input[typeParas.edge-1]; b == ' ' || b == '\t' {
+						typeParas.edge--
 					} else {
 						break
 					}
 				}
-				if typeParams.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
+				if typeParas.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
 					r.headResult, r.failReason = StatusBadRequest, "content-type can't be an empty value"
 					return false
 				}
-				contentType = r.input[vType.from:typeParams.edge]
-				typeParams.edge = vType.edge
+				contentType = r.input[vType.from:typeParas.edge]
+				typeParas.edge = vType.edge
 			}
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
 				navas := make([]nava, 1) // doesn't escape
-				if _, ok := r._parseParams(r.input, typeParams.from, typeParams.edge, navas); !ok {
-					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data params"
+				if _, ok := r._parseNavas(r.input, typeParas.from, typeParas.edge, navas); !ok {
+					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data parameter"
 					return false
 				}
 				nava := &navas[0]
@@ -1736,7 +1726,7 @@ func (r *httpRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *httpRequest_) parseHTMLForm() {
+func (r *httpRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
 	if r.formKind == httpFormNotForm || r.formReceived {
 		return
 	}
@@ -1919,8 +1909,8 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		}
 		// r.pFore is at fields of current part.
 		var part struct { // current part
-			valid  bool     // true if "name" param in "content-disposition" field is found
-			isFile bool     // true if "filename" param in "content-disposition" field is found
+			valid  bool     // true if "name" parameter in "content-disposition" field is found
+			isFile bool     // true if "filename" parameter in "content-disposition" field is found
 			hash   uint16   // name hash
 			name   text     // to r.array. like: "avatar"
 			base   text     // to r.array. like: "michael.jpg", or empty if part is not a file
@@ -1993,7 +1983,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					r.stream.markBroken()
 					return
 				}
-				r.pBack = r.pFore // now r.formWindow is used for receiving params and onward
+				r.pBack = r.pFore // now r.formWindow is used for receiving parameters and onward
 				for r.formWindow[r.pFore] != '\n' {
 					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm(contentFile) {
 						return
@@ -2008,7 +1998,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 					fore--
 				}
 				navas := make([]nava, 2) // for name & filename. won't escape to heap
-				n, ok := r._parseParams(r.formWindow, r.pBack, fore, navas)
+				n, ok := r._parseNavas(r.formWindow, r.pBack, fore, navas)
 				if !ok {
 					r.stream.markBroken()
 					return
@@ -2186,7 +2176,37 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 		}
 	}
 }
-func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, navas []nava) (int, bool) {
+func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller needs more data from content file
+	if r.sizeConsumed == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
+		r.stream.markBroken()
+		return false
+	}
+	if r.pBack > 0 { // have useless data. slide to start
+		copy(r.formWindow, r.formWindow[r.pBack:r.formEdge])
+		r.formEdge -= r.pBack
+		r.pFore -= r.pBack
+		if r.pFieldName.notEmpty() {
+			r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
+		}
+		r.pBack = 0
+	}
+	n, err := contentFile.Read(r.formWindow[r.formEdge:])
+	r.formEdge += int32(n)
+	r.sizeConsumed += int64(n)
+	if err == io.EOF {
+		if r.sizeConsumed == r.receivedSize {
+			err = nil
+		} else {
+			err = io.ErrUnexpectedEOF
+		}
+	}
+	if err != nil {
+		r.stream.markBroken()
+		return false
+	}
+	return true
+}
+func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nava) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -2255,36 +2275,6 @@ func (r *httpRequest_) _parseParams(p []byte, from int32, edge int32, navas []na
 			return nAdd, true
 		}
 	}
-}
-func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller needs more data.
-	if r.sizeConsumed == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
-		r.stream.markBroken()
-		return false
-	}
-	if r.pBack > 0 { // have useless data. slide to start
-		copy(r.formWindow, r.formWindow[r.pBack:r.formEdge])
-		r.formEdge -= r.pBack
-		r.pFore -= r.pBack
-		if r.pFieldName.notEmpty() {
-			r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
-		}
-		r.pBack = 0
-	}
-	n, err := contentFile.Read(r.formWindow[r.formEdge:])
-	r.formEdge += int32(n)
-	r.sizeConsumed += int64(n)
-	if err == io.EOF {
-		if r.sizeConsumed == r.receivedSize {
-			err = nil
-		} else {
-			err = io.ErrUnexpectedEOF
-		}
-	}
-	if err != nil {
-		r.stream.markBroken()
-		return false
-	}
-	return true
 }
 
 func (r *httpRequest_) addForm(form *pair) { // to primes
@@ -2650,11 +2640,11 @@ type httpResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	app            *App // associated app
-	svc            *Svc // associated svc
-	httpResponse0_      // all values must be zero by default in this struct!
+	app           *App // associated app
+	svc           *Svc // associated svc
+	httpResponse0      // all values must be zero by default in this struct!
 }
-type httpResponse0_ struct { // for fast reset, entirely
+type httpResponse0 struct { // for fast reset, entirely
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 	indexes  struct {
 		expires      uint8
@@ -2671,7 +2661,7 @@ func (r *httpResponse_) onUse(versionCode uint8) { // for non-zeros
 func (r *httpResponse_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
-	r.httpResponse0_ = httpResponse0_{}
+	r.httpResponse0 = httpResponse0{}
 	r.httpOut_.onEnd()
 }
 

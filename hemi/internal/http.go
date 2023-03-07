@@ -141,9 +141,9 @@ type httpIn_ struct { // incoming. needs parsing
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentBlob []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentHeld *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
-	httpIn0_              // all values must be zero by default in this struct!
+	httpIn0               // all values must be zero by default in this struct!
 }
-type httpIn0_ struct { // for fast reset, entirely
+type httpIn0 struct { // for fast reset, entirely
 	pBack            int32   // element begins from. for parsing control & headers & content & trailers elements
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
@@ -235,8 +235,8 @@ func (r *httpIn_) onEnd() { // for zeros
 			}
 			r.input = r.bodyWindow // use r.bodyWindow as new r.input
 		}
-		// slide r.input
-		copy(r.input, r.input[r.inputNext:r.inputEdge]) // r.inputNext and r.inputEdge have already been set
+		// slide r.input. r.inputNext and r.inputEdge have already been set
+		copy(r.input, r.input[r.inputNext:r.inputEdge])
 		r.inputEdge -= r.inputNext
 		r.inputNext = 0
 	} else if r.bodyWindow != nil { // r.bodyWindow was used to receive content and failed to free. we free it here.
@@ -262,7 +262,7 @@ func (r *httpIn_) onEnd() { // for zeros
 		r.contentHeld = nil
 	}
 
-	r.httpIn0_ = httpIn0_{}
+	r.httpIn0 = httpIn0{}
 }
 
 func (r *httpIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
@@ -475,16 +475,17 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) _setFieldInfo(field *pair, quote bool, empty bool, paras bool) bool {
+func (r *httpIn_) _setFieldInfo(field *pair, desc *desc, p []byte) bool {
 	// TODO
 	return true
 }
-func (r *httpIn_) _addSubFields(field *pair, quote bool, empty bool, paras bool, p []byte, addField func(field *pair) bool) bool { // to primes
-	// TODO
-	return true
-	if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+func (r *httpIn_) _addSubFields(field *pair, desc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
+	/*
 		return true
-	}
+		if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
+			return true
+		}
+	*/
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ element ] *( OWS "," OWS [ element ] )
@@ -986,7 +987,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collect values of main fields
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 && !prime.isSubField() {
-				p := r._getPlace(prime)
+				p := r._placeOf(prime)
 				all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
@@ -1000,7 +1001,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	} else { // queries, cookies, and forms
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 {
-				p := r._getPlace(prime)
+				p := r._placeOf(prime)
 				all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
@@ -1022,7 +1023,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
-					if p := r._getPlace(prime); prime.nameEqualString(p, name) {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						return prime.dataAt(p), true
 					}
 				}
@@ -1037,7 +1038,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		} else { // queries, cookies, and forms
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._getPlace(prime); prime.nameEqualString(p, name) {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						return prime.valueAt(p), true
 					}
 				}
@@ -1061,7 +1062,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
-					if p := r._getPlace(prime); prime.nameEqualString(p, name) {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						values = append(values, string(prime.dataAt(p)))
 					}
 				}
@@ -1076,7 +1077,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		} else { // queries, cookies, and forms
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._getPlace(prime); prime.nameEqualString(p, name) {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						values = append(values, string(prime.valueAt(p)))
 					}
 				}
@@ -1102,7 +1103,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
-				if p := r._getPlace(prime); prime.nameEqualString(p, name) {
+				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					prime.zero()
 					deleted = true
 				}
@@ -1123,7 +1124,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 	// Skip sub fields, only collect values of main fields
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
-			p := r._getPlace(field)
+			p := r._placeOf(field)
 			if !fn(field, field.nameAt(p), field.valueAt(p)) {
 				return false
 			}
@@ -1140,7 +1141,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 	}
 	return true
 }
-func (r *httpIn_) _getPlace(pair *pair) []byte {
+func (r *httpIn_) _placeOf(pair *pair) []byte {
 	var place []byte
 	if pair.place == placeInput {
 		place = r.input
@@ -1278,9 +1279,9 @@ type httpOut_ struct { // outgoing. needs building
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
 	fixedVector [4][]byte   // for sending/pushing message. reset after stream
-	httpOut0_               // all values must be zero by default in this struct!
+	httpOut0                // all values must be zero by default in this struct!
 }
-type httpOut0_ struct { // for fast reset, entirely
+type httpOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not present at the same time
 	hasRevisers   bool   // are there any revisers hooked on this outgoing message?
@@ -1310,7 +1311,7 @@ func (r *httpOut_) onEnd() { // for zeros
 	r.sendTime = time.Time{}
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
-	r.httpOut0_ = httpOut0_{}
+	r.httpOut0 = httpOut0{}
 }
 
 func (r *httpOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }

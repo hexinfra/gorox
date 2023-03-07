@@ -202,9 +202,9 @@ type hRequest_ struct { // outgoing. needs building
 		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	hRequest0_ // all values must be zero by default in this struct!
+	hRequest0 // all values must be zero by default in this struct!
 }
-type hRequest0_ struct { // for fast reset, entirely
+type hRequest0 struct { // for fast reset, entirely
 	indexes struct {
 		host              uint8
 		ifModifiedSince   uint8
@@ -219,7 +219,7 @@ func (r *hRequest_) onUse(versionCode uint8) { // for non-zeros
 	r.unixTimes.ifUnmodifiedSince = -1  // not set
 }
 func (r *hRequest_) onEnd() { // for zeros
-	r.hRequest0_ = hRequest0_{}
+	r.hRequest0 = hRequest0{}
 	r.httpOut_.onEnd()
 }
 
@@ -430,9 +430,9 @@ type hResponse_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
-	hResponse0_ // all values must be zero by default in this struct!
+	hResponse0 // all values must be zero by default in this struct!
 }
-type hResponse0_ struct { // for fast reset, entirely
+type hResponse0 struct { // for fast reset, entirely
 	status    int16    // 200, 302, 404, ...
 	unixTimes struct { // parsed unix times
 		lastModified int64 // parsed unix time of last-modified
@@ -470,7 +470,7 @@ func (r *hResponse_) onEnd() { // for zeros
 		// TODO: put?
 		r.cookies = nil
 	}
-	r.hResponse0_ = hResponse0_{}
+	r.hResponse0 = hResponse0{}
 
 	r.httpIn_.onEnd()
 }
@@ -481,7 +481,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(hResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, sh.quote, sh.empty, sh.paras) {
+		if !r._setFieldInfo(header, &sh.desc, r.input) {
 			// r.headResult is set.
 			return false
 		}
@@ -491,7 +491,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(hResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
 		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, mh.quote, mh.empty, mh.paras, r.input, r.addHeader) {
+		if !r._addSubFields(header, &mh.desc, r.input, r.addHeader) {
 			// r.headResult is set.
 			return false
 		}
@@ -499,7 +499,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if !r._addSubFields(header, true, false, true, r.input, r.addHeader) {
+	} else if !r._addSubFields(header, &defaultDesc, r.input, r.addHeader) {
 		// r.headResult is set.
 		return false
 	}
@@ -509,26 +509,21 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 var ( // perfect hash table for response singleton headers
 	hResponseSingletonHeaderNames = []byte("age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie")
 	hResponseSingletonHeaderTable = [12]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		quote bool // allow data quote or not
-		empty bool // allow empty data or not
-		paras bool // allow parameters or not
+		desc
 		check func(*hResponse_, *pair, uint8) bool
 	}{
-		0:  {hashDate, 46, 50, false, false, false, (*hResponse_).checkDate},
-		1:  {hashContentLength, 4, 18, false, false, false, (*hResponse_).checkContentLength},
-		2:  {hashAge, 0, 3, false, false, false, (*hResponse_).checkAge},
-		3:  {hashSetCookie, 106, 116, false, false, false, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {hashLastModified, 64, 77, false, false, false, (*hResponse_).checkLastModified},
-		5:  {hashLocation, 78, 86, false, false, false, (*hResponse_).checkLocation},
-		6:  {hashExpires, 56, 63, false, false, false, (*hResponse_).checkExpires},
-		7:  {hashContentRange, 19, 32, false, false, false, (*hResponse_).checkContentRange},
-		8:  {hashETag, 51, 55, false, false, false, (*hResponse_).checkETag},
-		9:  {hashServer, 99, 105, false, false, false, (*hResponse_).checkServer},
-		10: {hashContentType, 33, 45, false, false, true, (*hResponse_).checkContentType},
-		11: {hashRetryAfter, 87, 98, false, false, false, (*hResponse_).checkRetryAfter},
+		0:  {desc{hashDate, 46, 50, false, false, false}, (*hResponse_).checkDate},
+		1:  {desc{hashContentLength, 4, 18, false, false, false}, (*hResponse_).checkContentLength},
+		2:  {desc{hashAge, 0, 3, false, false, false}, (*hResponse_).checkAge},
+		3:  {desc{hashSetCookie, 106, 116, false, false, false}, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {desc{hashLastModified, 64, 77, false, false, false}, (*hResponse_).checkLastModified},
+		5:  {desc{hashLocation, 78, 86, false, false, false}, (*hResponse_).checkLocation},
+		6:  {desc{hashExpires, 56, 63, false, false, false}, (*hResponse_).checkExpires},
+		7:  {desc{hashContentRange, 19, 32, false, false, false}, (*hResponse_).checkContentRange},
+		8:  {desc{hashETag, 51, 55, false, false, false}, (*hResponse_).checkETag},
+		9:  {desc{hashServer, 99, 105, false, false, false}, (*hResponse_).checkServer},
+		10: {desc{hashContentType, 33, 45, false, false, true}, (*hResponse_).checkContentType},
+		11: {desc{hashRetryAfter, 87, 98, false, false, false}, (*hResponse_).checkRetryAfter},
 	}
 	hResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
@@ -582,31 +577,26 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 var ( // perfect hash table for response important headers
 	hResponseImportantHeaderNames = []byte("accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate")
 	hResponseImportantHeaderTable = [17]struct {
-		hash  uint16
-		from  uint8
-		edge  uint8
-		quote bool // allow data quote or not
-		empty bool // allow empty data or not
-		paras bool // allow parameters or not
+		desc
 		check func(*hResponse_, uint8, uint8) bool
 	}{
-		0:  {hashAcceptRanges, 16, 29, false, false, false, (*hResponse_).checkAcceptRanges},
-		1:  {hashVia, 192, 195, false, false, false, (*hResponse_).checkVia},
-		2:  {hashWWWAuthenticate, 196, 212, false, false, false, (*hResponse_).checkWWWAuthenticate},
-		3:  {hashConnection, 89, 99, false, false, false, (*hResponse_).checkConnection},
-		4:  {hashContentEncoding, 100, 116, false, false, false, (*hResponse_).checkContentEncoding},
-		5:  {hashAllow, 30, 35, false, true, false, (*hResponse_).checkAllow},
-		6:  {hashTransferEncoding, 161, 178, false, false, false, (*hResponse_).checkTransferEncoding}, // deliberately false
-		7:  {hashTrailer, 153, 160, false, false, false, (*hResponse_).checkTrailer},
-		8:  {hashVary, 187, 191, false, false, false, (*hResponse_).checkVary},
-		9:  {hashUpgrade, 179, 186, false, false, false, (*hResponse_).checkUpgrade},
-		10: {hashProxyAuthenticate, 134, 152, false, false, false, (*hResponse_).checkProxyAuthenticate},
-		11: {hashCacheControl, 44, 57, false, false, false, (*hResponse_).checkCacheControl},
-		12: {hashAltSvc, 36, 43, false, false, true, (*hResponse_).checkAltSvc},
-		13: {hashCDNCacheControl, 71, 88, false, false, false, (*hResponse_).checkCDNCacheControl},
-		14: {hashCacheStatus, 58, 70, false, false, true, (*hResponse_).checkCacheStatus},
-		15: {hashAcceptEncoding, 0, 15, false, true, true, (*hResponse_).checkAcceptEncoding},
-		16: {hashContentLanguage, 117, 133, false, false, false, (*hResponse_).checkContentLanguage},
+		0:  {desc{hashAcceptRanges, 16, 29, false, false, false}, (*hResponse_).checkAcceptRanges},
+		1:  {desc{hashVia, 192, 195, false, false, false}, (*hResponse_).checkVia},
+		2:  {desc{hashWWWAuthenticate, 196, 212, false, false, false}, (*hResponse_).checkWWWAuthenticate},
+		3:  {desc{hashConnection, 89, 99, false, false, false}, (*hResponse_).checkConnection},
+		4:  {desc{hashContentEncoding, 100, 116, false, false, false}, (*hResponse_).checkContentEncoding},
+		5:  {desc{hashAllow, 30, 35, false, true, false}, (*hResponse_).checkAllow},
+		6:  {desc{hashTransferEncoding, 161, 178, false, false, false}, (*hResponse_).checkTransferEncoding}, // deliberately false
+		7:  {desc{hashTrailer, 153, 160, false, false, false}, (*hResponse_).checkTrailer},
+		8:  {desc{hashVary, 187, 191, false, false, false}, (*hResponse_).checkVary},
+		9:  {desc{hashUpgrade, 179, 186, false, false, false}, (*hResponse_).checkUpgrade},
+		10: {desc{hashProxyAuthenticate, 134, 152, false, false, false}, (*hResponse_).checkProxyAuthenticate},
+		11: {desc{hashCacheControl, 44, 57, false, false, false}, (*hResponse_).checkCacheControl},
+		12: {desc{hashAltSvc, 36, 43, false, false, true}, (*hResponse_).checkAltSvc},
+		13: {desc{hashCDNCacheControl, 71, 88, false, false, false}, (*hResponse_).checkCDNCacheControl},
+		14: {desc{hashCacheStatus, 58, 70, false, false, true}, (*hResponse_).checkCacheStatus},
+		15: {desc{hashAcceptEncoding, 0, 15, false, true, true}, (*hResponse_).checkAcceptEncoding},
+		16: {desc{hashContentLanguage, 117, 133, false, false, false}, (*hResponse_).checkContentLanguage},
 	}
 	hResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )

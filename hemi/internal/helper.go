@@ -15,6 +15,19 @@ import (
 	"sync"
 )
 
+// defaultDesc
+var defaultDesc = desc{0, 0, 0, true, false, true}
+
+// desc
+type desc struct {
+	hash  uint16
+	from  uint8
+	edge  uint8
+	quote bool // allow data quote or not
+	empty bool // allow empty data or not
+	paras bool // allow parameters or not
+}
+
 // poolPairs
 var poolPairs sync.Pool
 

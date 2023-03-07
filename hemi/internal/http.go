@@ -475,7 +475,7 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool) bool { // data and paras
+func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
 	if field.value.isEmpty() {
 		if !fDesc.empty {
 			r.failReason = "field can't be empty"
@@ -484,9 +484,39 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool)
 		field.dataEdge = field.value.edge
 		return true
 	}
-	Debugln(string(field.valueAt(p)))
 	text := field.value
-	if p[text.from] == '"' {
+	if p[text.from] != '"' {
+		// Sun, 06 Nov 1994 08:49:37 GMT
+		// Basic realm="simple", title="Login to \"apps\""
+		for spat := int32(0); text.from < field.value.edge; text.from++ {
+			if b := p[text.from]; b == ' ' || b == '\t' {
+				if spat == 0 {
+					spat = text.from
+				}
+			} else if b == ';' {
+				if spat == 0 {
+					field.dataEdge = text.from
+				} else {
+					field.dataEdge = spat
+				}
+				Debugf("3=%s\n", string(field.dataAt(p)))
+				break
+			} else {
+				if b == ',' && !fully {
+					field.dataEdge = text.from
+					field.value.edge = text.from
+					Debugf("1=%s\n", string(field.dataAt(p)))
+					return true
+				}
+				spat = 0
+			}
+		}
+		if text.from == field.value.edge { // exact data
+			field.dataEdge = text.from
+			Debugf("2=%s\n", string(field.dataAt(p)))
+			return true
+		}
+	} else { // begins with '"'
 		text.from++
 		for text.from < field.value.edge && p[text.from] != '"' {
 			text.from++
@@ -510,27 +540,19 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool)
 		if text.from++; text.from == field.value.edge { // exact "..."
 			return true
 		}
-	} else {
-		/*
-			spat := int32(0)
-			for text.from < field.value.edge {
-				if b := p[text.from]; b == ' ' || b == '\t' {
-					if spat == 0 {
-						spat = text.from
-					}
-					text.from++
-				} else if b == ',' {
-
+		for text.from < field.value.edge {
+			if b := p[text.from]; b == ' ' || b == '\t' {
+				text.from++
+			} else if b == ',' {
+				if fully {
+					r.failReason = "malformed DQUOTE and normal text"
+					return false
 				}
+				field.value.edge = text.from
+				return true
+			} else { // ';' or other
+				break
 			}
-		*/
-		for text.from < field.value.edge && p[text.from] != ' ' && p[text.from] != '\t' && p[text.from] != ';' && p[text.from] != ',' {
-			text.from++
-		}
-		if text.from == field.value.edge { // exact data
-			field.dataEdge = text.from
-			Debugln(string(field.dataAt(p)))
-			return true
 		}
 	}
 	if !fDesc.paras {
@@ -546,26 +568,28 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool)
 		for text.from < field.value.edge {
 			if b := p[text.from]; b == ' ' || b == '\t' {
 				text.from++
-			} else if b == ',' {
-				if strict {
-					r.failReason = "singleton field got a comma"
-					return false
-				}
-				break
 			} else if b == ';' {
 				haveSemic = true
 				text.from++
+			} else if b == ',' {
+				if fully {
+					r.failReason = "invalid parameter"
+					return false
+				}
+				field.value.edge = text.from
+				return true
 			} else {
 				break
 			}
 		}
-		if text.from == field.value.edge { // no real paras
+		if text.from == field.value.edge {
 			return true
 		}
 		if !haveSemic {
 			r.failReason = "semicolon required in parameters"
 			return false
 		}
+		// parameter-name
 		text.edge = text.from
 		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 			text.edge++
@@ -578,25 +602,25 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool)
 			r.failReason = "empty parameter-name is not allowed"
 			return false
 		}
-		if text.edge++; text.edge == field.value.edge || p[text.edge] != '=' {
+		if p[text.edge] != '=' {
 			r.failReason = "= required"
 			return false
 		}
 		Debugln(string(p[text.from:text.edge]))
-		if text.edge++; text.edge == field.value.edge {
-			r.failReason = "parameter-value not provided"
-			return false
-		}
+		text.edge++ // skip '='
+		// parameter-value
 		text.from = text.edge
 		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 			text.edge++
 		}
-		Debugln(string(p[text.from:text.edge]))
 		if text.edge == field.value.edge {
-			return true
+			r.failReason = "empty parameter-value is not allowed"
+			return false
 		}
+		Debugln(string(p[text.from:text.edge]))
+		text.from = text.edge
 	}
-	if strict {
+	if fully {
 		r.failReason = "dirty value"
 		return false
 	}

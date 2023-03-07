@@ -16,7 +16,7 @@ import (
 )
 
 // defaultDesc
-var defaultDesc = desc{0, 0, 0, true, false, true, false}
+var defaultDesc = desc{0, 0, 0, true, false, true}
 
 // desc
 type desc struct {
@@ -26,7 +26,6 @@ type desc struct {
 	quote bool // allow data quote or not
 	empty bool // allow empty data or not
 	paras bool // allow parameters or not
-	comma bool // has comma in value or not
 }
 
 // poolPairs

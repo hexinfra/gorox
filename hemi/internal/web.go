@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"os"
 	"reflect"
 	"strings"
@@ -415,7 +414,7 @@ type Handlet_ struct {
 	rShell reflect.Value // the shell handlet
 }
 
-func (h *Handlet_) UseRouter(shell any, router Router) {
+func (h *Handlet_) SetRouter(shell any, router Router) {
 	h.router = router
 	h.rShell = reflect.ValueOf(shell)
 }
@@ -448,6 +447,12 @@ func (h *Handlet_) IsCache() bool { return false } // override this for cache ha
 
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
+
+// Router performs request routing in handlets.
+type Router interface {
+	FindHandle(req Request) Handle
+	CreateName(req Request) string
+}
 
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
@@ -828,78 +833,4 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 		r.socklet.Serve(req, sock)
 	*/
 	return true
-}
-
-// Router performs request routing in handlets.
-type Router interface {
-	FindHandle(req Request) Handle
-	CreateName(req Request) string
-}
-
-// simpleRouter implements Router.
-type simpleRouter struct {
-	routes  map[string]Handle // for all methods
-	gets    map[string]Handle
-	posts   map[string]Handle
-	puts    map[string]Handle
-	deletes map[string]Handle
-}
-
-// NewSimpleRouter creates a simpleRouter.
-func NewSimpleRouter() *simpleRouter {
-	r := new(simpleRouter)
-	r.routes = make(map[string]Handle)
-	r.gets = make(map[string]Handle)
-	r.posts = make(map[string]Handle)
-	r.puts = make(map[string]Handle)
-	r.deletes = make(map[string]Handle)
-	return r
-}
-
-func (r *simpleRouter) Route(path string, handle Handle) {
-	r.routes[path] = handle
-}
-
-func (r *simpleRouter) GET(path string, handle Handle) {
-	r.gets[path] = handle
-}
-func (r *simpleRouter) POST(path string, handle Handle) {
-	r.posts[path] = handle
-}
-func (r *simpleRouter) PUT(path string, handle Handle) {
-	r.puts[path] = handle
-}
-func (r *simpleRouter) DELETE(path string, handle Handle) {
-	r.deletes[path] = handle
-}
-
-func (r *simpleRouter) FindHandle(req Request) Handle {
-	// TODO
-	path := req.Path()
-	if handle, ok := r.routes[path]; ok {
-		return handle
-	} else if req.IsGET() {
-		return r.gets[path]
-	} else if req.IsPOST() {
-		return r.posts[path]
-	} else if req.IsPUT() {
-		return r.puts[path]
-	} else if req.IsDELETE() {
-		return r.deletes[path]
-	} else {
-		return nil
-	}
-}
-func (r *simpleRouter) CreateName(req Request) string {
-	method := req.UnsafeMethod()
-	path := req.UnsafePath() // always starts with '/'
-	name := req.UnsafeMake(len(method) + len(path))
-	n := copy(name, method)
-	copy(name[n:], path)
-	for i := n; i < len(name); i++ {
-		if name[i] == '/' {
-			name[i] = '_'
-		}
-	}
-	return risky.WeakString(name)
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	. "github.com/hexinfra/gorox/cmds/goops/rocks"
 	. "github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 )
 
 func init() {
@@ -41,8 +42,8 @@ func (h *v1Handlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewSimpleRouter()
-	h.UseRouter(h, r)
+	r := simple.New()
+	h.SetRouter(h, r)
 }
 func (h *v1Handlet) OnShutdown() {
 	h.app.SubDone()

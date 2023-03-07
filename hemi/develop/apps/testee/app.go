@@ -7,6 +7,7 @@ package testee
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 )
 
 func init() {
@@ -38,8 +39,8 @@ func (h *testHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewSimpleRouter()
-	h.UseRouter(h, r)
+	r := simple.New()
+	h.SetRouter(h, r)
 }
 func (h *testHandlet) OnShutdown() {
 	h.app.SubDone()

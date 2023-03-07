@@ -9,6 +9,7 @@ package hello
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 )
 
 func init() {
@@ -44,12 +45,12 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 
-	r := NewSimpleRouter() // you can write your own router as long as it implements Router interface
+	r := simple.New() // you can write your own router as long as it implements the Router interface
 
 	r.GET("/", h.index)
 	r.Route("/foo", h.handleFoo)
 
-	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
+	h.SetRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
 func (h *helloHandlet) OnShutdown() {
 	h.app.SubDone()

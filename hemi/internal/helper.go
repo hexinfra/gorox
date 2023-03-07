@@ -109,11 +109,11 @@ const ( // pair places
 //
 // If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
 //
-// A has-comma "accept-type" field may looks like this (needs further parsing into sub fields):
+// A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
 //
-// +-----------------------------------------------------------------------------------------------------+
-// |accept-type: "text/plain"; charset="utf-8";lang=en, text/html;charset=utf-8,,application/octet-stream|
-// +-----------------------------------------------------------------------------------------------------+
+// +------------------------------------------------------------------------------------------------------+
+// |accept-types: "text/plain"; charset=utf-8;lang="en", text/html;; charset="" ,,application/octet-stream|
+// +------------------------------------------------------------------------------------------------------+
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) nameEqualString(t []byte, x string) bool {

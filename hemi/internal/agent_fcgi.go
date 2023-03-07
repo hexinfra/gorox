@@ -821,14 +821,12 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		if r.input[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty
-			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
+		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
 				fore--
 			}
-			header.value.set(r.pBack, fore)
-		} else { // field-value is empty
-			header.value.zero()
 		}
+		header.value.set(r.pBack, fore)
 
 		// Header is received in general algorithm. Now add and adopt it
 		if !r.addHeader(header) || !r.adoptHeader(header) {
@@ -872,7 +870,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setHeaderInfo(header, &sh.desc) {
+		if !r._setHeaderInfo(header, &sh.desc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -961,10 +959,11 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _setHeaderInfo(header *pair, desc *desc) bool {
+func (r *fcgiResponse) _setHeaderInfo(header *pair, fDesc *desc, strict bool) bool {
+	// TODO
 	return false
 }
-func (r *fcgiResponse) _addSubHeaders(header *pair, desc *desc) bool {
+func (r *fcgiResponse) _addSubHeaders(header *pair, fDesc *desc) bool {
 	/*
 		// RFC 7230 (section 7):
 		// In other words, a recipient MUST accept lists that satisfy the following syntax:

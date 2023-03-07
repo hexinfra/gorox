@@ -475,53 +475,38 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) _setFieldInfo(field *pair, desc *desc, p []byte) bool {
-	// TODO
-	return true
-}
-func (r *httpIn_) _addSubFields(field *pair, desc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
-	/*
-		return true
-		if field.hash == 822 || field.hash == 624 || field.hash == 1505 {
-			return true
-		}
-	*/
-	// RFC 9110 (section 5.6.1.2):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ element ] *( OWS "," OWS [ element ] )
-	subField := *field
-	subField.setSubField()
-	var (
-		bakField  pair
-		subValue  = field.value
-		numSubs   = 0
-		needComma = false
-	)
-	for { // each sub value
-		haveComma := false
-		for subValue.from < field.value.edge {
-			if b := p[subValue.from]; b == ' ' || b == '\t' {
-				subValue.from++
-			} else if b == ',' {
-				haveComma = true
-				subValue.from++
-			} else {
-				break
-			}
-		}
-		if subValue.from == field.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			Debugf("|%v|%v|%s|%s|\n", *field, subField, field.nameAt(p), field.valueAt(p))
-			if field.kind == kindHeader {
-				r.headResult = StatusBadRequest
-			} else {
-				r.bodyResult = StatusBadRequest
-			}
-			r.failReason = "comma needed in multi-value field"
+func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, strict bool) bool { // data and paras
+	if field.value.isEmpty() {
+		if !fDesc.empty {
+			r.headResult, r.failReason = StatusBadRequest, "field can't be empty"
 			return false
 		}
+		field.dataEdge = field.value.edge
+		return true
+	}
+	if b := p[field.value.from]; b == '"' {
+		if !fDesc.quote {
+			r.headResult, r.failReason = StatusBadRequest, "dquote is not allowed"
+			return false
+		}
+		i := field.value.from + 1
+		for i < field.value.edge && p[i] != '"' {
+			i++
+		}
+		if i == field.value.edge {
+			return true
+		}
+		field.setQuoted()
+		field.dataEdge = i
+	} else {
+
+	}
+	// TODO
+	// parameters      = *( OWS ";" OWS [ parameter ] )
+	// parameter       = parameter-name "=" parameter-value
+	// parameter-name  = token
+	// parameter-value = ( token / quoted-string )
+	/*
 		subValue.edge = subValue.from
 		if p[subValue.edge] == '"' { // subValue is quoted
 			subValue.edge++ // skip '"'
@@ -544,25 +529,64 @@ func (r *httpIn_) _addSubFields(field *pair, desc *desc, p []byte, addField func
 			}
 			//subField.value = subValue
 		}
-		if subField.value.notEmpty() {
-			// parameters      = *( OWS ";" OWS [ parameter ] )
-			// parameter       = parameter-name "=" parameter-value
-			// parameter-name  = token
-			// parameter-value = ( token / quoted-string )
-			if numSubs == 0 { // 0 -> 1, save as backup
-				bakField = subField
-			} else { // numSubs >= 1, add backup and current one
-				field.setCommaValue()
-				if numSubs == 1 && !addField(&bakField) {
-					return false
-				}
-				if !addField(&subField) {
+	*/
+	return true
+}
+func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
+	// RFC 9110 (section 5.6.1.2):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ element ] *( OWS "," OWS [ element ] )
+	var (
+		bakField  pair
+		subField  = *field
+		numSubs   = 0
+		needComma = false
+	)
+	subField.setSubField()
+	for { // each sub value
+		haveComma := false
+		for subField.value.from < field.value.edge {
+			if b := p[subField.value.from]; b == ' ' || b == '\t' {
+				subField.value.from++
+			} else if b == ',' {
+				haveComma = true
+				subField.value.from++
+			} else {
+				break
+			}
+		}
+		if subField.value.from == field.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			if field.kind == kindHeader {
+				r.headResult = StatusBadRequest
+			} else {
+				r.bodyResult = StatusBadRequest
+			}
+			r.failReason = "comma needed in multi-value field"
+			return false
+		}
+		subField.value.edge = field.value.edge
+		if !r._setFieldInfo(&subField, fDesc, p, false) {
+			// r.headResult is set.
+			return false
+		}
+		if numSubs == 0 { // first sub, save as backup
+			bakField = subField
+		} else { // numSubs >= 1, add backup and current one
+			if numSubs == 1 {
+				field.setCommaValue() // main field marked as comma-value
+				if !addField(&bakField) {
 					return false
 				}
 			}
-			numSubs++
+			if !addField(&subField) {
+				return false
+			}
 		}
-		subValue.from = subValue.edge
+		numSubs++
+		subField.value.from = subField.value.edge
 		needComma = true
 	}
 	return true

@@ -152,14 +152,12 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		if r.input[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty
-			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' { // now trim OWS after field-value
+		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
 				fore--
 			}
-			header.value.set(r.pBack, fore)
-		} else { // field-value is empty
-			header.value.zero()
 		}
+		header.value.set(r.pBack, fore)
 
 		// Header is received in general algorithm. Now add and adopt it
 		if !r.shell.addHeader(header) || !r.shell.adoptHeader(header) {
@@ -470,14 +468,12 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		if r.bodyWindow[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty
+		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
-			trailer.value.set(r.pBack, fore)
-		} else { // field-value is empty
-			trailer.value.zero()
 		}
+		trailer.value.set(r.pBack, fore)
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge

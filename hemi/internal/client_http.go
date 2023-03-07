@@ -481,7 +481,7 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(hResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, &sh.desc, r.input) {
+		if !r._setFieldInfo(header, &sh.desc, r.input, true) {
 			// r.headResult is set.
 			return false
 		}

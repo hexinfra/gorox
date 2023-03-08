@@ -38,7 +38,6 @@ func (h *testHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.CompInit(name)
 	h.stage = stage
 	h.app = app
-
 	r := simple.New()
 	h.SetRouter(h, r)
 }
@@ -46,10 +45,8 @@ func (h *testHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *testHandlet) OnConfigure() {
-}
-func (h *testHandlet) OnPrepare() {
-}
+func (h *testHandlet) OnConfigure() {}
+func (h *testHandlet) OnPrepare()   {}
 
 func (h *testHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterHandlet("faviconHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("favicon", func(name string, stage *Stage, app *App) Handlet {
 		h := new(faviconHandlet)
 		h.onCreate(name, stage, app)
 		return h

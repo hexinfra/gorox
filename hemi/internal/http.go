@@ -486,7 +486,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		}
 	}
 	text := field.value
-	if p[text.from] != '"' {
+	if p[text.from] != '"' { // normal text
 	forData:
 		for spat := int32(0); text.from < field.value.edge; text.from++ {
 			switch b := p[text.from]; b {
@@ -533,7 +533,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			return true
 		}
 	} else { // begins with '"'
-		text.from++ // skip '"'
+		text.from++
 		for text.from < field.value.edge && p[text.from] != '"' {
 			text.from++
 		}
@@ -554,7 +554,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		field.setQuoted()
 		field.dataEdge = text.from
 		//Debugf("5=%s\n", string(field.dataAt(p)))
-		text.from++                        // skip '"'
+		text.from++
 		if text.from == field.value.edge { // exact "..."
 			return true
 		}
@@ -613,7 +613,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			r.failReason = "semicolon required in parameters"
 			return false
 		}
-		// parameter-name
+		// parameter-name = token
 		text.edge = text.from
 		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 			text.edge++
@@ -632,13 +632,13 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			return false
 		}
 		text.edge++ // skip '='
-		// parameter-value
+		// parameter-value = ( token / quoted-string )
 		if text.edge == field.value.edge {
 			r.failReason = "missing parameter-value"
 			return false
 		}
-		if p[text.edge] == '"' {
-			text.edge++ // skip '"'
+		if p[text.edge] == '"' { // quoted-string
+			text.edge++
 			text.from = text.edge
 			for text.edge < field.value.edge && p[text.edge] != '"' {
 				text.edge++
@@ -648,8 +648,8 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 				return false
 			}
 			//Debugf("7=%s\n", string(p[text.from:text.edge]))
-			text.edge++ // skip '"'
-		} else {
+			text.edge++
+		} else { // token
 			text.from = text.edge
 			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 				text.edge++
@@ -679,14 +679,16 @@ func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField fun
 	subField.setSubField()
 	for { // each sub value
 		haveComma := false
+	forComma:
 		for subField.value.from < field.value.edge {
-			if b := p[subField.value.from]; b == ' ' || b == '\t' {
+			switch b := p[subField.value.from]; b {
+			case ' ', '\t':
 				subField.value.from++
-			} else if b == ',' {
+			case ',':
 				haveComma = true
 				subField.value.from++
-			} else {
-				break
+			default:
+				break forComma
 			}
 		}
 		if subField.value.from == field.value.edge {

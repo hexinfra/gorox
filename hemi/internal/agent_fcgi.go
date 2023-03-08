@@ -870,7 +870,7 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setHeaderInfo(header, &sh.desc, true) {
+		if sh.parse && !r._setHeaderInfo(header, &sh.desc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -899,12 +899,13 @@ var ( // perfect hash table for response singleton headers
 	fcgiResponseSingletonHeaderNames = []byte("content-length content-type location status")
 	fcgiResponseSingletonHeaderTable = [4]struct {
 		desc
+		parse bool
 		check func(*fcgiResponse, *pair, int) bool
 	}{
-		0: {desc{fcgiHashStatus, 37, 43, false, false, false, false}, (*fcgiResponse).checkStatus},
-		1: {desc{hashContentLength, 0, 14, false, false, false, false}, (*fcgiResponse).checkContentLength},
-		2: {desc{hashContentType, 15, 27, false, false, true, false}, (*fcgiResponse).checkContentType},
-		3: {desc{hashLocation, 28, 36, false, false, false, false}, (*fcgiResponse).checkLocation},
+		0: {desc{fcgiHashStatus, 37, 43, false, false, false, false}, false, (*fcgiResponse).checkStatus},
+		1: {desc{hashContentLength, 0, 14, false, false, false, false}, false, (*fcgiResponse).checkContentLength},
+		2: {desc{hashContentType, 15, 27, false, false, true, false}, true, (*fcgiResponse).checkContentType},
+		3: {desc{hashLocation, 28, 36, false, false, false, false}, false, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )

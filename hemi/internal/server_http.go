@@ -764,7 +764,7 @@ func (r *httpRequest_) adoptHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if !r._setFieldInfo(header, &sh.desc, r.input, true) {
+		if sh.parse && !r._setFieldInfo(header, &sh.desc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -793,20 +793,21 @@ var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
 	httpRequestSingletonHeaderTable = [12]struct {
 		desc
+		parse bool
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false, false}, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {desc{hashUserAgent, 132, 142, false, false, false, true}, (*httpRequest_).checkUserAgent},
-		2:  {desc{hashContentLength, 14, 28, false, false, false, false}, (*httpRequest_).checkContentLength},
-		3:  {desc{hashRange, 126, 131, false, false, false, false}, (*httpRequest_).checkRange},
-		4:  {desc{hashDate, 49, 53, false, false, false, false}, (*httpRequest_).checkDate},
-		5:  {desc{hashHost, 54, 58, false, false, false, false}, (*httpRequest_).checkHost},
-		6:  {desc{hashCookie, 42, 48, false, false, false, false}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {desc{hashContentType, 29, 41, false, false, true, false}, (*httpRequest_).checkContentType},
-		8:  {desc{hashIfRange, 77, 85, false, false, false, false}, (*httpRequest_).checkIfRange},
-		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false, false}, (*httpRequest_).checkIfModifiedSince},
-		10: {desc{hashAuthorization, 0, 13, false, false, false, false}, (*httpRequest_).checkAuthorization},
-		11: {desc{hashProxyAuthorization, 106, 125, false, false, false, false}, (*httpRequest_).checkProxyAuthorization},
+		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false, false}, false, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {desc{hashUserAgent, 132, 142, false, false, false, true}, false, (*httpRequest_).checkUserAgent},
+		2:  {desc{hashContentLength, 14, 28, false, false, false, false}, false, (*httpRequest_).checkContentLength},
+		3:  {desc{hashRange, 126, 131, false, false, false, false}, false, (*httpRequest_).checkRange},
+		4:  {desc{hashDate, 49, 53, false, false, false, false}, false, (*httpRequest_).checkDate},
+		5:  {desc{hashHost, 54, 58, false, false, false, false}, false, (*httpRequest_).checkHost},
+		6:  {desc{hashCookie, 42, 48, false, false, false, false}, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {desc{hashContentType, 29, 41, false, false, true, false}, true, (*httpRequest_).checkContentType},
+		8:  {desc{hashIfRange, 77, 85, false, false, false, false}, false, (*httpRequest_).checkIfRange},
+		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false, false}, false, (*httpRequest_).checkIfModifiedSince},
+		10: {desc{hashAuthorization, 0, 13, false, false, false, false}, false, (*httpRequest_).checkAuthorization},
+		11: {desc{hashProxyAuthorization, 106, 125, false, false, false, false}, false, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )

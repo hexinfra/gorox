@@ -829,7 +829,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		header.value.set(r.pBack, fore)
 
 		// Header is received in general algorithm. Now add and adopt it
-		if !r.addHeader(header) || !r.adoptHeader(header) {
+		if !r.addHeader(header) || !r.adoptHeader(&r.headers[len(r.headers)-1]) {
 			// r.headResult is set.
 			return false
 		}

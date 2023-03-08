@@ -668,6 +668,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 	}
 }
 func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
+	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
 	// #element => [ element ] *( OWS "," OWS [ element ] )

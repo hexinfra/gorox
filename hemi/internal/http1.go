@@ -160,7 +160,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		header.value.set(r.pBack, fore)
 
 		// Header is received in general algorithm. Now add and adopt it
-		if !r.shell.addHeader(header) || !r.shell.adoptHeader(header) {
+		if !r.shell.addHeader(header) || !r.shell.adoptHeader(&r.primes[r.headers.edge-1]) {
 			// r.headResult is set.
 			return false
 		}
@@ -488,7 +488,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		trailer.value.set(fore, r.arrayEdge)
 
 		// Trailer is received in general algorithm. Now add and adopt it
-		if !r.shell.addTrailer(trailer) || !r.shell.adoptTrailer(trailer) {
+		if !r.shell.addTrailer(trailer) || !r.shell.adoptTrailer(&r.primes[r.trailers.edge-1]) {
 			return false
 		}
 

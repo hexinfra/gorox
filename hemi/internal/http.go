@@ -722,6 +722,13 @@ func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField fun
 		subField.value.from = subField.value.edge
 		needComma = true
 	}
+	if numSubs == 1 {
+		if bakField.isQuoted() {
+			field.setQuoted()
+		}
+		field.paras = bakField.paras
+		field.dataEdge = bakField.dataEdge
+	}
 	return true
 }
 

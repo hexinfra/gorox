@@ -17,7 +17,7 @@ Welcome
   There is also a control plane program called Goops which is distributed
   together with Gorox and can optionally manage your Gorox cluster.
 
-  For more details about Gorox, please see: https://gorox.io/
+  For more details about Gorox, please see: https://gorox.io/ .
 
 
 Motivation

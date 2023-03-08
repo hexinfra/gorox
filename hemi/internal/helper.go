@@ -16,16 +16,17 @@ import (
 )
 
 // defaultDesc
-var defaultDesc = desc{0, 0, 0, true, false, true}
+var defaultDesc = desc{0, 0, 0, true, false, true, false}
 
 // desc
 type desc struct {
-	hash  uint16
-	from  uint8
-	edge  uint8
-	quote bool // allow data quote or not
-	empty bool // allow empty data or not
-	paras bool // allow parameters or not
+	hash       uint16
+	from       uint8
+	edge       uint8
+	allowQuote bool // allow data quote or not
+	allowEmpty bool // allow empty data or not
+	allowParas bool // allow parameters or not
+	hasComment bool // has comment or not
 }
 
 // poolPairs

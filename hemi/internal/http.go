@@ -477,7 +477,7 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 
 func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
 	if field.value.isEmpty() {
-		if fDesc.empty {
+		if fDesc.allowEmpty {
 			field.dataEdge = field.value.edge
 			return true
 		} else {
@@ -487,32 +487,49 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 	}
 	text := field.value
 	if p[text.from] != '"' {
+	forData:
 		for spat := int32(0); text.from < field.value.edge; text.from++ {
-			if b := p[text.from]; b == ' ' || b == '\t' {
+			switch b := p[text.from]; b {
+			default:
+				spat = 0
+			case ' ', '\t':
 				if spat == 0 {
 					spat = text.from
 				}
-			} else if b == ';' {
+			case ';':
 				if spat == 0 {
 					field.dataEdge = text.from
 				} else {
 					field.dataEdge = spat
 				}
-				Debugf("3=%s\n", string(field.dataAt(p)))
-				break
-			} else {
-				if b == ',' && !fully {
+				//Debugf("3=%s\n", string(field.dataAt(p)))
+				break forData
+			case ',':
+				if fully {
+					spat = 0
+				} else {
 					field.dataEdge = text.from
 					field.value.edge = text.from
-					Debugf("1=%s\n", string(field.dataAt(p)))
+					//Debugf("1=%s\n", string(field.dataAt(p)))
 					return true
 				}
-				spat = 0
+			case '(':
+				if fDesc.hasComment {
+					for text.from < field.value.edge && p[text.from] != ')' {
+						text.from++
+					}
+					if text.from == field.value.edge {
+						r.failReason = "bad comment"
+						return false
+					}
+				} else {
+					spat = 0
+				}
 			}
 		}
 		if text.from == field.value.edge { // exact data
 			field.dataEdge = text.from
-			Debugf("2=%s\n", string(field.dataAt(p)))
+			//Debugf("2=%s\n", string(field.dataAt(p)))
 			return true
 		}
 	} else { // begins with '"'
@@ -522,54 +539,62 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		}
 		if text.from == field.value.edge { // "...
 			field.dataEdge = text.from
-			Debugf("4=%s\n", string(field.dataAt(p)))
+			//Debugf("4=%s\n", string(field.dataAt(p)))
 			return true
 		}
 		// "..."
-		if !fDesc.quote {
+		if !fDesc.allowQuote {
 			r.failReason = "DQUOTE is not allowed"
 			return false
 		}
-		if text.from-field.value.from == 1 && !fDesc.empty { // ""
+		if text.from-field.value.from == 1 && !fDesc.allowEmpty { // ""
 			r.failReason = "field cannot be empty"
 			return false
 		}
 		field.setQuoted()
 		field.dataEdge = text.from
-		Debugf("5=%s\n", string(field.dataAt(p)))
+		//Debugf("5=%s\n", string(field.dataAt(p)))
 		text.from++                        // skip '"'
 		if text.from == field.value.edge { // exact "..."
 			return true
 		}
+	afterValue:
 		for text.from < field.value.edge {
-			if b := p[text.from]; b == ' ' || b == '\t' {
+			switch b := p[text.from]; b {
+			case ';':
+				break afterValue
+			case ' ', '\t':
 				text.from++
-			} else if b == ';' {
-				break
-			} else if b == ',' && !fully {
-				field.value.edge = text.from
-				return true
-			} else {
+			case ',':
+				if fully {
+					r.failReason = "comma after dquote"
+					return false
+				} else {
+					field.value.edge = text.from
+					return true
+				}
+			default:
 				r.failReason = "malformed DQUOTE and normal text"
 				return false
 			}
 		}
 	}
 	// text.from is at ';'
-	if !fDesc.paras {
-		//Debugln(string(field.valueAt(p)))
+	if !fDesc.allowParas {
 		r.failReason = "paras is not allowed"
 		return false
 	}
 	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
 		haveSemic := false
+	forSemic:
 		for text.from < field.value.edge {
-			if b := p[text.from]; b == ' ' || b == '\t' {
+			switch b := p[text.from]; b {
+			case ' ', '\t':
 				text.from++
-			} else if b == ';' {
+			case ';':
 				haveSemic = true
 				text.from++
-			} else if b == ',' {
+			case ',':
 				if fully {
 					r.failReason = "invalid parameter"
 					return false
@@ -577,8 +602,8 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 					field.value.edge = text.from
 					return true
 				}
-			} else {
-				break
+			default:
+				break forSemic
 			}
 		}
 		if text.from == field.value.edge {
@@ -597,6 +622,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			r.failReason = "empty parameter-name is not allowed"
 			return false
 		}
+		//Debugf("6=%s\n", string(p[text.from:text.edge]))
 		if text.edge == field.value.edge {
 			r.failReason = "only parameter-name is provided"
 			return false
@@ -605,7 +631,6 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 			r.failReason = "token '=' required"
 			return false
 		}
-		Debugf("6=%s\n", string(p[text.from:text.edge]))
 		text.edge++ // skip '='
 		// parameter-value
 		if text.edge == field.value.edge {
@@ -622,27 +647,24 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 				r.failReason = "invalid quoted-string"
 				return false
 			}
-			Debugf("7=%s\n", string(p[text.from:text.edge]))
+			//Debugf("7=%s\n", string(p[text.from:text.edge]))
 			text.edge++ // skip '"'
 		} else {
 			text.from = text.edge
 			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
 				text.edge++
 			}
-			if text.edge == field.value.edge {
+			if text.from == text.edge {
 				r.failReason = "empty parameter-value is not allowed"
 				return false
 			}
-			Debugf("8=%s\n", string(p[text.from:text.edge]))
+			//Debugf("8=%s\n", string(p[text.from:text.edge]))
+			if text.edge == field.value.edge {
+				return true
+			}
 		}
 		text.from = text.edge
 	}
-	if fully {
-		r.failReason = "dirty value"
-		return false
-	}
-	field.value.edge = text.edge
-	return true
 }
 func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
 	// RFC 9110 (section 5.6.1.2):

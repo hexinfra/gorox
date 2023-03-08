@@ -1,0 +1,5 @@
+This is an example showing how to embed Hemi into your application.
+
+To build:
+
+  shell> go build

@@ -17,7 +17,7 @@ From Source
 
   Before installing, please ensure your platform is supported, see README.md.
 
-    shell> go version                     # ensure Go version >= 1.20
+    shell> go version                     # ensure Go version >= 1.19
     shell> tar zxf gorox-x.y.z.tar.gz     # or unzip gorox-x.y.z.zip for Windows
     shell> cd gorox-x.y.z                 # switch to source directory
     shell> go build cmds/gomake.go        # build gomake which will builds gorox

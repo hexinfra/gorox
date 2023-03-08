@@ -558,11 +558,11 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		if text.from == field.value.edge { // exact "..."
 			return true
 		}
-	forColon:
+	afterValue:
 		for text.from < field.value.edge {
 			switch b := p[text.from]; b {
 			case ';':
-				break forColon
+				break afterValue
 			case ' ', '\t':
 				text.from++
 			case ',':

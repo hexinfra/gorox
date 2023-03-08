@@ -8,8 +8,19 @@
 package risky
 
 import (
+	"reflect"
 	"unsafe"
 )
+
+func init() {
+	// ensure compatability
+	if unsafe.Sizeof(Refer{}) != unsafe.Sizeof(reflect.StringHeader{}) {
+		panic("layout of string has changed!")
+	}
+	if unsafe.Sizeof(Bytes{}) != unsafe.Sizeof(reflect.SliceHeader{}) {
+		panic("layout of []byte has changed!")
+	}
+}
 
 // Refer
 type Refer struct { // same as string, 16 bytes
@@ -37,8 +48,11 @@ type Bytes struct { // same as []byte, 24 bytes
 }
 
 func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* change s through p!
-	return unsafe.Slice(unsafe.StringData(s), len(s))
+	sh := (*Refer)(unsafe.Pointer(&s))
+	ph := (*Bytes)(unsafe.Pointer(&p))
+	ph.Ptr, ph.Len, ph.Cap = sh.Ptr, sh.Len, sh.Len
+	return
 }
 func WeakString(p []byte) (s string) { // WARNING: *DO NOT* change p while using s!
-	return unsafe.String(unsafe.SliceData(p), len(p))
+	return *(*string)(unsafe.Pointer(&p))
 }

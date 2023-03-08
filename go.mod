@@ -1,3 +1,3 @@
 module github.com/hexinfra/gorox
 
-go 1.20
+go 1.19

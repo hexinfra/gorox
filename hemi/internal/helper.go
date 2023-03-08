@@ -15,9 +15,6 @@ import (
 	"sync"
 )
 
-// defaultDesc
-var defaultDesc = desc{0, 0, 0, true, false, true, false}
-
 // desc
 type desc struct {
 	hash       uint16

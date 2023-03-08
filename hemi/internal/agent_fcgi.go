@@ -888,9 +888,6 @@ func (r *fcgiResponse) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if !r._addSubHeaders(header, &defaultDesc) {
-		// r.headResult is set.
-		return false
 	}
 	return true
 }
@@ -965,64 +962,7 @@ func (r *fcgiResponse) _setHeaderInfo(header *pair, fDesc *desc, fully bool) boo
 	return false
 }
 func (r *fcgiResponse) _addSubHeaders(header *pair, fDesc *desc) bool {
-	/*
-		// RFC 7230 (section 7):
-		// In other words, a recipient MUST accept lists that satisfy the following syntax:
-		// #element => [ ( "," / element ) *( OWS "," [ OWS element ] ) ]
-		// 1#element => *( "," OWS ) element *( OWS "," [ OWS element ] )
-		subHeader := *header // clone header
-		subHeader.setSubField()
-		value := header.value
-		needComma := false
-		for { // each element
-			haveComma := false
-			for value.from < header.value.edge {
-				if b := r.input[value.from]; b == ',' {
-					haveComma = true
-					value.from++
-				} else if b == ' ' || b == '\t' {
-					value.from++
-				} else {
-					break
-				}
-			}
-			if value.from == header.value.edge {
-				break
-			}
-			if needComma && !haveComma {
-				r.headResult, r.failReason = StatusBadRequest, "comma needed in multi-value header"
-				return false
-			}
-			value.edge = value.from
-			if r.input[value.edge] == '"' { // value is quoted?
-				value.edge++
-				for value.edge < header.value.edge && r.input[value.edge] != '"' {
-					value.edge++
-				}
-				if value.edge == header.value.edge {
-					subHeader.value = value // value is `"...`
-				} else { // got a `"`
-					subHeader.value.set(value.from+1, value.edge) // strip `""`
-					value.edge++
-				}
-			} else { // not a quoted value
-				for value.edge < header.value.edge {
-					if b := r.input[value.edge]; b == ' ' || b == '\t' || b == ',' {
-						break
-					} else {
-						value.edge++
-					}
-				}
-				subHeader.value = value
-			}
-			if subHeader.value.notEmpty() && !r.addHeader(&subHeader) {
-				// r.headResult is set.
-				return false
-			}
-			value.from = value.edge
-			needComma = true
-		}
-	*/
+	// TODO
 	return true
 }
 

@@ -499,9 +499,6 @@ func (r *hResponse_) adoptHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if !r._addSubFields(header, &defaultDesc, r.input, r.addHeader) {
-		r.headResult = StatusBadRequest
-		return false
 	}
 	return true
 }

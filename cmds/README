@@ -22,3 +22,5 @@ To build all cmds, use:
 By default, gomake builds gorox:
 
   shell> ./gomake
+
+Move gomake to your $PATH if you like.

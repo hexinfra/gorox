@@ -476,6 +476,7 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 }
 
 func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
+	field.setParsed()
 	if field.value.isEmpty() {
 		if fDesc.allowEmpty {
 			field.dataEdge = field.value.edge

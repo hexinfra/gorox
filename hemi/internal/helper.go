@@ -133,16 +133,17 @@ func (p *pair) paraAt(t []byte, name []byte) []byte {
 }
 
 const ( // field flags
-	flagSingleton  = 0b10000000 // singleton or not. mainly checked by proxies
-	flagSubField   = 0b01000000 // sub field or not
-	flagLiteral    = 0b00100000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00010000 // name contains '_' or not. some agents (like fcgi) need this information
-	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagCommaValue = 0b00000100 // value has comma or not
-	flagReserved   = 0b00000010 // reserved for future use
+	flagParsed     = 0b10000000 // data and paras parsed or not
+	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
+	flagSubField   = 0b00100000 // sub field or not
+	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00001000 // name contains '_' or not. some agents (like fcgi) need this information
+	flagPseudo     = 0b00000100 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagCommaValue = 0b00000010 // value has comma or not
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
+func (p *pair) setParsed()     { p.flags |= flagParsed }
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
 func (p *pair) setSubField()   { p.flags |= flagSubField }
 func (p *pair) setLiteral()    { p.flags |= flagLiteral }
@@ -151,6 +152,7 @@ func (p *pair) setPseudo()     { p.flags |= flagPseudo }
 func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
 func (p *pair) setQuoted()     { p.flags |= flagQuoted }
 
+func (p *pair) isParsed() bool     { return p.flags&flagParsed > 0 }
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
 func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }

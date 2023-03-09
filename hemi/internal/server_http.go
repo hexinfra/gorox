@@ -712,7 +712,7 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 }
 
 func (r *httpRequest_) addQuery(query *pair) bool { // to primes
-	if edge, ok := r.addPrime(query); ok {
+	if edge, ok := r._addPrime(query); ok {
 		r.queries.edge = edge
 		return true
 	}
@@ -1559,7 +1559,7 @@ func (r *httpRequest_) getRanges() []rang {
 }
 
 func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
-	if edge, ok := r.addPrime(cookie); ok {
+	if edge, ok := r._addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
 	}
@@ -2282,7 +2282,7 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 }
 
 func (r *httpRequest_) addForm(form *pair) { // to primes
-	if edge, ok := r.addPrime(form); ok {
+	if edge, ok := r._addPrime(form); ok {
 		r.forms.edge = edge
 	}
 	// Ignore too many forms

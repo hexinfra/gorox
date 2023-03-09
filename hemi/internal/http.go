@@ -748,7 +748,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 }
 
 func (r *httpIn_) addHeader(header *pair) bool { // to primes
-	if edge, ok := r.addPrime(header); ok {
+	if edge, ok := r._addPrime(header); ok {
 		r.headers.edge = edge
 		return true
 	}
@@ -970,7 +970,7 @@ badRead:
 }
 
 func (r *httpIn_) addTrailer(trailer *pair) bool { // to primes
-	if edge, ok := r.addPrime(trailer); ok {
+	if edge, ok := r._addPrime(trailer); ok {
 		r.trailers.edge = edge
 		return true
 	}
@@ -1092,7 +1092,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
-func (r *httpIn_) addPrime(prime *pair) (edge uint8, ok bool) {
+func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
 		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
 			return 0, false
@@ -1117,13 +1117,6 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
 		return false
 	}
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) != cap(r.stockExtras) { // too many extras!
-			return false
-		}
-		r.extras = getPairs()
-		r.extras = append(r.extras, r.stockExtras[:]...)
-	}
 	if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
 		return false
 	}
@@ -1138,8 +1131,22 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	r.extras = append(r.extras, r.mainPair)
-	r.hasExtras[extraKind] = true
+	if r._addExtra(extra) {
+		r.hasExtras[extraKind] = true
+		return true
+	} else {
+		return false
+	}
+}
+func (r *httpIn_) _addExtra(extra *pair) bool {
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras
+			return false
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
+	r.extras = append(r.extras, *extra)
 	return true
 }
 

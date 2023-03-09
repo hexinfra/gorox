@@ -143,7 +143,7 @@ func (a *App) OnConfigure() {
 			}
 		}
 	} else {
-		a.hostnames = nil
+		UseExitln("app.hostnames is required")
 	}
 	// webRoot
 	a.ConfigureString("webRoot", &a.webRoot, func(value string) bool { return value != "" }, "")

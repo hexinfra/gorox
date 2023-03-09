@@ -799,7 +799,7 @@ beforeVersion: // r.pFore is at ' '.
 func (r *http1Request) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
-		r.contentReceived = true
+		r.contentReceived = true   // we treat it as "received"
 		r.formReceived = true      // set anyway
 		if r.pFore < r.inputEdge { // still has data, stream is pipelined
 			r.inputNext = r.pFore // mark the beginning of next request
@@ -827,7 +827,7 @@ func (r *http1Request) cleanInput() {
 			r.contentBlobKind = httpContentBlobInput
 		}
 		if r.contentSize == 0 {
-			r.formReceived = true // no content means no form
+			r.formReceived = true // no content means no form, so mark it as "received"
 		}
 	} else { // unsized mode
 		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.

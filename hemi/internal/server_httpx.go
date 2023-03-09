@@ -167,7 +167,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs() // conns
+	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -205,7 +205,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs() // conns
+	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("httpxGate=%d TLS done\n", g.id)
 	}

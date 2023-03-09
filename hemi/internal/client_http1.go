@@ -192,6 +192,7 @@ func (n *http1Node) storeConn(hConn *H1Conn) {
 			Debugf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
+		n.SubDone() // TODO: conn leak on shutdown! close conns timely?
 	}
 }
 func (n *http1Node) closeConn(hConn *H1Conn) {

@@ -116,7 +116,7 @@ func (g *http3Gate) serve() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs() // conns
+	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("http3Gate=%d done\n", g.id)
 	}

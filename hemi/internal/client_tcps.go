@@ -227,6 +227,7 @@ func (n *tcpsNode) storeConn(tConn *TConn) {
 		n.closeConn(tConn)
 	} else {
 		n.pushConn(tConn)
+		n.SubDone() // TODO: conn leak on shutdown! close conns timely?
 	}
 }
 func (n *tcpsNode) closeConn(tConn *TConn) {

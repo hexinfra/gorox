@@ -110,8 +110,8 @@ type httpIn_ struct { // incoming. needs parsing
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
-	stockPrimes [64]pair   // for r.primes
-	stockExtras [4]pair    // for r.extras
+	stockPrimes [36]pair   // for r.primes
+	stockExtras [32]pair   // for r.extras
 	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
@@ -275,6 +275,279 @@ func (r *httpIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
+
+func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
+	field.setParsed()
+	if field.value.isEmpty() {
+		if fDesc.allowEmpty {
+			field.dataEdge = field.value.edge
+			return true
+		} else {
+			r.failReason = "field can't be empty"
+			return false
+		}
+	}
+	text := field.value
+	if p[text.from] != '"' { // normal text
+	forData:
+		for spat := int32(0); text.from < field.value.edge; text.from++ {
+			switch b := p[text.from]; b {
+			default:
+				spat = 0
+			case ' ', '\t':
+				if spat == 0 {
+					spat = text.from
+				}
+			case ';':
+				if spat == 0 {
+					field.dataEdge = text.from
+				} else {
+					field.dataEdge = spat
+				}
+				//Debugf("3=%s\n", string(field.dataAt(p)))
+				break forData
+			case ',':
+				if fully {
+					spat = 0
+				} else {
+					field.dataEdge = text.from
+					field.value.edge = text.from
+					//Debugf("1=%s\n", string(field.dataAt(p)))
+					return true
+				}
+			case '(':
+				if fDesc.hasComment {
+					text.from++
+					for {
+						if text.from == field.value.edge {
+							r.failReason = "bad comment"
+							return false
+						}
+						if p[text.from] == ')' {
+							break
+						}
+						text.from++
+					}
+				} else {
+					spat = 0
+				}
+			}
+		}
+		if text.from == field.value.edge { // exact data
+			field.dataEdge = text.from
+			//Debugf("2=%s\n", string(field.dataAt(p)))
+			return true
+		}
+	} else { // begins with '"'
+		text.from++
+		for {
+			if text.from == field.value.edge { // "...
+				field.dataEdge = text.from
+				//Debugf("4=%s\n", string(field.dataAt(p)))
+				return true
+			}
+			if p[text.from] == '"' {
+				break
+			}
+			text.from++
+		}
+		// "..."
+		if !fDesc.allowQuote {
+			r.failReason = "DQUOTE is not allowed"
+			return false
+		}
+		if text.from-field.value.from == 1 && !fDesc.allowEmpty { // ""
+			r.failReason = "field cannot be empty"
+			return false
+		}
+		field.setQuoted()
+		field.dataEdge = text.from
+		//Debugf("5=%s\n", string(field.dataAt(p)))
+		text.from++
+		if text.from == field.value.edge { // exact "..."
+			return true
+		}
+	afterValue:
+		for {
+			switch b := p[text.from]; b {
+			case ';':
+				break afterValue
+			case ' ', '\t':
+				text.from++
+			case ',':
+				if fully {
+					r.failReason = "comma after dquote"
+					return false
+				} else {
+					field.value.edge = text.from
+					return true
+				}
+			default:
+				r.failReason = "malformed DQUOTE and normal text"
+				return false
+			}
+			if text.from == field.value.edge {
+				return true
+			}
+		}
+	}
+	// text.from is at ';'
+	if !fDesc.allowParas {
+		r.failReason = "paras is not allowed"
+		return false
+	}
+	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
+		haveSemic := false
+	forSemic:
+		for {
+			if text.from == field.value.edge {
+				return true
+			}
+			switch b := p[text.from]; b {
+			case ' ', '\t':
+				text.from++
+			case ';':
+				haveSemic = true
+				text.from++
+			case ',':
+				if fully {
+					r.failReason = "invalid parameter"
+					return false
+				} else {
+					field.value.edge = text.from
+					return true
+				}
+			default:
+				break forSemic
+			}
+		}
+		if !haveSemic {
+			r.failReason = "semicolon required in parameters"
+			return false
+		}
+		// parameter-name = token
+		text.edge = text.from
+		for {
+			if httpTchar[p[text.edge]] == 0 {
+				break
+			}
+			text.edge++
+			if text.edge == field.value.edge {
+				r.failReason = "only parameter-name is provided"
+				return false
+			}
+		}
+		if text.edge == text.from {
+			r.failReason = "empty parameter-name is not allowed"
+			return false
+		}
+		if p[text.edge] != '=' {
+			r.failReason = "token '=' required"
+			return false
+		}
+		//Debugf("6=%s\n", string(p[text.from:text.edge]))
+		text.edge++ // skip '='
+		// parameter-value = ( token / quoted-string )
+		if text.edge == field.value.edge {
+			r.failReason = "missing parameter-value"
+			return false
+		}
+		if p[text.edge] == '"' { // quoted-string
+			text.edge++
+			text.from = text.edge
+			for {
+				if text.edge == field.value.edge {
+					r.failReason = "invalid quoted-string"
+					return false
+				}
+				if p[text.edge] == '"' {
+					break
+				}
+				text.edge++
+			}
+			//Debugf("7=%s\n", string(p[text.from:text.edge]))
+			text.edge++
+		} else { // token
+			text.from = text.edge
+			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+				text.edge++
+			}
+			if text.edge == text.from {
+				r.failReason = "empty parameter-value is not allowed"
+				return false
+			}
+			//Debugf("8=%s\n", string(p[text.from:text.edge]))
+			if text.edge == field.value.edge {
+				return true
+			}
+		}
+		text.from = text.edge
+	}
+}
+func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
+	field.setParsed()
+	// RFC 9110 (section 5.6.1.2):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ element ] *( OWS "," OWS [ element ] )
+	var (
+		bakField  pair
+		subField  = *field
+		numSubs   = 0
+		needComma = false
+	)
+	subField.setSubField()
+	for { // each sub value
+		haveComma := false
+	forComma:
+		for subField.value.from < field.value.edge {
+			switch b := p[subField.value.from]; b {
+			case ' ', '\t':
+				subField.value.from++
+			case ',':
+				haveComma = true
+				subField.value.from++
+			default:
+				break forComma
+			}
+		}
+		if subField.value.from == field.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			r.failReason = "comma needed in multi-value field"
+			return false
+		}
+		subField.value.edge = field.value.edge
+		if !r._setFieldInfo(&subField, fDesc, p, false) {
+			// r.failReason is set.
+			return false
+		}
+		if numSubs == 0 { // first sub, save as backup
+			bakField = subField
+		} else { // numSubs >= 1, sub fields exist
+			if numSubs == 1 { // got the second sub field
+				field.setCommaValue() // mark main field as comma-value
+				if !addField(&bakField) {
+					return false
+				}
+			}
+			if !addField(&subField) {
+				return false
+			}
+		}
+		numSubs++
+		subField.value.from = subField.value.edge
+		needComma = true
+	}
+	if numSubs == 1 {
+		if bakField.isQuoted() {
+			field.setQuoted()
+		}
+		field.paras = bakField.paras
+		field.dataEdge = bakField.dataEdge
+	}
+	return true
+}
 
 func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
 	// RFC 7230 (section 3.3.2):
@@ -472,263 +745,6 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 }
 func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	// TODO
-	return true
-}
-
-func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
-	field.setParsed()
-	if field.value.isEmpty() {
-		if fDesc.allowEmpty {
-			field.dataEdge = field.value.edge
-			return true
-		} else {
-			r.failReason = "field can't be empty"
-			return false
-		}
-	}
-	text := field.value
-	if p[text.from] != '"' { // normal text
-	forData:
-		for spat := int32(0); text.from < field.value.edge; text.from++ {
-			switch b := p[text.from]; b {
-			default:
-				spat = 0
-			case ' ', '\t':
-				if spat == 0 {
-					spat = text.from
-				}
-			case ';':
-				if spat == 0 {
-					field.dataEdge = text.from
-				} else {
-					field.dataEdge = spat
-				}
-				//Debugf("3=%s\n", string(field.dataAt(p)))
-				break forData
-			case ',':
-				if fully {
-					spat = 0
-				} else {
-					field.dataEdge = text.from
-					field.value.edge = text.from
-					//Debugf("1=%s\n", string(field.dataAt(p)))
-					return true
-				}
-			case '(':
-				if fDesc.hasComment {
-					for text.from < field.value.edge && p[text.from] != ')' {
-						text.from++
-					}
-					if text.from == field.value.edge {
-						r.failReason = "bad comment"
-						return false
-					}
-				} else {
-					spat = 0
-				}
-			}
-		}
-		if text.from == field.value.edge { // exact data
-			field.dataEdge = text.from
-			//Debugf("2=%s\n", string(field.dataAt(p)))
-			return true
-		}
-	} else { // begins with '"'
-		text.from++
-		for text.from < field.value.edge && p[text.from] != '"' {
-			text.from++
-		}
-		if text.from == field.value.edge { // "...
-			field.dataEdge = text.from
-			//Debugf("4=%s\n", string(field.dataAt(p)))
-			return true
-		}
-		// "..."
-		if !fDesc.allowQuote {
-			r.failReason = "DQUOTE is not allowed"
-			return false
-		}
-		if text.from-field.value.from == 1 && !fDesc.allowEmpty { // ""
-			r.failReason = "field cannot be empty"
-			return false
-		}
-		field.setQuoted()
-		field.dataEdge = text.from
-		//Debugf("5=%s\n", string(field.dataAt(p)))
-		text.from++
-		if text.from == field.value.edge { // exact "..."
-			return true
-		}
-	afterValue:
-		for text.from < field.value.edge {
-			switch b := p[text.from]; b {
-			case ';':
-				break afterValue
-			case ' ', '\t':
-				text.from++
-			case ',':
-				if fully {
-					r.failReason = "comma after dquote"
-					return false
-				} else {
-					field.value.edge = text.from
-					return true
-				}
-			default:
-				r.failReason = "malformed DQUOTE and normal text"
-				return false
-			}
-		}
-	}
-	// text.from is at ';'
-	if !fDesc.allowParas {
-		r.failReason = "paras is not allowed"
-		return false
-	}
-	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
-		haveSemic := false
-	forSemic:
-		for text.from < field.value.edge {
-			switch b := p[text.from]; b {
-			case ' ', '\t':
-				text.from++
-			case ';':
-				haveSemic = true
-				text.from++
-			case ',':
-				if fully {
-					r.failReason = "invalid parameter"
-					return false
-				} else {
-					field.value.edge = text.from
-					return true
-				}
-			default:
-				break forSemic
-			}
-		}
-		if text.from == field.value.edge {
-			return true
-		}
-		if !haveSemic {
-			r.failReason = "semicolon required in parameters"
-			return false
-		}
-		// parameter-name = token
-		text.edge = text.from
-		for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
-			text.edge++
-		}
-		if text.from == text.edge {
-			r.failReason = "empty parameter-name is not allowed"
-			return false
-		}
-		//Debugf("6=%s\n", string(p[text.from:text.edge]))
-		if text.edge == field.value.edge {
-			r.failReason = "only parameter-name is provided"
-			return false
-		}
-		if p[text.edge] != '=' {
-			r.failReason = "token '=' required"
-			return false
-		}
-		text.edge++ // skip '='
-		// parameter-value = ( token / quoted-string )
-		if text.edge == field.value.edge {
-			r.failReason = "missing parameter-value"
-			return false
-		}
-		if p[text.edge] == '"' { // quoted-string
-			text.edge++
-			text.from = text.edge
-			for text.edge < field.value.edge && p[text.edge] != '"' {
-				text.edge++
-			}
-			if text.edge == field.value.edge {
-				r.failReason = "invalid quoted-string"
-				return false
-			}
-			//Debugf("7=%s\n", string(p[text.from:text.edge]))
-			text.edge++
-		} else { // token
-			text.from = text.edge
-			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
-				text.edge++
-			}
-			if text.from == text.edge {
-				r.failReason = "empty parameter-value is not allowed"
-				return false
-			}
-			//Debugf("8=%s\n", string(p[text.from:text.edge]))
-			if text.edge == field.value.edge {
-				return true
-			}
-		}
-		text.from = text.edge
-	}
-}
-func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
-	field.setParsed()
-	// RFC 9110 (section 5.6.1.2):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ element ] *( OWS "," OWS [ element ] )
-	var (
-		bakField  pair
-		subField  = *field
-		numSubs   = 0
-		needComma = false
-	)
-	subField.setSubField()
-	for { // each sub value
-		haveComma := false
-	forComma:
-		for subField.value.from < field.value.edge {
-			switch b := p[subField.value.from]; b {
-			case ' ', '\t':
-				subField.value.from++
-			case ',':
-				haveComma = true
-				subField.value.from++
-			default:
-				break forComma
-			}
-		}
-		if subField.value.from == field.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			r.failReason = "comma needed in multi-value field"
-			return false
-		}
-		subField.value.edge = field.value.edge
-		if !r._setFieldInfo(&subField, fDesc, p, false) {
-			// r.failReason is set.
-			return false
-		}
-		if numSubs == 0 { // first sub, save as backup
-			bakField = subField
-		} else { // numSubs >= 1, sub fields exist
-			if numSubs == 1 { // got the second sub field
-				field.setCommaValue() // mark main field as comma-value
-				if !addField(&bakField) {
-					return false
-				}
-			}
-			if !addField(&subField) {
-				return false
-			}
-		}
-		numSubs++
-		subField.value.from = subField.value.edge
-		needComma = true
-	}
-	if numSubs == 1 {
-		if bakField.isQuoted() {
-			field.setQuoted()
-		}
-		field.paras = bakField.paras
-		field.dataEdge = bakField.dataEdge
-	}
 	return true
 }
 
@@ -1096,6 +1112,9 @@ func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
 		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
 			return 0, false
+		}
+		if IsDebug(2) {
+			Debugln("use large pairs!")
 		}
 		r.primes = getPairs()
 		r.primes = append(r.primes, r.stockPrimes[:]...)

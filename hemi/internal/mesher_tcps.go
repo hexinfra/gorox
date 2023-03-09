@@ -253,7 +253,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs() // conns
+	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("tcpsGate=%d TCP done\n", g.id)
 	}
@@ -285,7 +285,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 			connID++
 		}
 	}
-	g.WaitSubs() // conns
+	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("tcpsGate=%d TLS done\n", g.id)
 	}

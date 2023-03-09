@@ -12,10 +12,11 @@ import (
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
+	"strings"
 	"sync"
 )
 
-// desc
+// desc describes an HTTP field.
 type desc struct {
 	hash       uint16
 	from       uint8
@@ -60,6 +61,41 @@ type pair struct { // 24 bytes
 }
 
 func (p *pair) zero() { *p = pair{} }
+
+func (p *pair) show(place []byte) {
+	var kind string
+	switch p.kind {
+	case kindQuery:
+		kind = "query"
+	case kindHeader:
+		kind = "header"
+	case kindCookie:
+		kind = "cookie"
+	case kindForm:
+		kind = "form"
+	case kindTrailer:
+		kind = "trailer"
+	default:
+		kind = "unknown"
+	}
+	var flags []string
+	if p.isParsed() {
+		flags = append(flags, "parsed")
+	}
+	if p.isSingleton() {
+		flags = append(flags, "singleton")
+	}
+	if p.isSubField() {
+		flags = append(flags, "subField")
+	}
+	if p.isCommaValue() {
+		flags = append(flags, "commaValue")
+	}
+	if p.isQuoted() {
+		flags = append(flags, "quoted")
+	}
+	Debugf("{hash=%d kind=%s flags=|%s| %s=%s}\n", p.hash, kind, strings.Join(flags, ","), p.nameAt(place), p.valueAt(place))
+}
 
 const ( // pair kinds
 	kindQuery   = iota // prime->array, extra->array. valueSize <= _16K

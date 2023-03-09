@@ -1353,9 +1353,15 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 
 func (r *httpRequest_) examineHead() bool {
 	if IsDebug(2) {
-		for i := r.headers.from; i < r.headers.edge; i++ {
-			header := r.primes[i]
-			Debugf("%+v %s: %s\n", header, header.nameAt(r.input), header.valueAt(r.input))
+		for i := 0; i < len(r.primes); i++ {
+			prime := &r.primes[i]
+			place := r._placeOf(prime)
+			prime.show(place)
+		}
+		for j := 0; j < len(r.extras); j++ {
+			extra := &r.extras[j]
+			place := r._placeOf(extra)
+			extra.show(place)
 		}
 	}
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT

@@ -276,6 +276,85 @@ func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
+func (r *httpIn_) addHeader(header *pair) bool { // to primes
+	if edge, ok := r._addPrime(header); ok {
+		r.headers.edge = edge
+		return true
+	}
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
+}
+func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
+func (r *httpIn_) AllHeaders() (headers [][2]string) {
+	return r.allPairs(r.headers, kindHeader)
+}
+func (r *httpIn_) H(name string) string {
+	value, _ := r.Header(name)
+	return value
+}
+func (r *httpIn_) Hstr(name string, defaultValue string) string {
+	if value, ok := r.Header(name); ok {
+		return value
+	}
+	return defaultValue
+}
+func (r *httpIn_) Hint(name string, defaultValue int) int {
+	if value, ok := r.Header(name); ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
+	}
+	return defaultValue
+}
+func (r *httpIn_) Header(name string) (value string, ok bool) {
+	v, ok := r.getPair(name, 0, r.headers, kindHeader)
+	return string(v), ok
+}
+func (r *httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
+	return r.getPair(name, 0, r.headers, kindHeader)
+}
+func (r *httpIn_) Headers(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.headers, kindHeader)
+}
+func (r *httpIn_) HasHeader(name string) bool {
+	_, ok := r.getPair(name, 0, r.headers, kindHeader)
+	return ok
+}
+func (r *httpIn_) AddHeader(name string, value string) bool { // to extras
+	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// NOTICE: must add values without comma so r.getPairs() works correctly
+	// setFlags?
+	return r.addExtra(name, value, kindHeader)
+}
+func (r *httpIn_) DelHeader(name string) (deleted bool) {
+	// TODO: add restrictions on what headers are allowed to delete?
+	return r.delPair(name, 0, r.headers, kindHeader)
+}
+func (r *httpIn_) delHeader(name []byte, hash uint16) {
+	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
+}
+func (r *httpIn_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, kindHeader, r.delHeader)
+}
+func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub headers
+	return r._forFields(r.headers, kindHeader, fn)
+}
+
+func (r *httpIn_) ContentSize() int64 { return r.contentSize }
+func (r *httpIn_) UnsafeContentLength() []byte {
+	if r.iContentLength == 0 {
+		return nil
+	}
+	return r.primes[r.iContentLength].valueAt(r.input)
+}
+func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
+func (r *httpIn_) UnsafeContentType() []byte {
+	if r.iContentType == 0 {
+		return nil
+	}
+	return r.primes[r.iContentType].valueAt(r.input)
+}
+
 func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
 	field.setParsed()
 	if field.value.isEmpty() {
@@ -748,85 +827,6 @@ func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-p
 	return true
 }
 
-func (r *httpIn_) ContentSize() int64 { return r.contentSize }
-func (r *httpIn_) UnsafeContentLength() []byte {
-	if r.iContentLength == 0 {
-		return nil
-	}
-	return r.primes[r.iContentLength].valueAt(r.input)
-}
-func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
-func (r *httpIn_) UnsafeContentType() []byte {
-	if r.iContentType == 0 {
-		return nil
-	}
-	return r.primes[r.iContentType].valueAt(r.input)
-}
-
-func (r *httpIn_) addHeader(header *pair) bool { // to primes
-	if edge, ok := r._addPrime(header); ok {
-		r.headers.edge = edge
-		return true
-	}
-	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-	return false
-}
-func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
-func (r *httpIn_) AllHeaders() (headers [][2]string) {
-	return r.allPairs(r.headers, kindHeader)
-}
-func (r *httpIn_) H(name string) string {
-	value, _ := r.Header(name)
-	return value
-}
-func (r *httpIn_) Hstr(name string, defaultValue string) string {
-	if value, ok := r.Header(name); ok {
-		return value
-	}
-	return defaultValue
-}
-func (r *httpIn_) Hint(name string, defaultValue int) int {
-	if value, ok := r.Header(name); ok {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return defaultValue
-}
-func (r *httpIn_) Header(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.headers, kindHeader)
-	return string(v), ok
-}
-func (r *httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.headers, kindHeader)
-}
-func (r *httpIn_) Headers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.headers, kindHeader)
-}
-func (r *httpIn_) HasHeader(name string) bool {
-	_, ok := r.getPair(name, 0, r.headers, kindHeader)
-	return ok
-}
-func (r *httpIn_) AddHeader(name string, value string) bool { // to extras
-	// TODO: add restrictions on what headers are allowed to add? should we check the value?
-	// NOTICE: must add values without comma so r.getPairs() works correctly
-	// setFlags?
-	return r.addExtra(name, value, kindHeader)
-}
-func (r *httpIn_) DelHeader(name string) (deleted bool) {
-	// TODO: add restrictions on what headers are allowed to delete?
-	return r.delPair(name, 0, r.headers, kindHeader)
-}
-func (r *httpIn_) delHeader(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
-}
-func (r *httpIn_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, kindHeader, r.delHeader)
-}
-func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub headers
-	return r._forFields(r.headers, kindHeader, fn)
-}
-
 func (r *httpIn_) determineContentMode() bool {
 	if r.transferChunked { // must be HTTP/1.1 and there is a transfer-encoding: chunked
 		if r.contentSize != -1 { // there is a content-length: nnn
@@ -1049,7 +1049,7 @@ func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) 
 	return r._forFields(r.trailers, kindTrailer, fn)
 }
 
-func (r *httpIn_) examineTail() bool {
+func (r *httpIn_) examineTrailers() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
 		if trailer := &r.primes[i]; !r.shell.applyTrailer(trailer) {
 			// r.bodyResult is set.

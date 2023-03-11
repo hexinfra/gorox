@@ -94,6 +94,9 @@ func (p *pair) show(place []byte) {
 	if p.isQuoted() {
 		flags = append(flags, "quoted")
 	}
+	if len(flags) == 0 {
+		flags = append(flags, "none")
+	}
 	Debugf("{hash=%d kind=%s flags=|%s| %s=%s}\n", p.hash, kind, strings.Join(flags, ","), p.nameAt(place), p.valueAt(place))
 }
 

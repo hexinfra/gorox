@@ -90,12 +90,12 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 // httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
 type httpIn interface {
 	addHeader(header *pair) bool
-	adoptHeader(header *pair) bool
+	applyHeader(header *pair) bool
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
 	addTrailer(trailer *pair) bool
-	adoptTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -1047,6 +1047,16 @@ func (r *httpIn_) delHopTrailers() { // used by proxies
 }
 func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub trailers
 	return r._forFields(r.trailers, kindTrailer, fn)
+}
+
+func (r *httpIn_) examineTail() bool {
+	for i := r.trailers.from; i < r.trailers.edge; i++ {
+		if trailer := &r.primes[i]; !r.shell.applyTrailer(trailer) {
+			// r.bodyResult is set.
+			return false
+		}
+	}
+	return true
 }
 
 func (r *httpIn_) arrayPush(b byte) {

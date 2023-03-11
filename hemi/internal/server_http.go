@@ -425,7 +425,7 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	addHeader(header *pair) bool
-	adoptHeader(header *pair) bool
+	applyHeader(header *pair) bool
 	delHopHeaders()
 	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
@@ -434,7 +434,7 @@ type Request interface {
 	readContent() (p []byte, err error)
 	holdContent() any
 	addTrailer(trailer *pair) bool
-	adoptTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -760,11 +760,215 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
 
-func (r *httpRequest_) adoptHeader(header *pair) bool {
+func (r *httpRequest_) examineHead() bool {
+	for i := r.headers.from; i < r.headers.edge; i++ {
+		if header := &r.primes[i]; !r.applyHeader(header) {
+			// r.headResult is set.
+			return false
+		}
+	}
+	if IsDebug(2) {
+		for i := 0; i < len(r.primes); i++ {
+			prime := &r.primes[i]
+			place := r._placeOf(prime)
+			prime.show(place)
+		}
+		for j := 0; j < len(r.extras); j++ {
+			extra := &r.extras[j]
+			place := r._placeOf(extra)
+			extra.show(place)
+		}
+	}
+	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
+	// apply a request to the target resource until the entire request
+	// header section is received, since later header fields might include
+	// conditionals, authentication credentials, or deliberately misleading
+	// duplicate header fields that would impact request processing.
+
+	// Basic checks against versions
+	switch r.versionCode {
+	case Version1_0:
+		if r.keepAlive == -1 { // no connection header
+			r.keepAlive = 0 // default is close for HTTP/1.0
+		}
+	case Version1_1:
+		if r.indexes.host == 0 {
+			// RFC 7230 (section 5.4):
+			// A client MUST send a Host header field in all HTTP/1.1 request messages.
+			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
+			return false
+		}
+		if r.keepAlive == -1 { // no connection header
+			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
+		}
+	default: // HTTP/2 and HTTP/3
+		// Add here
+	}
+
+	if !r.determineContentMode() {
+		// r.headResult is set.
+		return false
+	}
+	if r.contentSize > r.maxContentSize {
+		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http server's limit"
+		return false
+	}
+
+	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
+		// RFC 6455 (section 4.1):
+		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
+		r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
+		return false
+	}
+	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
+		// RFC 7232 (section 5):
+		// Likewise, a server
+		// MUST ignore the conditional request header fields defined by this
+		// specification when received with a request method that does not
+		// involve the selection or modification of a selected representation,
+		// such as CONNECT, OPTIONS, or TRACE.
+		if r.ifMatch != 0 {
+			r.delHeader(bytesIfMatch, hashIfMatch)
+			r.ifMatch = 0
+		}
+		if r.ifNoneMatch != 0 {
+			r.delHeader(bytesIfNoneMatch, hashIfNoneMatch)
+			r.ifNoneMatch = 0
+		}
+		if r.indexes.ifModifiedSince != 0 {
+			r.delPrimeAt(r.indexes.ifModifiedSince)
+			r.indexes.ifModifiedSince = 0
+		}
+		if r.indexes.ifUnmodifiedSince != 0 {
+			r.delPrimeAt(r.indexes.ifUnmodifiedSince)
+			r.indexes.ifUnmodifiedSince = 0
+		}
+		if r.indexes.ifRange != 0 {
+			r.delPrimeAt(r.indexes.ifRange)
+			r.indexes.ifRange = 0
+		}
+	} else {
+		// RFC 9110 (section 13.1.3):
+		// A recipient MUST ignore the If-Modified-Since header field if the
+		// received field value is not a valid HTTP-date, the field value has
+		// more than one member, or if the request method is neither GET nor HEAD.
+		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
+			r.delPrimeAt(r.indexes.ifModifiedSince) // we delete it.
+			r.indexes.ifModifiedSince = 0
+		}
+		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
+		if r.indexes.ifRange != 0 && r.nRanges == 0 {
+			r.delPrimeAt(r.indexes.ifRange) // we delete it.
+			r.indexes.ifRange = 0
+		}
+	}
+	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
+		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
+		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
+		for i := cookies.from; i < cookies.edge; i++ {
+			cookie := &r.primes[i]
+			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
+				continue
+			}
+			if !r.parseCookie(cookie.value) {
+				return false
+			}
+		}
+	}
+	if r.contentSize == -1 { // no content
+		if r.expectContinue { // expect is used to send large content.
+			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header without content"
+			return false
+		}
+		if r.methodCode&(MethodPOST|MethodPUT) != 0 {
+			r.headResult, r.failReason = StatusLengthRequired, "POST and PUT must contain a content"
+			return false
+		}
+	} else { // content exists (sized or unsized)
+		// Content is not allowed in some methods, according to RFC 7231.
+		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
+			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
+			return false
+		}
+		if r.nContentCodings > 0 { // have content-encoding
+			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
+				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
+				return false
+			}
+		}
+		if r.iContentType == 0 {
+			if r.methodCode == MethodOPTIONS {
+				// RFC 7231 (section 4.3.7):
+				// A client that generates an OPTIONS request containing a payload body
+				// MUST send a valid Content-Type header field describing the
+				// representation media type.
+				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
+				return false
+			}
+		} else { // content-type exists
+			var (
+				typeParas   text
+				contentType []byte
+			)
+			// TODO: refactor this. use general api of pairs
+			vType := r.primes[r.iContentType].value
+			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
+				typeParas.from = vType.edge
+				typeParas.edge = vType.edge
+				contentType = r.input[vType.from:vType.edge]
+			} else {
+				typeParas.from = vType.from + int32(i)
+				typeParas.edge = typeParas.from   // too lazy to alloc a new variable. reuse typeParas.edge
+				for typeParas.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
+					if b := r.input[typeParas.edge-1]; b == ' ' || b == '\t' {
+						typeParas.edge--
+					} else {
+						break
+					}
+				}
+				if typeParas.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
+					r.headResult, r.failReason = StatusBadRequest, "content-type can't be an empty value"
+					return false
+				}
+				contentType = r.input[vType.from:typeParas.edge]
+				typeParas.edge = vType.edge
+			}
+			bytesToLower(contentType)
+			if bytes.Equal(contentType, bytesURLEncodedForm) {
+				r.formKind = httpFormURLEncoded
+			} else if bytes.Equal(contentType, bytesMultipartForm) {
+				navas := make([]nava, 1) // doesn't escape
+				if _, ok := r._parseNavas(r.input, typeParas.from, typeParas.edge, navas); !ok {
+					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data parameter"
+					return false
+				}
+				nava := &navas[0]
+				if bytes.Equal(r.input[nava.name.from:nava.name.edge], bytesBoundary) && nava.value.notEmpty() && nava.value.size() <= 70 && r.input[nava.value.edge-1] != ' ' {
+					// boundary := 0*69<bchars> bcharsnospace
+					// bchars := bcharsnospace / " "
+					// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
+					r.boundary = nava.value
+					r.formKind = httpFormMultipart
+				} else {
+					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
+					return false
+				}
+			}
+			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
+				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (r *httpRequest_) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(httpRequestSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if sh.parse && !r._setFieldInfo(header, &sh.desc, r.input, true) {
+		if !sh.skip && !r._setFieldInfo(header, &sh.desc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -790,21 +994,21 @@ var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderNames = []byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent")
 	httpRequestSingletonHeaderTable = [12]struct {
 		desc
-		parse bool
+		skip  bool
 		check func(*httpRequest_, *pair, uint8) bool
 	}{
-		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false, false}, false, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {desc{hashUserAgent, 132, 142, false, false, false, true}, false, (*httpRequest_).checkUserAgent},
-		2:  {desc{hashContentLength, 14, 28, false, false, false, false}, false, (*httpRequest_).checkContentLength},
-		3:  {desc{hashRange, 126, 131, false, false, false, false}, false, (*httpRequest_).checkRange},
-		4:  {desc{hashDate, 49, 53, false, false, false, false}, false, (*httpRequest_).checkDate},
-		5:  {desc{hashHost, 54, 58, false, false, false, false}, false, (*httpRequest_).checkHost},
-		6:  {desc{hashCookie, 42, 48, false, false, false, false}, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {desc{hashContentType, 29, 41, false, false, true, false}, true, (*httpRequest_).checkContentType},
-		8:  {desc{hashIfRange, 77, 85, false, false, false, false}, false, (*httpRequest_).checkIfRange},
-		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false, false}, false, (*httpRequest_).checkIfModifiedSince},
-		10: {desc{hashAuthorization, 0, 13, false, false, false, false}, false, (*httpRequest_).checkAuthorization},
-		11: {desc{hashProxyAuthorization, 106, 125, false, false, false, false}, false, (*httpRequest_).checkProxyAuthorization},
+		0:  {desc{hashIfUnmodifiedSince, 86, 105, false, false, false, false}, true, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {desc{hashUserAgent, 132, 142, false, false, false, true}, true, (*httpRequest_).checkUserAgent},
+		2:  {desc{hashContentLength, 14, 28, false, false, false, false}, true, (*httpRequest_).checkContentLength},
+		3:  {desc{hashRange, 126, 131, false, false, false, false}, true, (*httpRequest_).checkRange},
+		4:  {desc{hashDate, 49, 53, false, false, false, false}, true, (*httpRequest_).checkDate},
+		5:  {desc{hashHost, 54, 58, false, false, false, false}, true, (*httpRequest_).checkHost},
+		6:  {desc{hashCookie, 42, 48, false, false, false, false}, true, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {desc{hashContentType, 29, 41, false, false, true, false}, false, (*httpRequest_).checkContentType},
+		8:  {desc{hashIfRange, 77, 85, false, false, false, false}, true, (*httpRequest_).checkIfRange},
+		9:  {desc{hashIfModifiedSince, 59, 76, false, false, false, false}, true, (*httpRequest_).checkIfModifiedSince},
+		10: {desc{hashAuthorization, 0, 13, false, false, false, false}, true, (*httpRequest_).checkAuthorization},
+		11: {desc{hashProxyAuthorization, 106, 125, false, false, false, false}, true, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -1348,204 +1552,6 @@ func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = 
 		r.headResult, r.failReason = StatusBadRequest, "invalid cookie string"
 		return false
 	}
-	return true
-}
-
-func (r *httpRequest_) examineHead() bool {
-	if IsDebug(2) {
-		for i := 0; i < len(r.primes); i++ {
-			prime := &r.primes[i]
-			place := r._placeOf(prime)
-			prime.show(place)
-		}
-		for j := 0; j < len(r.extras); j++ {
-			extra := &r.extras[j]
-			place := r._placeOf(extra)
-			extra.show(place)
-		}
-	}
-	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
-	// apply a request to the target resource until the entire request
-	// header section is received, since later header fields might include
-	// conditionals, authentication credentials, or deliberately misleading
-	// duplicate header fields that would impact request processing.
-
-	// Basic checks against versions
-	switch r.versionCode {
-	case Version1_0:
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 0 // default is close for HTTP/1.0
-		}
-	case Version1_1:
-		if r.indexes.host == 0 {
-			// RFC 7230 (section 5.4):
-			// A client MUST send a Host header field in all HTTP/1.1 request messages.
-			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
-			return false
-		}
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		}
-	default: // HTTP/2 and HTTP/3
-		// Add here
-	}
-
-	if !r.determineContentMode() {
-		// r.headResult is set.
-		return false
-	}
-	if r.contentSize > r.maxContentSize {
-		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http server's limit"
-		return false
-	}
-
-	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
-		// RFC 6455 (section 4.1):
-		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
-		return false
-	}
-	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
-		// RFC 7232 (section 5):
-		// Likewise, a server
-		// MUST ignore the conditional request header fields defined by this
-		// specification when received with a request method that does not
-		// involve the selection or modification of a selected representation,
-		// such as CONNECT, OPTIONS, or TRACE.
-		if r.ifMatch != 0 {
-			r.delHeader(bytesIfMatch, hashIfMatch)
-			r.ifMatch = 0
-		}
-		if r.ifNoneMatch != 0 {
-			r.delHeader(bytesIfNoneMatch, hashIfNoneMatch)
-			r.ifNoneMatch = 0
-		}
-		if r.indexes.ifModifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince)
-			r.indexes.ifModifiedSince = 0
-		}
-		if r.indexes.ifUnmodifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifUnmodifiedSince)
-			r.indexes.ifUnmodifiedSince = 0
-		}
-		if r.indexes.ifRange != 0 {
-			r.delPrimeAt(r.indexes.ifRange)
-			r.indexes.ifRange = 0
-		}
-	} else {
-		// RFC 9110 (section 13.1.3):
-		// A recipient MUST ignore the If-Modified-Since header field if the
-		// received field value is not a valid HTTP-date, the field value has
-		// more than one member, or if the request method is neither GET nor HEAD.
-		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince) // we delete it.
-			r.indexes.ifModifiedSince = 0
-		}
-		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
-		if r.indexes.ifRange != 0 && r.nRanges == 0 {
-			r.delPrimeAt(r.indexes.ifRange) // we delete it.
-			r.indexes.ifRange = 0
-		}
-	}
-	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
-		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
-		for i := cookies.from; i < cookies.edge; i++ {
-			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
-				continue
-			}
-			if !r.parseCookie(cookie.value) {
-				return false
-			}
-		}
-	}
-	if r.contentSize == -1 { // no content
-		if r.expectContinue { // expect is used to send large content.
-			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header without content"
-			return false
-		}
-		if r.methodCode&(MethodPOST|MethodPUT) != 0 {
-			r.headResult, r.failReason = StatusLengthRequired, "POST and PUT must contain a content"
-			return false
-		}
-	} else { // content exists (sized or unsized)
-		// Content is not allowed in some methods, according to RFC 7231.
-		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
-			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
-			return false
-		}
-		if r.nContentCodings > 0 { // have content-encoding
-			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
-				return false
-			}
-		}
-		if r.iContentType == 0 {
-			if r.methodCode == MethodOPTIONS {
-				// RFC 7231 (section 4.3.7):
-				// A client that generates an OPTIONS request containing a payload body
-				// MUST send a valid Content-Type header field describing the
-				// representation media type.
-				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
-				return false
-			}
-		} else { // content-type exists
-			var (
-				typeParas   text
-				contentType []byte
-			)
-			// TODO: refactor this. use general api of pairs
-			vType := r.primes[r.iContentType].value
-			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
-				typeParas.from = vType.edge
-				typeParas.edge = vType.edge
-				contentType = r.input[vType.from:vType.edge]
-			} else {
-				typeParas.from = vType.from + int32(i)
-				typeParas.edge = typeParas.from   // too lazy to alloc a new variable. reuse typeParas.edge
-				for typeParas.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
-					if b := r.input[typeParas.edge-1]; b == ' ' || b == '\t' {
-						typeParas.edge--
-					} else {
-						break
-					}
-				}
-				if typeParas.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
-					r.headResult, r.failReason = StatusBadRequest, "content-type can't be an empty value"
-					return false
-				}
-				contentType = r.input[vType.from:typeParas.edge]
-				typeParas.edge = vType.edge
-			}
-			bytesToLower(contentType)
-			if bytes.Equal(contentType, bytesURLEncodedForm) {
-				r.formKind = httpFormURLEncoded
-			} else if bytes.Equal(contentType, bytesMultipartForm) {
-				navas := make([]nava, 1) // doesn't escape
-				if _, ok := r._parseNavas(r.input, typeParas.from, typeParas.edge, navas); !ok {
-					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data parameter"
-					return false
-				}
-				nava := &navas[0]
-				if bytes.Equal(r.input[nava.name.from:nava.name.edge], bytesBoundary) && nava.value.notEmpty() && nava.value.size() <= 70 && r.input[nava.value.edge-1] != ' ' {
-					// boundary := 0*69<bchars> bcharsnospace
-					// bchars := bcharsnospace / " "
-					// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-					r.boundary = nava.value
-					r.formKind = httpFormMultipart
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
-					return false
-				}
-			}
-			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
-				return false
-			}
-		}
-	}
-
 	return true
 }
 
@@ -2411,7 +2417,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) adoptTrailer(trailer *pair) bool {
+func (r *httpRequest_) applyTrailer(trailer *pair) bool {
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

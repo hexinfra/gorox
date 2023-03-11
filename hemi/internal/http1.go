@@ -159,8 +159,8 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		}
 		header.value.set(r.pBack, fore)
 
-		// Header is received in general algorithm. Now add and adopt it
-		if !r.shell.addHeader(header) || !r.shell.adoptHeader(&r.primes[r.headers.edge-1]) {
+		// Header is received in general algorithm. Now add it
+		if !r.shell.addHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -316,7 +316,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers1() {
+				if !r.recvTrailers1() || !r.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
@@ -487,8 +487,8 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 		}
 		trailer.value.set(fore, r.arrayEdge)
 
-		// Trailer is received in general algorithm. Now add and adopt it
-		if !r.shell.addTrailer(trailer) || !r.shell.adoptTrailer(&r.primes[r.trailers.edge-1]) {
+		// Trailer is received in general algorithm. Now add it
+		if !r.shell.addTrailer(trailer) {
 			return false
 		}
 

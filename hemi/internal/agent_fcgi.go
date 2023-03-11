@@ -828,8 +828,8 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		}
 		header.value.set(r.pBack, fore)
 
-		// Header is received in general algorithm. Now add and adopt it
-		if !r.addHeader(header) || !r.adoptHeader(&r.headers[len(r.headers)-1]) {
+		// Header is received in general algorithm. Now add it
+		if !r.addHeader(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -866,11 +866,11 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	return true
 }
 
-func (r *fcgiResponse) adoptHeader(header *pair) bool {
+func (r *fcgiResponse) applyHeader(header *pair) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if sh.parse && !r._setHeaderInfo(header, &sh.desc, true) {
+		if !sh.skip && !r._setHeaderInfo(header, &sh.desc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -896,13 +896,13 @@ var ( // perfect hash table for response singleton headers
 	fcgiResponseSingletonHeaderNames = []byte("content-length content-type location status")
 	fcgiResponseSingletonHeaderTable = [4]struct {
 		desc
-		parse bool
+		skip  bool
 		check func(*fcgiResponse, *pair, int) bool
 	}{
-		0: {desc{fcgiHashStatus, 37, 43, false, false, false, false}, false, (*fcgiResponse).checkStatus},
-		1: {desc{hashContentLength, 0, 14, false, false, false, false}, false, (*fcgiResponse).checkContentLength},
-		2: {desc{hashContentType, 15, 27, false, false, true, false}, true, (*fcgiResponse).checkContentType},
-		3: {desc{hashLocation, 28, 36, false, false, false, false}, false, (*fcgiResponse).checkLocation},
+		0: {desc{fcgiHashStatus, 37, 43, false, false, false, false}, true, (*fcgiResponse).checkStatus},
+		1: {desc{hashContentLength, 0, 14, false, false, false, false}, true, (*fcgiResponse).checkContentLength},
+		2: {desc{hashContentType, 15, 27, false, false, true, false}, false, (*fcgiResponse).checkContentType},
+		3: {desc{hashLocation, 28, 36, false, false, false, false}, true, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -979,6 +979,12 @@ func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byt
 }
 
 func (r *fcgiResponse) examineHead() bool {
+	for i := 0; i < len(r.headers); i++ {
+		if header := &r.headers[i]; !r.applyHeader(header) {
+			// r.headResult is set.
+			return false
+		}
+	}
 	// content length is not known at this time, can't check.
 	return true
 }
@@ -1052,7 +1058,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 }
 
 func (r *fcgiResponse) addTrailer(trailer *pair) bool   { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) adoptTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
 func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
 func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers

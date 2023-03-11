@@ -42,7 +42,7 @@ NOTES:
   * trailers must be small (<=16K), and only exist when contents exist and are unsized.
   * incoming messages need parsing.
   * outgoing messages need building.
-  * adding headers to incoming messages: adopt + check.
+  * adding headers to incoming messages: apply + check.
   * adding headers to outgoing messages: insert + append.
 
 HTTP SERVER -> HTTP PROXY -> HTTP CLIENT

@@ -478,8 +478,8 @@ type httpRequest0 struct { // for fast reset, entirely
 	boundary        text     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	ifMatches       zone     // the zone of if-match in r.primes. may be not continuous
-	ifNoneMatches   zone     // the zone of if-none-match in r.primes. may be not continuous
+	ifMatches       zone     // the zone of if-match in r.pairs. may be not continuous
+	ifNoneMatches   zone     // the zone of if-none-match in r.pairs. may be not continuous
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	_               [2]byte  // padding
@@ -711,14 +711,6 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
-func (r *httpRequest_) addQuery(query *pair) bool { // to primes
-	if edge, ok := r._addPrime(query); ok {
-		r.queries.edge = edge
-		return true
-	}
-	r.headResult, r.failReason = StatusURITooLong, "too many queries"
-	return false
-}
 func (r *httpRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
 func (r *httpRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
 func (r *httpRequest_) Q(name string) string {
@@ -762,21 +754,30 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
-		if header := &r.primes[i]; !r.applyHeader(header) {
+		if !r.applyHeader(&r.pairs[i]) {
 			// r.headResult is set.
 			return false
 		}
 	}
-	if IsDebug(2) {
-		for i := 0; i < len(r.primes); i++ {
-			prime := &r.primes[i]
-			place := r._placeOf(prime)
-			prime.show(place)
+	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
+		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
+		r.cookies.from = uint8(len(r.pairs)) // r.cookies.edge is set in r.addCookie().
+		for i := cookies.from; i < cookies.edge; i++ {
+			cookie := &r.pairs[i]
+			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
+				continue
+			}
+			if !r.parseCookie(cookie.value) {
+				return false
+			}
 		}
-		for j := 0; j < len(r.extras); j++ {
-			extra := &r.extras[j]
-			place := r._placeOf(extra)
-			extra.show(place)
+	}
+	r.extraFrom = uint8(len(r.pairs))
+	if IsDebug(2) {
+		for i := 0; i < len(r.pairs); i++ {
+			pair := &r.pairs[i]
+			place := r._placeOf(pair)
+			pair.show(place)
 		}
 	}
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
@@ -836,15 +837,15 @@ func (r *httpRequest_) examineHead() bool {
 			r.ifNoneMatch = 0
 		}
 		if r.indexes.ifModifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince)
+			r.delPairAt(r.indexes.ifModifiedSince)
 			r.indexes.ifModifiedSince = 0
 		}
 		if r.indexes.ifUnmodifiedSince != 0 {
-			r.delPrimeAt(r.indexes.ifUnmodifiedSince)
+			r.delPairAt(r.indexes.ifUnmodifiedSince)
 			r.indexes.ifUnmodifiedSince = 0
 		}
 		if r.indexes.ifRange != 0 {
-			r.delPrimeAt(r.indexes.ifRange)
+			r.delPairAt(r.indexes.ifRange)
 			r.indexes.ifRange = 0
 		}
 	} else {
@@ -853,26 +854,13 @@ func (r *httpRequest_) examineHead() bool {
 		// received field value is not a valid HTTP-date, the field value has
 		// more than one member, or if the request method is neither GET nor HEAD.
 		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
-			r.delPrimeAt(r.indexes.ifModifiedSince) // we delete it.
+			r.delPairAt(r.indexes.ifModifiedSince) // we delete it.
 			r.indexes.ifModifiedSince = 0
 		}
 		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
 		if r.indexes.ifRange != 0 && r.nRanges == 0 {
-			r.delPrimeAt(r.indexes.ifRange) // we delete it.
+			r.delPairAt(r.indexes.ifRange) // we delete it.
 			r.indexes.ifRange = 0
-		}
-	}
-	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
-		r.cookies.from = uint8(len(r.primes)) // r.cookies.edge is set in r.addCookie().
-		for i := cookies.from; i < cookies.edge; i++ {
-			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
-				continue
-			}
-			if !r.parseCookie(cookie.value) {
-				return false
-			}
 		}
 	}
 	if r.contentSize == -1 { // no content
@@ -911,7 +899,7 @@ func (r *httpRequest_) examineHead() bool {
 				contentType []byte
 			)
 			// TODO: refactor this. use general api of pairs
-			vType := r.primes[r.iContentType].value
+			vType := r.pairs[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParas.from = vType.edge
 				typeParas.edge = vType.edge
@@ -1085,7 +1073,7 @@ func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
-		r.delPrimeAt(index)
+		r.delPairAt(index)
 		return true
 	}
 	if r.nRanges > 0 {
@@ -1281,7 +1269,7 @@ func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #e
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.versionCode >= Version1_1 {
 		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
+			value := r.pairs[i].valueAt(r.input)
 			bytesToLower(value) // the Expect field-value is case-insensitive.
 			if bytes.Equal(value, bytes100Continue) {
 				r.expectContinue = true
@@ -1293,7 +1281,7 @@ func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #e
 		// RFC 7231 (section 5.1.1):
 		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
 		for i := from; i < edge; i++ {
-			r.delPrimeAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+			r.delPairAt(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		}
 	}
 	return true
@@ -1319,7 +1307,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
+		value := r.pairs[i].valueAt(r.input)
 		bytesToLower(value)
 		if bytes.Equal(value, bytesTrailers) {
 			r.acceptTrailers = true
@@ -1344,7 +1332,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 		// protocol-name    = token
 		// protocol-version = token
 		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
+			value := r.pairs[i].valueAt(r.input)
 			bytesToLower(value)
 			if bytes.Equal(value, bytesWebSocket) {
 				r.upgradeSocket = true
@@ -1356,7 +1344,7 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 		// RFC 7230 (section 6.7):
 		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
 		for i := from; i < edge; i++ {
-			r.delPrimeAt(i) // we delete it.
+			r.delPairAt(i) // we delete it.
 		}
 	}
 	return true
@@ -1371,7 +1359,7 @@ func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match 
 	}
 	matches.edge = edge
 	for i := from; i < edge; i++ {
-		header := &r.primes[i]
+		header := &r.pairs[i]
 		value := header.valueAt(r.input)
 		nMatch := *match // -1:*, 0:nonexist, >0:num
 		if len(value) == 1 && value[0] == '*' {
@@ -1561,7 +1549,7 @@ func (r *httpRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
 	}
-	return r.primes[r.indexes.userAgent].valueAt(r.input)
+	return r.pairs[r.indexes.userAgent].valueAt(r.input)
 }
 func (r *httpRequest_) getRanges() []rang {
 	if r.nRanges == 0 {
@@ -1570,14 +1558,6 @@ func (r *httpRequest_) getRanges() []rang {
 	return r.ranges[:r.nRanges]
 }
 
-func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
-	if edge, ok := r._addPrime(cookie); ok {
-		r.cookies.edge = edge
-		return true
-	}
-	r.headResult = StatusRequestHeaderFieldsTooLarge
-	return false
-}
 func (r *httpRequest_) HasCookies() bool {
 	return r.hasPairs(r.cookies, kindCookie)
 }
@@ -1624,15 +1604,15 @@ func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 }
 func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
-		if cookie := &r.primes[i]; cookie.hash != 0 {
+		if cookie := &r.pairs[i]; cookie.hash != 0 {
 			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
 				return false
 			}
 		}
 	}
 	if r.hasExtras[kindCookie] {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
+		for i := int(r.extraFrom); i < len(r.pairs); i++ {
+			if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == kindCookie {
 				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -1674,7 +1654,7 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 		return true
 	}
 	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
-		header := &r.primes[i]
+		header := &r.pairs[i]
 		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
 		}
@@ -1691,7 +1671,7 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 		return false
 	}
 	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
-		header := &r.primes[i]
+		header := &r.pairs[i]
 		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
 			continue
 		}
@@ -1718,7 +1698,7 @@ func (r *httpRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (
 	return false // StatusOK
 }
 func (r *httpRequest_) _testIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange]
+	ifRange := &r.pairs[r.indexes.ifRange]
 	data := ifRange.dataAt(r.input)
 	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
 		return true
@@ -1730,7 +1710,7 @@ func (r *httpRequest_) _testIfRangeTime(modTime int64) (pass bool) {
 }
 
 func (r *httpRequest_) unsetHost() { // used by proxies
-	r.delPrimeAt(r.indexes.host) // zero safe
+	r.delPairAt(r.indexes.host) // zero safe
 }
 
 func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
@@ -1747,7 +1727,7 @@ func (r *httpRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
 		return
 	}
 	r.formReceived = true
-	r.forms.from = uint8(len(r.primes))
+	r.forms.from = uint8(len(r.pairs))
 	r.forms.edge = r.forms.from
 	if r.formKind == httpFormURLEncoded { // application/x-www-form-urlencoded
 		r._loadURLEncodedForm()
@@ -2293,12 +2273,6 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 	}
 }
 
-func (r *httpRequest_) addForm(form *pair) { // to primes
-	if edge, ok := r._addPrime(form); ok {
-		r.forms.edge = edge
-	}
-	// Ignore too many forms
-}
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)
@@ -2350,21 +2324,6 @@ func (r *httpRequest_) DelForm(name string) (deleted bool) {
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 
-func (r *httpRequest_) addUpload(upload *Upload) {
-	if len(r.uploads) == cap(r.uploads) {
-		if cap(r.uploads) == cap(r.stockUploads) {
-			uploads := make([]Upload, 0, 16)
-			r.uploads = append(uploads, r.uploads...)
-		} else if cap(r.uploads) == 16 {
-			uploads := make([]Upload, 0, 128)
-			r.uploads = append(uploads, r.uploads...)
-		} else {
-			// Ignore too many uploads
-			return
-		}
-	}
-	r.uploads = append(r.uploads, *upload)
-}
 func (r *httpRequest_) HasUploads() bool {
 	r.parseHTMLForm()
 	return len(r.uploads) != 0
@@ -2437,6 +2396,46 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
 	}
 	return true
+}
+
+func (r *httpRequest_) addQuery(query *pair) bool { // to primes
+	if edge, ok := r.addPair(query); ok {
+		r.queries.edge = edge
+		return true
+	}
+	r.headResult, r.failReason = StatusURITooLong, "too many queries"
+	return false
+}
+func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
+	if edge, ok := r.addPair(cookie); ok {
+		r.cookies.edge = edge
+		return true
+	}
+	r.headResult = StatusRequestHeaderFieldsTooLarge
+	return false
+}
+func (r *httpRequest_) addForm(form *pair) bool { // to primes
+	if edge, ok := r.addPair(form); ok {
+		r.forms.edge = edge
+		return true
+	}
+	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
+	return false
+}
+func (r *httpRequest_) addUpload(upload *Upload) {
+	if len(r.uploads) == cap(r.uploads) {
+		if cap(r.uploads) == cap(r.stockUploads) {
+			uploads := make([]Upload, 0, 16)
+			r.uploads = append(uploads, r.uploads...)
+		} else if cap(r.uploads) == 16 {
+			uploads := make([]Upload, 0, 128)
+			r.uploads = append(uploads, r.uploads...)
+		} else {
+			// Ignore too many uploads
+			return
+		}
+	}
+	r.uploads = append(r.uploads, *upload)
 }
 
 func (r *httpRequest_) saveContentFilesDir() string {

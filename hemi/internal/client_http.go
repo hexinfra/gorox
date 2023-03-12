@@ -479,7 +479,7 @@ func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
-		if header := &r.primes[i]; !r.applyHeader(header) {
+		if !r.applyHeader(&r.pairs[i]) {
 			// r.headResult is set.
 			return false
 		}
@@ -720,19 +720,15 @@ func (r *hResponse_) unsafeDate() []byte {
 	if r.iDate == 0 {
 		return nil
 	}
-	return r.primes[r.iDate].valueAt(r.input)
+	return r.pairs[r.iDate].valueAt(r.input)
 }
 func (r *hResponse_) unsafeLastModified() []byte {
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
-	return r.primes[r.indexes.lastModified].valueAt(r.input)
+	return r.pairs[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *hResponse_) addCookie(cookie *cookie) bool {
-	// TODO
-	return true
-}
 func (r *hResponse_) HasCookies() bool {
 	// TODO
 	return false
@@ -787,6 +783,11 @@ func (r *hResponse_) arrayCopy(p []byte) bool {
 		}
 		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
 	}
+	return true
+}
+
+func (r *hResponse_) addCookie(cookie *cookie) bool {
+	// TODO
 	return true
 }
 

@@ -62,50 +62,12 @@ type pair struct { // 24 bytes
 
 func (p *pair) zero() { *p = pair{} }
 
-func (p *pair) show(place []byte) {
-	var kind string
-	switch p.kind {
-	case kindQuery:
-		kind = "query"
-	case kindHeader:
-		kind = "header"
-	case kindCookie:
-		kind = "cookie"
-	case kindForm:
-		kind = "form"
-	case kindTrailer:
-		kind = "trailer"
-	default:
-		kind = "unknown"
-	}
-	var flags []string
-	if p.isParsed() {
-		flags = append(flags, "parsed")
-	}
-	if p.isSingleton() {
-		flags = append(flags, "singleton")
-	}
-	if p.isSubField() {
-		flags = append(flags, "subField")
-	}
-	if p.isCommaValue() {
-		flags = append(flags, "commaValue")
-	}
-	if p.isQuoted() {
-		flags = append(flags, "quoted")
-	}
-	if len(flags) == 0 {
-		flags = append(flags, "none")
-	}
-	Debugf("{hash=%d kind=%s flags=|%s| %s=%s}\n", p.hash, kind, strings.Join(flags, ","), p.nameAt(place), p.valueAt(place))
-}
-
 const ( // pair kinds
-	kindQuery   = iota // prime->array, extra->array. valueSize <= _16K
-	kindHeader         // prime->input, extra->array. valueSize <= _16K
-	kindCookie         // prime->input, extra->array. valueSize <= _16K
-	kindForm           // prime->array, extra->array. valueSize <= _1G
-	kindTrailer        // prime->array, extra->array. valueSize <= _16K
+	kindQuery   = iota // valueSize <= _16K
+	kindHeader         // valueSize <= _16K
+	kindCookie         // valueSize <= _16K
+	kindForm           // valueSize <= _1G
+	kindTrailer        // valueSize <= _16K
 )
 
 const ( // pair places
@@ -199,6 +161,44 @@ func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
 func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
 func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
+
+func (p *pair) show(place []byte) {
+	var kind string
+	switch p.kind {
+	case kindQuery:
+		kind = "query"
+	case kindHeader:
+		kind = "header"
+	case kindCookie:
+		kind = "cookie"
+	case kindForm:
+		kind = "form"
+	case kindTrailer:
+		kind = "trailer"
+	default:
+		kind = "unknown"
+	}
+	var flags []string
+	if p.isParsed() {
+		flags = append(flags, "parsed")
+	}
+	if p.isSingleton() {
+		flags = append(flags, "singleton")
+	}
+	if p.isSubField() {
+		flags = append(flags, "subField")
+	}
+	if p.isCommaValue() {
+		flags = append(flags, "commaValue")
+	}
+	if p.isQuoted() {
+		flags = append(flags, "quoted")
+	}
+	if len(flags) == 0 {
+		flags = append(flags, "none")
+	}
+	Debugf("{hash=%d kind=%s flags=|%s| %s=%s}\n", p.hash, kind, strings.Join(flags, ","), p.nameAt(place), p.valueAt(place))
+}
 
 // poolParas
 var poolParas sync.Pool

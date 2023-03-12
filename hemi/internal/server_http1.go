@@ -581,7 +581,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				} else if b == '?' {
 					// Path is over, switch to query string parsing
 					r.path = r.array[0:r.arrayEdge]
-					r.queries.from = uint8(len(r.primes))
+					r.queries.from = uint8(len(r.pairs))
 					r.queries.edge = r.queries.from
 					query.nameFrom = r.arrayEdge
 					qsOff = r.pFore - r.pBack

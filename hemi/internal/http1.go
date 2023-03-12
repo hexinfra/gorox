@@ -53,7 +53,7 @@ func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don
 	return false
 }
 func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
-	r.headers.from = uint8(len(r.primes))
+	r.headers.from = uint8(len(r.pairs))
 	r.headers.edge = r.headers.from
 	header := &r.mainPair
 	header.zero()
@@ -387,7 +387,7 @@ func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
 	r.pBack, r.pFore = 0, 0 // for parsing trailer fields
 
-	r.trailers.from = uint8(len(r.primes))
+	r.trailers.from = uint8(len(r.pairs))
 	r.trailers.edge = r.trailers.from
 	trailer := &r.mainPair
 	trailer.zero()

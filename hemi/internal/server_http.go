@@ -760,7 +760,7 @@ func (r *httpRequest_) examineHead() bool {
 		}
 	}
 	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies                  // make a copy. r.cookies is changed as cookie name-value pairs below
+		cookies := r.cookies                 // make a copy. r.cookies is changed as cookie name-value pairs below
 		r.cookies.from = uint8(len(r.pairs)) // r.cookies.edge is set in r.addCookie().
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.pairs[i]

@@ -108,10 +108,10 @@ type httpIn_ struct { // incoming. needs parsing
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockInput  [1536]byte // for r.input
-	stockArray  [768]byte  // for r.array
-	stockPairs  [64]pair   // for r.pairs
-	stockParas  [16]para   // for r.paras
+	stockInput [1536]byte // for r.input
+	stockArray [768]byte  // for r.array
+	stockPairs [64]pair   // for r.pairs
+	stockParas [16]para   // for r.paras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
@@ -1115,38 +1115,38 @@ func (r *httpIn_) addTrailer(trailer *pair) bool { // to primes
 
 func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 	/*
-	nameSize := int32(len(name))
-	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
-		return false
-	}
-	valueSize := len(value)
-	if extraKind == kindForm { // for forms, max value size is 1G
-		if valueSize > _1G {
+		nameSize := int32(len(name))
+		if nameSize == 0 || nameSize > 255 { // name size is limited at 255
 			return false
 		}
-	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
-		return false
-	}
-	if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
-		return false
-	}
-	extra := &r.mainPair
-	extra.zero()
-	extra.hash = stringHash(name)
-	extra.kind = extraKind
-	extra.place = placeArray
-	extra.nameFrom = r.arrayEdge
-	extra.nameSize = uint8(nameSize)
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-	extra.value.from = r.arrayEdge
-	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-	extra.value.edge = r.arrayEdge
-	if r._addExtra(extra) {
-		r.hasExtras[extraKind] = true
-		return true
-	} else {
-		return false
-	}
+		valueSize := len(value)
+		if extraKind == kindForm { // for forms, max value size is 1G
+			if valueSize > _1G {
+				return false
+			}
+		} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
+			return false
+		}
+		if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
+			return false
+		}
+		extra := &r.mainPair
+		extra.zero()
+		extra.hash = stringHash(name)
+		extra.kind = extraKind
+		extra.place = placeArray
+		extra.nameFrom = r.arrayEdge
+		extra.nameSize = uint8(nameSize)
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+		extra.value.from = r.arrayEdge
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+		extra.value.edge = r.arrayEdge
+		if r._addExtra(extra) {
+			r.hasExtras[extraKind] = true
+			return true
+		} else {
+			return false
+		}
 	*/
 	return true
 }

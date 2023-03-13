@@ -40,10 +40,10 @@ func putPairs(pairs []pair) {
 type pair struct { // 24 bytes
 	hash     uint16 // name hash, to support fast search. 0 means empty
 	kind     int8   // see pair kinds
-	place    int8   // see pair places
-	nameFrom int32  // name begins from
 	nameSize uint8  // name ends at nameFrom+nameSize
+	nameFrom int32  // name begins from
 	flags    byte   // see field flags
+	place    int8   // see pair places
 	paras    zone   // refers to a zone of paras
 	dataEdge int32  // data ends at
 	value    text   // value
@@ -59,13 +59,6 @@ const ( // pair kinds
 	kindTrailer
 )
 
-const ( // pair places
-	placeInput = iota
-	placeArray
-	placeStatic2
-	placeStatic3
-)
-
 const ( // field flags
 	flagParsed     = 0b10000000 // data and paras parsed or not
 	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
@@ -75,6 +68,13 @@ const ( // field flags
 	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
 	flagCommaValue = 0b00000010 // value has comma or not
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
+)
+
+const ( // pair places
+	placeInput = iota
+	placeArray
+	placeStatic2
+	placeStatic3
 )
 
 // If "example-name" is not a field, and has a value "example-value", then it looks like this:
@@ -186,7 +186,20 @@ func (p *pair) show(place []byte) {
 	if len(flags) == 0 {
 		flags = append(flags, "none")
 	}
-	Debugf("{hash=%d kind=%s flags=|%s| %s=%s}\n", p.hash, kind, strings.Join(flags, ","), p.nameAt(place), p.valueAt(place))
+	var plase string
+	switch p.place {
+	case placeInput:
+		plase = "input"
+	case placeArray:
+		plase = "array"
+	case placeStatic2:
+		plase = "static2"
+	case placeStatic3:
+		plase = "static3"
+	default:
+		plase = "unknown"
+	}
+	Debugf("{hash=%d kind=%s flags=|%s| place=%s %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.nameAt(place), p.valueAt(place))
 }
 
 // poolParas

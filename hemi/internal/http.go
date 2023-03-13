@@ -968,12 +968,6 @@ badRead:
 	return err
 }
 
-func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra. DO NOT add comma-value trailers, call multiple times to add
-	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
-	// NOTICE: must add values without comma so r.getPairs() works correctly?
-	// setFlags?
-	return r.addExtra(name, value, kindTrailer)
-}
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
 	return r.allPairs(r.trailers, kindTrailer)
@@ -1110,42 +1104,39 @@ func (r *httpIn_) addTrailer(trailer *pair) bool {
 	return false
 }
 
-func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
-	/*
-		nameSize := int32(len(name))
-		if nameSize == 0 || nameSize > 255 { // name size is limited at 255
+func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool { // currently only queries, headers and cookies are allowed due to limitation of our data structure
+	nameSize := int32(len(name))
+	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
+		return false
+	}
+	valueSize := len(value)
+	if extraKind == kindForm { // for forms, max value size is 1G
+		if valueSize > _1G {
 			return false
 		}
-		valueSize := len(value)
-		if extraKind == kindForm { // for forms, max value size is 1G
-			if valueSize > _1G {
-				return false
-			}
-		} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
-			return false
-		}
-		if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
-			return false
-		}
-		extra := &r.mainPair
-		extra.zero()
-		extra.hash = stringHash(name)
-		extra.kind = extraKind
-		extra.place = placeArray
-		extra.nameFrom = r.arrayEdge
-		extra.nameSize = uint8(nameSize)
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
-		extra.value.from = r.arrayEdge
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
-		extra.value.edge = r.arrayEdge
-		if r.addPair(extra) {
-			r.hasExtras[extraKind] = true
-			return true
-		} else {
-			return false
-		}
-	*/
-	return true
+	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
+		return false
+	}
+	if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
+		return false
+	}
+	extra := &r.mainPair
+	extra.zero()
+	extra.hash = stringHash(name)
+	extra.kind = extraKind
+	extra.place = placeArray
+	extra.nameFrom = r.arrayEdge
+	extra.nameSize = uint8(nameSize)
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+	extra.value.edge = r.arrayEdge
+	if _, ok := r.addPair(extra); ok {
+		r.hasExtras[extraKind] = true
+		return true
+	} else {
+		return false
+	}
 }
 
 func (r *httpIn_) addPair(pair *pair) (edge uint8, ok bool) {

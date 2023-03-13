@@ -324,6 +324,7 @@ type Request interface {
 	EncodedPath() string // /encodedPath
 	QueryString() string // including '?' if query string exists, otherwise empty
 
+	AddQuery(name string, value string) bool
 	HasQueries() bool
 	AllQueries() (queries [][2]string)
 	Q(name string) string
@@ -332,9 +333,9 @@ type Request interface {
 	Query(name string) (value string, ok bool)
 	Queries(name string) (values []string, ok bool)
 	HasQuery(name string) bool
-	AddQuery(name string, value string) bool
 	DelQuery(name string) (deleted bool)
 
+	AddHeader(name string, value string) bool
 	HasHeaders() bool
 	AllHeaders() (headers [][2]string)
 	H(name string) string
@@ -343,7 +344,6 @@ type Request interface {
 	Header(name string) (value string, ok bool)
 	Headers(name string) (values []string, ok bool)
 	HasHeader(name string) bool
-	AddHeader(name string, value string) bool
 	DelHeader(name string) (deleted bool)
 
 	UserAgent() string
@@ -354,6 +354,7 @@ type Request interface {
 	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
 	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
 
+	AddCookie(name string, value string) bool
 	HasCookies() bool
 	AllCookies() (cookies [][2]string)
 	C(name string) string
@@ -362,7 +363,6 @@ type Request interface {
 	Cookie(name string) (value string, ok bool)
 	Cookies(name string) (values []string, ok bool)
 	HasCookie(name string) bool
-	AddCookie(name string, value string) bool
 	DelCookie(name string) (deleted bool)
 
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
@@ -395,7 +395,6 @@ type Request interface {
 	Trailer(name string) (value string, ok bool)
 	Trailers(name string) (values []string, ok bool)
 	HasTrailer(name string) bool
-	AddTrailer(name string, value string) bool
 	DelTrailer(name string) (deleted bool)
 
 	// Unsafe
@@ -2270,9 +2269,6 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 	}
 }
 
-func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
-	return r.addExtra(name, value, kindForm)
-}
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)

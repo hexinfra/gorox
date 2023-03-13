@@ -16,17 +16,6 @@ import (
 	"sync"
 )
 
-// desc describes an HTTP field.
-type desc struct {
-	hash       uint16
-	from       uint8
-	edge       uint8
-	allowQuote bool // allow data quote or not
-	allowEmpty bool // allow empty data or not
-	allowParas bool // allow parameters or not
-	hasComment bool // has comment or not
-}
-
 // poolPairs
 var poolPairs sync.Pool
 
@@ -234,6 +223,17 @@ func (p *para) nameEqualString(t []byte, x string) bool {
 }
 func (p *para) nameEqualBytes(t []byte, x []byte) bool {
 	return p.name.size() == len(x) && bytes.Equal(t[p.name.from:p.name.edge], x)
+}
+
+// fdesc describes an HTTP field.
+type fdesc struct {
+	hash       uint16
+	from       uint8
+	edge       uint8
+	allowQuote bool // allow data quote or not
+	allowEmpty bool // allow empty data or not
+	allowParas bool // allow parameters or not
+	hasComment bool // has comment or not
 }
 
 // TempFile is used to temporarily save request/response content in local file system.

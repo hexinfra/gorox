@@ -124,7 +124,7 @@ type httpIn_ struct { // incoming. needs parsing
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat the incoming message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	basicsEdge     uint8         // edge of prime pairs
+	basicsEdge     uint8         // edge of basic pairs
 	headResult     int16         // result of receiving message head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
@@ -143,20 +143,20 @@ type httpIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers
+	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers 5:not-defined 6:not-defined 7:not-defined
 	dateTime         int64   // parsed unix time of date
-	headers          zone    // raw headers ->r.input
-	options          zone    // connection options ->r.input. may be not continuous
+	headers          zone    // raw headers ->r.pairs
+	options          zone    // connection options ->r.pairs. may be not continuous
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
 	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	iContentLength   uint8   // index of content-length header in r.pairs->r.input
-	iContentLocation uint8   // index of content-location header in r.pairs->r.input
-	iContentRange    uint8   // index of content-range header in r.pairs->r.input
-	iContentType     uint8   // index of content-type header in r.pairs->r.input
-	iDate            uint8   // index of date header in r.pairs->r.input
+	iContentLength   uint8   // index of content-length header in r.pairs
+	iContentLocation uint8   // index of content-location header in r.pairs
+	iContentRange    uint8   // index of content-range header in r.pairs
+	iContentType     uint8   // index of content-type header in r.pairs
+	iDate            uint8   // index of date header in r.pairs
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	upgradeSocket    bool    // upgrade: websocket?
@@ -338,10 +338,10 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	return r.pairs[r.iContentType].valueAt(r.input)
 }
 
-func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
+func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and paras
 	field.setParsed()
 	if field.value.isEmpty() {
-		if fDesc.allowEmpty {
+		if desc.allowEmpty {
 			field.dataEdge = field.value.edge
 			return true
 		} else {
@@ -378,7 +378,7 @@ func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bo
 					return true
 				}
 			case '(':
-				if fDesc.hasComment {
+				if desc.hasComment {
 					text.from++
 					for {
 						if text.from == field.value.edge {
@@ -414,11 +414,11 @@ func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bo
 			text.from++
 		}
 		// "..."
-		if !fDesc.allowQuote {
+		if !desc.allowQuote {
 			r.failReason = "DQUOTE is not allowed"
 			return false
 		}
-		if text.from-field.value.from == 1 && !fDesc.allowEmpty { // ""
+		if text.from-field.value.from == 1 && !desc.allowEmpty { // ""
 			r.failReason = "field cannot be empty"
 			return false
 		}
@@ -454,7 +454,7 @@ func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bo
 		}
 	}
 	// text.from is at ';'
-	if !fDesc.allowParas {
+	if !desc.allowParas {
 		r.failReason = "paras is not allowed"
 		return false
 	}
@@ -546,7 +546,7 @@ func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bo
 		text.from = text.edge
 	}
 }
-func (r *httpIn_) _splitField(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool {
+func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte, addField func(field *pair) bool) bool {
 	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -580,7 +580,7 @@ func (r *httpIn_) _splitField(field *pair, fDesc *desc, p []byte, addField func(
 			return false
 		}
 		subField.value.edge = field.value.edge
-		if !r._parseField(&subField, fDesc, p, false) {
+		if !r._parseField(&subField, desc, p, false) {
 			// r.failReason is set.
 			return false
 		}

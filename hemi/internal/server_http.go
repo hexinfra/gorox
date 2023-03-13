@@ -424,8 +424,6 @@ type Request interface {
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
-	addHeader(header *pair) bool
-	applyHeader(header *pair) bool
 	delHopHeaders()
 	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
@@ -433,7 +431,6 @@ type Request interface {
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
-	addTrailer(trailer *pair) bool
 	applyTrailer(trailer *pair) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
@@ -711,6 +708,9 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
+func (r *httpRequest_) AddQuery(name string, value string) bool { // as extra
+	return r.addExtra(name, value, kindQuery)
+}
 func (r *httpRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
 func (r *httpRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
 func (r *httpRequest_) Q(name string) string {
@@ -745,9 +745,6 @@ func (r *httpRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return ok
 }
-func (r *httpRequest_) AddQuery(name string, value string) bool { // to extras
-	return r.addExtra(name, value, kindQuery)
-}
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
@@ -772,7 +769,7 @@ func (r *httpRequest_) examineHead() bool {
 			}
 		}
 	}
-	r.extraFrom = uint8(len(r.pairs))
+	r.primesEdge = uint8(len(r.pairs))
 	if IsDebug(2) {
 		for i := 0; i < len(r.pairs); i++ {
 			pair := &r.pairs[i]
@@ -1558,6 +1555,9 @@ func (r *httpRequest_) getRanges() []rang {
 	return r.ranges[:r.nRanges]
 }
 
+func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
+	return r.addExtra(name, value, kindCookie)
+}
 func (r *httpRequest_) HasCookies() bool {
 	return r.hasPairs(r.cookies, kindCookie)
 }
@@ -1596,9 +1596,6 @@ func (r *httpRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return ok
 }
-func (r *httpRequest_) AddCookie(name string, value string) bool { // to extras
-	return r.addExtra(name, value, kindCookie)
-}
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
@@ -1611,7 +1608,7 @@ func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byt
 		}
 	}
 	if r.hasExtras[kindCookie] {
-		for i := int(r.extraFrom); i < len(r.pairs); i++ {
+		for i := int(r.primesEdge); i < len(r.pairs); i++ {
 			if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == kindCookie {
 				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
@@ -2273,6 +2270,9 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 	}
 }
 
+func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
+	return r.addExtra(name, value, kindForm)
+}
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)
@@ -2316,9 +2316,6 @@ func (r *httpRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.getPair(name, 0, r.forms, kindForm)
 	return ok
-}
-func (r *httpRequest_) AddForm(name string, value string) bool { // to extras
-	return r.addExtra(name, value, kindForm)
 }
 func (r *httpRequest_) DelForm(name string) (deleted bool) {
 	return r.delPair(name, 0, r.forms, kindForm)
@@ -2398,7 +2395,7 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *httpRequest_) addQuery(query *pair) bool { // to primes
+func (r *httpRequest_) addQuery(query *pair) bool { // as prime
 	if edge, ok := r.addPair(query); ok {
 		r.queries.edge = edge
 		return true
@@ -2406,7 +2403,7 @@ func (r *httpRequest_) addQuery(query *pair) bool { // to primes
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
+func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
 	if edge, ok := r.addPair(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -2414,7 +2411,7 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // to primes
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
 }
-func (r *httpRequest_) addForm(form *pair) bool { // to primes
+func (r *httpRequest_) addForm(form *pair) bool {
 	if edge, ok := r.addPair(form); ok {
 		r.forms.edge = edge
 		return true

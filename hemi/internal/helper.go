@@ -63,18 +63,29 @@ type pair struct { // 24 bytes
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery   = iota // valueSize <= _16K
-	kindHeader         // valueSize <= _16K
-	kindCookie         // valueSize <= _16K
-	kindForm           // valueSize <= _1G
-	kindTrailer        // valueSize <= _16K
+	kindQuery = iota
+	kindHeader
+	kindCookie
+	kindForm
+	kindTrailer
 )
 
 const ( // pair places
-	placeInput   = iota // prime headers, prime cookies
-	placeArray          // prime queries, prime forms, prime trailers, all extras
-	placeStatic2        // HTTP/2 static table for headers and trailers
-	placeStatic3        // HTTP/3 static table for headers and trailers
+	placeInput = iota
+	placeArray
+	placeStatic2
+	placeStatic3
+)
+
+const ( // field flags
+	flagParsed     = 0b10000000 // data and paras parsed or not
+	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
+	flagSubField   = 0b00100000 // sub field or not
+	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
+	flagCommaValue = 0b00000010 // value has comma or not
+	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
 // If "example-name" is not a field, and has a value "example-value", then it looks like this:
@@ -132,17 +143,6 @@ func (p *pair) paraAt(t []byte, name []byte) []byte {
 	}
 	return nil
 }
-
-const ( // field flags
-	flagParsed     = 0b10000000 // data and paras parsed or not
-	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
-	flagSubField   = 0b00100000 // sub field or not
-	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
-	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
-	flagCommaValue = 0b00000010 // value has comma or not
-	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
-)
 
 func (p *pair) setParsed()     { p.flags |= flagParsed }
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }

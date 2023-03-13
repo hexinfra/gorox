@@ -89,12 +89,9 @@ func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
 type httpIn interface {
-	addHeader(header *pair) bool
-	applyHeader(header *pair) bool
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
-	addTrailer(trailer *pair) bool
 	applyTrailer(trailer *pair) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
@@ -127,7 +124,7 @@ type httpIn_ struct { // incoming. needs parsing
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat the incoming message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	extraFrom      uint8         // ...
+	primesEdge     uint8         // edge of prime pairs
 	headResult     int16         // result of receiving message head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
@@ -146,7 +143,7 @@ type httpIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtras        [8]bool // 0:query 1:header 2:cookie 3:form 4:trailer
+	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers
 	dateTime         int64   // parsed unix time of date
 	headers          zone    // raw headers ->r.input
 	options          zone    // connection options ->r.input. may be not continuous
@@ -192,7 +189,7 @@ func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool
 	r.versionCode = versionCode
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
-	r.extraFrom = 1  // ad hoc
+	r.primesEdge = 1 // r.pairs[0] is skipped
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -214,7 +211,7 @@ func (r *httpIn_) onEnd() { // for zeros
 		r.pairs = nil
 	}
 	if cap(r.paras) != cap(r.stockParas) {
-		// TODO: put
+		putParas(r.paras)
 		r.paras = nil
 	}
 
@@ -270,6 +267,12 @@ func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
+func (r *httpIn_) AddHeader(name string, value string) bool { // as extra. DO NOT add comma-value headers, call multiple times to add
+	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// NOTICE: must add values without comma so r.getPairs() works correctly?
+	// setFlags?
+	return r.addExtra(name, value, kindHeader)
+}
 func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
 func (r *httpIn_) AllHeaders() (headers [][2]string) {
 	return r.allPairs(r.headers, kindHeader)
@@ -305,12 +308,6 @@ func (r *httpIn_) Headers(name string) (values []string, ok bool) {
 func (r *httpIn_) HasHeader(name string) bool {
 	_, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return ok
-}
-func (r *httpIn_) AddHeader(name string, value string) bool { // to extras
-	// TODO: add restrictions on what headers are allowed to add? should we check the value?
-	// NOTICE: must add values without comma so r.getPairs() works correctly
-	// setFlags?
-	return r.addExtra(name, value, kindHeader)
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to delete?
@@ -549,7 +546,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		text.from = text.edge
 	}
 }
-func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool { // to primes
+func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool {
 	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -971,6 +968,12 @@ badRead:
 	return err
 }
 
+func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra. DO NOT add comma-value trailers, call multiple times to add
+	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// NOTICE: must add values without comma so r.getPairs() works correctly?
+	// setFlags?
+	return r.addExtra(name, value, kindTrailer)
+}
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
 	return r.allPairs(r.trailers, kindTrailer)
@@ -1006,12 +1009,6 @@ func (r *httpIn_) Trailers(name string) (values []string, ok bool) {
 func (r *httpIn_) HasTrailer(name string) bool {
 	_, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return ok
-}
-func (r *httpIn_) AddTrailer(name string, value string) bool { // to extras
-	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
-	// NOTICE: must add values without comma so r.getPairs() works correctly
-	// setFlags?
-	return r.addExtra(name, value, kindTrailer)
 }
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 	// TODO: add restrictions on what trailers are allowed to delete?
@@ -1096,7 +1093,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
-func (r *httpIn_) addHeader(header *pair) bool { // to primes
+func (r *httpIn_) addHeader(header *pair) bool {
 	if edge, ok := r.addPair(header); ok {
 		r.headers.edge = edge
 		return true
@@ -1104,7 +1101,7 @@ func (r *httpIn_) addHeader(header *pair) bool { // to primes
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *httpIn_) addTrailer(trailer *pair) bool { // to primes
+func (r *httpIn_) addTrailer(trailer *pair) bool {
 	if edge, ok := r.addPair(trailer); ok {
 		r.trailers.edge = edge
 		return true
@@ -1141,7 +1138,7 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool {
 		extra.value.from = r.arrayEdge
 		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 		extra.value.edge = r.arrayEdge
-		if r._addExtra(extra) {
+		if r.addPair(extra) {
 			r.hasExtras[extraKind] = true
 			return true
 		} else {
@@ -1178,7 +1175,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.extraFrom); i < len(r.pairs); i++ {
+			for i := int(r.primesEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1192,7 +1189,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.extraFrom); i < len(r.pairs); i++ {
+			for i := int(r.primesEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1215,7 +1212,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.extraFrom); i < len(r.pairs); i++ {
+				for i := int(r.primesEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						return extra.dataAt(r.array), true
 					}
@@ -1230,7 +1227,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.extraFrom); i < len(r.pairs); i++ {
+				for i := int(r.primesEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						return extra.valueAt(r.array), true
 					}
@@ -1254,7 +1251,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.extraFrom); i < len(r.pairs); i++ {
+				for i := int(r.primesEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.dataAt(r.array)))
 					}
@@ -1269,7 +1266,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.extraFrom); i < len(r.pairs); i++ {
+				for i := int(r.primesEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.valueAt(r.array)))
 					}
@@ -1296,7 +1293,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.extraFrom); i < len(r.pairs); i++ {
+			for i := int(r.primesEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
@@ -1318,7 +1315,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 		}
 	}
 	if r.hasExtras[extraKind] {
-		for i := int(r.extraFrom); i < len(r.pairs); i++ {
+		for i := int(r.primesEdge); i < len(r.pairs); i++ {
 			if field := &r.pairs[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
 				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
@@ -1373,7 +1370,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		if r.hasExtras[extraKind] {
-			for i := int(r.extraFrom); i < len(r.pairs); i++ {
+			for i := int(r.primesEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}

@@ -338,7 +338,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	return r.pairs[r.iContentType].valueAt(r.input)
 }
 
-func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
+func (r *httpIn_) _parseField(field *pair, fDesc *desc, p []byte, fully bool) bool { // data and paras
 	field.setParsed()
 	if field.value.isEmpty() {
 		if fDesc.allowEmpty {
@@ -546,7 +546,7 @@ func (r *httpIn_) _setFieldInfo(field *pair, fDesc *desc, p []byte, fully bool) 
 		text.from = text.edge
 	}
 }
-func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool {
+func (r *httpIn_) _splitField(field *pair, fDesc *desc, p []byte, addField func(field *pair) bool) bool {
 	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -580,7 +580,7 @@ func (r *httpIn_) _addSubFields(field *pair, fDesc *desc, p []byte, addField fun
 			return false
 		}
 		subField.value.edge = field.value.edge
-		if !r._setFieldInfo(&subField, fDesc, p, false) {
+		if !r._parseField(&subField, fDesc, p, false) {
 			// r.failReason is set.
 			return false
 		}
@@ -623,7 +623,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set in r.examineHead() if the content is unsized
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index

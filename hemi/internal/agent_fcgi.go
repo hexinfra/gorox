@@ -866,21 +866,21 @@ func (r *fcgiResponse) addHeader(header *pair) bool {
 	return true
 }
 
-func (r *fcgiResponse) applyHeader(header *pair) bool {
+func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(fcgiResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if sh.parse && !r._setHeaderInfo(header, &sh.desc, true) {
+		if sh.parse && !r._parseHeader(header, &sh.desc, true) {
 			// r.headResult is set.
 			return false
 		}
-		if !sh.check(r, header, len(r.headers)-1) {
+		if !sh.check(r, header, index) {
 			// r.headResult is set.
 			return false
 		}
 	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(fcgiResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
-		from := len(r.headers) + 1 // excluding main header
-		if !r._addSubHeaders(header, &mh.desc) {
+		from := len(r.headers)
+		if !r._splitHeader(header, &mh.desc) {
 			// r.headResult is set.
 			return false
 		}
@@ -957,11 +957,11 @@ func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _setHeaderInfo(header *pair, fDesc *desc, fully bool) bool {
+func (r *fcgiResponse) _parseHeader(header *pair, fDesc *desc, fully bool) bool {
 	// TODO
 	return false
 }
-func (r *fcgiResponse) _addSubHeaders(header *pair, fDesc *desc) bool {
+func (r *fcgiResponse) _splitHeader(header *pair, fDesc *desc) bool {
 	// TODO
 	return true
 }
@@ -979,8 +979,8 @@ func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byt
 }
 
 func (r *fcgiResponse) examineHead() bool {
-	for i := 0; i < len(r.headers); i++ {
-		if header := &r.headers[i]; !r.applyHeader(header) {
+	for i, n := 0, len(r.headers); i < n; i++ {
+		if !r.applyHeader(&r.headers[i], i) {
 			// r.headResult is set.
 			return false
 		}

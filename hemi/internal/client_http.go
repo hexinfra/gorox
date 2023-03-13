@@ -478,8 +478,9 @@ func (r *hResponse_) onEnd() { // for zeros
 func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) examineHead() bool {
-	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(&r.pairs[i]) {
+	headers := r.headers
+	for i := headers.from; i < headers.edge; i++ {
+		if !r.applyHeader(&r.pairs[i], i) {
 			// r.headResult is set.
 			return false
 		}
@@ -512,21 +513,21 @@ func (r *hResponse_) examineHead() bool {
 	return true
 }
 
-func (r *hResponse_) applyHeader(header *pair) bool {
+func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(hResponseSingletonHeaderNames[sh.from:sh.edge], headerName) {
 		header.setSingleton()
-		if sh.parse && !r._setFieldInfo(header, &sh.desc, r.input, true) {
+		if sh.parse && !r._parseField(header, &sh.desc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !sh.check(r, header, r.headers.edge-1) {
+		if !sh.check(r, header, index) {
 			// r.headResult is set.
 			return false
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(hResponseImportantHeaderNames[mh.from:mh.edge], headerName) {
-		from := r.headers.edge + 1 // excluding main header
-		if !r._addSubFields(header, &mh.desc, r.input, r.addHeader) {
+		from := r.headers.edge
+		if !r._splitField(header, &mh.desc, r.input, r.addHeader) {
 			r.headResult = StatusBadRequest
 			return false
 		}

@@ -124,7 +124,7 @@ type httpIn_ struct { // incoming. needs parsing
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat the incoming message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	primesEdge     uint8         // edge of prime pairs
+	basicsEdge     uint8         // edge of prime pairs
 	headResult     int16         // result of receiving message head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
@@ -189,7 +189,7 @@ func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool
 	r.versionCode = versionCode
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
-	r.primesEdge = 1 // r.pairs[0] is skipped
+	r.basicsEdge = 1 // r.pairs[0] is skipped
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -1166,7 +1166,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.primesEdge); i < len(r.pairs); i++ {
+			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1180,7 +1180,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.primesEdge); i < len(r.pairs); i++ {
+			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1203,7 +1203,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.primesEdge); i < len(r.pairs); i++ {
+				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						return extra.dataAt(r.array), true
 					}
@@ -1218,7 +1218,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.primesEdge); i < len(r.pairs); i++ {
+				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						return extra.valueAt(r.array), true
 					}
@@ -1242,7 +1242,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.primesEdge); i < len(r.pairs); i++ {
+				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.dataAt(r.array)))
 					}
@@ -1257,7 +1257,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.primesEdge); i < len(r.pairs); i++ {
+				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.valueAt(r.array)))
 					}
@@ -1284,7 +1284,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.primesEdge); i < len(r.pairs); i++ {
+			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
@@ -1306,7 +1306,7 @@ func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, n
 		}
 	}
 	if r.hasExtras[extraKind] {
-		for i := int(r.primesEdge); i < len(r.pairs); i++ {
+		for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 			if field := &r.pairs[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
 				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
@@ -1361,13 +1361,28 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		if r.hasExtras[extraKind] {
-			for i := int(r.primesEdge); i < len(r.pairs); i++ {
+			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 				if extra := &r.pairs[i]; extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}
 			}
 		}
 	}
+}
+
+func (r *httpIn_) addPara(para *para) (edge uint8, ok bool) {
+	if len(r.paras) == cap(r.paras) { // full
+		if cap(r.paras) != cap(r.stockParas) { // too many paras
+			return 0, false
+		}
+		if IsDebug(2) {
+			Debugln("use large paras!")
+		}
+		r.paras = getParas()
+		r.paras = append(r.paras, r.stockParas[:]...)
+	}
+	r.paras = append(r.paras, *para)
+	return uint8(len(r.paras)), true
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save content to

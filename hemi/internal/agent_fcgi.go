@@ -874,7 +874,7 @@ func (r *fcgiResponse) applyHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if sh.check != nil && !sh.check(r, header, len(r.headers)-1) {
+		if !sh.check(r, header, len(r.headers)-1) {
 			// r.headResult is set.
 			return false
 		}
@@ -884,7 +884,7 @@ func (r *fcgiResponse) applyHeader(header *pair) bool {
 			// r.headResult is set.
 			return false
 		}
-		if mh.check != nil && !mh.check(r, from, len(r.headers)) {
+		if !mh.check(r, from, len(r.headers)) {
 			// r.headResult is set.
 			return false
 		}

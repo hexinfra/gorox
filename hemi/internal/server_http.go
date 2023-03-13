@@ -768,7 +768,7 @@ func (r *httpRequest_) examineHead() bool {
 			}
 		}
 	}
-	r.primesEdge = uint8(len(r.pairs))
+	r.basicsEdge = uint8(len(r.pairs))
 	if IsDebug(2) {
 		for i := 0; i < len(r.pairs); i++ {
 			pair := &r.pairs[i]
@@ -890,11 +890,11 @@ func (r *httpRequest_) examineHead() bool {
 				return false
 			}
 		} else { // content-type exists
+			// TODO: refactor this. use general api of pairs
 			var (
 				typeParas   text
 				contentType []byte
 			)
-			// TODO: refactor this. use general api of pairs
 			vType := r.pairs[r.iContentType].value
 			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
 				typeParas.from = vType.edge
@@ -956,7 +956,7 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if sh.check != nil && !sh.check(r, header, r.headers.edge-1) {
+		if !sh.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
@@ -966,7 +966,7 @@ func (r *httpRequest_) applyHeader(header *pair) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if mh.check != nil && !mh.check(r, from, r.headers.edge) {
+		if !mh.check(r, from, r.headers.edge) {
 			// r.headResult is set.
 			return false
 		}
@@ -1607,7 +1607,7 @@ func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byt
 		}
 	}
 	if r.hasExtras[kindCookie] {
-		for i := int(r.primesEdge); i < len(r.pairs); i++ {
+		for i := int(r.basicsEdge); i < len(r.pairs); i++ {
 			if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == kindCookie {
 				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
@@ -2314,6 +2314,7 @@ func (r *httpRequest_) HasForm(name string) bool {
 	return ok
 }
 func (r *httpRequest_) DelForm(name string) (deleted bool) {
+	r.parseHTMLForm()
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 

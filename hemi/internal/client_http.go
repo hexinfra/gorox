@@ -520,7 +520,7 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if sh.check != nil && !sh.check(r, header, r.headers.edge-1) {
+		if !sh.check(r, header, r.headers.edge-1) {
 			// r.headResult is set.
 			return false
 		}
@@ -530,7 +530,7 @@ func (r *hResponse_) applyHeader(header *pair) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if mh.check != nil && !mh.check(r, from, r.headers.edge) {
+		if !mh.check(r, from, r.headers.edge) {
 			// r.headResult is set.
 			return false
 		}

@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"io"
 	"os"
 	"strings"
@@ -222,7 +221,7 @@ func putParas(paras []para) {
 	poolParas.Put(paras)
 }
 
-// para
+// para is a parameter in http fields.
 type para struct { // 8 bytes
 	name, value span
 }
@@ -240,13 +239,12 @@ func (p *para) nameEqualBytes(t []byte, x []byte) bool {
 
 // fdesc describes an HTTP field.
 type fdesc struct {
-	hash       uint16
-	from       uint8
-	edge       uint8
-	allowQuote bool // allow data quote or not
-	allowEmpty bool // allow empty data or not
-	allowParas bool // allow parameters or not
-	hasComment bool // has comment or not
+	hash       uint16 // name hash
+	allowQuote bool   // allow data quote or not
+	allowEmpty bool   // allow empty data or not
+	allowParas bool   // allow parameters or not
+	hasComment bool   // has comment or not
+	name       []byte // field name
 }
 
 // TempFile is used to temporarily save request/response content in local file system.
@@ -285,22 +283,22 @@ func putBlock(block *Block) {
 }
 
 // Block is an item of http message content linked list.
-type Block struct { // 56 bytes
-	next *Block      // next block
-	pool bool        // true if this block is got from poolBlock. don't change this after set
-	shut bool        // close file on free()?
-	kind int8        // 0:blob 1:*os.File
-	file *os.File    // for general use
-	data risky.Refer // blob, or buffer if buff is true
-	size int64       // size of blob or file
-	time int64       // file mod time
+type Block struct { // 64 bytes
+	next *Block   // next block
+	pool bool     // true if this block is got from poolBlock. don't change this after set
+	shut bool     // close file on free()?
+	kind int8     // 0:blob 1:*os.File
+	file *os.File // for general use
+	data []byte   // blob, or buffer if buff is true
+	size int64    // size of blob or file
+	time int64    // file mod time
 }
 
 func (b *Block) free() {
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
-	b.data.Reset()
+	b.data = nil
 	b.size = 0
 	b.time = 0
 }
@@ -351,14 +349,12 @@ func (b *Block) SetBlob(blob []byte) {
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
-	b.data = risky.ReferTo(blob)
+	b.data = blob
 	b.size = int64(len(blob))
 	b.time = 0
 }
 func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
-	if b.IsBlob() {
-		b.data.Reset()
-	}
+	b.data = nil
 	b.shut = shut
 	b.kind = 1
 	b.file = file
@@ -373,7 +369,7 @@ func (b *Block) Blob() []byte {
 	if b.size == 0 {
 		return nil
 	}
-	return b.data.Bytes()
+	return b.data
 }
 func (b *Block) File() *os.File {
 	if !b.IsFile() {

@@ -606,14 +606,17 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
 	receivedSize    int64    // bytes of currently received content
-	indexes         struct { // indexes of some selected headers, for fast accessing
+	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		contentType  uint8
-		xPoweredBy   uint8
 		date         uint8
-		lastModified uint8
-		expires      uint8
 		etag         uint8
+		expires      uint8
+		lastModified uint8
 		location     uint8
+		xPoweredBy   uint8
+		_            byte // padding
+	}
+	zones struct { // zones of some selected headers, for fast accessing
 	}
 }
 
@@ -894,7 +897,7 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 
 var ( // perfect hash table for response singleton headers
 	fcgiResponseSingletonHeaderTable = [4]struct {
-		fdesc
+		fdesc      // allowQuote, allowEmpty, allowParas, hasComment
 		parse bool // need general parse or not
 		check func(*fcgiResponse, *pair, int) bool
 	}{ // content-length content-type location status
@@ -929,7 +932,7 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 
 var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderTable = [3]struct {
-		fdesc
+		fdesc // allowQuote, allowEmpty, allowParas, hasComment
 		check func(*fcgiResponse, int, int) bool
 	}{ // connection transfer-encoding upgrade
 		0: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false

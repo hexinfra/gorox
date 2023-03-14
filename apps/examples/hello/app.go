@@ -48,7 +48,7 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
 	r := simple.New() // you can write your own router as long as it implements the Router interface
 
 	r.GET("/", h.index)
-	r.Route("/foo", h.handleFoo)
+	r.Link("/foo", h.handleFoo)
 
 	h.SetRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }

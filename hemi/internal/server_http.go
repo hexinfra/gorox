@@ -481,14 +481,14 @@ type httpRequest0 struct { // for fast reset, entirely
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
 	pathInfoGot     bool     // is r.pathInfo got?
 	_               [6]byte  // padding
-	indexes         struct { // indexes of some selected headers, for fast accessing
+	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		authorization      uint8 // authorization header ->r.input
 		host               uint8 // host header ->r.input
-		userAgent          uint8 // user-agent header ->r.input
-		ifRange            uint8 // if-range header ->r.input
 		ifModifiedSince    uint8 // if-modified-since header ->r.input
+		ifRange            uint8 // if-range header ->r.input
 		ifUnmodifiedSince  uint8 // if-unmodified-since header ->r.input
 		proxyAuthorization uint8 // proxy-authorization header ->r.input
+		userAgent          uint8 // user-agent header ->r.input
 		_                  byte  // padding
 	}
 	zones struct { // zones of some selected headers, for fast accessing
@@ -501,8 +501,8 @@ type httpRequest0 struct { // for fast reset, entirely
 		_               [4]byte // padding
 	}
 	unixTimes struct { // parsed unixTimes
-		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
+		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
 	}
 	cacheControl struct { // the cache-control info
@@ -983,7 +983,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderTable = [12]struct {
-		fdesc
+		fdesc      // allowQuote, allowEmpty, allowParas, hasComment
 		parse bool // need general parse or not
 		check func(*httpRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
@@ -1230,7 +1230,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 
 var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderTable = [16]struct {
-		fdesc
+		fdesc // allowQuote, allowEmpty, allowParas, hasComment
 		check func(*httpRequest_, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
 		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},

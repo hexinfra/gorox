@@ -45,7 +45,7 @@ func (h *blogHandlet) onCreate(name string, stage *Stage, app *App) {
 	r := simple.New()
 
 	r.GET("/", h.index)
-	r.Route("/foo", h.foo)
+	r.Link("/foo", h.foo)
 
 	h.SetRouter(h, r)
 }

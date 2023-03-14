@@ -32,7 +32,7 @@ func New() *simpleRouter {
 	return r
 }
 
-func (r *simpleRouter) Route(path string, handle Handle) {
+func (r *simpleRouter) Link(path string, handle Handle) {
 	r.routes[path] = handle
 }
 
@@ -66,7 +66,7 @@ func (r *simpleRouter) FindHandle(req Request) Handle {
 		return nil
 	}
 }
-func (r *simpleRouter) CreateName(req Request) string {
+func (r *simpleRouter) HandleName(req Request) string {
 	method := req.UnsafeMethod()
 	path := req.UnsafePath() // always starts with '/'
 	name := req.UnsafeMake(len(method) + len(path))

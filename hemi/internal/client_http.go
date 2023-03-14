@@ -433,13 +433,14 @@ type hResponse_ struct { // incoming. needs parsing
 type hResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
+	hasAllow    bool     // has allow header?
 	age         int32    // age seconds
-	indexes     struct { // indexes of some selected headers, for fast accessing
-		server       uint8   // server header ->r.input
-		lastModified uint8   // last-modified header ->r.input
-		expires      uint8   // expires header ->r.input
+	indexes     struct { // indexes of some selected singleton headers, for fast accessing
 		etag         uint8   // etag header ->r.input
+		expires      uint8   // expires header ->r.input
+		lastModified uint8   // last-modified header ->r.input
 		location     uint8   // location header ->r.input
+		server       uint8   // server header ->r.input
 		_            [3]byte // padding
 	}
 	zones struct { // zones of some selected headers, for fast accessing
@@ -449,8 +450,8 @@ type hResponse0 struct { // for fast reset, entirely
 		_      [2]byte // padding
 	}
 	unixTimes struct { // parsed unix times
-		lastModified int64 // parsed unix time of last-modified
 		expires      int64 // parsed unix time of expires
+		lastModified int64 // parsed unix time of last-modified
 	}
 	cacheControl struct { // the cache-control info
 		noCache         bool  // no-cache directive in cache-control
@@ -555,7 +556,7 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for response singleton headers
 	hResponseSingletonHeaderTable = [12]struct {
-		fdesc
+		fdesc      // allowQuote, allowEmpty, allowParas, hasComment
 		parse bool // need general parse or not
 		check func(*hResponse_, *pair, uint8) bool
 	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
@@ -628,7 +629,7 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 
 var ( // perfect hash table for response important headers
 	hResponseImportantHeaderTable = [17]struct {
-		fdesc
+		fdesc // allowQuote, allowEmpty, allowParas, hasComment
 		check func(*hResponse_, uint8, uint8) bool
 	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
 		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
@@ -669,6 +670,7 @@ func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-
 	return true
 }
 func (r *hResponse_) checkAllow(from uint8, edge uint8) bool { // Allow = #method
+	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
 		r.zones.allow.from = from
 	}

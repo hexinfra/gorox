@@ -424,7 +424,7 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 		if handle := h.router.FindHandle(req); handle != nil {
 			handle(req, resp)
 			found = true
-		} else if name := h.router.CreateName(req); name != "" {
+		} else if name := h.router.HandleName(req); name != "" {
 			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
 				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
 				found = true
@@ -449,8 +449,8 @@ type Handle func(req Request, resp Response)
 
 // Router performs request routing in handlets.
 type Router interface {
-	FindHandle(req Request) Handle
-	CreateName(req Request) string
+	FindHandle(req Request) Handle // firstly
+	HandleName(req Request) string // secondly
 }
 
 // Reviser component revises incoming requests and outgoing responses.

@@ -474,16 +474,33 @@ type httpRequest0 struct { // for fast reset, entirely
 	boundary        text     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // raw cookies ->r.input|r.array. temporarily used when checking cookie headers, set after cookie is parsed
-	ifMatches       zone     // the zone of if-match in r.pairs. may be not continuous
-	ifNoneMatches   zone     // the zone of if-none-match in r.pairs. may be not continuous
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
-	_               [2]byte  // padding
 	nRanges         int8     // num of ranges
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
 	pathInfoGot     bool     // is r.pathInfo got?
-	unixTimes       struct { // parsed unixTimes
+	_               [6]byte  // padding
+	indexes         struct { // indexes of some selected headers, for fast accessing
+		authorization      uint8 // authorization header ->r.input
+		host               uint8 // host header ->r.input
+		userAgent          uint8 // user-agent header ->r.input
+		ifRange            uint8 // if-range header ->r.input
+		ifModifiedSince    uint8 // if-modified-since header ->r.input
+		ifUnmodifiedSince  uint8 // if-unmodified-since header ->r.input
+		proxyAuthorization uint8 // proxy-authorization header ->r.input
+		_                  byte  // padding
+	}
+	zones struct { // zones of some selected headers, for fast accessing
+		acceptLanguages zone
+		expect          zone
+		forwarded       zone
+		ifMatch         zone // the zone of if-match in r.pairs. may be not continuous
+		ifNoneMatch     zone // the zone of if-none-match in r.pairs. may be not continuous
+		xForwardedFor   zone
+		_               [4]byte // padding
+	}
+	unixTimes struct { // parsed unixTimes
 		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
 		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
@@ -496,18 +513,6 @@ type httpRequest0 struct { // for fast reset, entirely
 		maxAge       int32 // max-age directive in cache-control
 		maxStale     int32 // max-stale directive in cache-control
 		minFresh     int32 // min-fresh directive in cache-control
-	}
-	indexes struct { // indexes of some selected headers, for fast accessing
-		host              uint8 // host header ->r.input
-		userAgent         uint8 // user-agent header ->r.input
-		ifRange           uint8 // if-range header ->r.input
-		ifModifiedSince   uint8 // if-modified-since header ->r.input
-		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
-	}
-	zones struct { // zones of some selected headers, for fast accessing
-		acceptLanguages zone
-		forwarded       zone
-		xForwardedFor   zone
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
 	forms        zone      // decoded forms -> r.array
@@ -754,7 +759,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 }
 
 func (r *httpRequest_) examineHead() bool {
-	headers := r.headers
+	headers := r.headers // make a copy. r.headers is changed when applying headers
 	for i := headers.from; i < headers.edge; i++ {
 		if !r.applyHeader(&r.pairs[i], i) {
 			// r.headResult is set.
@@ -774,14 +779,14 @@ func (r *httpRequest_) examineHead() bool {
 			}
 		}
 	}
-	r.basicsEdge = uint8(len(r.pairs))
+	r.basicsEdge = uint8(len(r.pairs)) // including prime queries, headers, and cookies
 	if IsDebug(2) {
 		for i := 0; i < len(r.pairs); i++ {
 			pair := &r.pairs[i]
-			place := r._placeOf(pair)
-			pair.show(place)
+			pair.show(r._placeOf(pair))
 		}
 	}
+
 	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
 	// apply a request to the target resource until the entire request
 	// header section is received, since later header fields might include
@@ -916,10 +921,6 @@ func (r *httpRequest_) examineHead() bool {
 						break
 					}
 				}
-				if typeParas.edge == vType.from { // TODO: if content-type is checked in r.checkContentType, we can remove this check
-					r.headResult, r.failReason = StatusBadRequest, "content-type can't be an empty value"
-					return false
-				}
 				contentType = r.input[vType.from:typeParas.edge]
 				typeParas.edge = vType.edge
 			}
@@ -1007,7 +1008,13 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // A
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
-	return true
+	if r.indexes.authorization == 0 {
+		r.indexes.authorization = index
+		return true
+	} else {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization"
+		return false
+	}
 }
 func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
 	if header.value.isEmpty() {
@@ -1070,7 +1077,13 @@ func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
-	return true
+	if r.indexes.proxyAuthorization == 0 {
+		r.indexes.proxyAuthorization = index
+		return true
+	} else {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization"
+		return false
+	}
 }
 func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
@@ -1260,6 +1273,10 @@ func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache
 func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.versionCode >= Version1_1 {
+		if r.zones.expect.isEmpty() {
+			r.zones.expect.from = from
+		}
+		r.zones.expect.edge = edge
 		for i := from; i < edge; i++ {
 			value := r.pairs[i].valueAt(r.input)
 			bytesToLower(value) // the Expect field-value is case-insensitive.
@@ -1293,10 +1310,10 @@ func (r *httpRequest_) checkForwarded(from uint8, edge uint8) bool { // Forwarde
 	return true
 }
 func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifMatches, &r.ifMatch)
+	return r._checkMatch(from, edge, &r.zones.ifMatch, &r.ifMatch)
 }
 func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.ifNoneMatches, &r.ifNoneMatch)
+	return r._checkMatch(from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
 func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
@@ -1355,11 +1372,11 @@ func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool { // X-Fo
 	r.zones.xForwardedFor.edge = edge
 	return true
 }
-func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {
-	if matches.isEmpty() {
-		matches.from = from
+func (r *httpRequest_) _checkMatch(from uint8, edge uint8, zMatch *zone, match *int8) bool {
+	if zMatch.isEmpty() {
+		zMatch.from = from
 	}
-	matches.edge = edge
+	zMatch.edge = edge
 	for i := from; i < edge; i++ {
 		header := &r.pairs[i]
 		value := header.valueAt(r.input)
@@ -1655,7 +1672,7 @@ func (r *httpRequest_) _testIfMatch(etag []byte) (pass bool) {
 	if r.ifMatch == -1 { // *
 		return true
 	}
-	for i := r.ifMatches.from; i < r.ifMatches.edge; i++ {
+	for i := r.zones.ifMatch.from; i < r.zones.ifMatch.edge; i++ {
 		header := &r.pairs[i]
 		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
@@ -1672,7 +1689,7 @@ func (r *httpRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	if r.ifNoneMatch == -1 { // *
 		return false
 	}
-	for i := r.ifNoneMatches.from; i < r.ifNoneMatches.edge; i++ {
+	for i := r.zones.ifNoneMatch.from; i < r.zones.ifNoneMatch.edge; i++ {
 		header := &r.pairs[i]
 		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
 			continue

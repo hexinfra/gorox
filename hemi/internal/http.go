@@ -145,27 +145,26 @@ type httpIn0 struct { // for fast reset, entirely
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers 5:not-defined 6:not-defined 7:not-defined
 	dateTime         int64   // parsed unix time of date
-	headers          zone    // raw headers ->r.pairs
-	_                [2]byte // padding
-	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
-	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
-	hasRevisers      bool    // are there any revisers hooked on this incoming message?
-	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	arrayKind        int8    // kind of current r.array. see arrayKindXXX
+	receiving        int8    // currently receiving. see httpSectionXXX
+	headers          zone    // raw headers ->r.pairs
+	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
 	upgradeUDPTun    bool    // upgrade: connect-udp?
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	receiving        int8    // currently receiving. see httpSectionXXX
+	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
+	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
 	iContentLength   uint8   // index of content-length header in r.pairs
 	iContentLocation uint8   // index of content-location header in r.pairs
 	iContentRange    uint8   // index of content-range header in r.pairs
 	iContentType     uint8   // index of content-type header in r.pairs
 	iDate            uint8   // index of date header in r.pairs
-	zConnection      zone    // connection options ->r.pairs. may be not continuous
-	zContentLanguage zone    // ...
-	zTrailer         zone    // ...
-	zVia             zone    // ...
+	zConnection      zone    // zone of connection headers in r.pairs. may not be continuous
+	zContentLanguage zone    // zone of content-language headers in r.pairs. may not be continuous
+	zTrailer         zone    // zone of trailer headers in r.pairs. may not be continuous
+	zVia             zone    // zone of via headers in r.pairs. may not be continuous
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
 	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
@@ -339,7 +338,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
 	}
-	return r.pairs[r.iContentType].valueAt(r.input)
+	return r.pairs[r.iContentType].dataAt(r.input)
 }
 
 func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and paras
@@ -646,7 +645,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	return false
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
-	if r.iContentLocation == 0 && !header.dataEmpty() {
+	if r.iContentLocation == 0 && header.value.notEmpty() {
 		r.iContentLocation = index
 		return true
 	}
@@ -655,7 +654,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Cont
 }
 func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
 	// TODO
-	if r.iContentRange == 0 && !header.dataEmpty() {
+	if r.iContentRange == 0 && header.value.notEmpty() {
 		r.iContentRange = index
 		return true
 	}

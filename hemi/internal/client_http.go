@@ -433,7 +433,22 @@ type hResponse_ struct { // incoming. needs parsing
 type hResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
-	unixTimes   struct { // parsed unix times
+	age         int32    // age seconds
+	indexes     struct { // indexes of some selected headers, for fast accessing
+		server       uint8   // server header ->r.input
+		lastModified uint8   // last-modified header ->r.input
+		expires      uint8   // expires header ->r.input
+		etag         uint8   // etag header ->r.input
+		location     uint8   // location header ->r.input
+		_            [3]byte // padding
+	}
+	zones struct { // zones of some selected headers, for fast accessing
+		allow  zone
+		altSvc zone
+		vary   zone
+		_      [2]byte // padding
+	}
+	unixTimes struct { // parsed unix times
 		lastModified int64 // parsed unix time of last-modified
 		expires      int64 // parsed unix time of expires
 	}
@@ -448,18 +463,6 @@ type hResponse0 struct { // for fast reset, entirely
 		proxyRevalidate bool  // proxy-revalidate directive in cache-control
 		maxAge          int32 // max-age directive in cache-control
 		sMaxage         int32 // s-maxage directive in cache-control
-	}
-	indexes struct { // indexes of some selected headers, for fast accessing
-		server       uint8 // server header ->r.input
-		lastModified uint8 // last-modified header ->r.input
-		expires      uint8 // expires header ->r.input
-		etag         uint8 // etag header ->r.input
-		location     uint8 // location header ->r.input
-	}
-	zones struct { // zones of some selected headers, for fast accessing
-		allow  zone
-		altSvc zone
-		vary   zone
 	}
 }
 
@@ -481,13 +484,21 @@ func (r *hResponse_) onEnd() { // for zeros
 func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) examineHead() bool {
-	headers := r.headers
+	headers := r.headers // make a copy. r.headers is changed when applying headers
 	for i := headers.from; i < headers.edge; i++ {
 		if !r.applyHeader(&r.pairs[i], i) {
 			// r.headResult is set.
 			return false
 		}
 	}
+	r.basicsEdge = uint8(len(r.pairs)) // including prime headers
+	if IsDebug(2) {
+		for i := 0; i < len(r.pairs); i++ {
+			pair := &r.pairs[i]
+			pair.show(r._placeOf(pair))
+		}
+	}
+
 	// Basic checks against versions
 	switch r.versionCode {
 	case Version1_0: // we don't support HTTP/1.0 in client side
@@ -565,6 +576,10 @@ var ( // perfect hash table for response singleton headers
 )
 
 func (r *hResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
+	if header.value.isEmpty() {
+		r.headResult, r.failReason = StatusBadRequest, "empty age"
+		return false
+	}
 	// TODO
 	return true
 }

@@ -504,6 +504,11 @@ type httpRequest0 struct { // for fast reset, entirely
 		ifModifiedSince   uint8 // if-modified-since header ->r.input
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
+	ranges struct { // ranges of some selected headers, for fast accessing
+		acceptLanguages zone
+		forwarded       zone
+		xForwardedFor   zone
+	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
 	forms        zone      // decoded forms -> r.array
 	formReceived bool      // if content is a form, is it received?
@@ -980,7 +985,7 @@ var ( // perfect hash table for request singleton headers
 		fdesc
 		parse bool // need general parse or not
 		check func(*httpRequest_, *pair, uint8) bool
-	}{
+	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
 		0:  {fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, false, (*httpRequest_).checkIfUnmodifiedSince},
 		1:  {fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, false, (*httpRequest_).checkUserAgent},
 		2:  {fdesc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*httpRequest_).checkContentLength},
@@ -1211,41 +1216,30 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 }
 
 var ( // perfect hash table for request important headers
-	httpRequestImportantHeaderTable = [18]struct {
+	httpRequestImportantHeaderTable = [16]struct {
 		fdesc
 		check func(*httpRequest_, uint8, uint8) bool
-	}{
-		0:  {fdesc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
-		1:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
-		2:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
-		3:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
-		4:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		5:  {fdesc{hashAcceptCharset, false, false, true, false, bytesAcceptCharset}, (*httpRequest_).checkAcceptCharset},
-		6:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
-		7:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
-		8:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
-		9:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		10: {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
-		11: {fdesc{hashAccept, false, false, true, false, bytesAccept}, (*httpRequest_).checkAccept},
-		12: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
-		13: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
-		14: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
-		15: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
-		16: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
-		17: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
+	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
+		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
+		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
+		2:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
+		3:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		4:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
+		5:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
+		6:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		7:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
+		8:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
+		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
+		10: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
+		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
+		12: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
+		13: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
+		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
+		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
 	}
-	httpRequestImportantHeaderFind = func(hash uint16) int { return (248874880 / int(hash)) % 18 }
+	httpRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )
 
-func (r *httpRequest_) checkAccept(from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
-	// media-range    = ( "*/*" / ( type "/" "*" ) / ( type "/" subtype ) ) parameters
-	// TODO
-	return true
-}
-func (r *httpRequest_) checkAcceptCharset(from uint8, edge uint8) bool { // Accept-Charset = #( ( token / "*" ) [ weight ] )
-	// TODO
-	return true
-}
 func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
@@ -2897,7 +2891,7 @@ var ( // perfect hash table for response critical headers
 		name []byte
 		fAdd func(*httpResponse_, []byte) (ok bool)
 		fDel func(*httpResponse_) (deleted bool)
-	}{
+	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
 		0: {hashServer, bytesServer, nil, nil},       // forbidden
 		1: {hashSetCookie, bytesSetCookie, nil, nil}, // forbidden
 		2: {hashUpgrade, bytesUpgrade, nil, nil},     // forbidden

@@ -340,7 +340,7 @@ var ( // perfect hash table for request critical headers
 		name []byte
 		fAdd func(*hRequest_, []byte) (ok bool)
 		fDel func(*hRequest_) (deleted bool)
-	}{
+	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
 		0:  {hashContentLength, bytesContentLength, nil, nil}, // forbidden
 		1:  {hashConnection, bytesConnection, nil, nil},       // forbidden
 		2:  {hashIfRange, bytesIfRange, (*hRequest_).appendIfRange, (*hRequest_).deleteIfRange},
@@ -453,8 +453,12 @@ type hResponse0 struct { // for fast reset, entirely
 		lastModified uint8 // last-modified header ->r.input
 		expires      uint8 // expires header ->r.input
 		etag         uint8 // etag header ->r.input
-		acceptRanges uint8 // accept-ranges header ->r.input
 		location     uint8 // location header ->r.input
+	}
+	ranges struct { // ranges of some selected headers, for fast accessing
+		allow  zone
+		altSvc zone
+		vary   zone
 	}
 }
 
@@ -542,7 +546,7 @@ var ( // perfect hash table for response singleton headers
 		fdesc
 		parse bool // need general parse or not
 		check func(*hResponse_, *pair, uint8) bool
-	}{
+	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
 		0:  {fdesc{hashDate, false, false, false, false, bytesDate}, false, (*hResponse_).checkDate},
 		1:  {fdesc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*hResponse_).checkContentLength},
 		2:  {fdesc{hashAge, false, false, false, false, bytesAge}, false, (*hResponse_).checkAge},
@@ -578,6 +582,7 @@ func (r *hResponse_) checkLocation(header *pair, index uint8) bool { // Location
 	return true
 }
 func (r *hResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
+	// TODO
 	return true
 }
 func (r *hResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
@@ -609,7 +614,7 @@ var ( // perfect hash table for response important headers
 	hResponseImportantHeaderTable = [17]struct {
 		fdesc
 		check func(*hResponse_, uint8, uint8) bool
-	}{
+	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
 		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
 		1:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*hResponse_).checkVia},
 		2:  {fdesc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*hResponse_).checkWWWAuthenticate},
@@ -690,6 +695,10 @@ func (r *hResponse_) checkVary(from uint8, edge uint8) bool { // Vary = #( "*" /
 	return true
 }
 func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
+	// TODO
+	return true
+}
+func (r *hResponse_) _checkChallenge(from uint8, edge uint8) bool {
 	// TODO
 	return true
 }

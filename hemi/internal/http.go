@@ -146,24 +146,28 @@ type httpIn0 struct { // for fast reset, entirely
 	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers 5:not-defined 6:not-defined 7:not-defined
 	dateTime         int64   // parsed unix time of date
 	headers          zone    // raw headers ->r.pairs
-	options          zone    // connection options ->r.pairs. may be not continuous
+	_                [2]byte // padding
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
 	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	upgradeSocket    bool    // upgrade: websocket?
+	upgradeUDPTun    bool    // upgrade: connect-udp?
+	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	receiving        int8    // currently receiving. see httpSectionXXX
 	iContentLength   uint8   // index of content-length header in r.pairs
 	iContentLocation uint8   // index of content-location header in r.pairs
 	iContentRange    uint8   // index of content-range header in r.pairs
 	iContentType     uint8   // index of content-type header in r.pairs
 	iDate            uint8   // index of date header in r.pairs
-	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	upgradeSocket    bool    // upgrade: websocket?
-	upgradeUDPTun    bool    // upgrade: connect-udp?
+	rConnection      zone    // connection options ->r.pairs. may be not continuous
+	rContentLanguage zone    // ...
+	rTrailer         zone    // ...
+	rVia             zone    // ...
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
-	receiving        int8    // currently receiving. see httpSectionXXX
 	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
@@ -722,10 +726,10 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
-	if r.options.isEmpty() {
-		r.options.from = from
+	if r.rConnection.isEmpty() {
+		r.rConnection.from = from
 	}
-	r.options.edge = edge
+	r.rConnection.edge = edge
 	// connection-option = token
 	for i := from; i < edge; i++ {
 		value := r.pairs[i].valueAt(r.input)
@@ -776,12 +780,18 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 	return true
 }
 func (r *httpIn_) checkContentLanguage(from uint8, edge uint8) bool { // Content-Language = #language-tag
-	// TODO
+	if r.rContentLanguage.isEmpty() {
+		r.rContentLanguage.from = from
+	}
+	r.rContentLanguage.edge = edge
 	return true
 }
 func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #field-name
 	// field-name = token
-	// TODO
+	if r.rTrailer.isEmpty() {
+		r.rTrailer.from = from
+	}
+	r.rTrailer.edge = edge
 	return true
 }
 func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -806,7 +816,10 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 	return true
 }
 func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
-	// TODO
+	if r.rVia.isEmpty() {
+		r.rVia.from = from
+	}
+	r.rVia.edge = edge
 	return true
 }
 
@@ -1341,7 +1354,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 	}
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
-	for i := r.options.from; i < r.options.edge; i++ {
+	for i := r.rConnection.from; i < r.rConnection.edge; i++ {
 		prime := &r.pairs[i]
 		// Skip fields that are not "connection: xxx"
 		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {

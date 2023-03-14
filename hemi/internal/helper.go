@@ -183,7 +183,7 @@ func (p *pair) show(place []byte) {
 		flags = append(flags, "quoted")
 	}
 	if len(flags) == 0 {
-		flags = append(flags, "none")
+		flags = append(flags, "nothing")
 	}
 	var plase string
 	switch p.place {

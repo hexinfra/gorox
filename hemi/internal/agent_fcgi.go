@@ -897,7 +897,7 @@ var ( // perfect hash table for response singleton headers
 		fdesc
 		parse bool // need general parse or not
 		check func(*fcgiResponse, *pair, int) bool
-	}{
+	}{ // content-length content-type location status
 		0: {fdesc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, false, (*fcgiResponse).checkStatus},
 		1: {fdesc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*fcgiResponse).checkContentLength},
 		2: {fdesc{hashContentType, false, false, true, false, bytesContentType}, true, (*fcgiResponse).checkContentType},
@@ -931,7 +931,7 @@ var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderTable = [3]struct {
 		fdesc
 		check func(*fcgiResponse, int, int) bool
-	}{
+	}{ // connection transfer-encoding upgrade
 		0: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
 		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
 		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},

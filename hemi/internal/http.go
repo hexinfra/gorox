@@ -161,6 +161,7 @@ type httpIn0 struct { // for fast reset, entirely
 	iContentRange    uint8   // index of content-range header in r.pairs
 	iContentType     uint8   // index of content-type header in r.pairs
 	iDate            uint8   // index of date header in r.pairs
+	_                [2]byte // padding
 	zConnection      zone    // zone of connection headers in r.pairs. may not be continuous
 	zContentLanguage zone    // zone of content-language headers in r.pairs. may not be continuous
 	zTrailer         zone    // zone of trailer headers in r.pairs. may not be continuous

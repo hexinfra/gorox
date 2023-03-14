@@ -574,12 +574,14 @@ type fcgiResponse struct { // incoming. needs parsing
 	stockRecords [8192]byte // for r.records
 	stockInput   [_2K]byte  // for r.input
 	stockHeaders [64]pair   // for r.headers
+	stockParas   [16]para   // for r.paras
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
 	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	headers        []pair        // fcgi response headers
+	paras          []para        // hold header parameters. [<r.stockParas>/max]
 	recvTimeout    time.Duration // timeout to recv the whole response content
 	maxContentSize int64         // max content size allowed for current response
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
@@ -597,11 +599,11 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	recordsEdge     int32    // edge position of current records
 	stdoutFrom      int32    // if stdout's payload is too large to be appended to r.input, use this to note current from position
 	stdoutEdge      int32    // see above, to note current edge position
-	inputEdge       int32    // edge position of r.input
-	head            text     // for debugging
-	imme            text     // immediate bytes in r.input that belongs to content
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
+	head            text     // for debugging
+	imme            text     // immediate bytes in r.input that belongs to content
+	inputEdge       int32    // edge position of r.input
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
@@ -617,6 +619,26 @@ type fcgiResponse0 struct { // for fast reset, entirely
 		_            byte // padding
 	}
 	zones struct { // zones of some selected headers, for fast accessing
+		allow           zone
+		contentLanguage zone
+		_               [4]byte // padding
+	}
+	unixTimes struct { // parsed unix times
+		date         int64 // parsed unix time of date
+		expires      int64 // parsed unix time of expires
+		lastModified int64 // parsed unix time of last-modified
+	}
+	cacheControl struct { // the cache-control info
+		noCache         bool  // no-cache directive in cache-control
+		noStore         bool  // no-store directive in cache-control
+		noTransform     bool  // no-transform directive in cache-control
+		public          bool  // public directive in cache-control
+		private         bool  // private directive in cache-control
+		mustRevalidate  bool  // must-revalidate directive in cache-control
+		mustUnderstand  bool  // must-understand directive in cache-control
+		proxyRevalidate bool  // proxy-revalidate directive in cache-control
+		maxAge          int32 // max-age directive in cache-control
+		sMaxage         int32 // s-maxage directive in cache-control
 	}
 }
 
@@ -624,6 +646,7 @@ func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
 	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
+	r.paras = r.stockParas[0:0:cap(r.stockParas)]       // use append()
 	r.recvTimeout = r.stream.agent.recvTimeout
 	r.maxContentSize = r.stream.agent.maxContentSize
 	r.headResult = StatusOK
@@ -1065,6 +1088,8 @@ func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi
 func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
+
+func (r *fcgiResponse) examineTrailers() bool { return true } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
 

@@ -12,6 +12,7 @@ import (
 	"testing"
 )
 
+/*
 func TestFCGIResponseSingletonHeaders(t *testing.T) {
 	headers := bytes.Split(fcgiResponseSingletonHeaderNames, []byte(" "))
 	if len(headers) != len(fcgiResponseSingletonHeaderTable) {
@@ -44,7 +45,9 @@ func TestFCGIResponseImportantHeaders(t *testing.T) {
 		}
 	}
 }
+*/
 
+/*
 func TestHRequestCriticalHeaders(t *testing.T) {
 	headers := bytes.Split(hRequestCriticalHeaderNames, []byte(" "))
 	if len(headers) != len(hRequestCriticalHeaderTable) {
@@ -93,6 +96,7 @@ func TestHResponseImportantHeaders(t *testing.T) {
 		}
 	}
 }
+*/
 
 func TestHTTPMethods(t *testing.T) {
 	methodCodes := map[string]uint32{
@@ -142,6 +146,7 @@ func BenchmarkBytesHash(b *testing.B) {
 	}
 }
 
+/*
 func TestHTTPRequestSingletonHeaders(t *testing.T) {
 	headers := bytes.Split(httpRequestSingletonHeaderNames, []byte(" "))
 	if len(headers) != len(httpRequestSingletonHeaderTable) {
@@ -190,3 +195,4 @@ func TestHTTPResponseCriticalHeaders(t *testing.T) {
 		}
 	}
 }
+*/

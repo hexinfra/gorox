@@ -431,8 +431,9 @@ type hResponse_ struct { // incoming. needs parsing
 	hResponse0 // all values must be zero by default in this struct!
 }
 type hResponse0 struct { // for fast reset, entirely
-	status    int16    // 200, 302, 404, ...
-	unixTimes struct { // parsed unix times
+	status      int16    // 200, 302, 404, ...
+	acceptBytes bool     // accept-ranges: bytes?
+	unixTimes   struct { // parsed unix times
 		lastModified int64 // parsed unix time of last-modified
 		expires      int64 // parsed unix time of expires
 	}
@@ -455,7 +456,7 @@ type hResponse0 struct { // for fast reset, entirely
 		etag         uint8 // etag header ->r.input
 		location     uint8 // location header ->r.input
 	}
-	ranges struct { // ranges of some selected headers, for fast accessing
+	zones struct { // zones of some selected headers, for fast accessing
 		allow  zone
 		altSvc zone
 		vary   zone
@@ -641,11 +642,22 @@ func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
 	}
-	// TODO
+	for i := from; i < edge; i++ {
+		value := r.pairs[i].valueAt(r.input)
+		bytesToLower(value)
+		if bytes.Equal(value, bytesBytes) {
+			r.acceptBytes = true
+		} else {
+			// Ignore
+		}
+	}
 	return true
 }
 func (r *hResponse_) checkAllow(from uint8, edge uint8) bool { // Allow = #method
-	// TODO
+	if r.zones.allow.isEmpty() {
+		r.zones.allow.from = from
+	}
+	r.zones.allow.edge = edge
 	return true
 }
 func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
@@ -653,7 +665,10 @@ func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool { // Alt-Svc = cle
 		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
 		return false
 	}
-	// TODO
+	if r.zones.altSvc.isEmpty() {
+		r.zones.altSvc.from = from
+	}
+	r.zones.altSvc.edge = edge
 	return true
 }
 func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
@@ -691,7 +706,10 @@ func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #p
 	return false
 }
 func (r *hResponse_) checkVary(from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
-	// TODO
+	if r.zones.vary.isEmpty() {
+		r.zones.vary.from = from
+	}
+	r.zones.vary.edge = edge
 	return true
 }
 func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool { // WWW-Authenticate = #challenge

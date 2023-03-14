@@ -162,10 +162,10 @@ type httpIn0 struct { // for fast reset, entirely
 	iContentRange    uint8   // index of content-range header in r.pairs
 	iContentType     uint8   // index of content-type header in r.pairs
 	iDate            uint8   // index of date header in r.pairs
-	rConnection      zone    // connection options ->r.pairs. may be not continuous
-	rContentLanguage zone    // ...
-	rTrailer         zone    // ...
-	rVia             zone    // ...
+	zConnection      zone    // connection options ->r.pairs. may be not continuous
+	zContentLanguage zone    // ...
+	zTrailer         zone    // ...
+	zVia             zone    // ...
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
 	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
@@ -646,7 +646,6 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	return false
 }
 func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
-	// TODO
 	if r.iContentLocation == 0 && !header.dataEmpty() {
 		r.iContentLocation = index
 		return true
@@ -726,10 +725,10 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
-	if r.rConnection.isEmpty() {
-		r.rConnection.from = from
+	if r.zConnection.isEmpty() {
+		r.zConnection.from = from
 	}
-	r.rConnection.edge = edge
+	r.zConnection.edge = edge
 	// connection-option = token
 	for i := from; i < edge; i++ {
 		value := r.pairs[i].valueAt(r.input)
@@ -780,18 +779,18 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 	return true
 }
 func (r *httpIn_) checkContentLanguage(from uint8, edge uint8) bool { // Content-Language = #language-tag
-	if r.rContentLanguage.isEmpty() {
-		r.rContentLanguage.from = from
+	if r.zContentLanguage.isEmpty() {
+		r.zContentLanguage.from = from
 	}
-	r.rContentLanguage.edge = edge
+	r.zContentLanguage.edge = edge
 	return true
 }
 func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #field-name
 	// field-name = token
-	if r.rTrailer.isEmpty() {
-		r.rTrailer.from = from
+	if r.zTrailer.isEmpty() {
+		r.zTrailer.from = from
 	}
-	r.rTrailer.edge = edge
+	r.zTrailer.edge = edge
 	return true
 }
 func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -816,10 +815,10 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 	return true
 }
 func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
-	if r.rVia.isEmpty() {
-		r.rVia.from = from
+	if r.zVia.isEmpty() {
+		r.zVia.from = from
 	}
-	r.rVia.edge = edge
+	r.zVia.edge = edge
 	return true
 }
 
@@ -1354,7 +1353,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 	}
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
-	for i := r.rConnection.from; i < r.rConnection.edge; i++ {
+	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
 		prime := &r.pairs[i]
 		// Skip fields that are not "connection: xxx"
 		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {

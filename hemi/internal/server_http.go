@@ -504,7 +504,7 @@ type httpRequest0 struct { // for fast reset, entirely
 		ifModifiedSince   uint8 // if-modified-since header ->r.input
 		ifUnmodifiedSince uint8 // if-unmodified-since header ->r.input
 	}
-	ranges struct { // ranges of some selected headers, for fast accessing
+	zones struct { // zones of some selected headers, for fast accessing
 		acceptLanguages zone
 		forwarded       zone
 		xForwardedFor   zone
@@ -1244,7 +1244,10 @@ func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Acc
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
-	// TODO
+	if r.zones.acceptLanguages.isEmpty() {
+		r.zones.acceptLanguages.from = from
+	}
+	r.zones.acceptLanguages.edge = edge
 	return true
 }
 func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
@@ -1283,7 +1286,10 @@ func (r *httpRequest_) checkForwarded(from uint8, edge uint8) bool { // Forwarde
 	// forwarded-element = [ forwarded-pair ] *( ";" [ forwarded-pair ] )
 	// forwarded-pair    = token "=" value
 	// value             = token / quoted-string
-	// TODO
+	if r.zones.forwarded.isEmpty() {
+		r.zones.forwarded.from = from
+	}
+	r.zones.forwarded.edge = edge
 	return true
 }
 func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
@@ -1339,7 +1345,14 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 	return true
 }
 func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
-	// TODO
+	if from == edge {
+		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
+		return false
+	}
+	if r.zones.xForwardedFor.isEmpty() {
+		r.zones.xForwardedFor.from = from
+	}
+	r.zones.xForwardedFor.edge = edge
 	return true
 }
 func (r *httpRequest_) _checkMatch(from uint8, edge uint8, matches *zone, match *int8) bool {

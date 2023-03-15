@@ -160,7 +160,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 	defer putFCGIStream(fStream)
 
 	fReq := &fStream.request
-	if !fReq.copyHead(req, h.scriptFilename) {
+	if !fReq.copyHeadFrom(req, h.scriptFilename) {
 		fStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -218,7 +218,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	if !resp.copyHead(fResp) {
+	if !resp.copyHeadFrom(fResp) {
 		fStream.markBroken()
 		return
 	}
@@ -352,7 +352,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) copyHead(req Request, scriptFilename []byte) bool {
+func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	var value []byte
 	if len(scriptFilename) == 0 {
 		value = req.unsafeAbsPath()
@@ -573,15 +573,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// States (buffers)
 	stockRecords [8192]byte // for r.records
 	stockInput   [_2K]byte  // for r.input
-	stockHeaders [64]pair   // for r.headers
 	stockParas   [16]para   // for r.paras
+	stockHeaders [64]pair   // for r.headers
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
 	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	headers        []pair        // fcgi response headers
 	paras          []para        // hold header parameters. [<r.stockParas>/max]
+	headers        []pair        // fcgi response headers
 	recvTimeout    time.Duration // timeout to recv the whole response content
 	maxContentSize int64         // max content size allowed for current response
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
@@ -645,8 +645,8 @@ type fcgiResponse0 struct { // for fast reset, entirely
 func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
-	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
 	r.paras = r.stockParas[0:0:cap(r.stockParas)]       // use append()
+	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
 	r.recvTimeout = r.stream.agent.recvTimeout
 	r.maxContentSize = r.stream.agent.maxContentSize
 	r.headResult = StatusOK
@@ -664,6 +664,10 @@ func (r *fcgiResponse) onEnd() {
 	if cap(r.input) != cap(r.stockInput) {
 		PutNK(r.input)
 		r.input = nil
+	}
+	if cap(r.paras) != cap(r.stockParas) {
+		putParas(r.paras)
+		r.paras = nil
 	}
 	if cap(r.headers) != cap(r.stockHeaders) {
 		putPairs(r.headers)
@@ -995,7 +999,7 @@ func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
 }
 
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by copyHead(). excluding sub headers
+func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
 		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() {
 			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
@@ -1093,7 +1097,7 @@ func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []b
 	return true
 }
 
-func (r *fcgiResponse) examineTrailers() bool { return true } // fcgi doesn't support trailers
+func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
 

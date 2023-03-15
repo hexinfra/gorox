@@ -94,7 +94,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	// TODO: use stream2.ForwardProxy() or stream2.ReverseProxy()
 
 	req2 := stream2.Request()
-	if !req2.copyHead(req, h.hostname, h.colonPort, h.viaName) {
+	if !req2.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName) {
 		stream2.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -103,9 +103,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasTrailers := req.HasTrailers()
 		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err2 == nil && hasTrailers {
-			if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-				return req2.addTrailer(name, value)
-			}) {
+			if !req2.copyTailFrom(req) {
 				stream2.markBroken()
 				err2 = httpOutTrailerFailed
 			} else if err2 = req2.endUnsized(); err2 != nil {
@@ -166,7 +164,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.copyHead(resp2) {
+	if !resp.copyHeadFrom(resp2) {
 		stream2.markBroken()
 		return
 	}
@@ -177,12 +175,8 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				stream2.markBroken()
 			}
 			return
-		} else if hasTrailers2 {
-			if !resp2.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-				return resp.addTrailer(name, value)
-			}) {
-				return
-			}
+		} else if hasTrailers2 && !resp.copyTailFrom(resp2) {
+			return
 		}
 	} else if err := resp.pass(resp2); err != nil {
 		stream2.markBroken()

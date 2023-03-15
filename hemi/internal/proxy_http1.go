@@ -91,7 +91,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	// TODO: use stream1.ForwardProxy() or stream1.ReverseProxy()
 
 	req1 := stream1.Request()
-	if !req1.copyHead(req, h.hostname, h.colonPort, h.viaName) {
+	if !req1.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName) {
 		stream1.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -100,9 +100,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		hasTrailers := req.HasTrailers()
 		err1 = req1.post(content, hasTrailers) // nil (no content), []byte, TempFile
 		if err1 == nil && hasTrailers {
-			if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-				return req1.addTrailer(name, value)
-			}) {
+			if !req1.copyTailFrom(req) {
 				stream1.markBroken()
 				err1 = httpOutTrailerFailed
 			} else if err1 = req1.endUnsized(); err1 != nil {
@@ -171,7 +169,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.copyHead(resp1) {
+	if !resp.copyHeadFrom(resp1) {
 		stream1.markBroken()
 		return
 	}
@@ -182,12 +180,8 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				stream1.markBroken()
 			}
 			return
-		} else if hasTrailers1 {
-			if !resp1.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-				return resp.addTrailer(name, value)
-			}) {
-				return
-			}
+		} else if hasTrailers1 && !resp.copyTailFrom(resp1) {
+			return
 		}
 	} else if err := resp.pass(resp1); err != nil {
 		stream1.markBroken()

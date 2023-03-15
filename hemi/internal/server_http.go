@@ -296,6 +296,7 @@ type Request interface {
 	VersionCode() uint8
 	IsHTTP1_0() bool
 	IsHTTP1_1() bool
+	IsHTTP1() bool
 	IsHTTP2() bool
 	IsHTTP3() bool
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
@@ -1598,12 +1599,8 @@ func (r *httpRequest_) getRanges() []rang {
 func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindCookie)
 }
-func (r *httpRequest_) HasCookies() bool {
-	return r.hasPairs(r.cookies, kindCookie)
-}
-func (r *httpRequest_) AllCookies() (cookies [][2]string) {
-	return r.allPairs(r.cookies, kindCookie)
-}
+func (r *httpRequest_) HasCookies() bool                  { return r.hasPairs(r.cookies, kindCookie) }
+func (r *httpRequest_) AllCookies() (cookies [][2]string) { return r.allPairs(r.cookies, kindCookie) }
 func (r *httpRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
@@ -2661,7 +2658,7 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHead(resp hResponse) bool // used by proxies
+	copyHeadFrom(resp hResponse) bool // used by proxies
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
@@ -2673,6 +2670,7 @@ type Response interface {
 	sync1xx(resp hResponse) bool              // used by proxies
 	pass(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
+	copyTailFrom(resp hResponse) bool         // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2915,7 +2913,7 @@ func (r *httpResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *httpResponse_) copyHead(resp hResponse) bool { // used by proxies
+func (r *httpResponse_) copyHeadFrom(resp hResponse) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2960,7 +2958,7 @@ var ( // perfect hash table for response critical headers
 func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden
+		if h.fAdd == nil { // mainly because this header is forbidden to insert
 			return true // pretend to be successful
 		}
 		return h.fAdd(r, value)
@@ -2977,7 +2975,7 @@ func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
 func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden
+		if h.fDel == nil { // mainly because this header is forbidden to remove
 			return true // pretend to be successful
 		}
 		return h.fDel(r)
@@ -2989,6 +2987,12 @@ func (r *httpResponse_) deleteExpires() (deleted bool) {
 }
 func (r *httpResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
+}
+
+func (r *httpResponse_) copyTailFrom(resp hResponse) bool { // used by proxies
+	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.shell.addTrailer(name, value)
+	})
 }
 
 func (r *httpResponse_) hookReviser(reviser Reviser) {

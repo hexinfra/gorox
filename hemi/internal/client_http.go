@@ -271,7 +271,7 @@ func (r *hRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *hRequest_) copyHead(req Request, hostname []byte, colonPort []byte, viaName []byte) bool { // used by proxies
+func (r *hRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte) bool { // used by proxies
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -360,7 +360,7 @@ var ( // perfect hash table for request critical headers
 func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden
+		if h.fAdd == nil { // mainly because this header is forbidden to insert
 			return true // pretend to be successful
 		}
 		return h.fAdd(r, value)
@@ -383,7 +383,7 @@ func (r *hRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden
+		if h.fDel == nil { // mainly because this header is forbidden to remove
 			return true // pretend to be successful
 		}
 		return h.fDel(r)
@@ -401,6 +401,12 @@ func (r *hRequest_) deleteIfRange() (deleted bool) {
 }
 func (r *hRequest_) deleteIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+}
+
+func (r *hRequest_) copyTailFrom(req Request) bool { // used by proxies
+	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.shell.addTrailer(name, value)
+	})
 }
 
 // upload is a file to be uploaded.

@@ -316,7 +316,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers1() || !r.examineTrailers() {
+				if !r.recvTrailers1() || !r.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.

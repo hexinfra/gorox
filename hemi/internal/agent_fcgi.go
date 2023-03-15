@@ -896,7 +896,9 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
-		if sh.parse && !r._parseHeader(header, &sh.fdesc, true) {
+		if !sh.parse {
+			header.setParsed()
+		} else if !r._parseHeader(header, &sh.fdesc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -914,6 +916,8 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 			// r.headResult is set.
 			return false
 		}
+	} else {
+		// All other headers are treated as list-based headers.
 	}
 	return true
 }
@@ -991,9 +995,9 @@ func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
 }
 
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool {
+func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by copyHead(). excluding sub headers
 	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() { // skip sub headers, only collect main headers
+		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() {
 			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}

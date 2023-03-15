@@ -394,8 +394,6 @@ func (s *Stage) Start(id int32) {
 	s.numCPU = int32(runtime.NumCPU())
 
 	if IsDebug(2) {
-		Debugf("size of httpIn0 = %d\n", unsafe.Sizeof(httpIn0{}))
-		Debugf("size of httpRequest0 = %d\n", unsafe.Sizeof(httpRequest0{}))
 		Debugf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
 		Debugf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
 		Debugf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
@@ -406,7 +404,9 @@ func (s *Stage) Start(id int32) {
 		Debugf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
 		Debugf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
 		Debugf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
+		Debugf("size of ajpStream = %d\n", unsafe.Sizeof(ajpStream{}))
 		Debugf("size of fcgiStream = %d\n", unsafe.Sizeof(fcgiStream{}))
+		Debugf("size of scgiStream = %d\n", unsafe.Sizeof(scgiStream{}))
 		Debugf("size of uwsgiStream = %d\n", unsafe.Sizeof(uwsgiStream{}))
 	}
 	if IsDebug(1) {

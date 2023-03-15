@@ -51,15 +51,15 @@ type pair struct { // 24 bytes
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery = iota
-	kindHeader
-	kindCookie
-	kindForm
-	kindTrailer
+	kindQuery   = 0b00000001
+	kindHeader  = 0b00000010
+	kindCookie  = 0b00000100
+	kindForm    = 0b00001000
+	kindTrailer = 0b00010000
 )
 
 const ( // field flags
-	flagParsed     = 0b10000000 // data and paras parsed or not
+	flagParsed     = 0b10000000 // data and paras are parsed or not
 	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
 	flagSubField   = 0b00100000 // sub field or not
 	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3

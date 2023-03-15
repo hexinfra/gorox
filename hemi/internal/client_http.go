@@ -487,16 +487,19 @@ func (r *hResponse_) Status() int16 { return r.status }
 func (r *hResponse_) examineHead() bool {
 	headers := r.headers // make a copy. r.headers is changed when applying headers
 	for i := headers.from; i < headers.edge; i++ {
-		if !r.applyHeader(&r.pairs[i], i) {
+		if !r.applyHeader(&r.primes[i], i) {
 			// r.headResult is set.
 			return false
 		}
 	}
-	r.basicsEdge = uint8(len(r.pairs)) // including prime headers
 	if IsDebug(2) {
-		for i := 0; i < len(r.pairs); i++ {
-			pair := &r.pairs[i]
-			pair.show(r._placeOf(pair))
+		for i := 0; i < len(r.primes); i++ {
+			prime := &r.primes[i]
+			prime.show(r._placeOf(prime))
+		}
+		for i := 0; i < len(r.extras); i++ {
+			extra := &r.extras[i]
+			extra.show(r._placeOf(extra))
 		}
 	}
 
@@ -532,7 +535,9 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
-		if sh.parse && !r._parseField(header, &sh.fdesc, r.input, true) {
+		if !sh.parse {
+			header.setParsed()
+		} else if !r._parseField(header, &sh.fdesc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -542,7 +547,7 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
 		from := r.headers.edge
-		if !r._splitField(header, &mh.fdesc, r.input, r.addHeader) {
+		if !r._splitField(header, &mh.fdesc, r.input, r._addExtra) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -550,6 +555,8 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
+	} else {
+		// All other headers are treated as list-based headers.
 	}
 	return true
 }
@@ -659,7 +666,7 @@ func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-
 		return false
 	}
 	for i := from; i < edge; i++ {
-		value := r.pairs[i].valueAt(r.input)
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		if bytes.Equal(value, bytesBytes) {
 			r.acceptBytes = true
@@ -761,13 +768,13 @@ func (r *hResponse_) unsafeDate() []byte {
 	if r.iDate == 0 {
 		return nil
 	}
-	return r.pairs[r.iDate].valueAt(r.input)
+	return r.primes[r.iDate].valueAt(r.input)
 }
 func (r *hResponse_) unsafeLastModified() []byte {
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
-	return r.pairs[r.indexes.lastModified].valueAt(r.input)
+	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
 func (r *hResponse_) HasCookies() bool {

@@ -105,10 +105,11 @@ type httpIn_ struct { // incoming. needs parsing
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (buffers)
-	stockInput [1536]byte // for r.input
-	stockArray [768]byte  // for r.array
-	stockPairs [64]pair   // for r.pairs
-	stockParas [16]para   // for r.paras
+	stockInput  [1536]byte // for r.input
+	stockArray  [768]byte  // for r.array
+	stockPrimes [32]pair   // for r.primes
+	stockExtras [32]pair   // for r.extras
+	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
@@ -116,7 +117,8 @@ type httpIn_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
 	array          []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	pairs          []pair        // hold queries, headers, cookies, forms, and trailers. [<r.stockPairs>/max]
+	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockExtras>/max]
 	paras          []para        // hold field parameters. [<r.stockParas>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
@@ -124,7 +126,7 @@ type httpIn_ struct { // incoming. needs parsing
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat the incoming message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	basicsEdge     uint8         // edge of basic pairs
+	_              byte          // padding
 	headResult     int16         // result of receiving message head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
@@ -148,7 +150,7 @@ type httpIn0 struct { // for fast reset, entirely
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	receiving        int8    // currently receiving. see httpSectionXXX
-	headers          zone    // raw headers ->r.pairs
+	headers          zone    // headers ->r.primes
 	hasRevisers      bool    // are there any revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
 	upgradeUDPTun    bool    // upgrade: connect-udp?
@@ -156,26 +158,26 @@ type httpIn0 struct { // for fast reset, entirely
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
-	iContentLength   uint8   // index of content-length header in r.pairs
-	iContentLocation uint8   // index of content-location header in r.pairs
-	iContentRange    uint8   // index of content-range header in r.pairs
-	iContentType     uint8   // index of content-type header in r.pairs
-	iDate            uint8   // index of date header in r.pairs
+	iContentLength   uint8   // index of content-length header in r.primes
+	iContentLocation uint8   // index of content-location header in r.primes
+	iContentRange    uint8   // index of content-range header in r.primes
+	iContentType     uint8   // index of content-type header in r.primes
+	iDate            uint8   // index of date header in r.primes
 	_                [2]byte // padding
-	zConnection      zone    // zone of connection headers in r.pairs. may not be continuous
-	zContentLanguage zone    // zone of content-language headers in r.pairs. may not be continuous
-	zTrailer         zone    // zone of trailer headers in r.pairs. may not be continuous
-	zVia             zone    // zone of via headers in r.pairs. may not be continuous
+	zConnection      zone    // zone of connection headers in r.primes. may not be continuous
+	zContentLanguage zone    // zone of content-language headers in r.primes. may not be continuous
+	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous
+	zVia             zone    // zone of via headers in r.primes. may not be continuous
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
-	contentBlobKind  int8    // kind of current r.contentBlob. see httpContentBlobXXX
-	receivedSize     int64   // bytes of currently received content. for both sized & unsized content receiver
+	contentBlobKind  int8    // kind of current r.contentBlob if it is a blob. see httpContentBlobXXX
+	receivedSize     int64   // bytes of currently received content. used by both sized & unsized content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore            int32   // for parsing chunked elements. HTTP/1.1 chunked only
 	chunkEdge        int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
 	transferChunked  bool    // transfer-encoding: chunked? HTTP/1.1 only
 	overChunked      bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
-	trailers         zone    // raw trailers -> r.array. set after trailer section is received and parsed
+	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
 func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool) { // for non-zeros
@@ -185,15 +187,15 @@ func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool
 		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
 	}
 	r.array = r.stockArray[:]
-	r.pairs = r.stockPairs[0:1:cap(r.stockPairs)] // use append(). r.pairs[0] is skipped due to zero value of pair indexes.
-	r.paras = r.stockParas[0:0:cap(r.stockParas)] // use append()
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
+	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.maxContentSize = maxContentSize
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
-	r.basicsEdge = 1 // r.pairs[0] is skipped
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -210,9 +212,13 @@ func (r *httpIn_) onEnd() { // for zeros
 		PutNK(r.array)
 	}
 	r.array = nil // other array kinds are only references, just reset.
-	if cap(r.pairs) != cap(r.stockPairs) {
-		putPairs(r.pairs)
-		r.pairs = nil
+	if cap(r.primes) != cap(r.stockPrimes) {
+		putPairs(r.primes)
+		r.primes = nil
+	}
+	if cap(r.extras) != cap(r.stockExtras) {
+		putPairs(r.extras)
+		r.extras = nil
 	}
 	if cap(r.paras) != cap(r.stockParas) {
 		putParas(r.paras)
@@ -271,11 +277,11 @@ func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
-func (r *httpIn_) AddHeader(name string, value string) bool { // as extra. DO NOT add comma-value headers, call multiple times to add
+func (r *httpIn_) AddHeader(name string, value string) bool { // as extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
-	// NOTICE: must add values without comma so r.getPairs() works correctly?
+	// TODO: parse and check?
 	// setFlags?
-	return r.addExtra(name, value, kindHeader)
+	return r.addExtra(name, value, 0, kindHeader)
 }
 func (r *httpIn_) HasHeaders() bool { return r.headers.notEmpty() }
 func (r *httpIn_) AllHeaders() (headers [][2]string) {
@@ -314,7 +320,7 @@ func (r *httpIn_) HasHeader(name string) bool {
 	return ok
 }
 func (r *httpIn_) DelHeader(name string) (deleted bool) {
-	// TODO: add restrictions on what headers are allowed to delete?
+	// TODO: add restrictions on what headers are allowed to del?
 	return r.delPair(name, 0, r.headers, kindHeader)
 }
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
@@ -323,8 +329,8 @@ func (r *httpIn_) delHeader(name []byte, hash uint16) {
 func (r *httpIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
-func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub headers
-	return r._forFields(r.headers, kindHeader, fn)
+func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by copyHead(). excluding sub headers
+	return r._forMainFields(r.headers, kindHeader, fn)
 }
 
 func (r *httpIn_) ContentSize() int64 { return r.contentSize }
@@ -332,14 +338,14 @@ func (r *httpIn_) UnsafeContentLength() []byte {
 	if r.iContentLength == 0 {
 		return nil
 	}
-	return r.pairs[r.iContentLength].valueAt(r.input)
+	return r.primes[r.iContentLength].valueAt(r.input)
 }
 func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
 func (r *httpIn_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
 	}
-	return r.pairs[r.iContentType].dataAt(r.input)
+	return r.primes[r.iContentType].dataAt(r.input)
 }
 
 func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and paras
@@ -696,7 +702,7 @@ func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool { // Accept-E
 		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
 			break
 		}
-		value := r.pairs[i].valueAt(r.input)
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
 		if bytes.HasPrefix(value, bytesGzip) {
@@ -731,7 +737,7 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 	r.zConnection.edge = edge
 	// connection-option = token
 	for i := from; i < edge; i++ {
-		value := r.pairs[i].valueAt(r.input)
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value) // connection options are case-insensitive.
 		if bytes.Equal(value, bytesKeepAlive) {
 			r.keepAlive = 1 // to be compatible with HTTP/1.0
@@ -752,7 +758,7 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
-		value := r.pairs[i].valueAt(r.input)
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		var coding uint8
 		if bytes.Equal(value, bytesGzip) {
@@ -800,7 +806,7 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 	}
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
 	for i := from; i < edge; i++ {
-		value := r.pairs[i].valueAt(r.input)
+		value := r.primes[i].valueAt(r.input)
 		bytesToLower(value)
 		if bytes.Equal(value, bytesChunked) {
 			r.transferChunked = true
@@ -980,6 +986,12 @@ badRead:
 	return err
 }
 
+func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra
+	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// TODO: parse and check?
+	// setFlags?
+	return r.addExtra(name, value, 0, kindTrailer)
+}
 func (r *httpIn_) HasTrailers() bool { return r.trailers.notEmpty() }
 func (r *httpIn_) AllTrailers() (trailers [][2]string) {
 	return r.allPairs(r.trailers, kindTrailer)
@@ -1017,7 +1029,6 @@ func (r *httpIn_) HasTrailer(name string) bool {
 	return ok
 }
 func (r *httpIn_) DelTrailer(name string) (deleted bool) {
-	// TODO: add restrictions on what trailers are allowed to delete?
 	return r.delPair(name, 0, r.trailers, kindTrailer)
 }
 func (r *httpIn_) delTrailer(name []byte, hash uint16) {
@@ -1026,13 +1037,13 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 func (r *httpIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
-func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub trailers
-	return r._forFields(r.trailers, kindTrailer, fn)
+func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // by copyHead(). excluding sub trailers
+	return r._forMainFields(r.trailers, kindTrailer, fn)
 }
 
 func (r *httpIn_) examineTrailers() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.shell.applyTrailer(&r.pairs[i]) {
+		if !r.shell.applyTrailer(&r.primes[i]) {
 			// r.bodyResult is set.
 			return false
 		}
@@ -1099,16 +1110,16 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	return true
 }
 
-func (r *httpIn_) addHeader(header *pair) bool {
-	if edge, ok := r.addPair(header); ok {
+func (r *httpIn_) addHeader(header *pair) bool { // as prime
+	if edge, ok := r._addPrime(header); ok {
 		r.headers.edge = edge
 		return true
 	}
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *httpIn_) addTrailer(trailer *pair) bool {
-	if edge, ok := r.addPair(trailer); ok {
+func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
+	if edge, ok := r._addPrime(trailer); ok {
 		r.trailers.edge = edge
 		return true
 	}
@@ -1116,8 +1127,23 @@ func (r *httpIn_) addTrailer(trailer *pair) bool {
 	return false
 }
 
-func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool { // currently only queries, headers and cookies are allowed due to limitation of our data structure
-	nameSize := int32(len(name))
+func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
+			return 0, false
+		}
+		if IsDebug(2) {
+			Debugln("use large primes!")
+		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
+	}
+	r.primes = append(r.primes, *prime)
+	return uint8(len(r.primes)), true
+}
+func (r *httpIn_) _delPrime(i uint8) { r.primes[i].zero() }
+func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
+	nameSize := len(name)
 	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
 		return false
 	}
@@ -1129,12 +1155,16 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool { // 
 	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
 		return false
 	}
-	if totalSize := nameSize + int32(valueSize); !r._growArray(totalSize) { // extras are always placed in r.array
+	if !r._growArray(int32(nameSize + valueSize)) { // extras are always placed in r.array
 		return false
 	}
 	extra := &r.mainPair
 	extra.zero()
-	extra.hash = stringHash(name)
+	if hash == 0 {
+		extra.hash = stringHash(name)
+	} else {
+		extra.hash = hash
+	}
 	extra.kind = extraKind
 	extra.place = placeArray
 	extra.nameFrom = r.arrayEdge
@@ -1143,57 +1173,57 @@ func (r *httpIn_) addExtra(name string, value string, extraKind int8) bool { // 
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	if _, ok := r.addPair(extra); ok {
+	if r._addExtra(extra) {
 		r.hasExtras[extraKind] = true
 		return true
 	} else {
 		return false
 	}
 }
-
-func (r *httpIn_) addPair(pair *pair) (edge uint8, ok bool) {
-	if len(r.pairs) == cap(r.pairs) { // full
-		if cap(r.pairs) != cap(r.stockPairs) { // too many pairs
-			return 0, false
+func (r *httpIn_) _addExtra(extra *pair) bool {
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras
+			return false
 		}
 		if IsDebug(2) {
-			Debugln("use large pairs!")
+			Debugln("use large extras!")
 		}
-		r.pairs = getPairs()
-		r.pairs = append(r.pairs, r.stockPairs[:]...)
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
 	}
-	r.pairs = append(r.pairs, *pair)
-	return uint8(len(r.pairs)), true
+	r.extras = append(r.extras, *extra)
+	return true
 }
+
 func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 	return primes.notEmpty() || r.hasExtras[extraKind]
 }
 func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collect values of main fields
+	if extraKind&(kindHeader|kindTrailer) != 0 { // skip sub fields, only collect values of main fields
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.pairs[i]; prime.hash != 0 && !prime.isSubField() {
+			if prime := &r.primes[i]; prime.hash != 0 && !prime.isSubField() {
 				p := r._placeOf(prime)
 				all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
 			}
 		}
 	} else { // queries, cookies, and forms
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.pairs[i]; prime.hash != 0 {
+			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
 				all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-				if extra := &r.pairs[i]; extra.hash != 0 && extra.kind == extraKind {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 					all = append(all, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
 			}
@@ -1206,32 +1236,32 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		if hash == 0 {
 			hash = stringHash(name)
 		}
-		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.pairs[i]; prime.hash == hash && !prime.isCommaValue() {
+				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						return prime.dataAt(p), true
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						return extra.dataAt(r.array), true
 					}
 				}
 			}
 		} else { // queries, cookies, and forms
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.pairs[i]; prime.hash == hash {
+				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						return prime.valueAt(p), true
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						return extra.valueAt(r.array), true
 					}
 				}
@@ -1245,32 +1275,32 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		if hash == 0 {
 			hash = stringHash(name)
 		}
-		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.pairs[i]; prime.hash == hash && !prime.isCommaValue() {
+				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						values = append(values, string(prime.dataAt(p)))
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.dataAt(r.array)))
 					}
 				}
 			}
 		} else { // queries, cookies, and forms
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.pairs[i]; prime.hash == hash {
+				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 						values = append(values, string(prime.valueAt(p)))
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
-				for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-					if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.valueAt(r.array)))
 					}
 				}
@@ -1288,7 +1318,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 			hash = stringHash(name)
 		}
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.pairs[i]; prime.hash == hash {
+			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					prime.zero()
 					deleted = true
@@ -1296,8 +1326,8 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 			}
 		}
 		if r.hasExtras[extraKind] {
-			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-				if extra := &r.pairs[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
 					deleted = true
 				}
@@ -1305,28 +1335,6 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 	}
 	return
-}
-func (r *httpIn_) delPairAt(i uint8) { r.pairs[i].zero() }
-func (r *httpIn_) _forFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool { // for copyHead(). excluding sub fields
-	// Skip sub fields, only collect values of main fields
-	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.pairs[i]; field.hash != 0 && !field.isSubField() {
-			p := r._placeOf(field)
-			if !fn(field, field.nameAt(p), field.valueAt(p)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtras[extraKind] {
-		for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-			if field := &r.pairs[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
-				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
 }
 func (r *httpIn_) _placeOf(pair *pair) []byte {
 	var place []byte
@@ -1344,6 +1352,27 @@ func (r *httpIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
+func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
+	// Skip sub fields, only collect values of main fields
+	for i := fields.from; i < fields.edge; i++ {
+		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
+			p := r._placeOf(field)
+			if !fn(field, field.nameAt(p), field.valueAt(p)) {
+				return false
+			}
+		}
+	}
+	if r.hasExtras[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
+				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
@@ -1354,7 +1383,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
 	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
-		prime := &r.pairs[i]
+		prime := &r.primes[i]
 		// Skip fields that are not "connection: xxx"
 		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
@@ -1367,14 +1396,14 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		}
 		// Now remove options in fields
 		for j := fields.from; j < fields.edge; j++ {
-			if field := &r.pairs[j]; field.hash == optionHash && field.nameEqualBytes(r.input, optionName) {
+			if field := &r.primes[j]; field.hash == optionHash && field.nameEqualBytes(r.input, optionName) {
 				field.zero()
 			}
 		}
 		// Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		if r.hasExtras[extraKind] {
-			for i := int(r.basicsEdge); i < len(r.pairs); i++ {
-				if extra := &r.pairs[i]; extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == optionHash && extra.kind == extraKind && extra.nameEqualBytes(r.array, optionName) {
 					extra.zero()
 				}
 			}

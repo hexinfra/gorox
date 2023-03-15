@@ -212,12 +212,14 @@ func (g *udpsGate) shutdown() error {
 }
 
 func (g *udpsGate) serveUDP() { // goroutine
+	// TODO
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.mesher.SubDone()
 }
 func (g *udpsGate) serveTLS() { // goroutine
+	// TODO
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}

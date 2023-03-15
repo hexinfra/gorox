@@ -556,7 +556,7 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 		text.from = text.edge
 	}
 }
-func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte, addField func(field *pair) bool) bool {
+func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte) bool {
 	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -599,11 +599,13 @@ func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte, addField func(
 		} else { // numSubs >= 1, sub fields exist
 			if numSubs == 1 { // got the second sub field
 				field.setCommaValue() // mark main field as comma-value
-				if !addField(&bakField) {
+				if !r._addExtra(&bakField) {
+					r.failReason = "too many sub fields"
 					return false
 				}
 			}
-			if !addField(&subField) {
+			if !r._addExtra(&subField) {
+				r.failReason = "too many sub fields"
 				return false
 			}
 		}
@@ -1173,12 +1175,7 @@ func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int
 	extra.value.from = r.arrayEdge
 	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
 	extra.value.edge = r.arrayEdge
-	if r._addExtra(extra) {
-		r.hasExtras[extraKind] = true
-		return true
-	} else {
-		return false
-	}
+	return r._addExtra(extra)
 }
 func (r *httpIn_) _addExtra(extra *pair) bool {
 	if len(r.extras) == cap(r.extras) { // full
@@ -1192,6 +1189,7 @@ func (r *httpIn_) _addExtra(extra *pair) bool {
 		r.extras = append(r.extras, r.stockExtras[:]...)
 	}
 	r.extras = append(r.extras, *extra)
+	r.hasExtras[extra.kind] = true
 	return true
 }
 
@@ -1238,16 +1236,24 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		}
 		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
+				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+							continue
+						}
+						if prime.isCommaValue() {
+							continue
+						}
 						return prime.dataAt(p), true
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
-						return extra.dataAt(r.array), true
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+							return extra.dataAt(p), true
+						}
 					}
 				}
 			}
@@ -1277,16 +1283,24 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		}
 		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash && !prime.isCommaValue() {
+				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+							continue
+						}
+						if prime.isCommaValue() {
+							continue
+						}
 						values = append(values, string(prime.dataAt(p)))
 					}
 				}
 			}
 			if r.hasExtras[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() && extra.nameEqualString(r.array, name) {
-						values = append(values, string(extra.dataAt(r.array)))
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+							values = append(values, string(extra.dataAt(p)))
+						}
 					}
 				}
 			}

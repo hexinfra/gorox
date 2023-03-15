@@ -976,7 +976,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
 		from := r.headers.edge
-		if !r._splitField(header, &mh.fdesc, r.input, r._addExtra) {
+		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}

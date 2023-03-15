@@ -198,7 +198,7 @@ func (p *pair) show(place []byte) {
 	default:
 		plase = "unknown"
 	}
-	Debugf("{hash=%d kind=%s flags=|%s| place=%s %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.nameAt(place), p.valueAt(place))
+	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.nameAt(place), p.valueAt(place))
 }
 
 // poolParas
@@ -235,6 +235,14 @@ func (p *para) nameEqualString(t []byte, x string) bool {
 }
 func (p *para) nameEqualBytes(t []byte, x []byte) bool {
 	return p.name.size() == len(x) && bytes.Equal(t[p.name.from:p.name.edge], x)
+}
+
+// defaultFdesc
+var defaultFdesc = &fdesc{
+	allowQuote: true,
+	allowEmpty: false,
+	allowParas: true,
+	hasComment: false,
 }
 
 // fdesc describes an HTTP field.

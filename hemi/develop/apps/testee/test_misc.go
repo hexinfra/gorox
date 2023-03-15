@@ -56,6 +56,16 @@ func (h *testHandlet) GET_multi(req Request, resp Response) {
 		resp.Push(accept + "<br>")
 	}
 }
+func (h *testHandlet) GET_multi2(req Request, resp Response) {
+	uas, ok := req.Headers("sec-ch-ua")
+	if !ok {
+		resp.Send("please provide sec-ch-ua header")
+		return
+	}
+	for _, ua := range uas {
+		resp.Push(ua + "<br>")
+	}
+}
 func (h *testHandlet) PUT_file(req Request, resp Response) {
 	content := req.Content()
 	resp.Send(content)

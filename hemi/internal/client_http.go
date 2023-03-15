@@ -485,8 +485,7 @@ func (r *hResponse_) onEnd() { // for zeros
 func (r *hResponse_) Status() int16 { return r.status }
 
 func (r *hResponse_) examineHead() bool {
-	headers := r.headers // make a copy. r.headers is changed when applying headers
-	for i := headers.from; i < headers.edge; i++ {
+	for i := r.headers.from; i < r.headers.edge; i++ {
 		if !r.applyHeader(&r.primes[i], i) {
 			// r.headResult is set.
 			return false
@@ -546,12 +545,17 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 			return false
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
-		from := r.headers.edge
+		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !mh.check(r, from, r.headers.edge) {
+		if header.isCommaValue() { // has sub headers
+			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
+				// r.headResult is set.
+				return false
+			}
+		} else if !mh.check(r, r.primes, index, index+1) {
 			// r.headResult is set.
 			return false
 		}
@@ -637,7 +641,7 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 var ( // perfect hash table for response important headers
 	hResponseImportantHeaderTable = [17]struct {
 		fdesc // allowQuote, allowEmpty, allowParas, hasComment
-		check func(*hResponse_, uint8, uint8) bool
+		check func(*hResponse_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
 		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
 		1:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*hResponse_).checkVia},
@@ -660,15 +664,15 @@ var ( // perfect hash table for response important headers
 	hResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
-func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
+func (r *hResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
 	}
 	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, bytesBytes) {
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
+		if bytes.Equal(data, bytesBytes) {
 			r.acceptBytes = true
 		} else {
 			// Ignore
@@ -676,7 +680,7 @@ func (r *hResponse_) checkAcceptRanges(from uint8, edge uint8) bool { // Accept-
 	}
 	return true
 }
-func (r *hResponse_) checkAllow(from uint8, edge uint8) bool { // Allow = #method
+func (r *hResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // Allow = #method
 	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
 		r.zones.allow.from = from
@@ -684,7 +688,7 @@ func (r *hResponse_) checkAllow(from uint8, edge uint8) bool { // Allow = #metho
 	r.zones.allow.edge = edge
 	return true
 }
-func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
+func (r *hResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
 		return false
@@ -695,26 +699,26 @@ func (r *hResponse_) checkAltSvc(from uint8, edge uint8) bool { // Alt-Svc = cle
 	r.zones.altSvc.edge = edge
 	return true
 }
-func (r *hResponse_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *hResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *hResponse_) checkCacheStatus(from uint8, edge uint8) bool { // ?
+func (r *hResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkCDNCacheControl(from uint8, edge uint8) bool { // ?
+func (r *hResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkProxyAuthenticate(from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
+func (r *hResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO
 	return true
 }
-func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *hResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -722,25 +726,25 @@ func (r *hResponse_) checkTransferEncoding(from uint8, edge uint8) bool { // Tra
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r.httpIn_.checkTransferEncoding(from, edge)
+	return r.httpIn_.checkTransferEncoding(pairs, from, edge)
 }
-func (r *hResponse_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *hResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	// TODO: tcptun, udptun, socket?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in normal mode"
 	return false
 }
-func (r *hResponse_) checkVary(from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
+func (r *hResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
 	if r.zones.vary.isEmpty() {
 		r.zones.vary.from = from
 	}
 	r.zones.vary.edge = edge
 	return true
 }
-func (r *hResponse_) checkWWWAuthenticate(from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
+func (r *hResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
 	// TODO
 	return true
 }
-func (r *hResponse_) _checkChallenge(from uint8, edge uint8) bool {
+func (r *hResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool {
 	// TODO
 	return true
 }

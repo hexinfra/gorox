@@ -123,14 +123,6 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 func (p *pair) dataAt(t []byte) []byte  { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
 func (p *pair) dataEmpty() bool         { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
 func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
-func (p *pair) paraAt(t []byte, name []byte) []byte {
-	if !p.paras.isEmpty() {
-		for i := p.paras.from; i < p.paras.edge; i++ {
-			// TODO
-		}
-	}
-	return nil
-}
 
 func (p *pair) setParsed()     { p.flags |= flagParsed }
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
@@ -198,7 +190,7 @@ func (p *pair) show(place []byte) {
 	default:
 		plase = "unknown"
 	}
-	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.nameAt(place), p.valueAt(place))
+	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.nameAt(place), p.valueAt(place))
 }
 
 // poolParas

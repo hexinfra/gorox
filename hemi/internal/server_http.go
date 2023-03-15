@@ -761,8 +761,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 }
 
 func (r *httpRequest_) examineHead() bool {
-	headers := r.headers // make a copy. r.headers may be changed when applying headers
-	for i := headers.from; i < headers.edge; i++ {
+	for i := r.headers.from; i < r.headers.edge; i++ {
 		if !r.applyHeader(&r.primes[i], i) {
 			// r.headResult is set.
 			return false
@@ -975,12 +974,17 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 			return false
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
-		from := r.headers.edge
+		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !mh.check(r, from, r.headers.edge) {
+		if header.isCommaValue() { // has sub headers
+			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
+				// r.headResult is set.
+				return false
+			}
+		} else if !mh.check(r, r.primes, index, index+1) {
 			// r.headResult is set.
 			return false
 		}
@@ -1240,7 +1244,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderTable = [16]struct {
 		fdesc // allowQuote, allowEmpty, allowParas, hasComment
-		check func(*httpRequest_, uint8, uint8) bool
+		check func(*httpRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
 		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
 		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
@@ -1262,7 +1266,7 @@ var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )
 
-func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+func (r *httpRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
@@ -1270,16 +1274,22 @@ func (r *httpRequest_) checkAcceptLanguage(from uint8, edge uint8) bool { // Acc
 		r.zones.acceptLanguages.from = from
 	}
 	r.zones.acceptLanguages.edge = edge
+	if IsDebug(2) {
+		for i := from; i < edge; i++ {
+			data := pairs[i].dataAt(r.input)
+			Debugf("lang=%s\n", string(data))
+		}
+	}
 	return true
 }
-func (r *httpRequest_) checkCacheControl(from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *httpRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #expectation
+func (r *httpRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.versionCode >= Version1_1 {
 		if r.zones.expect.isEmpty() {
@@ -1287,9 +1297,9 @@ func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #e
 		}
 		r.zones.expect.edge = edge
 		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
-			bytesToLower(value) // the Expect field-value is case-insensitive.
-			if bytes.Equal(value, bytes100Continue) {
+			data := pairs[i].dataAt(r.input)
+			bytesToLower(data) // the Expect field-value is case-insensitive.
+			if bytes.Equal(data, bytes100Continue) {
 				r.expectContinue = true
 			} else {
 				// Unknown expectation, ignored.
@@ -1299,12 +1309,12 @@ func (r *httpRequest_) checkExpect(from uint8, edge uint8) bool { // Expect = #e
 		// RFC 7231 (section 5.1.1):
 		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
 		for i := from; i < edge; i++ {
-			r._delPrime(i) // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+			pairs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		}
 	}
 	return true
 }
-func (r *httpRequest_) checkForwarded(from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
+func (r *httpRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
 		return false
@@ -1318,19 +1328,19 @@ func (r *httpRequest_) checkForwarded(from uint8, edge uint8) bool { // Forwarde
 	r.zones.forwarded.edge = edge
 	return true
 }
-func (r *httpRequest_) checkIfMatch(from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.zones.ifMatch, &r.ifMatch)
+func (r *httpRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
+	return r._checkMatch(pairs, from, edge, &r.zones.ifMatch, &r.ifMatch)
 }
-func (r *httpRequest_) checkIfNoneMatch(from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
-	return r._checkMatch(from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
+func (r *httpRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
+	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
-func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
+func (r *httpRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, bytesTrailers) {
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
+		if bytes.Equal(data, bytesTrailers) {
 			r.acceptTrailers = true
 		} else if r.versionCode > Version1_1 {
 			r.headResult, r.failReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
@@ -1339,7 +1349,7 @@ func (r *httpRequest_) checkTE(from uint8, edge uint8) bool { // TE = #t-codings
 	}
 	return true
 }
-func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *httpRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode == Version2 || r.versionCode == Version3 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
 		return false
@@ -1353,9 +1363,9 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 		// protocol-name    = token
 		// protocol-version = token
 		for i := from; i < edge; i++ {
-			value := r.primes[i].valueAt(r.input)
-			bytesToLower(value)
-			if bytes.Equal(value, bytesWebSocket) {
+			data := pairs[i].dataAt(r.input)
+			bytesToLower(data)
+			if bytes.Equal(data, bytesWebSocket) {
 				r.upgradeSocket = true
 			} else {
 				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
@@ -1365,12 +1375,12 @@ func (r *httpRequest_) checkUpgrade(from uint8, edge uint8) bool { // Upgrade = 
 		// RFC 7230 (section 6.7):
 		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
 		for i := from; i < edge; i++ {
-			r._delPrime(i) // we delete it.
+			pairs[i].zero() // we delete it.
 		}
 	}
 	return true
 }
-func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+func (r *httpRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
 		return false
@@ -1381,16 +1391,15 @@ func (r *httpRequest_) checkXForwardedFor(from uint8, edge uint8) bool { // X-Fo
 	r.zones.xForwardedFor.edge = edge
 	return true
 }
-func (r *httpRequest_) _checkMatch(from uint8, edge uint8, zMatch *zone, match *int8) bool {
+func (r *httpRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
 	if zMatch.isEmpty() {
 		zMatch.from = from
 	}
 	zMatch.edge = edge
 	for i := from; i < edge; i++ {
-		header := &r.primes[i]
-		value := header.valueAt(r.input)
+		data := pairs[i].dataAt(r.input)
 		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(value) == 1 && value[0] == '*' {
+		if len(data) == 1 && data[0] == '*' {
 			if nMatch != 0 {
 				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
 				return false

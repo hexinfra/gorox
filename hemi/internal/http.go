@@ -697,27 +697,27 @@ func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTim
 	return false
 }
 
-func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+func (r *httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
 	// codings        = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
 			break
 		}
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
 		var coding uint8
-		if bytes.HasPrefix(value, bytesGzip) {
+		if bytes.Equal(data, bytesGzip) {
 			r.acceptGzip = true
 			coding = httpCodingGzip
-		} else if bytes.HasPrefix(value, bytesBrotli) {
+		} else if bytes.Equal(data, bytesBrotli) {
 			r.acceptBrotli = true
 			coding = httpCodingBrotli
-		} else if bytes.HasPrefix(value, bytesDeflate) {
+		} else if bytes.Equal(data, bytesDeflate) {
 			coding = httpCodingDeflate
-		} else if bytes.HasPrefix(value, bytesCompress) {
+		} else if bytes.Equal(data, bytesCompress) {
 			coding = httpCodingCompress
-		} else if bytes.Equal(value, bytesIdentity) {
+		} else if bytes.Equal(data, bytesIdentity) {
 			coding = httpCodingIdentity
 		} else {
 			// Empty or unknown content-coding, ignored
@@ -728,7 +728,7 @@ func (r *httpIn_) checkAcceptEncoding(from uint8, edge uint8) bool { // Accept-E
 	}
 	return true
 }
-func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection = #connection-option
+func (r *httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
 	if r.versionCode >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
@@ -739,11 +739,11 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 	r.zConnection.edge = edge
 	// connection-option = token
 	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value) // connection options are case-insensitive.
-		if bytes.Equal(value, bytesKeepAlive) {
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data) // connection options are case-insensitive.
+		if bytes.Equal(data, bytesKeepAlive) {
 			r.keepAlive = 1 // to be compatible with HTTP/1.0
-		} else if bytes.Equal(value, bytesClose) {
+		} else if bytes.Equal(data, bytesClose) {
 			// Furthermore, the header field-name "Close" has been registered as
 			// "reserved", since using that name as an HTTP header field might
 			// conflict with the "close" connection option of the Connection header
@@ -753,23 +753,23 @@ func (r *httpIn_) checkConnection(from uint8, edge uint8) bool { // Connection =
 	}
 	return true
 }
-func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content-Encoding = #content-coding
+func (r *httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nContentCodings == int8(cap(r.contentCodings)) {
 			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
 		var coding uint8
-		if bytes.Equal(value, bytesGzip) {
+		if bytes.Equal(data, bytesGzip) {
 			coding = httpCodingGzip
-		} else if bytes.Equal(value, bytesBrotli) {
+		} else if bytes.Equal(data, bytesBrotli) {
 			coding = httpCodingBrotli
-		} else if bytes.Equal(value, bytesDeflate) {
+		} else if bytes.Equal(data, bytesDeflate) {
 			coding = httpCodingDeflate
-		} else if bytes.Equal(value, bytesCompress) {
+		} else if bytes.Equal(data, bytesCompress) {
 			coding = httpCodingCompress
 		} else {
 			// RFC 7231 (section 3.1.2.2):
@@ -786,14 +786,14 @@ func (r *httpIn_) checkContentEncoding(from uint8, edge uint8) bool { // Content
 	}
 	return true
 }
-func (r *httpIn_) checkContentLanguage(from uint8, edge uint8) bool { // Content-Language = #language-tag
+func (r *httpIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool { // Content-Language = #language-tag
 	if r.zContentLanguage.isEmpty() {
 		r.zContentLanguage.from = from
 	}
 	r.zContentLanguage.edge = edge
 	return true
 }
-func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #field-name
+func (r *httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
 	// field-name = token
 	if r.zTrailer.isEmpty() {
 		r.zTrailer.from = from
@@ -801,16 +801,16 @@ func (r *httpIn_) checkTrailer(from uint8, edge uint8) bool { // Trailer = #fiel
 	r.zTrailer.edge = edge
 	return true
 }
-func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.versionCode != Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
 	for i := from; i < edge; i++ {
-		value := r.primes[i].valueAt(r.input)
-		bytesToLower(value)
-		if bytes.Equal(value, bytesChunked) {
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
+		if bytes.Equal(data, bytesChunked) {
 			r.transferChunked = true
 		} else {
 			// RFC 7230 (section 3.3.1):
@@ -822,7 +822,7 @@ func (r *httpIn_) checkTransferEncoding(from uint8, edge uint8) bool { // Transf
 	}
 	return true
 }
-func (r *httpIn_) checkVia(from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
+func (r *httpIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	if r.zVia.isEmpty() {
 		r.zVia.from = from
 	}
@@ -1200,7 +1200,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var all [][2]string
 	if extraKind&(kindHeader|kindTrailer) != 0 { // skip sub fields, only collect values of main fields
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash != 0 && !prime.isSubField() {
+			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
 				all = append(all, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
@@ -1369,7 +1369,7 @@ func (r *httpIn_) _placeOf(pair *pair) []byte {
 func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
 	// Skip sub fields, only collect values of main fields
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 && !field.isSubField() {
+		if field := &r.primes[i]; field.hash != 0 {
 			p := r._placeOf(field)
 			if !fn(field, field.nameAt(p), field.valueAt(p)) {
 				return false
@@ -1402,7 +1402,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
 		}
-		optionName := prime.valueAt(r.input)
+		optionName := prime.valueAt(r.input) // TODO: dataAt?
 		optionHash := bytesHash(optionName)
 		// Skip options that are "connection: connection"
 		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {

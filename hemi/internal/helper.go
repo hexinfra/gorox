@@ -41,11 +41,11 @@ type pair struct { // 24 bytes
 	kind     int8   // see pair kinds
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from
+	value    text   // value
 	flags    byte   // see field flags
 	place    int8   // see pair places
 	paras    zone   // refers to a zone of paras
 	dataEdge int32  // data ends at
-	value    text   // value
 }
 
 func (p *pair) zero() { *p = pair{} }
@@ -60,8 +60,8 @@ const ( // pair kinds
 
 const ( // field flags
 	flagParsed     = 0b10000000 // data and paras are parsed or not
-	flagSingleton  = 0b01000000 // singleton or not. mainly checked by proxies
-	flagSubField   = 0b00100000 // sub field or not
+	flagSingleton  = 0b01000000 // singleton or not. mainly used by proxies
+	flagSubField   = 0b00100000 // sub field or not. mainly used by apps
 	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
 	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
@@ -89,9 +89,9 @@ const ( // pair places
 //    nameFrom+nameSize            |
 //           value.from   value.edge
 //
-// flags, paras, and dataEdge are NOT used.
+// In this case, flags, paras, and dataEdge are NOT used.
 //
-// If "accept-type" field is defined as: `quote=true empty=false paras=true`, then a non-comma "accept-type" field may looks like this:
+// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParas=true`, then a non-comma "accept-type" field may looks like this:
 //
 //                     [             value                  )
 //        [   name   )  [  data   )[         paras          )

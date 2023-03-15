@@ -24,25 +24,25 @@ import (
 type keeper interface {
 	Stage() *Stage
 	TLSMode() bool
-	ReadTimeout() time.Duration
-	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration  // timeout of a read operation
+	WriteTimeout() time.Duration // timeout of a write operation
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	SendTimeout() time.Duration  // timeout to send the whole message
 	MaxContentSize() int64
 	SaveContentFilesDir() string
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
 }
 
 // keeper_ is the mixin for httpServer_ and httpClient_.
 type keeper_ struct {
 	// States
-	maxContentSize int64         // max content size allowed
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	sendTimeout    time.Duration // timeout to send the whole message
+	maxContentSize int64         // max content size allowed
 }
 
-func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
 func (k *keeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *keeper_) SendTimeout() time.Duration { return k.sendTimeout }
+func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
 
 // stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
@@ -272,7 +272,7 @@ func (r *httpIn_) PeerAddr() net.Addr         { return r.stream.peerAddr() }
 func (r *httpIn_) VersionCode() uint8    { return r.versionCode }
 func (r *httpIn_) IsHTTP1_0() bool       { return r.versionCode == Version1_0 }
 func (r *httpIn_) IsHTTP1_1() bool       { return r.versionCode == Version1_1 }
-func (r *httpIn_) IsHTTP1() bool         { return r.versionCode == Version1_1 || r.versionCode == Version1_0 }
+func (r *httpIn_) IsHTTP1() bool         { return r.versionCode <= Version1_1 }
 func (r *httpIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
@@ -361,25 +361,25 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 	text := field.value
 	if p[text.from] != '"' { // normal text
 	forData:
-		for spat := int32(0); text.from < field.value.edge; text.from++ {
+		for spAt := int32(0); text.from < field.value.edge; text.from++ {
 			switch b := p[text.from]; b {
 			default:
-				spat = 0
+				spAt = 0
 			case ' ', '\t':
-				if spat == 0 {
-					spat = text.from
+				if spAt == 0 {
+					spAt = text.from
 				}
 			case ';':
-				if spat == 0 {
+				if spAt == 0 {
 					field.dataEdge = text.from
 				} else {
-					field.dataEdge = spat
+					field.dataEdge = spAt
 				}
 				//Debugf("3=%s\n", string(field.dataAt(p)))
 				break forData
 			case ',':
 				if fully {
-					spat = 0
+					spAt = 0
 				} else {
 					field.dataEdge = text.from
 					field.value.edge = text.from
@@ -400,7 +400,7 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 						text.from++
 					}
 				} else {
-					spat = 0
+					spAt = 0
 				}
 			}
 		}

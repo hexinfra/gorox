@@ -161,7 +161,7 @@ type Component_ struct {
 	name  string           // main, ...
 	props map[string]Value // name1=value1, ...
 	info  any              // extra info about this component, used by config
-	Shut  chan struct{}    // notify component to shutdown
+	Shut  chan struct{}    // used to notify component to shutdown
 }
 
 func (c *Component_) CompInit(name string) {

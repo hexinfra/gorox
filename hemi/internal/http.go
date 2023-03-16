@@ -1195,7 +1195,7 @@ func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
 }
 func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
-	if extraKind&(kindHeader|kindTrailer) != 0 { // skip sub fields, only collect values of main fields
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collect values of main fields
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
@@ -1231,7 +1231,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 		if hash == 0 {
 			hash = stringHash(name)
 		}
-		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
+		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1277,7 +1277,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 		if hash == 0 {
 			hash = stringHash(name)
 		}
-		if extraKind&(kindHeader|kindTrailer) != 0 { // skip comma fields, only collect data of fields without comma
+		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {

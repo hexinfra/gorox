@@ -51,11 +51,11 @@ type pair struct { // 24 bytes
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery   = 0b00000001
-	kindHeader  = 0b00000010
-	kindCookie  = 0b00000100
-	kindForm    = 0b00001000
-	kindTrailer = 0b00010000
+	kindQuery = iota
+	kindHeader
+	kindCookie
+	kindForm
+	kindTrailer
 )
 
 const ( // field flags

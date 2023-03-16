@@ -135,6 +135,10 @@ func (n *http1Node) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	n.markDown()
+	if size := n.closeFree(); size > 0 {
+		n.IncSub(0 - size)
+	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
 		Debugf("http1Node=%d done\n", n.id)
@@ -192,9 +196,9 @@ func (n *http1Node) storeConn(hConn *H1Conn) {
 			Debugf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
 		}
 		n.pushConn(hConn)
-		n.SubDone() // TODO: conn leak on shutdown! close conns timely?
 	}
 }
+
 func (n *http1Node) closeConn(hConn *H1Conn) {
 	hConn.closeConn()
 	putH1Conn(hConn)

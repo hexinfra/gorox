@@ -218,9 +218,9 @@ type node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		size int32 // size of the list
-		head conn  // head element
-		tail conn  // tail element
+		size int  // size of the list
+		head conn // head element
+		tail conn // tail element
 	}
 }
 
@@ -240,6 +240,7 @@ func (n *node_) pullConn() conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
+
 	if list.size == 0 {
 		return nil
 	}
@@ -253,6 +254,7 @@ func (n *node_) pushConn(conn conn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
+
 	if list.size == 0 {
 		list.head = conn
 		list.tail = conn
@@ -261,6 +263,20 @@ func (n *node_) pushConn(conn conn) {
 		list.tail = conn
 	}
 	list.size++
+}
+
+func (n *node_) closeFree() int {
+	list := &n.freeList
+	list.Lock()
+	defer list.Unlock()
+
+	for conn := list.head; conn != nil; conn = conn.getNext() {
+		conn.closeConn()
+	}
+	size := list.size
+	list.size = 0
+	list.head, list.tail = nil, nil
+	return size
 }
 
 var errNodeDown = errors.New("node is down")

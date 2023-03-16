@@ -172,6 +172,10 @@ func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
+	n.markDown()
+	if size := n.closeFree(); size > 0 {
+		n.IncSub(0 - size)
+	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
 		Debugf("tcpsNode=%d done\n", n.id)
@@ -227,7 +231,6 @@ func (n *tcpsNode) storeConn(tConn *TConn) {
 		n.closeConn(tConn)
 	} else {
 		n.pushConn(tConn)
-		n.SubDone() // TODO: conn leak on shutdown! close conns timely?
 	}
 }
 func (n *tcpsNode) closeConn(tConn *TConn) {

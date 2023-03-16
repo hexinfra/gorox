@@ -145,7 +145,7 @@ type httpIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtras        [8]bool // 0:queries 1:headers 2:cookies 3:forms 4:trailers 5:not-defined 6:not-defined 7:not-defined
+	hasExtras        [8]bool // see kindXXX for indexes
 	dateTime         int64   // parsed unix time of date
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX

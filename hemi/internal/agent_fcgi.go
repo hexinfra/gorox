@@ -286,7 +286,7 @@ func (s *fcgiStream) onEnd() {
 	s.agent = nil
 }
 
-func (s *fcgiStream) smallBuffer() []byte        { return s.stockBuffer[:] }
+func (s *fcgiStream) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *fcgiStream) makeTempName(p []byte, stamp int64) (from int, edge int) {

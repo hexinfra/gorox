@@ -49,7 +49,7 @@ type stream interface {
 	keeper() keeper
 	peerAddr() net.Addr
 
-	smallBuffer() []byte
+	buffer256() []byte
 	unsafeMake(size int) []byte
 	makeTempName(p []byte, stamp int64) (from int, edge int)
 
@@ -84,7 +84,7 @@ func (s *stream_) onEnd() { // for zeros
 	s.region.Free()
 }
 
-func (s *stream_) smallBuffer() []byte        { return s.stockBuffer[:] }
+func (s *stream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn is a *http[1-3]Request or *H[1-3]Response, used as shell by httpIn_.
@@ -1613,7 +1613,7 @@ func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byt
 	if allLower {
 		return hash, true, name
 	}
-	buffer := r.stream.smallBuffer()
+	buffer := r.stream.buffer256()
 	for i := 0; i < n; i++ {
 		b := name[i]
 		if b >= 'A' && b <= 'Z' {

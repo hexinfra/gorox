@@ -216,7 +216,7 @@ type httpConn interface {
 	getServer() httpServer
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
 // httpConn_ is the mixin for http[1-3]Conn.
@@ -2070,7 +2070,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 							r.stream.markBroken()
 							return
 						}
-						tempName := r.stream.smallBuffer() // buffer is enough for tempName
+						tempName := r.stream.buffer256() // buffer is enough for tempName
 						from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
 						if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
 							r.stream.markBroken()

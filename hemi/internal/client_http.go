@@ -113,7 +113,7 @@ func (n *httpNode_) init(id int32) {
 // hConn is the interface for *H[1-3]Conn.
 type hConn interface {
 	getClient() httpClient
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in smallBuffer() of stream
+	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 	isBroken() bool
 	markBroken()
 }

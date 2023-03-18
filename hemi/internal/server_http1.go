@@ -1020,7 +1020,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isUnsized() { // content-length: >=0\r\n
-				sizeBuffer := r.stream.smallBuffer() // enough for length
+				sizeBuffer := r.stream.buffer256() // enough for length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n

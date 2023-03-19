@@ -107,21 +107,21 @@ type httpIn_ struct { // incoming. needs parsing
 	// Stream states (buffers)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
-	stockParas  [16]para   // for r.paras
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [24]pair   // for r.extras
+	stockParas  [16]para   // for r.paras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	// Stream states (non-zeros)
 	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array          []byte        // store path, queries, extra queries & headers & cookies & trailers, forms, metadata of uploads, and trailers. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	paras          []para        // hold field parameters. [<r.stockParas>/max]
+	array          []byte        // store dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockExtras>/max]
+	paras          []para        // hold field parameters. [<r.stockParas>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
-	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving chunks
+	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving
 	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat the incoming message as response?
@@ -133,7 +133,7 @@ type httpIn_ struct { // incoming. needs parsing
 	failReason  string    // the reason of headResult or bodyResult
 	inputNext   int32     // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge   int32     // edge position of current message head is at r.input[r.inputEdge]
-	bodyWindow  []byte    // a window used for receiving content. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentBlob []byte    // if loadable, the received and loaded content of current message is at r.contentBlob[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
@@ -145,7 +145,7 @@ type httpIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtras        [8]bool // see kindXXX for indexes
+	hasExtra         [8]bool // see kindXXX for indexes
 	dateTime         int64   // parsed unix time of date
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
@@ -187,9 +187,9 @@ func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool
 		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
 	}
 	r.array = r.stockArray[:]
-	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.maxContentSize = maxContentSize
 	r.contentSize = -1 // no content
@@ -1186,12 +1186,12 @@ func (r *httpIn_) _addExtra(extra *pair) bool {
 		r.extras = append(r.extras, r.stockExtras[:]...)
 	}
 	r.extras = append(r.extras, *extra)
-	r.hasExtras[extra.kind] = true
+	r.hasExtra[extra.kind] = true
 	return true
 }
 
 func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
-	return primes.notEmpty() || r.hasExtras[extraKind]
+	return primes.notEmpty() || r.hasExtra[extraKind]
 }
 func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
@@ -1202,7 +1202,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
-		if r.hasExtras[extraKind] {
+		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
@@ -1216,7 +1216,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
-		if r.hasExtras[extraKind] {
+		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
@@ -1244,7 +1244,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 					}
 				}
 			}
-			if r.hasExtras[extraKind] {
+			if r.hasExtra[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
 					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
 						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
@@ -1261,7 +1261,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 					}
 				}
 			}
-			if r.hasExtras[extraKind] {
+			if r.hasExtra[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
 					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						return extra.valueAt(r.array), true
@@ -1290,7 +1290,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 					}
 				}
 			}
-			if r.hasExtras[extraKind] {
+			if r.hasExtra[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
 					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
 						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
@@ -1307,7 +1307,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 					}
 				}
 			}
-			if r.hasExtras[extraKind] {
+			if r.hasExtra[extraKind] {
 				for i := 0; i < len(r.extras); i++ {
 					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 						values = append(values, string(extra.valueAt(r.array)))
@@ -1334,7 +1334,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 				}
 			}
 		}
-		if r.hasExtras[extraKind] {
+		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					extra.zero()
@@ -1370,7 +1370,7 @@ func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pai
 			}
 		}
 	}
-	if r.hasExtras[extraKind] {
+	if r.hasExtra[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
 				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
@@ -1410,7 +1410,7 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 				field.zero()
 			}
 		}
-		if !r.hasExtras[extraKind] {
+		if !r.hasExtra[extraKind] {
 			continue
 		}
 		for i := 0; i < len(r.extras); i++ {

@@ -1644,7 +1644,7 @@ func (r *httpRequest_) forCookies(fn func(cookie *pair, name []byte, value []byt
 			}
 		}
 	}
-	if r.hasExtras[kindCookie] {
+	if r.hasExtra[kindCookie] {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
 				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {

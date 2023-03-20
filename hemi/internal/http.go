@@ -108,18 +108,18 @@ type httpIn_ struct { // incoming. needs parsing
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
 	stockPrimes [40]pair   // for r.primes
-	stockExtras [24]pair   // for r.extras
-	stockParas  [16]para   // for r.paras
+	stockExtras [30]pair   // for r.extras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
+	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
+	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
 	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
 	array          []byte        // store dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockExtras>/max]
-	paras          []para        // hold field parameters. [<r.stockParas>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving
 	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
@@ -131,8 +131,6 @@ type httpIn_ struct { // incoming. needs parsing
 	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
-	inputNext   int32     // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
-	inputEdge   int32     // edge position of current message head is at r.input[r.inputEdge]
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
@@ -184,12 +182,11 @@ func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
-		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
+		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
 	r.maxContentSize = r.stream.keeper().MaxContentSize()
 	r.contentSize = -1 // no content
@@ -204,18 +201,15 @@ func (r *httpIn_) onEnd() { // for zeros
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
 		}
-		r.input, r.inputEdge = nil, 0
+		r.input = nil
+		r.inputNext, r.inputEdge = 0, 0
 	} else {
-		// HTTP/1 supports request pipelining, so r.input and r.inputEdge are not reset here.
+		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
 	if r.arrayKind == arrayKindPool {
 		PutNK(r.array)
 	}
 	r.array = nil // other array kinds are only references, just reset.
-	if cap(r.paras) != cap(r.stockParas) {
-		putParas(r.paras)
-		r.paras = nil
-	}
 	if cap(r.primes) != cap(r.stockPrimes) {
 		putPairs(r.primes)
 		r.primes = nil
@@ -347,7 +341,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 	return r.primes[r.iContentType].dataAt(r.input)
 }
 
-func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and paras
+func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and params
 	field.setParsed()
 	if field.value.isEmpty() {
 		if desc.allowEmpty {
@@ -463,8 +457,8 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 		}
 	}
 	// text.from is at ';'
-	if !desc.allowParas {
-		r.failReason = "paras is not allowed"
+	if !desc.allowParam {
+		r.failReason = "parameters are not allowed"
 		return false
 	}
 	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
@@ -616,7 +610,7 @@ func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte) bool {
 		if bakField.isQuoted() {
 			field.setQuoted()
 		}
-		field.paras = bakField.paras
+		field.params = bakField.params
 		field.dataEdge = bakField.dataEdge
 	}
 	return true
@@ -881,7 +875,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 			if r.receivedSize <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
 				r.contentBlob = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
 				r.contentBlobKind = httpContentBlobPool
-			} else { // > 64K1, content can be sized or unsized. just alloc
+			} else { // r.receivedSize > 64K1, content can be sized or unsized. just alloc
 				r.contentBlob = make([]byte, r.receivedSize)
 				r.contentBlobKind = httpContentBlobMake
 			}
@@ -947,44 +941,44 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 			copy(contentBlob, r.input[r.imme.from:r.imme.edge])
 			r.imme.zero()
 		}
-		if n, err := r.stream.readFull(contentBlob[r.receivedSize:r.contentSize]); err == nil {
-			r.receivedSize += int64(n)
-			return contentBlob // []byte, fetched from pool
-		} else {
+		n, err := r.stream.readFull(contentBlob[r.receivedSize:r.contentSize])
+		if err != nil {
 			PutNK(contentBlob)
 			return err
 		}
-	}
-	// (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile and return the file
-	contentFile, err := r._newTempFile(retain)
-	if err != nil {
-		return err
-	}
-	var p []byte
-	for {
-		p, err = r.shell.readContent()
-		if len(p) > 0 { // skip 0, nothing to write
-			if _, e := contentFile.Write(p); e != nil {
-				err = e
+		r.receivedSize += int64(n)
+		return contentBlob // []byte, fetched from pool
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile and return the file
+		contentFile, err := r._newTempFile(retain)
+		if err != nil {
+			return err
+		}
+		var p []byte
+		for {
+			p, err = r.shell.readContent()
+			if len(p) > 0 { // skip 0, nothing to write
+				if _, e := contentFile.Write(p); e != nil {
+					err = e
+					goto badRead
+				}
+			}
+			if err == io.EOF {
+				break
+			} else if err != nil {
 				goto badRead
 			}
 		}
-		if err == io.EOF {
-			break
-		} else if err != nil {
+		if _, err = contentFile.Seek(0, 0); err != nil {
 			goto badRead
 		}
+		return contentFile // the TempFile
+	badRead:
+		contentFile.Close()
+		if retain { // the TempFile is not fake, so must remove.
+			os.Remove(contentFile.Name())
+		}
+		return err
 	}
-	if _, err = contentFile.Seek(0, 0); err != nil {
-		goto badRead
-	}
-	return contentFile // the TempFile
-badRead:
-	contentFile.Close()
-	if retain { // the TempFile is not fake, so must remove.
-		os.Remove(contentFile.Name())
-	}
-	return err
 }
 
 func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra
@@ -1124,6 +1118,10 @@ func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
 	}
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
+}
+func (r *httpIn_) addParam(param *pair) bool { // as extra
+	// TODO
+	return true
 }
 
 func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
@@ -1421,21 +1419,6 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 			}
 		}
 	}
-}
-
-func (r *httpIn_) addPara(para *para) (edge uint8, ok bool) {
-	if len(r.paras) == cap(r.paras) { // full
-		if cap(r.paras) != cap(r.stockParas) { // too many paras
-			return 0, false
-		}
-		if IsDebug(2) {
-			Debugln("use large paras!")
-		}
-		r.paras = getParas()
-		r.paras = append(r.paras, r.stockParas[:]...)
-	}
-	r.paras = append(r.paras, *para)
-	return uint8(len(r.paras)), true
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save content to

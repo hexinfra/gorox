@@ -339,10 +339,10 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 	default: // r.chunkSize > 0, receiving: chunk-data CRLF
 		r.cBack = 0 // so growChunked1() works correctly
 		from := int(r.cFore)
-		var dataEdge int32
+		var edge int32
 		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
 			r.receivedSize += haveSize
-			dataEdge = r.chunkEdge
+			edge = r.chunkEdge
 			if haveSize == r.chunkSize { // exact chunk-data
 				r.chunkSize = -2 // got chunk-data, needs CRLF or LF
 			} else { // haveSize < r.chunkSize, not enough data.
@@ -351,9 +351,9 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 			r.cFore, r.chunkEdge = 0, 0 // all data taken
 		} else { // haveSize > r.chunkSize, more than chunk-data
 			r.receivedSize += r.chunkSize
-			dataEdge = r.cFore + int32(r.chunkSize)
-			if sizeLeft := r.chunkEdge - dataEdge; sizeLeft == 1 { // chunk-data ?
-				if b := r.bodyWindow[dataEdge]; b == '\r' { // exact chunk-data CR
+			edge = r.cFore + int32(r.chunkSize)
+			if sizeLeft := r.chunkEdge - edge; sizeLeft == 1 { // chunk-data ?
+				if b := r.bodyWindow[edge]; b == '\r' { // exact chunk-data CR
 					r.chunkSize = -1 // got chunk-data CR, needs LF
 				} else if b == '\n' { // exact chunk-data LF
 					r.chunkSize = 0
@@ -361,21 +361,21 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 					goto badRead
 				}
 				r.cFore, r.chunkEdge = 0, 0 // all data taken
-			} else if r.bodyWindow[dataEdge] == '\r' && r.bodyWindow[dataEdge+1] == '\n' { // chunk-data CRLF..
+			} else if r.bodyWindow[edge] == '\r' && r.bodyWindow[edge+1] == '\n' { // chunk-data CRLF..
 				r.chunkSize = 0
 				if sizeLeft == 2 { // exact chunk-data CRLF
 					r.cFore, r.chunkEdge = 0, 0 // all data taken
 				} else { // > 2, chunk-data CRLF X
-					r.cFore = dataEdge + 2
+					r.cFore = edge + 2
 				}
-			} else if r.bodyWindow[dataEdge] == '\n' { // >= 2, chunk-data LF X
+			} else if r.bodyWindow[edge] == '\n' { // >= 2, chunk-data LF X
 				r.chunkSize = 0
-				r.cFore = dataEdge + 1
+				r.cFore = edge + 1
 			} else { // >= 2, chunk-data XX
 				goto badRead
 			}
 		}
-		return r.bodyWindow[from:int(dataEdge)], nil
+		return r.bodyWindow[from:int(edge)], nil
 	}
 badRead:
 	return nil, httpInBadChunk

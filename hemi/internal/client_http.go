@@ -573,7 +573,7 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for response singleton headers
 	hResponseSingletonHeaderTable = [12]struct {
-		fdesc      // allowQuote, allowEmpty, allowParas, hasComment
+		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
 		check func(*hResponse_, *pair, uint8) bool
 	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
@@ -646,7 +646,7 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 
 var ( // perfect hash table for response important headers
 	hResponseImportantHeaderTable = [17]struct {
-		fdesc // allowQuote, allowEmpty, allowParas, hasComment
+		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*hResponse_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
 		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},

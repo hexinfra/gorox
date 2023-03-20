@@ -35,16 +35,16 @@ func putPairs(pairs []pair) {
 	poolPairs.Put(pairs)
 }
 
-// pair is used to hold queries, headers, cookies, forms, and trailers.
+// pair is used to hold queries, headers, cookies, forms, trailers, and params.
 type pair struct { // 24 bytes
 	hash     uint16 // name hash, to support fast search. 0 means empty
 	kind     int8   // see pair kinds
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from
-	value    text   // value
-	flags    byte   // see field flags
+	value    text   // the value
+	flags    byte   // for fields only. see field flags
 	place    int8   // see pair places
-	paras    zone   // refers to a zone of paras
+	params   zone   // refers to a zone of pairs
 	dataEdge int32  // data ends at
 }
 
@@ -56,10 +56,11 @@ const ( // pair kinds
 	kindCookie
 	kindForm
 	kindTrailer
+	kindParam
 )
 
 const ( // field flags
-	flagParsed     = 0b10000000 // data and paras are parsed or not
+	flagParsed     = 0b10000000 // data and params are parsed or not
 	flagSingleton  = 0b01000000 // singleton or not. mainly used by proxies
 	flagSubField   = 0b00100000 // sub field or not. mainly used by apps
 	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
@@ -89,12 +90,12 @@ const ( // pair places
 //    nameFrom+nameSize            |
 //           value.from   value.edge
 //
-// In this case, flags, paras, and dataEdge are NOT used.
+// flags, params, and dataEdge are NOT used in this case.
 //
-// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParas=true`, then a non-comma "accept-type" field may looks like this:
+// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
 //
 //                     [             value                  )
-//        [   name   )  [  data   )[         paras          )
+//        [   name   )  [  data   )[         params         )
 //       +--------------------------------------------------+
 //       |accept-type: "text/plain"; charset="utf-8";lang=en|
 //       +--------------------------------------------------+
@@ -120,9 +121,9 @@ func (p *pair) nameEqualString(t []byte, x string) bool {
 func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 func (p *pair) dataAt(t []byte) []byte  { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
 func (p *pair) dataEmpty() bool         { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
-func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 
 func (p *pair) setParsed()     { p.flags |= flagParsed }
 func (p *pair) setSingleton()  { p.flags |= flagSingleton }
@@ -155,6 +156,8 @@ func (p *pair) show(place []byte) {
 		kind = "form"
 	case kindTrailer:
 		kind = "trailer"
+	case kindParam:
+		kind = "param"
 	default:
 		kind = "unknown"
 	}
@@ -193,47 +196,11 @@ func (p *pair) show(place []byte) {
 	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.nameAt(place), p.valueAt(place))
 }
 
-// poolParas
-var poolParas sync.Pool
-
-const maxParas = 128 // 8B*128=1K
-
-func getParas() []para {
-	if x := poolParas.Get(); x == nil {
-		return make([]para, 0, maxParas)
-	} else {
-		return x.([]para)
-	}
-}
-func putParas(paras []para) {
-	if cap(paras) != maxParas {
-		BugExitln("bad paras")
-	}
-	paras = paras[0:0:maxParas] // reset
-	poolParas.Put(paras)
-}
-
-// para is a parameter in http fields.
-type para struct { // 8 bytes
-	name, value span
-}
-
-func (p *para) zero() { *p = para{} }
-
-func (p *para) nameAt(t []byte) []byte  { return t[p.name.from:p.name.edge] }
-func (p *para) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
-func (p *para) nameEqualString(t []byte, x string) bool {
-	return p.name.size() == len(x) && string(t[p.name.from:p.name.edge]) == x
-}
-func (p *para) nameEqualBytes(t []byte, x []byte) bool {
-	return p.name.size() == len(x) && bytes.Equal(t[p.name.from:p.name.edge], x)
-}
-
 // defaultFdesc
 var defaultFdesc = &fdesc{
 	allowQuote: true,
 	allowEmpty: false,
-	allowParas: true,
+	allowParam: true,
 	hasComment: false,
 }
 
@@ -242,7 +209,7 @@ type fdesc struct {
 	hash       uint16 // name hash
 	allowQuote bool   // allow data quote or not
 	allowEmpty bool   // allow empty data or not
-	allowParas bool   // allow parameters or not
+	allowParam bool   // allow parameters or not
 	hasComment bool   // has comment or not
 	name       []byte // field name
 }

@@ -523,7 +523,7 @@ type httpRequest0 struct { // for fast reset, entirely
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
 	pFieldName   text      // field name. used during receiving and parsing multipart form in case of sliding r.formWindow
-	sizeConsumed int64     // bytes of consumed content when consuming received TempFile. used by, for example, _recvMultipartForm.
+	consumedSize int64     // bytes of consumed content when consuming received TempFile. used by, for example, _recvMultipartForm.
 }
 
 func (r *httpRequest_) onUse(versionCode uint8) { // for non-zeros
@@ -997,7 +997,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderTable = [12]struct {
-		fdesc      // allowQuote, allowEmpty, allowParas, hasComment
+		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
 		check func(*httpRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
@@ -1244,7 +1244,7 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 
 var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderTable = [16]struct {
-		fdesc // allowQuote, allowEmpty, allowParas, hasComment
+		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*httpRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
 		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
@@ -1856,7 +1856,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
 	var contentFile *os.File
 	r.pBack, r.pFore = 0, 0
-	r.sizeConsumed = r.receivedSize
+	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
 		// r.contentBlob is set, r.contentBlobKind == httpContentBlobInput. r.formWindow refers to the exact r.contentBlob.
 		r.formWindow = r.contentBlob
@@ -1893,7 +1893,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 				r.formWindow = nil
 			}()
 			r.formEdge = 0     // no initial data, will fill below
-			r.sizeConsumed = 0 // increases when we grow content
+			r.consumedSize = 0 // increases when we grow content
 			if !r._growMultipartForm(contentFile) {
 				return
 			}
@@ -2207,7 +2207,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RF
 	}
 }
 func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller needs more data from content file
-	if r.sizeConsumed == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
+	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
 	}
@@ -2222,9 +2222,9 @@ func (r *httpRequest_) _growMultipartForm(contentFile *os.File) bool { // caller
 	}
 	n, err := contentFile.Read(r.formWindow[r.formEdge:])
 	r.formEdge += int32(n)
-	r.sizeConsumed += int64(n)
+	r.consumedSize += int64(n)
 	if err == io.EOF {
-		if r.sizeConsumed == r.receivedSize {
+		if r.consumedSize == r.receivedSize {
 			err = nil
 		} else {
 			err = io.ErrUnexpectedEOF

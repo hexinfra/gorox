@@ -860,7 +860,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		header.value.set(r.pBack, fore)
 
 		// Header is received in general algorithm. Now add it
-		if !r.addHeader(header) {
+		if !r.addPrime(header) {
 			// r.headResult is set.
 			return false
 		}
@@ -878,6 +878,18 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	// Now the head is received, and r.pFore is at the beginning of content (if exists).
 	r.head.set(0, r.pFore)
 
+	return true
+}
+func (r *fcgiResponse) addPrime(prime *pair) bool {
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
+			r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many primes"
+			return false
+		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
+	}
+	r.primes = append(r.primes, *prime)
 	return true
 }
 
@@ -899,7 +911,7 @@ func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by
 func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) examineHead() bool {
-	for i, n := 0, len(r.primes); i < n; i++ {
+	for i := 0; i < len(r.primes); i++ {
 		if !r.applyHeader(&r.primes[i], i) {
 			// r.headResult is set.
 			return false
@@ -944,7 +956,7 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool {
+func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
 	return false
@@ -952,6 +964,19 @@ func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool 
 func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
 	// TODO
 	// use r._addExtra
+	return true
+}
+func (r *fcgiResponse) _addExtra(extra *pair) bool {
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras
+			r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many extras"
+			return false
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
+	r.extras = append(r.extras, *extra)
+	r.hasExtra[extra.kind] = true
 	return true
 }
 
@@ -974,8 +999,12 @@ func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
 	return true
 }
 func (r *fcgiResponse) checkContentType(header *pair, index int) bool {
-	r.indexes.contentType = uint8(index)
-	return true
+	if r.indexes.contentType == 0 && !header.dataEmpty() {
+		r.indexes.contentType = uint8(index)
+		return true
+	}
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
+	return false
 }
 func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
 	if status, ok := decToI64(header.valueAt(r.input)); ok {
@@ -1094,38 +1123,6 @@ func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []b
 func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
-
-func (r *fcgiResponse) addHeader(header *pair) bool { // as prime
-	if r._addPrime(header) {
-		return true
-	}
-	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-	return false
-}
-
-func (r *fcgiResponse) _addPrime(prime *pair) bool {
-	if len(r.primes) == cap(r.primes) { // full
-		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
-			return false
-		}
-		r.primes = getPairs()
-		r.primes = append(r.primes, r.stockPrimes[:]...)
-	}
-	r.primes = append(r.primes, *prime)
-	return true
-}
-func (r *fcgiResponse) _addExtra(extra *pair) bool {
-	if len(r.extras) == cap(r.extras) { // full
-		if cap(r.extras) != cap(r.stockExtras) { // too many extras
-			return false
-		}
-		r.extras = getPairs()
-		r.extras = append(r.extras, r.stockExtras[:]...)
-	}
-	r.extras = append(r.extras, *extra)
-	r.hasExtra[extra.kind] = true
-	return true
-}
 
 func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.agent.SaveContentFilesDir() }
 

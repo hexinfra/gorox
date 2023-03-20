@@ -573,13 +573,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// States (buffers)
 	stockRecords [8192]byte // for r.records
 	stockInput   [_2K]byte  // for r.input
-	stockHeaders [64]pair   // for r.headers
+	stockPrimes  [48]pair   // for r.primes
+	stockExtras  [16]pair   // for r.extras
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
 	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	headers        []pair        // fcgi response headers
+	primes         []pair        // prime fcgi response headers
+	extras         []pair        // extra fcgi response headers
 	recvTimeout    time.Duration // timeout to recv the whole response content
 	maxContentSize int64         // max content size allowed for current response
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
@@ -601,6 +603,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	pFore           int32    // element spanning to. for parsing header elements
 	head            text     // for debugging
 	imme            text     // immediate bytes in r.input that belongs to content
+	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
@@ -643,7 +646,8 @@ type fcgiResponse0 struct { // for fast reset, entirely
 func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
-	r.headers = r.stockHeaders[0:1:cap(r.stockHeaders)] // use append(). r.headers[0] is skipped due to zero value of header indexes.
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
+	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.stream.agent.recvTimeout
 	r.maxContentSize = r.stream.agent.maxContentSize
 	r.headResult = StatusOK
@@ -662,9 +666,13 @@ func (r *fcgiResponse) onEnd() {
 		PutNK(r.input)
 		r.input = nil
 	}
-	if cap(r.headers) != cap(r.stockHeaders) {
-		putPairs(r.headers)
-		r.headers = nil
+	if cap(r.primes) != cap(r.stockPrimes) {
+		putPairs(r.primes)
+		r.primes = nil
+	}
+	if cap(r.extras) != cap(r.stockExtras) {
+		putPairs(r.extras)
+		r.extras = nil
 	}
 
 	r.failReason = ""
@@ -875,17 +883,29 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) addHeader(header *pair) bool {
-	if len(r.headers) == cap(r.headers) {
-		if cap(r.headers) == cap(r.stockHeaders) {
-			r.headers = getPairs()
-			r.headers = append(r.headers, r.stockHeaders[:]...)
-		} else { // overflow
-			r.headResult = StatusRequestHeaderFieldsTooLarge
+func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
+func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
+	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
+		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
+			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we believe in framing
+func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
+
+func (r *fcgiResponse) examineHead() bool {
+	for i, n := 0, len(r.primes); i < n; i++ {
+		if !r.applyHeader(&r.primes[i], i) {
+			// r.headResult is set.
 			return false
 		}
 	}
-	r.headers = append(r.headers, *header)
+	// content length is not known at this time, can't check.
 	return true
 }
 
@@ -893,7 +913,7 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
-		if !sh.parse {
+		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 		} else if !r._parseHeader(header, &sh.fdesc, true) {
 			// r.headResult is set.
@@ -904,18 +924,34 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 			return false
 		}
 	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
-		from := len(r.headers)
+		extraFrom := len(r.extras)
 		if !r._splitHeader(header, &mh.fdesc) {
 			// r.headResult is set.
 			return false
 		}
-		if !mh.check(r, from, len(r.headers)) {
+		if header.isCommaValue() { // has sub headers, check them
+			if !mh.check(r, r.extras, extraFrom, len(r.extras)) {
+				// r.headResult is set.
+				return false
+			}
+		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
 			// r.headResult is set.
 			return false
 		}
 	} else {
 		// All other headers are treated as list-based headers.
 	}
+	return true
+}
+
+func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool {
+	// TODO
+	// use r._addExtra
+	return false
+}
+func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
+	// TODO
+	// use r._addExtra
 	return true
 }
 
@@ -957,7 +993,7 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderTable = [3]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*fcgiResponse, int, int) bool
+		check func(*fcgiResponse, []pair, int, int) bool
 	}{ // connection transfer-encoding upgrade
 		0: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
 		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
@@ -966,53 +1002,22 @@ var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
 
-func (r *fcgiResponse) checkConnection(from int, edge int) bool {
-	return r._delHeaders(from, edge)
+func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool {
+	return r._delHeaders(pairs, from, edge)
 }
-func (r *fcgiResponse) checkTransferEncoding(from int, edge int) bool {
-	return r._delHeaders(from, edge)
+func (r *fcgiResponse) checkTransferEncoding(pairs []pair, from int, edge int) bool {
+	return r._delHeaders(pairs, from, edge)
 }
-func (r *fcgiResponse) checkUpgrade(from int, edge int) bool {
-	return r._delHeaders(from, edge)
+func (r *fcgiResponse) checkUpgrade(pairs []pair, from int, edge int) bool {
+	return r._delHeaders(pairs, from, edge)
 }
-func (r *fcgiResponse) _delHeaders(from int, edge int) bool {
+func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 	for i := from; i < edge; i++ {
-		r.headers[i].zero()
+		pairs[i].zero()
 	}
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool {
-	// TODO
-	return false
-}
-func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
-	// TODO
-	return true
-}
-
-func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
-	for i := 1; i < len(r.headers); i++ { // r.headers[0] is not used
-		if header := &r.headers[i]; header.hash != 0 && !header.isSubField() {
-			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (r *fcgiResponse) examineHead() bool {
-	for i, n := 0, len(r.headers); i < n; i++ {
-		if !r.applyHeader(&r.headers[i], i) {
-			// r.headResult is set.
-			return false
-		}
-	}
-	// content length is not known at this time, can't check.
-	return true
-}
 func (r *fcgiResponse) cleanInput() {
 	if !r.hasContent() {
 		return
@@ -1020,10 +1025,6 @@ func (r *fcgiResponse) cleanInput() {
 	r.imme.set(r.pFore, r.inputEdge)
 	// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
 }
-
-func (r *fcgiResponse) ContentSize() int64 { return -2 } // fcgi is unsized by default. we believe in framing
-
-func (r *fcgiResponse) isUnsized() bool { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) hasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
@@ -1093,6 +1094,38 @@ func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []b
 func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
+
+func (r *fcgiResponse) addHeader(header *pair) bool { // as prime
+	if r._addPrime(header) {
+		return true
+	}
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
+}
+
+func (r *fcgiResponse) _addPrime(prime *pair) bool {
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
+			return false
+		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
+	}
+	r.primes = append(r.primes, *prime)
+	return true
+}
+func (r *fcgiResponse) _addExtra(extra *pair) bool {
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras
+			return false
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
+	r.extras = append(r.extras, *extra)
+	r.hasExtra[extra.kind] = true
+	return true
+}
 
 func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.agent.SaveContentFilesDir() }
 

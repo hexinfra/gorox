@@ -326,21 +326,6 @@ func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bo
 	return r._forMainFields(r.headers, kindHeader, fn)
 }
 
-func (r *httpIn_) ContentSize() int64 { return r.contentSize }
-func (r *httpIn_) UnsafeContentLength() []byte {
-	if r.iContentLength == 0 {
-		return nil
-	}
-	return r.primes[r.iContentLength].valueAt(r.input)
-}
-func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
-func (r *httpIn_) UnsafeContentType() []byte {
-	if r.iContentType == 0 {
-		return nil
-	}
-	return r.primes[r.iContentType].dataAt(r.input)
-}
-
 func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and params
 	field.setParsed()
 	if field.value.isEmpty() {
@@ -523,7 +508,7 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 			r.failReason = "missing parameter-value"
 			return false
 		}
-		if p[text.edge] == '"' { // quoted-string
+		if p[text.edge] == '"' { // quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
 			text.edge++
 			text.from = text.edge
 			for {
@@ -854,6 +839,21 @@ func (r *httpIn_) determineContentMode() bool {
 func (r *httpIn_) markUnsized()    { r.contentSize = -2 }
 func (r *httpIn_) isUnsized() bool { return r.contentSize == -2 }
 
+func (r *httpIn_) ContentSize() int64 { return r.contentSize }
+func (r *httpIn_) UnsafeContentLength() []byte {
+	if r.iContentLength == 0 {
+		return nil
+	}
+	return r.primes[r.iContentLength].valueAt(r.input)
+}
+func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
+func (r *httpIn_) UnsafeContentType() []byte {
+	if r.iContentType == 0 {
+		return nil
+	}
+	return r.primes[r.iContentType].dataAt(r.input)
+}
+
 func (r *httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
 func (r *httpIn_) unsafeContent() []byte {
@@ -1142,6 +1142,7 @@ func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	return uint8(len(r.primes)), true
 }
 func (r *httpIn_) _delPrime(i uint8) { r.primes[i].zero() }
+
 func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
 	nameSize := len(name)
 	if nameSize == 0 || nameSize > 255 { // name size is limited at 255

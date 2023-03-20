@@ -966,7 +966,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
-		if !sh.parse {
+		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 		} else if !r._parseField(header, &sh.fdesc, r.input, true) {
 			r.headResult = StatusBadRequest
@@ -982,12 +982,12 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if header.isCommaValue() { // has sub headers
+		if header.isCommaValue() { // has sub headers, check them
 			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) {
+		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
 			// r.headResult is set.
 			return false
 		}

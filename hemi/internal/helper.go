@@ -51,7 +51,8 @@ type pair struct { // 24 bytes
 func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
-	kindQuery = iota
+	kindUnknown = iota
+	kindQuery
 	kindHeader
 	kindCookie
 	kindForm

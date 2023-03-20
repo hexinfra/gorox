@@ -782,10 +782,12 @@ func (r *httpRequest_) examineHead() bool {
 		}
 	}
 	if IsDebug(2) {
+		Debugln("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))
 		}
+		Debugln("======extras======")
 		for i := 0; i < len(r.extras); i++ {
 			extra := &r.extras[i]
 			extra.show(r._placeOf(extra))
@@ -1276,10 +1278,12 @@ func (r *httpRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8)
 	}
 	r.zones.acceptLanguages.edge = edge
 	if IsDebug(2) {
-		for i := from; i < edge; i++ {
-			data := pairs[i].dataAt(r.input)
-			Debugf("lang=%s\n", string(data))
-		}
+		/*
+			for i := from; i < edge; i++ {
+				data := pairs[i].dataAt(r.input)
+				Debugf("lang=%s\n", string(data))
+			}
+		*/
 	}
 	return true
 }

@@ -56,7 +56,7 @@ const ( // pair kinds
 	kindCookie
 	kindForm
 	kindTrailer
-	kindParam
+	kindParam // parameter of fields
 )
 
 const ( // field flags
@@ -125,15 +125,14 @@ func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
 func (p *pair) dataAt(t []byte) []byte  { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
 func (p *pair) dataEmpty() bool         { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
 
-func (p *pair) setParsed()     { p.flags |= flagParsed }
-func (p *pair) setSingleton()  { p.flags |= flagSingleton }
-func (p *pair) setSubField()   { p.flags |= flagSubField }
-func (p *pair) setLiteral()    { p.flags |= flagLiteral }
-func (p *pair) setPseudo()     { p.flags |= flagPseudo }
-func (p *pair) setUnderscore() { p.flags |= flagUnderscore }
-func (p *pair) setCommaValue() { p.flags |= flagCommaValue }
-func (p *pair) setQuoted()     { p.flags |= flagQuoted }
-
+func (p *pair) setParsed()         { p.flags |= flagParsed }
+func (p *pair) setSingleton()      { p.flags |= flagSingleton }
+func (p *pair) setSubField()       { p.flags |= flagSubField }
+func (p *pair) setLiteral()        { p.flags |= flagLiteral }
+func (p *pair) setPseudo()         { p.flags |= flagPseudo }
+func (p *pair) setUnderscore()     { p.flags |= flagUnderscore }
+func (p *pair) setCommaValue()     { p.flags |= flagCommaValue }
+func (p *pair) setQuoted()         { p.flags |= flagQuoted }
 func (p *pair) isParsed() bool     { return p.flags&flagParsed > 0 }
 func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
 func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }

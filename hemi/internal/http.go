@@ -110,7 +110,7 @@ type httpIn_ struct { // incoming. needs parsing
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [30]pair   // for r.extras
 	// Stream states (controlled)
-	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving queries, headers, cookies, forms, and trailers
+	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
 	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
@@ -119,7 +119,7 @@ type httpIn_ struct { // incoming. needs parsing
 	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
 	array          []byte        // store dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockExtras>/max]
+	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving
 	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
@@ -502,15 +502,21 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 				return false
 			}
 		}
-		if text.edge == text.from {
-			r.failReason = "empty parameter-name is not allowed"
+		nameSize := text.edge - text.from
+		if nameSize == 0 || nameSize > 255 {
+			r.failReason = "parameter-name out of range"
 			return false
 		}
 		if p[text.edge] != '=' {
 			r.failReason = "token '=' required"
 			return false
 		}
-		//Debugf("6=%s\n", string(p[text.from:text.edge]))
+		var param pair
+		param.hash = bytesHash(p[text.from:text.edge])
+		param.kind = kindParam
+		param.nameSize = uint8(nameSize)
+		param.nameFrom = text.from
+		param.place = field.place
 		text.edge++ // skip '='
 		// parameter-value = ( token / quoted-string )
 		if text.edge == field.value.edge {
@@ -530,7 +536,7 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 				}
 				text.edge++
 			}
-			//Debugf("7=%s\n", string(p[text.from:text.edge]))
+			param.value = text
 			text.edge++
 		} else { // token
 			text.from = text.edge
@@ -541,10 +547,11 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 				r.failReason = "empty parameter-value is not allowed"
 				return false
 			}
-			//Debugf("8=%s\n", string(p[text.from:text.edge]))
-			if text.edge == field.value.edge {
-				return true
-			}
+			param.value = text
+		}
+		if !r._addExtra(&param) {
+			r.failReason = "too many extras"
+			return false
 		}
 		text.from = text.edge
 	}
@@ -1119,10 +1126,6 @@ func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
 }
-func (r *httpIn_) addParam(param *pair) bool { // as extra
-	// TODO
-	return true
-}
 
 func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
@@ -1149,7 +1152,7 @@ func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int
 		if valueSize > _1G {
 			return false
 		}
-	} else if valueSize > _16K { // for queries, headers, cookies and trailers, max value size is 16K
+	} else if valueSize > _16K { // for non-forms, max value size is 16K
 		return false
 	}
 	if !r._growArray(int32(nameSize + valueSize)) { // extras are always placed in r.array
@@ -1207,7 +1210,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 				}
 			}
 		}
-	} else { // queries, cookies, and forms
+	} else { // queries, cookies, forms, and params
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
@@ -1251,7 +1254,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 					}
 				}
 			}
-		} else { // queries, cookies, and forms
+		} else { // queries, cookies, forms, and params
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1297,7 +1300,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 					}
 				}
 			}
-		} else { // queries, cookies, and forms
+		} else { // queries, cookies, forms, and params
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {

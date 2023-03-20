@@ -527,7 +527,7 @@ type httpRequest0 struct { // for fast reset, entirely
 }
 
 func (r *httpRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.httpIn_.onUse(r.stream.keeper().MaxContentSize(), versionCode, false) // asResponse = false
+	r.httpIn_.onUse(versionCode, false) // asResponse = false
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }

@@ -180,7 +180,7 @@ type httpIn0 struct { // for fast reset, entirely
 	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
-func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool) { // for non-zeros
+func (r *httpIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
@@ -191,7 +191,7 @@ func (r *httpIn_) onUse(maxContentSize int64, versionCode uint8, asResponse bool
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.paras = r.stockParas[0:0:cap(r.stockParas)]    // use append()
 	r.recvTimeout = r.stream.keeper().RecvTimeout()
-	r.maxContentSize = maxContentSize
+	r.maxContentSize = r.stream.keeper().MaxContentSize()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse

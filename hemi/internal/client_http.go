@@ -474,7 +474,7 @@ type hResponse0 struct { // for fast reset, entirely
 }
 
 func (r *hResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.httpIn_.onUse(r.stream.keeper().MaxContentSize(), versionCode, true) // asResponse = true
+	r.httpIn_.onUse(versionCode, true) // asResponse = true
 
 	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }

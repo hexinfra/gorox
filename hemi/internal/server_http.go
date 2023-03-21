@@ -277,13 +277,13 @@ func (s *httpStream_) onEnd() {
 	s.stream_.onEnd()
 }
 
-func (s *httpStream_) execTCPTun() { // CONNECT method
+func (s *httpStream_) serveSocket() { // upgrade: websocket
 	// TODO
 }
-func (s *httpStream_) execUDPTun() { // upgrade: connect-udp
+func (s *httpStream_) serveTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *httpStream_) execSocket() { // upgrade: websocket
+func (s *httpStream_) serveUDPTun() { // upgrade: connect-udp
 	// TODO
 }
 
@@ -720,6 +720,14 @@ func (r *httpRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
+func (r *httpRequest_) addQuery(query *pair) bool { // as prime
+	if edge, ok := r._addPrime(query); ok {
+		r.queries.edge = edge
+		return true
+	}
+	r.headResult, r.failReason = StatusURITooLong, "too many queries"
+	return false
+}
 func (r *httpRequest_) AddQuery(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindQuery)
 }
@@ -968,7 +976,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
-		} else if !r._parseField(header, &sh.fdesc, r.input, true) {
+		} else if !r._parseField(header, &sh.desc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -978,7 +986,7 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
 		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.fdesc, r.input) {
+		if !r._splitField(header, &mh.desc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -999,22 +1007,22 @@ func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for request singleton headers
 	httpRequestSingletonHeaderTable = [12]struct {
-		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
+		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
 		check func(*httpRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
-		0:  {fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, false, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, false, (*httpRequest_).checkUserAgent},
-		2:  {fdesc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*httpRequest_).checkContentLength},
-		3:  {fdesc{hashRange, false, false, false, false, bytesRange}, false, (*httpRequest_).checkRange},
-		4:  {fdesc{hashDate, false, false, false, false, bytesDate}, false, (*httpRequest_).checkDate},
-		5:  {fdesc{hashHost, false, false, false, false, bytesHost}, false, (*httpRequest_).checkHost},
-		6:  {fdesc{hashCookie, false, false, false, false, bytesCookie}, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {fdesc{hashContentType, false, false, true, false, bytesContentType}, true, (*httpRequest_).checkContentType},
-		8:  {fdesc{hashIfRange, false, false, false, false, bytesIfRange}, false, (*httpRequest_).checkIfRange},
-		9:  {fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, false, (*httpRequest_).checkIfModifiedSince},
-		10: {fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, false, (*httpRequest_).checkAuthorization},
-		11: {fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, false, (*httpRequest_).checkProxyAuthorization},
+		0:  {desc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, false, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {desc{hashUserAgent, false, false, false, true, bytesUserAgent}, false, (*httpRequest_).checkUserAgent},
+		2:  {desc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*httpRequest_).checkContentLength},
+		3:  {desc{hashRange, false, false, false, false, bytesRange}, false, (*httpRequest_).checkRange},
+		4:  {desc{hashDate, false, false, false, false, bytesDate}, false, (*httpRequest_).checkDate},
+		5:  {desc{hashHost, false, false, false, false, bytesHost}, false, (*httpRequest_).checkHost},
+		6:  {desc{hashCookie, false, false, false, false, bytesCookie}, false, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {desc{hashContentType, false, false, true, false, bytesContentType}, true, (*httpRequest_).checkContentType},
+		8:  {desc{hashIfRange, false, false, false, false, bytesIfRange}, false, (*httpRequest_).checkIfRange},
+		9:  {desc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, false, (*httpRequest_).checkIfModifiedSince},
+		10: {desc{hashAuthorization, false, false, false, false, bytesAuthorization}, false, (*httpRequest_).checkAuthorization},
+		11: {desc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, false, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -1246,25 +1254,25 @@ func (r *httpRequest_) _addRange(from int64, last int64) bool {
 
 var ( // perfect hash table for request important headers
 	httpRequestImportantHeaderTable = [16]struct {
-		fdesc // allowQuote, allowEmpty, allowParam, hasComment
+		desc  // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*httpRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
-		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
-		2:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
-		3:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		4:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
-		5:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
-		6:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		7:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
-		8:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
-		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
-		10: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
-		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
-		12: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
-		13: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
-		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
-		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
+		0:  {desc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
+		1:  {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
+		2:  {desc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
+		3:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		4:  {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
+		5:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
+		6:  {desc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		7:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
+		8:  {desc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
+		9:  {desc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
+		10: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
+		11: {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
+		12: {desc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
+		13: {desc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
+		14: {desc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
+		15: {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
 	}
 	httpRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )
@@ -1600,6 +1608,14 @@ func (r *httpRequest_) getRanges() []rang {
 	return r.ranges[:r.nRanges]
 }
 
+func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
+	if edge, ok := r._addPrime(cookie); ok {
+		r.cookies.edge = edge
+		return true
+	}
+	r.headResult = StatusRequestHeaderFieldsTooLarge
+	return false
+}
 func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindCookie)
 }
@@ -1796,6 +1812,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 					form.nameSize = uint8(nameSize)
 					form.value.from = r.arrayEdge
 				} else {
+					r.bodyResult, r.failReason = StatusBadRequest, "form name too long"
 					return
 				}
 				state = 3
@@ -1808,6 +1825,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			} else if b == '%' {
 				state = 0x2f // '2' means from state 2
 			} else {
+				r.bodyResult, r.failReason = StatusBadRequest, "invalid form name"
 				return
 			}
 		case 3: // expecting '&' to get a value
@@ -1827,11 +1845,13 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			} else if b == '%' {
 				state = 0x3f // '3' means from state 3
 			} else {
+				r.bodyResult, r.failReason = StatusBadRequest, "invalid form value"
 				return
 			}
 		default: // expecting HEXDIG
 			half, ok := byteFromHex(b)
 			if !ok {
+				r.bodyResult, r.failReason = StatusBadRequest, "invalid pct encoding"
 				return
 			}
 			if state&0xf == 0xf { // expecting the first HEXDIG
@@ -1854,7 +1874,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 			r.addForm(form)
 		}
 	} else { // '=' not found, or incomplete pct-encoded
-		// Do nothing, just ignore.
+		r.bodyResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
 	}
 }
 func (r *httpRequest_) _recvMultipartForm() { // into memory or TempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
@@ -2311,6 +2331,14 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 	}
 }
 
+func (r *httpRequest_) addForm(form *pair) bool { // as prime
+	if edge, ok := r._addPrime(form); ok {
+		r.forms.edge = edge
+		return true
+	}
+	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
+	return false
+}
 func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindForm)
 }
@@ -2363,6 +2391,21 @@ func (r *httpRequest_) DelForm(name string) (deleted bool) {
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 
+func (r *httpRequest_) addUpload(upload *Upload) {
+	if len(r.uploads) == cap(r.uploads) {
+		if cap(r.uploads) == cap(r.stockUploads) {
+			uploads := make([]Upload, 0, 16)
+			r.uploads = append(uploads, r.uploads...)
+		} else if cap(r.uploads) == 16 {
+			uploads := make([]Upload, 0, 128)
+			r.uploads = append(uploads, r.uploads...)
+		} else {
+			// Ignore too many uploads
+			return
+		}
+	}
+	r.uploads = append(r.uploads, *upload)
+}
 func (r *httpRequest_) HasUploads() bool {
 	r.parseHTMLForm()
 	return len(r.uploads) != 0
@@ -2435,46 +2478,6 @@ func (r *httpRequest_) arrayCopy(p []byte) bool {
 		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
 	}
 	return true
-}
-
-func (r *httpRequest_) addQuery(query *pair) bool { // as prime
-	if edge, ok := r._addPrime(query); ok {
-		r.queries.edge = edge
-		return true
-	}
-	r.headResult, r.failReason = StatusURITooLong, "too many queries"
-	return false
-}
-func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
-	if edge, ok := r._addPrime(cookie); ok {
-		r.cookies.edge = edge
-		return true
-	}
-	r.headResult = StatusRequestHeaderFieldsTooLarge
-	return false
-}
-func (r *httpRequest_) addForm(form *pair) bool { // as prime
-	if edge, ok := r._addPrime(form); ok {
-		r.forms.edge = edge
-		return true
-	}
-	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
-	return false
-}
-func (r *httpRequest_) addUpload(upload *Upload) {
-	if len(r.uploads) == cap(r.uploads) {
-		if cap(r.uploads) == cap(r.stockUploads) {
-			uploads := make([]Upload, 0, 16)
-			r.uploads = append(uploads, r.uploads...)
-		} else if cap(r.uploads) == 16 {
-			uploads := make([]Upload, 0, 128)
-			r.uploads = append(uploads, r.uploads...)
-		} else {
-			// Ignore too many uploads
-			return
-		}
-	}
-	r.uploads = append(r.uploads, *upload)
 }
 
 func (r *httpRequest_) saveContentFilesDir() string {
@@ -2804,7 +2807,7 @@ func (r *httpResponse_) SendGatewayTimeout(content []byte) error { // 504
 	return r.sendError(StatusGatewayTimeout, content)
 }
 func (r *httpResponse_) sendError(status int16, content []byte) error {
-	if err := r.beforeSend(); err != nil {
+	if err := r._beforeSend(); err != nil {
 		return err
 	}
 	if err := r.SetStatus(status); err != nil {
@@ -2852,7 +2855,7 @@ func (r *httpResponse_) send() error {
 	return r.shell.sendChain(curChain)
 }
 
-func (r *httpResponse_) beforePush() error {
+func (r *httpResponse_) _beforePush() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}

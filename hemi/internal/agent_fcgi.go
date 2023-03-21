@@ -927,7 +927,7 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
-		} else if !r._parseHeader(header, &sh.fdesc, true) {
+		} else if !r._parseHeader(header, &sh.desc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -937,7 +937,7 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 		}
 	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
 		extraFrom := len(r.extras)
-		if !r._splitHeader(header, &mh.fdesc) {
+		if !r._splitHeader(header, &mh.desc) {
 			// r.headResult is set.
 			return false
 		}
@@ -956,12 +956,12 @@ func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, desc *fdesc, fully bool) bool { // data and params
+func (r *fcgiResponse) _parseHeader(header *pair, desc *desc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
 	return false
 }
-func (r *fcgiResponse) _splitHeader(header *pair, desc *fdesc) bool {
+func (r *fcgiResponse) _splitHeader(header *pair, desc *desc) bool {
 	// TODO
 	// use r._addExtra
 	return true
@@ -982,14 +982,14 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 
 var ( // perfect hash table for response singleton headers
 	fcgiResponseSingletonHeaderTable = [4]struct {
-		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
+		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
 		check func(*fcgiResponse, *pair, int) bool
 	}{ // content-length content-type location status
-		0: {fdesc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, false, (*fcgiResponse).checkStatus},
-		1: {fdesc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*fcgiResponse).checkContentLength},
-		2: {fdesc{hashContentType, false, false, true, false, bytesContentType}, true, (*fcgiResponse).checkContentType},
-		3: {fdesc{hashLocation, false, false, false, false, bytesLocation}, false, (*fcgiResponse).checkLocation},
+		0: {desc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, false, (*fcgiResponse).checkStatus},
+		1: {desc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*fcgiResponse).checkContentLength},
+		2: {desc{hashContentType, false, false, true, false, bytesContentType}, true, (*fcgiResponse).checkContentType},
+		3: {desc{hashLocation, false, false, false, false, bytesLocation}, false, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -1021,12 +1021,12 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 
 var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderTable = [3]struct {
-		fdesc // allowQuote, allowEmpty, allowParam, hasComment
+		desc  // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, []pair, int, int) bool
 	}{ // connection transfer-encoding upgrade
-		0: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
-		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
-		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
+		0: {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
+		1: {desc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
+		2: {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )

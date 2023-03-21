@@ -272,6 +272,14 @@ func (r *httpIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.versionCode] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
 
+func (r *httpIn_) addHeader(header *pair) bool { // as prime
+	if edge, ok := r._addPrime(header); ok {
+		r.headers.edge = edge
+		return true
+	}
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	return false
+}
 func (r *httpIn_) AddHeader(name string, value string) bool { // as extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// TODO: parse and check?
@@ -319,14 +327,8 @@ func (r *httpIn_) DelHeader(name string) (deleted bool) {
 func (r *httpIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
 }
-func (r *httpIn_) delHopHeaders() { // used by proxies
-	r._delHopFields(r.headers, kindHeader, r.delHeader)
-}
-func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by httpOut.copyHeadFrom(). excluding sub headers
-	return r._forMainFields(r.headers, kindHeader, fn)
-}
 
-func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bool { // data and params
+func (r *httpIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool { // data and params
 	field.setParsed()
 	if field.value.isEmpty() {
 		if desc.allowEmpty {
@@ -541,7 +543,7 @@ func (r *httpIn_) _parseField(field *pair, desc *fdesc, p []byte, fully bool) bo
 		text.from = text.edge
 	}
 }
-func (r *httpIn_) _splitField(field *pair, desc *fdesc, p []byte) bool {
+func (r *httpIn_) _splitField(field *pair, desc *desc, p []byte) bool {
 	field.setParsed()
 	// RFC 9110 (section 5.6.1.2):
 	// In other words, a recipient MUST accept lists that satisfy the following syntax:
@@ -988,6 +990,14 @@ func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content
 	}
 }
 
+func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
+	if edge, ok := r._addPrime(trailer); ok {
+		r.trailers.edge = edge
+		return true
+	}
+	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
+	return false
+}
 func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// TODO: parse and check?
@@ -1033,12 +1043,6 @@ func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 }
 func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
-}
-func (r *httpIn_) delHopTrailers() { // used by proxies
-	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
-}
-func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // by httpOut.copyTrailersFrom(). excluding sub trailers
-	return r._forMainFields(r.trailers, kindTrailer, fn)
 }
 
 func (r *httpIn_) examineTail() bool {
@@ -1108,23 +1112,6 @@ func (r *httpIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->
 	}
 	r.array = array
 	return true
-}
-
-func (r *httpIn_) addHeader(header *pair) bool { // as prime
-	if edge, ok := r._addPrime(header); ok {
-		r.headers.edge = edge
-		return true
-	}
-	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
-	return false
-}
-func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
-	if edge, ok := r._addPrime(trailer); ok {
-		r.trailers.edge = edge
-		return true
-	}
-	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
-	return false
 }
 
 func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
@@ -1237,7 +1224,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
 							continue
 						}
 						if !prime.isCommaValue() {
@@ -1283,7 +1270,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 			for i := primes.from; i < primes.edge; i++ {
 				if prime := &r.primes[i]; prime.hash == hash {
 					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
 							continue
 						}
 						if !prime.isCommaValue() {
@@ -1363,26 +1350,20 @@ func (r *httpIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
-	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 {
-			p := r._placeOf(field)
-			if !fn(field, field.nameAt(p), field.valueAt(p)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtra[extraKind] {
-		for i := 0; i < len(r.extras); i++ {
-			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
-				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
+func (r *httpIn_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
+func (r *httpIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by httpOut.copyHeadFrom(). excluding sub headers
+	return r._forMainFields(r.headers, kindHeader, fn)
+}
+
+func (r *httpIn_) delHopTrailers() { // used by proxies
+	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
+}
+func (r *httpIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // by httpOut.copyTrailersFrom(). excluding sub trailers
+	return r._forMainFields(r.trailers, kindTrailer, fn)
+}
+
 func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
@@ -1423,6 +1404,26 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 			}
 		}
 	}
+}
+func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
+	for i := fields.from; i < fields.edge; i++ {
+		if field := &r.primes[i]; field.hash != 0 {
+			p := r._placeOf(field)
+			if !fn(field, field.nameAt(p), field.valueAt(p)) {
+				return false
+			}
+		}
+	}
+	if r.hasExtra[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
+				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save content to
@@ -1475,7 +1476,7 @@ type httpOut interface {
 	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
-	beforePush() error
+	_beforePush() error
 	pushHeaders() error
 	push(chunk *Block) error
 	pushChain(chain Chain) error
@@ -1619,60 +1620,6 @@ func (r *httpOut_) isUnsized() bool { return r.contentSize == -2 }
 func (r *httpOut_) markSent()       { r.isSent = true }
 func (r *httpOut_) IsSent() bool    { return r.isSent }
 
-func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
-
-func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
-func (r *httpOut_) SendBytes(content []byte) error { return r.sendBlob(content) }
-func (r *httpOut_) SendJSON(content any) error {
-	// TODO: optimize & set content-type?
-	data, err := json.Marshal(content)
-	if err != nil {
-		return err
-	}
-	return r.SendBytes(data)
-}
-func (r *httpOut_) SendFile(contentPath string) error {
-	file, err := os.Open(contentPath)
-	if err != nil {
-		return err
-	}
-	info, err := file.Stat()
-	if err != nil {
-		file.Close()
-		return err
-	}
-	return r.sendFile(file, info, true)
-}
-
-func (r *httpOut_) Push(chunk string) error      { return r.PushBytes(risky.ConstBytes(chunk)) }
-func (r *httpOut_) PushBytes(chunk []byte) error { return r.pushBlob(chunk) }
-func (r *httpOut_) PushFile(chunkPath string) error {
-	file, err := os.Open(chunkPath)
-	if err != nil {
-		return err
-	}
-	info, err := file.Stat()
-	if err != nil {
-		file.Close()
-		return err
-	}
-	return r.pushFile(file, info, true)
-}
-
-func (r *httpOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.shell.trailer(risky.ConstBytes(name))
-	return string(v), ok
-}
-func (r *httpOut_) AddTrailer(name string, value string) bool {
-	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
-}
-func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
-		return r.shell.addTrailer(name, value)
-	}
-	return false
-}
-
 func (r *httpOut_) appendContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.oContentType, bytesContentType, contentType)
 }
@@ -1735,6 +1682,60 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	return true
 }
 
+func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
+
+func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
+func (r *httpOut_) SendBytes(content []byte) error { return r.sendBlob(content) }
+func (r *httpOut_) SendJSON(content any) error {
+	// TODO: optimize & set content-type?
+	data, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	return r.SendBytes(data)
+}
+func (r *httpOut_) SendFile(contentPath string) error {
+	file, err := os.Open(contentPath)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return err
+	}
+	return r.sendFile(file, info, true)
+}
+
+func (r *httpOut_) Push(chunk string) error      { return r.PushBytes(risky.ConstBytes(chunk)) }
+func (r *httpOut_) PushBytes(chunk []byte) error { return r.pushBlob(chunk) }
+func (r *httpOut_) PushFile(chunkPath string) error {
+	file, err := os.Open(chunkPath)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return err
+	}
+	return r.pushFile(file, info, true)
+}
+
+func (r *httpOut_) Trailer(name string) (value string, ok bool) {
+	v, ok := r.shell.trailer(risky.ConstBytes(name))
+	return string(v), ok
+}
+func (r *httpOut_) AddTrailer(name string, value string) bool {
+	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+}
+func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
+	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
+		return r.shell.addTrailer(name, value)
+	}
+	return false
+}
+
 func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content directly
 	pass := r.shell.syncBytes
 	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
@@ -1789,7 +1790,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
 		}
 	} else { // nil means no content.
-		if err := r.beforeSend(); err != nil {
+		if err := r._beforeSend(); err != nil {
 			return err
 		}
 		r.forbidContent = true
@@ -1797,15 +1798,8 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 	}
 }
 
-func (r *httpOut_) beforeSend() error {
-	if r.isSent {
-		return httpOutAlreadySent
-	}
-	r.isSent = true
-	return nil
-}
 func (r *httpOut_) sendBlob(content []byte) error {
-	if err := r.beforeSend(); err != nil {
+	if err := r._beforeSend(); err != nil {
 		return err
 	}
 	r.content.head.SetBlob(content)
@@ -1813,15 +1807,22 @@ func (r *httpOut_) sendBlob(content []byte) error {
 	return r.shell.send()
 }
 func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
-	if err := r.beforeSend(); err != nil {
+	if err := r._beforeSend(); err != nil {
 		return err
 	}
 	r.content.head.SetFile(content, info, shut)
 	r.contentSize = info.Size() // original size, may be revised
 	return r.shell.send()
 }
+func (r *httpOut_) _beforeSend() error {
+	if r.isSent {
+		return httpOutAlreadySent
+	}
+	r.isSent = true
+	return nil
+}
 func (r *httpOut_) pushBlob(chunk []byte) error {
-	if err := r.shell.beforePush(); err != nil {
+	if err := r.shell._beforePush(); err != nil {
 		return err
 	}
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
@@ -1832,7 +1833,7 @@ func (r *httpOut_) pushBlob(chunk []byte) error {
 	return r.shell.push(block)
 }
 func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
-	if err := r.shell.beforePush(); err != nil {
+	if err := r.shell._beforePush(); err != nil {
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
@@ -2158,9 +2159,9 @@ const ( // status codes. keep sync with ../hemi.go
 
 const ( // misc http types
 	httpModeNormal = 0 // request & response, must be 0
-	httpModeTCPTun = 1 // CONNECT method
-	httpModeUDPTun = 2 // upgrade: connect-udp
-	httpModeSocket = 3 // upgrade: websocket
+	httpModeSocket = 1 // upgrade: websocket
+	httpModeTCPTun = 2 // CONNECT method
+	httpModeUDPTun = 3 // upgrade: connect-udp
 
 	httpTargetOrigin    = 0 // must be 0
 	httpTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]

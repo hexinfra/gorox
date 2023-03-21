@@ -172,7 +172,10 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 	if req.upgradeUDPTun { // udpTun mode?
-		// TODO
+		s.serveUDPTun()
+		s.httpMode = httpModeUDPTun
+		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
+		return
 	}
 
 	server := conn.server.(*httpxServer)
@@ -275,6 +278,13 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
+func (s *http1Stream) serveSocket() { // upgrade: websocket
+	// TODO(diogin): implementation (RFC 6455)
+	// NOTICE: use idle timeout or clear read timeout
+	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
+	s.conn.closeConn()
+	s.onEnd()
+}
 func (s *http1Stream) serveTCPTun() { // CONNECT method
 	// TODO(diogin): implementation
 	// NOTICE: use idle timeout
@@ -285,13 +295,6 @@ func (s *http1Stream) serveTCPTun() { // CONNECT method
 func (s *http1Stream) serveUDPTun() { // upgrade: connect-udp
 	// TODO(diogin): implementation (RFC 9298)
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
-	s.conn.closeConn()
-	s.onEnd()
-}
-func (s *http1Stream) serveSocket() { // upgrade: websocket
-	// TODO(diogin): implementation (RFC 6455)
-	// NOTICE: use idle timeout or clear read timeout
-	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
@@ -860,13 +863,11 @@ func (r *http1Response) control() []byte { // HTTP/1's own control()
 	return start
 }
 
+func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
 func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
 func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
 func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
 func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
-func (r *http1Response) addedHeaders() []byte                       { return r.fields[0:r.fieldsEdge] }
-func (r *http1Response) fixedHeaders() []byte                       { return http1BytesFixedResponseHeaders }
 
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
@@ -1049,6 +1050,9 @@ func (r *http1Response) finalizeUnsized() error {
 	}
 	return nil // HTTP/1.0 does nothing.
 }
+
+func (r *http1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
+func (r *http1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
 // poolHTTP1Socket
 var poolHTTP1Socket sync.Pool

@@ -294,15 +294,15 @@ func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
+func (s *H2Stream) StartSocket() *H2Socket { // see RFC 8441
+	// TODO
+	return s.socket
+}
 func (s *H2Stream) StartTCPTun() { // CONNECT method
 	// TODO
 }
 func (s *H2Stream) StartUDPTun() { // see RFC 9298
 	// TODO
-}
-func (s *H2Stream) StartSocket() *H2Socket { // see RFC 8441
-	// TODO
-	return s.socket
 }
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }
@@ -354,19 +354,17 @@ func (r *H2Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	return false
 }
 
+func (r *H2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
 func (r *H2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
 func (r *H2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *H2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
 func (r *H2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
 func (r *H2Request) delHeaderAt(o uint8)                        { r.delHeaderAt2(o) }
-func (r *H2Request) addedHeaders() []byte                       { return nil }
-func (r *H2Request) fixedHeaders() []byte                       { return nil }
 
 func (r *H2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H2Request) copyCookies(req Request) bool { // used by proxies
+func (r *H2Request) copyCookies(req Request) bool { // used by proxies. DO NOT merge into one "cookie" header
 	// TODO: one by one?
 	return true
 }
@@ -405,6 +403,9 @@ func (r *H2Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }
+
+func (r *H2Request) addedHeaders() []byte { return nil }
+func (r *H2Request) fixedHeaders() []byte { return nil }
 
 // H2Response is the client-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing

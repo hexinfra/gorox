@@ -196,16 +196,16 @@ func (p *pair) show(place []byte) {
 	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.nameAt(place), p.valueAt(place))
 }
 
-// defaultFdesc
-var defaultFdesc = &fdesc{
+// defaultDesc
+var defaultDesc = &desc{
 	allowQuote: true,
 	allowEmpty: false,
 	allowParam: true,
 	hasComment: false,
 }
 
-// fdesc describes an HTTP field.
-type fdesc struct {
+// desc describes an HTTP field.
+type desc struct {
 	hash       uint16 // name hash
 	allowQuote bool   // allow data quote or not
 	allowEmpty bool   // allow empty data or not

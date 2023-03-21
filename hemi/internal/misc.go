@@ -80,7 +80,7 @@ func (r *Region) Free() {
 		r.blocks[i] = nil
 	}
 	if cap(r.blocks) != cap(r.stocks) {
-		r.stocks = [cap(r.stocks)][]byte{}
+		r.stocks = [4][]byte{}
 		r.blocks = nil
 	}
 }
@@ -234,10 +234,10 @@ func i64ToHex(i64 int64, hex []byte) int {
 	return n
 }
 
+func byteIsBlank(b byte) bool { return b == ' ' || b == '\t' || b == '\r' || b == '\n' }
 func byteIsAlpha(b byte) bool { return b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' }
 func byteIsDigit(b byte) bool { return b >= '0' && b <= '9' }
 func byteIsAlnum(b byte) bool { return byteIsAlpha(b) || byteIsDigit(b) }
-func byteIsBlank(b byte) bool { return b == ' ' || b == '\t' || b == '\r' || b == '\n' }
 
 func byteFromHex(b byte) (n byte, ok bool) {
 	if b >= '0' && b <= '9' {
@@ -274,32 +274,6 @@ func bytesHash(p []byte) uint16 {
 	return hash
 }
 
-func stringTrimLeft(s string, b byte) string {
-	i := 0
-	for i < len(s) && s[i] == b {
-		i++
-	}
-	return s[i:]
-}
-func stringTrimRight(s string, b byte) string {
-	i := len(s) - 1
-	for i >= 0 && s[i] == b {
-		i--
-	}
-	return s[:i+1]
-}
-func stringTrim(s string, b byte) string {
-	i := 0
-	for i < len(s) && s[i] == b {
-		i++
-	}
-	s = s[i:]
-	i = len(s) - 1
-	for i >= 0 && s[i] == b {
-		i--
-	}
-	return s[:i+1]
-}
 func stringHash(s string) uint16 {
 	hash := uint16(0)
 	for i := 0; i < len(s); i++ {

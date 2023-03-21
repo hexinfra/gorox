@@ -305,15 +305,18 @@ func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	return nil
 }
 
+func (s *H1Stream) StartSocket() *H1Socket { // upgrade: websocket
+	// TODO
+	// use s.startSocket()
+	return s.socket
+}
 func (s *H1Stream) StartTCPTun() { // CONNECT method
 	// TODO
+	// use s.startTCPTun()
 }
 func (s *H1Stream) StartUDPTun() { // upgrade: connect-udp
 	// TODO
-}
-func (s *H1Stream) StartSocket() *H1Socket { // upgrade: websocket
-	// TODO
-	return s.socket
+	// use s.startUDPTun()
 }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
@@ -407,13 +410,11 @@ func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	}
 }
 
+func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
 func (r *H1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
 func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
 func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
 func (r *H1Request) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
-func (r *H1Request) addedHeaders() []byte                       { return r.fields[r.controlEdge:r.fieldsEdge] }
-func (r *H1Request) fixedHeaders() []byte                       { return http1BytesFixedRequestHeaders }
 
 func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -487,6 +488,9 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
 func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }
+
+func (r *H1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
+func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
 // H1Response is the client-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing

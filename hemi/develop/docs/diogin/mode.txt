@@ -10,6 +10,17 @@ normal mode
     client  ---http/1/2/3-->  reverse proxy  ---http/1/2/3/fastcgi-->  backend
     client  ---http/1/2/3-->  forward proxy  ~~~http/1/2/3~~>  target
 
+socket mode
+===========
+
+  upgrade: websocket
+
+  through socklet
+  ---------------
+
+    client  ---ws/1/2/3-->  socklet
+    client  ---ws/1/2/3-->  proxy socklet  ---ws-->  socklet
+
 tcptun mode
 ===========
 
@@ -29,14 +40,3 @@ udptun mode
   --------------
 
     client  ---connect/1/2/3-->  stream.processUDPTun()  ---udp-->  server
-
-socket mode
-===========
-
-  upgrade: websocket
-
-  through socklet
-  ---------------
-
-    client  ---ws/1/2/3-->  socklet
-    client  ---ws/1/2/3-->  proxy socklet  ---ws-->  socklet

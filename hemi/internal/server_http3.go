@@ -278,13 +278,13 @@ func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
+func (s *http3Stream) serveSocket() { // see RFC 9220
+	// TODO
+}
 func (s *http3Stream) serveTCPTun() { // CONNECT method
 	// TODO
 }
 func (s *http3Stream) serveUDPTun() { // see RFC 9298
-	// TODO
-}
-func (s *http3Stream) serveSocket() { // see RFC 9220
 	// TODO
 }
 func (s *http3Stream) serveNormal(app *App, req *http3Request, resp *http3Response) { // request & response
@@ -346,13 +346,11 @@ type http3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
+func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
 func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
 func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
 func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
 func (r *http3Response) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
-func (r *http3Response) addedHeaders() []byte                       { return nil }
-func (r *http3Response) fixedHeaders() []byte                       { return nil }
 
 func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -420,6 +418,9 @@ func (r *http3Response) finalizeUnsized() error {
 	// TODO
 	return nil
 }
+
+func (r *http3Response) addedHeaders() []byte { return nil }
+func (r *http3Response) fixedHeaders() []byte { return nil }
 
 // poolHTTP3Socket
 var poolHTTP3Socket sync.Pool

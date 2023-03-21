@@ -265,15 +265,15 @@ func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
+func (s *H3Stream) StartSocket() *H3Socket { // see RFC 9220
+	// TODO
+	return s.socket
+}
 func (s *H3Stream) StartTCPTun() { // CONNECT method
 	// TODO
 }
 func (s *H3Stream) StartUDPTun() { // see RFC 9298
 	// TODO
-}
-func (s *H3Stream) StartSocket() *H3Socket { // see RFC 9220
-	// TODO
-	return s.socket
 }
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }
@@ -325,19 +325,17 @@ func (r *H3Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	return false
 }
 
+func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
 func (r *H3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
 func (r *H3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
 func (r *H3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
 func (r *H3Request) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
-func (r *H3Request) addedHeaders() []byte                       { return nil }
-func (r *H3Request) fixedHeaders() []byte                       { return nil }
 
 func (r *H3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H3Request) copyCookies(req Request) bool { // used by proxies
+func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT merge into one "cookie" header
 	// TODO: one by one?
 	return true
 }
@@ -376,6 +374,9 @@ func (r *H3Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }
+
+func (r *H3Request) addedHeaders() []byte { return nil }
+func (r *H3Request) fixedHeaders() []byte { return nil }
 
 // H3Response is the client-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing

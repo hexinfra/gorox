@@ -2314,6 +2314,10 @@ var ( // byteses of http fields.
 	bytesWWWAuthenticate   = []byte("www-authenticate")
 )
 
+const ( // hashes of misc http strings & bytes.
+	hashBoundary = 868
+)
+
 var ( // misc http strings & byteses.
 	// Strings
 	stringColonPort80  = ":80"

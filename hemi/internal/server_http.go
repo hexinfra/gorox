@@ -921,14 +921,17 @@ func (r *httpRequest_) examineHead() bool {
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
-			} else if bytes.Equal(contentType, bytesMultipartForm) {
+			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
 				for i := header.params.from; i < header.params.edge; i++ {
 					param := &r.extras[i]
-					if bytes.Equal(param.nameAt(r.input), bytesBoundary) && param.value.notEmpty() && param.value.size() <= 70 && r.input[param.value.edge-1] != ' ' {
+					if param.hash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
+						continue
+					}
+					if value := param.value; value.notEmpty() && value.size() <= 70 && r.input[value.edge-1] != ' ' {
 						// boundary := 0*69<bchars> bcharsnospace
 						// bchars := bcharsnospace / " "
 						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-						r.boundary = param.value
+						r.boundary = value
 						r.formKind = httpFormMultipart
 						break
 					}

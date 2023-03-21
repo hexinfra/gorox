@@ -936,9 +936,7 @@ func (r *http2Request) joinHeaders(p []byte) bool {
 	return true
 }
 
-func (r *http2Request) readContent() (p []byte, err error) {
-	return r.readContent2()
-}
+func (r *http2Request) readContent() (p []byte, err error) { return r.readContent2() }
 
 func (r *http2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array

@@ -368,10 +368,10 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 				} else { // > 2, chunk-data CRLF X
 					r.cFore = data.edge + 2
 				}
-			} else if r.bodyWindow[data.edge] == '\n' { // >= 2, chunk-data LF X
+			} else if r.bodyWindow[data.edge] == '\n' { // >=2, chunk-data LF X
 				r.chunkSize = 0
 				r.cFore = data.edge + 1
-			} else { // >= 2, chunk-data XX
+			} else { // >=2, chunk-data XX
 				goto badRead
 			}
 		}

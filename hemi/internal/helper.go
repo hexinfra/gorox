@@ -193,7 +193,7 @@ func (p *pair) show(place []byte) {
 	default:
 		plase = "unknown"
 	}
-	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.nameAt(place), p.valueAt(place))
+	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d params=%v %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.params, p.nameAt(place), p.valueAt(place))
 }
 
 // defaultDesc

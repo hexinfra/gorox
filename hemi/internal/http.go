@@ -92,7 +92,7 @@ type httpIn interface {
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
-	applyTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair, index uint8) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -448,6 +448,7 @@ func (r *httpIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) boo
 		r.failReason = "parameters are not allowed"
 		return false
 	}
+	field.params.from = uint8(len(r.extras))
 	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
 		haveSemic := false
 	forSemic:
@@ -540,6 +541,7 @@ func (r *httpIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) boo
 			r.failReason = "too many extras"
 			return false
 		}
+		field.params.edge = uint8(len(r.extras))
 		text.from = text.edge
 	}
 }
@@ -1047,7 +1049,7 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 
 func (r *httpIn_) examineTail() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.shell.applyTrailer(&r.primes[i]) {
+		if !r.shell.applyTrailer(&r.primes[i], i) {
 			// r.bodyResult is set.
 			return false
 		}

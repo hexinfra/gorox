@@ -433,7 +433,7 @@ type Request interface {
 	unsetHost()
 	readContent() (p []byte, err error)
 	holdContent() any
-	applyTrailer(trailer *pair) bool
+	applyTrailer(trailer *pair, index uint8) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -906,7 +906,7 @@ func (r *httpRequest_) examineHead() bool {
 				return false
 			}
 		}
-		if r.iContentType == 0 {
+		if r.iContentType == 0 { // no content-type
 			if r.methodCode == MethodOPTIONS {
 				// RFC 7231 (section 4.3.7):
 				// A client that generates an OPTIONS request containing a payload body
@@ -916,46 +916,24 @@ func (r *httpRequest_) examineHead() bool {
 				return false
 			}
 		} else { // content-type exists
-			// TODO: refactor this. use general api of pairs
-			var (
-				typeParas   text
-				contentType []byte
-			)
-			vType := r.primes[r.iContentType].value
-			if i := bytes.IndexByte(r.input[vType.from:vType.edge], ';'); i == -1 {
-				typeParas.from = vType.edge
-				typeParas.edge = vType.edge
-				contentType = r.input[vType.from:vType.edge]
-			} else {
-				typeParas.from = vType.from + int32(i)
-				typeParas.edge = typeParas.from   // too lazy to alloc a new variable. reuse typeParas.edge
-				for typeParas.edge > vType.from { // skip OWS before ';'. for example: content-type: multipart/form-data ; boundary=xxx
-					if b := r.input[typeParas.edge-1]; b == ' ' || b == '\t' {
-						typeParas.edge--
-					} else {
-						break
-					}
-				}
-				contentType = r.input[vType.from:typeParas.edge]
-				typeParas.edge = vType.edge
-			}
+			header := &r.primes[r.iContentType]
+			contentType := header.dataAt(r.input)
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) {
-				navas := make([]nava, 1) // doesn't escape
-				if _, ok := r._parseNavas(r.input, typeParas.from, typeParas.edge, navas); !ok {
-					r.headResult, r.failReason = StatusBadRequest, "invalid multipart/form-data parameter"
-					return false
+				for i := header.params.from; i < header.params.edge; i++ {
+					param := &r.extras[i]
+					if bytes.Equal(param.nameAt(r.input), bytesBoundary) && param.value.notEmpty() && param.value.size() <= 70 && r.input[param.value.edge-1] != ' ' {
+						// boundary := 0*69<bchars> bcharsnospace
+						// bchars := bcharsnospace / " "
+						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
+						r.boundary = param.value
+						r.formKind = httpFormMultipart
+						break
+					}
 				}
-				nava := &navas[0]
-				if bytes.Equal(r.input[nava.name.from:nava.name.edge], bytesBoundary) && nava.value.notEmpty() && nava.value.size() <= 70 && r.input[nava.value.edge-1] != ' ' {
-					// boundary := 0*69<bchars> bcharsnospace
-					// bchars := bcharsnospace / " "
-					// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-					r.boundary = nava.value
-					r.formKind = httpFormMultipart
-				} else {
+				if r.formKind != httpFormMultipart {
 					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
 					return false
 				}
@@ -2458,7 +2436,7 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) applyTrailer(trailer *pair) bool {
+func (r *httpRequest_) applyTrailer(trailer *pair, index uint8) bool {
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

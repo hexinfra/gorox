@@ -332,9 +332,7 @@ type http3Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *http3Request) readContent() (p []byte, err error) {
-	return r.readContent3()
-}
+func (r *http3Request) readContent() (p []byte, err error) { return r.readContent3() }
 
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building

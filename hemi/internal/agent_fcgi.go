@@ -895,18 +895,6 @@ func (r *fcgiResponse) addPrime(prime *pair) bool {
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
-	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
-		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
-			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we believe in framing
 func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
 
@@ -1112,17 +1100,30 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 	return
 }
 
-func (r *fcgiResponse) addTrailer(trailer *pair) bool   { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) applyTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) HasTrailers() bool               { return false } // fcgi doesn't support trailers
-func (r *fcgiResponse) delHopTrailers()                 {}               // fcgi doesn't support trailers
-func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
-	return true
-}
+func (r *fcgiResponse) addTrailer(trailer *pair) bool                { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) applyTrailer(trailer *pair, index uint8) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) HasTrailers() bool                            { return false } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
+
+func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
+func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
+	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
+		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
+			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
+func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+	return true
+}
 
 func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.agent.SaveContentFilesDir() }
 

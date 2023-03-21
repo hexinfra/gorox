@@ -827,7 +827,7 @@ func (r *hResponse_) HasContent() bool {
 func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
-func (r *hResponse_) applyTrailer(trailer *pair) bool {
+func (r *hResponse_) applyTrailer(trailer *pair, index uint8) bool {
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

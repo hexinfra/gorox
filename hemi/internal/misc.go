@@ -10,6 +10,8 @@ package internal
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"os"
 	"sync"
 	"time"
 )
@@ -35,7 +37,98 @@ func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
 
 // booker
 type booker struct {
+	file   *os.File
+	queue  chan string
+	buffer []byte
+	size   int
+	used   int
 }
+
+func newBooker(logFile string) (*booker, error) {
+	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0700)
+	if err != nil {
+		return nil, err
+	}
+	b := new(booker)
+	b.file = file
+	b.queue = make(chan string)
+	b.buffer = make([]byte, 1048576)
+	b.size = len(b.buffer)
+	b.used = 0
+	go b.saver()
+	return b, nil
+}
+
+func (b *booker) Log(v ...any) {
+	if s := fmt.Sprint(v...); s != "" {
+		b.queue <- s
+	}
+}
+func (b *booker) Logln(v ...any) {
+	if s := fmt.Sprintln(v...); s != "" {
+		b.queue <- s
+	}
+}
+func (b *booker) Logf(f string, v ...any) {
+	if s := fmt.Sprintf(f, v...); s != "" {
+		b.queue <- s
+	}
+}
+
+func (b *booker) Close() { b.queue <- "" }
+
+func (b *booker) saver() {
+	for {
+		s := <-b.queue
+		if s != "" {
+			b.write(s)
+		} else {
+			b.clear()
+			b.file.Close()
+			return
+		}
+	more:
+		for {
+			select {
+			case s = <-b.queue:
+				if s != "" {
+					b.write(s)
+				} else {
+					b.clear()
+					b.file.Close()
+					return
+				}
+			default:
+				b.clear()
+				break more
+			}
+		}
+	}
+}
+func (b *booker) write(s string) {
+	n := len(s)
+	if n >= b.size {
+		b.clear()
+		b.flush([]byte(s))
+		return
+	}
+	w := copy(b.buffer[b.used:], s)
+	b.used += w
+	if b.used == b.size {
+		b.clear()
+		if n -= w; n > 0 {
+			copy(b.buffer, s[w:])
+			b.used = n
+		}
+	}
+}
+func (b *booker) clear() {
+	if b.used > 0 {
+		b.flush(b.buffer[:b.used])
+		b.used = 0
+	}
+}
+func (b *booker) flush(p []byte) { b.file.Write(p) }
 
 // Region
 type Region struct { // 512B

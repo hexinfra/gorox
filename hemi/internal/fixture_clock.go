@@ -313,11 +313,10 @@ func clockParseHTTPDate(date []byte) (int64, bool) {
 }
 
 const (
-	clockHTTPDateSize  = len("Sun, 06 Nov 1994 08:49:37 GMT")
-	clockASCTimeSize   = len("Sun Nov  6 08:49:37 1994")
-	clockDayString     = "SunMonTueWedThuFriSat"
-	clockMonthString   = "JanFebMarAprMayJunJulAugSepOctNovDec"
-	clockDayFullString = "Sunday Monday Tuesday Wednesday Thursday Friday Saturday"
+	clockHTTPDateSize = len("Sun, 06 Nov 1994 08:49:37 GMT")
+	clockASCTimeSize  = len("Sun Nov  6 08:49:37 1994")
+	clockDayString    = "SunMonTueWedThuFriSat"
+	clockMonthString  = "JanFebMarAprMayJunJulAugSepOctNovDec"
 )
 
 var ( // perfect hash table for months

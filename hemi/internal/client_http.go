@@ -752,7 +752,7 @@ func (r *hResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) 
 	// TODO
 	return true
 }
-func (r *hResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool {
+func (r *hResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
 	// TODO
 	return true
 }

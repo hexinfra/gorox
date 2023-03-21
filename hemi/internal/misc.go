@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"os"
 	"sync"
 	"time"
@@ -109,7 +110,7 @@ func (b *booker) write(s string) {
 	n := len(s)
 	if n >= b.size {
 		b.clear()
-		b.flush([]byte(s))
+		b.flush(risky.ConstBytes(s))
 		return
 	}
 	w := copy(b.buffer[b.used:], s)

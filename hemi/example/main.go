@@ -34,7 +34,15 @@ func main() {
 	SetLogsDir(baseDir + "/logs")
 	SetTempDir(baseDir + "/temp")
 
-	var config = `
+	stage, err := ApplyText(config)
+	must(err)
+	stage.Start(0)
+	// End
+
+	select {}
+}
+
+var config = `
 stage {
     app "example" {
         .hostnames = ("*")
@@ -57,13 +65,6 @@ stage {
     }
 }
 `
-	stage, err := ApplyText(config)
-	must(err)
-	stage.Start(0)
-	// End
-
-	select {}
-}
 
 type myHandlet struct {
 	Handlet_
@@ -96,6 +97,9 @@ func (h *myHandlet) notFound(req Request, resp Response) {
 
 func (h *myHandlet) GET_(req Request, resp Response) {
 	resp.Send("hello, world!")
+}
+func (h *myHandlet) POST_login(req Request, resp Response) {
+	resp.Send("what are you doing?")
 }
 func (h *myHandlet) foo(req Request, resp Response) {
 	resp.Push("foo")

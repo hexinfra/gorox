@@ -1,3 +1,5 @@
+// This is an example showing how to embed the Hemi engine into your application.
+
 package main
 
 import (
@@ -22,7 +24,35 @@ func main() {
 		baseDir = filepath.ToSlash(baseDir)
 	}
 
-	// Begin
+	var myConfig = `
+	stage {
+	    app "example" {
+		.hostnames = ("*")
+		.webRoot   = %baseDir + "/web"
+		rule $path == "/favicon.ico" {
+		    favicon {}
+		}
+		rule $path -f {
+		    static {
+			.autoIndex = true
+		    }
+		}
+		rule {
+		    myHandlet {}
+		}
+	    }
+	    httpxServer "main" {
+		.forApps = ("example")
+		.address = ":3080"
+	    }
+	}
+	`
+	startHemi(baseDir, myConfig)
+
+	select {} // do your other things here.
+}
+
+func startHemi(baseDir string, configText string) {
 	RegisterHandlet("myHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(myHandlet)
 		h.onCreate(name, stage, app)
@@ -34,37 +64,10 @@ func main() {
 	SetLogsDir(baseDir + "/logs")
 	SetTempDir(baseDir + "/temp")
 
-	stage, err := ApplyText(config)
+	stage, err := ApplyText(configText)
 	must(err)
 	stage.Start(0)
-	// End
-
-	select {}
 }
-
-var config = `
-stage {
-    app "example" {
-        .hostnames = ("*")
-        .webRoot   = %baseDir + "/web"
-        rule $path == "/favicon.ico" {
-            favicon {}
-        }
-        rule $path -f {
-            static {
-                .autoIndex = true
-            }
-        }
-        rule {
-            myHandlet {}
-        }
-    }
-    httpxServer "main" {
-        .forApps = ("example")
-        .address = ":3080"
-    }
-}
-`
 
 type myHandlet struct {
 	Handlet_
@@ -77,7 +80,7 @@ func (h *myHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 	r := simple.New()
-	r.Link("/foo", h.foo)
+	r.Link("/foo", h.handleFoo)
 	h.SetRouter(h, r)
 }
 func (h *myHandlet) OnShutdown() {
@@ -95,13 +98,12 @@ func (h *myHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
 
-func (h *myHandlet) GET_(req Request, resp Response) {
+func (h *myHandlet) GET_(req Request, resp Response) { // GET /
 	resp.Send("hello, world!")
 }
-func (h *myHandlet) POST_login(req Request, resp Response) {
+func (h *myHandlet) POST_login(req Request, resp Response) { // POST /login
 	resp.Send("what are you doing?")
 }
-func (h *myHandlet) foo(req Request, resp Response) {
-	resp.Push("foo")
-	resp.Push("bar")
+func (h *myHandlet) handleFoo(req Request, resp Response) { // METHOD /foo
+	resp.Push(req.H("user-agent"))
 }

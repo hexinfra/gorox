@@ -544,6 +544,7 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
+			header.dataEdge = header.value.edge
 		} else if !r._parseField(header, &sh.desc, r.input, true) {
 			r.headResult = StatusBadRequest
 			return false

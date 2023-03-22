@@ -1,0 +1,170 @@
+// This file shows definitions of all components and properties in Gorox, with their default values.
+
+stage {
+	.logFile = %logsDir + "/worker.log"
+	.cpuFile = %tempDir + "/cpu.prof"
+	.hepFile = %tempDir + "/hep.prof"
+	.thrFile = %tempDir + "/thr.prof"
+	.grtFile = %tempDir + "/grt.prof"
+	.blkFile = %tempDir + "/blk.prof"
+
+	// fixtures
+	clock {
+	}
+	filesys {
+		.smallFileSize = 65535
+		.maxSmallFiles = 1000
+		.maxLargeFiles = 500
+		.cacheTimeout  = 1s
+	}
+	http1 {
+	}
+	http2 {
+	}
+	http3 {
+	}
+	quic {
+	}
+	resolv {
+	}
+	tcps {
+	}
+	udps {
+	}
+	unix {
+	}
+
+	// unitures
+	demo {
+	}
+
+	// backends
+	http1Backend "h1b" {
+	}
+	http2Backend "h2b" {
+	}
+	http3Backend "h3b" {
+	}
+	quicBackend "qb" {
+	}
+	tcpsBackend "tb" {
+	}
+	udpsBackend "ub" {
+	}
+	unixBackend "xb" {
+	}
+
+	// meshers
+	quicMesher "qm" {
+	}
+	tcpsMesher "tm" {
+	}
+	udpsMesher "um" {
+	}
+
+	// staters
+	localStater "ls" {
+	}
+	redisStater "rs" {
+	}
+
+	// cachers
+	localCacher "lc" {
+	}
+	redisCacher "rc" {
+	}
+
+	// apps
+	app "a" {
+		.hostnames            = ("*")
+		.webRoot              = ""
+		.file404              = ""
+		.tlsCertificate       = ""
+		.tlsPrivateKey        = ""
+		.accessLog            = ()
+		.logFormat            = ""
+		.maxMemoryContentSize = 1M
+		.maxUploadContentSize = 128M
+		.settings             = []
+		.proxyOnly            = false
+		.withStater           = ""
+
+		// handlets
+		accessHandlet "ah" {
+		}
+		ajpAgent "ah" {
+		}
+		favicon "fh" {
+		}
+		fcgiAgent "fh" {
+		}
+		hostnameHandlet "hh" {
+		}
+		http1Proxy "hh" {
+		}
+		http2Proxy "hh" {
+		}
+		http3Proxy "hh" {
+		}
+		httpsHandlet "hh" {
+		}
+		limitHandlet "lh" {
+		}
+		refererHandlet "rh" {
+		}
+		rewriteHandlet "rh" {
+		}
+		scgiAgent "sh" {
+		}
+		sitex "sh" {
+		}
+		static "sh" {
+		}
+		uwsgiAgent "uh" {
+		}
+		webdavHandlet "wh" {
+		}
+
+		// revisers
+		// socklets
+		// rules
+	}
+
+	// svcs
+	svc "s" {
+	}
+
+	// servers
+	echoServer "es" {
+	}
+	http3Server "h3s" {
+	}
+	httpxServer "hxs" {
+		address         = ":80"
+		tlsMode         = false
+		readTimeout     = 60s
+		writeTimeout    = 60s
+		numGates        = 0
+		maxConnsPerGate = 100000
+		forApps         = ("a")
+		forSvcs         = ("s")
+		hrpcMode        = false
+		enableTCPTun    = false
+		enableUDPTun    = false
+		maxContentSize  = 1T
+		recvTimeout     = 120s
+		sendTimeout     = 120s
+		forceScheme     = ""
+		adjustScheme    = true
+		enableHTTP2     = false
+		h2cMode         = false
+	}
+	socksServer "ss" {
+	}
+
+	// cronjobs
+	cleanCronjob "cc" {
+	}
+	statCronjob "sc" {
+	}
+}

@@ -45,13 +45,13 @@ type booker struct {
 	used   int
 }
 
-func newBooker(logFile string) (*booker, error) {
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0700)
+func newBooker(file string) (*booker, error) {
+	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		return nil, err
 	}
 	b := new(booker)
-	b.file = file
+	b.file = f
 	b.queue = make(chan string)
 	b.buffer = make([]byte, 1048576)
 	b.size = len(b.buffer)

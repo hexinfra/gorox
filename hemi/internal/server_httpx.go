@@ -37,7 +37,7 @@ type httpxServer struct {
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.httpServer_.onCreate(name, stage)
-	s.forceScheme = -1 // not force
+	s.forceScheme = -1 // not forced
 }
 func (s *httpxServer) OnShutdown() {
 	// We don't close(s.Shut) here.

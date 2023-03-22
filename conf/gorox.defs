@@ -83,7 +83,7 @@ stage {
 		.tlsPrivateKey        = ""
 		.accessLog            = ()
 		.logFormat            = ""
-		.maxMemoryContentSize = 1M
+		.maxMemoryContentSize = 16M
 		.maxUploadContentSize = 128M
 		.settings             = []
 		.proxyOnly            = false

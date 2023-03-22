@@ -167,7 +167,7 @@ func (a *App) OnConfigure() {
 	// logFormat
 	a.ConfigureString("logFormat", &a.logFormat, func(value string) bool { return value != "" }, "%T... todo")
 	// maxMemoryContentSize
-	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) bool { return value > 0 && value <= _1G }, _1M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
+	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) bool { return value > 0 && value <= _1G }, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 	// maxUploadContentSize
 	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) bool { return value > 0 && value <= _1T }, _128M)
 	// settings

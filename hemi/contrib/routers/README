@@ -1,1 +1,2 @@
-Routers perform request routing in handlets.
+Routers perform request routing in handlets. They are not components.
+

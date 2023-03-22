@@ -30,6 +30,10 @@ desktop.ini
 /hemi/develop/temp
 /hemi/develop/vendor
 
+/hemi/example/data
+/hemi/example/logs
+/hemi/example/temp
+
 /gomake
 /goben
 /goops
@@ -37,3 +41,5 @@ desktop.ini
 
 /hemi/develop/demake
 /hemi/develop/derox
+
+/hemi/example/example

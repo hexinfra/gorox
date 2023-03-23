@@ -65,7 +65,7 @@ func (f *httpOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *httpOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	f.httpClient_.onConfigure(shell, "outgate")
+	f.httpClient_.onConfigure(shell, "outgates")
 }
 func (f *httpOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
@@ -90,7 +90,7 @@ func (b *httpBackend_[N]) onCreate(name string, stage *Stage, creator interface{
 
 func (b *httpBackend_[N]) onConfigure(shell Component) {
 	b.backend_.onConfigure()
-	b.httpClient_.onConfigure(shell, "backend")
+	b.httpClient_.onConfigure(shell, "backends")
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *httpBackend_[N]) onPrepare(shell Component, numNodes int) {

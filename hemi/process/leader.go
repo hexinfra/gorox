@@ -89,7 +89,7 @@ func adminServer() {
 			logger.Println(err.Error())
 			goto closeNext
 		}
-		req, ok = msgx.RecvMessage(admConn)
+		req, ok = msgx.RecvMessage(admConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
@@ -235,8 +235,8 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	}
 	tmpGate.Close()
 
-	// Pipe is established, now register worker
-	loginReq, ok := msgx.RecvMessage(cmdPipe)
+	// Pipe is established, now let worker login
+	loginReq, ok := msgx.RecvMessage(cmdPipe, 16<<10)
 	if !ok || loginReq.Get("pipeKey") != w.pipeKey {
 		crash("bad worker")
 	}
@@ -262,7 +262,7 @@ func (w *worker) tell(req *msgx.Message) {
 	msgx.Tell(w.cmdPipe, req)
 }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
-	resp, ok := msgx.Call(w.cmdPipe, req)
+	resp, ok := msgx.Call(w.cmdPipe, req, 16<<20)
 	if !ok {
 		resp = msgx.NewMessage(req.Comd, 0, nil)
 		resp.Flag = 0xffff

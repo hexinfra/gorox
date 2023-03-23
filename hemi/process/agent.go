@@ -114,5 +114,5 @@ func _callLeader(comd uint8, flag uint16, args map[string]string) (*msgx.Message
 		return nil, false
 	}
 	defer admConn.Close()
-	return msgx.Call(admConn, msgx.NewMessage(comd, flag, args))
+	return msgx.Call(admConn, msgx.NewMessage(comd, flag, args), 16<<20)
 }

@@ -67,7 +67,7 @@ func (s *httpServer_) onCreate(name string, stage *Stage) {
 func (s *httpServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.streamHolder_.onConfigure(shell, 0)
-	s.contentSaver_.onConfigure(shell, TempDir()+"/http/"+s.name)
+	s.contentSaver_.onConfigure(shell, TempDir()+"/http/servers/"+s.name)
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
 	// forSvcs

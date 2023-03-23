@@ -39,7 +39,7 @@ func workerMain(token string) {
 	loginReq := msgx.NewMessage(0, 0, map[string]string{
 		"pipeKey": parts[1],
 	})
-	if loginResp, ok := msgx.Call(cmdPipe, loginReq); ok {
+	if loginResp, ok := msgx.Call(cmdPipe, loginReq, 16<<20); ok {
 		configBase = loginResp.Get("base")
 		configFile = loginResp.Get("file")
 	} else {
@@ -55,7 +55,7 @@ func workerMain(token string) {
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
-		req, ok := msgx.RecvMessage(cmdPipe)
+		req, ok := msgx.RecvMessage(cmdPipe, 16<<20)
 		if !ok { // leader must be gone
 			break
 		}

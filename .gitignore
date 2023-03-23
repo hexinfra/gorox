@@ -23,21 +23,18 @@ desktop.ini
 /data
 /logs
 /temp
-
-/hemi/develop/data
-/hemi/develop/logs
-/hemi/develop/temp
-
-/hemi/example/data
-/hemi/example/logs
-/hemi/example/temp
-
 /gomake
 /goben
 /goops
 /gorox
 
+/hemi/develop/data
+/hemi/develop/logs
+/hemi/develop/temp
 /hemi/develop/demake
 /hemi/develop/derox
 
+/hemi/example/data
+/hemi/example/logs
+/hemi/example/temp
 /hemi/example/example

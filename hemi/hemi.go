@@ -144,7 +144,7 @@ type ( // core types
 	Socket   = internal.Socket
 
 	Svc        = internal.Svc        // supports both HRPC and gRPC
-	GRPCServer = internal.GRPCServer // for implementing grpc server in exts
+	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
 
 	Server  = internal.Server
 	Cronjob = internal.Cronjob

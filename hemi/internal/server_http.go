@@ -55,7 +55,7 @@ type httpServer_ struct {
 	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
 	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
 	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
-	hrpcMode     bool                // works as hrpc server and dispatches to svcs instead of apps?
+	hrpcMode     bool                // works as HRPC server and dispatches to svcs instead of apps?
 	enableTCPTun bool                // allow CONNECT method?
 	enableUDPTun bool                // allow upgrade: connect-udp?
 }

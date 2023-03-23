@@ -8,7 +8,7 @@
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/goops/board"
+	_ "github.com/hexinfra/gorox/cmds/goops/webui"
 	_ "github.com/hexinfra/gorox/cmds/goops/iface"
 	_ "github.com/hexinfra/gorox/cmds/goops/rocks"
 	_ "github.com/hexinfra/gorox/cmds/goops/store"

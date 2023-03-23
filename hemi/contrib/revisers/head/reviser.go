@@ -74,10 +74,10 @@ func (r *headReviser) OnInput(req Request, resp Response, chain Chain) (Chain, b
 func (r *headReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *headReviser) BeforePush(req Request, resp Response) { // unsized
+func (r *headReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *headReviser) FinishPush(req Request, resp Response) { // unsized
+func (r *headReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *headReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

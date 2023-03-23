@@ -374,11 +374,11 @@ func (r *H2Request) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *H2Request) pushHeaders() error {
+func (r *H2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) pushChain(chain Chain) error {
+func (r *H2Request) echoChain(chain Chain) error {
 	// TODO
 	return nil
 }

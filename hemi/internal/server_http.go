@@ -2634,9 +2634,9 @@ type Response interface {
 	SendBadGateway(content []byte) error
 	SendGatewayTimeout(content []byte) error
 
-	Push(chunk string) error
-	PushBytes(chunk []byte) error
-	PushFile(chunkPath string) error
+	Echo(chunk string) error
+	EchoBytes(chunk []byte) error
+	EchoFile(chunkPath string) error
 
 	AddTrailer(name string, value string) bool
 	AddTrailerBytes(name []byte, value []byte) bool
@@ -2651,8 +2651,8 @@ type Response interface {
 	sendBlob(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
-	pushHeaders() error
-	pushChain(chain Chain) error
+	echoHeaders() error
+	echoChain(chain Chain) error
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
@@ -2837,7 +2837,7 @@ func (r *httpResponse_) send() error {
 	return r.shell.sendChain(curChain)
 }
 
-func (r *httpResponse_) _beforePush() error {
+func (r *httpResponse_) _beforeEcho() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -2856,12 +2856,12 @@ func (r *httpResponse_) _beforePush() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			reviser.BeforePush(resp.Request(), resp)
+			reviser.BeforeEcho(resp.Request(), resp)
 		}
 	}
-	return r.shell.pushHeaders()
+	return r.shell.echoHeaders()
 }
-func (r *httpResponse_) push(chunk *Block) error {
+func (r *httpResponse_) echo(chunk *Block) error {
 	var curChain Chain
 	curChain.PushTail(chunk)
 	defer curChain.free()
@@ -2883,7 +2883,7 @@ func (r *httpResponse_) push(chunk *Block) error {
 			}
 		}
 	}
-	return r.shell.pushChain(curChain)
+	return r.shell.echoChain(curChain)
 }
 func (r *httpResponse_) endUnsized() error {
 	if r.stream.isBroken() {
@@ -2896,7 +2896,7 @@ func (r *httpResponse_) endUnsized() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			reviser.FinishPush(resp.Request(), resp)
+			reviser.FinishEcho(resp.Request(), resp)
 		}
 	}
 	return r.shell.finalizeUnsized()

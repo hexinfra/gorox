@@ -26,6 +26,6 @@ func (h *testHandlet) GET_cookie_set(req Request, resp Response) {
 	resp.SendBytes(nil)
 }
 func (h *testHandlet) GET_cookies(req Request, resp Response) {
-	resp.Push(req.C("hello"))
-	resp.Push(req.C("world"))
+	resp.Echo(req.C("hello"))
+	resp.Echo(req.C("world"))
 }

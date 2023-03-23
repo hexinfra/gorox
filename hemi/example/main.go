@@ -112,5 +112,5 @@ func (h *myHandlet) POST_login(req Request, resp Response) { // POST /login
 	resp.Send("what are you doing?")
 }
 func (h *myHandlet) handleFoo(req Request, resp Response) { // METHOD /foo
-	resp.Push(req.H("user-agent"))
+	resp.Echo(req.H("user-agent"))
 }

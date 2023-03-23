@@ -694,7 +694,7 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 	return nil
 }
 
-func (r *http1Out_) pushChain1(chain Chain, chunked bool) error {
+func (r *http1Out_) echoChain1(chain Chain, chunked bool) error {
 	for block := chain.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
@@ -757,7 +757,7 @@ func (r *http1Out_) finalizeUnsized1() error {
 	return r.writeVector1(&r.vector)
 }
 
-func (r *http1Out_) writeHeaders1() error { // used by push and post
+func (r *http1Out_) writeHeaders1() error { // used by echo and post
 	r.shell.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.shell.control()

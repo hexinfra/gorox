@@ -466,8 +466,8 @@ type Reviser interface {
 	OnInput(req Request, resp Response, chain Chain) (Chain, bool)
 
 	BeforeSend(req Request, resp Response) // for sized content
-	BeforePush(req Request, resp Response) // for unsized content
-	FinishPush(req Request, resp Response) // for unsized content
+	BeforeEcho(req Request, resp Response) // for unsized content
+	FinishEcho(req Request, resp Response) // for unsized content
 	OnOutput(req Request, resp Response, chain Chain) Chain
 }
 

@@ -240,7 +240,7 @@ func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
 
-func (r *hRequest_) _beforePush() error {
+func (r *hRequest_) _beforeEcho() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -252,9 +252,9 @@ func (r *hRequest_) _beforePush() error {
 	}
 	r.markSent()
 	r.markUnsized()
-	return r.shell.pushHeaders()
+	return r.shell.echoHeaders()
 }
-func (r *hRequest_) push(chunk *Block) error {
+func (r *hRequest_) echo(chunk *Block) error {
 	var chain Chain
 	chain.PushTail(chunk)
 	defer chain.free()
@@ -262,7 +262,7 @@ func (r *hRequest_) push(chunk *Block) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.shell.pushChain(chain)
+	return r.shell.echoChain(chain)
 }
 func (r *hRequest_) endUnsized() error {
 	if r.stream.isBroken() {

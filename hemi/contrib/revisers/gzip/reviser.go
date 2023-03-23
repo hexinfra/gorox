@@ -71,10 +71,10 @@ func (r *gzipReviser) OnInput(req Request, resp Response, chain Chain) (Chain, b
 func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *gzipReviser) BeforePush(req Request, resp Response) { // unsized
+func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *gzipReviser) FinishPush(req Request, resp Response) { // unsized
+func (r *gzipReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *gzipReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

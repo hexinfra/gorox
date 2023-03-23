@@ -65,10 +65,10 @@ func (r *wrapReviser) OnInput(req Request, resp Response, chain Chain) (Chain, b
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) BeforePush(req Request, resp Response) { // unsized
+func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *wrapReviser) FinishPush(req Request, resp Response) { // unsized
+func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *wrapReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

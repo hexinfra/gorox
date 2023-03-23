@@ -65,10 +65,10 @@ func (r *replaceReviser) OnInput(req Request, resp Response, chain Chain) (Chain
 func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *replaceReviser) BeforePush(req Request, resp Response) { // unsized
+func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) FinishPush(req Request, resp Response) { // unsized
+func (r *replaceReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
 }
 func (r *replaceReviser) OnOutput(req Request, resp Response, chain Chain) Chain {

@@ -55,11 +55,11 @@ func (r *http3Out_) sendChain3(chain Chain, vector [][]byte) error {
 	return nil
 }
 
-func (r *http3Out_) pushHeaders3() error {
+func (r *http3Out_) echoHeaders3() error {
 	// TODO
 	return nil
 }
-func (r *http3Out_) pushChain3(chain Chain) error {
+func (r *http3Out_) echoChain3(chain Chain) error {
 	// TODO
 	return nil
 }

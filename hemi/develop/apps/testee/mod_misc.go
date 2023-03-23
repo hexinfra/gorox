@@ -53,7 +53,7 @@ func (h *testHandlet) GET_multi(req Request, resp Response) {
 		return
 	}
 	for _, accept := range accepts {
-		resp.Push(accept + "<br>")
+		resp.Echo(accept + "<br>")
 	}
 }
 func (h *testHandlet) GET_multi2(req Request, resp Response) {
@@ -63,7 +63,7 @@ func (h *testHandlet) GET_multi2(req Request, resp Response) {
 		return
 	}
 	for _, ua := range uas {
-		resp.Push(ua + "<br>")
+		resp.Echo(ua + "<br>")
 	}
 }
 func (h *testHandlet) PUT_file(req Request, resp Response) {

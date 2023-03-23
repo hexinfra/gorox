@@ -53,7 +53,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td>持续[ readContent(CL) ]</td>
 			<td class="no">sendChain(headers)<br>持续[ writeBlob(parts) ]</td>
 			<td class="no">CL</td>
-			<td class="yes">pushHeaders()<br>持续[ revise(chain)+pushChain(chain) ]</td>
+			<td class="yes">echoHeaders()<br>持续[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">持续遍</td>
 			<td class="yes changed">TE</td>
 		</tr>
@@ -79,21 +79,21 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 		</tr>
 		<tr>
 			<td class="unknown">未知</td>
-			<td class="many">反复[ 主推=Push(全部内存) ]</td>
+			<td class="many">反复[ 主回=Echo(全部内存) ]</td>
 			<td>-</td>
-			<td class="no">pushHeaders()<br>反复[ pushChain(blob) ]</td>
+			<td class="no">echoHeaders()<br>反复[ echoChain(blob) ]</td>
 			<td class="no">TE</td>
-			<td class="yes">pushHeaders()<br>反复[ revise(chain)+pushChain(chain) ]</td>
+			<td class="yes">echoHeaders()<br>反复[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">反复遍</td>
 			<td class="yes">TE</td>
 		</tr>
 		<tr>
 			<td class="unknown">未知</td>
-			<td class="many">反复[ 主推=PushFile(全部文件) ]</td>
+			<td class="many">反复[ 主回=EchoFile(全部文件) ]</td>
 			<td>-</td>
-			<td class="no">pushHeaders()<br>反复[ pushChain(file) ]</td>
+			<td class="no">echoHeaders()<br>反复[ echoChain(file) ]</td>
 			<td class="no">TE</td>
-			<td class="yes">pushHeaders()<br>反复[ revise(chain)+pushChain(chain) ]</td>
+			<td class="yes">echoHeaders()<br>反复[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">反复遍</td>
 			<td class="yes">TE</td>
 		</tr>
@@ -101,9 +101,9 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="unknown">未知</td>
 			<td>直通=pass(全部内存)</td>
 			<td>持续[ readContent(TE) ]</td>
-			<td class="no">pushHeaders()<br>持续[ pushChain(blob) ]</td>
+			<td class="no">echoHeaders()<br>持续[ echoChain(blob) ]</td>
 			<td class="no">TE</td>
-			<td class="yes">pushHeaders()<br>持续[ revise(chain)+pushChain(chain) ]</td>
+			<td class="yes">echoHeaders()<br>持续[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">持续遍</td>
 			<td class="yes">TE</td>
 		</tr>

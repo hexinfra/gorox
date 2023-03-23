@@ -225,16 +225,16 @@ func (h *staticHandlet) listDir(dir *os.File, resp Response) {
 		resp.SendInternalServerError([]byte("Internal Server Error 5"))
 		return
 	}
-	resp.Push(`<table border="1">`)
-	resp.Push(`<tr><th>name</th><th>size(in bytes)</th><th>time</th></tr>`)
+	resp.Echo(`<table border="1">`)
+	resp.Echo(`<tr><th>name</th><th>size(in bytes)</th><th>time</th></tr>`)
 	for _, fi := range fis {
 		name := fi.Name()
 		size := strconv.FormatInt(fi.Size(), 10)
 		modTime := fi.ModTime().String()
 		line := `<tr><td><a href="` + staticHTMLEscape(name) + `">` + staticHTMLEscape(name) + `</a></td><td>` + size + `</td><td>` + modTime + `</td></tr>`
-		resp.Push(line)
+		resp.Echo(line)
 	}
-	resp.Push("</table>")
+	resp.Echo("</table>")
 }
 
 func staticHTMLEscape(s string) string {

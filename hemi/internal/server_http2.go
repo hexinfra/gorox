@@ -983,12 +983,12 @@ func (r *http2Response) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *http2Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
+func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
 	// TODO
 	return nil
 }
-func (r *http2Response) pushChain(chain Chain) error {
-	return r.pushChain2(chain)
+func (r *http2Response) echoChain(chain Chain) error {
+	return r.echoChain2(chain)
 }
 
 func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {

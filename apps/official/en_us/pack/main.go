@@ -25,6 +25,6 @@ func (p *Pack) GET_example(req Request, resp Response) { // GET /example
 	resp.Send("get example")
 }
 func (p *Pack) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
-	resp.Push("foo")
-	resp.Push("bar")
+	resp.Echo("foo")
+	resp.Echo("bar")
 }

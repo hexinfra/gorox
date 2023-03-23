@@ -66,11 +66,11 @@ func (r *http2Out_) sendChain2(chain Chain, vector [][]byte) error {
 	return nil
 }
 
-func (r *http2Out_) pushHeaders2() error {
+func (r *http2Out_) echoHeaders2() error {
 	// TODO
 	return nil
 }
-func (r *http2Out_) pushChain2(chain Chain) error {
+func (r *http2Out_) echoChain2(chain Chain) error {
 	// TODO
 	return nil
 }

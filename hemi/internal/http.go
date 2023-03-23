@@ -1478,10 +1478,10 @@ type httpOut interface {
 	finalizeHeaders()
 	send() error
 	sendChain(chain Chain) error
-	_beforePush() error
-	pushHeaders() error
-	push(chunk *Block) error
-	pushChain(chain Chain) error
+	_beforeEcho() error
+	echoHeaders() error
+	echo(chunk *Block) error
+	echoChain(chain Chain) error
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	finalizeUnsized() error
@@ -1511,7 +1511,7 @@ type httpOut_ struct { // outgoing. needs building
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector [4][]byte   // for sending/pushing message. reset after stream
+	fixedVector [4][]byte   // for sending/echoing message. reset after stream
 	httpOut0                // all values must be zero by default in this struct!
 }
 type httpOut0 struct { // for fast reset, entirely
@@ -1709,9 +1709,9 @@ func (r *httpOut_) SendFile(contentPath string) error {
 	return r.sendFile(file, info, true)
 }
 
-func (r *httpOut_) Push(chunk string) error      { return r.PushBytes(risky.ConstBytes(chunk)) }
-func (r *httpOut_) PushBytes(chunk []byte) error { return r.pushBlob(chunk) }
-func (r *httpOut_) PushFile(chunkPath string) error {
+func (r *httpOut_) Echo(chunk string) error      { return r.EchoBytes(risky.ConstBytes(chunk)) }
+func (r *httpOut_) EchoBytes(chunk []byte) error { return r.echoBlob(chunk) }
+func (r *httpOut_) EchoFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
 	if err != nil {
 		return err
@@ -1721,7 +1721,7 @@ func (r *httpOut_) PushFile(chunkPath string) error {
 		file.Close()
 		return err
 	}
-	return r.pushFile(file, info, true)
+	return r.echoFile(file, info, true)
 }
 
 func (r *httpOut_) Trailer(name string) (value string, ok bool) {
@@ -1741,7 +1741,7 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content directly
 	pass := r.shell.syncBytes
 	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
-		pass = r.PushBytes
+		pass = r.EchoBytes
 	} else { // in is sized and there are no revisers, use syncBytes
 		r.isSent = true
 		r.contentSize = in.ContentSize()
@@ -1776,7 +1776,7 @@ func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content di
 func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
 	if contentBlob, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports holding unsized content in buffer, this happens
-			return r.pushBlob(contentBlob)
+			return r.echoBlob(contentBlob)
 		} else {
 			return r.sendBlob(contentBlob)
 		}
@@ -1787,7 +1787,7 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			return err
 		}
 		if hasTrailers { // we must use unsized
-			return r.pushFile(contentFile, fileInfo, false) // false to avoid twice close()
+			return r.echoFile(contentFile, fileInfo, false) // false to avoid twice close()
 		} else {
 			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
 		}
@@ -1823,8 +1823,8 @@ func (r *httpOut_) _beforeSend() error {
 	r.isSent = true
 	return nil
 }
-func (r *httpOut_) pushBlob(chunk []byte) error {
-	if err := r.shell._beforePush(); err != nil {
+func (r *httpOut_) echoBlob(chunk []byte) error {
+	if err := r.shell._beforeEcho(); err != nil {
 		return err
 	}
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
@@ -1832,10 +1832,10 @@ func (r *httpOut_) pushBlob(chunk []byte) error {
 	}
 	block := GetBlock()
 	block.SetBlob(chunk)
-	return r.shell.push(block)
+	return r.shell.echo(block)
 }
-func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
-	if err := r.shell._beforePush(); err != nil {
+func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
+	if err := r.shell._beforeEcho(); err != nil {
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
@@ -1846,7 +1846,7 @@ func (r *httpOut_) pushFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	}
 	block := GetBlock()
 	block.SetFile(chunk, info, shut)
-	return r.shell.push(block)
+	return r.shell.echo(block)
 }
 
 func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time

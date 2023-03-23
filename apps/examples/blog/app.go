@@ -70,7 +70,7 @@ func (h *blogHandlet) index(req Request, resp Response) {
 	resp.Send("blog index")
 }
 func (h *blogHandlet) foo(req Request, resp Response) {
-	resp.Push(req.UserAgent())
-	resp.Push(req.T("x"))
+	resp.Echo(req.UserAgent())
+	resp.Echo(req.T("x"))
 	resp.AddTrailer("y", "123")
 }

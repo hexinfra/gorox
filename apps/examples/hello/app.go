@@ -75,8 +75,8 @@ func (h *helloHandlet) index(req Request, resp Response) {
 	resp.Send(h.example)
 }
 func (h *helloHandlet) handleFoo(req Request, resp Response) {
-	resp.Push(req.UserAgent())
-	resp.Push(req.T("x"))
+	resp.Echo(req.UserAgent())
+	resp.Echo(req.T("x"))
 	resp.AddTrailer("y", "123")
 }
 

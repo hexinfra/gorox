@@ -964,11 +964,11 @@ func (r *http1Response) sendChain(chain Chain) error { // TODO: if r.conn is TLS
 	return r.sendChain1(chain)
 }
 
-func (r *http1Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
+func (r *http1Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
 	return r.writeHeaders1()
 }
-func (r *http1Response) pushChain(chain Chain) error {
-	return r.pushChain1(chain, r.request.VersionCode() == Version1_1)
+func (r *http1Response) echoChain(chain Chain) error {
+	return r.echoChain1(chain, r.request.VersionCode() == Version1_1)
 }
 
 func (r *http1Response) trailer(name []byte) (value []byte, ok bool) {

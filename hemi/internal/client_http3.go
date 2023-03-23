@@ -345,11 +345,11 @@ func (r *H3Request) sendChain(chain Chain) error {
 	return r.sendChain3(chain, nil)
 }
 
-func (r *H3Request) pushHeaders() error {
+func (r *H3Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) pushChain(chain Chain) error {
+func (r *H3Request) echoChain(chain Chain) error {
 	// TODO
 	return nil
 }

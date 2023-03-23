@@ -374,12 +374,12 @@ func (r *http3Response) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *http3Response) pushHeaders() error { // headers are sent immediately upon pushing chunks.
+func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
 	// TODO
 	return nil
 }
-func (r *http3Response) pushChain(chain Chain) error {
-	return r.pushChain3(chain)
+func (r *http3Response) echoChain(chain Chain) error {
+	return r.echoChain3(chain)
 }
 
 func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {

@@ -23,12 +23,10 @@ desktop.ini
 /data
 /logs
 /temp
-/vendor
 
 /hemi/develop/data
 /hemi/develop/logs
 /hemi/develop/temp
-/hemi/develop/vendor
 
 /hemi/example/data
 /hemi/example/logs

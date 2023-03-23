@@ -48,7 +48,7 @@ Quickstart
   source code, cd to this directory, build and run:
 
     shell> go build ./cmds/gorox  # You may need to set CGO_ENABLED=0 if failed
-    shell> ./gorox serve -daemon
+    shell> ./gorox serve -daemon  # Starts gorox as a background server daemon
 
   To see the welcome page, visit: http://localhost:3080. To exit gracefully:
 

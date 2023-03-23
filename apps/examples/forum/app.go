@@ -50,7 +50,7 @@ func (h *forumHandlet) OnShutdown() { h.app.SubDone() }
 
 func (h *forumHandlet) OnConfigure() {
 }
-func (h *forumHandlet) OnPrepare()   {
+func (h *forumHandlet) OnPrepare() {
 }
 
 func (h *forumHandlet) Handle(req Request, resp Response) (next bool) {

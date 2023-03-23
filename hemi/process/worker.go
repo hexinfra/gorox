@@ -31,11 +31,13 @@ func workerMain(token string) {
 		crash("bad token")
 	}
 
-	// Contact leader process and register worker
+	// Contact leader process
 	cmdPipe, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
 		crash("dial leader failed: " + err.Error())
 	}
+
+	// Register worker to leader
 	loginReq := msgx.NewMessage(0, 0, map[string]string{
 		"pipeKey": parts[1],
 	})
@@ -55,7 +57,7 @@ func workerMain(token string) {
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
-		req, ok := msgx.RecvMessage(cmdPipe, 16<<20)
+		req, ok := msgx.Recv(cmdPipe, 16<<20)
 		if !ok { // leader must be gone
 			break
 		}
@@ -69,7 +71,7 @@ func workerMain(token string) {
 			} else {
 				resp.Flag = 404
 			}
-			if !msgx.SendMessage(cmdPipe, resp) { // leader must be gone
+			if !msgx.Send(cmdPipe, resp) { // leader must be gone
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {

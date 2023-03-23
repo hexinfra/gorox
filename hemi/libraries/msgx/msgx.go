@@ -13,14 +13,14 @@ import (
 
 func Tell(writer io.Writer, req *Message) bool {
 	req.SetTell()
-	return SendMessage(writer, req)
+	return Send(writer, req)
 }
 func Call(readWriter io.ReadWriter, req *Message, maxSize int32) (*Message, bool) {
 	req.SetCall()
-	if !SendMessage(readWriter, req) {
+	if !Send(readWriter, req) {
 		return nil, false
 	}
-	return RecvMessage(readWriter, maxSize)
+	return Recv(readWriter, maxSize)
 }
 
 // msg = head + body
@@ -31,7 +31,7 @@ func Call(readWriter io.ReadWriter, req *Message, maxSize int32) (*Message, bool
 
 const maxSize = 2147483647
 
-func SendMessage(writer io.Writer, msg *Message) (ok bool) {
+func Send(writer io.Writer, msg *Message) (ok bool) {
 	nArgs := len(msg.Args)
 	if nArgs > 255 {
 		return false
@@ -80,7 +80,7 @@ func SendMessage(writer io.Writer, msg *Message) (ok bool) {
 	_, err := writer.Write(buffer)
 	return err == nil
 }
-func RecvMessage(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
+func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 	head := make([]byte, 8)
 	if _, err := io.ReadFull(reader, head); err != nil {
 		return nil, false

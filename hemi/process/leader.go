@@ -89,7 +89,7 @@ func adminServer() {
 			logger.Println(err.Error())
 			goto closeNext
 		}
-		req, ok = msgx.RecvMessage(admConn, 16<<20)
+		req, ok = msgx.Recv(admConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
@@ -126,7 +126,7 @@ func adminServer() {
 				resp = <-msgChan
 			}
 			logger.Printf("send response: %v\n", resp)
-			msgx.SendMessage(admConn, resp)
+			msgx.Send(admConn, resp)
 		}
 	closeNext:
 		admConn.Close()
@@ -235,8 +235,8 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	}
 	tmpGate.Close()
 
-	// Pipe is established, now let worker login
-	loginReq, ok := msgx.RecvMessage(cmdPipe, 16<<10)
+	// Pipe is established, now register worker process
+	loginReq, ok := msgx.Recv(cmdPipe, 16<<10)
 	if !ok || loginReq.Get("pipeKey") != w.pipeKey {
 		crash("bad worker")
 	}
@@ -244,7 +244,9 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 		"base": base,
 		"file": file,
 	})
-	msgx.SendMessage(cmdPipe, loginResp)
+	if !msgx.Send(cmdPipe, loginResp) {
+		crash("send worker")
+	}
 
 	// Register succeed, save pipe and start waiting
 	w.cmdPipe = cmdPipe

@@ -7,12 +7,21 @@
 
 package test
 
-func Main() {
-	http1TestHello()
-}
+import (
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/diogin"
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/testee"
+	"os"
+)
 
-func must(err error) {
-	if err != nil {
-		panic(err)
+func Main() {
+	tests := ""
+	if len(os.Args) >= 3 {
+		tests = os.Args[2]
+	}
+	switch tests {
+	case "diogin":
+		diogin.Main()
+	default:
+		testee.Main()
 	}
 }

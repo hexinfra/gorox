@@ -35,7 +35,7 @@ type Sitex struct {
 }
 
 func (h *Sitex) OnCreate(name string, stage *Stage, app *App) {
-	h.CompInit(name)
+	h.SetUp(name)
 	h.stage = stage
 	h.app = app
 	h.hostnameSites = make(map[string]*Site)

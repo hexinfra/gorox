@@ -42,7 +42,7 @@ type RocksServer struct { // implements hemi.Server
 }
 
 func (s *RocksServer) onCreate(name string, stage *Stage) {
-	s.CompInit(name)
+	s.SetUp(name)
 	s.stage = stage
 	s.conns = make(map[int64]*goroxConn)
 }

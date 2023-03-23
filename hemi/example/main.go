@@ -83,11 +83,14 @@ type myHandlet struct {
 }
 
 func (h *myHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.CompInit(name)
+	h.SetUp(name)
 	h.stage = stage
 	h.app = app
+
 	r := simple.New()
+
 	r.Link("/foo", h.handleFoo)
+
 	h.SetRouter(h, r)
 }
 func (h *myHandlet) OnShutdown() {

@@ -26,7 +26,7 @@ type tcpsProxy struct {
 }
 
 func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	d.CompInit(name)
+	d.SetUp(name)
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }

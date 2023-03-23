@@ -31,7 +31,7 @@ type redisCacher struct {
 }
 
 func (c *redisCacher) onCreate(name string, stage *Stage) {
-	c.CompInit(name)
+	c.SetUp(name)
 	c.stage = stage
 }
 func (c *redisCacher) OnShutdown() {
@@ -54,10 +54,13 @@ func (c *redisCacher) Maintain() { // goroutine
 }
 
 func (c *redisCacher) Set(key []byte, hobject *Hobject) {
+	// TODO
 }
 func (c *redisCacher) Get(key []byte) (hobject *Hobject) {
+	// TODO
 	return
 }
 func (c *redisCacher) Del(key []byte) bool {
+	// TODO
 	return false
 }

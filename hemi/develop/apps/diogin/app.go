@@ -35,10 +35,12 @@ type dioginHandlet struct {
 }
 
 func (h *dioginHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.CompInit(name)
+	h.SetUp(name)
 	h.stage = stage
 	h.app = app
+
 	r := simple.New()
+
 	h.SetRouter(h, r)
 }
 func (h *dioginHandlet) OnShutdown() {

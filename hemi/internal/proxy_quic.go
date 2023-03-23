@@ -26,7 +26,7 @@ type quicProxy struct {
 }
 
 func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
-	d.CompInit(name)
+	d.SetUp(name)
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }

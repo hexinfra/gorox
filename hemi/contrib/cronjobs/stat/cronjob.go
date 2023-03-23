@@ -30,7 +30,7 @@ type statCronjob struct {
 }
 
 func (j *statCronjob) onCreate(name string, stage *Stage) {
-	j.CompInit(name)
+	j.SetUp(name)
 	j.stage = stage
 }
 func (j *statCronjob) OnShutdown() {

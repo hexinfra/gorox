@@ -90,7 +90,7 @@ type App struct {
 }
 
 func (a *App) onCreate(name string, stage *Stage) {
-	a.CompInit(name)
+	a.SetUp(name)
 	a.stage = stage
 	a.handlets = make(compDict[Handlet])
 	a.revisers = make(compDict[Reviser])
@@ -515,7 +515,7 @@ type Rule struct {
 }
 
 func (r *Rule) onCreate(name string, app *App) {
-	r.CompInit(name)
+	r.SetUp(name)
 	r.app = app
 }
 func (r *Rule) OnShutdown() {

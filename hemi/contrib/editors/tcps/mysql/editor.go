@@ -30,7 +30,7 @@ type mysqlViewer struct {
 }
 
 func (e *mysqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	e.CompInit(name)
+	e.SetUp(name)
 	e.stage = stage
 	e.mesher = mesher
 }
@@ -44,6 +44,8 @@ func (e *mysqlViewer) OnPrepare() {
 }
 
 func (e *mysqlViewer) OnInput(conn *TCPSConn, kind int8) {
+	// TODO
 }
 func (e *mysqlViewer) OnOutput(conn *TCPSConn, kind int8) {
+	// TODO
 }

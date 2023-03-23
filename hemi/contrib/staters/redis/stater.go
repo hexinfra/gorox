@@ -31,7 +31,7 @@ type redisStater struct {
 }
 
 func (s *redisStater) onCreate(name string, stage *Stage) {
-	s.CompInit(name)
+	s.SetUp(name)
 	s.stage = stage
 }
 func (s *redisStater) OnShutdown() {

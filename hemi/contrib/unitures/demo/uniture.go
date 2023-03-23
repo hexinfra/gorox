@@ -29,7 +29,7 @@ type demoUniture struct {
 }
 
 func (u *demoUniture) onCreate(name string, stage *Stage) {
-	u.CompInit(name)
+	u.SetUp(name)
 	u.stage = stage
 }
 func (u *demoUniture) OnShutdown() {

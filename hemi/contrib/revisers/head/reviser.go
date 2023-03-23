@@ -35,7 +35,7 @@ type headReviser struct {
 }
 
 func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
-	r.CompInit(name)
+	r.SetUp(name)
 	r.stage = stage
 	r.app = app
 }

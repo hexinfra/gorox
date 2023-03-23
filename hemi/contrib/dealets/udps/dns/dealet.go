@@ -30,7 +30,7 @@ type dnsDealet struct {
 }
 
 func (d *dnsDealet) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	d.CompInit(name)
+	d.SetUp(name)
 	d.stage = stage
 	d.mesher = mesher
 }
@@ -44,5 +44,6 @@ func (d *dnsDealet) OnPrepare() {
 }
 
 func (d *dnsDealet) Deal(conn *UDPSConn) (next bool) {
+	// TODO
 	return
 }

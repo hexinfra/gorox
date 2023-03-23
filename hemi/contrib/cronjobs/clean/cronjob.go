@@ -30,7 +30,7 @@ type cleanCronjob struct {
 }
 
 func (j *cleanCronjob) onCreate(name string, stage *Stage) {
-	j.CompInit(name)
+	j.SetUp(name)
 	j.stage = stage
 }
 func (j *cleanCronjob) OnShutdown() {

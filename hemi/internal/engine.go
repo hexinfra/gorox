@@ -139,7 +139,7 @@ type Stage struct {
 }
 
 func (s *Stage) onCreate() {
-	s.CompInit("stage")
+	s.SetUp("stage")
 
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)

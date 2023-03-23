@@ -32,7 +32,7 @@ type localCacher struct {
 }
 
 func (c *localCacher) onCreate(name string, stage *Stage) {
-	c.CompInit(name)
+	c.SetUp(name)
 	c.stage = stage
 }
 func (c *localCacher) OnShutdown() {
@@ -61,10 +61,13 @@ func (c *localCacher) Maintain() { // goroutine
 }
 
 func (c *localCacher) Set(key []byte, hobject *Hobject) {
+	// TODO
 }
 func (c *localCacher) Get(key []byte) (hobject *Hobject) {
+	// TODO
 	return
 }
 func (c *localCacher) Del(key []byte) bool {
+	// TODO
 	return false
 }

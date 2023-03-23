@@ -36,17 +36,22 @@ type forumHandlet struct {
 }
 
 func (h *forumHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.CompInit(name)
+	h.SetUp(name)
 	h.stage = stage
 	h.app = app
+
 	r := simple.New()
+
 	r.GET("/", h.index)
+
 	h.SetRouter(h, r)
 }
 func (h *forumHandlet) OnShutdown() { h.app.SubDone() }
 
-func (h *forumHandlet) OnConfigure() {}
-func (h *forumHandlet) OnPrepare()   {}
+func (h *forumHandlet) OnConfigure() {
+}
+func (h *forumHandlet) OnPrepare()   {
+}
 
 func (h *forumHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)

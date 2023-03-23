@@ -28,7 +28,7 @@ type Svc struct {
 }
 
 func (s *Svc) onCreate(name string, stage *Stage) {
-	s.CompInit(name)
+	s.SetUp(name)
 	s.stage = stage
 }
 func (s *Svc) OnShutdown() {

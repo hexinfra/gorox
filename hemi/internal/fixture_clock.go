@@ -37,7 +37,7 @@ type clockFixture struct {
 }
 
 func (f *clockFixture) onCreate(stage *Stage) {
-	f.CompInit(signClock)
+	f.SetUp(signClock)
 	f.stage = stage
 	f.resolution = 100 * time.Millisecond
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37

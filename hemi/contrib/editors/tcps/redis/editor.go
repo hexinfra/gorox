@@ -30,7 +30,7 @@ type redisViewer struct {
 }
 
 func (e *redisViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	e.CompInit(name)
+	e.SetUp(name)
 	e.stage = stage
 	e.mesher = mesher
 }
@@ -44,6 +44,8 @@ func (e *redisViewer) OnPrepare() {
 }
 
 func (e *redisViewer) OnInput(conn *TCPSConn, kind int8) {
+	// TODO
 }
 func (e *redisViewer) OnOutput(conn *TCPSConn, kind int8) {
+	// TODO
 }

@@ -26,7 +26,7 @@ type udpsProxy struct {
 }
 
 func (d *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	d.CompInit(name)
+	d.SetUp(name)
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }

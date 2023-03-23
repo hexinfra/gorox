@@ -143,7 +143,7 @@ type case_[M _mesher, D _dealet, E _editor] struct {
 }
 
 func (c *case_[M, D, E]) onCreate(name string, mesher M) {
-	c.CompInit(name)
+	c.SetUp(name)
 	c.mesher = mesher
 }
 func (c *case_[M, D, E]) OnShutdown() {

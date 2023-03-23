@@ -43,43 +43,43 @@ func registerFixture(sign string) {
 	signComp(sign, compFixture)
 }
 func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture) {
-	registerComponent0(sign, compUniture, unitureCreators, create)
+	_registerComponent0(sign, compUniture, unitureCreators, create)
 }
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
-	registerComponent0(sign, compBackend, backendCreators, create)
+	_registerComponent0(sign, compBackend, backendCreators, create)
 }
 func RegisterQUICDealet(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealet) {
-	registerComponent1(sign, compQUICDealet, quicDealetCreators, create)
+	_registerComponent1(sign, compQUICDealet, quicDealetCreators, create)
 }
 func RegisterQUICEditor(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICEditor) {
-	registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
+	_registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
 }
 func RegisterTCPSDealet(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet) {
-	registerComponent1(sign, compTCPSDealet, tcpsDealetCreators, create)
+	_registerComponent1(sign, compTCPSDealet, tcpsDealetCreators, create)
 }
 func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor) {
-	registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
+	_registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
 }
 func RegisterUDPSDealet(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet) {
-	registerComponent1(sign, compUDPSDealet, udpsDealetCreators, create)
+	_registerComponent1(sign, compUDPSDealet, udpsDealetCreators, create)
 }
 func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor) {
-	registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
+	_registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
-	registerComponent0(sign, compStater, staterCreators, create)
+	_registerComponent0(sign, compStater, staterCreators, create)
 }
 func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
-	registerComponent0(sign, compCacher, cacherCreators, create)
+	_registerComponent0(sign, compCacher, cacherCreators, create)
 }
 func RegisterHandlet(sign string, create func(name string, stage *Stage, app *App) Handlet) {
-	registerComponent1(sign, compHandlet, handletCreators, create)
+	_registerComponent1(sign, compHandlet, handletCreators, create)
 }
 func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
-	registerComponent1(sign, compReviser, reviserCreators, create)
+	_registerComponent1(sign, compReviser, reviserCreators, create)
 }
 func RegisterSocklet(sign string, create func(name string, stage *Stage, app *App) Socklet) {
-	registerComponent1(sign, compSocklet, sockletCreators, create)
+	_registerComponent1(sign, compSocklet, sockletCreators, create)
 }
 func RegisterAppInit(name string, init func(app *App) error) {
 	initsLock.Lock()
@@ -92,23 +92,26 @@ func RegisterSvcInit(name string, init func(svc *Svc) error) {
 	initsLock.Unlock()
 }
 func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
-	registerComponent0(sign, compServer, serverCreators, create)
+	_registerComponent0(sign, compServer, serverCreators, create)
 }
 func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
-	registerComponent0(sign, compCronjob, cronjobCreators, create)
+	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
-func registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // uniture, backend, stater, cacher, server, cronjob
+
+func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // uniture, backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
+
 	if _, ok := creators[sign]; ok {
 		BugExitln("component0 sign conflicted")
 	}
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, editor, handlet, reviser, socklet
+func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, editor, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
+
 	if _, ok := creators[sign]; ok {
 		BugExitln("component1 sign conflicted")
 	}
@@ -118,7 +121,7 @@ func registerComponent1[T Component, C Component](sign string, comp int16, creat
 
 // Component is the interface for all components.
 type Component interface {
-	CompInit(name string)
+	SetUp(name string)
 	OnShutdown()
 	SubDone()
 
@@ -164,7 +167,7 @@ type Component_ struct {
 	Shut  chan struct{}    // used to notify component to shutdown
 }
 
-func (c *Component_) CompInit(name string) {
+func (c *Component_) SetUp(name string) {
 	c.name = name
 	c.props = make(map[string]Value)
 	c.Shut = make(chan struct{})

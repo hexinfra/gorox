@@ -41,7 +41,7 @@ type helloHandlet struct {
 }
 
 func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.CompInit(name)
+	h.SetUp(name)
 	h.stage = stage
 	h.app = app
 

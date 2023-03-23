@@ -31,7 +31,7 @@ type echoDealet struct {
 }
 
 func (d *echoDealet) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	d.CompInit(name)
+	d.SetUp(name)
 	d.stage = stage
 	d.mesher = mesher
 }

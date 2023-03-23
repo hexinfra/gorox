@@ -32,7 +32,7 @@ type localStater struct {
 }
 
 func (s *localStater) onCreate(name string, stage *Stage) {
-	s.CompInit(name)
+	s.SetUp(name)
 	s.stage = stage
 }
 func (s *localStater) OnShutdown() {

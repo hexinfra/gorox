@@ -673,35 +673,3 @@ func (s *Stage) ProfBlock() {
 	pprof.Lookup("block").WriteTo(file, 1)
 	runtime.SetBlockProfileRate(0)
 }
-
-// fixture component.
-//
-// Fixtures only exist in internal, and are created by stage.
-// Some critical functions, like clock and name resolver, are
-// implemented as fixtures.
-type fixture interface {
-	Component
-	run() // goroutine
-}
-
-// Uniture component.
-//
-// Unitures behave like fixtures except that they are optional
-// and extendible, so users can create their own unitures.
-type Uniture interface {
-	Component
-	Run() // goroutine
-}
-
-// Cronjob component
-type Cronjob interface {
-	Component
-	Schedule() // goroutine
-}
-
-// Cronjob_ is the mixin for all cronjobs.
-type Cronjob_ struct {
-	// Mixins
-	Component_
-	// States
-}

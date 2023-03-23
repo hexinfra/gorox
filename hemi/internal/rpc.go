@@ -11,24 +11,14 @@ import (
 	"time"
 )
 
-// GRPCServer is the interface for all gRPC servers.
-// Due to gRPC's large dependancies, to keep hemi small, we won't implement our own gRPC server.
-// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements GRPCServer interface.
-// Maybe we can implements our own gRPC server following its official spec. TBD.
-type GRPCServer interface {
-	Server
-	RealServer() any
-	LinkSvcs()
-}
-
 // Svc is the RPC service.
 type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage       *Stage // current stage
-	hrpcServers []httpServer
-	grpcServers []GRPCServer
+	stage       *Stage       // current stage
+	hrpcServers []httpServer // linked hrpc servers. may be empty
+	grpcServers []GRPCServer // linked grpc servers. may be empty
 	// States
 	hostnames       [][]byte // should be used by HRPC only
 	maxContentSize  int64    // max content size allowed

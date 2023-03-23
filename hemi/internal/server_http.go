@@ -216,7 +216,7 @@ type httpConn interface {
 	getServer() httpServer
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in buffer256() of stream
+	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
 // httpConn_ is the mixin for http[1-3]Conn.
@@ -256,8 +256,8 @@ func (c *httpConn_) getGate() httpGate     { return c.gate }
 func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }
 
-func (c *httpConn_) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, stamp, c.counter.Add(1))
+func (c *httpConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 // httpStream_ is the mixin for http[1-3]Stream.

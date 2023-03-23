@@ -889,8 +889,8 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 	// TODO
 }
 
-func (s *http2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return s.conn.makeTempName(p, stamp)
+func (s *http2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *http2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only

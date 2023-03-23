@@ -337,7 +337,7 @@ type PConn interface {
 	ReadFull(p []byte) (n int, err error)
 	ReadAtLeast(p []byte, min int) (n int, err error)
 	Close() error
-	MakeTempName(p []byte, stamp int64) (from int, edge int)
+	MakeTempName(p []byte, unixTime int64) (from int, edge int)
 	IsBroken() bool
 	MarkBroken()
 }
@@ -367,8 +367,8 @@ func (c *pConn_) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *pConn_) MakeTempName(p []byte, stamp int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, stamp, c.counter.Add(1))
+func (c *pConn_) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 

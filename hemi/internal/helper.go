@@ -411,14 +411,14 @@ func (c *Chain) PushTail(block *Block) {
 	c.size++
 }
 
-func makeTempName(p []byte, stageID int64, connID int64, stamp int64, counter int64) (from int, edge int) {
+func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
 	// TODO: improvement
 	stageID &= 0xff
 	connID &= 0xffff
-	stamp &= 0xffffffff
+	unixTime &= 0xffffffff
 	counter &= 0xff
 	// stageID(8) | connID(16) | seconds(32) | counter(8)
-	i64 := stageID<<56 | connID<<40 | stamp<<8 | counter
+	i64 := stageID<<56 | connID<<40 | unixTime<<8 | counter
 	i64 &= 0x7fffffffffffffff // clear left-most bit
 	return i64ToDec(i64, p)
 }

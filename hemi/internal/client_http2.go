@@ -308,8 +308,8 @@ func (s *H2Stream) StartUDPTun() { // see RFC 9298
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
 
-func (s *H2Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return s.conn.makeTempName(p, stamp)
+func (s *H2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?

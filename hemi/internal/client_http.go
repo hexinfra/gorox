@@ -113,7 +113,7 @@ func (n *httpNode_) init(id int32) {
 // hConn is the interface for *H[1-3]Conn.
 type hConn interface {
 	getClient() httpClient
-	makeTempName(p []byte, stamp int64) (from int, edge int) // small enough to be placed in buffer256() of stream
+	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 	isBroken() bool
 	markBroken()
 }
@@ -143,8 +143,8 @@ func (c *hConn_) onPut() {
 
 func (c *hConn_) getClient() httpClient { return c.client.(httpClient) }
 
-func (c *hConn_) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, stamp, c.counter.Add(1))
+func (c *hConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *hConn_) reachLimit() bool {

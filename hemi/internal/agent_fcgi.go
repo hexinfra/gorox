@@ -289,8 +289,8 @@ func (s *fcgiStream) onEnd() {
 func (s *fcgiStream) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-func (s *fcgiStream) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return s.conn.MakeTempName(p, stamp)
+func (s *fcgiStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.MakeTempName(p, unixTime)
 }
 
 func (s *fcgiStream) setWriteDeadline(deadline time.Time) error {

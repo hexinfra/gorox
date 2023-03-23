@@ -137,7 +137,7 @@ func (c *config) applyText(text string) (stage *Stage, err error) {
 	var l lexer
 	c.tokens = l.scanText(text)
 	c.evaluate()
-	return c.apply()
+	return c.parse()
 }
 func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
@@ -148,7 +148,7 @@ func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 	var l lexer
 	c.tokens = l.scanFile(base, path)
 	c.evaluate()
-	return c.apply()
+	return c.parse()
 }
 
 func (c *config) show() {
@@ -209,7 +209,7 @@ func (c *config) newName() string {
 	return strconv.Itoa(c.counter)
 }
 
-func (c *config) apply() (stage *Stage, err error) {
+func (c *config) parse() (stage *Stage, err error) {
 	if current := c.current(); current.kind == tokenIdentifier && current.info == compStage {
 		stage = createStage()
 		stage.setParent(nil)

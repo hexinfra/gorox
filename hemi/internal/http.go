@@ -51,7 +51,7 @@ type stream interface {
 
 	buffer256() []byte
 	unsafeMake(size int) []byte
-	makeTempName(p []byte, stamp int64) (from int, edge int)
+	makeTempName(p []byte, unixTime int64) (from int, edge int)
 
 	setReadDeadline(deadline time.Time) error
 	setWriteDeadline(deadline time.Time) error

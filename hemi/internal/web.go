@@ -41,7 +41,7 @@ type Session struct {
 	state1 int8     // app defined state1
 	state2 int8     // app defined state2
 	state3 int32    // app defined state3
-	expire int64    // unix stamp
+	expire int64    // unix time
 	states map[string]string
 }
 

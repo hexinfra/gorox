@@ -322,8 +322,8 @@ func (s *H1Stream) StartUDPTun() { // upgrade: connect-udp
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
 
-func (s *H1Stream) makeTempName(p []byte, stamp int64) (from int, edge int) {
-	return s.conn.makeTempName(p, stamp)
+func (s *H1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {

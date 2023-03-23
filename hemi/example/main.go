@@ -3,22 +3,23 @@
 package main
 
 import (
-	. "github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 )
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
+import (
+	. "github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+)
 
 func main() {
 	exePath, err := os.Executable()
-	must(err)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	baseDir := filepath.Dir(exePath)
 	if runtime.GOOS == "windows" {
 		baseDir = filepath.ToSlash(baseDir)
@@ -47,12 +48,15 @@ func main() {
 	    }
 	}
 	`
-	startHemi(baseDir, myConfig)
+	if err := startHemi(baseDir, myConfig); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
 	select {} // do your other things here.
 }
 
-func startHemi(baseDir string, configText string) {
+func startHemi(baseDir string, configText string) error {
 	RegisterHandlet("myHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(myHandlet)
 		h.onCreate(name, stage, app)
@@ -65,8 +69,11 @@ func startHemi(baseDir string, configText string) {
 	SetTempDir(baseDir + "/temp")
 
 	stage, err := ApplyText(configText)
-	must(err)
+	if err != nil {
+		return err
+	}
 	stage.Start(0)
+	return nil
 }
 
 type myHandlet struct {

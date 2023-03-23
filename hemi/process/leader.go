@@ -240,11 +240,10 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	if !ok || loginReq.Get("pipeKey") != w.pipeKey {
 		crash("bad worker")
 	}
-	loginResp := msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
+	if !msgx.Send(cmdPipe, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"base": base,
 		"file": file,
-	})
-	if !msgx.Send(cmdPipe, loginResp) {
+	})) {
 		crash("send worker")
 	}
 

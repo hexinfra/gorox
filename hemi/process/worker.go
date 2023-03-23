@@ -38,10 +38,9 @@ func workerMain(token string) {
 	}
 
 	// Register worker to leader
-	loginReq := msgx.NewMessage(0, 0, map[string]string{
+	if loginResp, ok := msgx.Call(cmdPipe, msgx.NewMessage(0, 0, map[string]string{
 		"pipeKey": parts[1],
-	})
-	if loginResp, ok := msgx.Call(cmdPipe, loginReq, 16<<20); ok {
+	}), 16<<20); ok {
 		configBase = loginResp.Get("base")
 		configFile = loginResp.Get("file")
 	} else {

@@ -244,7 +244,7 @@ type _dealet interface {
 }
 type _editor interface {
 	Component
-	ider
+	identifiable
 }
 type _case interface {
 	Component

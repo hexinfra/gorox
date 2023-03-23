@@ -456,7 +456,7 @@ type Router interface {
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	Component
-	ider
+	identifiable
 
 	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
 
@@ -475,7 +475,7 @@ type Reviser interface {
 type Reviser_ struct {
 	// Mixins
 	Component_
-	ider_
+	identifiable_
 	// States
 }
 

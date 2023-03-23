@@ -93,14 +93,14 @@ type UDPSDealet_ struct {
 // UDPSEditor
 type UDPSEditor interface {
 	Component
-	ider
+	identifiable
 	OnInput(conn *UDPSConn, data []byte) (next bool)
 }
 
 // UDPSEditor_
 type UDPSEditor_ struct {
 	Component_
-	ider_
+	identifiable_
 }
 
 // udpsCase

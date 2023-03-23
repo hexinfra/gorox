@@ -153,7 +153,7 @@ type Component interface {
 // Component_ is the mixin for all components.
 type Component_ struct {
 	// Mixins
-	waiter_
+	subsWaiter_
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config

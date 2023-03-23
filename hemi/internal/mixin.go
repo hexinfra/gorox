@@ -13,15 +13,6 @@ import (
 	"sync/atomic"
 )
 
-// waiter_
-type waiter_ struct {
-	subs sync.WaitGroup
-}
-
-func (w *waiter_) IncSub(n int) { w.subs.Add(n) }
-func (w *waiter_) WaitSubs()    { w.subs.Wait() }
-func (w *waiter_) SubDone()     { w.subs.Done() }
-
 // streamHolder
 type streamHolder interface {
 	MaxStreamsPerConn() int32
@@ -116,16 +107,25 @@ func (b *loadBalancer_) getNextByRandom() int64 {
 	return 0
 }
 
-// ider
-type ider interface {
+// subsWaiter_
+type subsWaiter_ struct {
+	subs sync.WaitGroup
+}
+
+func (w *subsWaiter_) IncSub(n int) { w.subs.Add(n) }
+func (w *subsWaiter_) WaitSubs()    { w.subs.Wait() }
+func (w *subsWaiter_) SubDone()     { w.subs.Done() }
+
+// identifiable
+type identifiable interface {
 	ID() uint8
 	setID(id uint8)
 }
 
-// ider_ is a mixin.
-type ider_ struct {
+// identifiable_ is a mixin.
+type identifiable_ struct {
 	id uint8
 }
 
-func (i *ider_) ID() uint8      { return i.id }
-func (i *ider_) setID(id uint8) { i.id = id }
+func (i *identifiable_) ID() uint8      { return i.id }
+func (i *identifiable_) setID(id uint8) { i.id = id }

@@ -209,7 +209,7 @@ type node interface {
 // node_ is a mixin for backend nodes.
 type node_ struct {
 	// Mixins
-	waiter_
+	subsWaiter_
 	// States
 	id        int32       // the node id
 	address   string      // hostname:port

@@ -96,7 +96,7 @@ type TCPSDealet_ struct {
 // TCPSEditor
 type TCPSEditor interface {
 	Component
-	ider
+	identifiable
 
 	OnInput(conn *TCPSConn, kind int8)
 	OnOutput(conn *TCPSConn, kind int8)
@@ -105,7 +105,7 @@ type TCPSEditor interface {
 // TCPSEditor_
 type TCPSEditor_ struct {
 	Component_
-	ider_
+	identifiable_
 }
 
 // tcpsCase

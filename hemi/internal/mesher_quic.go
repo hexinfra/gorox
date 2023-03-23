@@ -87,14 +87,14 @@ type QUICDealet_ struct {
 // QUICEditor
 type QUICEditor interface {
 	Component
-	ider
+	identifiable
 	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 
 // QUICEditor_
 type QUICEditor_ struct {
 	Component_
-	ider_
+	identifiable_
 }
 
 // quicCase

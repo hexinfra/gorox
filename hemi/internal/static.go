@@ -139,8 +139,8 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	filesys := h.stage.Filesys()
-	entry, err := filesys.getEntry(openPath)
+	fcache := h.stage.Fcache()
+	entry, err := fcache.getEntry(openPath)
 	if err == nil {
 		if IsDebug(1) {
 			Debugln("entry HIT")
@@ -149,7 +149,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		if IsDebug(1) {
 			Debugln("entry MISS")
 		}
-		entry, err = filesys.newEntry(string(openPath))
+		entry, err = fcache.newEntry(string(openPath))
 		if err != nil {
 			if !os.IsNotExist(err) {
 				h.app.Logf("open file error=%s\n", err.Error())

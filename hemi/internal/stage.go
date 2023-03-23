@@ -35,7 +35,7 @@ type Stage struct {
 	Component_
 	// Assocs
 	clock       *clockFixture         // for fast accessing
-	filesys     *filesysFixture       // for fast accessing
+	fcache      *fcacheFixture        // for fast accessing
 	resolv      *resolvFixture        // for fast accessing
 	http1       *HTTP1Outgate         // for fast accessing
 	http2       *HTTP2Outgate         // for fast accessing
@@ -72,7 +72,7 @@ func (s *Stage) onCreate() {
 	s.CompInit("stage")
 
 	s.clock = createClock(s)
-	s.filesys = createFilesys(s)
+	s.fcache = createFcache(s)
 	s.resolv = createResolv(s)
 	s.http1 = createHTTP1(s)
 	s.http2 = createHTTP2(s)
@@ -84,7 +84,7 @@ func (s *Stage) onCreate() {
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
-	s.fixtures[signFilesys] = s.filesys
+	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolv] = s.resolv
 	s.fixtures[signHTTP1] = s.http1
 	s.fixtures[signHTTP2] = s.http2
@@ -152,17 +152,17 @@ func (s *Stage) OnShutdown() {
 
 	// fixtures
 	s.IncSub(7)
-	go s.http1.OnShutdown()
-	go s.http2.OnShutdown()
-	go s.http3.OnShutdown()
-	go s.quic.OnShutdown()
-	go s.tcps.OnShutdown()
-	go s.udps.OnShutdown()
-	go s.unix.OnShutdown()
+	go s.http1.OnShutdown() // we don't treat this as goroutine
+	go s.http2.OnShutdown() // we don't treat this as goroutine
+	go s.http3.OnShutdown() // we don't treat this as goroutine
+	go s.quic.OnShutdown()  // we don't treat this as goroutine
+	go s.tcps.OnShutdown()  // we don't treat this as goroutine
+	go s.udps.OnShutdown()  // we don't treat this as goroutine
+	go s.unix.OnShutdown()  // we don't treat this as goroutine
 	s.WaitSubs()
 
 	s.IncSub(1)
-	s.filesys.OnShutdown()
+	s.fcache.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -365,16 +365,16 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) Clock() *clockFixture     { return s.clock }
-func (s *Stage) Filesys() *filesysFixture { return s.filesys }
-func (s *Stage) Resolv() *resolvFixture   { return s.resolv }
-func (s *Stage) HTTP1() *HTTP1Outgate     { return s.http1 }
-func (s *Stage) HTTP2() *HTTP2Outgate     { return s.http2 }
-func (s *Stage) HTTP3() *HTTP3Outgate     { return s.http3 }
-func (s *Stage) QUIC() *QUICOutgate       { return s.quic }
-func (s *Stage) TCPS() *TCPSOutgate       { return s.tcps }
-func (s *Stage) UDPS() *UDPSOutgate       { return s.udps }
-func (s *Stage) Unix() *UnixOutgate       { return s.unix }
+func (s *Stage) Clock() *clockFixture   { return s.clock }
+func (s *Stage) Fcache() *fcacheFixture { return s.fcache }
+func (s *Stage) Resolv() *resolvFixture { return s.resolv }
+func (s *Stage) HTTP1() *HTTP1Outgate   { return s.http1 }
+func (s *Stage) HTTP2() *HTTP2Outgate   { return s.http2 }
+func (s *Stage) HTTP3() *HTTP3Outgate   { return s.http3 }
+func (s *Stage) QUIC() *QUICOutgate     { return s.quic }
+func (s *Stage) TCPS() *TCPSOutgate     { return s.tcps }
+func (s *Stage) UDPS() *UDPSOutgate     { return s.udps }
+func (s *Stage) Unix() *UnixOutgate     { return s.unix }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }

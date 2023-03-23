@@ -504,7 +504,7 @@ func (b *booker) Logf(f string, v ...any) {
 
 func (b *booker) Close() { b.queue <- "" }
 
-func (b *booker) saver() {
+func (b *booker) saver() { // goroutine
 	for {
 		s := <-b.queue
 		if s != "" {

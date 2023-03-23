@@ -18,20 +18,20 @@ import (
 )
 
 func init() {
-	registerFixture(signFilesys)
+	registerFixture(signFcache)
 }
 
-const signFilesys = "filesys"
+const signFcache = "fcache"
 
-func createFilesys(stage *Stage) *filesysFixture {
-	filesys := new(filesysFixture)
-	filesys.onCreate(stage)
-	filesys.setShell(filesys)
-	return filesys
+func createFcache(stage *Stage) *fcacheFixture {
+	fcache := new(fcacheFixture)
+	fcache.onCreate(stage)
+	fcache.setShell(fcache)
+	return fcache
 }
 
-// filesysFixture
-type filesysFixture struct {
+// fcacheFixture
+type fcacheFixture struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -42,19 +42,19 @@ type filesysFixture struct {
 	maxLargeFiles int32 // max number of large files. for large files, *os.File are cached
 	cacheTimeout  time.Duration
 	rwMutex       sync.RWMutex // protects entries below
-	entries       map[string]*filesysEntry
+	entries       map[string]*fcacheEntry
 }
 
-func (f *filesysFixture) onCreate(stage *Stage) {
-	f.CompInit(signFilesys)
+func (f *fcacheFixture) onCreate(stage *Stage) {
+	f.CompInit(signFcache)
 	f.stage = stage
-	f.entries = make(map[string]*filesysEntry)
+	f.entries = make(map[string]*fcacheEntry)
 }
-func (f *filesysFixture) OnShutdown() {
+func (f *fcacheFixture) OnShutdown() {
 	close(f.Shut)
 }
 
-func (f *filesysFixture) OnConfigure() {
+func (f *fcacheFixture) OnConfigure() {
 	// smallFileSize
 	f.ConfigureInt64("smallFileSize", &f.smallFileSize, func(value int64) bool { return value > 0 }, _64K1)
 	// maxSmallFiles
@@ -64,10 +64,10 @@ func (f *filesysFixture) OnConfigure() {
 	// cacheTimeout
 	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) bool { return value > 0 }, 1*time.Second)
 }
-func (f *filesysFixture) OnPrepare() {
+func (f *fcacheFixture) OnPrepare() {
 }
 
-func (f *filesysFixture) run() { // goroutine
+func (f *fcacheFixture) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		f.rwMutex.Lock()
 		for path, entry := range f.entries {
@@ -79,7 +79,7 @@ func (f *filesysFixture) run() { // goroutine
 			}
 			delete(f.entries, path)
 			if IsDebug(2) {
-				Debugf("filesys entry deleted: %s\n", path)
+				Debugf("fcache entry deleted: %s\n", path)
 			}
 		}
 		f.rwMutex.Unlock()
@@ -89,12 +89,12 @@ func (f *filesysFixture) run() { // goroutine
 	f.rwMutex.Unlock()
 
 	if IsDebug(2) {
-		Debugln("filesys done")
+		Debugln("fcache done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {
+func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {
 	f.rwMutex.RLock()
 	defer f.rwMutex.RUnlock()
 
@@ -104,13 +104,13 @@ func (f *filesysFixture) getEntry(path []byte) (*filesysEntry, error) {
 		}
 		return entry, nil
 	} else {
-		return nil, filesysNotExist
+		return nil, fcacheNotExist
 	}
 }
 
-var filesysNotExist = errors.New("entry not exist")
+var fcacheNotExist = errors.New("entry not exist")
 
-func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
+func (f *fcacheFixture) newEntry(path string) (*fcacheEntry, error) {
 	f.rwMutex.Lock()
 	defer f.rwMutex.Unlock()
 
@@ -131,9 +131,9 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 		return nil, err
 	}
 
-	entry := new(filesysEntry)
+	entry := new(fcacheEntry)
 	if info.IsDir() {
-		entry.kind = filesysKindDir
+		entry.kind = fcacheKindDir
 		file.Close()
 	} else if fileSize := info.Size(); fileSize <= f.smallFileSize {
 		data := make([]byte, fileSize)
@@ -141,12 +141,12 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 			file.Close()
 			return nil, err
 		}
-		entry.kind = filesysKindSmall
+		entry.kind = fcacheKindSmall
 		entry.info = info
 		entry.data = data
 		file.Close()
 	} else { // large file
-		entry.kind = filesysKindLarge
+		entry.kind = fcacheKindLarge
 		entry.file = file
 		entry.info = info
 		entry.nRef.Store(1) // current caller
@@ -157,9 +157,9 @@ func (f *filesysFixture) newEntry(path string) (*filesysEntry, error) {
 	return entry, nil
 }
 
-// filesysEntry
-type filesysEntry struct {
-	kind int8         // see filesysKindXXX
+// fcacheEntry
+type fcacheEntry struct {
+	kind int8         // see fcacheKindXXX
 	file *os.File     // only for large file
 	info os.FileInfo  // only for files, not directories
 	data []byte       // content of small file
@@ -168,22 +168,22 @@ type filesysEntry struct {
 }
 
 const (
-	filesysKindDir = iota
-	filesysKindSmall
-	filesysKindLarge
+	fcacheKindDir = iota
+	fcacheKindSmall
+	fcacheKindLarge
 )
 
-func (e *filesysEntry) isDir() bool   { return e.kind == filesysKindDir }
-func (e *filesysEntry) isLarge() bool { return e.kind == filesysKindLarge }
-func (e *filesysEntry) isSmall() bool { return e.kind == filesysKindSmall }
+func (e *fcacheEntry) isDir() bool   { return e.kind == fcacheKindDir }
+func (e *fcacheEntry) isLarge() bool { return e.kind == fcacheKindLarge }
+func (e *fcacheEntry) isSmall() bool { return e.kind == fcacheKindSmall }
 
-func (e *filesysEntry) addRef() {
+func (e *fcacheEntry) addRef() {
 	e.nRef.Add(1)
 }
-func (e *filesysEntry) decRef() {
+func (e *fcacheEntry) decRef() {
 	if e.nRef.Add(-1) < 0 {
 		if IsDebug(2) {
-			Debugf("filesys large entry closed: %s\n", e.file.Name())
+			Debugf("fcache large entry closed: %s\n", e.file.Name())
 		}
 		e.file.Close()
 	}

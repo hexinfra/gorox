@@ -1,3 +1,7 @@
-Build:
+To build:
 
-	shell> go build ./cmds/official
+  shell> go build
+
+To run:
+
+  shell> ./official

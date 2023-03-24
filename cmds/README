@@ -1,9 +1,8 @@
-This directory holds commands and tools, basically one cmd per directory.
-By default there are 3 cmds:
+This directory holds auxiliary commands, basically one cmd per directory.
+By default there are 2 cmds:
 
   goben/    - An HTTP benchmarking tool.
   goops/    - Gorox Operation Server.
-  gorox/    - The gorox server and control agent.
 
 To add a new cmd named "foo":
 

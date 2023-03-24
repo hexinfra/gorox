@@ -19,11 +19,11 @@
 desktop.ini
 
 /dist
+/gomake
 
 /data
 /logs
 /temp
-/gomake
 /goben
 /goops
 /gorox

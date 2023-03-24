@@ -52,11 +52,6 @@ var (
 )
 
 func main() {
-	if _, err := os.Stat("cmds/derox"); err == nil {
-		fmt.Println("please use demake.")
-		return
-	}
-
 	flag.Usage = func() {
 		fmt.Println(usage)
 	}

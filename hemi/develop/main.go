@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Derox server (leader & worker) and its control agent.
+// Develop server (leader & worker) and its control agent.
 
 package main
 
@@ -21,10 +21,10 @@ import (
 import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
-Derox (%s)
+Develop (%s)
 ================================================================================
 
-  derox [ACTION] [OPTIONS]
+  develop [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -59,7 +59,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: derox-leader.log in logs dir)
+  -log    <path>      # leader log file (default: develop-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -data   <path>      # data directory to use
   -logs   <path>      # logs directory to use
@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		process.Main("derox", usage, 2, "127.0.0.1:9526")
+		process.Main("develop", usage, 2, "127.0.0.1:9526")
 	}
 }

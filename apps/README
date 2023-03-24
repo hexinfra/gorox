@@ -6,8 +6,6 @@ Some builtin apps are:
   examples/hello/    - An example "hello, world" app.
   examples/blog/     - An example blog app.
   examples/forum/    - An example forum app.
-  official/en_us/    - The official website in en_US.
-  official/zh_cn/    - The official website in zh_CN.
   welcome/           - A static app. Can be used as default app of http servers.
 
 To add a new static app named "foo":

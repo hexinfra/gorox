@@ -9,7 +9,7 @@ package zh_cn
 
 import (
 	"errors"
-	"github.com/hexinfra/gorox/apps/official/zh_cn/pack"
+	"github.com/hexinfra/gorox/hemi/official/apps/zh_cn/pack"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 )

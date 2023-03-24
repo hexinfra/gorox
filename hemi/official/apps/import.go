@@ -3,12 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Import your apps.
-
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/apps/examples/blog"
-	_ "github.com/hexinfra/gorox/apps/examples/forum"
-	_ "github.com/hexinfra/gorox/apps/examples/hello"
+	_ "github.com/hexinfra/gorox/hemi/official/apps/en_us"
+	_ "github.com/hexinfra/gorox/hemi/official/apps/zh_cn"
 )

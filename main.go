@@ -62,9 +62,9 @@ OPTIONS
   -daemon             # run server as daemon (default: false)
   -log    <path>      # leader log file (default: gorox-leader.log in logs dir)
   -base   <path>      # base directory of the program
-  -data   <path>      # data directory to use
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
+  -vars   <path>      # vars directory to use
   -config <config>    # path or url to worker config file
 
   "-debug" applies for all actions.

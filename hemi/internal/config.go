@@ -27,9 +27,9 @@ func ApplyFile(base string, file string) (*Stage, error) {
 func _getConfig() (c config) {
 	constants := map[string]string{
 		"baseDir": BaseDir(),
-		"dataDir": DataDir(),
 		"logsDir": LogsDir(),
 		"tempDir": TempDir(),
+		"varsDir": VarsDir(),
 	}
 	c.init(constants, varCodes, signedComps)
 	return
@@ -1170,7 +1170,7 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenAND          // &&
 	tokenOR           // ||
 	// Constants
-	tokenConstant // %baseDir, %dataDir, %logsDir, %tempDir
+	tokenConstant // %baseDir, %logsDir, %tempDir, %varsDir
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
 	// Variables

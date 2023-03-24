@@ -41,7 +41,7 @@ func (c *localCacher) OnShutdown() {
 
 func (c *localCacher) OnConfigure() {
 	// cacheDir
-	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) bool { return value != "" }, DataDir()+"/cachers/"+c.Name())
+	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) bool { return value != "" }, VarsDir()+"/cachers/"+c.Name())
 }
 func (c *localCacher) OnPrepare() {
 	// mkdirs

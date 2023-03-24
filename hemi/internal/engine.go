@@ -24,26 +24,22 @@ var ( // global variables shared between stages
 	_debug    atomic.Int32 // debug level
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
-	_dataOnce sync.Once    // protects _dataDir
-	_dataDir  atomic.Value // directory of the run-time data
 	_logsOnce sync.Once    // protects _logsDir
 	_logsDir  atomic.Value // directory of the log files
 	_tempOnce sync.Once    // protects _tempDir
 	_tempDir  atomic.Value // directory of the temp files
+	_varsOnce sync.Once    // protects _varsDir
+	_varsDir  atomic.Value // directory of the run-time data
 )
 
 func IsDebug(level int32) bool { return _debug.Load() >= level }
 func BaseDir() string          { return _baseDir.Load().(string) }
-func DataDir() string          { return _dataDir.Load().(string) }
 func LogsDir() string          { return _logsDir.Load().(string) }
 func TempDir() string          { return _tempDir.Load().(string) }
+func VarsDir() string          { return _varsDir.Load().(string) }
 
 func SetDebug(level int32)  { _debug.Store(level) }
 func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) }
-func SetDataDir(dir string) {
-	_mkdir(dir)
-	_dataOnce.Do(func() { _dataDir.Store(dir) })
-}
 func SetLogsDir(dir string) {
 	_mkdir(dir)
 	_logsOnce.Do(func() { _logsDir.Store(dir) })
@@ -51,6 +47,10 @@ func SetLogsDir(dir string) {
 func SetTempDir(dir string) {
 	_mkdir(dir)
 	_tempOnce.Do(func() { _tempDir.Store(dir) })
+}
+func SetVarsDir(dir string) {
+	_mkdir(dir)
+	_varsOnce.Do(func() { _varsDir.Store(dir) })
 }
 func _mkdir(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -483,12 +483,12 @@ func (s *Stage) Start(id int32) {
 		Debugf("stageID=%d\n", s.id)
 		Debugf("numCPU=%d\n", s.numCPU)
 		Debugf("baseDir=%s\n", BaseDir())
-		Debugf("dataDir=%s\n", DataDir())
 		Debugf("logsDir=%s\n", LogsDir())
 		Debugf("tempDir=%s\n", TempDir())
+		Debugf("varsDir=%s\n", VarsDir())
 	}
-	if BaseDir() == "" || DataDir() == "" || LogsDir() == "" || TempDir() == "" {
-		UseExitln("baseDir, dataDir, logsDir, and tempDir must all be set")
+	if BaseDir() == "" || LogsDir() == "" || TempDir() == "" || VarsDir() == "" {
+		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
 	}
 
 	// Configure all components

@@ -104,7 +104,7 @@ func main() {
 	}
 }
 
-func reset(withData bool) {
+func reset(withVars bool) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -115,8 +115,8 @@ func reset(withData bool) {
 		"logs",
 		"temp",
 	}
-	if withData {
-		dirs = append(dirs, "data")
+	if withVars {
+		dirs = append(dirs, "vars")
 	}
 	for _, dir := range dirs {
 		dir = pwd + "/" + dir

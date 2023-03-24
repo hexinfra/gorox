@@ -64,9 +64,9 @@ func startHemi(baseDir string, configText string) error {
 	})
 
 	SetBaseDir(baseDir)
-	SetDataDir(baseDir + "/data")
 	SetLogsDir(baseDir + "/logs")
 	SetTempDir(baseDir + "/temp")
+	SetVarsDir(baseDir + "/vars")
 
 	stage, err := ApplyText(configText)
 	if err != nil {

@@ -42,17 +42,25 @@ Platforms
 Quickstart
 ==========
 
-  To build and run Gorox, see INSTALL.md file.
+  To start using Gorox, you can download an official binary distribution. If you
+  need to build from source, please ensure you have Go >= 1.19 installed:
 
-  If you are impatient and have latest Go installed already, then download the
-  source code, cd to this directory, build and run:
+    shell> go version
 
-    shell> go build ./cmds/gorox  # You may need to set CGO_ENABLED=0 if failed
-    shell> ./gorox serve -daemon  # Starts gorox as a background server daemon
+  Then build Gorox (set CGO_ENABLED=0 if failed):
+
+    shell> go build
+
+  To run Gorox as a daemon:
+
+    shell> ./gorox serve -daemon
 
   To see the welcome page, visit: http://localhost:3080. To exit gracefully:
 
     shell> ./gorox quit
+
+  To install, move the whole Gorox directory to where you like. To uninstall,
+  simply remove the whole Gorox directory.
 
   That's it. Very simple, isn't it?
 

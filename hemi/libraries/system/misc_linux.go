@@ -9,48 +9,10 @@ package system
 
 import (
 	"fmt"
-	"runtime"
 	"syscall"
 )
 
-var (
-	EINTR  = syscall.EINTR
-	EAGAIN = syscall.EAGAIN
-)
-
-var (
-	errEAGAIN error = syscall.EAGAIN
-	errEINVAL error = syscall.EINVAL
-	errENOENT error = syscall.ENOENT
-)
-
-func errnoErr(e syscall.Errno) error {
-	switch e {
-	case 0:
-		return nil
-	case syscall.EAGAIN:
-		return errEAGAIN
-	case syscall.EINVAL:
-		return errEINVAL
-	case syscall.ENOENT:
-		return errENOENT
-	}
-	return e
-}
-
-func ignoringEINTRIO(fn func(fd int, p []byte) (int, error), fd int, p []byte) (int, error) {
-	for {
-		n, err := fn(fd, p)
-		if err != EINTR {
-			return n, err
-		}
-	}
-}
-
 func Check() bool {
-	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
-		return false
-	}
 	major, minor := kernelVersion()
 	if major > 3 || major == 3 && minor >= 9 {
 		return true

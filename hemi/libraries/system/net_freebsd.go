@@ -17,7 +17,7 @@ func SetDeferAccept(rawConn syscall.RawConn) (err error) {
 
 func SetReusePort(rawConn syscall.RawConn) (err error) {
 	// A maximum of	256 processes can share	one socket.
-	const SO_REUSEPORT_LB = 0x10000 // for both amd64 & arm64
+	const SO_REUSEPORT_LB = 0x10000 // for 386, amd64, arm, arm64, riscv64
 	rawConn.Control(func(fd uintptr) {
 		err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, SO_REUSEPORT_LB, 1)
 	})

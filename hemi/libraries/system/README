@@ -6,7 +6,7 @@ ABOUT
     Linux Kernel >= 3.9
     FreeBSD      >= 12
     macOS        >= Catalina
-    Windows      >= 7
+    Windows      >= 10
 
   And, only 64-bit of these systems are supported.
 

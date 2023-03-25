@@ -67,7 +67,7 @@ Quickstart
     shell> go build cmds/gomake.go
     shell> ./gomake -h
 
-  Move gomake to your PATH if you like.
+  Move gomake to your $PATH if you like.
 
 
 Performance

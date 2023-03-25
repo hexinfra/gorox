@@ -11,12 +11,8 @@ import (
 	"fmt"
 )
 
-var (
-	EINTR  = error(nil) // not used
-	EAGAIN = error(nil) // not used
-)
-
 func Check() bool {
+	// >= Windows 10?
 	return true
 }
 

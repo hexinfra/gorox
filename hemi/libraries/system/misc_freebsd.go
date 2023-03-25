@@ -11,11 +11,6 @@ import (
 	"fmt"
 )
 
-var (
-	EINTR  = error(nil) // not used
-	EAGAIN = error(nil) // not used
-)
-
 func Check() bool {
 	// TODO: freebsd version >= 12.0
 	return true

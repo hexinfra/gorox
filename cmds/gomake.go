@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 const usage = `
@@ -25,17 +26,17 @@ OPTIONS
 
   -fmt              # run gofmt before building
   -cgo              # enable cgo
-  -race             # enable race detection
-  -os   <goos>      # GOOS
-  -arch <goarch>    # GOARCH
+  -race             # enable race
+  -os   <goos>      # target GOOS
+  -arch <goarch>    # target GOARCH
 
   Options only take effect on building.
 
 TARGET
 ------
 
-  Specify cmd name as TARGET. If TARGET is empty, the default target is gorox.
-  Some special targets are:
+  Specify cmd name as TARGET. If empty, the default action is: go build.
+  Some special TARGETs are:
 
   all      # build all cmds in the directory
   clean    # clean binaries, logs, and temp files
@@ -84,8 +85,6 @@ func main() {
 			os.Setenv("GOARCH", *arch)
 		}
 		switch target {
-		case "":
-			build("gorox", "cmds/gorox")
 		case "all":
 			cmds, err := os.ReadDir("cmds")
 			if err != nil {
@@ -95,12 +94,38 @@ func main() {
 			for _, cmd := range cmds {
 				if cmd.IsDir() {
 					name := cmd.Name()
-					build(name, "cmds/"+name)
+					build(name)
 				}
 			}
+			fallthrough
+		case "":
+			build("")
 		default:
-			build(target, "cmds/"+target)
+			build(target)
 		}
+	}
+}
+
+func build(name string) {
+	var cmd *exec.Cmd
+	if name == "" {
+		if *race {
+			cmd = exec.Command("go", "build", "-race")
+		} else {
+			cmd = exec.Command("go", "build")
+		}
+	} else {
+		if *race {
+			cmd = exec.Command("go", "build", "-race", "github.com/hexinfra/gorox/cmds/"+name)
+		} else {
+			cmd = exec.Command("go", "build", "github.com/hexinfra/gorox/cmds/"+name)
+		}
+	}
+	fmt.Printf("building %s...", name)
+	if out, _ := cmd.CombinedOutput(); len(out) > 0 {
+		fmt.Println(string(out))
+	} else {
+		fmt.Println("ok.")
 	}
 }
 
@@ -110,6 +135,7 @@ func reset(withVars bool) {
 		fmt.Println(err.Error())
 		return
 	}
+
 	dirs := []string{
 		"dist",
 		"logs",
@@ -125,6 +151,8 @@ func reset(withVars bool) {
 			return
 		}
 	}
+
+	names := []string{filepath.Base(pwd)}
 	cmds, err := os.ReadDir("cmds")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -134,8 +162,11 @@ func reset(withVars bool) {
 		if !cmd.IsDir() {
 			continue
 		}
-		name := cmd.Name()
-		for _, ext := range []string{"", ".exe", ".exe~"} {
+		names = append(names, cmd.Name())
+	}
+	exts := []string{"", ".exe", ".exe~"}
+	for _, name := range names {
+		for _, ext := range exts {
 			file := pwd + "/" + name + ext
 			if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
 				fmt.Println(err.Error())
@@ -143,20 +174,6 @@ func reset(withVars bool) {
 			}
 		}
 	}
-	fmt.Println("done.")
-}
 
-func build(name string, path string) {
-	var cmd *exec.Cmd
-	if *race {
-		cmd = exec.Command("go", "build", "-race", "github.com/hexinfra/gorox/"+path)
-	} else {
-		cmd = exec.Command("go", "build", "github.com/hexinfra/gorox/"+path)
-	}
-	fmt.Printf("building %s...", name)
-	if out, _ := cmd.CombinedOutput(); len(out) > 0 {
-		fmt.Println(string(out))
-	} else {
-		fmt.Println("ok.")
-	}
+	fmt.Println("done.")
 }

@@ -29,14 +29,21 @@ Motivation
 Platforms
 =========
 
-  Gorox has been tested to be working on these platforms:
+  Gorox should be working on these operating systems:
 
-    * Linux kernel >= 3.9, AMD64 & ARM64
-    * FreeBSD >= 12.0, AMD64
-    * Apple macOS >= Catalina, AMD64 & ARM64
-    * Microsoft Windows >= 10, AMD64
+    * Linux kernel >= 3.9
+    * FreeBSD >= 12.0
+    * Apple macOS >= Catalina
+    * Microsoft Windows >= 10
 
-  Other platforms are currently not tested and probably don't work.
+  And these CPU architectures:
+
+    * AMD64, also known as x64, x86-64, Intel 64
+    * ARM64, also known as AArch64
+    * RISC-V
+    * LoongArch
+
+  Other platforms are currently not considered and probably don't work.
 
 
 Quickstart

@@ -39,8 +39,8 @@ TARGET
   Some special TARGETs are:
 
   all      # build all cmds in the directory
-  clean    # clean binaries, logs, and temp files
-  clear    # clear binaries, data, logs, and temp files
+  clean    # clean bins, logs, and temp files
+  clear    # clear bins, logs, temp, and vars files
   dist     # make distribution
 `
 

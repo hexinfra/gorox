@@ -26,27 +26,28 @@ func main() {
 	}
 
 	var myConfig = `
-	stage {
-	    app "example" {
-		.hostnames = ("*")
-		.webRoot   = %baseDir + "/web"
-		rule $path == "/favicon.ico" {
-		    favicon {}
-		}
-		rule $path -f {
-		    static {
-			.autoIndex = true
-		    }
-		}
-		rule {
-		    myHandlet {}
-		}
-	    }
-	    httpxServer "main" {
-		.forApps = ("example")
-		.address = ":3080"
-	    }
-	}
+stage {
+    .logFile = %logsDir + "/example-worker.log"
+    app "example" {
+        .hostnames = ("*")
+        .webRoot   = %baseDir + "/web"
+        rule $path == "/favicon.ico" {
+            favicon {}
+        }
+        rule $path -f {
+            static {
+                .autoIndex = true
+            }
+        }
+        rule {
+            myHandlet {}
+        }
+    }
+    httpxServer "main" {
+        .forApps = ("example")
+        .address = ":6080"
+    }
+}
 	`
 	if err := startHemi(baseDir, myConfig); err != nil {
 		fmt.Println(err.Error())
@@ -109,7 +110,7 @@ func (h *myHandlet) notFound(req Request, resp Response) {
 }
 
 func (h *myHandlet) GET_(req Request, resp Response) { // GET /
-	resp.Send("hello, world!")
+	resp.Send("hello, world! this is an example application.")
 }
 func (h *myHandlet) POST_login(req Request, resp Response) { // POST /login
 	resp.Send("what are you doing?")

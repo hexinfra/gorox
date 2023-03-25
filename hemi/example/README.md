@@ -7,3 +7,7 @@ To build:
 To run:
 
   shell> ./example
+
+To visit:
+
+  http://localhost:6080

@@ -36,11 +36,11 @@ ACTION
   serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
-  reconf       # tell worker to reconfigure
+  info         # call info of server
   rework       # tell leader to restart worker gracefully
   reopen       # tell leader to reopen its admin interface
   ping         # call ping of leader
-  info         # call info of server
+  reconf       # tell worker to reconfigure
   cpu          # tell worker to perform cpu profiling
   heap         # tell worker to perform heap profiling
   thread       # tell worker to perform thread profiling

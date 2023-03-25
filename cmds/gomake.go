@@ -52,7 +52,25 @@ var (
 	arch = flag.String("arch", "", "")
 )
 
+var (
+	workDir string // current working directory
+	dirName string // filepath.Base(workDir)
+)
+
 func main() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	workDir = pwd
+	name := filepath.Base(workDir)
+	if name == "." || name == string(filepath.Separator) {
+		fmt.Println("bad working directory!")
+		return
+	}
+	dirName = name
+
 	flag.Usage = func() {
 		fmt.Println(usage)
 	}
@@ -114,14 +132,16 @@ func build(name string) {
 		} else {
 			cmd = exec.Command("go", "build")
 		}
+		fmt.Printf("building %s...", dirName)
 	} else {
+		path := "cmds/" + name
 		if *race {
-			cmd = exec.Command("go", "build", "-race", "github.com/hexinfra/gorox/cmds/"+name)
+			cmd = exec.Command("go", "build", "-race", "github.com/hexinfra/gorox/"+path)
 		} else {
-			cmd = exec.Command("go", "build", "github.com/hexinfra/gorox/cmds/"+name)
+			cmd = exec.Command("go", "build", "github.com/hexinfra/gorox/"+path)
 		}
+		fmt.Printf("building %s...", path)
 	}
-	fmt.Printf("building %s...", name)
 	if out, _ := cmd.CombinedOutput(); len(out) > 0 {
 		fmt.Println(string(out))
 	} else {
@@ -130,44 +150,34 @@ func build(name string) {
 }
 
 func reset(withVars bool) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	dirs := []string{
+	names := []string{
 		"dist",
 		"logs",
 		"temp",
 	}
 	if withVars {
-		dirs = append(dirs, "vars")
+		names = append(names, "vars")
 	}
-	for _, dir := range dirs {
-		dir = pwd + "/" + dir
+	for _, name := range names {
+		dir := workDir + "/" + name
 		if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
 			fmt.Println(err.Error())
 			return
 		}
 	}
 
-	names := []string{filepath.Base(pwd)}
-	cmds, err := os.ReadDir("cmds")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	for _, cmd := range cmds {
-		if !cmd.IsDir() {
-			continue
+	names = []string{dirName}
+	if cmds, err := os.ReadDir("cmds"); err == nil {
+		for _, cmd := range cmds {
+			if cmd.IsDir() {
+				names = append(names, cmd.Name())
+			}
 		}
-		names = append(names, cmd.Name())
 	}
 	exts := []string{"", ".exe", ".exe~"}
 	for _, name := range names {
 		for _, ext := range exts {
-			file := pwd + "/" + name + ext
+			file := workDir + "/" + name + ext
 			if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
 				fmt.Println(err.Error())
 				return

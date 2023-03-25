@@ -21,24 +21,24 @@ desktop.ini
 /dist
 /gomake
 
-/data
 /logs
 /temp
+/vars
 /goben
 /goops
 /gorox
 
-/hemi/develop/data
 /hemi/develop/logs
 /hemi/develop/temp
+/hemi/develop/vars
 /hemi/develop/develop
 
-/hemi/example/data
 /hemi/example/logs
 /hemi/example/temp
+/hemi/example/vars
 /hemi/example/example
 
-/hemi/official/data
 /hemi/official/logs
 /hemi/official/temp
+/hemi/official/vars
 /hemi/official/official

@@ -1,10 +1,10 @@
 This directory holds auxiliary commands, basically one cmd per directory.
-By default there are 2 cmds:
+By default there are 2 auxiliary cmds:
 
   goben/    - An HTTP benchmarking tool.
   goops/    - Gorox Operation Server.
 
-To add a new cmd named "foo":
+To add a new auxiliary cmd named "foo":
 
   1. Create a folder called "foo" inside this directory,
   2. Place your go files in it.

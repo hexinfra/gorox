@@ -1,32 +1,17 @@
-ABOUT
-=====
-
-  Currently, only these systems are supported:
-
-    Linux Kernel >= 3.9
-    FreeBSD      >= 12
-    macOS        >= Catalina
-    Windows      >= 10
-
-  And, only 64-bit of these systems are supported.
-
-FILE
+MISC
 ====
 
-  For better performance, we implemented a simple abstraction layer on top of
-  file descriptor or *os.File.
+  check os, cpu
 
 NET
 ===
 
-  TODO
+  tcp defer accept
+  reuseport
+  tcp cork
 
 PROC
 ====
 
-  TODO
-
-MISC
-====
-
-  TODO
+  daemonize
+  cpu affinity

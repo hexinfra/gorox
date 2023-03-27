@@ -30,7 +30,7 @@ stage {
     .logFile = %logsDir + "/example-worker.log"
     app "example" {
         .hostnames = ("*")
-        .webRoot   = %baseDir + "/web"
+        .webRoot   = %baseDir + "/root"
         rule $path == "/favicon.ico" {
             favicon {}
         }
@@ -112,7 +112,7 @@ func (h *myHandlet) notFound(req Request, resp Response) {
 func (h *myHandlet) GET_(req Request, resp Response) { // GET /
 	resp.Send("hello, world! this is an example application.")
 }
-func (h *myHandlet) POST_login(req Request, resp Response) { // POST /login
+func (h *myHandlet) POST_user_login(req Request, resp Response) { // POST /user/login
 	resp.Send("what are you doing?")
 }
 func (h *myHandlet) handleFoo(req Request, resp Response) { // METHOD /foo

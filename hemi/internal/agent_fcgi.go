@@ -970,14 +970,14 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 
 var ( // perfect hash table for response singleton headers
 	fcgiResponseSingletonHeaderTable = [4]struct {
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
+		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, *pair, int) bool
 	}{ // content-length content-type location status
-		0: {desc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, false, (*fcgiResponse).checkStatus},
-		1: {desc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*fcgiResponse).checkContentLength},
-		2: {desc{hashContentType, false, false, true, false, bytesContentType}, true, (*fcgiResponse).checkContentType},
-		3: {desc{hashLocation, false, false, false, false, bytesLocation}, false, (*fcgiResponse).checkLocation},
+		0: {false, desc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, (*fcgiResponse).checkStatus},
+		1: {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*fcgiResponse).checkContentLength},
+		2: {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
+		3: {false, desc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )

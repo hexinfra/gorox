@@ -576,22 +576,22 @@ func (r *hResponse_) applyHeader(header *pair, index uint8) bool {
 
 var ( // perfect hash table for response singleton headers
 	hResponseSingletonHeaderTable = [12]struct {
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		parse bool // need general parse or not
+		desc       // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*hResponse_, *pair, uint8) bool
 	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
-		0:  {desc{hashDate, false, false, false, false, bytesDate}, false, (*hResponse_).checkDate},
-		1:  {desc{hashContentLength, false, false, false, false, bytesContentLength}, false, (*hResponse_).checkContentLength},
-		2:  {desc{hashAge, false, false, false, false, bytesAge}, false, (*hResponse_).checkAge},
-		3:  {desc{hashSetCookie, false, false, false, false, bytesSetCookie}, false, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {desc{hashLastModified, false, false, false, false, bytesLastModified}, false, (*hResponse_).checkLastModified},
-		5:  {desc{hashLocation, false, false, false, false, bytesLocation}, false, (*hResponse_).checkLocation},
-		6:  {desc{hashExpires, false, false, false, false, bytesExpires}, false, (*hResponse_).checkExpires},
-		7:  {desc{hashContentRange, false, false, false, false, bytesContentRange}, false, (*hResponse_).checkContentRange},
-		8:  {desc{hashETag, false, false, false, false, bytesETag}, false, (*hResponse_).checkETag},
-		9:  {desc{hashServer, false, false, false, true, bytesServer}, false, (*hResponse_).checkServer},
-		10: {desc{hashContentType, false, false, true, false, bytesContentType}, true, (*hResponse_).checkContentType},
-		11: {desc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, false, (*hResponse_).checkRetryAfter},
+		0:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*hResponse_).checkDate},
+		1:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*hResponse_).checkContentLength},
+		2:  {false, desc{hashAge, false, false, false, false, bytesAge}, (*hResponse_).checkAge},
+		3:  {false, desc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {false, desc{hashLastModified, false, false, false, false, bytesLastModified}, (*hResponse_).checkLastModified},
+		5:  {false, desc{hashLocation, false, false, false, false, bytesLocation}, (*hResponse_).checkLocation},
+		6:  {false, desc{hashExpires, false, false, false, false, bytesExpires}, (*hResponse_).checkExpires},
+		7:  {false, desc{hashContentRange, false, false, false, false, bytesContentRange}, (*hResponse_).checkContentRange},
+		8:  {false, desc{hashETag, false, false, false, false, bytesETag}, (*hResponse_).checkETag},
+		9:  {false, desc{hashServer, false, false, false, true, bytesServer}, (*hResponse_).checkServer},
+		10: {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*hResponse_).checkContentType},
+		11: {false, desc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*hResponse_).checkRetryAfter},
 	}
 	hResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )

@@ -495,13 +495,13 @@ type httpRequest0 struct { // for fast reset, entirely
 		_                  byte  // padding
 	}
 	zones struct { // zones of some selected headers, for fast accessing
-		acceptLanguages zone
-		expect          zone
-		forwarded       zone
-		ifMatch         zone // the zone of if-match in r.primes. may be not continuous
-		ifNoneMatch     zone // the zone of if-none-match in r.primes. may be not continuous
-		xForwardedFor   zone
-		_               [4]byte // padding
+		acceptLanguage zone
+		expect         zone
+		forwarded      zone
+		ifMatch        zone // the zone of if-match in r.primes. may be not continuous
+		ifNoneMatch    zone // the zone of if-none-match in r.primes. may be not continuous
+		xForwardedFor  zone
+		_              [4]byte // padding
 	}
 	unixTimes struct { // parsed unixTimes
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -1263,10 +1263,10 @@ func (r *httpRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8)
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
-	if r.zones.acceptLanguages.isEmpty() {
-		r.zones.acceptLanguages.from = from
+	if r.zones.acceptLanguage.isEmpty() {
+		r.zones.acceptLanguage.from = from
 	}
-	r.zones.acceptLanguages.edge = edge
+	r.zones.acceptLanguage.edge = edge
 	if IsDebug(2) {
 		/*
 			for i := from; i < edge; i++ {

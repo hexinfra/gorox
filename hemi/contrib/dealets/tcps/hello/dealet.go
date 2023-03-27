@@ -30,7 +30,7 @@ type helloDealet struct {
 }
 
 func (d *helloDealet) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	d.SetUp(name)
+	d.MakeComp(name)
 	d.stage = stage
 	d.mesher = mesher
 }

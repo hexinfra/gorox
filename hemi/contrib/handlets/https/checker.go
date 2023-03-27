@@ -32,7 +32,7 @@ type httpsHandlet struct {
 }
 
 func (h *httpsHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.SetUp(name)
+	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }

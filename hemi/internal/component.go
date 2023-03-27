@@ -121,7 +121,7 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 
 // Component is the interface for all components.
 type Component interface {
-	SetUp(name string)
+	MakeComp(name string)
 	OnShutdown()
 	SubDone()
 
@@ -167,7 +167,7 @@ type Component_ struct {
 	Shut  chan struct{}    // used to notify component to shutdown
 }
 
-func (c *Component_) SetUp(name string) {
+func (c *Component_) MakeComp(name string) {
 	c.name = name
 	c.props = make(map[string]Value)
 	c.Shut = make(chan struct{})

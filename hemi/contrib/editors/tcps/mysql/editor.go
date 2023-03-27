@@ -30,7 +30,7 @@ type mysqlViewer struct {
 }
 
 func (e *mysqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	e.SetUp(name)
+	e.MakeComp(name)
 	e.stage = stage
 	e.mesher = mesher
 }

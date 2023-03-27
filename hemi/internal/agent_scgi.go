@@ -31,7 +31,7 @@ type scgiAgent struct {
 }
 
 func (h *scgiAgent) onCreate(name string, stage *Stage, app *App) {
-	h.SetUp(name)
+	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }

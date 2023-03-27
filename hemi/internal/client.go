@@ -42,7 +42,7 @@ type client_ struct {
 }
 
 func (c *client_) onCreate(name string, stage *Stage) {
-	c.SetUp(name)
+	c.MakeComp(name)
 	c.stage = stage
 }
 

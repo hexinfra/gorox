@@ -34,7 +34,7 @@ type resolvFixture struct {
 }
 
 func (f *resolvFixture) onCreate(stage *Stage) {
-	f.SetUp(signResolv)
+	f.MakeComp(signResolv)
 	f.stage = stage
 }
 func (f *resolvFixture) OnShutdown() {

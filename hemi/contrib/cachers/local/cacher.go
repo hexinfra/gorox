@@ -32,7 +32,7 @@ type localCacher struct {
 }
 
 func (c *localCacher) onCreate(name string, stage *Stage) {
-	c.SetUp(name)
+	c.MakeComp(name)
 	c.stage = stage
 }
 func (c *localCacher) OnShutdown() {

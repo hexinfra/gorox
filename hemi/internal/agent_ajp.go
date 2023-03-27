@@ -43,7 +43,7 @@ type ajpAgent struct {
 }
 
 func (h *ajpAgent) onCreate(name string, stage *Stage, app *App) {
-	h.SetUp(name)
+	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }

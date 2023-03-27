@@ -30,7 +30,7 @@ type dnsDealet struct {
 }
 
 func (d *dnsDealet) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	d.SetUp(name)
+	d.MakeComp(name)
 	d.stage = stage
 	d.mesher = mesher
 }

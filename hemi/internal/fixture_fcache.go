@@ -46,7 +46,7 @@ type fcacheFixture struct {
 }
 
 func (f *fcacheFixture) onCreate(stage *Stage) {
-	f.SetUp(signFcache)
+	f.MakeComp(signFcache)
 	f.stage = stage
 	f.entries = make(map[string]*fcacheEntry)
 }

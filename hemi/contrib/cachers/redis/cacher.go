@@ -31,7 +31,7 @@ type redisCacher struct {
 }
 
 func (c *redisCacher) onCreate(name string, stage *Stage) {
-	c.SetUp(name)
+	c.MakeComp(name)
 	c.stage = stage
 }
 func (c *redisCacher) OnShutdown() {

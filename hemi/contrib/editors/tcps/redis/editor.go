@@ -30,7 +30,7 @@ type redisViewer struct {
 }
 
 func (e *redisViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	e.SetUp(name)
+	e.MakeComp(name)
 	e.stage = stage
 	e.mesher = mesher
 }

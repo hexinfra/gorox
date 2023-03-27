@@ -46,7 +46,7 @@ type Server_ struct {
 }
 
 func (s *Server_) OnCreate(name string, stage *Stage) {
-	s.SetUp(name)
+	s.MakeComp(name)
 	s.stage = stage
 }
 

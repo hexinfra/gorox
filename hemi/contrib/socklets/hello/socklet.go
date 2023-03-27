@@ -30,7 +30,7 @@ type helloSocklet struct {
 }
 
 func (s *helloSocklet) onCreate(name string, stage *Stage, app *App) {
-	s.SetUp(name)
+	s.MakeComp(name)
 	s.stage = stage
 	s.app = app
 }

@@ -32,7 +32,7 @@ type replaceReviser struct {
 }
 
 func (r *replaceReviser) onCreate(name string, stage *Stage, app *App) {
-	r.SetUp(name)
+	r.MakeComp(name)
 	r.stage = stage
 	r.app = app
 }

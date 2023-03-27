@@ -30,7 +30,7 @@ type faviconHandlet struct {
 }
 
 func (h *faviconHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.SetUp(name)
+	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }

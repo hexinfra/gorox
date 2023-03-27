@@ -30,7 +30,7 @@ type webdavHandlet struct {
 }
 
 func (h *webdavHandlet) onCreate(name string, stage *Stage, app *App) {
-	h.SetUp(name)
+	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }

@@ -17,22 +17,22 @@ import (
 )
 
 func ApplyText(text string) (*Stage, error) {
-	c := _getConfig()
+	c := _newConfig()
 	return c.applyText(text)
 }
 func ApplyFile(base string, file string) (*Stage, error) {
-	c := _getConfig()
+	c := _newConfig()
 	return c.applyFile(base, file)
 }
-func _getConfig() (c config) {
-	constants := map[string]string{
+func _newConfig() *config {
+	c := new(config)
+	c.init(map[string]string{
 		"baseDir": BaseDir(),
 		"logsDir": LogsDir(),
 		"tempDir": TempDir(),
 		"varsDir": VarsDir(),
-	}
-	c.init(constants, varCodes, signedComps)
-	return
+	}, varCodes, signedComps)
+	return c
 }
 
 const ( // comp list

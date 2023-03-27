@@ -72,7 +72,7 @@ func (h *helloHandlet) notFound(req Request, resp Response) {
 }
 
 func (h *helloHandlet) index(req Request, resp Response) {
-	resp.Send(h.example)
+	resp.Send("who are you?")
 }
 func (h *helloHandlet) handleFoo(req Request, resp Response) {
 	resp.Echo(req.UserAgent())

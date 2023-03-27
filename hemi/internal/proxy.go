@@ -13,7 +13,7 @@ type proxy_ struct {
 	stage   *Stage  // current stage
 	backend backend // if works as forward proxy, this is nil
 	// States
-	proxyMode string // forward, reverse
+	isForward bool // reverse if false
 }
 
 func (p *proxy_) onCreate(stage *Stage) {
@@ -24,12 +24,10 @@ func (p *proxy_) onConfigure(shell Component) {
 	// proxyMode
 	if v, ok := shell.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
-			p.proxyMode = mode
+			p.isForward = mode == "forward"
 		} else {
 			UseExitln("invalid proxyMode")
 		}
-	} else {
-		p.proxyMode = "reverse"
 	}
 	// toBackend
 	if v, ok := shell.Find("toBackend"); ok {
@@ -42,7 +40,7 @@ func (p *proxy_) onConfigure(shell Component) {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if p.proxyMode == "reverse" {
+	} else if !p.isForward {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }

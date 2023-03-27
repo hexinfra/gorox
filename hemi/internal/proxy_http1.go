@@ -60,7 +60,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if h.proxyMode == "forward" {
+	if h.isForward {
 		outgate1 := h.stage.http1
 		conn1, err1 = outgate1.Dial(req.Authority(), req.IsHTTPS()) // TODO: use hostname + colonPort
 		if err1 != nil {

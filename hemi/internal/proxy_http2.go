@@ -60,7 +60,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if h.proxyMode == "forward" {
+	if h.isForward {
 		outgate2 := h.stage.http2
 		conn2, err2 = outgate2.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err2 != nil {

@@ -59,7 +59,7 @@ func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
 
 func (h *httpProxy_) onConfigure(shell Component) {
 	h.proxy_.onConfigure(shell)
-	if h.proxyMode == "forward" && !h.app.isDefault {
+	if h.isForward && !h.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 	// withCacher
@@ -114,7 +114,7 @@ func (s *sockProxy_) onCreate(name string, stage *Stage, app *App) {
 
 func (s *sockProxy_) onConfigure(shell Component) {
 	s.proxy_.onConfigure(shell)
-	if s.proxyMode == "forward" && !s.app.isDefault {
+	if s.isForward && !s.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }

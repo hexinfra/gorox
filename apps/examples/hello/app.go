@@ -72,7 +72,7 @@ func (h *helloHandlet) notFound(req Request, resp Response) {
 }
 
 func (h *helloHandlet) index(req Request, resp Response) {
-	resp.Send("who are you?")
+	resp.Send(h.example)
 }
 func (h *helloHandlet) handleFoo(req Request, resp Response) {
 	resp.Echo(req.UserAgent())
@@ -80,16 +80,16 @@ func (h *helloHandlet) handleFoo(req Request, resp Response) {
 	resp.AddTrailer("y", "123")
 }
 
-func (h *helloHandlet) GET_abc(req Request, resp Response) {
+func (h *helloHandlet) GET_abc(req Request, resp Response) { // GET /abc
 	resp.Send("this is GET /abc")
 }
-func (h *helloHandlet) GET_def(req Request, resp Response) {
+func (h *helloHandlet) GET_def(req Request, resp Response) { // GET /def
 	resp.Send("this is GET /def")
 }
-func (h *helloHandlet) POST_def(req Request, resp Response) {
+func (h *helloHandlet) POST_def(req Request, resp Response) { // POST /def
 	resp.Send("this is POST /def")
 }
-func (h *helloHandlet) GET_cookie(req Request, resp Response) {
+func (h *helloHandlet) GET_cookie(req Request, resp Response) { // GET /cookie
 	cookie := new(Cookie)
 	cookie.Set("name1", "value1")
 	resp.SetCookie(cookie)

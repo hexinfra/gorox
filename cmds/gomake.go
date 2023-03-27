@@ -85,7 +85,18 @@ func main() {
 		fmt.Println("dist is not implemented yet")
 	default: // build
 		if *fmt_ {
-			cmd := exec.Command("gofmt", "-w", ".")
+			rootDir := workDir
+			for {
+				if _, err := os.Stat(rootDir + "/go.mod"); err == nil {
+					break
+				}
+				rootDir = filepath.Dir(rootDir)
+				if rootDir == "." || rootDir == string(filepath.Separator) {
+					fmt.Println("no go.mod found!")
+					return
+				}
+			}
+			cmd := exec.Command("gofmt", "-w", rootDir)
 			if out, _ := cmd.CombinedOutput(); len(out) > 0 {
 				fmt.Println(string(out))
 				return

@@ -42,6 +42,7 @@ func registerFixture(sign string) {
 	fixtureSigns[sign] = true
 	signComp(sign, compFixture)
 }
+
 func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture) {
 	_registerComponent0(sign, compUniture, unitureCreators, create)
 }
@@ -81,16 +82,6 @@ func RegisterReviser(sign string, create func(name string, stage *Stage, app *Ap
 func RegisterSocklet(sign string, create func(name string, stage *Stage, app *App) Socklet) {
 	_registerComponent1(sign, compSocklet, sockletCreators, create)
 }
-func RegisterAppInit(name string, init func(app *App) error) {
-	initsLock.Lock()
-	appInits[name] = init
-	initsLock.Unlock()
-}
-func RegisterSvcInit(name string, init func(svc *Svc) error) {
-	initsLock.Lock()
-	svcInits[name] = init
-	initsLock.Unlock()
-}
 func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
 	_registerComponent0(sign, compServer, serverCreators, create)
 }
@@ -117,6 +108,17 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 	}
 	creators[sign] = create
 	signComp(sign, comp)
+}
+
+func RegisterAppInit(name string, init func(app *App) error) {
+	initsLock.Lock()
+	appInits[name] = init
+	initsLock.Unlock()
+}
+func RegisterSvcInit(name string, init func(svc *Svc) error) {
+	initsLock.Lock()
+	svcInits[name] = init
+	initsLock.Unlock()
 }
 
 // Component is the interface for all components.
@@ -189,42 +191,43 @@ func (c *Component_) Prop(name string) (value Value, ok bool) {
 }
 
 func (c *Component_) ConfigureBool(name string, prop *bool, defaultValue bool) {
-	configureProp(c, name, prop, (*Value).Bool, nil, defaultValue)
+	_configureProp(c, name, prop, (*Value).Bool, nil, defaultValue)
 }
 func (c *Component_) ConfigureInt64(name string, prop *int64, check func(value int64) bool, defaultValue int64) {
-	configureProp(c, name, prop, (*Value).Int64, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Int64, check, defaultValue)
 }
 func (c *Component_) ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32) {
-	configureProp(c, name, prop, (*Value).Int32, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Int32, check, defaultValue)
 }
 func (c *Component_) ConfigureInt16(name string, prop *int16, check func(value int16) bool, defaultValue int16) {
-	configureProp(c, name, prop, (*Value).Int16, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Int16, check, defaultValue)
 }
 func (c *Component_) ConfigureInt8(name string, prop *int8, check func(value int8) bool, defaultValue int8) {
-	configureProp(c, name, prop, (*Value).Int8, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Int8, check, defaultValue)
 }
 func (c *Component_) ConfigureInt(name string, prop *int, check func(value int) bool, defaultValue int) {
-	configureProp(c, name, prop, (*Value).Int, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Int, check, defaultValue)
 }
 func (c *Component_) ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string) {
-	configureProp(c, name, prop, (*Value).String, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).String, check, defaultValue)
 }
 func (c *Component_) ConfigureBytes(name string, prop *[]byte, check func(value []byte) bool, defaultValue []byte) {
-	configureProp(c, name, prop, (*Value).Bytes, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Bytes, check, defaultValue)
 }
 func (c *Component_) ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration) {
-	configureProp(c, name, prop, (*Value).Duration, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).Duration, check, defaultValue)
 }
 func (c *Component_) ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string) {
-	configureProp(c, name, prop, (*Value).StringList, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).StringList, check, defaultValue)
 }
 func (c *Component_) ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) bool, defaultValue [][]byte) {
-	configureProp(c, name, prop, (*Value).BytesList, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).BytesList, check, defaultValue)
 }
 func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string) {
-	configureProp(c, name, prop, (*Value).StringDict, check, defaultValue)
+	_configureProp(c, name, prop, (*Value).StringDict, check, defaultValue)
 }
-func configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) bool, defaultValue T) {
+
+func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) bool, defaultValue T) {
 	if v, ok := c.Find(name); ok {
 		if value, ok := conv(&v); ok && (check == nil || check(value)) {
 			*prop = value

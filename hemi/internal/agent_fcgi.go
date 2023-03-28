@@ -900,7 +900,7 @@ func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 0; i < len(r.primes); i++ {
-		if !r.applyHeader(&r.primes[i], i) {
+		if !r.applyHeader(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -909,7 +909,8 @@ func (r *fcgiResponse) examineHead() bool {
 	return true
 }
 
-func (r *fcgiResponse) applyHeader(header *pair, index int) bool {
+func (r *fcgiResponse) applyHeader(index int) bool {
+	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()

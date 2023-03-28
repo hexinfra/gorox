@@ -771,7 +771,7 @@ func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 
 func (r *httpRequest_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(&r.primes[i], i) {
+		if !r.applyHeader(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -951,7 +951,8 @@ func (r *httpRequest_) examineHead() bool {
 	return true
 }
 
-func (r *httpRequest_) applyHeader(header *pair, index uint8) bool {
+func (r *httpRequest_) applyHeader(index uint8) bool {
+	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
 	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()

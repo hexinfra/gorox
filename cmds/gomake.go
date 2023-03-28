@@ -35,7 +35,7 @@ OPTIONS
 TARGET
 ------
 
-  Specify cmd name as TARGET. If empty, the default action is: go build.
+  Specify cmd name as TARGET. If empty, the default action is: go build .
   Some special TARGETs are:
 
   all      # build all cmds in the directory

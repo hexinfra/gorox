@@ -62,46 +62,47 @@ const ( // comp list
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
 
-var varCodes = map[string]int16{ // predefined variables for config
-	// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go
-	"srcHost": 0,
-	"srcPort": 1,
+var (
+	varCodes = map[string]int16{ // predefined variables for config
+		// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go
+		"srcHost": 0,
+		"srcPort": 1,
 
-	// general tcps & udps conn vars. keep sync with mesher_tcps.go and mesher_udps.go
-	"transport": 2, // tcp/udp, tls/dtls
+		// general tcps & udps conn vars. keep sync with mesher_tcps.go and mesher_udps.go
+		"transport": 2, // tcp/udp, tls/dtls
 
-	// quic conn vars. keep sync with quicConnVariables in mesher_quic.go
-	// quic stream vars. keep sync with quicConnVariables in mesher_quic.go
+		// quic conn vars. keep sync with quicConnVariables in mesher_quic.go
+		// quic stream vars. keep sync with quicConnVariables in mesher_quic.go
 
-	// tcps conn vars. keep sync with tcpsConnVariables in mesher_tcps.go
-	"serverName": 3,
-	"nextProto":  4,
+		// tcps conn vars. keep sync with tcpsConnVariables in mesher_tcps.go
+		"serverName": 3,
+		"nextProto":  4,
 
-	// udps conn vars. keep sync with udpsConnVariables in mesher_udps.go
+		// udps conn vars. keep sync with udpsConnVariables in mesher_udps.go
 
-	// http request vars. keep sync with httpRequestVariables in server_http.go
-	"method":      0, // GET, POST, ...
-	"scheme":      1, // http, https
-	"authority":   2, // example.com, example.org:8080
-	"hostname":    3, // example.com, example.org
-	"colonPort":   4, // :80, :8080
-	"path":        5, // /abc, /def/
-	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
-	"encodedPath": 7, // /abc, /%cc%dd
-	"queryString": 8, // ?x=y, ?y=z&z=%ff
-	"contentType": 9, // text/html; charset=utf-8
-}
-
-var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
-	"stage":      compStage,
-	"quicMesher": compQUICMesher,
-	"tcpsMesher": compTCPSMesher,
-	"udpsMesher": compUDPSMesher,
-	"case":       compCase,
-	"app":        compApp,
-	"rule":       compRule,
-	"svc":        compSvc,
-}
+		// http request vars. keep sync with httpRequestVariables in server_http.go
+		"method":      0, // GET, POST, ...
+		"scheme":      1, // http, https
+		"authority":   2, // example.com, example.org:8080
+		"hostname":    3, // example.com, example.org
+		"colonPort":   4, // :80, :8080
+		"path":        5, // /abc, /def/
+		"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
+		"encodedPath": 7, // /abc, /%cc%dd
+		"queryString": 8, // ?x=y, ?y=z&z=%ff
+		"contentType": 9, // text/html; charset=utf-8
+	}
+	signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
+		"stage":      compStage,
+		"quicMesher": compQUICMesher,
+		"tcpsMesher": compTCPSMesher,
+		"udpsMesher": compUDPSMesher,
+		"case":       compCase,
+		"app":        compApp,
+		"rule":       compRule,
+		"svc":        compSvc,
+	}
+)
 
 func signComp(sign string, comp int16) {
 	if have, signed := signedComps[sign]; signed {
@@ -1218,28 +1219,30 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenDict:     "dict",
 }
 
-var soloKinds = [256]int16{ // keep sync with soloTexts
-	'{': tokenLeftBrace,
-	'}': tokenRightBrace,
-	'[': tokenLeftBracket,
-	']': tokenRightBracket,
-	'(': tokenLeftParen,
-	')': tokenRightParen,
-	',': tokenComma,
-	':': tokenColon,
-	'+': tokenPlus,
-}
-var soloTexts = [...]string{ // keep sync with soloKinds
-	'{': "{",
-	'}': "}",
-	'[': "[",
-	']': "]",
-	'(': "(",
-	')': ")",
-	',': ",",
-	':': ":",
-	'+': "+",
-}
+var ( // solos
+	soloKinds = [256]int16{ // keep sync with soloTexts
+		'{': tokenLeftBrace,
+		'}': tokenRightBrace,
+		'[': tokenLeftBracket,
+		']': tokenRightBracket,
+		'(': tokenLeftParen,
+		')': tokenRightParen,
+		',': tokenComma,
+		':': tokenColon,
+		'+': tokenPlus,
+	}
+	soloTexts = [...]string{ // keep sync with soloKinds
+		'{': "{",
+		'}': "}",
+		'[': "[",
+		']': "]",
+		'(': "(",
+		')': ")",
+		',': ",",
+		':': ":",
+		'+': "+",
+	}
+)
 
 // Value is a value in config file.
 type Value struct {

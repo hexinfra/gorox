@@ -591,7 +591,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
 	contentData   []byte    // if loadable, the received and loaded content of current response is at r.contentData[:r.receivedSize]
-	contentHeld   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
+	contentFile   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
@@ -684,14 +684,14 @@ func (r *fcgiResponse) onEnd() {
 	}
 	r.contentData = nil // other content data kinds are only references, just reset.
 
-	if r.contentHeld != nil {
-		r.contentHeld.Close()
+	if r.contentFile != nil {
+		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentHeld is left as is!")
-		} else if err := os.Remove(r.contentHeld.Name()); err != nil {
+			Debugln("contentFile is left as is!")
+		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
-		r.contentHeld = nil
+		r.contentFile = nil
 	}
 
 	r.fcgiResponse0 = fcgiResponse0{}
@@ -1053,17 +1053,17 @@ func (r *fcgiResponse) hasContent() bool {
 	return true
 }
 func (r *fcgiResponse) holdContent() any {
-	switch content := r.recvContent().(type) {
+	switch content := r._recvContent().(type) {
 	case TempFile: // [0, r.maxContentSize]
-		r.contentHeld = content.(*os.File)
-		return r.contentHeld
+		r.contentFile = content.(*os.File)
+		return r.contentFile
 	case error: // i/o error or unexpected EOF
 		// TODO: log err?
 	}
 	r.stream.markBroken()
 	return nil
 }
-func (r *fcgiResponse) recvContent() any { // to TempFile
+func (r *fcgiResponse) _recvContent() any { // to TempFile
 	contentFile, err := r._newTempFile()
 	if err != nil {
 		return err

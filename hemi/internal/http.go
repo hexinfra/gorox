@@ -135,7 +135,7 @@ type httpIn_ struct { // incoming. needs parsing
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentData []byte    // if loadable, the received and loaded content of current message is at r.contentData[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentHeld *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	httpIn0               // all values must be zero by default in this struct!
 }
 type httpIn0 struct { // for fast reset, entirely
@@ -247,14 +247,14 @@ func (r *httpIn_) onEnd() { // for zeros
 	}
 	r.contentData = nil // other content data kinds are only references, just reset.
 
-	if r.contentHeld != nil { // r.holdContent() is called
-		r.contentHeld.Close()
+	if r.contentFile != nil { // r.holdContent() is called
+		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentHeld is left as is!")
-		} else if err := os.Remove(r.contentHeld.Name()); err != nil {
+			Debugln("contentFile is left as is!")
+		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
-		r.contentHeld = nil
+		r.contentFile = nil
 	}
 
 	r.httpIn0 = httpIn0{}
@@ -873,7 +873,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		return
 	}
 	r.contentReceived = true
-	switch content := r.recvContent(true).(type) { // retain
+	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentData = content // real content is r.contentData[:r.receivedSize]
 		r.contentDataKind = httpContentDataPool
@@ -907,20 +907,20 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 }
 func (r *httpIn_) holdContent() any { // used by proxies
 	if r.contentReceived {
-		if r.contentHeld == nil {
+		if r.contentFile == nil {
 			return r.contentData // immediate
 		}
-		return r.contentHeld
+		return r.contentFile
 	}
 	r.contentReceived = true
-	switch content := r.recvContent(true).(type) { // retain
+	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentData = content
 		r.contentDataKind = httpContentDataPool // so r.contentData can be freed on end
 		return r.contentData[0:r.receivedSize]
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
-		r.contentHeld = content.(*os.File)
-		return r.contentHeld
+		r.contentFile = content.(*os.File)
+		return r.contentFile
 	case error: // i/o error or unexpected EOF
 		// TODO: log err?
 	}
@@ -928,7 +928,7 @@ func (r *httpIn_) holdContent() any { // used by proxies
 	return nil
 }
 func (r *httpIn_) dropContent() { // if message content is not received, this will be called at last
-	switch content := r.recvContent(false).(type) { // don't retain
+	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
 	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
@@ -940,7 +940,7 @@ func (r *httpIn_) dropContent() { // if message content is not received, this wi
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or TempFile (for large content > 64K1, or unsized content)
+func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or TempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err

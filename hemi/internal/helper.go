@@ -46,10 +46,10 @@ type pair struct { // 24 bytes
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from
 	value    text   // the value
-	flags    byte   // for fields only. see field flags
 	place    int8   // see pair places
-	params   zone   // refers to a zone of pairs
-	dataEdge int32  // data ends at
+	flags    byte   // fields only. see field flags
+	params   zone   // fields only. refers to a zone of pairs
+	dataEdge int32  // fields only. data ends at
 }
 
 func (p *pair) zero() { *p = pair{} }
@@ -64,6 +64,13 @@ const ( // pair kinds
 	kindParam // parameter of fields
 )
 
+const ( // pair places
+	placeInput = iota
+	placeArray
+	placeStatic2
+	placeStatic3
+)
+
 const ( // field flags
 	flagParsed     = 0b10000000 // data and params are parsed or not
 	flagSingleton  = 0b01000000 // singleton or not. mainly used by proxies
@@ -73,13 +80,6 @@ const ( // field flags
 	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
 	flagCommaValue = 0b00000010 // value has comma or not
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
-)
-
-const ( // pair places
-	placeInput = iota
-	placeArray
-	placeStatic2
-	placeStatic3
 )
 
 // If "example-name" is not a field, and has a value "example-value", then it looks like this:
@@ -127,8 +127,6 @@ func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
 	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
 }
 func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
-func (p *pair) dataAt(t []byte) []byte  { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
-func (p *pair) dataEmpty() bool         { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
 
 func (p *pair) setParsed()         { p.flags |= flagParsed }
 func (p *pair) setSingleton()      { p.flags |= flagSingleton }
@@ -147,6 +145,9 @@ func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
 func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
 func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 
+func (p *pair) dataAt(t []byte) []byte { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
+func (p *pair) dataEmpty() bool        { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
+
 func (p *pair) show(place []byte) {
 	var kind string
 	switch p.kind {
@@ -164,6 +165,19 @@ func (p *pair) show(place []byte) {
 		kind = "param"
 	default:
 		kind = "unknown"
+	}
+	var plase string
+	switch p.place {
+	case placeInput:
+		plase = "input"
+	case placeArray:
+		plase = "array"
+	case placeStatic2:
+		plase = "static2"
+	case placeStatic3:
+		plase = "static3"
+	default:
+		plase = "unknown"
 	}
 	var flags []string
 	if p.isParsed() {
@@ -184,20 +198,7 @@ func (p *pair) show(place []byte) {
 	if len(flags) == 0 {
 		flags = append(flags, "nothing")
 	}
-	var plase string
-	switch p.place {
-	case placeInput:
-		plase = "input"
-	case placeArray:
-		plase = "array"
-	case placeStatic2:
-		plase = "static2"
-	case placeStatic3:
-		plase = "static3"
-	default:
-		plase = "unknown"
-	}
-	Debugf("{hash=%d kind=%s flags=[%s] place=[%s] dataEdge=%d params=%v %s=%s}\n", p.hash, kind, strings.Join(flags, ","), plase, p.dataEdge, p.params, p.nameAt(place), p.valueAt(place))
+	Debugf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
 }
 
 // defaultDesc

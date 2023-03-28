@@ -17,15 +17,15 @@ func init() {
 }
 
 func init() {
-	RegisterHandlet("testHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(testHandlet)
+	RegisterHandlet("testeeHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(testeeHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// testHandlet
-type testHandlet struct {
+// testeeHandlet
+type testeeHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -34,7 +34,7 @@ type testHandlet struct {
 	// States
 }
 
-func (h *testHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *testeeHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
@@ -43,17 +43,17 @@ func (h *testHandlet) onCreate(name string, stage *Stage, app *App) {
 
 	h.SetRouter(h, r)
 }
-func (h *testHandlet) OnShutdown() {
+func (h *testeeHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *testHandlet) OnConfigure() {}
-func (h *testHandlet) OnPrepare()   {}
+func (h *testeeHandlet) OnConfigure() {}
+func (h *testeeHandlet) OnPrepare()   {}
 
-func (h *testHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *testeeHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
-func (h *testHandlet) notFound(req Request, resp Response) {
+func (h *testeeHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }

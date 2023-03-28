@@ -1415,11 +1415,10 @@ func (r *httpRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch 
 	return true
 }
 
-func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool {
+func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
 	if save {
 		r.authority.set(from, edge)
 	}
-	// authority = host [ ":" port ]
 	// host = IP-literal / IPv4address / reg-name
 	// IP-literal = "[" ( IPv6address / IPvFuture  ) "]"
 	// port = *DIGIT

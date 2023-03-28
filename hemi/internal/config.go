@@ -282,13 +282,6 @@ func (c *config) parseUniture(sign token, stage *Stage) { // xxxUniture {}
 func (c *config) parseBackend(sign token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func parseComponent0[T Component](c *config, sign token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
-	name := c.forwardExpect(tokenString)
-	component := create(sign.text, name.text)
-	component.setParent(stage)
-	c.forward()
-	c.parseLeaf(component)
-}
 func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 	mesherName := c.forwardExpect(tokenString)
 	mesher := stage.createQUICMesher(mesherName.text)
@@ -508,21 +501,6 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		}
 	}
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
-	name := sign.text
-	if current := c.forward(); current.kind == tokenString {
-		name = current.text
-		c.forward()
-	} else if kase != nil { // in case
-		name = c.newName()
-	}
-	component := create(sign.text, name)
-	component.setParent(mesher)
-	if kase != nil { // in case
-		assign(component)
-	}
-	c.parseLeaf(component)
-}
 func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	variable := c.expect(tokenVariable)
 	c.forward()
@@ -604,21 +582,6 @@ func (c *config) parseReviser(sign token, app *App, rule *Rule) { // xxxReviser 
 }
 func (c *config) parseSocklet(sign token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
-}
-func parseComponent2[T Component](c *config, sign token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
-	name := sign.text
-	if current := c.forward(); current.kind == tokenString {
-		name = current.text
-		c.forward()
-	} else if rule != nil { // in rule
-		name = c.newName()
-	}
-	component := create(sign.text, name)
-	component.setParent(app)
-	if rule != nil { // in rule
-		assign(component)
-	}
-	c.parseLeaf(component)
 }
 func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
 	rule := app.createRule(c.newName()) // use a temp name by default
@@ -899,6 +862,44 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 	}
 	value.kind = tokenDict
 	value.data = dict
+}
+
+func parseComponent0[T Component](c *config, sign token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
+	name := c.forwardExpect(tokenString)
+	component := create(sign.text, name.text)
+	component.setParent(stage)
+	c.forward()
+	c.parseLeaf(component)
+}
+func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet, editor
+	name := sign.text
+	if current := c.forward(); current.kind == tokenString {
+		name = current.text
+		c.forward()
+	} else if kase != nil { // in case
+		name = c.newName()
+	}
+	component := create(sign.text, name)
+	component.setParent(mesher)
+	if kase != nil { // in case
+		assign(component)
+	}
+	c.parseLeaf(component)
+}
+func parseComponent2[T Component](c *config, sign token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+	name := sign.text
+	if current := c.forward(); current.kind == tokenString {
+		name = current.text
+		c.forward()
+	} else if rule != nil { // in rule
+		name = c.newName()
+	}
+	component := create(sign.text, name)
+	component.setParent(app)
+	if rule != nil { // in rule
+		assign(component)
+	}
+	c.parseLeaf(component)
 }
 
 // caseCond is the case condition.

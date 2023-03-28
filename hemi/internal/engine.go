@@ -491,10 +491,16 @@ func (s *Stage) Start(id int32) {
 		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
 	}
 
+	// Init running environment
+	if err := os.Chdir(BaseDir()); err != nil {
+		EnvExitln(err.Error())
+	}
+
 	// Configure all components
 	if err := s.configure(); err != nil {
 		UseExitln(err.Error())
 	}
+
 	// Check config requirements
 	if len(s.servers) == 0 && len(s.quicMeshers) == 0 && len(s.tcpsMeshers) == 0 && len(s.udpsMeshers) == 0 {
 		UseExitln("no server/mesher provided, nothing to serve")
@@ -505,11 +511,6 @@ func (s *Stage) Start(id int32) {
 
 	// Prepare all components
 	if err := s.prepare(); err != nil {
-		EnvExitln(err.Error())
-	}
-
-	// Init running environment
-	if err := os.Chdir(BaseDir()); err != nil {
 		EnvExitln(err.Error())
 	}
 

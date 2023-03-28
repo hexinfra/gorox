@@ -3,12 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Import your apps.
-
-package apps
+package alex
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/alex"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/diogin"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/testee"
+	. "github.com/hexinfra/gorox/hemi"
 )
+
+func init() {
+	RegisterSvcInit("alex", func(svc *Svc) error {
+		return nil
+	})
+}

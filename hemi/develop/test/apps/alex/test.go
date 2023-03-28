@@ -3,12 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Import your apps.
+package alex
 
-package apps
+func Main() {
+	println("hello")
+}
 
-import (
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/alex"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/diogin"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/testee"
-)
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

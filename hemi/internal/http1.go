@@ -191,7 +191,7 @@ func (r *http1In_) readContent1() (p []byte, err error) {
 func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
-			return r.contentBlob[:r.receivedSize], io.EOF
+			return r.contentData[:r.receivedSize], io.EOF
 		} else { // r.bodyWindow has been used.
 			PutNK(r.bodyWindow)
 			r.bodyWindow = nil
@@ -655,8 +655,8 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		if block.size == 0 {
 			continue
 		}
-		if block.IsBlob() {
-			vector[vEdge] = block.Blob()
+		if block.IsData() {
+			vector[vEdge] = block.Data()
 			vEdge++
 		} else if block.size <= _16K { // small file, <= 16K
 			buffer := GetNK(block.size) // 4K/16K
@@ -677,7 +677,7 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		} else { // large file, > 16K
 			if vFrom < vEdge {
 				r.vector = vector[vFrom:vEdge]
-				if err := r.writeVector1(&r.vector); err != nil { // blobs
+				if err := r.writeVector1(&r.vector); err != nil { // datas
 					return err
 				}
 				vFrom, vEdge = 0, 0
@@ -781,8 +781,8 @@ func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	if block.IsBlob() {
-		return r._writeBlob1(block, chunked)
+	if block.IsData() {
+		return r._writeData1(block, chunked)
 	} else {
 		return r._writeFile1(block, chunked)
 	}
@@ -832,7 +832,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 		}
 	}
 }
-func (r *http1Out_) _writeBlob1(block *Block, chunked bool) error { // blob
+func (r *http1Out_) _writeData1(block *Block, chunked bool) error { // data
 	if chunked { // HTTP/1.1
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
@@ -841,11 +841,11 @@ func (r *http1Out_) _writeBlob1(block *Block, chunked bool) error { // blob
 		n += 2
 		r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
 		r.vector[0] = sizeBuffer[0:n]
-		r.vector[1] = block.Blob()
+		r.vector[1] = block.Data()
 		r.vector[2] = sizeBuffer[n-2 : n]
-	} else { // HTTP/1.0, or raw blob
+	} else { // HTTP/1.0, or raw data
 		r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
-		r.vector[0] = block.Blob()
+		r.vector[0] = block.Data()
 	}
 	return r.writeVector1(&r.vector)
 }

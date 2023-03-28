@@ -199,9 +199,9 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 		if entry.isSmall() {
 			if IsDebug(2) {
-				Debugln("static send blob")
+				Debugln("static send data")
 			}
-			resp.sendBlob(entry.data)
+			resp.sendData(entry.data)
 		} else {
 			if IsDebug(2) {
 				Debugln("static send file")

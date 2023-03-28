@@ -259,10 +259,10 @@ type Block struct { // 64 bytes
 	next *Block   // next block
 	pool bool     // true if this block is got from poolBlock. don't change this after set
 	shut bool     // close file on free()?
-	kind int8     // 0:blob 1:*os.File
+	kind int8     // 0:data 1:*os.File
 	file *os.File // for general use
-	data []byte   // blob, or buffer if buff is true
-	size int64    // size of blob or file
+	data []byte   // data
+	size int64    // size of data or file
 	time int64    // file mod time
 }
 
@@ -275,7 +275,7 @@ func (b *Block) free() {
 	b.time = 0
 }
 func (b *Block) closeFile() {
-	if b.IsBlob() {
+	if b.IsData() {
 		return
 	}
 	if b.shut {
@@ -292,8 +292,8 @@ func (b *Block) closeFile() {
 }
 
 func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is a file.
-	if b.IsBlob() {
-		BugExitln("copyTo when block is blob")
+	if b.IsData() {
+		BugExitln("copyTo when block is data")
 	}
 	nRead := int64(0)
 	for {
@@ -314,15 +314,15 @@ func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b i
 
 func (b *Block) Next() *Block { return b.next }
 
-func (b *Block) IsBlob() bool { return b.kind == 0 }
+func (b *Block) IsData() bool { return b.kind == 0 }
 func (b *Block) IsFile() bool { return b.kind == 1 }
 
-func (b *Block) SetBlob(blob []byte) {
+func (b *Block) SetData(data []byte) {
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
-	b.data = blob
-	b.size = int64(len(blob))
+	b.data = data
+	b.size = int64(len(data))
 	b.time = 0
 }
 func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
@@ -334,9 +334,9 @@ func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 	b.time = info.ModTime().Unix()
 }
 
-func (b *Block) Blob() []byte {
-	if !b.IsBlob() {
-		BugExitln("block is not a blob")
+func (b *Block) Data() []byte {
+	if !b.IsData() {
+		BugExitln("block is not data")
 	}
 	if b.size == 0 {
 		return nil
@@ -345,18 +345,18 @@ func (b *Block) Blob() []byte {
 }
 func (b *Block) File() *os.File {
 	if !b.IsFile() {
-		BugExitln("block is not a file")
+		BugExitln("block is not file")
 	}
 	return b.file
 }
 
-func (b *Block) ToBlob() error { // used by revisers
-	if b.IsBlob() {
+func (b *Block) ToData() error { // used by revisers
+	if b.IsData() {
 		return nil
 	}
-	blob := make([]byte, b.size)
-	num, err := io.ReadFull(b.file, blob) // TODO: convT()?
-	b.SetBlob(blob[:num])
+	data := make([]byte, b.size)
+	num, err := io.ReadFull(b.file, data) // TODO: convT()?
+	b.SetData(data[:num])
 	return err
 }
 

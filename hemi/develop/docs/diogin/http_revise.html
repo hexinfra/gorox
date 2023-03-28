@@ -31,7 +31,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="known">已知</td>
 			<td>主发=Send(全部内存)</td>
 			<td>-</td>
-			<td class="no">sendChain(blob)</td>
+			<td class="no">sendChain(data)</td>
 			<td class="no">CL</td>
 			<td class="yes">revise(chain)+sendChain(chain)</td>
 			<td class="yes">一遍</td>
@@ -51,7 +51,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="known">已知</td>
 			<td>直通=pass(全部内存)</td>
 			<td>持续[ readContent(CL) ]</td>
-			<td class="no">sendChain(headers)<br>持续[ writeBlob(parts) ]</td>
+			<td class="no">sendChain(headers)<br>持续[ writeData(parts) ]</td>
 			<td class="no">CL</td>
 			<td class="yes">echoHeaders()<br>持续[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">持续遍</td>
@@ -61,7 +61,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="known">已知</td>
 			<td>存发=post(小内存)</td>
 			<td>holdContent()=内存</td>
-			<td class="no">sendChain(blob)</td>
+			<td class="no">sendChain(data)</td>
 			<td class="no">CL</td>
 			<td class="yes">revise(chain)+sendChain(chain)</td>
 			<td class="yes">一遍</td>
@@ -81,7 +81,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="unknown">未知</td>
 			<td class="many">反复[ 主回=Echo(全部内存) ]</td>
 			<td>-</td>
-			<td class="no">echoHeaders()<br>反复[ echoChain(blob) ]</td>
+			<td class="no">echoHeaders()<br>反复[ echoChain(data) ]</td>
 			<td class="no">TE</td>
 			<td class="yes">echoHeaders()<br>反复[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">反复遍</td>
@@ -101,7 +101,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="unknown">未知</td>
 			<td>直通=pass(全部内存)</td>
 			<td>持续[ readContent(TE) ]</td>
-			<td class="no">echoHeaders()<br>持续[ echoChain(blob) ]</td>
+			<td class="no">echoHeaders()<br>持续[ echoChain(data) ]</td>
 			<td class="no">TE</td>
 			<td class="yes">echoHeaders()<br>持续[ revise(chain)+echoChain(chain) ]</td>
 			<td class="yes">持续遍</td>
@@ -111,7 +111,7 @@ th,td{border:1px solid #000;padding:6px 3px;text-align:center;}
 			<td class="unknown">未知</td>
 			<td>存发=post(小内存)</td>
 			<td>holdContent()=内存</td>
-			<td class="no">sendChain(blob)</td>
+			<td class="no">sendChain(data)</td>
 			<td class="no changed">CL</td>
 			<td class="yes">revise(chain)+sendChain(chain)</td>
 			<td class="yes">一遍</td>

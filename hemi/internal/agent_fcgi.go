@@ -514,8 +514,8 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 	return err
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
-	if contentBlob, ok := content.([]byte); ok { // blob
-		return r.sendBlob(contentBlob)
+	if contentData, ok := content.([]byte); ok { // data
+		return r.sendData(contentData)
 	} else if contentFile, ok := content.(*os.File); ok { // file
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
@@ -529,7 +529,7 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 	}
 }
 
-func (r *fcgiRequest) sendBlob(content []byte) error {
+func (r *fcgiRequest) sendData(content []byte) error {
 	// TODO: beginRequest + params + emptyParams + stdin * N + emptyStdin
 	return nil
 }
@@ -590,7 +590,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
-	contentBlob   []byte    // if loadable, the received and loaded content of current response is at r.contentBlob[:r.receivedSize]
+	contentData   []byte    // if loadable, the received and loaded content of current response is at r.contentData[:r.receivedSize]
 	contentHeld   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
@@ -607,7 +607,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	inputEdge       int32    // edge position of r.input
 	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
-	contentBlobKind int8     // kind of current r.contentBlob. see httpContentBlobXXX
+	contentDataKind int8     // kind of current r.contentData. see httpContentDataXXX
 	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		contentType  uint8
@@ -679,10 +679,10 @@ func (r *fcgiResponse) onEnd() {
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
-	if r.contentBlobKind == httpContentBlobPool {
-		PutNK(r.contentBlob)
+	if r.contentDataKind == httpContentDataPool {
+		PutNK(r.contentData)
 	}
-	r.contentBlob = nil // other blob kinds are only references, just reset.
+	r.contentData = nil // other content data kinds are only references, just reset.
 
 	if r.contentHeld != nil {
 		r.contentHeld.Close()

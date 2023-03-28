@@ -826,8 +826,8 @@ func (r *http1Request) cleanInput() {
 				r.inputNext = edge // mark the beginning of next request
 			}
 			r.receivedSize = r.contentSize        // content is received entirely.
-			r.contentBlob = r.input[r.pFore:edge] // exact.
-			r.contentBlobKind = httpContentBlobInput
+			r.contentData = r.input[r.pFore:edge] // exact.
+			r.contentDataKind = httpContentDataInput
 		}
 		if r.contentSize == 0 {
 			r.formReceived = true // no content means no form, so mark it as "received"

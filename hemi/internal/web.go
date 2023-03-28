@@ -420,18 +420,15 @@ func (h *Handlet_) SetRouter(handlet any, router Router) {
 }
 func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	if h.router != nil {
-		found := false
 		if handle := h.router.FindHandle(req); handle != nil {
 			handle(req, resp)
-			found = true
-		} else if name := h.router.HandleName(req); name != "" {
+			return
+		}
+		if name := h.router.HandleName(req); name != "" {
 			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
 				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
-				found = true
+				return
 			}
-		}
-		if found {
-			return
 		}
 	}
 	if notFound == nil {

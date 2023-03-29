@@ -192,7 +192,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentData[:r.receivedSize], io.EOF
-		} else { // r.bodyWindow has been used.
+		} else { // r.bodyWindow was used.
 			PutNK(r.bodyWindow)
 			r.bodyWindow = nil
 			return nil, io.EOF

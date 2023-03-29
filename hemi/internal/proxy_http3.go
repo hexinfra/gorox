@@ -101,7 +101,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
-		err3 = req3.post(content, hasTrailers) // nil (no content), []byte, TempFile
+		err3 = req3.post(content, hasTrailers) // nil (no content), []byte, tempFile
 		if err3 == nil && hasTrailers {
 			if !req3.copyTailFrom(req) {
 				stream3.markBroken()
@@ -170,7 +170,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if !hasContent3 || h.bufferServerContent {
 		hasTrailers3 := resp3.HasTrailers()
-		if resp.post(content3, hasTrailers3) != nil { // nil (no content), []byte, TempFile
+		if resp.post(content3, hasTrailers3) != nil { // nil (no content), []byte, tempFile
 			if hasTrailers3 {
 				stream3.markBroken()
 			}

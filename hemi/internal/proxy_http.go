@@ -43,8 +43,8 @@ type httpProxy_ struct {
 	hostname            []byte      // ...
 	colonPort           []byte      // ...
 	viaName             []byte      // ...
-	bufferClientContent bool        // buffer client content into TempFile?
-	bufferServerContent bool        // buffer server content into TempFile?
+	bufferClientContent bool        // buffer client content into tempFile?
+	bufferServerContent bool        // buffer server content into tempFile?
 	addRequestHeaders   [][2][]byte // headers appended to client request
 	delRequestHeaders   [][]byte    // client request headers to delete
 	addResponseHeaders  [][2][]byte // headers appended to server response

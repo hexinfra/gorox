@@ -135,7 +135,7 @@ type httpIn_ struct { // incoming. needs parsing
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentData []byte    // if loadable, the received and loaded content of current message is at r.contentData[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
 	httpIn0               // all values must be zero by default in this struct!
 }
 type httpIn0 struct { // for fast reset, entirely
@@ -247,7 +247,7 @@ func (r *httpIn_) onEnd() { // for zeros
 	}
 	r.contentData = nil // other content data kinds are only references, just reset.
 
-	if r.contentFile != nil { // r.holdContent() is called
+	if r.contentFile != nil {
 		r.contentFile.Close()
 		if IsDebug(2) {
 			Debugln("contentFile is left as is!")
@@ -877,7 +877,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentData = content // real content is r.contentData[:r.receivedSize]
 		r.contentDataKind = httpContentDataPool
-	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		contentFile := content.(*os.File)
 		if r.receivedSize == 0 { // unsized content can has 0 size
 			r.contentData = r.input
@@ -918,7 +918,7 @@ func (r *httpIn_) holdContent() any { // used by proxies
 		r.contentData = content
 		r.contentDataKind = httpContentDataPool // so r.contentData can be freed on end
 		return r.contentData[0:r.receivedSize]
-	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -931,8 +931,8 @@ func (r *httpIn_) dropContent() { // if message content is not received, this wi
 	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case TempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
-		if content != FakeFile { // this must not happen!
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+		if content != fakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
 	case error: // i/o error or unexpected EOF
@@ -940,12 +940,12 @@ func (r *httpIn_) dropContent() { // if message content is not received, this wi
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or TempFile (for large content > 64K1, or unsized content)
+func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err
 		}
-		// Since content is small, r.bodyWindow and TempFile are not needed.
+		// Since content is small, r.bodyWindow and tempFile are not needed.
 		contentData := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
 		r.receivedSize = int64(r.imme.size())
 		if r.receivedSize > 0 { // r.imme has data
@@ -959,7 +959,7 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 		}
 		r.receivedSize += int64(n)
 		return contentData // []byte, fetched from pool
-	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to TempFile and return the file
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
 			return err
@@ -982,10 +982,10 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 		if _, err = contentFile.Seek(0, 0); err != nil {
 			goto badRead
 		}
-		return contentFile // the TempFile
+		return contentFile // the tempFile
 	badRead:
 		contentFile.Close()
-		if retain { // the TempFile is not fake, so must remove.
+		if retain { // the tempFile is not fake, so must remove.
 			os.Remove(contentFile.Name())
 		}
 		return err
@@ -1428,9 +1428,9 @@ func (r *httpIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pai
 	return true
 }
 
-func (r *httpIn_) _newTempFile(retain bool) (TempFile, error) { // to save content to
+func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
-		return FakeFile, nil
+		return fakeFile, nil
 	}
 	filesDir := r.shell.saveContentFilesDir()
 	pathSize := len(filesDir)

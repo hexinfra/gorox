@@ -7,17 +7,17 @@ Welcome
   server. It can be used as:
 
     * HTTP Server (HTTP 1/2/3, WebSocket, TLS, FastCGI, uwsgi)
+    * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
     * Application Server for Go (Applications, Frameworks)
     * RPC Server for Go (HRPC Services, gRPC Services)
-    * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
     * API Gateway (HTTP APIs, HRPC APIs, gRPC APIs, WAF)
     * Service Mesh (Data Plane)
     * ... and more through its highly extensible compoments design!
 
   There is also a control plane program called Goops which is distributed
-  together with Gorox and can optionally manage your Gorox cluster.
+  with Gorox and can be used to manage your Gorox cluster optionally.
 
-  For more details about Gorox, please see: https://gorox.io/ .
+  For more details about Gorox and Goops, please see: https://gorox.io/ .
 
 
 Motivation

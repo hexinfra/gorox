@@ -540,8 +540,8 @@ func (r *hResponse_) examineHead() bool {
 
 func (r *hResponse_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
-	headerName := header.nameAt(r.input)
-	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
+	name := header.nameAt(r.input)
+	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
@@ -554,7 +554,7 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
+	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.desc, r.input) {
 			r.headResult = StatusBadRequest

@@ -56,12 +56,12 @@ func (p *pair) zero() { *p = pair{} }
 
 const ( // pair kinds
 	kindUnknown = iota
-	kindQuery
-	kindHeader
-	kindCookie
-	kindForm
-	kindTrailer
-	kindParam // parameter of fields
+	kindQuery   // general
+	kindHeader  // field
+	kindCookie  // general
+	kindForm    // general
+	kindTrailer // field
+	kindParam   // general. parameter of fields
 )
 
 const ( // pair places
@@ -82,21 +82,6 @@ const ( // field flags
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
-// If "example-name" is not a field, and has a value "example-value", then it looks like this:
-//
-//                    [   value    )
-//        [   name    )
-//       +-------------------------+
-//       |example-nameexample-value|
-//       +-------------------------+
-//        ^           ^            ^
-//        |           |            |
-// nameFrom           |            |
-//    nameFrom+nameSize            |
-//           value.from   value.edge
-//
-// flags, params, and dataEdge are NOT used in this case.
-//
 // If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
 //
 //                     [             value                  )
@@ -219,18 +204,18 @@ type desc struct {
 	name       []byte // field name
 }
 
-// TempFile is used to temporarily save request/response content in local file system.
-type TempFile interface {
+// tempFile is used to temporarily save request/response content in local file system.
+type tempFile interface {
 	Name() string // used by os.Remove()
 	Write(p []byte) (n int, err error)
 	Seek(offset int64, whence int) (ret int64, err error)
 	Close() error
 }
 
-// FakeFile
-var FakeFile _fakeFile
+// fakeFile
+var fakeFile _fakeFile
 
-// _fakeFile implements TempFile.
+// _fakeFile implements tempFile.
 type _fakeFile struct{}
 
 func (f _fakeFile) Name() string                           { return "" }

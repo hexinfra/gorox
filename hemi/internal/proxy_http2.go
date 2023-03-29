@@ -101,7 +101,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
-		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, TempFile
+		err2 = req2.post(content, hasTrailers) // nil (no content), []byte, tempFile
 		if err2 == nil && hasTrailers {
 			if !req2.copyTailFrom(req) {
 				stream2.markBroken()
@@ -170,7 +170,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if !hasContent2 || h.bufferServerContent {
 		hasTrailers2 := resp2.HasTrailers()
-		if resp.post(content2, hasTrailers2) != nil { // nil (no content), []byte, TempFile
+		if resp.post(content2, hasTrailers2) != nil { // nil (no content), []byte, tempFile
 			if hasTrailers2 {
 				stream2.markBroken()
 			}

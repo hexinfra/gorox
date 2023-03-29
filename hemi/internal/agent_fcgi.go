@@ -591,7 +591,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
 	contentData   []byte    // if loadable, the received and loaded content of current response is at r.contentData[:r.receivedSize]
-	contentFile   *os.File  // used by r.holdContent(), if content is TempFile. will be closed on stream ends
+	contentFile   *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
@@ -1054,7 +1054,7 @@ func (r *fcgiResponse) hasContent() bool {
 }
 func (r *fcgiResponse) holdContent() any {
 	switch content := r._recvContent().(type) {
-	case TempFile: // [0, r.maxContentSize]
+	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -1063,7 +1063,7 @@ func (r *fcgiResponse) holdContent() any {
 	r.stream.markBroken()
 	return nil
 }
-func (r *fcgiResponse) _recvContent() any { // to TempFile
+func (r *fcgiResponse) _recvContent() any { // to tempFile
 	contentFile, err := r._newTempFile()
 	if err != nil {
 		return err
@@ -1086,7 +1086,7 @@ func (r *fcgiResponse) _recvContent() any { // to TempFile
 	if _, err = contentFile.Seek(0, 0); err != nil {
 		goto badRead
 	}
-	return contentFile // the TempFile
+	return contentFile // the tempFile
 badRead:
 	contentFile.Close()
 	os.Remove(contentFile.Name())
@@ -1128,7 +1128,7 @@ func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []b
 
 func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.agent.SaveContentFilesDir() }
 
-func (r *fcgiResponse) _newTempFile() (TempFile, error) { // to save content to
+func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
 	pathSize := len(filesDir)
 	filePath := r.stream.unsafeMake(pathSize + 19) // 19 bytes is enough for int64

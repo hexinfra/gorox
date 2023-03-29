@@ -2024,39 +2024,39 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RF
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				navas := make([]nava, 2) // for name & filename. won't escape to heap
-				n, ok := r._parseNavas(r.formWindow, r.pBack, fore, navas)
+				paras := make([]para, 2) // for name & filename. won't escape to heap
+				n, ok := r._parseParas(r.formWindow, r.pBack, fore, paras)
 				if !ok {
 					r.stream.markBroken()
 					return
 				}
-				for i := 0; i < n; i++ { // each nava in field (; name="avatar"; filename="michael.jpg")
-					nava := &navas[i]
-					if paraName := r.formWindow[nava.name.from:nava.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
-						if n := nava.value.size(); n == 0 || n > 255 {
+				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
+					para := &paras[i]
+					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
+						if n := para.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
 						}
 						part.valid = true // as long as we got a name, this part is valid
 						part.name.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[nava.value.from:nava.value.edge]) { // add "avatar"
+						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "avatar"
 							r.stream.markBroken()
 							return
 						}
 						part.name.edge = r.arrayEdge
 						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value to hint this?
-						for p := nava.value.from; p < nava.value.edge; p++ {
+						for p := para.value.from; p < para.value.edge; p++ {
 							part.hash += uint16(r.formWindow[p])
 						}
 					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
-						if n := nava.value.size(); n == 0 || n > 255 {
+						if n := para.value.size(); n == 0 || n > 255 {
 							r.stream.markBroken()
 							return
 						}
 						part.isFile = true
 
 						part.base.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[nava.value.from:nava.value.edge]) { // add "michael.jpg"
+						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "michael.jpg"
 							r.stream.markBroken()
 							return
 						}
@@ -2233,7 +2233,7 @@ func (r *httpRequest_) _growMultipartForm() bool { // caller needs more data fro
 	}
 	return true
 }
-func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nava) (int, bool) {
+func (r *httpRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -2271,11 +2271,11 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 			// `; a` and `; ="b"` are invalid
 			return nAdd, false
 		}
-		nava := &navas[nAdd]
-		nava.name.set(back, fore)
+		para := &paras[nAdd]
+		para.name.set(back, fore)
 		fore++ // skip '='
 		if fore == edge {
-			nava.value.zero()
+			para.value.zero()
 			nAdd++
 			return nAdd, true
 		}
@@ -2286,19 +2286,19 @@ func (r *httpRequest_) _parseNavas(p []byte, from int32, edge int32, navas []nav
 				fore++
 			}
 			if fore == edge {
-				nava.value.set(back, fore) // value is "...
+				para.value.set(back, fore) // value is "...
 			} else {
-				nava.value.set(back+1, fore) // strip ""
+				para.value.set(back+1, fore) // strip ""
 				fore++
 			}
 		} else {
 			for fore < edge && p[fore] != ';' && p[fore] != ' ' && p[fore] != '\t' {
 				fore++
 			}
-			nava.value.set(back, fore)
+			para.value.set(back, fore)
 		}
 		nAdd++
-		if nAdd == len(navas) || fore == edge {
+		if nAdd == len(paras) || fore == edge {
 			return nAdd, true
 		}
 	}

@@ -324,7 +324,7 @@ type rang struct { // 16 bytes
 	from, last int64 // [from, last]
 }
 
-// nava is a name-value parameter.
-type nava struct { // 16 bytes
+// para is a name-value parameter in multipart/form-data.
+type para struct { // 16 bytes
 	name, value text
 }

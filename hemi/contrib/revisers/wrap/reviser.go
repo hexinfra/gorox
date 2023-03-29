@@ -70,6 +70,11 @@ func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
 func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) {
+	if IsDebug(2) {
+		block := GetBlock()
+		block.SetText([]byte("d"))
+		content.PushTail(block)
+	}
 }
 
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized

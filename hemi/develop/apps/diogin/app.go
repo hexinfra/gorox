@@ -58,6 +58,9 @@ func (h *dioginHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
 
+func (h *dioginHandlet) GET_identity(req Request, resp Response) {
+	resp.Send("c")
+}
 func (h *dioginHandlet) GET_chunked(req Request, resp Response) {
 	resp.Echo("a")
 	resp.Echo("b")

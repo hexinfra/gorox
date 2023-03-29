@@ -841,11 +841,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 		} else { // HTTP/1.0, or identity content
 			_, err = r.stream.write(buffer[0:n])
 		}
-		if err == nil && r._tooSlow() {
-			err = httpOutTooSlow
-		}
-		if err != nil {
-			r.stream.markBroken()
+		if err = r._slowCheck(err); err != nil {
 			return err
 		}
 	}
@@ -862,14 +858,7 @@ func (r *http1Out_) writeBytes1(p []byte) error {
 		return err
 	}
 	_, err := r.stream.write(p)
-	if err == nil && r._tooSlow() {
-		err = httpOutTooSlow
-	}
-	if err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	return nil
+	return r._slowCheck(err)
 }
 func (r *http1Out_) writeVector1(vector *net.Buffers) error {
 	if r.stream.isBroken() {
@@ -880,14 +869,16 @@ func (r *http1Out_) writeVector1(vector *net.Buffers) error {
 		return err
 	}
 	_, err := r.stream.writev(vector)
+	return r._slowCheck(err)
+}
+func (r *http1Out_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
 		err = httpOutTooSlow
 	}
 	if err != nil {
 		r.stream.markBroken()
-		return err
 	}
-	return nil
+	return err
 }
 
 // HTTP/1 protocol elements.

@@ -334,7 +334,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
 	resp.status = status
-	resp.AddHeaderBytes(bytesContentType, bytesHTMLUTF8)
+	resp.AddHeaderBytes(bytesContentType, bytesTypeHTMLUTF8)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.

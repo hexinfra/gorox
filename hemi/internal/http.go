@@ -1689,7 +1689,8 @@ func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeo
 func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
 func (r *httpOut_) SendBytes(content []byte) error { return r.sendText(content) }
 func (r *httpOut_) SendJSON(content any) error {
-	// TODO: optimize & set content-type?
+	// TODO: optimize performance
+	r.appendContentType(bytesTypeJSON)
 	data, err := json.Marshal(content)
 	if err != nil {
 		return err
@@ -2345,11 +2346,12 @@ var ( // misc http strings & byteses.
 	bytesGzip           = []byte("gzip")
 	bytesBrotli         = []byte("br")
 	bytesIdentity       = []byte("identity")
+	bytesTypeHTMLUTF8   = []byte("text/html; charset=utf-8")
+	bytesTypeJSON       = []byte("application/json")
 	bytesURLEncodedForm = []byte("application/x-www-form-urlencoded")
 	bytesMultipartForm  = []byte("multipart/form-data")
 	bytesName           = []byte("name")
 	bytesNone           = []byte("none")
-	bytesHTMLUTF8       = []byte("text/html; charset=utf-8")
 	bytesTrailers       = []byte("trailers")
 	bytesWebSocket      = []byte("websocket")
 	bytesGorox          = []byte("gorox")

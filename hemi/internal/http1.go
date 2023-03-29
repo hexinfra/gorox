@@ -338,7 +338,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		fallthrough
 	default: // r.chunkSize > 0, receiving: chunk-data CRLF
 		r.cBack = 0   // so growChunked1() works correctly
-		var data text // the chunk data we are receiving
+		var data span // the chunk data we are receiving
 		data.from = r.cFore
 		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
 			r.receivedSize += haveSize

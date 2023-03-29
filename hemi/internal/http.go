@@ -141,8 +141,8 @@ type httpIn_ struct { // incoming. needs parsing
 type httpIn0 struct { // for fast reset, entirely
 	pBack            int32   // element begins from. for parsing control & headers & content & trailers elements
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
-	head             text    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
-	imme             text    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra         [8]bool // see kindXXX for indexes
 	dateTime         int64   // parsed unix time of date
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array

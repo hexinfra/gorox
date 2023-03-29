@@ -453,7 +453,7 @@ type httpRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
-	path         []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a text
+	path         []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath      []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo     os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
 	app          *App        // target app of this request. set before processing stream
@@ -467,14 +467,14 @@ type httpRequest0 struct { // for fast reset, entirely
 	asteriskOptions bool     // OPTIONS *?
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
-	method          text     // raw method -> r.input
-	authority       text     // raw hostname[:port] -> r.input
-	hostname        text     // raw hostname (without :port) -> r.input
-	colonPort       text     // raw colon port (:port, with ':') -> r.input
-	uri             text     // raw uri (raw path & raw query string) -> r.input
-	encodedPath     text     // raw path -> r.input
-	queryString     text     // raw query string (with '?') -> r.input
-	boundary        text     // boundary parameter of "multipart/form-data" if exists -> r.input
+	method          span     // raw method -> r.input
+	authority       span     // raw hostname[:port] -> r.input
+	hostname        span     // raw hostname (without :port) -> r.input
+	colonPort       span     // raw colon port (:port, with ':') -> r.input
+	uri             span     // raw uri (raw path & raw query string) -> r.input
+	encodedPath     span     // raw path -> r.input
+	queryString     span     // raw query string (with '?') -> r.input
+	boundary        span     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // cookies ->r.input. temporarily used when checking cookie headers, set after cookie header is parsed
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
@@ -522,7 +522,7 @@ type httpRequest0 struct { // for fast reset, entirely
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
-	pFieldName   text      // field name. used during receiving and parsing multipart form in case of sliding r.formWindow
+	pFieldName   span      // field name. used during receiving and parsing multipart form in case of sliding r.formWindow
 	consumedSize int64     // bytes of consumed content when consuming received tempFile. used by, for example, _recvMultipartForm.
 }
 
@@ -1483,7 +1483,7 @@ func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool { 
 	}
 	return true
 }
-func (r *httpRequest_) parseCookie(cookieString text) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
+func (r *httpRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
@@ -1939,10 +1939,10 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RF
 			valid  bool     // true if "name" parameter in "content-disposition" field is found
 			isFile bool     // true if "filename" parameter in "content-disposition" field is found
 			hash   uint16   // name hash
-			name   text     // to r.array. like: "avatar"
-			base   text     // to r.array. like: "michael.jpg", or empty if part is not a file
-			type_  text     // to r.array. like: "image/jpeg", or empty if part is not a file
-			path   text     // to r.array. like: "/path/to/391384576", or empty if part is not a file
+			name   span     // to r.array. like: "avatar"
+			base   span     // to r.array. like: "michael.jpg", or empty if part is not a file
+			type_  span     // to r.array. like: "image/jpeg", or empty if part is not a file
+			path   span     // to r.array. like: "/path/to/391384576", or empty if part is not a file
 			osFile *os.File // if part is a file, this is used
 			form   pair     // if part is a form, this is used
 			upload Upload   // if part is a file, this is used. zeroed

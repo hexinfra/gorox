@@ -285,8 +285,8 @@ func (z *zone) isEmpty() bool  { return z.from == z.edge }
 func (z *zone) notEmpty() bool { return z.from != z.edge }
 
 // span
-type span struct { // 4 bytes
-	from, edge uint16 // edge is ensured to be <= 65535
+type span struct { // 8 bytes
+	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
 }
 
 func (s *span) zero() { *s = span{} }
@@ -295,27 +295,13 @@ func (s *span) size() int      { return int(s.edge - s.from) }
 func (s *span) isEmpty() bool  { return s.from == s.edge }
 func (s *span) notEmpty() bool { return s.from != s.edge }
 
-func (s *span) set(from uint16, edge uint16) { s.from, s.edge = from, edge }
-func (s *span) set32(from int32, edge int32) { s.from, s.edge = uint16(from), uint16(edge) }
-
-// text
-type text struct { // 8 bytes
-	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
+func (s *span) set(from int32, edge int32) {
+	s.from, s.edge = from, edge
 }
-
-func (t *text) zero() { *t = text{} }
-
-func (t *text) size() int      { return int(t.edge - t.from) }
-func (t *text) isEmpty() bool  { return t.from == t.edge }
-func (t *text) notEmpty() bool { return t.from != t.edge }
-
-func (t *text) set(from int32, edge int32) {
-	t.from, t.edge = from, edge
-}
-func (t *text) sub(delta int32) {
-	if t.from >= delta {
-		t.from -= delta
-		t.edge -= delta
+func (s *span) sub(delta int32) {
+	if s.from >= delta {
+		s.from -= delta
+		s.edge -= delta
 	}
 }
 
@@ -326,5 +312,5 @@ type rang struct { // 16 bytes
 
 // para is a name-value parameter in multipart/form-data.
 type para struct { // 16 bytes
-	name, value text
+	name, value span
 }

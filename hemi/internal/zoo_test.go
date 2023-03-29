@@ -125,8 +125,8 @@ func TestHTTPMethods(t *testing.T) {
 	}
 }
 
-func TestText(t *testing.T) {
-	s := text{3, 4}
+func TestSpan(t *testing.T) {
+	s := span{3, 4}
 	if s.size() != 1 {
 		t.Error("t.size()")
 	}

@@ -601,8 +601,8 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	stdoutEdge      int32    // see above, to note current edge position
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
-	head            text     // for debugging
-	imme            text     // immediate bytes in r.input that belongs to content
+	head            span     // for debugging
+	imme            span     // immediate bytes in r.input that belongs to content
 	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	status          int16    // 200, 302, 404, ...

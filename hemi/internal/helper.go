@@ -45,7 +45,7 @@ type pair struct { // 24 bytes
 	kind     int8   // see pair kinds
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from
-	value    text   // the value
+	value    span   // the value
 	place    int8   // see pair places
 	flags    byte   // fields only. see field flags
 	params   zone   // fields only. refers to a zone of pairs

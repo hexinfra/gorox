@@ -759,7 +759,7 @@ func (r *hResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool 
 	return true
 }
 
-func (r *hResponse_) parseSetCookie(setCookieString text) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
+func (r *hResponse_) parseSetCookie(setCookieString span) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E

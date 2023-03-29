@@ -455,17 +455,21 @@ type Reviser interface {
 	Component
 	identifiable
 
-	Rank() int8 // 0-31 (with 0-15 for user, 16-31 for fixed)
+	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
 	BeforeRecv(req Request, resp Response) // for sized content
+	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
+
 	BeforePull(req Request, resp Response) // for unsized content
+	OnPull(req Request, resp Response, chain Chain) (Chain, bool)
 	FinishPull(req Request, resp Response) // for unsized content
-	OnInput(req Request, resp Response, chain Chain) (Chain, bool)
 
 	BeforeSend(req Request, resp Response) // for sized content
+	OnSend(req Request, resp Response, chain Chain) Chain
+
 	BeforeEcho(req Request, resp Response) // for unsized content
+	OnEcho(req Request, resp Response, chain Chain) Chain
 	FinishEcho(req Request, resp Response) // for unsized content
-	OnOutput(req Request, resp Response, chain Chain) Chain
 }
 
 // Reviser_ is the mixin for all revisers.

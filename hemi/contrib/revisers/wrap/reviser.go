@@ -52,25 +52,44 @@ func (r *wrapReviser) Rank() int8 { return r.rank }
 func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *wrapReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
+
 func (r *wrapReviser) BeforePull(req Request, resp Response) { // unsized
 	// TODO
 }
+func (r *wrapReviser) OnPull(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
 func (r *wrapReviser) FinishPull(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *wrapReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
-	return chain, true
 }
 
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *wrapReviser) OnSend(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
+
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
+	if IsDebug(2) {
+		Debugln("BeforeEcho")
+	}
+}
+func (r *wrapReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
+	if IsDebug(2) {
+		block := GetBlock()
+		block.SetText([]byte("c"))
+		chain.PushTail(block) // BUG
+	}
+	return chain
 }
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *wrapReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
-	return chain
+	if IsDebug(2) {
+		Debugln("FinishEcho")
+	}
 }

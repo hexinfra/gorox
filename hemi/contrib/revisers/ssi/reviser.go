@@ -52,25 +52,33 @@ func (r *ssiReviser) Rank() int8 { return r.rank }
 func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *ssiReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
+
 func (r *ssiReviser) BeforePull(req Request, resp Response) { // unsized
 	// TODO
 }
+func (r *ssiReviser) OnPull(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
 func (r *ssiReviser) FinishPull(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *ssiReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
-	return chain, true
 }
 
 func (r *ssiReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *ssiReviser) OnSend(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
+
 func (r *ssiReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
+func (r *ssiReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
 func (r *ssiReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *ssiReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
-	return chain
 }

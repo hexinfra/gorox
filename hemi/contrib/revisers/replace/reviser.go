@@ -52,25 +52,33 @@ func (r *replaceReviser) Rank() int8 { return r.rank }
 func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *replaceReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
+
 func (r *replaceReviser) BeforePull(req Request, resp Response) { // unsized
 	// TODO
 }
+func (r *replaceReviser) OnPull(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
 func (r *replaceReviser) FinishPull(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *replaceReviser) OnInput(req Request, resp Response, chain Chain) (Chain, bool) {
-	return chain, true
 }
 
 func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
+func (r *replaceReviser) OnSend(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
+
 func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
+func (r *replaceReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
+	return chain
+}
 func (r *replaceReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
-}
-func (r *replaceReviser) OnOutput(req Request, resp Response, chain Chain) Chain {
-	return chain
 }

@@ -57,3 +57,8 @@ func (h *dioginHandlet) Handle(req Request, resp Response) (next bool) {
 func (h *dioginHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
+
+func (h *dioginHandlet) GET_chunked(req Request, resp Response) {
+	resp.Echo("a")
+	resp.Echo("b")
+}

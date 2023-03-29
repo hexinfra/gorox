@@ -7,10 +7,13 @@
 
 package revisers
 
-const (
+const ( // tunable
 	RankWrap    = 3
 	RankReplace = 5
 	RankSSI     = 7
-	RankGzip    = 18
-	RankHead    = 19
+)
+
+const ( // fixed
+	RankGzip = 18
+	RankHead = 19
 )

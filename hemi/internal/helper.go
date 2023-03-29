@@ -204,6 +204,16 @@ type desc struct {
 	name       []byte // field name
 }
 
+// rang defines a range.
+type rang struct { // 16 bytes
+	from, last int64 // [from, last]
+}
+
+// para is a name-value parameter in multipart/form-data.
+type para struct { // 16 bytes
+	name, value span
+}
+
 // tempFile is used to temporarily save request/response content in local file system.
 type tempFile interface {
 	Name() string // used by os.Remove()
@@ -251,7 +261,10 @@ type Block struct { // 64 bytes
 	time int64    // file mod time
 }
 
-func (b *Block) free() {
+func (b *Block) _zero() {
+	if IsDebug(2) {
+		Debugf("block=%s zeroed\n", b.text)
+	}
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
@@ -266,6 +279,7 @@ func (b *Block) closeFile() {
 	if b.shut {
 		b.file.Close()
 	}
+	b.file = nil
 	if IsDebug(2) {
 		if b.shut {
 			Debugln("file closed on Block.closeFile()")
@@ -273,7 +287,6 @@ func (b *Block) closeFile() {
 			Debugln("file NOT closed on Block.closeFile()")
 		}
 	}
-	b.file = nil
 }
 
 func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is a file.
@@ -361,7 +374,7 @@ func (c *Chain) free() {
 	size := 0
 	for block != nil {
 		next := block.next
-		block.free()
+		block._zero()
 		if block.pool { // only put those got from poolBlock because they are not fixed
 			putBlock(block)
 		}
@@ -369,7 +382,7 @@ func (c *Chain) free() {
 		block = next
 	}
 	if size != c.size {
-		BugExitln("bad chain")
+		BugExitf("bad chain: size=%d c.size=%d\n", size, c.size)
 	}
 	c.size = 0
 }

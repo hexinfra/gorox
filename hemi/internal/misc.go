@@ -34,13 +34,12 @@ func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
 
 func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
 	// TODO: improvement
-	stageID &= 0xff
+	stageID &= 0x7f
 	connID &= 0xffff
 	unixTime &= 0xffffffff
 	counter &= 0xff
 	// stageID(8) | connID(16) | seconds(32) | counter(8)
 	i64 := stageID<<56 | connID<<40 | unixTime<<8 | counter
-	i64 &= 0x7fffffffffffffff // clear left-most bit
 	return i64ToDec(i64, p)
 }
 
@@ -303,14 +302,4 @@ func (s *span) sub(delta int32) {
 		s.from -= delta
 		s.edge -= delta
 	}
-}
-
-// rang defines a range.
-type rang struct { // 16 bytes
-	from, last int64 // [from, last]
-}
-
-// para is a name-value parameter in multipart/form-data.
-type para struct { // 16 bytes
-	name, value span
 }

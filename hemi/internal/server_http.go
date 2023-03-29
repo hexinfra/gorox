@@ -2811,9 +2811,9 @@ func (r *httpResponse_) send() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.OnOutput(resp.Request(), resp, curChain)
+			newChain := reviser.OnSend(resp.Request(), resp, curChain)
 			if newChain != curChain { // chain has been replaced by reviser
-				curChain.free()
+				curChain.free() // BUG, TODO
 				curChain = newChain
 			}
 		}
@@ -2868,9 +2868,9 @@ func (r *httpResponse_) echo(chunk *Block) error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.OnOutput(resp.Request(), resp, curChain)
+			newChain := reviser.OnEcho(resp.Request(), resp, curChain)
 			if newChain != curChain { // chain has be replaced by reviser
-				curChain.free()
+				curChain.free() // BUG, TODO
 				curChain = newChain
 			}
 		}

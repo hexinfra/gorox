@@ -280,7 +280,7 @@ var staticDefaultMimeTypes = map[string]string{
 	"rss":  "application/rss+xml",
 	"rtf":  "application/rtf",
 	"svg":  "image/svg+xml",
-	"txt":  "text/plain; charset=utf-8",
+	"txt":  "text/plain",
 	"war":  "application/java-archive",
 	"webm": "video/webm",
 	"webp": "image/webp",

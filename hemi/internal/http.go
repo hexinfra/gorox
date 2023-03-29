@@ -1764,7 +1764,7 @@ func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content di
 			return err
 		}
 	}
-	if in.HasTrailers() { // added trailers will be written eventually by upper code.
+	if in.HasTrailers() { // added trailers will be written by upper code eventually.
 		if !in.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {

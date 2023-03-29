@@ -136,14 +136,14 @@ func (f *fcacheFixture) newEntry(path string) (*fcacheEntry, error) {
 		entry.kind = fcacheKindDir
 		file.Close()
 	} else if fileSize := info.Size(); fileSize <= f.smallFileSize {
-		data := make([]byte, fileSize)
-		if _, err := io.ReadFull(file, data); err != nil {
+		text := make([]byte, fileSize)
+		if _, err := io.ReadFull(file, text); err != nil {
 			file.Close()
 			return nil, err
 		}
 		entry.kind = fcacheKindSmall
 		entry.info = info
-		entry.data = data
+		entry.text = text
 		file.Close()
 	} else { // large file
 		entry.kind = fcacheKindLarge
@@ -162,7 +162,7 @@ type fcacheEntry struct {
 	kind int8         // see fcacheKindXXX
 	file *os.File     // only for large file
 	info os.FileInfo  // only for files, not directories
-	data []byte       // content of small file
+	text []byte       // content of small file
 	last time.Time    // expire time
 	nRef atomic.Int64 // only for large file
 }

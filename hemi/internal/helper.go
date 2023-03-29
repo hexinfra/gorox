@@ -244,10 +244,10 @@ type Block struct { // 64 bytes
 	next *Block   // next block
 	pool bool     // true if this block is got from poolBlock. don't change this after set
 	shut bool     // close file on free()?
-	kind int8     // 0:data 1:*os.File
-	file *os.File // for general use
-	data []byte   // data
-	size int64    // size of data or file
+	kind int8     // 0:text 1:*os.File
+	text []byte   // text
+	file *os.File // file
+	size int64    // size of text or file
 	time int64    // file mod time
 }
 
@@ -255,12 +255,12 @@ func (b *Block) free() {
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
-	b.data = nil
+	b.text = nil
 	b.size = 0
 	b.time = 0
 }
 func (b *Block) closeFile() {
-	if b.IsData() {
+	if b.IsText() {
 		return
 	}
 	if b.shut {
@@ -277,8 +277,8 @@ func (b *Block) closeFile() {
 }
 
 func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is a file.
-	if b.IsData() {
-		BugExitln("copyTo when block is data")
+	if b.IsText() {
+		BugExitln("copyTo when block is text")
 	}
 	nRead := int64(0)
 	for {
@@ -299,19 +299,19 @@ func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b i
 
 func (b *Block) Next() *Block { return b.next }
 
-func (b *Block) IsData() bool { return b.kind == 0 }
+func (b *Block) IsText() bool { return b.kind == 0 }
 func (b *Block) IsFile() bool { return b.kind == 1 }
 
-func (b *Block) SetData(data []byte) {
+func (b *Block) SetText(text []byte) {
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
-	b.data = data
-	b.size = int64(len(data))
+	b.text = text
+	b.size = int64(len(text))
 	b.time = 0
 }
 func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
-	b.data = nil
+	b.text = nil
 	b.shut = shut
 	b.kind = 1
 	b.file = file
@@ -319,14 +319,14 @@ func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
 	b.time = info.ModTime().Unix()
 }
 
-func (b *Block) Data() []byte {
-	if !b.IsData() {
-		BugExitln("block is not data")
+func (b *Block) Text() []byte {
+	if !b.IsText() {
+		BugExitln("block is not text")
 	}
 	if b.size == 0 {
 		return nil
 	}
-	return b.data
+	return b.text
 }
 func (b *Block) File() *os.File {
 	if !b.IsFile() {
@@ -335,13 +335,13 @@ func (b *Block) File() *os.File {
 	return b.file
 }
 
-func (b *Block) ToData() error { // used by revisers
-	if b.IsData() {
+func (b *Block) ToText() error { // used by revisers
+	if b.IsText() {
 		return nil
 	}
-	data := make([]byte, b.size)
-	num, err := io.ReadFull(b.file, data) // TODO: convT()?
-	b.SetData(data[:num])
+	text := make([]byte, b.size)
+	num, err := io.ReadFull(b.file, text) // TODO: convT()?
+	b.SetText(text[:num])
 	return err
 }
 

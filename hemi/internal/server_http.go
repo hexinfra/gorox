@@ -458,7 +458,7 @@ type httpRequest_ struct { // incoming. needs parsing
 	pathInfo     os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
 	app          *App        // target app of this request. set before processing stream
 	svc          *Svc        // target svc of this request. set before processing stream
-	formWindow   []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentData/4K/16K]
+	formWindow   []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	httpRequest0             // all values must be zero by default in this struct!
 }
 type httpRequest0 struct { // for fast reset, entirely
@@ -1786,7 +1786,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
-		b := r.contentData[i]
+		b := r.contentText[i]
 		switch state {
 		case 2: // expecting '=' to get a name
 			if b == '=' {
@@ -1863,16 +1863,16 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RF
 	r.pBack, r.pFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
-		// r.contentData is set, r.contentDataKind == httpContentDataInput. r.formWindow refers to the exact r.contentData.
-		r.formWindow = r.contentData
+		// r.contentText is set, r.contentTextKind == httpContentTextInput. r.formWindow refers to the exact r.contentText.
+		r.formWindow = r.contentText
 		r.formEdge = int32(len(r.formWindow))
 	} else { // content is not received
 		r.contentReceived = true
 		switch content := r._recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-			r.contentData = content
-			r.contentDataKind = httpContentDataPool        // so r.contentData can be freed on end
-			r.formWindow = r.contentData[0:r.receivedSize] // r.formWindow refers to the exact r.content.
+			r.contentText = content
+			r.contentTextKind = httpContentTextPool        // so r.contentText can be freed on end
+			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
 		case tempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
 			r.contentFile = content.(*os.File)
@@ -2640,7 +2640,7 @@ type Response interface {
 	delHeader(name []byte) bool
 	setConnectionClose()
 	copyHeadFrom(resp hResponse) bool // used by proxies
-	sendData(content []byte) error
+	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain(chain Chain) error
 	echoHeaders() error
@@ -2790,7 +2790,7 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 	if content == nil {
 		content = httpErrorPages[status]
 	}
-	r.content.head.SetData(content)
+	r.content.head.SetText(content)
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain(r.content)
 }

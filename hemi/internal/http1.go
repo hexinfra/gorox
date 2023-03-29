@@ -191,14 +191,14 @@ func (r *http1In_) readContent1() (p []byte, err error) {
 func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
-			return r.contentData[:r.receivedSize], io.EOF
+			return r.contentText[:r.receivedSize], io.EOF
 		} else { // r.bodyWindow was used.
 			PutNK(r.bodyWindow)
 			r.bodyWindow = nil
 			return nil, io.EOF
 		}
 	}
-	// Need more content data.
+	// Need more content text.
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. must be >= 16K so r.imme can fit
 	}
@@ -655,8 +655,8 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		if block.size == 0 {
 			continue
 		}
-		if block.IsData() {
-			vector[vEdge] = block.Data()
+		if block.IsText() {
+			vector[vEdge] = block.Text()
 			vEdge++
 		} else if block.size <= _16K { // small file, <= 16K
 			buffer := GetNK(block.size) // 4K/16K
@@ -677,7 +677,7 @@ func (r *http1Out_) sendChain1(chain Chain) error {
 		} else { // large file, > 16K
 			if vFrom < vEdge {
 				r.vector = vector[vFrom:vEdge]
-				if err := r.writeVector1(&r.vector); err != nil { // datas
+				if err := r.writeVector1(&r.vector); err != nil { // texts
 					return err
 				}
 				vFrom, vEdge = 0, 0
@@ -781,8 +781,8 @@ func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	if block.IsData() {
-		return r._writeData1(block, chunked)
+	if block.IsText() {
+		return r._writeText1(block, chunked)
 	} else {
 		return r._writeFile1(block, chunked)
 	}
@@ -832,7 +832,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 		}
 	}
 }
-func (r *http1Out_) _writeData1(block *Block, chunked bool) error { // data
+func (r *http1Out_) _writeText1(block *Block, chunked bool) error { // text
 	if chunked { // HTTP/1.1
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
@@ -841,11 +841,11 @@ func (r *http1Out_) _writeData1(block *Block, chunked bool) error { // data
 		n += 2
 		r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
 		r.vector[0] = sizeBuffer[0:n]
-		r.vector[1] = block.Data()
+		r.vector[1] = block.Text()
 		r.vector[2] = sizeBuffer[n-2 : n]
 	} else { // HTTP/1.0, or raw data
 		r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
-		r.vector[0] = block.Data()
+		r.vector[0] = block.Text()
 	}
 	return r.writeVector1(&r.vector)
 }

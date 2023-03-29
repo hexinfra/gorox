@@ -630,8 +630,8 @@ func (r *H1Response) cleanInput() {
 				// TODO: log? possible response splitting
 			}
 			r.receivedSize = r.contentSize
-			r.contentData = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
-			r.contentDataKind = httpContentDataInput
+			r.contentText = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
+			r.contentTextKind = httpContentTextInput
 		}
 	} else { // unsized mode
 		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.

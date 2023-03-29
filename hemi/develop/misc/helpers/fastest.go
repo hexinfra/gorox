@@ -16,7 +16,7 @@ func must(err error) {
 }
 
 func main() {
-	go server(":9999", handleData) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:9999/hello
+	go server(":9999", handleText) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:9999/hello
 	go server(":8888", handleFile) // wrk -d 8s -c 256 -t 16 http://192.168.1.10:8888/hello.html
 	select {}
 }
@@ -35,7 +35,7 @@ func server(addr string, handle func(net.Conn)) {
 	}
 }
 
-func handleData(conn net.Conn) { // 96% of nginx
+func handleText(conn net.Conn) { // 96% of nginx
 	defer conn.Close()
 	request := make([]byte, 48) // GET /hello HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
 	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html; charset=utf-8\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")

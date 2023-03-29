@@ -134,7 +134,7 @@ type httpIn_ struct { // incoming. needs parsing
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
-	contentData []byte    // if loadable, the received and loaded content of current message is at r.contentData[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
+	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
 	httpIn0               // all values must be zero by default in this struct!
 }
@@ -167,7 +167,7 @@ type httpIn0 struct { // for fast reset, entirely
 	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous
 	zVia             zone    // zone of via headers in r.primes. may not be continuous
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
-	contentDataKind  int8    // kind of current r.contentData if it is data. see httpContentDataXXX
+	contentTextKind  int8    // kind of current r.contentText if it is text. see httpContentTextXXX
 	receivedSize     int64   // bytes of currently received content. used by both sized & unsized content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
@@ -242,10 +242,10 @@ func (r *httpIn_) onEnd() { // for zeros
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
-	if r.contentDataKind == httpContentDataPool {
-		PutNK(r.contentData)
+	if r.contentTextKind == httpContentTextPool {
+		PutNK(r.contentText)
 	}
-	r.contentData = nil // other content data kinds are only references, just reset.
+	r.contentText = nil // other content text kinds are only references, just reset.
 
 	if r.contentFile != nil {
 		r.contentFile.Close()
@@ -865,32 +865,32 @@ func (r *httpIn_) unsafeContent() []byte {
 	if r.stream.isBroken() {
 		return nil
 	}
-	return r.contentData[0:r.receivedSize]
+	return r.contentText[0:r.receivedSize]
 }
 func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
-		// Content is in r.contentData already.
+		// Content is in r.contentText already.
 		return
 	}
 	r.contentReceived = true
 	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-		r.contentData = content // real content is r.contentData[:r.receivedSize]
-		r.contentDataKind = httpContentDataPool
+		r.contentText = content // real content is r.contentText[:r.receivedSize]
+		r.contentTextKind = httpContentTextPool
 	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		contentFile := content.(*os.File)
 		if r.receivedSize == 0 { // unsized content can has 0 size
-			r.contentData = r.input
-			r.contentDataKind = httpContentDataInput
+			r.contentText = r.input
+			r.contentTextKind = httpContentTextInput
 		} else { // r.receivedSize > 0
 			if r.receivedSize <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
-				r.contentData = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
-				r.contentDataKind = httpContentDataPool
+				r.contentText = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
+				r.contentTextKind = httpContentTextPool
 			} else { // r.receivedSize > 64K1, content can be sized or unsized. just alloc
-				r.contentData = make([]byte, r.receivedSize)
-				r.contentDataKind = httpContentDataMake
+				r.contentText = make([]byte, r.receivedSize)
+				r.contentTextKind = httpContentTextMake
 			}
-			if _, err := io.ReadFull(contentFile, r.contentData[:r.receivedSize]); err != nil {
+			if _, err := io.ReadFull(contentFile, r.contentText[:r.receivedSize]); err != nil {
 				// TODO: r.app.log
 			}
 		}
@@ -908,16 +908,16 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 func (r *httpIn_) holdContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
-			return r.contentData // immediate
+			return r.contentText // immediate
 		}
 		return r.contentFile
 	}
 	r.contentReceived = true
 	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-		r.contentData = content
-		r.contentDataKind = httpContentDataPool // so r.contentData can be freed on end
-		return r.contentData[0:r.receivedSize]
+		r.contentText = content
+		r.contentTextKind = httpContentTextPool // so r.contentText can be freed on end
+		return r.contentText[0:r.receivedSize]
 	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
@@ -946,19 +946,19 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
-		contentData := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
+		contentText := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
 		r.receivedSize = int64(r.imme.size())
 		if r.receivedSize > 0 { // r.imme has data
-			copy(contentData, r.input[r.imme.from:r.imme.edge])
+			copy(contentText, r.input[r.imme.from:r.imme.edge])
 			r.imme.zero()
 		}
-		n, err := r.stream.readFull(contentData[r.receivedSize:r.contentSize])
+		n, err := r.stream.readFull(contentText[r.receivedSize:r.contentSize])
 		if err != nil {
-			PutNK(contentData)
+			PutNK(contentText)
 			return err
 		}
 		r.receivedSize += int64(n)
-		return contentData // []byte, fetched from pool
+		return contentText // []byte, fetched from pool
 	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
@@ -1451,11 +1451,11 @@ func (r *httpIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-const ( // HTTP incoming content data kinds
-	httpContentDataNone  = iota // must be 0
-	httpContentDataInput        // refers to r.input
-	httpContentDataPool         // fetched from pool
-	httpContentDataMake         // direct make
+const ( // HTTP incoming content text kinds
+	httpContentTextNone  = iota // must be 0
+	httpContentTextInput        // refers to r.input
+	httpContentTextPool         // fetched from pool
+	httpContentTextMake         // direct make
 )
 
 var ( // http incoming message errors
@@ -1687,7 +1687,7 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
 func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
-func (r *httpOut_) SendBytes(content []byte) error { return r.sendData(content) }
+func (r *httpOut_) SendBytes(content []byte) error { return r.sendText(content) }
 func (r *httpOut_) SendJSON(content any) error {
 	// TODO: optimize & set content-type?
 	data, err := json.Marshal(content)
@@ -1710,7 +1710,7 @@ func (r *httpOut_) SendFile(contentPath string) error {
 }
 
 func (r *httpOut_) Echo(chunk string) error      { return r.EchoBytes(risky.ConstBytes(chunk)) }
-func (r *httpOut_) EchoBytes(chunk []byte) error { return r.echoData(chunk) }
+func (r *httpOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
 func (r *httpOut_) EchoFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
 	if err != nil {
@@ -1774,11 +1774,11 @@ func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content di
 	return nil
 }
 func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
-	if contentData, ok := content.([]byte); ok {
+	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports holding unsized content in buffer, this happens
-			return r.echoData(contentData)
+			return r.echoText(contentText)
 		} else {
-			return r.sendData(contentData)
+			return r.sendText(contentText)
 		}
 	} else if contentFile, ok := content.(*os.File); ok {
 		fileInfo, err := contentFile.Stat()
@@ -1800,11 +1800,11 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 	}
 }
 
-func (r *httpOut_) sendData(content []byte) error {
+func (r *httpOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	r.content.head.SetData(content)
+	r.content.head.SetText(content)
 	r.contentSize = int64(len(content)) // original size, may be revised
 	return r.shell.send()
 }
@@ -1823,7 +1823,7 @@ func (r *httpOut_) _beforeSend() error {
 	r.isSent = true
 	return nil
 }
-func (r *httpOut_) echoData(chunk []byte) error {
+func (r *httpOut_) echoText(chunk []byte) error {
 	if err := r.shell._beforeEcho(); err != nil {
 		return err
 	}
@@ -1831,7 +1831,7 @@ func (r *httpOut_) echoData(chunk []byte) error {
 		return nil
 	}
 	block := GetBlock()
-	block.SetData(chunk)
+	block.SetText(chunk)
 	return r.shell.echo(block)
 }
 func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {

@@ -25,7 +25,7 @@ func main() {
 		baseDir = filepath.ToSlash(baseDir)
 	}
 
-	var myConfig = `
+	myConfig := `
 stage {
     .logFile = %logsDir + "/example-worker.log"
     app "example" {
@@ -48,8 +48,8 @@ stage {
         .address = ":6080"
     }
 }
-	`
-	if err := startHemi(baseDir, myConfig); err != nil {
+`
+	if err := startHemi(baseDir, baseDir+"/logs", baseDir+"/temp", baseDir+"/vars", myConfig); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
@@ -57,18 +57,16 @@ stage {
 	select {} // do your other things here.
 }
 
-func startHemi(baseDir string, configText string) error {
+func startHemi(baseDir string, logsDir string, tempDir string, varsDir string, configText string) error {
 	RegisterHandlet("myHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(myHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
-
 	SetBaseDir(baseDir)
-	SetLogsDir(baseDir + "/logs")
-	SetTempDir(baseDir + "/temp")
-	SetVarsDir(baseDir + "/vars")
-
+	SetLogsDir(logsDir)
+	SetTempDir(tempDir)
+	SetVarsDir(varsDir)
 	stage, err := ApplyText(configText)
 	if err != nil {
 		return err
@@ -77,6 +75,7 @@ func startHemi(baseDir string, configText string) error {
 	return nil
 }
 
+// myHandlet
 type myHandlet struct {
 	Handlet_
 	stage *Stage
@@ -109,12 +108,14 @@ func (h *myHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
 
+func (h *myHandlet) handleFoo(req Request, resp Response) { // METHOD /foo
+	resp.Echo(req.H("user-agent"))
+}
+
 func (h *myHandlet) GET_(req Request, resp Response) { // GET /
-	resp.Send("hello, world! this is an example application.")
+	resp.Echo("hello, world! ")
+	resp.Echo("this is an example application.")
 }
 func (h *myHandlet) POST_user_login(req Request, resp Response) { // POST /user/login
 	resp.Send("what are you doing?")
-}
-func (h *myHandlet) handleFoo(req Request, resp Response) { // METHOD /foo
-	resp.Echo(req.H("user-agent"))
 }

@@ -433,7 +433,7 @@ type Request interface {
 	unsetHost()
 	holdContent() any
 	readContent() (p []byte, err error)
-	applyTrailer(trailer *pair, index uint8) bool
+	applyTrailer(index uint8) bool
 	delHopTrailers()
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -2431,7 +2431,8 @@ func (r *httpRequest_) HasUpload(name string) bool {
 	return ok
 }
 
-func (r *httpRequest_) applyTrailer(trailer *pair, index uint8) bool {
+func (r *httpRequest_) applyTrailer(index uint8) bool {
+	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

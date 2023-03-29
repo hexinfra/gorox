@@ -92,7 +92,7 @@ type httpIn interface {
 	ContentSize() int64
 	isUnsized() bool
 	readContent() (p []byte, err error)
-	applyTrailer(trailer *pair, index uint8) bool
+	applyTrailer(index uint8) bool
 	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -1049,7 +1049,7 @@ func (r *httpIn_) delTrailer(name []byte, hash uint16) {
 
 func (r *httpIn_) examineTail() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.shell.applyTrailer(&r.primes[i], i) {
+		if !r.shell.applyTrailer(i) {
 			// r.bodyResult is set.
 			return false
 		}

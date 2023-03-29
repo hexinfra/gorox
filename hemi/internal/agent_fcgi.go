@@ -1101,9 +1101,9 @@ func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout r
 	return
 }
 
-func (r *fcgiResponse) addTrailer(trailer *pair) bool                { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) applyTrailer(trailer *pair, index uint8) bool { return true }  // fcgi doesn't support trailers
-func (r *fcgiResponse) HasTrailers() bool                            { return false } // fcgi doesn't support trailers
+func (r *fcgiResponse) addTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) applyTrailer(index uint8) bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) HasTrailers() bool             { return false } // fcgi doesn't support trailers
 
 func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 

@@ -262,9 +262,6 @@ type Block struct { // 64 bytes
 }
 
 func (b *Block) _zero() {
-	if IsDebug(2) {
-		Debugf("block=%s zeroed\n", b.text)
-	}
 	b.closeFile()
 	b.shut = false
 	b.kind = 0
@@ -359,7 +356,7 @@ func (b *Block) ToText() error { // used by revisers
 }
 
 // Chain is a linked-list of blocks.
-type Chain struct {
+type Chain struct { // 24 bytes
 	head *Block
 	tail *Block
 	size int

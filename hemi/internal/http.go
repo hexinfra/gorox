@@ -1828,7 +1828,7 @@ func (r *httpOut_) echoText(chunk []byte) error {
 	if err := r.shell._beforeEcho(); err != nil {
 		return err
 	}
-	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
+	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		return nil
 	}
 	block := GetBlock()
@@ -1839,7 +1839,7 @@ func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r.shell._beforeEcho(); err != nil {
 		return err
 	}
-	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate end of chunks
+	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		if shut {
 			chunk.Close()
 		}

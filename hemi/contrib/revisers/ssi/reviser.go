@@ -69,15 +69,13 @@ func (r *ssiReviser) FinishPull(req Request, resp Response) { // unsized
 func (r *ssiReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *ssiReviser) OnSend(req Request, resp Response, chain Chain) Chain {
-	return chain
+func (r *ssiReviser) OnSend(req Request, resp Response, content *Chain) {
 }
 
 func (r *ssiReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *ssiReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
-	return chain
+func (r *ssiReviser) OnEcho(req Request, resp Response, chunks *Chain) {
 }
 func (r *ssiReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO

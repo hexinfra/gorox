@@ -374,7 +374,7 @@ func (r *http3Response) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
+func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }

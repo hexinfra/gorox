@@ -78,17 +78,13 @@ func (r *headReviser) FinishPull(req Request, resp Response) { // unsized
 func (r *headReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *headReviser) OnSend(req Request, resp Response, chain Chain) Chain {
-	// Do nothing.
-	return chain
+func (r *headReviser) OnSend(req Request, resp Response, content *Chain) {
 }
 
 func (r *headReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *headReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
-	// Do nothing.
-	return chain
+func (r *headReviser) OnEcho(req Request, resp Response, chunks *Chain) {
 }
 func (r *headReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO

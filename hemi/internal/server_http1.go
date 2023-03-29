@@ -964,7 +964,7 @@ func (r *http1Response) sendChain(chain Chain) error { // TODO: if r.conn is TLS
 	return r.sendChain1(chain)
 }
 
-func (r *http1Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
+func (r *http1Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	return r.writeHeaders1()
 }
 func (r *http1Response) echoChain(chain Chain) error {

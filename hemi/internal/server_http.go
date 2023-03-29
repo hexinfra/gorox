@@ -2795,7 +2795,6 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 	return r.shell.sendChain(r.content)
 }
 func (r *httpResponse_) send() error {
-	curChain := r.content
 	if r.hasRevisers {
 		resp := r.shell.(Response)
 		// Travel through revisers
@@ -2811,22 +2810,18 @@ func (r *httpResponse_) send() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.OnSend(resp.Request(), resp, curChain)
-			if newChain != curChain { // chain has been replaced by reviser
-				curChain.free() // BUG, TODO
-				curChain = newChain
-			}
+			reviser.OnSend(resp.Request(), resp, &r.content)
 		}
 		// Because r.content chain may be altered/replaced by revisers, content size must be recalculated
 		r.contentSize = 0
-		for block := curChain.head; block != nil; block = block.next {
+		for block := r.content.head; block != nil; block = block.next {
 			r.contentSize += block.size
 			if r.contentSize < 0 {
 				return httpOutTooLarge
 			}
 		}
 	}
-	return r.shell.sendChain(curChain)
+	return r.shell.sendChain(r.content)
 }
 
 func (r *httpResponse_) _beforeEcho() error {
@@ -2854,9 +2849,9 @@ func (r *httpResponse_) _beforeEcho() error {
 	return r.shell.echoHeaders()
 }
 func (r *httpResponse_) echo(chunk *Block) error {
-	var curChain Chain
-	curChain.PushTail(chunk)
-	defer curChain.free()
+	var chunks Chain
+	chunks.PushTail(chunk)
+	defer chunks.free()
 
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
@@ -2868,14 +2863,10 @@ func (r *httpResponse_) echo(chunk *Block) error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			newChain := reviser.OnEcho(resp.Request(), resp, curChain)
-			if newChain != curChain { // chain has be replaced by reviser
-				curChain.free() // BUG, TODO
-				curChain = newChain
-			}
+			reviser.OnEcho(resp.Request(), resp, &chunks)
 		}
 	}
-	return r.shell.echoChain(curChain)
+	return r.shell.echoChain(chunks)
 }
 func (r *httpResponse_) endUnsized() error {
 	if r.stream.isBroken() {

@@ -69,8 +69,7 @@ func (r *wrapReviser) FinishPull(req Request, resp Response) { // unsized
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) OnSend(req Request, resp Response, chain Chain) Chain {
-	return chain
+func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) {
 }
 
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
@@ -79,13 +78,12 @@ func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 		Debugln("BeforeEcho")
 	}
 }
-func (r *wrapReviser) OnEcho(req Request, resp Response, chain Chain) Chain {
+func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) {
 	if IsDebug(2) {
 		block := GetBlock()
 		block.SetText([]byte("c"))
-		chain.PushTail(block) // BUG
+		chunks.PushTail(block)
 	}
-	return chain
 }
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO

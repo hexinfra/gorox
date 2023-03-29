@@ -983,7 +983,7 @@ func (r *http2Response) sendChain(chain Chain) error {
 	return r.sendChain2(chain, nil)
 }
 
-func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing chunks.
+func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }

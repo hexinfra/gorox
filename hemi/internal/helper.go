@@ -494,30 +494,27 @@ func (b *booker) Close() { b.queue <- "" }
 func (b *booker) saver() { // goroutine
 	for {
 		s := <-b.queue
-		if s != "" {
-			b.write(s)
-		} else {
-			b.clear()
-			b.file.Close()
-			return
+		if s == "" {
+			goto over
 		}
+		b.write(s)
 	more:
 		for {
 			select {
 			case s = <-b.queue:
-				if s != "" {
-					b.write(s)
-				} else {
-					b.clear()
-					b.file.Close()
-					return
+				if s == "" {
+					goto over
 				}
+				b.write(s)
 			default:
 				b.clear()
 				break more
 			}
 		}
 	}
+over:
+	b.clear()
+	b.file.Close()
 }
 func (b *booker) write(s string) {
 	n := len(s)

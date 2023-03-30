@@ -93,7 +93,7 @@ Performance
 Documentation
 =============
 
-  View documentation online:
+  View Gorox documentation online:
 
     English version: https://gorox.io/docs
     Chinese version: https://www.gorox.io/docs

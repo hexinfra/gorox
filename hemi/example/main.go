@@ -45,7 +45,7 @@ stage {
     }
     httpxServer "main" {
         .forApps = ("example")
-        .address = ":6080"
+        .address = ":3080"
     }
 }
 `

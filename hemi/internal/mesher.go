@@ -198,10 +198,6 @@ func (c *case_[M, D, E]) suffixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) wildcardMatch(value []byte) bool {
-	// TODO
-	return false
-}
 func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
 	// TODO
 	return false
@@ -229,10 +225,6 @@ func (c *case_[M, D, E]) notSuffixMatch(value []byte) bool {
 		}
 	}
 	return true
-}
-func (c *case_[M, D, E]) notWildcardMatch(value []byte) bool {
-	// TODO
-	return false
 }
 func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
 	// TODO

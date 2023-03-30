@@ -137,12 +137,10 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 	"==": (*udpsCase).equalMatch,
 	"^=": (*udpsCase).prefixMatch,
 	"$=": (*udpsCase).suffixMatch,
-	"*=": (*udpsCase).wildcardMatch,
 	"~=": (*udpsCase).regexpMatch,
 	"!=": (*udpsCase).notEqualMatch,
 	"!^": (*udpsCase).notPrefixMatch,
 	"!$": (*udpsCase).notSuffixMatch,
-	"!*": (*udpsCase).notWildcardMatch,
 	"!~": (*udpsCase).notRegexpMatch,
 }
 
@@ -155,9 +153,6 @@ func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= 
 func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *udpsCase) wildcardMatch(conn *UDPSConn, value []byte) bool { // value *= patterns
-	return c.case_.wildcardMatch(value)
-}
 func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
@@ -169,9 +164,6 @@ func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value 
 }
 func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
-}
-func (c *udpsCase) notWildcardMatch(conn *UDPSConn, value []byte) bool { // value !* patterns
-	return c.case_.notWildcardMatch(value)
 }
 func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)

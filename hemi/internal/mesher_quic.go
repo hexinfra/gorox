@@ -131,12 +131,10 @@ var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []b
 	"==": (*quicCase).equalMatch,
 	"^=": (*quicCase).prefixMatch,
 	"$=": (*quicCase).suffixMatch,
-	"*=": (*quicCase).wildcardMatch,
 	"~=": (*quicCase).regexpMatch,
 	"!=": (*quicCase).notEqualMatch,
 	"!^": (*quicCase).notPrefixMatch,
 	"!$": (*quicCase).notSuffixMatch,
-	"!*": (*quicCase).notWildcardMatch,
 	"!~": (*quicCase).notRegexpMatch,
 }
 
@@ -149,9 +147,6 @@ func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool { // value ^= 
 func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *quicCase) wildcardMatch(conn *QUICConn, value []byte) bool { // value *= patterns
-	return c.case_.wildcardMatch(value)
-}
 func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
@@ -163,9 +158,6 @@ func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool { // value 
 }
 func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
-}
-func (c *quicCase) notWildcardMatch(conn *QUICConn, value []byte) bool { // value !* patterns
-	return c.case_.notWildcardMatch(value)
 }
 func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)

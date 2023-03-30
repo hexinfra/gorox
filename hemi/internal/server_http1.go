@@ -199,7 +199,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
-		req.headResult, req.failReason = StatusNotFound, "app is not found in this http server"
+		req.headResult, req.failReason = StatusNotFound, "target is not found in this http server"
 		s.serveAbnormal(req, resp)
 		return
 	}

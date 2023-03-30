@@ -639,7 +639,6 @@ var ruleMatchers = map[string]struct {
 	"==": {(*Rule).equalMatch, false},
 	"^=": {(*Rule).prefixMatch, false},
 	"$=": {(*Rule).suffixMatch, false},
-	"*=": {(*Rule).wildcardMatch, false},
 	"~=": {(*Rule).regexpMatch, false},
 	"-f": {(*Rule).fileMatch, true},
 	"-d": {(*Rule).dirMatch, true},
@@ -649,7 +648,6 @@ var ruleMatchers = map[string]struct {
 	"!=": {(*Rule).notEqualMatch, false},
 	"!^": {(*Rule).notPrefixMatch, false},
 	"!$": {(*Rule).notSuffixMatch, false},
-	"!*": {(*Rule).notWildcardMatch, false},
 	"!~": {(*Rule).notRegexpMatch, false},
 	"!f": {(*Rule).notFileMatch, true},
 	"!d": {(*Rule).notDirMatch, true},
@@ -678,10 +676,6 @@ func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= pattern
 			return true
 		}
 	}
-	return false
-}
-func (r *Rule) wildcardMatch(req Request, value []byte) bool { // value *= patterns
-	// TODO(diogin): implementation
 	return false
 }
 func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
@@ -736,10 +730,6 @@ func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patt
 			return false
 		}
 	}
-	return true
-}
-func (r *Rule) notWildcardMatch(req Request, value []byte) bool { // value !* patterns
-	// TODO(diogin): implementation
 	return true
 }
 func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns

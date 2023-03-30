@@ -1,7 +1,7 @@
 <article>
-	<h1>操作手册</h1>
-	<p>本文描述如何使用 Gorox。</p>
-	<p>如果您是一位开发者，在阅读完本文后，还希望学习如何使用 Gorox 进行 Web 应用或微服务开发，那么请继续参考 <a href="/docs/gorox/developer">Gorox 开发者手册</a>。</p>
+<h1>操作手册</h1>
+<p>本文描述如何使用 Gorox。</p>
+<p>如果您是一位开发者，在阅读完本文后，还希望学习如何使用 Gorox 进行 Web 应用或微服务开发，那么请继续参考 <a href="/docs/gorox/developer">Gorox 开发者手册</a>。</p>
 
 	<h2>编译与安装</h2>
 	<p>在编译 Gorox 前，请确保您的运行平台符合以下要求：</p>
@@ -12,44 +12,53 @@
 		<li>微软 Windows &gt;= 10，CPU 架构为 AMD64。</li>
 	</ul>
 	<p>然后，请确保您安装了 Go &gt;= 1.19 版本。</p>
-	<h3>编译</h3>
-	<code>
-	shell&gt; go build<br>
-	</code>
-	<h3>安装</h3>
-	<p>在您编译成功，或者下载了二进制版本后，直接把 gorox 所在的整个目录移动到您想要存放的位置，即可。</p>
+
+		<h3>编译</h3>
+		<code>
+		shell&gt; go build<br>
+		</code>
+
+		<h3>安装</h3>
+		<p>在您编译成功，或者下载了二进制版本后，直接把 gorox 所在的整个目录移动到您想要存放的位置，即可。</p>
 
 	<h2>运行模式</h2>
 	<p>Gorox 具备两种运行模式，一种是充当服务器用的服务器模式，另一种是充当客户端用的控制器模式。</p>
-	<h3>服务器模式</h3>
-	<p>正如您所希望的那样，Gorox 可以以服务器进程的方式运行。如果您加了“-daemon”选项，它可以进入后台运行，如果不加，则默认在前台运行。</p>
-	<h3>控制器模式</h3>
-	<p>在控制器模式下，Gorox 充当一个控制客户端，用于控制另一个在服务器模式下运行的 Gorox 进程。</p>
+
+		<h3>服务器模式</h3>
+		<p>正如您所希望的那样，Gorox 可以以服务器进程的方式运行。如果您加了“-daemon”选项，它可以进入后台运行，如果不加，则默认在前台运行。</p>
+
+		<h3>控制器模式</h3>
+		<p>在控制器模式下，Gorox 充当一个控制客户端，用于控制另一个在服务器模式下运行的 Gorox 进程。</p>
 
 	<h2>启动、停止、重启与升级</h2>
 	<p>TODO</p>
-	<h3>启动</h3>
-	<p>以前台模式启动 Gorox：</p>
-	<code>
-	shell&gt; ./gorox serve
-	</code>
-	<p>以后台模式启动 Gorox：</p>
-	<code>
-	shell&gt; ./gorox serve -daemon
-	</code>
-	<h3>停止</h3>
-	<p>运行一个控制器模式的 Gorox，可以告知当前正在运行的处于服务器模式的 Gorox 进程停止运行：</p>
-	<code>
-	shell&gt; ./gorox quit
-	</code>
-	<h3>重启</h3>
-	<p>通常来说，我们都是为了重启 worker 进程。使用以下命令重启 worker 进程：</p>
-	<code>
-	shell&gt; ./gorox rework
-	</code>
-	<h3>升级</h3>
-	<p>TODO</p>
+
+		<h3>启动</h3>
+		<p>以前台模式启动 Gorox：</p>
+		<code>
+		shell&gt; ./gorox serve
+		</code>
+		<p>以后台模式启动 Gorox：</p>
+		<code>
+		shell&gt; ./gorox serve -daemon
+		</code>
+
+		<h3>停止</h3>
+		<p>运行一个控制器模式的 Gorox，可以告知当前正在运行的处于服务器模式的 Gorox 进程停止运行：</p>
+		<code>
+		shell&gt; ./gorox quit
+		</code>
+
+		<h3>重启</h3>
+		<p>通常来说，我们都是为了重启 worker 进程。使用以下命令重启 worker 进程：</p>
+		<code>
+		shell&gt; ./gorox rework
+		</code>
+
+		<h3>升级</h3>
+		<p>TODO</p>
 
 	<h2>配置</h2>
 	<p>TODO</p>
+
 </article>

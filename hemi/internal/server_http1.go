@@ -960,20 +960,14 @@ func (r *http1Response) SetCookie(cookie *Cookie) bool {
 	}
 }
 
-func (r *http1Response) sendChain(content Chain) error { // TODO: if r.conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
-	return r.sendChain1(content)
-}
+func (r *http1Response) sendChain(content Chain) error { return r.sendChain1(content) }
 
-func (r *http1Response) echoHeaders() error { // headers are sent immediately upon echoing.
-	return r.writeHeaders1()
-}
+func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
 func (r *http1Response) echoChain(chunks Chain) error {
 	return r.echoChain1(chunks, r.request.VersionCode() == Version1_1)
 }
 
-func (r *http1Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer1(name)
-}
+func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
 		return r.addTrailer1(name, value)

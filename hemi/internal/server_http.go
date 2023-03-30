@@ -519,7 +519,8 @@ type httpRequest0 struct { // for fast reset, entirely
 		minFresh     int32 // min-fresh directive in cache-control
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
-	_            [2]byte   // padding
+	forceEcho    bool      // use echo anyway?
+	_            byte      // padding
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
@@ -2466,6 +2467,9 @@ func (r *httpRequest_) saveContentFilesDir() string {
 func (r *httpRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+	if reviser.ForceEcho() {
+		r.forceEcho = true
+	}
 }
 
 func (r *httpRequest_) unsafeVariable(index int16) []byte {
@@ -2814,12 +2818,10 @@ func (r *httpResponse_) send() error {
 			reviser.OnSend(resp.Request(), resp, &r.content)
 		}
 		// Because r.content chain may be altered/replaced by revisers, content size must be recalculated
-		r.contentSize = 0
-		for block := r.content.head; block != nil; block = block.next {
-			r.contentSize += block.size
-			if r.contentSize < 0 {
-				return httpOutTooLarge
-			}
+		if contentSize, ok := r.content.Size(); ok {
+			r.contentSize = contentSize
+		} else {
+			return httpOutTooLarge
 		}
 	}
 	return r.shell.sendChain(r.content)

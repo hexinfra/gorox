@@ -4,12 +4,19 @@
 <p>如果您是一位开发者，在阅读完本文后，还希望学习如何使用 Gorox 进行 Web 应用或 RPC 服务开发，那么请继续参考 <a href="/docs/gorox/developer">Gorox 开发者手册</a>。</p>
 
 	<h2>编译与安装</h2>
-	<p>在编译 Gorox 前，请确保您的运行平台符合以下要求：</p>
+	<p>在编译 Gorox 前，请确保您的操作系统符合以下要求：</p>
 	<ul>
-		<li>Linux 内核版本 &gt;= 3.9，CPU 架构为 AMD64 或 ARM64；</li>
-		<li>FreeBSD &gt;= 12.0，CPU 架构为 AMD64；</li>
-		<li>苹果 macOS &gt;= Catalina，CPU 架构为 AMD64 或 ARM64；</li>
-		<li>微软 Windows &gt;= 10，CPU 架构为 AMD64。</li>
+		<li>Linux 内核版本 &gt;= 3.9</li>
+		<li>FreeBSD &gt;= 12.0</li>
+		<li>苹果 macOS &gt;= Catalina</li>
+		<li>微软 Windows &gt;= 10</li>
+	</ul>
+	<p>以及您的 CPU 架构符合以下要求：</p>
+	<ul>
+		<li>AMD64，也称为 x64，x86-64，Intel 64</li>
+		<li>ARM64，也称为 AArch64</li>
+		<li>RISC-V</li>
+		<li>LoongArch</li>
 	</ul>
 	<p>然后，请确保您安装了 Go &gt;= 1.19 版本。</p>
 
@@ -17,6 +24,7 @@
 		<code>
 		shell&gt; go build<br>
 		</code>
+		<p>如果报错，请设置环境变量 CGO_ENABLED=0 再试一次。</p>
 
 		<h3>安装</h3>
 		<p>在您编译成功，或者下载了二进制版本后，直接把 gorox 所在的整个目录移动到您想要存放的位置，即可。</p>

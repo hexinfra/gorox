@@ -53,7 +53,8 @@ func (r *gzipReviser) OnConfigure() {
 func (r *gzipReviser) OnPrepare() {
 }
 
-func (r *gzipReviser) Rank() int8 { return RankGzip }
+func (r *gzipReviser) Rank() int8      { return RankGzip }
+func (r *gzipReviser) ForceEcho() bool { return true }
 
 func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO

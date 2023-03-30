@@ -359,56 +359,66 @@ func (b *Block) ToText() error { // used by revisers
 type Chain struct { // 24 bytes
 	head *Block
 	tail *Block
-	size int
+	qnty int
 }
 
 func (c *Chain) free() {
-	if c.size == 0 {
+	if c.qnty == 0 {
 		return
 	}
 	block := c.head
 	c.head, c.tail = nil, nil
-	size := 0
+	qnty := 0
 	for block != nil {
 		next := block.next
 		block._zero()
 		if block.pool { // only put those got from poolBlock because they are not fixed
 			putBlock(block)
 		}
-		size++
+		qnty++
 		block = next
 	}
-	if size != c.size {
-		BugExitf("bad chain: size=%d c.size=%d\n", size, c.size)
+	if qnty != c.qnty {
+		BugExitf("bad chain: qnty=%d c.qnty=%d\n", qnty, c.qnty)
 	}
-	c.size = 0
+	c.qnty = 0
 }
 
-func (c *Chain) Size() int { return c.size }
+func (c *Chain) NumBlocks() int { return c.qnty }
+func (c *Chain) Size() (int64, bool) {
+	size := int64(0)
+	for block := c.head; block != nil; block = block.next {
+		size += block.size
+		if size < 0 {
+			return 0, false
+		}
+	}
+	return size, true
+}
 
 func (c *Chain) PushHead(block *Block) {
 	if block == nil {
 		return
 	}
-	if c.size == 0 {
+	if c.qnty == 0 {
 		c.head, c.tail = block, block
 	} else {
 		block.next = c.head
 		c.head = block
 	}
-	c.size++
+	c.qnty++
 }
 func (c *Chain) PushTail(block *Block) {
 	if block == nil {
 		return
 	}
-	if c.size == 0 {
+	if c.qnty == 0 {
 		c.head, c.tail = block, block
 	} else {
 		c.tail.next = block
 		c.tail = block
 	}
-	c.size++
+	c.qnty++
 }
 
 // Region

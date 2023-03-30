@@ -627,14 +627,14 @@ func (r *http1Out_) _addFixedHeader1(name []byte, value []byte) { // used by fin
 	r.fieldsEdge += 2
 }
 
-func (r *http1Out_) sendChain1(content Chain) error {
+func (r *http1Out_) sendChain1(content Chain) error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	// TODO: ranged content support. check r.asRequest. only applies for response
 	r.shell.finalizeHeaders()
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
 		content.free()
-	} else if nBlocks := content.Size(); nBlocks == 1 { // content chain has exactly one block
+	} else if nBlocks := content.NumBlocks(); nBlocks == 1 { // content chain has exactly one block
 		vector = r.fixedVector[0:4]
 	} else { // nBlocks >= 2
 		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
@@ -694,7 +694,7 @@ func (r *http1Out_) sendChain1(content Chain) error {
 	return nil
 }
 
-func (r *http1Out_) echoChain1(chunks Chain, chunked bool) error {
+func (r *http1Out_) echoChain1(chunks Chain, chunked bool) error { // write out immediately
 	for block := chunks.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
@@ -863,6 +863,9 @@ func (r *http1Out_) writeBytes1(p []byte) error {
 func (r *http1Out_) writeVector1(vector *net.Buffers) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
+	}
+	if len(*vector) == 1 && len((*vector)[0]) == 0 {
+		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
 		r.stream.markBroken()

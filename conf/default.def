@@ -114,8 +114,6 @@ stage {
 		}
 		rewriteHandlet "rh" {
 		}
-		scgiAgent "sh" {
-		}
 		sitex "sh" {
 		}
 		static "sh" {

@@ -849,7 +849,7 @@ type http1Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte { // HTTP/1's own control()
+func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in httpResponse_
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template

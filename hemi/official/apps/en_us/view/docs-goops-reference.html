@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<link rel="stylesheet" href="/static/reset.css" type="text/css">
+<link rel="stylesheet" href="/static/article.css" type="text/css">
+<title>Goops: Reference Manual</title>
+</head>
+<body>
+	{{block/header.html}}
+	<style type="text/css">
+	main{display:flex;background:#fff;}
+	main nav{width:15%;}
+	main article{width:85%;}
+	</style>
+	<main>
+		{{block/docs_nav.html}}
+		{{../docs/goops/reference.html}}
+	</main>
+	{{block/footer.html}}
+</body>
+</html>

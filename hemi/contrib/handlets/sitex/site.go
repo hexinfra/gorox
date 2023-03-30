@@ -54,7 +54,7 @@ func (s *Site) load(req Request, htmlFile string) []byte {
 		case "$uri": // TODO: XSS
 			subs = append(subs, []byte(req.URI()))
 		default:
-			subs = append(subs, s.load(req, s.viewDir+"/block/"+token))
+			subs = append(subs, s.load(req, s.viewDir+"/"+token))
 		}
 		html = html[j+len(htmlRR):]
 	}

@@ -1,0 +1,47 @@
+<article>
+	<h1>贡献者手册</h1>
+	<p>本文档介绍 Gorox 的架构设计。</p>
+
+	<h2>产品功能</h2>
+
+	<p>Gorox 是一款先进的 HTTP 服务器、应用服务器、RPC 服务器和代理服务器。</p>
+	<p>由于 Gorox 高度灵活的架构设计，它具有非常强大的扩展能力，可以基于它开发各类服务。</p>
+
+	<h2>概念和术语</h2>
+
+	<p>在了解 Gorox 架构之前，需要先定义 Gorox 里使用的一些基本概念和术语。这些概念和术语可能在别的地方有不同的含义，但是在 Gorox 里，我们有如下定义：</p>
+	<dl>
+		<dt>HTTP 服务器</dt>
+		<dd>TODO</dd>
+		<dt>应用服务器</dt>
+		<dd>TODO</dd>
+		<dt>RPC 服务器</dt>
+		<dd>TODO</dd>
+		<dt>代理服务器</dt>
+		<dd>TODO</dd>
+	</dl>
+
+	<h2>功能体系</h2>
+
+	<h3>Mesher 和 Server</h3>
+	<p>Gorox 的前端部分有两套子系统：Mesher 子系统和 Server 子系统。</p>
+	<p>Mesher 子系统涵盖的元素有：Mesher、Gate、Conn、Case、Dealet、Editor，用于实现 L4 代理以及非 HTTP 的 L7 代理。</p>
+	<p>Server 子系统包含通用体系和 HTTP 体系，其中：</p>
+	<ul>
+		<li>通用体系涵盖的元素有：Server、Gate、Conn，用于开发者自行发挥实现各种通用服务器（例如 FTP 服务器、SOCKS 5 服务器等）；</li>
+		<li>HTTP 体系涵盖的元素有：Server、Gate、Conn、Stream、Request、Response、Socket、App、Rule、Handlet、Reviser、Socklet，用于实现 HTTP 服务器、Web 应用、HTTP 代理等。</li>
+	</ul>
+
+	<h3>Outgate 和 Backend</h3>
+	<p>Gorox 的后端部分有两套子系统：Outgate 子系统和 Backend 子系统。</p>
+	<p>Outgate 子系统包含通用体系和 HTTP 体系，其中：</p>
+	<ul>
+		<li>通用体系涵盖的元素有：Outgate、Conn，主要由 Mesher 前端子系统使用；</li>
+		<li>HTTP 体系涵盖的元素有：Outgate、Conn、Stream、Request、Response、Socket，主要由 HTTP 前端体系使用。</li>
+	</ul>
+	<p>Backend 子系统包含通用体系和 HTTP 体系，其中：</p>
+	<ul>
+		<li>通用体系涵盖的元素有：Backend、Node、Conn，主要由 Mesher 前端子系统使用；</li>
+		<li>HTTP 体系涵盖的元素有：Backend、Node、Conn、Stream、Request、Response、Socket，主要由 HTTP 前端体系使用。</li>
+	</ul>
+</article>

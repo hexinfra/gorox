@@ -8,23 +8,14 @@
 <title>Gorox: 开发者手册</title>
 </head>
 <body>
-	{{header.html}}
+	{{block/header.html}}
 	<style type="text/css">
 	main{display:flex;background:green;}
 	</style>
 	<main>
-		{{docs_nav.html}}
-		<article>
-			<h1>开发者手册</h1>
-			<p>本文讲述如何使用 Gorox 进行 Web 应用和微服务的开发。如果您想先学习如何使用 Gorox，请参考我们的 <a href="/docs/gorox/operation">Gorox 操作手册</a>。</p>
-
-			<h2>开发 Web 应用</h2>
-			<p>TODO</p>
-
-			<h2>开发微服务</h2>
-			<p>TODO</p>
-		</article>
+		{{block/docs_nav.html}}
+		{{../docs/gorox-developer.html}}
 	</main>
-	{{footer.html}}
+	{{block/footer.html}}
 </body>
 </html>

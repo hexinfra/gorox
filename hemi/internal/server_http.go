@@ -477,13 +477,14 @@ type httpRequest0 struct { // for fast reset, entirely
 	boundary        span     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
 	cookies         zone     // cookies ->r.input. temporarily used when checking cookie headers, set after cookie header is parsed
+	forms           zone     // decoded forms -> r.array
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	nRanges         int8     // num of ranges
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
 	pathInfoGot     bool     // is r.pathInfo got?
-	_               [6]byte  // padding
+	_               [4]byte  // padding
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		authorization      uint8 // authorization header ->r.input
 		host               uint8 // host header ->r.input
@@ -518,7 +519,7 @@ type httpRequest0 struct { // for fast reset, entirely
 		minFresh     int32 // min-fresh directive in cache-control
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
-	forms        zone      // decoded forms -> r.array
+	_            [2]byte   // padding
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow

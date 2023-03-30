@@ -1498,7 +1498,7 @@ type httpOut_ struct { // outgoing. needs building
 	stockFields [1536]byte // for r.fields
 	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
-	edges [204]uint16 // edges of headers or trailers in r.fields. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [200]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
 	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends

@@ -788,7 +788,7 @@ func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	}
 }
 func (r *http1Out_) _writeText1(block *Block, chunked bool) error { // text
-	if chunked { // HTTP/1.1
+	if chunked { // HTTP/1.1 chunked data
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(block.size, sizeBuffer)
 		sizeBuffer[n] = '\r'

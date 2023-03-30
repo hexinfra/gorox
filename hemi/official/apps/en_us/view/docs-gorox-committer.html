@@ -8,17 +8,14 @@
 <title>Gorox: Committer Manual</title>
 </head>
 <body>
-	{{header.html}}
+	{{block/header.html}}
 	<style type="text/css">
 	main{display:flex;background:green;}
 	</style>
 	<main>
-		{{docs_nav.html}}
-		<article>
-			<h1>Committer Manual</h1>
-			<p>This article describes the architecture design of Gorox.</p>
-		</article>
+		{{block/docs_nav.html}}
+		{{../docs/gorox-committer.html}}
 	</main>
-	{{footer.html}}
+	{{block/footer.html}}
 </body>
 </html>

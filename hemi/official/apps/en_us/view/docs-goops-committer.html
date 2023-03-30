@@ -8,16 +8,14 @@
 <title>Goops: Committer Manual</title>
 </head>
 <body>
-	{{header.html}}
+	{{block/header.html}}
 	<style type="text/css">
 	main{display:flex;background:green;}
 	</style>
 	<main>
-		{{docs_nav.html}}
-		<article>
-			<h1>Committer Manual</h1>
-		</article>
+		{{block/docs_nav.html}}
+		{{../docs/goops-committer.html}}
 	</main>
-	{{footer.html}}
+	{{block/footer.html}}
 </body>
 </html>

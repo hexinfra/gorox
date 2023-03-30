@@ -2642,9 +2642,9 @@ type Response interface {
 	copyHeadFrom(resp hResponse) bool // used by proxies
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendChain(chain Chain) error
+	sendChain(content Chain) error
 	echoHeaders() error
-	echoChain(chain Chain) error
+	echoChain(chunks Chain) error
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error

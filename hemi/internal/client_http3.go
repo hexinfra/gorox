@@ -340,16 +340,16 @@ func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H3Request) sendChain(chain Chain) error {
+func (r *H3Request) sendChain(content Chain) error {
 	// TODO
-	return r.sendChain3(chain, nil)
+	return r.sendChain3(content, nil)
 }
 
 func (r *H3Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) echoChain(chain Chain) error {
+func (r *H3Request) echoChain(chunks Chain) error {
 	// TODO
 	return nil
 }

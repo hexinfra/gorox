@@ -978,17 +978,17 @@ func (r *http2Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http2Response) sendChain(chain Chain) error {
+func (r *http2Response) sendChain(content Chain) error {
 	// TODO
-	return r.sendChain2(chain, nil)
+	return r.sendChain2(content, nil)
 }
 
 func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http2Response) echoChain(chain Chain) error {
-	return r.echoChain2(chain)
+func (r *http2Response) echoChain(chunks Chain) error {
+	return r.echoChain2(chunks)
 }
 
 func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {

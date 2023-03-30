@@ -1477,11 +1477,11 @@ type httpOut interface {
 	fixedHeaders() []byte
 	finalizeHeaders()
 	send() error
-	sendChain(chain Chain) error
+	sendChain(content Chain) error
 	_beforeEcho() error
 	echoHeaders() error
 	echo(chunk *Block) error
-	echoChain(chain Chain) error
+	echoChain(chunks Chain) error
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	finalizeUnsized() error

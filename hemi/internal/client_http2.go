@@ -369,16 +369,16 @@ func (r *H2Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H2Request) sendChain(chain Chain) error {
+func (r *H2Request) sendChain(content Chain) error {
 	// TODO
-	return r.sendChain2(chain, nil)
+	return r.sendChain2(content, nil)
 }
 
 func (r *H2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) echoChain(chain Chain) error {
+func (r *H2Request) echoChain(chunks Chain) error {
 	// TODO
 	return nil
 }

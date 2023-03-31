@@ -236,7 +236,7 @@ type H1Conn struct {
 	hConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node     *http1Node      // associated node if client is http backend
@@ -272,7 +272,7 @@ type H1Stream struct {
 	request  H1Request  // the client-side http/1 request
 	response H1Response // the client-side http/1 response
 	socket   *H1Socket  // the client-side http/1 socket
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
 	conn *H1Conn // associated conn
@@ -359,7 +359,7 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 type H1Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -449,10 +449,10 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge in
 	}
 }
 
-func (r *H1Request) sendChain(content Chain) error { return r.sendChain1(content) }
+func (r *H1Request) sendChain() error { return r.sendChain1(r.chain) }
 
-func (r *H1Request) echoHeaders() error           { return r.writeHeaders1() }
-func (r *H1Request) echoChain(chunks Chain) error { return r.echoChain1(chunks, true) } // chunked = true
+func (r *H1Request) echoHeaders() error { return r.writeHeaders1() }
+func (r *H1Request) echoChain() error   { return r.echoChain1(r.chain, true) } // chunked = true
 
 func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailer1(name, value) }
@@ -496,7 +496,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 type H1Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -647,7 +647,7 @@ var poolH1Socket sync.Pool
 type H1Socket struct {
 	// Mixins
 	hSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

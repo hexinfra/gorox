@@ -242,7 +242,7 @@ func putUDPSConn(conn *UDPSConn) {
 
 // UDPSConn
 type UDPSConn struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64

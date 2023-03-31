@@ -164,7 +164,7 @@ func putH3Conn(conn *H3Conn) {
 type H3Conn struct {
 	// Mixins
 	hConn_
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node     *http3Node
@@ -227,7 +227,7 @@ type H3Stream struct {
 	request  H3Request
 	response H3Response
 	socket   *H3Socket
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *H3Conn
@@ -310,7 +310,7 @@ func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 type H3Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -340,19 +340,13 @@ func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H3Request) sendChain(content Chain) error {
-	// TODO
-	return r.sendChain3(content, nil)
-}
+func (r *H3Request) sendChain() error { return r.sendChain3(r.chain) }
 
 func (r *H3Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) echoChain(chunks Chain) error {
-	// TODO
-	return nil
-}
+func (r *H3Request) echoChain() error { return r.echoChain3(r.chain) }
 
 func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer3(name)
@@ -382,7 +376,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil }
 type H3Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -397,7 +391,7 @@ var poolH3Socket sync.Pool
 type H3Socket struct {
 	// Mixins
 	hSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

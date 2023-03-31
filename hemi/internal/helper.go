@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
-	"io"
 	"os"
 	"strings"
 	"sync"
@@ -263,6 +262,7 @@ type Block struct { // 64 bytes
 
 func (b *Block) _zero() {
 	b.closeFile()
+	b.next = nil
 	b.shut = false
 	b.kind = 0
 	b.text = nil
@@ -321,9 +321,10 @@ func (b *Block) SetText(text []byte) {
 	b.time = 0
 }
 func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
-	b.text = nil
+	b.closeFile()
 	b.shut = shut
 	b.kind = 1
+	b.text = nil
 	b.file = file
 	b.size = info.Size()
 	b.time = info.ModTime().Unix()
@@ -345,6 +346,7 @@ func (b *Block) File() *os.File {
 	return b.file
 }
 
+/*
 func (b *Block) ToText() error { // used by revisers
 	if b.IsText() {
 		return nil
@@ -354,6 +356,7 @@ func (b *Block) ToText() error { // used by revisers
 	b.SetText(text[:num])
 	return err
 }
+*/
 
 // Chain is a linked-list of blocks.
 type Chain struct { // 24 bytes
@@ -363,6 +366,9 @@ type Chain struct { // 24 bytes
 }
 
 func (c *Chain) free() {
+	if IsDebug(2) {
+		Debugf("chain.free() called, qnty=%d\n", c.qnty)
+	}
 	if c.qnty == 0 {
 		return
 	}

@@ -228,7 +228,7 @@ func putQUICConn(conn *QUICConn) {
 
 // QUICConn
 type QUICConn struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id       int64

@@ -163,7 +163,7 @@ func putH2Conn(conn *H2Conn) {
 type H2Conn struct {
 	// Mixins
 	hConn_
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node    *http2Node // associated node
@@ -257,7 +257,7 @@ type H2Stream struct {
 	request  H2Request
 	response H2Response
 	socket   *H2Socket
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn *H2Conn
@@ -339,7 +339,7 @@ func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 type H2Request struct { // outgoing. needs building
 	// Mixins
 	hRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -369,19 +369,13 @@ func (r *H2Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H2Request) sendChain(content Chain) error {
-	// TODO
-	return r.sendChain2(content, nil)
-}
+func (r *H2Request) sendChain() error { return r.sendChain2(r.chain) }
 
 func (r *H2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) echoChain(chunks Chain) error {
-	// TODO
-	return nil
-}
+func (r *H2Request) echoChain() error { return r.echoChain2(r.chain) }
 
 func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer2(name)
@@ -411,7 +405,7 @@ func (r *H2Request) fixedHeaders() []byte { return nil }
 type H2Response struct { // incoming. needs parsing
 	// Mixins
 	hResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -426,7 +420,7 @@ var poolH2Socket sync.Pool
 type H2Socket struct {
 	// Mixins
 	hSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

@@ -150,7 +150,7 @@ func putSocksConn(conn *socksConn) {
 
 // socksConn
 type socksConn struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64

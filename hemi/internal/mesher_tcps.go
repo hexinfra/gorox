@@ -313,7 +313,7 @@ func putTCPSConn(conn *TCPSConn) {
 
 // TCPSConn
 type TCPSConn struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64

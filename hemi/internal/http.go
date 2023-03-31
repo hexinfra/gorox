@@ -67,7 +67,7 @@ type stream interface {
 
 // stream is the mixin for httpStream_ and hStream_.
 type stream_ struct {
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -104,7 +104,7 @@ type httpIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
 	stream stream // *http[1-3]Stream or *H[1-3]Stream
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
 	stockPrimes [40]pair   // for r.primes
@@ -1477,11 +1477,11 @@ type httpOut interface {
 	fixedHeaders() []byte
 	finalizeHeaders()
 	send() error
-	sendChain(content Chain) error
+	sendChain() error // content
 	_beforeEcho() error
 	echoHeaders() error
-	echo(chunk *Block) error
-	echoChain(chunks Chain) error
+	echo() error
+	echoChain() error // chunks
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	finalizeUnsized() error
@@ -1494,14 +1494,14 @@ type httpOut_ struct { // outgoing. needs building
 	// Assocs
 	shell  httpOut // *http[1-3]Response or *H[1-3]Request
 	stream stream  // *http[1-3]Stream or *H[1-3]Stream
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
-	stockBlock  Block      // for r.content. if content has only one block, this one is used
 	// Stream states (controlled)
 	edges [200]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	block Block       // for r.chain. used when sending or echoing
+	chain Chain       // outgoing block chain. used when sending or echoing
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
-	content     Chain         // message content, refers to r.stockBlock or a linked list. freed after stream ends
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of outgoing content. -1: not set, -2: unsized, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
@@ -1527,7 +1527,6 @@ type httpOut0 struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.content.PushTail(&r.stockBlock) // r.content has one block by default (but may not be used or sent actually)
 	r.sendTimeout = r.stream.keeper().SendTimeout()
 	r.contentSize = -1 // not set
 	r.versionCode = versionCode
@@ -1539,7 +1538,7 @@ func (r *httpOut_) onEnd() { // for zeros
 		PutNK(r.fields)
 		r.fields = nil
 	}
-	r.content.free() // also resets r.stockBlock
+	r.chain.free() // double free doesn't matter
 
 	r.sendTime = time.Time{}
 	r.vector = nil
@@ -1805,7 +1804,8 @@ func (r *httpOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	r.content.head.SetText(content)
+	r.block.SetText(content)
+	r.chain.PushTail(&r.block)
 	r.contentSize = int64(len(content)) // original size, may be revised
 	return r.shell.send()
 }
@@ -1813,7 +1813,8 @@ func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	r.content.head.SetFile(content, info, shut)
+	r.block.SetFile(content, info, shut)
+	r.chain.PushTail(&r.block)
 	r.contentSize = info.Size() // original size, may be revised
 	return r.shell.send()
 }
@@ -1831,9 +1832,9 @@ func (r *httpOut_) echoText(chunk []byte) error {
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		return nil
 	}
-	block := GetBlock()
-	block.SetText(chunk)
-	return r.shell.echo(block)
+	r.block._zero()
+	r.block.SetText(chunk)
+	return r.shell.echo()
 }
 func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r.shell._beforeEcho(); err != nil {
@@ -1845,9 +1846,9 @@ func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 		}
 		return nil
 	}
-	block := GetBlock()
-	block.SetFile(chunk, info, shut)
-	return r.shell.echo(block)
+	r.block._zero()
+	r.block.SetFile(chunk, info, shut)
+	return r.shell.echo()
 }
 
 func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time

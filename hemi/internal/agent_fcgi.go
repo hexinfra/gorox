@@ -261,7 +261,7 @@ type fcgiStream struct {
 	// Assocs
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -313,7 +313,7 @@ type fcgiRequest struct { // outgoing. needs building
 	// Assocs
 	stream   *fcgiStream
 	response *fcgiResponse
-	// States (buffers)
+	// States (stocks)
 	stockParams [_2K]byte // for r.params
 	// States (controlled)
 	paramsHeader [8]byte // used by params record
@@ -570,7 +570,7 @@ func putFCGIParams(params []byte) {
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream
-	// States (buffers)
+	// States (stocks)
 	stockRecords [8192]byte // for r.records
 	stockInput   [_2K]byte  // for r.input
 	stockPrimes  [48]pair   // for r.primes

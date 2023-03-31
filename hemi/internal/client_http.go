@@ -122,7 +122,7 @@ type hConn interface {
 type hConn_ struct {
 	// Mixins
 	conn_
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
@@ -158,7 +158,7 @@ func (c *hConn_) markBroken()    { c.broken.Store(true) }
 type hStream_ struct {
 	// Mixins
 	stream_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -194,7 +194,7 @@ type hRequest_ struct { // outgoing. needs building
 	httpOut_
 	// Assocs
 	response hResponse // the corresponding response
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	unixTimes struct {
@@ -238,7 +238,7 @@ func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
-func (r *hRequest_) send() error { return r.shell.sendChain(r.content) }
+func (r *hRequest_) send() error { return r.shell.sendChain() }
 
 func (r *hRequest_) _beforeEcho() error {
 	if r.stream.isBroken() {
@@ -254,15 +254,14 @@ func (r *hRequest_) _beforeEcho() error {
 	r.markUnsized()
 	return r.shell.echoHeaders()
 }
-func (r *hRequest_) echo(chunk *Block) error {
-	var chunks Chain
-	chunks.PushTail(chunk)
-	defer chunks.free()
+func (r *hRequest_) echo() error {
+	r.chain.PushTail(&r.block)
+	defer r.chain.free()
 
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.shell.echoChain(chunks)
+	return r.shell.echoChain()
 }
 func (r *hRequest_) endUnsized() error {
 	if r.stream.isBroken() {
@@ -429,7 +428,7 @@ type hResponse interface {
 type hResponse_ struct { // incoming. needs parsing
 	// Mixins
 	httpIn_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockCookies [8]cookie // for r.cookies
 	// Stream states (controlled)
 	cookie cookie // to overcome the limitation of Go's escape analysis when receiving setCookies

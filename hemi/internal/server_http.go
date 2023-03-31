@@ -221,7 +221,7 @@ type httpConn interface {
 
 // httpConn_ is the mixin for http[1-3]Conn.
 type httpConn_ struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id     int64      // the conn id
@@ -264,7 +264,7 @@ func (c *httpConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) 
 type httpStream_ struct {
 	// Mixins
 	stream_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -446,7 +446,7 @@ type Request interface {
 type httpRequest_ struct { // incoming. needs parsing
 	// Mixins
 	httpIn_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
 	ranges [2]rang // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
@@ -2647,9 +2647,9 @@ type Response interface {
 	copyHeadFrom(resp hResponse) bool // used by proxies
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendChain(content Chain) error
+	sendChain() error                                             // content
 	echoHeaders() error
-	echoChain(chunks Chain) error
+	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
@@ -2667,7 +2667,7 @@ type httpResponse_ struct { // outgoing. needs building
 	httpOut_
 	// Assocs
 	request Request // *http[1-3]Request
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	status    int16    // 200, 302, 404, 500, ...
@@ -2795,9 +2795,10 @@ func (r *httpResponse_) sendError(status int16, content []byte) error {
 	if content == nil {
 		content = httpErrorPages[status]
 	}
-	r.content.head.SetText(content)
+	r.block.SetText(content)
+	r.chain.PushTail(&r.block)
 	r.contentSize = int64(len(content))
-	return r.shell.sendChain(r.content)
+	return r.shell.sendChain()
 }
 func (r *httpResponse_) send() error {
 	if r.hasRevisers {
@@ -2815,16 +2816,16 @@ func (r *httpResponse_) send() error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			reviser.OnSend(resp.Request(), resp, &r.content)
+			reviser.OnSend(resp.Request(), resp, &r.chain)
 		}
-		// Because r.content chain may be altered/replaced by revisers, content size must be recalculated
-		if contentSize, ok := r.content.Size(); ok {
+		// Because r.chain may be altered/replaced by revisers, content size must be recalculated
+		if contentSize, ok := r.chain.Size(); ok {
 			r.contentSize = contentSize
 		} else {
 			return httpOutTooLarge
 		}
 	}
-	return r.shell.sendChain(r.content)
+	return r.shell.sendChain()
 }
 
 func (r *httpResponse_) _beforeEcho() error {
@@ -2851,10 +2852,9 @@ func (r *httpResponse_) _beforeEcho() error {
 	}
 	return r.shell.echoHeaders()
 }
-func (r *httpResponse_) echo(chunk *Block) error {
-	var chunks Chain
-	chunks.PushTail(chunk)
-	defer chunks.free()
+func (r *httpResponse_) echo() error {
+	r.chain.PushTail(&r.block)
+	defer r.chain.free()
 
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
@@ -2866,10 +2866,10 @@ func (r *httpResponse_) echo(chunk *Block) error {
 				continue
 			}
 			reviser := r.app.reviserByID(id)
-			reviser.OnEcho(resp.Request(), resp, &chunks)
+			reviser.OnEcho(resp.Request(), resp, &r.chain)
 		}
 	}
-	return r.shell.echoChain(chunks)
+	return r.shell.echoChain()
 }
 func (r *httpResponse_) endUnsized() error {
 	if r.stream.isBroken() {

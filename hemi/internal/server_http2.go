@@ -41,7 +41,7 @@ func putHTTP2Conn(conn *http2Conn) {
 type http2Conn struct {
 	// Mixins
 	httpConn_
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
 	// Conn states (non-zeros)
@@ -824,7 +824,7 @@ type http2Stream struct {
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn      *http2Conn // ...
@@ -920,7 +920,7 @@ func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 type http2Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -947,7 +947,7 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 type http2Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -978,18 +978,13 @@ func (r *http2Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http2Response) sendChain(content Chain) error {
-	// TODO
-	return r.sendChain2(content, nil)
-}
+func (r *http2Response) sendChain() error { return r.sendChain2(r.chain) }
 
 func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http2Response) echoChain(chunks Chain) error {
-	return r.echoChain2(chunks)
-}
+func (r *http2Response) echoChain() error { return r.echoChain2(r.chain) }
 
 func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer2(name)
@@ -1036,7 +1031,7 @@ var poolHTTP2Socket sync.Pool
 type http2Socket struct {
 	// Mixins
 	httpSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

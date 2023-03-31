@@ -51,7 +51,7 @@ type http1Conn struct {
 	httpConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	netConn   net.Conn        // the connection (TCP/TLS)
@@ -139,7 +139,7 @@ type http1Stream struct {
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn *http1Conn // associated conn
@@ -301,7 +301,7 @@ func (s *http1Stream) serveUDPTun() { // upgrade: connect-udp
 func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content.
-		resp.sendChain(resp.content)
+		resp.sendChain()
 	} else if resp.isUnsized() { // write last chunk and trailers (if exist)
 		resp.endUnsized()
 	}
@@ -395,7 +395,7 @@ func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 type http1Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -843,7 +843,7 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 type http1Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -960,11 +960,11 @@ func (r *http1Response) SetCookie(cookie *Cookie) bool {
 	}
 }
 
-func (r *http1Response) sendChain(content Chain) error { return r.sendChain1(content) }
+func (r *http1Response) sendChain() error { return r.sendChain1(r.chain) }
 
 func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
-func (r *http1Response) echoChain(chunks Chain) error {
-	return r.echoChain1(chunks, r.request.VersionCode() == Version1_1)
+func (r *http1Response) echoChain() error {
+	return r.echoChain1(r.chain, r.request.VersionCode() == Version1_1)
 }
 
 func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
@@ -1055,7 +1055,7 @@ var poolHTTP1Socket sync.Pool
 type http1Socket struct {
 	// Mixins
 	httpSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

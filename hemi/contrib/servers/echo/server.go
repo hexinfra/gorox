@@ -151,7 +151,7 @@ func putEchoConn(conn *echoConn) {
 
 // echoConn
 type echoConn struct {
-	// Conn states (buffers)
+	// Conn states (stocks)
 	buffer [8152]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)

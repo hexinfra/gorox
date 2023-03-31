@@ -150,7 +150,7 @@ func putHTTP3Conn(conn *http3Conn) {
 type http3Conn struct {
 	// Mixins
 	httpConn_
-	// Conn states (buffers)
+	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quicConn *quix.Conn        // the quic conn
@@ -236,7 +236,7 @@ type http3Stream struct {
 	// Assocs
 	request  http3Request  // the http3 request.
 	response http3Response // the http3 response.
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *http3Conn   // ...
@@ -326,7 +326,7 @@ func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 type http3Request struct { // incoming. needs parsing
 	// Mixins
 	httpRequest_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -338,7 +338,7 @@ func (r *http3Request) readContent() (p []byte, err error) { return r.readConten
 type http3Response struct { // outgoing. needs building
 	// Mixins
 	httpResponse_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -369,18 +369,13 @@ func (r *http3Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http3Response) sendChain(content Chain) error {
-	// TODO
-	return r.sendChain2(content, nil)
-}
+func (r *http3Response) sendChain() error { return r.sendChain3(r.chain) }
 
 func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http3Response) echoChain(chunks Chain) error {
-	return r.echoChain3(chunks)
-}
+func (r *http3Response) echoChain() error { return r.echoChain3(r.chain) }
 
 func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer3(name)
@@ -427,7 +422,7 @@ var poolHTTP3Socket sync.Pool
 type http3Socket struct {
 	// Mixins
 	httpSocket_
-	// Stream states (buffers)
+	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)

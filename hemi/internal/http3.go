@@ -50,7 +50,7 @@ func (r *http3Out_) delHeaderAt3(o uint8) {
 	// TODO
 }
 
-func (r *http3Out_) sendChain3(content Chain, vector [][]byte) error {
+func (r *http3Out_) sendChain3(content Chain) error {
 	// TODO
 	return nil
 }

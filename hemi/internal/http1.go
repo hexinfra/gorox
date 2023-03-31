@@ -694,7 +694,7 @@ func (r *http1Out_) sendChain1(content Chain) error { // TODO: if conn is TLS, d
 	return nil
 }
 
-func (r *http1Out_) echoChain1(chunks Chain, chunked bool) error { // write out immediately
+func (r *http1Out_) echoChain1(chunks Chain, chunked bool) error {
 	for block := chunks.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err

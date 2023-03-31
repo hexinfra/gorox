@@ -61,7 +61,7 @@ func (r *http2Out_) delHeaderAt2(o uint8) {
 	// TODO
 }
 
-func (r *http2Out_) sendChain2(content Chain, vector [][]byte) error {
+func (r *http2Out_) sendChain2(content Chain) error {
 	// TODO
 	return nil
 }

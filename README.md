@@ -98,7 +98,7 @@ Documentation
     English version: https://gorox.io/docs
     Chinese version: https://www.gorox.io/docs
 
-  Or view locally (ensure your local official server is started):
+  Or view locally (ensure your local server under hemi/official is started):
 
     English version: http://gorox.net:5080/docs
     Chinese version: http://www.gorox.net:5080/docs

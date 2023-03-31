@@ -279,9 +279,9 @@ func (b *Block) closeFile() {
 	b.file = nil
 	if IsDebug(2) {
 		if b.shut {
-			Debugln("file closed on Block.closeFile()")
+			Debugln("file closed in Block.closeFile()")
 		} else {
-			Debugln("file NOT closed on Block.closeFile()")
+			Debugln("file NOT closed in Block.closeFile()")
 		}
 	}
 }

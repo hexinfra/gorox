@@ -993,7 +993,7 @@ func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *http2Response) sync1xx(resp hResponse) bool { // used by proxies
+func (r *http2Response) pass1xx(resp hResponse) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -1007,11 +1007,11 @@ func (r *http2Response) sync1xx(resp hResponse) bool { // used by proxies
 	r.onUse(Version2)
 	return false
 }
-func (r *http2Response) syncHeaders() error {
+func (r *http2Response) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http2Response) syncBytes(p []byte) error { return r.syncBytes2(p) }
+func (r *http2Response) passBytes(p []byte) error { return r.passBytes2(p) }
 
 func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

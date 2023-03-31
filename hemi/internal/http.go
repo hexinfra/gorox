@@ -1485,8 +1485,8 @@ type httpOut interface {
 	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
 	finalizeUnsized() error
-	syncHeaders() error       // used by proxies
-	syncBytes(p []byte) error // used by proxies
+	passHeaders() error       // used by proxies
+	passBytes(p []byte) error // used by proxies
 }
 
 // httpOut_ is a mixin for httpResponse_ and hRequest_.
@@ -1497,7 +1497,7 @@ type httpOut_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [200]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [192]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	block Block       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing block chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
@@ -1538,6 +1538,7 @@ func (r *httpOut_) onEnd() { // for zeros
 		PutNK(r.fields)
 		r.fields = nil
 	}
+	// r.block is reset in echo(), and will be reset below if send() is used.
 	r.chain.free() // double free doesn't matter
 
 	r.sendTime = time.Time{}
@@ -1685,7 +1686,7 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 
 func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *httpOut_) Send(content string) error      { return r.SendBytes(risky.ConstBytes(content)) }
+func (r *httpOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
 func (r *httpOut_) SendBytes(content []byte) error { return r.sendText(content) }
 func (r *httpOut_) SendJSON(content any) error {
 	// TODO: optimize performance
@@ -1694,7 +1695,7 @@ func (r *httpOut_) SendJSON(content any) error {
 	if err != nil {
 		return err
 	}
-	return r.SendBytes(data)
+	return r.sendText(data)
 }
 func (r *httpOut_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)
@@ -1706,10 +1707,10 @@ func (r *httpOut_) SendFile(contentPath string) error {
 		file.Close()
 		return err
 	}
-	return r.sendFile(file, info, true)
+	return r.sendFile(file, info, true) // true to close on end
 }
 
-func (r *httpOut_) Echo(chunk string) error      { return r.EchoBytes(risky.ConstBytes(chunk)) }
+func (r *httpOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }
 func (r *httpOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
 func (r *httpOut_) EchoFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
@@ -1721,7 +1722,7 @@ func (r *httpOut_) EchoFile(chunkPath string) error {
 		file.Close()
 		return err
 	}
-	return r.echoFile(file, info, true)
+	return r.echoFile(file, info, true) // true to close on end
 }
 
 func (r *httpOut_) Trailer(name string) (value string, ok bool) {
@@ -1739,14 +1740,14 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 }
 
 func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content directly
-	pass := r.shell.syncBytes
-	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized output no matter the original content is sized or unsized
+	pass := r.shell.passBytes
+	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized no matter the original content is sized or unsized
 		pass = r.EchoBytes
-	} else { // in is sized and there are no revisers, use syncBytes
+	} else { // in is sized and there are no revisers, use passBytes
 		r.isSent = true
 		r.contentSize = in.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.shell.syncHeaders(); err != nil {
+		if err := r.shell.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -1787,9 +1788,9 @@ func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxie
 			return err
 		}
 		if hasTrailers { // we must use unsized
-			return r.echoFile(contentFile, fileInfo, false) // false to avoid twice close()
+			return r.echoFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to httpIn
 		} else {
-			return r.sendFile(contentFile, fileInfo, false) // false to avoid twice close()
+			return r.sendFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to httpIn
 		}
 	} else { // nil means no content.
 		if err := r._beforeSend(); err != nil {
@@ -1825,6 +1826,7 @@ func (r *httpOut_) _beforeSend() error {
 	r.isSent = true
 	return nil
 }
+
 func (r *httpOut_) echoText(chunk []byte) error {
 	if err := r.shell._beforeEcho(); err != nil {
 		return err

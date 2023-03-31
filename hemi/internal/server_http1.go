@@ -975,7 +975,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	return true // HTTP/1.0 doesn't support trailer.
 }
 
-func (r *http1Response) sync1xx(resp hResponse) bool { // used by proxies
+func (r *http1Response) pass1xx(resp hResponse) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -996,8 +996,8 @@ func (r *http1Response) sync1xx(resp hResponse) bool { // used by proxies
 	r.onUse(Version1_1)
 	return true
 }
-func (r *http1Response) syncHeaders() error       { return r.writeHeaders1() }
-func (r *http1Response) syncBytes(p []byte) error { return r.syncBytes1(p) }
+func (r *http1Response) passHeaders() error       { return r.writeHeaders1() }
+func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n

@@ -739,7 +739,7 @@ func (r *http1Out_) addTrailer1(name []byte, value []byte) bool {
 }
 func (r *http1Out_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not present at the same time, so after headers is sent, r.fields is used by trailers.
 
-func (r *http1Out_) syncBytes1(p []byte) error { return r.writeBytes1(p) }
+func (r *http1Out_) passBytes1(p []byte) error { return r.writeBytes1(p) }
 
 func (r *http1Out_) finalizeUnsized1() error {
 	if r.nTrailers == 1 { // no trailers

@@ -457,8 +457,8 @@ func (r *H1Request) echoChain() error   { return r.echoChain1(true) } // chunked
 func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailer1(name, value) }
 
-func (r *H1Request) syncHeaders() error       { return r.writeHeaders1() }
-func (r *H1Request) syncBytes(p []byte) error { return r.syncBytes1(p) }
+func (r *H1Request) passHeaders() error       { return r.writeHeaders1() }
+func (r *H1Request) passBytes(p []byte) error { return r.passBytes1(p) }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n

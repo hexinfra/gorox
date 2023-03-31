@@ -88,7 +88,7 @@ func (r *http2Out_) trailers2() []byte {
 	return nil
 }
 
-func (r *http2Out_) syncBytes2(p []byte) error {
+func (r *http2Out_) passBytes2(p []byte) error {
 	// TODO
 	return nil
 }

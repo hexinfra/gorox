@@ -384,11 +384,11 @@ func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *H2Request) syncHeaders() error {
+func (r *H2Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) syncBytes(p []byte) error { return r.syncBytes2(p) }
+func (r *H2Request) passBytes(p []byte) error { return r.passBytes2(p) }
 
 func (r *H2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

@@ -2622,14 +2622,14 @@ type Response interface {
 	SendBytes(content []byte) error
 	SendJSON(content any) error
 	SendFile(contentPath string) error
-	SendBadRequest(content []byte) error
-	SendForbidden(content []byte) error
-	SendNotFound(content []byte) error
-	SendMethodNotAllowed(allow string, content []byte) error
-	SendInternalServerError(content []byte) error
-	SendNotImplemented(content []byte) error
-	SendBadGateway(content []byte) error
-	SendGatewayTimeout(content []byte) error
+	SendBadRequest(content []byte) error                     // 400
+	SendForbidden(content []byte) error                      // 403
+	SendNotFound(content []byte) error                       // 404
+	SendMethodNotAllowed(allow string, content []byte) error // 405
+	SendInternalServerError(content []byte) error            // 500
+	SendNotImplemented(content []byte) error                 // 501
+	SendBadGateway(content []byte) error                     // 502
+	SendGatewayTimeout(content []byte) error                 // 504
 
 	Echo(chunk string) error
 	EchoBytes(chunk []byte) error
@@ -2637,6 +2637,8 @@ type Response interface {
 
 	AddTrailer(name string, value string) bool
 	AddTrailerBytes(name []byte, value []byte) bool
+
+	OutBuffer() []byte // mainly used by revisers
 
 	// Internal only
 	header(name []byte) (value []byte, ok bool)
@@ -2653,7 +2655,7 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
-	sync1xx(resp hResponse) bool              // used by proxies
+	pass1xx(resp hResponse) bool              // used by proxies
 	pass(resp httpIn) error                   // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
 	copyTailFrom(resp hResponse) bool         // used by proxies
@@ -2677,9 +2679,10 @@ type httpResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	app           *App // associated app
-	svc           *Svc // associated svc
-	httpResponse0      // all values must be zero by default in this struct!
+	app           *App   // associated app
+	svc           *Svc   // associated svc
+	outBuffer     []byte // used by revisers
+	httpResponse0        // all values must be zero by default in this struct!
 }
 type httpResponse0 struct { // for fast reset, entirely
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
@@ -2698,6 +2701,9 @@ func (r *httpResponse_) onUse(versionCode uint8) { // for non-zeros
 func (r *httpResponse_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
+	if r.outBuffer != nil {
+		PutNK(r.outBuffer)
+	}
 	r.httpResponse0 = httpResponse0{}
 	r.httpOut_.onEnd()
 }
@@ -2972,6 +2978,13 @@ func (r *httpResponse_) copyTailFrom(resp hResponse) bool { // used by proxies
 func (r *httpResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+}
+
+func (r *httpResponse_) OutBuffer() []byte {
+	if r.outBuffer == nil {
+		r.outBuffer = Get16K()
+	}
+	return r.outBuffer
 }
 
 // Cookie is a "set-cookie" sent to client.

@@ -384,7 +384,7 @@ func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *http3Response) sync1xx(resp hResponse) bool { // used by proxies
+func (r *http3Response) pass1xx(resp hResponse) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -398,11 +398,11 @@ func (r *http3Response) sync1xx(resp hResponse) bool { // used by proxies
 	r.onUse(Version3)
 	return false
 }
-func (r *http3Response) syncHeaders() error {
+func (r *http3Response) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http3Response) syncBytes(p []byte) error { return r.syncBytes3(p) }
+func (r *http3Response) passBytes(p []byte) error { return r.passBytes3(p) }
 
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

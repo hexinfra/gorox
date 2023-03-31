@@ -355,11 +355,11 @@ func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *H3Request) syncHeaders() error {
+func (r *H3Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) syncBytes(p []byte) error { return r.syncBytes3(p) }
+func (r *H3Request) passBytes(p []byte) error { return r.passBytes3(p) }
 
 func (r *H3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

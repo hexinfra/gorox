@@ -206,7 +206,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 			if IsDebug(2) {
 				Debugln("static send file")
 			}
-			resp.sendFile(entry.file, entry.info, false)
+			resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
 		}
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)

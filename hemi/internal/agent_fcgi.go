@@ -197,7 +197,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.sync1xx(fResp) {
+		if !resp.pass1xx(fResp) {
 			fStream.markBroken()
 			return
 		}

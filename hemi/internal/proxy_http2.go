@@ -143,7 +143,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.sync1xx(resp2) {
+		if !resp.pass1xx(resp2) {
 			stream2.markBroken()
 			return
 		}

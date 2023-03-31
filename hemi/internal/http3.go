@@ -77,7 +77,7 @@ func (r *http3Out_) trailers3() []byte {
 	return nil
 }
 
-func (r *http3Out_) syncBytes3(p []byte) error {
+func (r *http3Out_) passBytes3(p []byte) error {
 	// TODO
 	return nil
 }

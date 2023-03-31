@@ -260,7 +260,7 @@ type Block struct { // 64 bytes
 	time int64    // file mod time
 }
 
-func (b *Block) _zero() {
+func (b *Block) zero() {
 	b.closeFile()
 	b.next = nil
 	b.shut = false
@@ -377,7 +377,7 @@ func (c *Chain) free() {
 	qnty := 0
 	for block != nil {
 		next := block.next
-		block._zero()
+		block.zero()
 		if block.pool { // only put those got from poolBlock because they are not fixed
 			putBlock(block)
 		}

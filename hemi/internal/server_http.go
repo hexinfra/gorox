@@ -2853,12 +2853,11 @@ func (r *httpResponse_) _beforeEcho() error {
 	return r.shell.echoHeaders()
 }
 func (r *httpResponse_) echo() error {
-	r.chain.PushTail(&r.block)
-	defer r.chain.free()
-
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
+	r.chain.PushTail(&r.block)
+	defer r.chain.free()
 	if r.hasRevisers {
 		resp := r.shell.(Response)
 		for _, id := range r.revisers { // revise unsized content

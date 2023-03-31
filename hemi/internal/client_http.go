@@ -255,12 +255,11 @@ func (r *hRequest_) _beforeEcho() error {
 	return r.shell.echoHeaders()
 }
 func (r *hRequest_) echo() error {
-	r.chain.PushTail(&r.block)
-	defer r.chain.free()
-
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
+	r.chain.PushTail(&r.block)
+	defer r.chain.free()
 	return r.shell.echoChain()
 }
 func (r *hRequest_) endUnsized() error {

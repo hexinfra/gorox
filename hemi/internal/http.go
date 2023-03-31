@@ -1498,8 +1498,8 @@ type httpOut_ struct { // outgoing. needs building
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
 	edges [200]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
-	block Block       // for r.chain. used when sending or echoing
-	chain Chain       // outgoing block chain. used when sending or echoing
+	block Block       // for r.chain. used when sending content or echoing chunks
+	chain Chain       // outgoing block chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message
@@ -1832,8 +1832,8 @@ func (r *httpOut_) echoText(chunk []byte) error {
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		return nil
 	}
-	r.block._zero()
 	r.block.SetText(chunk)
+	defer r.block.zero()
 	return r.shell.echo()
 }
 func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
@@ -1846,8 +1846,8 @@ func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 		}
 		return nil
 	}
-	r.block._zero()
 	r.block.SetFile(chunk, info, shut)
+	defer r.block.zero()
 	return r.shell.echo()
 }
 

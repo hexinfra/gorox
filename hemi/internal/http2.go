@@ -61,7 +61,7 @@ func (r *http2Out_) delHeaderAt2(o uint8) {
 	// TODO
 }
 
-func (r *http2Out_) sendChain2(content Chain) error {
+func (r *http2Out_) sendChain2() error {
 	// TODO
 	return nil
 }
@@ -70,7 +70,7 @@ func (r *http2Out_) echoHeaders2() error {
 	// TODO
 	return nil
 }
-func (r *http2Out_) echoChain2(chunks Chain) error {
+func (r *http2Out_) echoChain2() error {
 	// TODO
 	return nil
 }

@@ -627,14 +627,14 @@ func (r *http1Out_) _addFixedHeader1(name []byte, value []byte) { // used by fin
 	r.fieldsEdge += 2
 }
 
-func (r *http1Out_) sendChain1(content Chain) error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
+func (r *http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	// TODO: ranged content support. check r.asRequest. only applies for response
 	r.shell.finalizeHeaders()
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
-		content.free()
-	} else if nBlocks := content.NumBlocks(); nBlocks == 1 { // content chain has exactly one block
+		r.chain.free()
+	} else if nBlocks := r.chain.NumBlocks(); nBlocks == 1 { // content chain has exactly one block
 		vector = r.fixedVector[0:4]
 	} else { // nBlocks >= 2
 		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
@@ -651,7 +651,7 @@ func (r *http1Out_) sendChain1(content Chain) error { // TODO: if conn is TLS, d
 		Debugf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
-	for block := content.head; block != nil; block = block.next {
+	for block := r.chain.head; block != nil; block = block.next {
 		if block.size == 0 {
 			continue
 		}
@@ -694,8 +694,8 @@ func (r *http1Out_) sendChain1(content Chain) error { // TODO: if conn is TLS, d
 	return nil
 }
 
-func (r *http1Out_) echoChain1(chunks Chain, chunked bool) error {
-	for block := chunks.head; block != nil; block = block.next {
+func (r *http1Out_) echoChain1(chunked bool) error { // TODO: coalesce?
+	for block := r.chain.head; block != nil; block = block.next {
 		if err := r.writeBlock1(block, chunked); err != nil {
 			return err
 		}

@@ -369,13 +369,13 @@ func (r *H2Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H2Request) sendChain() error { return r.sendChain2(r.chain) }
+func (r *H2Request) sendChain() error { return r.sendChain2() }
 
 func (r *H2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) echoChain() error { return r.echoChain2(r.chain) }
+func (r *H2Request) echoChain() error { return r.echoChain2() }
 
 func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer2(name)

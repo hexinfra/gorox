@@ -978,13 +978,13 @@ func (r *http2Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http2Response) sendChain() error { return r.sendChain2(r.chain) }
+func (r *http2Response) sendChain() error { return r.sendChain2() }
 
 func (r *http2Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http2Response) echoChain() error { return r.echoChain2(r.chain) }
+func (r *http2Response) echoChain() error { return r.echoChain2() }
 
 func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer2(name)

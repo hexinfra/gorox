@@ -449,10 +449,10 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge in
 	}
 }
 
-func (r *H1Request) sendChain() error { return r.sendChain1(r.chain) }
+func (r *H1Request) sendChain() error { return r.sendChain1() }
 
 func (r *H1Request) echoHeaders() error { return r.writeHeaders1() }
-func (r *H1Request) echoChain() error   { return r.echoChain1(r.chain, true) } // chunked = true
+func (r *H1Request) echoChain() error   { return r.echoChain1(true) } // chunked = true
 
 func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailer1(name, value) }

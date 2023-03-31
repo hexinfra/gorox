@@ -369,13 +369,13 @@ func (r *http3Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http3Response) sendChain() error { return r.sendChain3(r.chain) }
+func (r *http3Response) sendChain() error { return r.sendChain3() }
 
 func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http3Response) echoChain() error { return r.echoChain3(r.chain) }
+func (r *http3Response) echoChain() error { return r.echoChain3() }
 
 func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer3(name)

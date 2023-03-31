@@ -960,11 +960,11 @@ func (r *http1Response) SetCookie(cookie *Cookie) bool {
 	}
 }
 
-func (r *http1Response) sendChain() error { return r.sendChain1(r.chain) }
+func (r *http1Response) sendChain() error { return r.sendChain1() }
 
 func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
 func (r *http1Response) echoChain() error {
-	return r.echoChain1(r.chain, r.request.VersionCode() == Version1_1)
+	return r.echoChain1(r.request.VersionCode() == Version1_1)
 }
 
 func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }

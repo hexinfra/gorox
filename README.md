@@ -71,7 +71,7 @@ Quickstart
 
   If you are a developer and need to rebuild Gorox frequently, try using gomake:
 
-    shell> go build cmds/gomake.go
+    shell> go build hemi/toolkit/gomake.go
     shell> ./gomake -h
 
   Move gomake to your $PATH if you like.

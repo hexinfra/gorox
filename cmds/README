@@ -4,22 +4,7 @@ By default there are 2 auxiliary cmds:
   goben/    - An HTTP benchmarking tool.
   goops/    - Gorox Operation Server.
 
-To add a new auxiliary cmd named "foo":
+To build:
 
-  1. Create a folder called "foo" inside this directory,
-  2. Place your go files in it.
-
-To build cmd "foo", use "gomake", like:
-
-  shell> go build cmds/gomake.go
-  shell> ./gomake foo
-
-To build all cmds, use:
-
-  shell> ./gomake all
-
-By default, gomake builds gorox:
-
-  shell> ./gomake
-
-Move gomake to your $PATH if you like.
+  shell> go build ./cmds/goben
+  shell> go build ./cmds/goops

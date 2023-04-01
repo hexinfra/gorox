@@ -81,14 +81,13 @@ func Send(writer io.Writer, msg *Message) (ok bool) {
 	return err == nil
 }
 func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
-	var head [8]byte
-	if _, err := io.ReadFull(reader, head[:]); err != nil {
+	msg = new(Message)
+	if _, err := io.ReadFull(reader, msg.head[:]); err != nil {
 		return nil, false
 	}
-	msg = new(Message)
-	msg.Comd = head[0]
-	msg.Flag = uint16(head[2])<<8 | uint16(head[3])
-	size := int32(head[4])<<24 | int32(head[5])<<16 | int32(head[6])<<8 | int32(head[7])
+	msg.Comd = msg.head[0]
+	msg.Flag = uint16(msg.head[2])<<8 | uint16(msg.head[3])
+	size := int32(msg.head[4])<<24 | int32(msg.head[5])<<16 | int32(msg.head[6])<<8 | int32(msg.head[7])
 	if size < 0 {
 		msg.call = true
 		size &= 0x7fffffff
@@ -99,7 +98,7 @@ func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 	if size == 0 {
 		return msg, true
 	}
-	nArgs := int32(head[1])
+	nArgs := int32(msg.head[1])
 	back := nArgs * 5
 	if back > size {
 		return nil, false
@@ -138,6 +137,7 @@ func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 
 // Message
 type Message struct {
+	head [8]byte
 	call bool
 	Comd uint8  // 0-255, allow max 256 commands
 	Flag uint16 // 0-65535

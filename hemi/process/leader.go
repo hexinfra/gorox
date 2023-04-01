@@ -95,11 +95,11 @@ func adminServer() {
 		}
 		logger.Printf("received from agent: %v\n", req)
 		if req.IsTell() {
-			// Some messages are telling leader only, hijack them.
-			if req.Comd == comdStop {
+			switch req.Comd { // some messages are telling leader only, hijack them.
+			case comdStop:
 				logger.Println("received stop")
 				stop() // worker will stop immediately after the pipe is closed
-			} else if req.Comd == comdReopen {
+			case comdReopen:
 				newAddr := req.Get("newAddr") // succeeding adminAddr
 				if newAddr == "" {
 					goto closeNext
@@ -112,16 +112,20 @@ func adminServer() {
 				} else {
 					logger.Printf("reopen failed: %s\n", err.Error())
 				}
-			} else { // other messages are sent to keepWorker().
+			default: // other messages are sent to keepWorker().
 				msgChan <- req
 			}
 		} else { // call
 			var resp *msgx.Message
-			// Some messages are calling leader only, hijack them.
-			if req.Comd == comdPing {
+			switch req.Comd { // some messages are calling leader only, hijack them.
+			case comdPing:
 				resp = msgx.NewMessage(comdPing, req.Flag, nil)
 				resp.Set(fmt.Sprintf("leader=%d", os.Getpid()), "pong")
-			} else { // other messages are sent to keepWorker().
+			case comdPid:
+				msgChan <- req
+				resp = <-msgChan
+				resp.Set("leader", fmt.Sprintf("%d", os.Getpid()))
+			default: // other messages are sent to keepWorker().
 				msgChan <- req
 				resp = <-msgChan
 			}

@@ -80,15 +80,26 @@ func _tellLeader(comd uint8, flag uint16, args map[string]string) {
 }
 
 const ( // for calls
-	comdInfo = iota // must be 0
+	comdPid = iota
+	comdInfo
 	comdPing
 )
 
 var callActions = map[string]func(){
+	"pid":  callPid,
 	"info": callInfo,
 	"ping": callPing,
 }
 
+func callPid() {
+	if resp, ok := _callLeader(comdPid, 0, nil); ok {
+		for name, value := range resp.Args {
+			fmt.Printf("%s: %s\n", name, value)
+		}
+	} else {
+		fmt.Printf("call leader at %s: failed!\n", targetAddr)
+	}
+}
 func callInfo() {
 	if resp, ok := _callLeader(comdInfo, 0, nil); ok {
 		for name, value := range resp.Args {

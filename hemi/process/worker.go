@@ -84,8 +84,10 @@ func workerMain(token string) {
 }
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
-	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
+	comdPid: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
+	},
+	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("foo", "bar") // TODO: other infos
 	},
 }

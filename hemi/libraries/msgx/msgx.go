@@ -81,8 +81,8 @@ func Send(writer io.Writer, msg *Message) (ok bool) {
 	return err == nil
 }
 func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
-	head := make([]byte, 8)
-	if _, err := io.ReadFull(reader, head); err != nil {
+	var head [8]byte
+	if _, err := io.ReadFull(reader, head[:]); err != nil {
 		return nil, false
 	}
 	msg = new(Message)

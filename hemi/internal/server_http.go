@@ -45,7 +45,7 @@ type httpServer_ struct {
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
 	gates      []httpGate
-	defaultApp *App // fallback app
+	defaultApp *App // default app
 	// States
 	forApps      []string            // for apps
 	exactApps    []*hostnameTo[*App] // like: ("example.com")

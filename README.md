@@ -66,15 +66,12 @@ Quickstart
 
     shell> ./gorox quit
 
+  For more actions and options, run:
+
+    shell> ./gorox -h
+
   To install, move the whole Gorox directory to where you like. To uninstall,
   remove the whole Gorox directory.
-
-  If you are a developer and need to rebuild Gorox frequently, try using gomake:
-
-    shell> go build hemi/toolkit/gomake.go
-    shell> ./gomake -h
-
-  Move gomake to your $PATH if you like.
 
 
 Performance

@@ -111,15 +111,16 @@ func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {
 var fcacheNotExist = errors.New("entry not exist")
 
 func (f *fcacheFixture) newEntry(path string) (*fcacheEntry, error) {
-	f.rwMutex.Lock()
-	defer f.rwMutex.Unlock()
-
+	f.rwMutex.RLock()
 	if entry, ok := f.entries[path]; ok {
 		if entry.isLarge() {
 			entry.addRef()
 		}
+
+		f.rwMutex.RUnlock()
 		return entry, nil
 	}
+	f.rwMutex.RUnlock()
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -152,7 +153,10 @@ func (f *fcacheFixture) newEntry(path string) (*fcacheEntry, error) {
 		entry.nRef.Store(1) // current caller
 	}
 	entry.last = time.Now().Add(f.cacheTimeout)
+
+	f.rwMutex.Lock()
 	f.entries[path] = entry
+	f.rwMutex.Unlock()
 
 	return entry, nil
 }

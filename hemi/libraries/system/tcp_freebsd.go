@@ -7,11 +7,6 @@
 package system
 
 var (
-	ws2_32DLL           = syscall.NewLazyDLL("Ws2_32.dll")
-	wsaIoctlFunc        = ws2_32DLL.NewProc("WSAIoctl")
-	sioTcpInfo          = uint32(0x00008018)
-	tcpQueryInformation = uint32(0x00000005)
-
 	IPPROTO_TCP = 6
 	TCP_INFO    = 32
 )

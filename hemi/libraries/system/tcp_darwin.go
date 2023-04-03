@@ -16,7 +16,7 @@ var (
 	IPPROTO_TCP         = 0x6
 	TCP_CONNECTION_INFO = 0x106
 
-	TCPInfoSize = unsafe.Sizeof(TCPInfo{})
+	tcpInfoSize = unsafe.Sizeof(TCPInfo{})
 )
 
 // TCPState TCP FSM state
@@ -35,42 +35,23 @@ const (
 	TCPStateLastAck
 	TCPStateFinWait2
 	TCPStateTimeWait
-	TCPStateMax
 )
 
 // TCPInfo TCP statistics for a specified socket.
 // link: usr/include/netinet/tcp.h
 type TCPInfo struct {
-	State      TCPState
-	Snd_wscale uint8
-	Rcv_wscale uint8
-	//   u_int8_t        __pad1;
-	Options             uint32
-	Flags               uint32
-	Rto                 uint32
-	Maxseg              uint32
-	Snd_ssthresh        uint32
-	Snd_cwnd            uint32
-	Snd_wnd             uint32
-	Snd_sbbytes         uint32
-	Rcv_wnd             uint32
-	Rttcur              uint32
-	Srtt                uint32
-	Rttvar              uint32
-	Txpackets           uint64
-	Txbytes             uint64
-	Txretransmitbytes   uint64
-	Rxpackets           uint64
-	Rxbytes             uint64
-	Rxoutoforderbytes   uint64
-	Txretransmitpackets uint64
+	State TCPState
 }
 
 func (t *TCPInfo) IsEstablished() bool {
 	return t.State == TCPStateEstablished
 }
 
-func GetsockoptTCPInfo(sockfd uintptr) (*TCPInfo, error) {
+func (t *TCPInfo) CanWrite() bool {
+	return t.IsEstablished() || t.State == TCPStateCloseWait
+}
+
+func GetTCPInfo(sockfd uintptr) (*TCPInfo, error) {
 	ti := &TCPInfo{}
 	retCode, _, err := syscall.Syscall6(
 		syscall.SYS_GETSOCKOPT,
@@ -78,7 +59,7 @@ func GetsockoptTCPInfo(sockfd uintptr) (*TCPInfo, error) {
 		uintptr(IPPROTO_TCP),
 		uintptr(TCP_CONNECTION_INFO),
 		uintptr(unsafe.Pointer(ti)),
-		uintptr(unsafe.Pointer(&TCPInfoSize)),
+		uintptr(unsafe.Pointer(&tcpInfoSize)),
 		0,
 	)
 

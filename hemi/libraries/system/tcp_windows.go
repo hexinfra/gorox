@@ -32,35 +32,20 @@ const (
 	TCPStateClosing
 	TCPStateLastAck
 	TCPStateTimeWait
-	TCPStateMax
 )
 
 // TCPInfo tcp_info_v0
 // link: https://learn.microsoft.com/en-us/windows/win32/api/mstcpip/ns-mstcpip-tcp_info_v0
 type TCPInfo struct {
-	State               TCPState
-	Mss                 uint
-	ConnectionTimeMs    uint
-	TimestampsEnabled   uint8 // type boolean
-	RttUs               uint
-	MinRttUs            uint
-	BytesInFlight       uint
-	Cwnd                uint
-	SndWnd              uint
-	RcvWnd              uint
-	RcvBuf              uint
-	BytesOut            uint64
-	BytesIn             uint64
-	BytesReordered      uint
-	BytesRetrans        uint
-	FastRetrans         uint
-	DupAcksIn           uint
-	TimeoutEpisodesuint uint
-	SynRetrans          uint8
+	State TCPState
 }
 
 func (t *TCPInfo) IsEstablished() bool {
 	return t.State == TCPStateEstablished
+}
+
+func (t *TCPInfo) CanWrite() bool {
+	return t.IsEstablished() || t.State == TCPStateCloseWait
 }
 
 // GetTCPInfo  TCP statistics for a specified socket.

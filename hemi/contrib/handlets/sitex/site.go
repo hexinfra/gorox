@@ -16,8 +16,10 @@ import (
 
 // Site
 type Site struct {
+	name      string
 	hostnames []string
 	viewDir   string
+	settings  map[string]string
 	pack      reflect.Type
 }
 
@@ -46,14 +48,20 @@ func (s *Site) load(req Request, htmlFile string) []byte {
 		subs = append(subs, html[:i])
 		i += len(htmlLL)
 		token := string(html[i:j])
-		switch token {
-		case "$scheme":
-			subs = append(subs, []byte(req.Scheme()))
-		case "$colonPort":
-			subs = append(subs, []byte(req.ColonPort()))
-		case "$uri": // TODO: XSS
-			subs = append(subs, []byte(req.URI()))
-		default:
+		if first := token[0]; first == '$' {
+			switch token {
+			case "$scheme":
+				subs = append(subs, []byte(req.Scheme()))
+			case "$colonPort":
+				subs = append(subs, []byte(req.ColonPort()))
+			case "$uri": // TODO: XSS
+				subs = append(subs, []byte(req.URI()))
+			default:
+				// Do nothing
+			}
+		} else if first == '@' {
+			subs = append(subs, []byte(s.settings[token[1:]]))
+		} else {
 			subs = append(subs, s.load(req, s.viewDir+"/"+token))
 		}
 		html = html[j+len(htmlRR):]

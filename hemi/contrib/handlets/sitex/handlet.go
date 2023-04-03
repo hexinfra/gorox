@@ -62,6 +62,7 @@ func (h *Sitex) OnConfigure() {
 		}
 		site := new(Site)
 		h.sites[name] = site
+		site.name = name
 		vHostnames, ok := siteDict["hostnames"]
 		if !ok {
 			UseExitln("hostnames is required for sites in sitex")
@@ -82,6 +83,12 @@ func (h *Sitex) OnConfigure() {
 			}
 		} else {
 			site.viewDir = BaseDir() + "/apps/" + h.app.Name() + "/" + name + "/view"
+		}
+		site.settings = make(map[string]string)
+		if vSettings, ok := siteDict["settings"]; ok {
+			if settings, ok := vSettings.StringDict(); ok {
+				site.settings = settings
+			}
 		}
 	}
 	// rdbms

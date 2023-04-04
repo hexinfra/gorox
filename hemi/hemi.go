@@ -15,22 +15,28 @@ import (
 const Version = "0.1.0-dev"
 
 var ( // core funcs
-	RegisterUniture    = internal.RegisterUniture
+	RegisterUniture = internal.RegisterUniture
+
 	RegisterQUICDealet = internal.RegisterQUICDealet
 	RegisterQUICEditor = internal.RegisterQUICEditor
 	RegisterTCPSDealet = internal.RegisterTCPSDealet
 	RegisterTCPSEditor = internal.RegisterTCPSEditor
 	RegisterUDPSDealet = internal.RegisterUDPSDealet
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
-	RegisterSvcInit    = internal.RegisterSvcInit
-	RegisterStater     = internal.RegisterStater
-	RegisterCacher     = internal.RegisterCacher
-	RegisterAppInit    = internal.RegisterAppInit
-	RegisterHandlet    = internal.RegisterHandlet
-	RegisterReviser    = internal.RegisterReviser
-	RegisterSocklet    = internal.RegisterSocklet
-	RegisterServer     = internal.RegisterServer
-	RegisterCronjob    = internal.RegisterCronjob
+
+	RegisterStater = internal.RegisterStater
+	RegisterCacher = internal.RegisterCacher
+
+	RegisterAppInit = internal.RegisterAppInit
+	RegisterHandlet = internal.RegisterHandlet
+	RegisterReviser = internal.RegisterReviser
+	RegisterSocklet = internal.RegisterSocklet
+
+	RegisterSvcInit = internal.RegisterSvcInit
+
+	RegisterServer = internal.RegisterServer
+
+	RegisterCronjob = internal.RegisterCronjob
 
 	IsDebug = internal.IsDebug
 	BaseDir = internal.BaseDir
@@ -62,9 +68,16 @@ var ( // core funcs
 type ( // core types
 	Stage = internal.Stage
 
+	HTTP1Outgate = internal.HTTP1Outgate
+	HTTP2Outgate = internal.HTTP2Outgate
+	HTTP3Outgate = internal.HTTP3Outgate
+	QUICOutgate  = internal.QUICOutgate
+	TCPSOutgate  = internal.TCPSOutgate
+	UDPSOutgate  = internal.UDPSOutgate
+	UnixOutgate  = internal.UnixOutgate
+
 	Uniture = internal.Uniture
 
-	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -72,7 +85,6 @@ type ( // core types
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
 
-	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
@@ -80,7 +92,6 @@ type ( // core types
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
 
-	HTTP3Outgate = internal.HTTP3Outgate
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
@@ -88,24 +99,20 @@ type ( // core types
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
 
-	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend
 	QConn       = internal.QConn
 
-	TCPSOutgate = internal.TCPSOutgate
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
 
-	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
 
-	UnixOutgate = internal.UnixOutgate
 	UnixBackend = internal.UnixBackend
 	XConn       = internal.XConn
 
-	PBackend = internal.PBackend // TCPSBackend | UnixBackend
-	PConn    = internal.PConn    // TConn | XConn
+	WireBackend = internal.WireBackend // TCPSBackend | UnixBackend
+	WConn       = internal.WConn       // TConn | XConn
 
 	QUICMesher = internal.QUICMesher
 	QUICDealet = internal.QUICDealet
@@ -122,14 +129,11 @@ type ( // core types
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
-	Svc        = internal.Svc        // supports both HRPC and gRPC
-	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
+	Cacher  = internal.Cacher
+	Hobject = internal.Hobject
 
 	Stater  = internal.Stater
 	Session = internal.Session
-
-	Cacher  = internal.Cacher
-	Hobject = internal.Hobject
 
 	App      = internal.App
 	Handlet  = internal.Handlet
@@ -145,6 +149,9 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
+	Svc        = internal.Svc        // supports both HRPC and gRPC
+	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
+
 	Server  = internal.Server
 	Cronjob = internal.Cronjob
 )
@@ -158,14 +165,18 @@ type ( // core mixins
 	TCPSEditor_ = internal.TCPSEditor_
 	UDPSDealet_ = internal.UDPSDealet_
 	UDPSEditor_ = internal.UDPSEditor_
-	Server_     = internal.Server_
-	Gate_       = internal.Gate_
-	Stater_     = internal.Stater_
-	Cacher_     = internal.Cacher_
-	Handlet_    = internal.Handlet_
-	Reviser_    = internal.Reviser_
-	Socklet_    = internal.Socklet_
-	Cronjob_    = internal.Cronjob_
+
+	Stater_ = internal.Stater_
+	Cacher_ = internal.Cacher_
+
+	Handlet_ = internal.Handlet_
+	Reviser_ = internal.Reviser_
+	Socklet_ = internal.Socklet_
+
+	Server_ = internal.Server_
+	Gate_   = internal.Gate_
+
+	Cronjob_ = internal.Cronjob_
 )
 
 const ( // core constants

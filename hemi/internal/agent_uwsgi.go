@@ -29,10 +29,10 @@ type uwsgiAgent struct {
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage   // current stage
-	app     *App     // the app to which the agent belongs
-	backend PBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher   // the cache server which is used by this agent
+	stage   *Stage      // current stage
+	app     *App        // the app to which the agent belongs
+	backend WireBackend // *TCPSBackend or *UnixBackend
+	cacher  Cacher      // the cache server which is used by this agent
 	// States
 	bufferClientContent bool // client content is buffered anyway?
 	bufferServerContent bool // server content is buffered anyway?
@@ -54,8 +54,8 @@ func (h *uwsgiAgent) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if pBackend, ok := backend.(PBackend); ok {
-				h.backend = pBackend
+			} else if wireBackend, ok := backend.(WireBackend); ok {
+				h.backend = wireBackend
 			} else {
 				UseExitf("incorrect backend '%s' for uwsgiAgent\n", name)
 			}
@@ -90,7 +90,7 @@ func (h *uwsgiAgent) IsProxy() bool { return true }
 func (h *uwsgiAgent) IsCache() bool { return h.cacher != nil }
 
 func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) {
-	// TODO: implementation, use PConn
+	// TODO: implementation, use WConn
 	resp.Send("uwsgi")
 	return
 }

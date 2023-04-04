@@ -319,15 +319,15 @@ func (c *conn_) setNext(next conn) { c.next = next }
 func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 
 // connection-oriented backend, supports TCPS and Unix.
-type PBackend interface {
+type WireBackend interface {
 	backend
-	Dial() (PConn, error)
-	FetchConn() (PConn, error)
-	StoreConn(conn PConn)
+	Dial() (WConn, error)
+	FetchConn() (WConn, error)
+	StoreConn(conn WConn)
 }
 
 // connection-oriented conn, supports TCPS and Unix.
-type PConn interface {
+type WConn interface {
 	conn
 	SetWriteDeadline(deadline time.Time) error
 	SetReadDeadline(deadline time.Time) error

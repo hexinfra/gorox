@@ -39,10 +39,10 @@ type fcgiAgent struct {
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage   // current stage
-	app     *App     // the app to which the agent belongs
-	backend PBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher   // the cache server which is used by this agent
+	stage   *Stage      // current stage
+	app     *App        // the app to which the agent belongs
+	backend WireBackend // *TCPSBackend or *UnixBackend
+	cacher  Cacher      // the cache server which is used by this agent
 	// States
 	scriptFilename      []byte        // for SCRIPT_FILENAME
 	bufferClientContent bool          // client content is buffered anyway?
@@ -74,8 +74,8 @@ func (h *fcgiAgent) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if pBackend, ok := backend.(PBackend); ok {
-				h.backend = pBackend
+			} else if wireBackend, ok := backend.(WireBackend); ok {
+				h.backend = wireBackend
 			} else {
 				UseExitf("incorrect backend '%s' for fcgiAgent\n", name)
 			}
@@ -124,7 +124,7 @@ func (h *fcgiAgent) IsCache() bool { return h.cacher != nil }
 func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 	var (
 		content  any
-		fConn    PConn
+		fConn    WConn
 		fErr     error
 		fContent any
 	)
@@ -237,7 +237,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 // poolFCGIStream
 var poolFCGIStream sync.Pool
 
-func getFCGIStream(agent *fcgiAgent, conn PConn) *fcgiStream {
+func getFCGIStream(agent *fcgiAgent, conn WConn) *fcgiStream {
 	var stream *fcgiStream
 	if x := poolFCGIStream.Get(); x == nil {
 		stream = new(fcgiStream)
@@ -266,12 +266,12 @@ type fcgiStream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	agent  *fcgiAgent // associated agent
-	conn   PConn      // associated conn
+	conn   WConn      // associated conn
 	region Region     // a region-based memory pool
 	// Stream states (zeros)
 }
 
-func (s *fcgiStream) onUse(agent *fcgiAgent, conn PConn) {
+func (s *fcgiStream) onUse(agent *fcgiAgent, conn WConn) {
 	s.agent = agent
 	s.conn = conn
 	s.region.Init()

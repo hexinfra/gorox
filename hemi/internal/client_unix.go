@@ -132,15 +132,15 @@ func (b *UnixBackend) createNode(id int32) *unixNode {
 	return node
 }
 
-func (b *UnixBackend) Dial() (PConn, error) {
+func (b *UnixBackend) Dial() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *UnixBackend) FetchConn() (PConn, error) {
+func (b *UnixBackend) FetchConn() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *UnixBackend) StoreConn(conn PConn) {
+func (b *UnixBackend) StoreConn(conn WConn) {
 	xConn := conn.(*XConn)
 	xConn.node.storeConn(xConn)
 }

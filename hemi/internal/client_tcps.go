@@ -141,15 +141,15 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 	return node
 }
 
-func (b *TCPSBackend) Dial() (PConn, error) {
+func (b *TCPSBackend) Dial() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *TCPSBackend) FetchConn() (PConn, error) {
+func (b *TCPSBackend) FetchConn() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *TCPSBackend) StoreConn(conn PConn) {
+func (b *TCPSBackend) StoreConn(conn WConn) {
 	tConn := conn.(*TConn)
 	tConn.node.storeConn(tConn)
 }

@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -186,7 +187,7 @@ func (p *pair) show(place []byte) {
 }
 
 // defaultDesc
-var defaultDesc = &desc{
+var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
 	allowQuote: true,
 	allowEmpty: false,
 	allowParam: true,
@@ -657,8 +658,7 @@ func (b *loadBalancer_) getNextByIPHash() int64 {
 	return 0
 }
 func (b *loadBalancer_) getNextByRandom() int64 {
-	// TODO
-	return 0
+	return rand.Int63n(b.numNodes)
 }
 
 // subsWaiter_
@@ -681,5 +681,6 @@ type identifiable_ struct {
 	id uint8
 }
 
-func (i *identifiable_) ID() uint8      { return i.id }
+func (i *identifiable_) ID() uint8 { return i.id }
+
 func (i *identifiable_) setID(id uint8) { i.id = id }

@@ -1,6 +1,6 @@
 <style type="text/css">
 article h1 { text-align:center; background:#d0e0f0; }
-article > ol { padding-left:30px; }
+article > ol { padding-left:30px; list-style-type: none; }
 article h2 { background:#d0f0e0; }
 article h3 { background:#f0e0d0; }
 article h1, article h2, article h3, article h4, article h5, article h6 { padding:5px; }
@@ -16,10 +16,159 @@ article th, article td { border:1px solid #000; }
 
 <article>
 <h1>Gorox 参考手册</h1>
-<p>本文列出 Gorox 各组件的详尽参考。</p>
+<p>本文列出 Gorox 内各组件的详尽参考。</p>
 
 	<h2>目录</h2>
 	<ol>
+		<li><a href="#stage">stage</a></li>
+		<li><a href="#stage-clock">stage &gt; clock</a></li>
+		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
+		<li><a href="#stage-resolv">stage &gt; resolv</a></li>
+		<li><a href="#stage-http1">stage &gt; http1</a></li>
+		<li><a href="#stage-http2">stage &gt; http2</a></li>
+		<li><a href="#stage-http3">stage &gt; http3</a></li>
+		<li><a href="#stage-quic">stage &gt; quic</a></li>
+		<li><a href="#stage-tcps">stage &gt; tcps</a></li>
+		<li><a href="#stage-udps">stage &gt; udps</a></li>
+		<li><a href="#stage-unix">stage &gt; unix</a></li>
+		<li>stage &gt; demo</li>
+		<li>stage &gt; http1Backend</li>
+		<li>stage &gt; http2Backend</li>
+		<li>stage &gt; http3Backend</li>
+		<li>stage &gt; quicBackend</li>
+		<li>stage &gt; tcpsBackend</li>
+		<li>stage &gt; udpsBackend</li>
+		<li>stage &gt; unixBackend</li>
+		<li>stage &gt; quicMesher</li>
+		<li>stage &gt; quicMesher &gt; case</li>
+		<li>stage &gt; quicMesher &gt; [case &gt;] quicProxy</li>
+		<li>stage &gt; tcpsMesher</li>
+		<li>stage &gt; tcpsMesher &gt; case</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] echoDealet</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] helloDealet</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] tcpsProxy</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] mysqlEditor</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] redisEditor</li>
+		<li>stage &gt; udpsMesher</li>
+		<li>stage &gt; udpsMesher &gt; case</li>
+		<li>stage &gt; udpsMesher &gt; [case &gt;] dnsDealet</li>
+		<li>stage &gt; udpsMesher &gt; [case &gt;] udpsProxy</li>
+		<li>stage &gt; svc</li>
+		<li>stage &gt; localStater</li>
+		<li>stage &gt; redisStater</li>
+		<li>stage &gt; localCacher</li>
+		<li>stage &gt; redisCacher</li>
+		<li>stage &gt; app</li>
+		<li>stage &gt; app &gt; rule</li>
+		<li>stage &gt; app &gt; [rule &gt;] accessChecker</li>
+		<li>stage &gt; app &gt; [rule &gt;] favicon</li>
+		<li>stage &gt; app &gt; [rule &gt;] hostnameHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] httpsHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] limitHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] refererHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] rewriteHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] sitex</li>
+		<li>stage &gt; app &gt; [rule &gt;] webdavHandlet</li>
+		<li>stage &gt; app &gt; [rule &gt;] ajpAgent</li>
+		<li>stage &gt; app &gt; [rule &gt;] fcgiAgent</li>
+		<li>stage &gt; app &gt; [rule &gt;] http1Proxy</li>
+		<li>stage &gt; app &gt; [rule &gt;] http2Proxy</li>
+		<li>stage &gt; app &gt; [rule &gt;] http3Proxy</li>
+		<li>stage &gt; app &gt; [rule &gt;] static</li>
+		<li>stage &gt; app &gt; [rule &gt;] uwsgiAgent</li>
+		<li>stage &gt; app &gt; [rule &gt;] gzipReviser</li>
+		<li>stage &gt; app &gt; [rule &gt;] headReviser</li>
+		<li>stage &gt; app &gt; [rule &gt;] replaceReviser</li>
+		<li>stage &gt; app &gt; [rule &gt;] ssiReviser</li>
+		<li>stage &gt; app &gt; [rule &gt;] wrapReviser</li>
+		<li>stage &gt; app &gt; [rule &gt;] helloSocklet</li>
+		<li>stage &gt; app &gt; [rule &gt;] sock1Proxy</li>
+		<li>stage &gt; app &gt; [rule &gt;] sock2Proxy</li>
+		<li>stage &gt; app &gt; [rule &gt;] sock3Proxy</li>
+		<li>stage &gt; echoServer</li>
+		<li>stage &gt; socksServer</li>
+		<li>stage &gt; http3Server</li>
+		<li>stage &gt; httpxServer</li>
+		<li>stage &gt; cleanCronjob</li>
+		<li>stage &gt; statCronjob</li>
+	</ol>
+
+	<h2>组件</h2>
+	<ol>
+		<li id="stage">
+			<h3>stage</h3>
+			<ul>
+				<li>logFile</li>
+				<li>cpuFile</li>
+				<li>hepFile</li>
+			</ul>
+		</li>
+		<li id="stage-clock">
+			<h3>stage &gt; clock</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-fcache">
+			<h3>stage &gt; fcache</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-resolv">
+			<h3>stage &gt; resolv</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-http1">
+			<h3>stage &gt; http1</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-http2">
+			<h3>stage &gt; http2</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-http3">
+			<h3>stage &gt; http3</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-quic">
+			<h3>stage &gt; quic</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-tcps">
+			<h3>stage &gt; tcps</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-udps">
+			<h3>stage &gt; udps</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-unix">
+			<h3>stage &gt; unix</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-demo">
+			<h3>stage &gt; demo</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
 	</ol>
 
 </article>

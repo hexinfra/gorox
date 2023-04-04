@@ -1497,7 +1497,7 @@ type httpOut_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [192]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [128]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	block Block       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing block chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)

@@ -10,6 +10,7 @@ package internal
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -491,6 +492,7 @@ func (s *Stage) Start(id int32) {
 	}
 
 	// Init running environment
+	rand.Seed(time.Now().UnixNano())
 	if err := os.Chdir(BaseDir()); err != nil {
 		EnvExitln(err.Error())
 	}

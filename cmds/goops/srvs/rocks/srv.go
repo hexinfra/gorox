@@ -158,7 +158,6 @@ func (c *goroxConn) serve() { // goroutine
 	defer c.closeConn()
 	for i := 0; i < 10; i++ {
 		fmt.Fprintf(c.tcpConn, "id=%d\n", c.id)
-		time.Sleep(time.Second)
 	}
 }
 

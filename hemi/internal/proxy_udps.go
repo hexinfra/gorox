@@ -43,5 +43,6 @@ func (d *udpsProxy) OnPrepare() {
 
 func (d *udpsProxy) Deal(conn *UDPSConn) (next bool) {
 	// TODO
+	// NOTE: if configured as forward proxy, use SOCKS
 	return
 }

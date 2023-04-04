@@ -38,7 +38,7 @@ desktop.ini
 /hemi/example/vars
 /hemi/example/example
 
-/hemi/official/logs
-/hemi/official/temp
-/hemi/official/vars
-/hemi/official/official
+/hemi/gosites/logs
+/hemi/gosites/temp
+/hemi/gosites/vars
+/hemi/gosites/gosites

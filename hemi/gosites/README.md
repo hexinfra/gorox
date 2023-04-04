@@ -4,4 +4,4 @@ To build:
 
 To run:
 
-  shell> ./official
+  shell> ./gosites

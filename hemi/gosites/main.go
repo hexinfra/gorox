@@ -6,16 +6,16 @@
 package main
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/official/apps"
+	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
 )
 
 import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
-Official (%s)
+Gosites (%s)
 ================================================================================
 
-  official [ACTION] [OPTIONS]
+  gosites [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -50,7 +50,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: official-leader.log in logs dir)
+  -log    <path>      # leader log file (default: gosites-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -64,5 +64,5 @@ OPTIONS
 `
 
 func main() {
-	process.Main("official", usage, 0, "127.0.0.1:9525")
+	process.Main("gosites", usage, 0, "127.0.0.1:9525")
 }

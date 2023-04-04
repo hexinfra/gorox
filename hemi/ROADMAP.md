@@ -11,7 +11,7 @@ Roadmap
   * [TODO] http cache support.
   * [TODO] web mvc framework. requires a strong standard like jakarta servlet.
   * [TODO] documentation.
-  * [TODO] official sites.
+  * [TODO] official websites.
   * [TODO] fcache.
   * [TODO] booking.
   * [TODO] goops design and implementation.

@@ -3,13 +3,13 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// SOCKS 5 server.
+// This is a hello server showing hot to use Gorox to host a server.
 
-package socks
+package hello
 
 import (
 	"context"
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/libraries/system"
 	"net"
 	"sync"
@@ -17,42 +17,42 @@ import (
 )
 
 func init() {
-	RegisterServer("socksServer", func(name string, stage *Stage) Server {
-		s := new(socksServer)
+	RegisterServer("helloServer", func(name string, stage *Stage) Server {
+		s := new(helloServer)
 		s.onCreate(name, stage)
 		return s
 	})
 }
 
-// socksServer
-type socksServer struct {
+// helloServer
+type helloServer struct {
 	// Mixins
 	Server_
 	// Assocs
 	// States
-	gates []*socksGate
+	gates []*helloGate
 }
 
-func (s *socksServer) onCreate(name string, stage *Stage) {
+func (s *helloServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
-func (s *socksServer) OnShutdown() {
+func (s *helloServer) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}
 }
 
-func (s *socksServer) OnConfigure() {
+func (s *helloServer) OnConfigure() {
 	s.Server_.OnConfigure()
 }
-func (s *socksServer) OnPrepare() {
+func (s *helloServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 
-func (s *socksServer) Serve() { // goroutine
+func (s *helloServer) Serve() { // goroutine
 	for id := int32(0); id < s.NumGates(); id++ {
-		gate := new(socksGate)
+		gate := new(helloGate)
 		gate.init(s, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
@@ -63,27 +63,27 @@ func (s *socksServer) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("socksServer=%s done\n", s.Name())
+		Debugf("helloServer=%s done\n", s.Name())
 	}
 	s.Stage().SubDone()
 }
 
-// socksGate
-type socksGate struct {
+// helloGate
+type helloGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *socksServer
+	server *helloServer
 	// States
 	gate *net.TCPListener
 }
 
-func (g *socksGate) init(server *socksServer, id int32) {
+func (g *helloGate) init(server *helloServer, id int32) {
 	g.Gate_.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 
-func (g *socksGate) open() error {
+func (g *helloGate) open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
@@ -94,12 +94,12 @@ func (g *socksGate) open() error {
 	}
 	return err
 }
-func (g *socksGate) shutdown() error {
+func (g *helloGate) shutdown() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
 
-func (g *socksGate) serve() { // goroutine
+func (g *helloGate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -114,79 +114,78 @@ func (g *socksGate) serve() { // goroutine
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			socksConn := getSocksConn(connID, g.Stage(), g.server, g, tcpConn)
-			go socksConn.serve() // socksConn is put to pool in serve()
+			helloConn := getHelloConn(connID, g.Stage(), g.server, g, tcpConn)
+			go helloConn.serve() // helloConn is put to pool in serve()
 			connID++
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("socksGate=%d done\n", g.ID())
+		Debugf("helloGate=%d done\n", g.ID())
 	}
 	g.server.SubDone()
 }
 
-func (g *socksGate) onConnectionClosed() {
+func (g *helloGate) onConnectionClosed() {
 	g.DecConns()
 }
-func (g *socksGate) justClose(tcpConn *net.TCPConn) {
+func (g *helloGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
 }
 
-// poolSocksConn
-var poolSocksConn sync.Pool
+// poolHelloConn
+var poolHelloConn sync.Pool
 
-func getSocksConn(id int64, stage *Stage, server *socksServer, gate *socksGate, netConn *net.TCPConn) *socksConn {
-	var conn *socksConn
-	if x := poolSocksConn.Get(); x == nil {
-		conn = new(socksConn)
+func getHelloConn(id int64, stage *Stage, server *helloServer, gate *helloGate, netConn *net.TCPConn) *helloConn {
+	var conn *helloConn
+	if x := poolHelloConn.Get(); x == nil {
+		conn = new(helloConn)
 	} else {
-		conn = x.(*socksConn)
+		conn = x.(*helloConn)
 	}
 	conn.onGet(id, stage, server, gate, netConn)
 	return conn
 }
-func putSocksConn(conn *socksConn) {
+func putHelloConn(conn *helloConn) {
 	conn.onPut()
-	poolSocksConn.Put(conn)
+	poolHelloConn.Put(conn)
 }
 
-// socksConn
-type socksConn struct {
+// helloConn
+type helloConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64
 	stage   *Stage
-	server  *socksServer
-	gate    *socksGate
+	server  *helloServer
+	gate    *helloGate
 	netConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *socksConn) onGet(id int64, stage *Stage, server *socksServer, gate *socksGate, netConn *net.TCPConn) {
+func (c *helloConn) onGet(id int64, stage *Stage, server *helloServer, gate *helloGate, netConn *net.TCPConn) {
 	c.id = id
 	c.stage = stage
 	c.server = server
 	c.gate = gate
 	c.netConn = netConn
 }
-func (c *socksConn) onPut() {
+func (c *helloConn) onPut() {
 	c.stage = nil
 	c.server = nil
 	c.gate = nil
 	c.netConn = nil
 }
 
-func (c *socksConn) serve() { // goroutine
-	defer putSocksConn(c)
-
-	c.netConn.Write([]byte("not implemented yet"))
+func (c *helloConn) serve() { // goroutine
+	defer putHelloConn(c)
+	c.netConn.Write([]byte("hello, world!"))
 	c.closeConn()
 }
 
-func (c *socksConn) closeConn() {
+func (c *helloConn) closeConn() {
 	c.netConn.Close()
 	c.gate.onConnectionClosed()
 }

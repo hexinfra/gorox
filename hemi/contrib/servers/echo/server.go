@@ -111,6 +111,7 @@ func (g *echoGate) serve() { // goroutine
 				continue
 			}
 		}
+		g.IncSub(1)
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -119,7 +120,10 @@ func (g *echoGate) serve() { // goroutine
 			connID++
 		}
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	g.WaitSubs() // conns. TODO: max timeout?
+	if IsDebug(2) {
+		Debugf("echoGate=%d done\n", g.ID())
+	}
 	g.server.SubDone()
 }
 

@@ -97,13 +97,14 @@ func (s *RocksServer) Serve() { // goroutine
 				continue
 			}
 		}
+		s.IncSub(1)
 		conn := new(goroxConn)
 		conn.init(s.stage, s, connID, tcpConn)
 		s.addConn(conn)
 		go conn.serve()
 		connID++
 	}
-	// TODO: waiting for all connections end. Use sync.Cond?
+	s.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
 		Debugf("rocksServer=%s done\n", s.Name())
 	}

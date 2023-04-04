@@ -22,13 +22,13 @@ var ( // core funcs
 	RegisterTCPSEditor = internal.RegisterTCPSEditor
 	RegisterUDPSDealet = internal.RegisterUDPSDealet
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
+	RegisterSvcInit    = internal.RegisterSvcInit
 	RegisterStater     = internal.RegisterStater
 	RegisterCacher     = internal.RegisterCacher
 	RegisterAppInit    = internal.RegisterAppInit
 	RegisterHandlet    = internal.RegisterHandlet
 	RegisterReviser    = internal.RegisterReviser
 	RegisterSocklet    = internal.RegisterSocklet
-	RegisterSvcInit    = internal.RegisterSvcInit
 	RegisterServer     = internal.RegisterServer
 	RegisterCronjob    = internal.RegisterCronjob
 
@@ -122,19 +122,21 @@ type ( // core types
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
+	Svc        = internal.Svc        // supports both HRPC and gRPC
+	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
+
 	Stater  = internal.Stater
 	Session = internal.Session
 
 	Cacher  = internal.Cacher
 	Hobject = internal.Hobject
 
-	Block = internal.Block
-
 	App      = internal.App
 	Handlet  = internal.Handlet
 	Handle   = internal.Handle
 	Router   = internal.Router
 	Reviser  = internal.Reviser
+	Block    = internal.Block
 	Socklet  = internal.Socklet
 	Rule     = internal.Rule
 	Request  = internal.Request
@@ -143,9 +145,6 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
-	Svc        = internal.Svc        // supports both HRPC and gRPC
-	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
-
 	Server  = internal.Server
 	Cronjob = internal.Cronjob
 )
@@ -153,8 +152,6 @@ type ( // core types
 type ( // core mixins
 	Component_ = internal.Component_
 
-	Stater_     = internal.Stater_
-	Cacher_     = internal.Cacher_
 	QUICDealet_ = internal.QUICDealet_
 	QUICEditor_ = internal.QUICEditor_
 	TCPSDealet_ = internal.TCPSDealet_
@@ -163,6 +160,8 @@ type ( // core mixins
 	UDPSEditor_ = internal.UDPSEditor_
 	Server_     = internal.Server_
 	Gate_       = internal.Gate_
+	Stater_     = internal.Stater_
+	Cacher_     = internal.Cacher_
 	Handlet_    = internal.Handlet_
 	Reviser_    = internal.Reviser_
 	Socklet_    = internal.Socklet_

@@ -31,39 +31,7 @@ func _newConfig() *config {
 		"logsDir": LogsDir(),
 		"tempDir": TempDir(),
 		"varsDir": VarsDir(),
-	}, varCodes, signedComps)
-	return c
-}
-
-const ( // comp list
-	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate
-	compUniture               // ...
-	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend, UnixBackend
-	compQUICMesher            // quicMesher
-	compQUICDealet            // quicProxy, ...
-	compQUICEditor            // ...
-	compTCPSMesher            // tcpsMesher
-	compTCPSDealet            // tcpsProxy, ...
-	compTCPSEditor            // ...
-	compUDPSMesher            // udpsMesher
-	compUDPSDealet            // udpsProxy, ...
-	compUDPSEditor            // ...
-	compCase                  // case
-	compStater                // localStater, redisStater, ...
-	compCacher                // localCacher, redisCacher, ...
-	compApp                   // app
-	compHandlet               // static, ...
-	compReviser               // gzipReviser, wrapReviser, ...
-	compSocklet               // helloSocklet, ...
-	compRule                  // rule
-	compSvc                   // svc
-	compServer                // httpxServer, echoServer, ...
-	compCronjob               // cleanCronjob, statCronjob, ...
-)
-
-var (
-	varCodes = map[string]int16{ // predefined variables for config
+	}, map[string]int16{
 		// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go
 		"srcHost": 0,
 		"srcPort": 1,
@@ -91,24 +59,8 @@ var (
 		"encodedPath": 7, // /abc, /%cc%dd
 		"queryString": 8, // ?x=y, ?y=z&z=%ff
 		"contentType": 9, // text/html; charset=utf-8
-	}
-	signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
-		"stage":      compStage,
-		"quicMesher": compQUICMesher,
-		"tcpsMesher": compTCPSMesher,
-		"udpsMesher": compUDPSMesher,
-		"case":       compCase,
-		"app":        compApp,
-		"rule":       compRule,
-		"svc":        compSvc,
-	}
-)
-
-func signComp(sign string, comp int16) {
-	if have, signed := signedComps[sign]; signed {
-		BugExitf("conflicting sign: comp=%d sign=%s\n", have, sign)
-	}
-	signedComps[sign] = comp
+	}, signedComps)
+	return c
 }
 
 // config applies configuration and creates a new stage.

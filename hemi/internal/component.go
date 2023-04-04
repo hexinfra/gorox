@@ -273,3 +273,48 @@ func (d compDict[T]) goWalk(method func(T)) {
 		go method(component)
 	}
 }
+
+const ( // comp list
+	compStage      = 1 + iota // stage
+	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate
+	compUniture               // ...
+	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend, UnixBackend
+	compQUICMesher            // quicMesher
+	compQUICDealet            // quicProxy, ...
+	compQUICEditor            // ...
+	compTCPSMesher            // tcpsMesher
+	compTCPSDealet            // tcpsProxy, ...
+	compTCPSEditor            // ...
+	compUDPSMesher            // udpsMesher
+	compUDPSDealet            // udpsProxy, ...
+	compUDPSEditor            // ...
+	compCase                  // case
+	compStater                // localStater, redisStater, ...
+	compCacher                // localCacher, redisCacher, ...
+	compApp                   // app
+	compHandlet               // static, ...
+	compReviser               // gzipReviser, wrapReviser, ...
+	compSocklet               // helloSocklet, ...
+	compRule                  // rule
+	compSvc                   // svc
+	compServer                // httpxServer, echoServer, ...
+	compCronjob               // cleanCronjob, statCronjob, ...
+)
+
+var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
+	"stage":      compStage,
+	"quicMesher": compQUICMesher,
+	"tcpsMesher": compTCPSMesher,
+	"udpsMesher": compUDPSMesher,
+	"case":       compCase,
+	"app":        compApp,
+	"rule":       compRule,
+	"svc":        compSvc,
+}
+
+func signComp(sign string, comp int16) {
+	if have, signed := signedComps[sign]; signed {
+		BugExitf("conflicting sign: comp=%d sign=%s\n", have, sign)
+	}
+	signedComps[sign] = comp
+}

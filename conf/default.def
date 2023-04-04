@@ -90,7 +90,7 @@ stage {
 		.withStater           = ""
 
 		// handlets
-		accessHandlet "ah" {
+		accessChecker "ah" {
 		}
 		ajpAgent "ah" {
 		}

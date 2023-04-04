@@ -13,14 +13,14 @@ import (
 
 func init() {
 	RegisterHandlet("rewriter", func(name string, stage *Stage, app *App) Handlet {
-		h := new(rewriteHandlet)
+		h := new(rewriteChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// rewriteHandlet
-type rewriteHandlet struct {
+// rewriteChecker
+type rewriteChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,21 +29,21 @@ type rewriteHandlet struct {
 	// States
 }
 
-func (h *rewriteHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *rewriteChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *rewriteHandlet) OnShutdown() {
+func (h *rewriteChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *rewriteHandlet) OnConfigure() {
+func (h *rewriteChecker) OnConfigure() {
 }
-func (h *rewriteHandlet) OnPrepare() {
+func (h *rewriteChecker) OnPrepare() {
 }
 
-func (h *rewriteHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *rewriteChecker) Handle(req Request, resp Response) (next bool) {
 	// TODO
 	return true
 }

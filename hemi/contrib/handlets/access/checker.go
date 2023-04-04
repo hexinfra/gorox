@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Access handlets allow limiting access to certain client addresses.
+// Access checkers allow limiting access to certain client addresses.
 
 package access
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterHandlet("accessHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(accessHandlet)
+	RegisterHandlet("accessChecker", func(name string, stage *Stage, app *App) Handlet {
+		h := new(accessChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// accessHandlet
-type accessHandlet struct {
+// accessChecker
+type accessChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,21 +29,21 @@ type accessHandlet struct {
 	// States
 }
 
-func (h *accessHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *accessChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *accessHandlet) OnShutdown() {
+func (h *accessChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *accessHandlet) OnConfigure() {
+func (h *accessChecker) OnConfigure() {
 }
-func (h *accessHandlet) OnPrepare() {
+func (h *accessChecker) OnPrepare() {
 }
 
-func (h *accessHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *accessChecker) Handle(req Request, resp Response) (next bool) {
 	// TODO
 	return true
 }

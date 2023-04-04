@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Referer handlets check referer header.
+// Referer checkers check referer header.
 
 package referer
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterHandlet("refererHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(refererHandlet)
+	RegisterHandlet("refererChecker", func(name string, stage *Stage, app *App) Handlet {
+		h := new(refererChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// refererHandlet
-type refererHandlet struct {
+// refererChecker
+type refererChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,21 +29,21 @@ type refererHandlet struct {
 	// States
 }
 
-func (h *refererHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *refererChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *refererHandlet) OnShutdown() {
+func (h *refererChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *refererHandlet) OnConfigure() {
+func (h *refererChecker) OnConfigure() {
 }
-func (h *refererHandlet) OnPrepare() {
+func (h *refererChecker) OnPrepare() {
 }
 
-func (h *refererHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 	// TODO
 	return true
 }

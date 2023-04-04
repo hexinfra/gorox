@@ -98,7 +98,7 @@ stage {
 		}
 		fcgiAgent "fh" {
 		}
-		hostnameHandlet "hh" {
+		hostnameChecker "hh" {
 		}
 		http1Proxy "hh" {
 		}
@@ -106,13 +106,13 @@ stage {
 		}
 		http3Proxy "hh" {
 		}
-		httpsHandlet "hh" {
+		httpsChecker "hh" {
 		}
-		limitHandlet "lh" {
+		limitChecker "lh" {
 		}
-		refererHandlet "rh" {
+		refererChecker "rh" {
 		}
-		rewriteHandlet "rh" {
+		rewriter "rh" {
 		}
 		sitex "sh" {
 		}

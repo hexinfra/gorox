@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Hostname handlets redirect clients to another hostname.
+// Hostname checkers redirect clients to another hostname.
 
 package hostname
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterHandlet("hostnameHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(hostnameHandlet)
+	RegisterHandlet("hostnameChecker", func(name string, stage *Stage, app *App) Handlet {
+		h := new(hostnameChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// hostnameHandlet
-type hostnameHandlet struct {
+// hostnameChecker
+type hostnameChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -31,16 +31,16 @@ type hostnameHandlet struct {
 	permanent bool
 }
 
-func (h *hostnameHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *hostnameChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *hostnameHandlet) OnShutdown() {
+func (h *hostnameChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *hostnameHandlet) OnConfigure() {
+func (h *hostnameChecker) OnConfigure() {
 	// hostname
 	if v, ok := h.Find("hostname"); ok {
 		if hostname, ok := v.String(); ok {
@@ -49,15 +49,15 @@ func (h *hostnameHandlet) OnConfigure() {
 			UseExitln("invalid hostname")
 		}
 	} else {
-		UseExitln("hostname is required for hostnameHandlet")
+		UseExitln("hostname is required for hostnameChecker")
 	}
 	// permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
 }
-func (h *hostnameHandlet) OnPrepare() {
+func (h *hostnameChecker) OnPrepare() {
 }
 
-func (h *hostnameHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {
 	if req.Hostname() == h.hostname {
 		return true
 	}

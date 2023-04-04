@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Scheme handlets redirect request urls to its HTTPS version.
+// HTTPS checkers redirect request urls to its HTTPS version.
 
 package https
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterHandlet("httpsHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(httpsHandlet)
+	RegisterHandlet("httpsChecker", func(name string, stage *Stage, app *App) Handlet {
+		h := new(httpsChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// httpsHandlet
-type httpsHandlet struct {
+// httpsChecker
+type httpsChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -31,25 +31,25 @@ type httpsHandlet struct {
 	authority string
 }
 
-func (h *httpsHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *httpsChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *httpsHandlet) OnShutdown() {
+func (h *httpsChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *httpsHandlet) OnConfigure() {
+func (h *httpsChecker) OnConfigure() {
 	// permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
 	// authority
 	h.ConfigureString("authority", &h.authority, nil, "")
 }
-func (h *httpsHandlet) OnPrepare() {
+func (h *httpsChecker) OnPrepare() {
 }
 
-func (h *httpsHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {
 	if req.IsHTTPS() {
 		return true
 	}

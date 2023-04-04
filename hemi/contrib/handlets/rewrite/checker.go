@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterHandlet("rewriteHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("rewriter", func(name string, stage *Stage, app *App) Handlet {
 		h := new(rewriteHandlet)
 		h.onCreate(name, stage, app)
 		return h

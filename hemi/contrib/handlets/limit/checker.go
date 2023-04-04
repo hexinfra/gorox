@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterHandlet("limitHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(limitHandlet)
+	RegisterHandlet("limitChecker", func(name string, stage *Stage, app *App) Handlet {
+		h := new(limitChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// limitHandlet
-type limitHandlet struct {
+// limitChecker
+type limitChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,21 +29,21 @@ type limitHandlet struct {
 	// States
 }
 
-func (h *limitHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *limitChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *limitHandlet) OnShutdown() {
+func (h *limitChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *limitHandlet) OnConfigure() {
+func (h *limitChecker) OnConfigure() {
 }
-func (h *limitHandlet) OnPrepare() {
+func (h *limitChecker) OnPrepare() {
 }
 
-func (h *limitHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *limitChecker) Handle(req Request, resp Response) (next bool) {
 	// TODO
 	return true
 }

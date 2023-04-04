@@ -20,7 +20,7 @@ import (
 )
 
 func init() {
-	registerFixture(signHTTP1)
+	registerFixture(signHTTP1Outgate)
 	registerBackend("http1Backend", func(name string, stage *Stage) backend {
 		b := new(HTTP1Backend)
 		b.onCreate(name, stage)
@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-const signHTTP1 = "http1Outgate"
+const signHTTP1Outgate = "http1Outgate"
 
 func createHTTP1Outgate(stage *Stage) *HTTP1Outgate {
 	http1 := new(HTTP1Outgate)
@@ -46,7 +46,7 @@ type HTTP1Outgate struct {
 }
 
 func (f *HTTP1Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP1, stage)
+	f.httpOutgate_.onCreate(signHTTP1Outgate, stage)
 }
 
 func (f *HTTP1Outgate) OnConfigure() {

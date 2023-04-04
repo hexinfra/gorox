@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	registerFixture(signTCPS)
+	registerFixture(signTCPSOutgate)
 	registerBackend("tcpsBackend", func(name string, stage *Stage) backend {
 		b := new(TCPSBackend)
 		b.onCreate(name, stage)
@@ -48,7 +48,7 @@ func (t *tcpsClient_) onPrepare(shell Component) {
 	t.streamHolder_.onPrepare(shell)
 }
 
-const signTCPS = "tcpsOutgate"
+const signTCPSOutgate = "tcpsOutgate"
 
 func createTCPSOutgate(stage *Stage) *TCPSOutgate {
 	tcps := new(TCPSOutgate)
@@ -66,7 +66,7 @@ type TCPSOutgate struct {
 }
 
 func (f *TCPSOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signTCPS, stage)
+	f.outgate_.onCreate(signTCPSOutgate, stage)
 	f.tcpsClient_.onCreate()
 }
 

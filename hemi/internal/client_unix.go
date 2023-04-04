@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	registerFixture(signUnix)
+	registerFixture(signUnixOutgate)
 	registerBackend("unixBackend", func(name string, stage *Stage) backend {
 		b := new(UnixBackend)
 		b.onCreate(name, stage)
@@ -46,7 +46,7 @@ func (u *unixClient_) onPrepare(shell Component) {
 	u.streamHolder_.onPrepare(shell)
 }
 
-const signUnix = "unixOutgate"
+const signUnixOutgate = "unixOutgate"
 
 func createUnixOutgate(stage *Stage) *UnixOutgate {
 	unix := new(UnixOutgate)
@@ -64,7 +64,7 @@ type UnixOutgate struct {
 }
 
 func (f *UnixOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signUnix, stage)
+	f.outgate_.onCreate(signUnixOutgate, stage)
 	f.unixClient_.onCreate()
 }
 

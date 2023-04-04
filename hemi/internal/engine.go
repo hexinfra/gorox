@@ -157,13 +157,13 @@ func (s *Stage) onCreate() {
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolver] = s.resolver
-	s.fixtures[signHTTP1] = s.http1Outgate
-	s.fixtures[signHTTP2] = s.http2Outgate
-	s.fixtures[signHTTP3] = s.http3Outgate
-	s.fixtures[signQUIC] = s.quicOutgate
-	s.fixtures[signTCPS] = s.tcpsOutgate
-	s.fixtures[signUDPS] = s.udpsOutgate
-	s.fixtures[signUnix] = s.unixOutgate
+	s.fixtures[signHTTP1Outgate] = s.http1Outgate
+	s.fixtures[signHTTP2Outgate] = s.http2Outgate
+	s.fixtures[signHTTP3Outgate] = s.http3Outgate
+	s.fixtures[signQUICOutgate] = s.quicOutgate
+	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
+	s.fixtures[signUDPSOutgate] = s.udpsOutgate
+	s.fixtures[signUnixOutgate] = s.unixOutgate
 
 	s.unitures = make(compDict[Uniture])
 	s.backends = make(compDict[backend])

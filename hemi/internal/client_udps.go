@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	registerFixture(signUDPS)
+	registerFixture(signUDPSOutgate)
 	registerBackend("udpsBackend", func(name string, stage *Stage) backend {
 		b := new(UDPSBackend)
 		b.onCreate(name, stage)
@@ -43,7 +43,7 @@ func (u *udpsClient_) onConfigure(shell Component) {
 func (u *udpsClient_) onPrepare(shell Component) {
 }
 
-const signUDPS = "udpsOutgate"
+const signUDPSOutgate = "udpsOutgate"
 
 func createUDPSOutgate(stage *Stage) *UDPSOutgate {
 	udps := new(UDPSOutgate)
@@ -61,7 +61,7 @@ type UDPSOutgate struct {
 }
 
 func (f *UDPSOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signUDPS, stage)
+	f.outgate_.onCreate(signUDPSOutgate, stage)
 	f.udpsClient_.onCreate()
 }
 

@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	registerFixture(signQUIC)
+	registerFixture(signQUICOutgate)
 	registerBackend("quicBackend", func(name string, stage *Stage) backend {
 		b := new(QUICBackend)
 		b.onCreate(name, stage)
@@ -46,7 +46,7 @@ func (q *quicClient_) onPrepare(shell Component) {
 	q.streamHolder_.onPrepare(shell)
 }
 
-const signQUIC = "quicOutgate"
+const signQUICOutgate = "quicOutgate"
 
 func createQUICOutgate(stage *Stage) *QUICOutgate {
 	quic := new(QUICOutgate)
@@ -64,7 +64,7 @@ type QUICOutgate struct {
 }
 
 func (f *QUICOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signQUIC, stage)
+	f.outgate_.onCreate(signQUICOutgate, stage)
 	f.quicClient_.onCreate()
 }
 

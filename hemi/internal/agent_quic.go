@@ -19,16 +19,15 @@ func init() {
 type quicAgent struct {
 	// Mixins
 	QUICDealet_
+	proxy_
 	// Assocs
-	stage   *Stage
-	backend *QUICBackend
-	mesher  *QUICMesher
+	mesher *QUICMesher
 	// States
 }
 
 func (d *quicAgent) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	d.MakeComp(name)
-	d.stage = stage
+	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
 func (d *quicAgent) OnShutdown() {
@@ -36,24 +35,10 @@ func (d *quicAgent) OnShutdown() {
 }
 
 func (d *quicAgent) OnConfigure() {
-	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else if quicBackend, ok := backend.(*QUICBackend); ok {
-				d.backend = quicBackend
-			} else {
-				UseExitf("incorrect backend '%s' for quicAgent\n", name)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for quicAgent")
-	}
+	d.proxy_.onConfigure(d)
 }
 func (d *quicAgent) OnPrepare() {
+	d.proxy_.onPrepare(d)
 }
 
 func (d *quicAgent) Deal(conn *QUICConn, stream *QUICStream) (next bool) {

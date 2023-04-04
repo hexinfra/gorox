@@ -19,16 +19,15 @@ func init() {
 type udpsAgent struct {
 	// Mixins
 	UDPSDealet_
+	proxy_
 	// Assocs
-	stage   *Stage
-	backend *UDPSBackend
-	mesher  *UDPSMesher
+	mesher *UDPSMesher
 	// States
 }
 
 func (d *udpsAgent) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	d.MakeComp(name)
-	d.stage = stage
+	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
 func (d *udpsAgent) OnShutdown() {
@@ -36,24 +35,10 @@ func (d *udpsAgent) OnShutdown() {
 }
 
 func (d *udpsAgent) OnConfigure() {
-	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else if udpsBackend, ok := backend.(*UDPSBackend); ok {
-				d.backend = udpsBackend
-			} else {
-				UseExitf("incorrect backend '%s' for udpsAgent\n", name)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for udpsAgent")
-	}
+	d.proxy_.onConfigure(d)
 }
 func (d *udpsAgent) OnPrepare() {
+	d.proxy_.onPrepare(d)
 }
 
 func (d *udpsAgent) Deal(conn *UDPSConn) (next bool) {

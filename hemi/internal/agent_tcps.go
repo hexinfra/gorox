@@ -19,16 +19,15 @@ func init() {
 type tcpsAgent struct {
 	// Mixins
 	TCPSDealet_
+	proxy_
 	// Assocs
-	stage   *Stage
-	backend *TCPSBackend
-	mesher  *TCPSMesher
+	mesher *TCPSMesher
 	// States
 }
 
 func (d *tcpsAgent) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
-	d.stage = stage
+	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
 func (d *tcpsAgent) OnShutdown() {
@@ -36,24 +35,10 @@ func (d *tcpsAgent) OnShutdown() {
 }
 
 func (d *tcpsAgent) OnConfigure() {
-	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
-				d.backend = tcpsBackend
-			} else {
-				UseExitf("incorrect backend '%s' for tcpsAgent\n", name)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for tcpsAgent")
-	}
+	d.proxy_.onConfigure(d)
 }
 func (d *tcpsAgent) OnPrepare() {
+	d.proxy_.onPrepare(d)
 }
 
 func (d *tcpsAgent) Deal(conn *TCPSConn) (next bool) {

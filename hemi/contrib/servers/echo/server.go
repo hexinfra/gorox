@@ -129,6 +129,7 @@ func (g *echoGate) serve() { // goroutine
 
 func (g *echoGate) onConnectionClosed() {
 	g.DecConns()
+	g.SubDone()
 }
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()

@@ -121,16 +121,19 @@ func (s *RocksServer) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *RocksServer) NumConns() int { // used by apps
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	return len(s.conns)
 }
 func (s *RocksServer) addConn(conn *goroxConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.conns[conn.id] = conn
 }
 func (s *RocksServer) delConn(conn *goroxConn) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	delete(s.conns, conn.id)
 }
 
@@ -162,4 +165,5 @@ func (c *goroxConn) serve() { // goroutine
 func (c *goroxConn) closeConn() {
 	c.tcpConn.Close()
 	c.server.delConn(c)
+	c.server.SubDone()
 }

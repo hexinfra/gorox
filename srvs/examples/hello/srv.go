@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// This is a hello server showing hot to use Gorox to host a server.
+// This is a hello server showing how to use Gorox to host a server.
 
 package hello
 
@@ -128,6 +128,7 @@ func (g *helloGate) serve() { // goroutine
 
 func (g *helloGate) onConnectionClosed() {
 	g.DecConns()
+	g.SubDone()
 }
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()

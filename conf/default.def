@@ -56,10 +56,31 @@ stage {
 
 	// meshers
 	quicMesher "qm" {
+		address         = string,required
+		tlsMode         = false
+		readTimeout     = 60s
+		writeTimeout    = 60s
+		numGates        = runtime.NumCPU()
+		maxConnsPerGate = 100000
+		// cases
 	}
 	tcpsMesher "tm" {
+		address         = string,required
+		tlsMode         = false
+		readTimeout     = 60s
+		writeTimeout    = 60s
+		numGates        = runtime.NumCPU()
+		maxConnsPerGate = 100000
+		// cases
 	}
 	udpsMesher "um" {
+		address         = string,required
+		tlsMode         = false
+		readTimeout     = 60s
+		writeTimeout    = 60s
+		numGates        = runtime.NumCPU()
+		maxConnsPerGate = 100000
+		// cases
 	}
 
 	// staters
@@ -92,19 +113,7 @@ stage {
 		// handlets
 		accessChecker "ah" {
 		}
-		ajpAgent "ah" {
-		}
-		favicon "fh" {
-		}
-		fcgiAgent "fh" {
-		}
 		hostnameChecker "hh" {
-		}
-		http1Proxy "hh" {
-		}
-		http2Proxy "hh" {
-		}
-		http3Proxy "hh" {
 		}
 		httpsChecker "hh" {
 		}
@@ -113,6 +122,18 @@ stage {
 		refererChecker "rh" {
 		}
 		rewriter "rh" {
+		}
+		ajpAgent "ah" {
+		}
+		favicon "fh" {
+		}
+		fcgiAgent "fh" {
+		}
+		http1Proxy "hh" {
+		}
+		http2Proxy "hh" {
+		}
+		http3Proxy "hh" {
 		}
 		sitex "sh" {
 		}
@@ -124,8 +145,30 @@ stage {
 		}
 
 		// revisers
+		gzipReviser "gr" {
+		}
+		headReviser "hr" {
+		}
+		replaceReviser "rr" {
+		}
+		ssiReviser "sr" {
+		}
+		wrapReviser "wr" {
+		}
+
 		// socklets
+		helloSocklet "hs" {
+		}
+		sock1Proxy "s1p" {
+		}
+		sock2Proxy "s2p" {
+		}
+		sock3Proxy "s3p" {
+		}
+
 		// rules
+		rule "r1" condition {
+		}
 	}
 
 	// svcs
@@ -138,14 +181,14 @@ stage {
 	http3Server "h3s" {
 	}
 	httpxServer "hxs" {
-		address         = ":80"
+		address         = string,required
 		tlsMode         = false
 		readTimeout     = 60s
 		writeTimeout    = 60s
-		numGates        = 0
+		numGates        = runtime.NumCPU()
 		maxConnsPerGate = 100000
-		forApps         = ("a")
-		forSvcs         = ("s")
+		forApps         = ()
+		forSvcs         = ()
 		hrpcMode        = false
 		enableTCPTun    = false
 		enableUDPTun    = false

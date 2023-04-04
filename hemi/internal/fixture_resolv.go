@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// The name resolver. Resolves DNS and names.
+// The name resolver. Resolveres DNS and names.
 
 package internal
 
@@ -12,20 +12,20 @@ import (
 )
 
 func init() {
-	registerFixture(signResolv)
+	registerFixture(signResolver)
 }
 
-const signResolv = "resolv"
+const signResolver = "resolver"
 
-func createResolv(stage *Stage) *resolvFixture {
-	resolv := new(resolvFixture)
-	resolv.onCreate(stage)
-	resolv.setShell(resolv)
-	return resolv
+func createResolver(stage *Stage) *resolverFixture {
+	resolver := new(resolverFixture)
+	resolver.onCreate(stage)
+	resolver.setShell(resolver)
+	return resolver
 }
 
-// resolvFixture
-type resolvFixture struct {
+// resolverFixture
+type resolverFixture struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -33,30 +33,30 @@ type resolvFixture struct {
 	// States
 }
 
-func (f *resolvFixture) onCreate(stage *Stage) {
-	f.MakeComp(signResolv)
+func (f *resolverFixture) onCreate(stage *Stage) {
+	f.MakeComp(signResolver)
 	f.stage = stage
 }
-func (f *resolvFixture) OnShutdown() {
+func (f *resolverFixture) OnShutdown() {
 	close(f.Shut)
 }
 
-func (f *resolvFixture) OnConfigure() {
+func (f *resolverFixture) OnConfigure() {
 }
-func (f *resolvFixture) OnPrepare() {
+func (f *resolverFixture) OnPrepare() {
 }
 
-func (f *resolvFixture) run() { // goroutine
+func (f *resolverFixture) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("resolve done")
+		Debugln("resolver done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *resolvFixture) Resolve(name string) (address string) {
+func (f *resolverFixture) Resolve(name string) (address string) {
 	// TODO
 	return ""
 }

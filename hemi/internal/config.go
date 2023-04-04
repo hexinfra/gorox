@@ -37,7 +37,7 @@ func _newConfig() *config {
 
 const ( // comp list
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, resolv, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate
+	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate
 	compUniture               // ...
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend, UnixBackend
 	compQUICMesher            // quicMesher

@@ -107,7 +107,7 @@ type Stage struct {
 	// Assocs
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
-	resolv       *resolvFixture        // for fast accessing
+	resolver     *resolverFixture      // for fast accessing
 	http1Outgate *HTTP1Outgate         // for fast accessing
 	http2Outgate *HTTP2Outgate         // for fast accessing
 	http3Outgate *HTTP3Outgate         // for fast accessing
@@ -144,7 +144,7 @@ func (s *Stage) onCreate() {
 
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
-	s.resolv = createResolv(s)
+	s.resolver = createResolver(s)
 	s.http1Outgate = createHTTP1Outgate(s)
 	s.http2Outgate = createHTTP2Outgate(s)
 	s.http3Outgate = createHTTP3Outgate(s)
@@ -156,7 +156,7 @@ func (s *Stage) onCreate() {
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
-	s.fixtures[signResolv] = s.resolv
+	s.fixtures[signResolver] = s.resolver
 	s.fixtures[signHTTP1] = s.http1Outgate
 	s.fixtures[signHTTP2] = s.http2Outgate
 	s.fixtures[signHTTP3] = s.http3Outgate
@@ -237,7 +237,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	s.IncSub(1)
-	s.resolv.OnShutdown()
+	s.resolver.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -438,7 +438,7 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
-func (s *Stage) Resolv() *resolvFixture      { return s.resolv }
+func (s *Stage) Resolver() *resolverFixture  { return s.resolver }
 func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
 func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }

@@ -17,7 +17,7 @@ stage {
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
-	resolv {
+	resolver {
 	}
 	http1Outgate {
 	}

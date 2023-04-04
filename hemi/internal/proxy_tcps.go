@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS agent dealet implementation.
+// TCP/TLS proxy dealet implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSDealet("tcpsAgent", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet {
-		d := new(tcpsAgent)
+	RegisterTCPSDealet("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet {
+		d := new(tcpsProxy)
 		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
 
-// tcpsAgent relays TCP/TLS connections to another TCP/TLS server.
-type tcpsAgent struct {
+// tcpsProxy relays TCP/TLS connections to another TCP/TLS server.
+type tcpsProxy struct {
 	// Mixins
 	TCPSDealet_
 	proxy_
@@ -25,23 +25,23 @@ type tcpsAgent struct {
 	// States
 }
 
-func (d *tcpsAgent) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
-func (d *tcpsAgent) OnShutdown() {
+func (d *tcpsProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *tcpsAgent) OnConfigure() {
+func (d *tcpsProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
-func (d *tcpsAgent) OnPrepare() {
+func (d *tcpsProxy) OnPrepare() {
 	d.proxy_.onPrepare(d)
 }
 
-func (d *tcpsAgent) Deal(conn *TCPSConn) (next bool) {
+func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) {
 	// TODO
 	return
 }

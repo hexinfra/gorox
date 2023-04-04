@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC agent dealet implementation.
+// QUIC proxy dealet implementation.
 
 package internal
 
 func init() {
-	RegisterQUICDealet("quicAgent", func(name string, stage *Stage, mesher *QUICMesher) QUICDealet {
-		d := new(quicAgent)
+	RegisterQUICDealet("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealet {
+		d := new(quicProxy)
 		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
 
-// quicAgent relays QUIC connections to another QUIC server.
-type quicAgent struct {
+// quicProxy relays QUIC connections to another QUIC server.
+type quicProxy struct {
 	// Mixins
 	QUICDealet_
 	proxy_
@@ -25,23 +25,23 @@ type quicAgent struct {
 	// States
 }
 
-func (d *quicAgent) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	d.MakeComp(name)
 	d.proxy_.onCreate(stage)
 	d.mesher = mesher
 }
-func (d *quicAgent) OnShutdown() {
+func (d *quicProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *quicAgent) OnConfigure() {
+func (d *quicProxy) OnConfigure() {
 	d.proxy_.onConfigure(d)
 }
-func (d *quicAgent) OnPrepare() {
+func (d *quicProxy) OnPrepare() {
 	d.proxy_.onPrepare(d)
 }
 
-func (d *quicAgent) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
+func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

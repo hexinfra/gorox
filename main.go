@@ -14,6 +14,7 @@ import (
 import (
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
+	_ "github.com/hexinfra/gorox/srvs"
 	_ "github.com/hexinfra/gorox/svcs"
 	"github.com/hexinfra/gorox/test"
 )

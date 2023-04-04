@@ -21,9 +21,9 @@ COMPONENTS
 ==========
 
   stage [*]
-    fixture (clock, fcache, resolv, http1, http2, http3, quic, tcps, udps, unix)
+    fixture (clock, fcache, resolv, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate)
     uniture (...)
-    backend (tcpsBackend, udpsBackend, quicBackend, http1Backend, http2Backend, http3Backend)
+    backend (http1Backend, http2Backend, http3Backend, quicBackend, tcpsBackend, udpsBackend, unixBackend)
     mesher (tcpsMesher, udpsMesher, quicMesher)
       dealet (...)
       editor (...)

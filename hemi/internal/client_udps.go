@@ -43,9 +43,9 @@ func (u *udpsClient_) onConfigure(shell Component) {
 func (u *udpsClient_) onPrepare(shell Component) {
 }
 
-const signUDPS = "udps"
+const signUDPS = "udpsOutgate"
 
-func createUDPS(stage *Stage) *UDPSOutgate {
+func createUDPSOutgate(stage *Stage) *UDPSOutgate {
 	udps := new(UDPSOutgate)
 	udps.onCreate(stage)
 	udps.setShell(udps)
@@ -79,7 +79,7 @@ func (f *UDPSOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("udps done")
+		Debugln("udpsOutgate done")
 	}
 	f.stage.SubDone()
 }

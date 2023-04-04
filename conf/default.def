@@ -17,25 +17,25 @@ stage {
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
-	http1 {
-	}
-	http2 {
-	}
-	http3 {
-	}
-	quic {
-	}
 	resolv {
 	}
-	tcps {
+	http1Outgate {
 	}
-	udps {
+	http2Outgate {
 	}
-	unix {
+	http3Outgate {
+	}
+	quicOutgate {
+	}
+	tcpsOutgate {
+	}
+	udpsOutgate {
+	}
+	unixOutgate {
 	}
 
 	// unitures
-	demo {
+	demoUniture {
 	}
 
 	// backends

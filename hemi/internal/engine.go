@@ -105,28 +105,28 @@ type Stage struct {
 	// Mixins
 	Component_
 	// Assocs
-	clock       *clockFixture         // for fast accessing
-	fcache      *fcacheFixture        // for fast accessing
-	resolv      *resolvFixture        // for fast accessing
-	http1       *HTTP1Outgate         // for fast accessing
-	http2       *HTTP2Outgate         // for fast accessing
-	http3       *HTTP3Outgate         // for fast accessing
-	quic        *QUICOutgate          // for fast accessing
-	tcps        *TCPSOutgate          // for fast accessing
-	udps        *UDPSOutgate          // for fast accessing
-	unix        *UnixOutgate          // for fast accessing
-	fixtures    compDict[fixture]     // indexed by sign
-	unitures    compDict[Uniture]     // indexed by sign
-	backends    compDict[backend]     // indexed by backendName
-	quicMeshers compDict[*QUICMesher] // indexed by mesherName
-	tcpsMeshers compDict[*TCPSMesher] // indexed by mesherName
-	udpsMeshers compDict[*UDPSMesher] // indexed by mesherName
-	staters     compDict[Stater]      // indexed by staterName
-	cachers     compDict[Cacher]      // indexed by cacherName
-	apps        compDict[*App]        // indexed by appName
-	svcs        compDict[*Svc]        // indexed by svcName
-	servers     compDict[Server]      // indexed by serverName
-	cronjobs    compDict[Cronjob]     // indexed by sign
+	clock        *clockFixture         // for fast accessing
+	fcache       *fcacheFixture        // for fast accessing
+	resolv       *resolvFixture        // for fast accessing
+	http1Outgate *HTTP1Outgate         // for fast accessing
+	http2Outgate *HTTP2Outgate         // for fast accessing
+	http3Outgate *HTTP3Outgate         // for fast accessing
+	quicOutgate  *QUICOutgate          // for fast accessing
+	tcpsOutgate  *TCPSOutgate          // for fast accessing
+	udpsOutgate  *UDPSOutgate          // for fast accessing
+	unixOutgate  *UnixOutgate          // for fast accessing
+	fixtures     compDict[fixture]     // indexed by sign
+	unitures     compDict[Uniture]     // indexed by sign
+	backends     compDict[backend]     // indexed by backendName
+	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
+	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
+	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
+	staters      compDict[Stater]      // indexed by staterName
+	cachers      compDict[Cacher]      // indexed by cacherName
+	apps         compDict[*App]        // indexed by appName
+	svcs         compDict[*Svc]        // indexed by svcName
+	servers      compDict[Server]      // indexed by serverName
+	cronjobs     compDict[Cronjob]     // indexed by sign
 	// States
 	logFile string // stage's log file
 	logger  *log.Logger
@@ -145,25 +145,25 @@ func (s *Stage) onCreate() {
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
 	s.resolv = createResolv(s)
-	s.http1 = createHTTP1(s)
-	s.http2 = createHTTP2(s)
-	s.http3 = createHTTP3(s)
-	s.quic = createQUIC(s)
-	s.tcps = createTCPS(s)
-	s.udps = createUDPS(s)
-	s.unix = createUnix(s)
+	s.http1Outgate = createHTTP1Outgate(s)
+	s.http2Outgate = createHTTP2Outgate(s)
+	s.http3Outgate = createHTTP3Outgate(s)
+	s.quicOutgate = createQUICOutgate(s)
+	s.tcpsOutgate = createTCPSOutgate(s)
+	s.udpsOutgate = createUDPSOutgate(s)
+	s.unixOutgate = createUnixOutgate(s)
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolv] = s.resolv
-	s.fixtures[signHTTP1] = s.http1
-	s.fixtures[signHTTP2] = s.http2
-	s.fixtures[signHTTP3] = s.http3
-	s.fixtures[signQUIC] = s.quic
-	s.fixtures[signTCPS] = s.tcps
-	s.fixtures[signUDPS] = s.udps
-	s.fixtures[signUnix] = s.unix
+	s.fixtures[signHTTP1] = s.http1Outgate
+	s.fixtures[signHTTP2] = s.http2Outgate
+	s.fixtures[signHTTP3] = s.http3Outgate
+	s.fixtures[signQUIC] = s.quicOutgate
+	s.fixtures[signTCPS] = s.tcpsOutgate
+	s.fixtures[signUDPS] = s.udpsOutgate
+	s.fixtures[signUnix] = s.unixOutgate
 
 	s.unitures = make(compDict[Uniture])
 	s.backends = make(compDict[backend])
@@ -223,13 +223,13 @@ func (s *Stage) OnShutdown() {
 
 	// fixtures
 	s.IncSub(7)
-	go s.http1.OnShutdown() // we don't treat this as goroutine
-	go s.http2.OnShutdown() // we don't treat this as goroutine
-	go s.http3.OnShutdown() // we don't treat this as goroutine
-	go s.quic.OnShutdown()  // we don't treat this as goroutine
-	go s.tcps.OnShutdown()  // we don't treat this as goroutine
-	go s.udps.OnShutdown()  // we don't treat this as goroutine
-	go s.unix.OnShutdown()  // we don't treat this as goroutine
+	go s.http1Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.http2Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.http3Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.unixOutgate.OnShutdown()  // we don't treat this as goroutine
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -436,16 +436,16 @@ func (s *Stage) createCronjob(sign string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) Clock() *clockFixture   { return s.clock }
-func (s *Stage) Fcache() *fcacheFixture { return s.fcache }
-func (s *Stage) Resolv() *resolvFixture { return s.resolv }
-func (s *Stage) HTTP1() *HTTP1Outgate   { return s.http1 }
-func (s *Stage) HTTP2() *HTTP2Outgate   { return s.http2 }
-func (s *Stage) HTTP3() *HTTP3Outgate   { return s.http3 }
-func (s *Stage) QUIC() *QUICOutgate     { return s.quic }
-func (s *Stage) TCPS() *TCPSOutgate     { return s.tcps }
-func (s *Stage) UDPS() *UDPSOutgate     { return s.udps }
-func (s *Stage) Unix() *UnixOutgate     { return s.unix }
+func (s *Stage) Clock() *clockFixture        { return s.clock }
+func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
+func (s *Stage) Resolv() *resolvFixture      { return s.resolv }
+func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
+func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
+func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
+func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
+func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
+func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
+func (s *Stage) UnixOutgate() *UnixOutgate   { return s.unixOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }

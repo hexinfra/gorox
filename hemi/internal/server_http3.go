@@ -234,8 +234,8 @@ type http3Stream struct {
 	// Mixins
 	httpStream_
 	// Assocs
-	request  http3Request  // the http3 request.
-	response http3Response // the http3 response.
+	request  http3Request  // the http/3 request.
+	response http3Response // the http/3 response.
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

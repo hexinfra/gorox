@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	RegisterUniture("demo", func(name string, stage *Stage) Uniture {
+	RegisterUniture("demoUniture", func(name string, stage *Stage) Uniture {
 		u := new(demoUniture)
 		u.onCreate(name, stage)
 		return u

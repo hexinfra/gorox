@@ -61,7 +61,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 
 	if h.isForward {
-		outgate3 := h.stage.http3
+		outgate3 := h.stage.http3Outgate
 		conn3, err3 = outgate3.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err3 != nil {
 			if IsDebug(1) {

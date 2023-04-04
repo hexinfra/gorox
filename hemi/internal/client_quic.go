@@ -46,9 +46,9 @@ func (q *quicClient_) onPrepare(shell Component) {
 	q.streamHolder_.onPrepare(shell)
 }
 
-const signQUIC = "quic"
+const signQUIC = "quicOutgate"
 
-func createQUIC(stage *Stage) *QUICOutgate {
+func createQUICOutgate(stage *Stage) *QUICOutgate {
 	quic := new(QUICOutgate)
 	quic.onCreate(stage)
 	quic.setShell(quic)
@@ -82,7 +82,7 @@ func (f *QUICOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("quic done")
+		Debugln("quicOutgate done")
 	}
 	f.stage.SubDone()
 }

@@ -46,9 +46,9 @@ func (u *unixClient_) onPrepare(shell Component) {
 	u.streamHolder_.onPrepare(shell)
 }
 
-const signUnix = "unix"
+const signUnix = "unixOutgate"
 
-func createUnix(stage *Stage) *UnixOutgate {
+func createUnixOutgate(stage *Stage) *UnixOutgate {
 	unix := new(UnixOutgate)
 	unix.onCreate(stage)
 	unix.setShell(unix)
@@ -82,7 +82,7 @@ func (f *UnixOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("unix done")
+		Debugln("unixOutgate done")
 	}
 	f.stage.SubDone()
 }

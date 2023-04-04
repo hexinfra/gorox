@@ -28,9 +28,9 @@ func init() {
 	})
 }
 
-const signHTTP1 = "http1"
+const signHTTP1 = "http1Outgate"
 
-func createHTTP1(stage *Stage) *HTTP1Outgate {
+func createHTTP1Outgate(stage *Stage) *HTTP1Outgate {
 	http1 := new(HTTP1Outgate)
 	http1.onCreate(stage)
 	http1.setShell(http1)
@@ -61,7 +61,7 @@ func (f *HTTP1Outgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("http1 done")
+		Debugln("http1Outgate done")
 	}
 	f.stage.SubDone()
 }

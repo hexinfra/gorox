@@ -48,9 +48,9 @@ func (t *tcpsClient_) onPrepare(shell Component) {
 	t.streamHolder_.onPrepare(shell)
 }
 
-const signTCPS = "tcps"
+const signTCPS = "tcpsOutgate"
 
-func createTCPS(stage *Stage) *TCPSOutgate {
+func createTCPSOutgate(stage *Stage) *TCPSOutgate {
 	tcps := new(TCPSOutgate)
 	tcps.onCreate(stage)
 	tcps.setShell(tcps)
@@ -84,7 +84,7 @@ func (f *TCPSOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("tcps done")
+		Debugln("tcpsOutgate done")
 	}
 	f.stage.SubDone()
 }

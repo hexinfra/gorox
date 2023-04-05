@@ -73,6 +73,46 @@ func (m *QUICMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
+// quicGate
+type quicGate struct {
+	// Mixins
+	Gate_
+	// Assocs
+	mesher *QUICMesher
+	// States
+	gate *quix.Gate
+}
+
+func (g *quicGate) init(mesher *QUICMesher, id int32) {
+	g.Gate_.Init(mesher.stage, id, mesher.address, mesher.maxConnsPerGate)
+	g.mesher = mesher
+}
+
+func (g *quicGate) open() error {
+	// TODO
+	return nil
+}
+func (g *quicGate) shutdown() error {
+	g.MarkShut()
+	return g.gate.Close()
+}
+
+func (g *quicGate) serve() { // goroutine
+	// TODO
+	for !g.IsShut() {
+		time.Sleep(time.Second)
+	}
+	g.mesher.SubDone()
+}
+
+func (g *quicGate) justClose(quicConn *quix.Conn) {
+	quicConn.Close()
+	g.onConnectionClosed()
+}
+func (g *quicGate) onConnectionClosed() {
+	g.DecConns()
+}
+
 // QUICDealet
 type QUICDealet interface {
 	Component
@@ -166,46 +206,6 @@ func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value 
 func (c *quicCase) execute(conn *QUICConn) (processed bool) {
 	// TODO
 	return false
-}
-
-// quicGate
-type quicGate struct {
-	// Mixins
-	Gate_
-	// Assocs
-	mesher *QUICMesher
-	// States
-	gate *quix.Gate
-}
-
-func (g *quicGate) init(mesher *QUICMesher, id int32) {
-	g.Gate_.Init(mesher.stage, id, mesher.address, mesher.maxConnsPerGate)
-	g.mesher = mesher
-}
-
-func (g *quicGate) open() error {
-	// TODO
-	return nil
-}
-func (g *quicGate) shutdown() error {
-	g.MarkShut()
-	return g.gate.Close()
-}
-
-func (g *quicGate) serve() { // goroutine
-	// TODO
-	for !g.IsShut() {
-		time.Sleep(time.Second)
-	}
-	g.mesher.SubDone()
-}
-
-func (g *quicGate) justClose(quicConn *quix.Conn) {
-	quicConn.Close()
-	g.onConnectionClosed()
-}
-func (g *quicGate) onConnectionClosed() {
-	g.DecConns()
 }
 
 // poolQUICConn

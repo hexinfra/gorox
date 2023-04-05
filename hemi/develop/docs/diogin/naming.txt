@@ -24,7 +24,7 @@ COMPONENTS
     fixture (clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate, unixOutgate)
     uniture (...)
     backend (http1Backend, http2Backend, http3Backend, quicBackend, tcpsBackend, udpsBackend, unixBackend)
-    mesher (tcpsMesher, udpsMesher, quicMesher)
+    mesher (quicMesher, tcpsMesher, udpsMesher)
       dealet (...)
       editor (...)
       case [*]

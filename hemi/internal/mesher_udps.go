@@ -79,6 +79,54 @@ func (m *UDPSMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
+// udpsGate
+type udpsGate struct {
+	// Mixins
+	// Assocs
+	stage  *Stage // current stage
+	mesher *UDPSMesher
+	// States
+	id      int32
+	address string
+	shut    atomic.Bool
+}
+
+func (g *udpsGate) init(mesher *UDPSMesher, id int32) {
+	g.stage = mesher.stage
+	g.mesher = mesher
+	g.id = id
+	g.address = mesher.address
+}
+
+func (g *udpsGate) open() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) shutdown() error {
+	g.shut.Store(true)
+	// TODO
+	return nil
+}
+
+func (g *udpsGate) serveUDP() { // goroutine
+	// TODO
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.mesher.SubDone()
+}
+func (g *udpsGate) serveTLS() { // goroutine
+	// TODO
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.mesher.SubDone()
+}
+
+func (g *udpsGate) justClose(udpConn *net.UDPConn) {
+	udpConn.Close()
+}
+
 // UDPSDealet
 type UDPSDealet interface {
 	Component
@@ -172,54 +220,6 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value 
 func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
 	// TODO
 	return false
-}
-
-// udpsGate
-type udpsGate struct {
-	// Mixins
-	// Assocs
-	stage  *Stage // current stage
-	mesher *UDPSMesher
-	// States
-	id      int32
-	address string
-	shut    atomic.Bool
-}
-
-func (g *udpsGate) init(mesher *UDPSMesher, id int32) {
-	g.stage = mesher.stage
-	g.mesher = mesher
-	g.id = id
-	g.address = mesher.address
-}
-
-func (g *udpsGate) open() error {
-	// TODO
-	return nil
-}
-func (g *udpsGate) shutdown() error {
-	g.shut.Store(true)
-	// TODO
-	return nil
-}
-
-func (g *udpsGate) serveUDP() { // goroutine
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.mesher.SubDone()
-}
-func (g *udpsGate) serveTLS() { // goroutine
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.mesher.SubDone()
-}
-
-func (g *udpsGate) justClose(udpConn *net.UDPConn) {
-	udpConn.Close()
 }
 
 // poolUDPSConn

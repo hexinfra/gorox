@@ -208,5 +208,8 @@ func (s *sock2Proxy) OnPrepare() {
 
 func (s *sock2Proxy) Serve(req Request, sock Socket) { // forward or reverse
 	// TODO(diogin): Implementation
+	if s.isForward {
+	} else {
+	}
 	sock.Close()
 }

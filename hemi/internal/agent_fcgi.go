@@ -728,9 +728,9 @@ func (r *fcgiResponse) recvHead() {
 	}
 	r.cleanInput()
 }
-func (r *fcgiResponse) growHead() bool { // we need more head data to be appended to r.input
+func (r *fcgiResponse) growHead() bool { // we need more head data to be appended to r.input from r.records
 	// Is r.input full?
-	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
+	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so yes
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
 			r.headResult = StatusRequestHeaderFieldsTooLarge
 			return false
@@ -750,7 +750,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 		r.input = input // a larger input is now used
 	}
 	// r.input is not full. Are there any existing stdout data?
-	if r.stdoutFrom == r.stdoutEdge { // no existing stdout data, receive one stdout record
+	if r.stdoutFrom == r.stdoutEdge { // no, we must receive a new non-empty stdout record
 		from, edge, err := r._recvStdout()
 		if err != nil || from == edge { // i/o error on unexpected EOF
 			r.headResult = -1
@@ -758,14 +758,14 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 		}
 		r.stdoutFrom, r.stdoutEdge = from, edge
 	}
-	// There are some existing stdout data.
-	spaceSize := int32(cap(r.input)) - r.inputEdge
+	// There are some existing stdout data, use them.
+	usableSize := int32(cap(r.input)) - r.inputEdge
 	stdoutSize := r.stdoutEdge - r.stdoutFrom
-	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:r.stdoutEdge]) // this is the cost. sucks!
-	if spaceSize < stdoutSize {
-		r.inputEdge += spaceSize
-		r.stdoutFrom += spaceSize
-	} else { // space >= stdoutSize, take all stdout data
+	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:r.stdoutEdge])
+	if usableSize < stdoutSize { // too much data
+		r.inputEdge += usableSize
+		r.stdoutFrom += usableSize
+	} else { // usableSize >= stdoutSize, take all stdout data
 		r.inputEdge += stdoutSize
 		r.stdoutFrom, r.stdoutEdge = 0, 0
 	}
@@ -918,7 +918,7 @@ func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by
 func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) examineHead() bool {
-	for i := 1; i < len(r.primes); i++ {
+	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if !r.applyHeader(i) {
 			// r.headResult is set.
 			return false
@@ -931,7 +931,9 @@ func (r *fcgiResponse) examineHead() bool {
 func (r *fcgiResponse) applyHeader(index int) bool {
 	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
-	Debugf("%+v %s %s\n", *header, headerName, header.valueAt(r.input))
+	if IsDebug(2) {
+		Debugf("%+v %s %s\n", *header, headerName, header.valueAt(r.input))
+	}
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
@@ -1060,6 +1062,12 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 
 func (r *fcgiResponse) cleanInput() {
 	if !r.hasContent() {
+		from, edge, err := r._recvStdout()
+		if err != nil {
+			r.headResult, r.failReason = StatusBadRequest, err.Error()
+		} else if from != edge {
+			r.headResult, r.failReason = StatusBadRequest, "unexpected stdout data"
+		}
 		return
 	}
 	r.imme.set(r.pFore, r.inputEdge)
@@ -1116,6 +1124,7 @@ badRead:
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
 	// TODO
+	// NOTE: refer to _readSizedContent1 and _readUnsizedContent1
 	if r.imme.notEmpty() {
 		// copy ...
 		r.imme.zero()
@@ -1249,6 +1258,9 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	kind = r.records[r.recordsFrom+1]
 	from = r.recordsFrom + fcgiHeaderSize
 	edge = from + payloadLen
+	if IsDebug(2) {
+		Debugf("_recvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
+	}
 	// Clean up positions.
 	if recordSize == remainSize { // all remain data are consumed, reset positions
 		r.recordsFrom, r.recordsEdge = 0, 0

@@ -135,7 +135,7 @@ type httpIn_ struct { // incoming. needs parsing
 	recvTime    time.Time // the time when receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
 	httpIn0               // all values must be zero by default in this struct!
 }
 type httpIn0 struct { // for fast reset, entirely
@@ -905,7 +905,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) holdContent() any { // used by proxies
+func (r *httpIn_) takeContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate
@@ -1776,7 +1776,7 @@ func (r *httpOut_) pass(in httpIn) error { // used by proxes, to sync content di
 }
 func (r *httpOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
 	if contentText, ok := content.([]byte); ok {
-		if hasTrailers { // if (in the future) we supports holding unsized content in buffer, this happens
+		if hasTrailers { // if (in the future) we supports taking unsized content in buffer, this happens
 			return r.echoText(contentText)
 		} else {
 			return r.sendText(contentText)

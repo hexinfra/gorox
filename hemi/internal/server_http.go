@@ -431,7 +431,7 @@ type Request interface {
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
 	getRanges() []rang
 	unsetHost()
-	holdContent() any
+	takeContent() any
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
 	delHopTrailers()

@@ -131,8 +131,8 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 
 	hasContent := req.HasContent()
 	if hasContent && (h.bufferClientContent || req.isUnsized()) { // including size 0
-		content = req.holdContent()
-		if content == nil { // hold failed
+		content = req.takeContent()
+		if content == nil { // take failed
 			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
@@ -210,8 +210,8 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		fHasContent = fResp.hasContent()
 	}
 	if fHasContent && h.bufferServerContent { // including size 0
-		fContent = fResp.holdContent()
-		if fContent == nil { // hold failed
+		fContent = fResp.takeContent()
+		if fContent == nil { // take failed
 			// fStream is marked as broken
 			resp.SendBadGateway(nil)
 			return
@@ -610,7 +610,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this stream
 	contentText   []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
-	contentFile   *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
+	contentFile   *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
@@ -1074,7 +1074,7 @@ func (r *fcgiResponse) hasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) holdContent() any {
+func (r *fcgiResponse) takeContent() any {
 	switch content := r._recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)

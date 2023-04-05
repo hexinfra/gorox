@@ -126,13 +126,13 @@ func (g *helloGate) serve() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *helloGate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
+}
+func (g *helloGate) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // poolHelloConn

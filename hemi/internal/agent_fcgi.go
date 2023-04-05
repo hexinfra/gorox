@@ -320,12 +320,11 @@ type fcgiRequest struct { // outgoing. needs building
 	stdinHeader  [8]byte // used by stdin record
 	// States (non-zeros)
 	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
-	contentSize int64         // info of content. -1: not set, -2: unsized, >=0: size
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
 	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector  [5][]byte   // for sending request. reset after stream. 120B
+	fixedVector  [7][]byte   // for sending request. reset after stream. 120B
 	fcgiRequest0             // all values must be zero by default in this struct!
 }
 type fcgiRequest0 struct { // for fast reset, entirely
@@ -335,10 +334,9 @@ type fcgiRequest0 struct { // for fast reset, entirely
 }
 
 func (r *fcgiRequest) onUse() {
-	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification
-	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record
+	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
+	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.contentSize = -1 // not set
 	r.sendTimeout = r.stream.agent.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
@@ -348,18 +346,22 @@ func (r *fcgiRequest) onEnd() {
 	}
 	r.sendTime = time.Time{}
 	r.vector = nil
-	r.fixedVector = [5][]byte{}
+	r.fixedVector = [7][]byte{}
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
 func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	var value []byte
+
+	// Add meta params
+	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
+		return false
+	}
 	if len(scriptFilename) == 0 {
 		value = req.unsafeAbsPath()
 	} else {
 		value = scriptFilename
 	}
-	// Add meta params
 	if !r._addMetaParam(fcgiBytesScriptFilename, value) { // SCRIPT_FILENAME
 		return false
 	}
@@ -375,15 +377,17 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
+
 	// Add http params
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r._addHTTPParam(header, name, value)
 	}) {
 		return false
 	}
+
 	// Finalize params
-	r.paramsHeader[4] = byte(r.paramsEdge >> 8)
-	r.paramsHeader[5] = byte(r.paramsEdge)
+	r.paramsHeader[4], r.paramsHeader[5] = byte(r.paramsEdge>>8), byte(r.paramsEdge)
+
 	return true
 }
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
@@ -430,11 +434,7 @@ func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUppe
 	}
 	if toUpper {
 		last := from + copy(r.params[from:], name)
-		for i := from; i < last; i++ {
-			if b := r.params[i]; b >= 'a' && b <= 'z' {
-				r.params[i] = b - 0x20 // to upper
-			}
-		}
+		bytesToUpper(r.params[from:last])
 		from = last
 	} else {
 		from += copy(r.params[from:], name)
@@ -467,7 +467,6 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 
 func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 	// TODO: timeout
-	r.contentSize = req.ContentSize()
 	r.vector = r.fixedVector[0:4]
 	if r.stream.agent.keepConn {
 		r.vector[0] = fcgiBeginKeepConn
@@ -484,8 +483,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 		p, err := req.readContent()
 		if len(p) > 0 {
 			size := len(p)
-			r.stdinHeader[4] = byte(size >> 8)
-			r.stdinHeader[5] = byte(size)
+			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
 			if err == io.EOF { // EOF is immediate, write with emptyStdin
 				// TODO
 				r.vector = r.fixedVector[0:3]
@@ -524,18 +522,39 @@ func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bu
 		}
 		return r.sendFile(contentFile, fileInfo)
 	} else { // nil means no content.
-		// TODO: beginRequest + params + emptyParams + emptyStdin
-		return nil
+		return r.sendText(nil)
 	}
 }
 
-func (r *fcgiRequest) sendText(content []byte) error {
-	// TODO: beginRequest + params + emptyParams + stdin * N + emptyStdin
-	return nil
+func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
+	size := len(content)
+	if size == 0 { // beginRequest + (params + emptyParams) + emptyStdin
+		r.vector = r.fixedVector[0:5]
+	} else { // beginRequest + (params + emptyParams) + (stdin + emptyStdin)
+		r.vector = r.fixedVector[0:7]
+	}
+	if r.stream.agent.keepConn {
+		r.vector[0] = fcgiBeginKeepConn
+	} else {
+		r.vector[0] = fcgiBeginDontKeep
+	}
+	r.vector[1] = r.paramsHeader[:]
+	r.vector[2] = r.params[:r.paramsEdge]
+	r.vector[3] = fcgiEmptyParams
+	if size == 0 {
+		r.vector[4] = fcgiEmptyStdin
+	} else {
+		r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
+		r.vector[4] = r.stdinHeader[:]
+		r.vector[5] = content
+		r.vector[6] = fcgiEmptyStdin
+	}
+	_, err := r.stream.writev(&r.vector)
+	return err
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	// TODO: beginRequest + params + emptyParams + stdin * N + emptyStdin
 	// TODO: use a buffer, for content, read to buffer, write buffer
+	// TODO: beginRequest + (params + emptyParams) + (stdin * N + emptyStdin)
 	return nil
 }
 
@@ -899,7 +918,7 @@ func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by
 func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) examineHead() bool {
-	for i := 0; i < len(r.primes); i++ {
+	for i := 1; i < len(r.primes); i++ {
 		if !r.applyHeader(i) {
 			// r.headResult is set.
 			return false
@@ -912,6 +931,7 @@ func (r *fcgiResponse) examineHead() bool {
 func (r *fcgiResponse) applyHeader(index int) bool {
 	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
+	Debugf("%+v %s %s\n", *header, headerName, header.valueAt(r.input))
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
@@ -996,9 +1016,11 @@ func (r *fcgiResponse) checkContentType(header *pair, index int) bool {
 	return false
 }
 func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
-	if status, ok := decToI64(header.valueAt(r.input)); ok {
-		r.status = int16(status)
-		return true
+	if value := header.valueAt(r.input); len(value) >= 3 {
+		if status, ok := decToI64(value[0:3]); ok {
+			r.status = int16(status)
+			return true
+		}
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad status"
 	return false
@@ -1374,7 +1396,6 @@ var ( // request param names
 var ( // request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
-	fcgiBytesStatus = []byte("status")
 )
 
 const ( // response record types
@@ -1385,4 +1406,8 @@ const ( // response record types
 
 const ( // response header hashes
 	fcgiHashStatus = 676
+)
+
+var ( // response header names
+	fcgiBytesStatus = []byte("status")
 )

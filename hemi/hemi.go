@@ -129,11 +129,11 @@ type ( // core types
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
-	Cacher  = internal.Cacher
-	Hobject = internal.Hobject
-
 	Stater  = internal.Stater
 	Session = internal.Session
+
+	Cacher  = internal.Cacher
+	Hobject = internal.Hobject
 
 	App      = internal.App
 	Handlet  = internal.Handlet

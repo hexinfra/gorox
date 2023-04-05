@@ -43,6 +43,6 @@ func (d *quicProxy) OnPrepare() {
 
 func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
-	// NOTE: if configured as forward proxy, use SOCKS
+	// NOTE: if configured as forward proxy, work as a SOCKS server? HTTP tunnel?
 	return
 }

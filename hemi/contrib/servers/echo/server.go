@@ -127,13 +127,13 @@ func (g *echoGate) serve() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *echoGate) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
+}
+func (g *echoGate) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
 }
 
 // poolEchoConn

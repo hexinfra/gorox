@@ -3,8 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// tcp for FreeBSD.
+// TCP for FreeBSD.
+
 package system
+
+import (
+	"syscall"
+	"unsafe"
+)
 
 var (
 	IPPROTO_TCP = 6

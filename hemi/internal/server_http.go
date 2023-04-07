@@ -31,9 +31,7 @@ type httpServer interface {
 	SendTimeout() time.Duration
 
 	linkApps()
-	linkSvcs()
 	findApp(hostname []byte) *App
-	findSvc(hostname []byte) *Svc
 }
 
 // httpServer_ is a mixin for httpxServer and http3Server.
@@ -47,11 +45,11 @@ type httpServer_ struct {
 	gates      []httpGate
 	defaultApp *App // default app
 	// States
-	forApps      []string            // for apps
+	forApps      []string            // for what apps
 	exactApps    []*hostnameTo[*App] // like: ("example.com")
 	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
 	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
-	forSvcs      []string            // for svcs
+	forSvcs      []string            // for what svcs
 	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
 	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
 	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
@@ -134,7 +132,7 @@ func (s *httpServer_) linkSvcs() {
 		if svc == nil {
 			continue
 		}
-		svc.linkHRPC(s.shell.(httpServer))
+		svc.linkHRPC(s.shell.(hrpcServer))
 		// TODO: use hash table?
 		for _, hostname := range svc.exactHostnames {
 			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})

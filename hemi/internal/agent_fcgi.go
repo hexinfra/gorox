@@ -44,17 +44,17 @@ type fcgiAgent struct {
 	backend WireBackend // *TCPSBackend or *UnixBackend
 	cacher  Cacher      // the cache server which is used by this agent
 	// States
-	scriptFilename      []byte        // for SCRIPT_FILENAME
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
 	keepConn            bool          // instructs FCGI server to keep conn?
+	scriptFilename      []byte        // for SCRIPT_FILENAME
 	addRequestHeaders   [][2][]byte   // headers appended to client request
 	delRequestHeaders   [][]byte      // client request headers to delete
 	addResponseHeaders  [][2][]byte   // headers appended to server response
 	delResponseHeaders  [][]byte      // server response headers to delete
 	sendTimeout         time.Duration // timeout to send the whole request
 	recvTimeout         time.Duration // timeout to recv the whole response content
-	maxContentSize      int64         // max content size allowed
+	maxContentSize      int64         // max response content size allowed
 	preferUnderscore    bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 }
 
@@ -97,14 +97,14 @@ func (h *fcgiAgent) OnConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
-	// scriptFilename
-	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// keepConn
 	h.ConfigureBool("keepConn", &h.keepConn, false)
+	// scriptFilename
+	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 	// sendTimeout
 	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 	// recvTimeout
@@ -141,19 +141,17 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 	}
 
 	if h.keepConn {
-		fConn, fErr = h.backend.FetchConn()
-		if fErr != nil {
-			resp.SendBadGateway(nil)
-			return
+		if fConn, fErr = h.backend.FetchConn(); fErr == nil {
+			defer h.backend.StoreConn(fConn)
 		}
-		defer h.backend.StoreConn(fConn)
 	} else {
-		fConn, fErr = h.backend.Dial()
-		if fErr != nil {
-			resp.SendBadGateway(nil)
-			return
+		if fConn, fErr = h.backend.Dial(); fErr == nil {
+			defer fConn.Close()
 		}
-		defer fConn.Close()
+	}
+	if fErr != nil {
+		resp.SendBadGateway(nil)
+		return
 	}
 
 	fStream := getFCGIStream(h, fConn)
@@ -166,13 +164,12 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		return
 	}
 	if hasContent && !h.bufferClientContent && !req.isUnsized() {
-		if fErr = fReq.pass(req); fErr != nil {
-			fStream.markBroken()
-		}
-	} else if fErr = fReq.post(content); fErr != nil {
-		fStream.markBroken()
+		fErr = fReq.pass(req)
+	} else { // nil, []byte, tempFile
+		fErr = fReq.post(content)
 	}
 	if fErr != nil {
+		fStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}

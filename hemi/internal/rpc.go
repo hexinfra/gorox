@@ -17,7 +17,7 @@ type Svc struct {
 	Component_
 	// Assocs
 	stage       *Stage       // current stage
-	hrpcServers []httpServer // linked hrpc servers. may be empty
+	hrpcServers []hrpcServer // linked hrpc servers. may be empty
 	grpcServers []GRPCServer // linked grpc servers. may be empty
 	// States
 	hostnames       [][]byte // should be used by HRPC only
@@ -50,7 +50,7 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) linkHRPC(server httpServer) { s.hrpcServers = append(s.hrpcServers, server) }
+func (s *Svc) linkHRPC(server hrpcServer) { s.hrpcServers = append(s.hrpcServers, server) }
 func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers, server) }
 func (s *Svc) GRPCServers() []GRPCServer  { return s.grpcServers }
 

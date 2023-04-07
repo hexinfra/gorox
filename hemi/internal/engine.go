@@ -551,7 +551,7 @@ func (s *Stage) linkServerSvcs() {
 		Debugln("link svcs to http servers")
 	}
 	for _, server := range s.servers {
-		if hrpcServer, ok := server.(httpServer); ok {
+		if hrpcServer, ok := server.(hrpcServer); ok {
 			hrpcServer.linkSvcs()
 		} else if grpcServer, ok := server.(GRPCServer); ok {
 			grpcServer.LinkSvcs()

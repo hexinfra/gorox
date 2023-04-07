@@ -10,8 +10,8 @@ Welcome
     * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
     * Application Server for Go (Applications, Frameworks)
     * RPC Server for Go (HRPC Services, gRPC Services)
-    * API Gateway (HTTP API, HRPC API, gRPC API)
     * Service Mesh (Data Plane)
+    * API Gateway (HTTP API, HRPC API, gRPC API)
     * ... and more through its highly extensible compoments design!
 
   There is also a control plane program called Goops which is distributed

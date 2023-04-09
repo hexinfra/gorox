@@ -363,6 +363,7 @@ func (r *fcgiRequest) onEnd() {
 	r.sendTime = time.Time{}
 	r.vector = nil
 	r.fixedVector = [7][]byte{}
+
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
@@ -406,10 +407,10 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 
 	return true
 }
-func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // CONTENT_LENGTH and so on
+func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool {
 	return r._addParam(nil, name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // HTTP_CONTENT_LENGTH and so on
+func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool {
 	if !header.isUnderscore() || !r.stream.agent.preferUnderscore {
 		return r._addParam(fcgiBytesHTTP_, name, value, true)
 	}
@@ -496,15 +497,14 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 		return err
 	}
 	for {
-		p, err := req.readContent()
-		if len(p) > 0 {
-			size := len(p)
+		stdin, err := req.readContent()
+		if len(stdin) > 0 {
+			size := len(stdin)
 			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
 			if err == io.EOF { // EOF is immediate, write with emptyStdin
-				// TODO
 				r.vector = r.fixedVector[0:3]
 				r.vector[0] = r.stdinHeader[:]
-				r.vector[1] = p
+				r.vector[1] = stdin
 				r.vector[2] = fcgiEmptyStdin
 				_, e := r.stream.writev(&r.vector)
 				return e
@@ -512,7 +512,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 			// EOF is not immediate, err must be nil.
 			r.vector = r.fixedVector[0:2]
 			r.vector[0] = r.stdinHeader[:]
-			r.vector[1] = p
+			r.vector[1] = stdin
 			if _, e := r.stream.writev(&r.vector); e != nil {
 				return e
 			}
@@ -574,12 +574,52 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	return nil
 }
 
+func (r *fcgiRequest) _writeBytes(p []byte) error {
+	if r.stream.isBroken() {
+		return fcgiWriteBroken
+	}
+	if len(p) == 0 {
+		return nil
+	}
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	_, err := r.stream.write(p)
+	return r._slowCheck(err)
+}
+func (r *fcgiRequest) _writeVector() error {
+	if r.stream.isBroken() {
+		return fcgiWriteBroken
+	}
+	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
+		return nil
+	}
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	_, err := r.stream.writev(&r.vector)
+	return r._slowCheck(err)
+}
 func (r *fcgiRequest) _beforeWrite() error {
 	now := time.Now()
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.agent.backend.WriteTimeout()))
+}
+func (r *fcgiRequest) _slowCheck(err error) error {
+	if err == nil && r._tooSlow() {
+		err = fcgiWriteTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+	}
+	return err
+}
+func (r *fcgiRequest) _tooSlow() bool {
+	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
 var ( // fcgi request errors

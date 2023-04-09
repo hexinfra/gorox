@@ -668,7 +668,7 @@ func (r *http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writ
 			vector[vEdge] = buffer[0:block.size]
 			vEdge++
 			r.vector = vector[vFrom:vEdge]
-			if err := r.writeVector1(&r.vector); err != nil {
+			if err := r.writeVector1(); err != nil {
 				PutNK(buffer)
 				return err
 			}
@@ -677,7 +677,7 @@ func (r *http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writ
 		} else { // large file, > 16K
 			if vFrom < vEdge {
 				r.vector = vector[vFrom:vEdge]
-				if err := r.writeVector1(&r.vector); err != nil { // texts
+				if err := r.writeVector1(); err != nil { // texts
 					return err
 				}
 				vFrom, vEdge = 0, 0
@@ -689,7 +689,7 @@ func (r *http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writ
 	}
 	if vFrom < vEdge {
 		r.vector = vector[vFrom:vEdge]
-		return r.writeVector1(&r.vector)
+		return r.writeVector1()
 	}
 	return nil
 }
@@ -751,7 +751,7 @@ func (r *http1Out_) finalizeUnsized1() error {
 		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
 		r.vector[2] = bytesCRLF          // \r\n
 	}
-	return r.writeVector1(&r.vector)
+	return r.writeVector1()
 }
 
 func (r *http1Out_) writeHeaders1() error { // used by echo and post
@@ -768,7 +768,7 @@ func (r *http1Out_) writeHeaders1() error { // used by echo and post
 		}
 		Debugf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
-	if err := r.writeVector1(&r.vector); err != nil {
+	if err := r.writeVector1(); err != nil {
 		return err
 	}
 	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
@@ -799,7 +799,7 @@ func (r *http1Out_) _writeText1(block *Block, chunked bool) error { // text
 		r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
 		r.vector[0] = block.Text()
 	}
-	return r.writeVector1(&r.vector)
+	return r.writeVector1()
 }
 func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
@@ -857,18 +857,18 @@ func (r *http1Out_) writeBytes1(p []byte) error {
 	_, err := r.stream.write(p)
 	return r._slowCheck(err)
 }
-func (r *http1Out_) writeVector1(vector *net.Buffers) error {
+func (r *http1Out_) writeVector1() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	if len(*vector) == 1 && len((*vector)[0]) == 0 {
+	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
 		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
 		r.stream.markBroken()
 		return err
 	}
-	_, err := r.stream.writev(vector)
+	_, err := r.stream.writev(&r.vector)
 	return r._slowCheck(err)
 }
 func (r *http1Out_) _slowCheck(err error) error {

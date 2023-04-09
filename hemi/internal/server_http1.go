@@ -988,7 +988,7 @@ func (r *http1Response) pass1xx(resp hResponse) bool { // used by proxies
 	r.vector[1] = r.addedHeaders()
 	r.vector[2] = bytesCRLF
 	// 1xx has no content.
-	if r.writeVector1(&r.vector) != nil {
+	if r.writeVector1() != nil {
 		return false
 	}
 	// For next use.

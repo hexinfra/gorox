@@ -8,7 +8,6 @@
 package internal
 
 import (
-	"net"
 	"sync"
 	"sync/atomic"
 )
@@ -94,7 +93,7 @@ func (r *http3Out_) writeBlock3(block *Block, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *http3Out_) writeVector3(vector *net.Buffers) error {
+func (r *http3Out_) writeVector3() error {
 	return nil
 }
 

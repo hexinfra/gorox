@@ -493,7 +493,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 	r.vector[1] = r.paramsHeader[:]
 	r.vector[2] = r.params[:r.paramsEdge] // effective params
 	r.vector[3] = fcgiEmptyParams
-	if _, err := r.stream.writev(&r.vector); err != nil {
+	if err := r._writeVector(); err != nil {
 		return err
 	}
 	for {
@@ -506,14 +506,13 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 				r.vector[0] = r.stdinHeader[:]
 				r.vector[1] = stdin
 				r.vector[2] = fcgiEmptyStdin
-				_, e := r.stream.writev(&r.vector)
-				return e
+				return r._writeVector()
 			}
 			// EOF is not immediate, err must be nil.
 			r.vector = r.fixedVector[0:2]
 			r.vector[0] = r.stdinHeader[:]
 			r.vector[1] = stdin
-			if _, e := r.stream.writev(&r.vector); e != nil {
+			if e := r._writeVector(); e != nil {
 				return e
 			}
 		}
@@ -524,8 +523,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
 			return err
 		}
 	}
-	_, err := r.stream.write(fcgiEmptyStdin)
-	return err
+	return r._writeBytes(fcgiEmptyStdin)
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
 	if contentText, ok := content.([]byte); ok { // text
@@ -565,8 +563,7 @@ func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
 		r.vector[5] = content
 		r.vector[6] = fcgiEmptyStdin
 	}
-	_, err := r.stream.writev(&r.vector)
-	return err
+	return r._writeVector()
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	// TODO: use a buffer, for content, read to buffer, write buffer
@@ -1235,6 +1232,9 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 		*toTime = now
 	}
 	return r.stream.setReadDeadline(now.Add(r.stream.agent.backend.ReadTimeout()))
+}
+func (r *fcgiResponse) _tooSlow() bool {
+	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
 func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.

@@ -164,7 +164,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.copyHeadFrom(resp3) {
+	if !resp.copyHeadFrom(resp3, nil) {
 		stream3.markBroken()
 		return
 	}

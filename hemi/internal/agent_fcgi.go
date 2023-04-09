@@ -215,7 +215,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 		}
 	}
 
-	if !resp.copyHeadFrom(fResp) {
+	if !resp.copyHeadFrom(fResp, nil) {
 		fStream.markBroken()
 		return
 	}
@@ -304,6 +304,25 @@ func (s *fcgiStream) readAtLeast(p []byte, min int) (int, error) { return s.conn
 
 func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
 func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
+
+// poolFCGIParams
+var poolFCGIParams sync.Pool
+
+const fcgiMaxParams = _16K // max effective params
+
+func getFCGIParams() []byte {
+	if x := poolFCGIParams.Get(); x == nil {
+		return make([]byte, fcgiMaxParams)
+	} else {
+		return x.([]byte)
+	}
+}
+func putFCGIParams(params []byte) {
+	if cap(params) != fcgiMaxParams {
+		BugExitln("fcgi: bad params")
+	}
+	poolFCGIParams.Put(params)
+}
 
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building
@@ -563,23 +582,28 @@ func (r *fcgiRequest) _beforeWrite() error {
 	return r.stream.setWriteDeadline(now.Add(r.stream.agent.backend.WriteTimeout()))
 }
 
-// poolFCGIParams
-var poolFCGIParams sync.Pool
+var ( // fcgi request errors
+	fcgiWriteTooSlow = errors.New("fcgi write too slow")
+	fcgiWriteBroken  = errors.New("fcgi write broken")
+)
 
-const fcgiMaxParams = _16K // max effective params
+// poolFCGIRecords
+var poolFCGIRecords sync.Pool
 
-func getFCGIParams() []byte {
-	if x := poolFCGIParams.Get(); x == nil {
-		return make([]byte, fcgiMaxParams)
+const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max payload + max padding
+
+func getFCGIRecords() []byte {
+	if x := poolFCGIRecords.Get(); x == nil {
+		return make([]byte, fcgiMaxRecords)
 	} else {
 		return x.([]byte)
 	}
 }
-func putFCGIParams(params []byte) {
-	if cap(params) != fcgiMaxParams {
-		BugExitln("fcgi: bad params")
+func putFCGIRecords(records []byte) {
+	if cap(records) != fcgiMaxRecords {
+		BugExitln("fcgi: bad records")
 	}
-	poolFCGIParams.Put(params)
+	poolFCGIRecords.Put(records)
 }
 
 // fcgiResponse must implements httpIn and hResponse interface.
@@ -1290,42 +1314,22 @@ func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to gro
 	}
 }
 
-/*
 func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K or larger r.records
 	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
 		records := Get16K()
 		if imme := r.imme; imme.notEmpty() {
 			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+			r.imme.zero()
 		}
 		r.records = records
 	} else {
 		// Has been 16K or fcgiMaxRecords already, do nothing.
 	}
 }
-*/
 
 var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
 )
-
-// poolFCGIRecords
-var poolFCGIRecords sync.Pool
-
-const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max payload + max padding
-
-func getFCGIRecords() []byte {
-	if x := poolFCGIRecords.Get(); x == nil {
-		return make([]byte, fcgiMaxRecords)
-	} else {
-		return x.([]byte)
-	}
-}
-func putFCGIRecords(records []byte) {
-	if cap(records) != fcgiMaxRecords {
-		BugExitln("fcgi: bad records")
-	}
-	poolFCGIRecords.Put(records)
-}
 
 // FCGI protocol elements.
 

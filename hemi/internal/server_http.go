@@ -2644,7 +2644,7 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHeadFrom(resp hResponse) bool // used by proxies
+	copyHeadFrom(resp hResponse, viaName []byte) bool // used by proxies
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content
@@ -2891,7 +2891,7 @@ func (r *httpResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *httpResponse_) copyHeadFrom(resp hResponse) bool { // used by proxies
+func (r *httpResponse_) copyHeadFrom(resp hResponse, viaName []byte) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)

@@ -169,7 +169,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.copyHeadFrom(resp1) {
+	if !resp.copyHeadFrom(resp1, nil) {
 		stream1.markBroken()
 		return
 	}

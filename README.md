@@ -3,7 +3,7 @@ Welcome
 
   Welcome to Gorox!
 
-  Gorox is an advanced Web server, application server, RPC server, and proxy
+  Gorox is an advanced web server, application server, RPC server, and proxy
   server. It can be used as:
 
     * Web Server (HTTP 1/2/3, WebSocket, TLS, FastCGI, uwsgi, AJP)

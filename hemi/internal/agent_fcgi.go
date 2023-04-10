@@ -661,6 +661,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	extras         []pair        // extra fcgi response headers
 	recvTimeout    time.Duration // timeout to recv the whole response content
 	maxContentSize int64         // max content size allowed for current response
+	status         int16         // 200, 302, 404, ...
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// States (zeros)
@@ -682,7 +683,6 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	imme            span     // immediate bytes in r.input that belongs to content
 	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
-	status          int16    // 200, 302, 404, ...
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentTextKind int8     // kind of current r.contentText. see httpContentTextXXX
 	receivedSize    int64    // bytes of currently received content
@@ -727,6 +727,7 @@ func (r *fcgiResponse) onUse() {
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.stream.agent.recvTimeout
 	r.maxContentSize = r.stream.agent.maxContentSize
+	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -764,7 +765,7 @@ func (r *fcgiResponse) onEnd() {
 	if r.contentFile != nil {
 		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is!")
+			Debugln("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
@@ -809,12 +810,12 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 	}
 	// r.input is not full. Are there any existing stdout data?
 	if r.stdoutFrom == r.stdoutEdge { // no, we must receive a new non-empty stdout record
-		from, edge, err := r._recvStdout()
-		if err != nil || from == edge { // i/o error on unexpected EOF
+		if from, edge, err := r._recvStdout(); err == nil {
+			r.stdoutFrom, r.stdoutEdge = from, edge
+		} else {
 			r.headResult = -1
 			return false
 		}
-		r.stdoutFrom, r.stdoutEdge = from, edge
 	}
 	// There are some existing stdout data, use them.
 	usableSize := int32(cap(r.input)) - r.inputEdge
@@ -1028,7 +1029,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 func (r *fcgiResponse) _parseHeader(header *pair, desc *desc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
-	return false
+	return true
 }
 func (r *fcgiResponse) _splitHeader(header *pair, desc *desc) bool {
 	// TODO
@@ -1119,12 +1120,9 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 }
 
 func (r *fcgiResponse) cleanInput() {
-	if !r.hasContent() { // we need an emptyStdout
-		from, edge, err := r._recvStdout()
-		if err != nil {
-			r.headResult, r.failReason = StatusBadRequest, err.Error()
-		} else if from != edge {
-			r.headResult, r.failReason = StatusBadRequest, "unexpected stdout data"
+	if !r.hasContent() {
+		if _, _, err := r._recvStdout(); err != io.EOF {
+			r.headResult, r.failReason = StatusBadRequest, "bad stdout"
 		}
 		return
 	}
@@ -1181,34 +1179,27 @@ badRead:
 	return err
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
-	// for better performance when reading response content, we need a 16K or larger r.records
-	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
-		records := Get16K()
-		if imme := r.imme; imme.notEmpty() {
-			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
-		}
-		r.records = records
-	}
 	if r.imme.notEmpty() {
-		p = r.records[r.imme.from:r.imme.edge]
-		if IsDebug(2) {
-			Debugf("imme=%s\n", p)
-		}
+		p = r.input[r.imme.from:r.imme.edge]
 		r.imme.zero()
 		err = nil
 		return
 	}
-	from, edge, err := r._recvStdout()
-	if err != nil {
-		if IsDebug(2) {
-			Debugf("error=%s\n", err.Error())
+	// For better performance when reading response content, we need a 16K or larger r.records
+	/*
+		if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
+			records := Get16K()
+			if imme := r.imme; imme.notEmpty() {
+				copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+			}
+			r.records = records
 		}
+	*/
+	if from, edge, err := r._recvStdout(); from != edge {
+		return r.records[from:edge], nil
+	} else {
 		return nil, err
 	}
-	if from == edge {
-		return nil, io.EOF
-	}
-	return r.records[from:edge], nil
 }
 
 func (r *fcgiResponse) addTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
@@ -1259,13 +1250,16 @@ func (r *fcgiResponse) _tooSlow() bool {
 }
 
 func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
-	for { // only for stdout records
+	for {
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, 0, err
 		}
-		if kind == fcgiTypeStdout {
+		if kind == fcgiTypeStdout && edge > from {
 			return from, edge, nil
+		}
+		if kind == fcgiTypeStdout || kind == fcgiTypeEndRequest {
+			return 0, 0, io.EOF
 		}
 		if kind != fcgiTypeStderr {
 			return 0, 0, fcgiReadBadRecord
@@ -1275,6 +1269,8 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 		}
 	}
 }
+
+/*
 func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after emptyStdout, endRequest is followed.
 	for { // only for endRequest records
 		kind, from, edge, err := r._recvRecord()
@@ -1297,6 +1293,7 @@ func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after
 		return appStatus, nil
 	}
 }
+*/
 
 func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
 	remainSize := r.recordsEdge - r.recordsFrom

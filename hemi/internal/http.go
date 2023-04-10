@@ -250,7 +250,7 @@ func (r *httpIn_) onEnd() { // for zeros
 	if r.contentFile != nil {
 		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is!")
+			Debugln("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
@@ -896,7 +896,7 @@ func (r *httpIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		}
 		contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is!")
+			Debugln("contentFile is left as is, not removed!")
 		} else if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.app.log
 		}

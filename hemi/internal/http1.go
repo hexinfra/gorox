@@ -336,7 +336,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		}
 		// Not last chunk, now r.cFore is at the beginning of: chunk-data CRLF
 		fallthrough
-	default: // r.chunkSize > 0, receiving: chunk-data CRLF
+	default: // r.chunkSize > 0, we are receiving: chunk-data CRLF
 		r.cBack = 0   // so growChunked1() works correctly
 		var data span // the chunk data we are receiving
 		data.from = r.cFore

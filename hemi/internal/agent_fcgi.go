@@ -417,7 +417,10 @@ func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) boo
 	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
 	return true
 }
-func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUpper bool) bool {
+func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, http bool) bool {
+	if IsDebug(2) {
+		Debugf("%s%s=%s\n", prefix, name, value)
+	}
 	nameLen, valueLen := len(prefix)+len(name), len(value)
 	paramSize := 1 + 1 + nameLen + valueLen
 	if nameLen > 127 {
@@ -449,9 +452,15 @@ func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, toUppe
 	if len(prefix) > 0 {
 		from += copy(r.params[from:], prefix)
 	}
-	if toUpper {
+	if http { // TODO: improve performance
 		last := from + copy(r.params[from:], name)
-		bytesToUpper(r.params[from:last])
+		for i := from; i < last; i++ {
+			if b := r.params[i]; b >= 'a' && b <= 'z' {
+				r.params[i] = b - 0x20 // to upper
+			} else if b == '-' {
+				r.params[i] = '_'
+			}
+		}
 		from = last
 	} else {
 		from += copy(r.params[from:], name)
@@ -482,7 +491,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 	return
 }
 
-func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
+func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. unsized content must use post()
 	r.vector = r.fixedVector[0:4]
 	if r.stream.agent.keepConn {
 		r.vector[0] = fcgiBeginKeepConn

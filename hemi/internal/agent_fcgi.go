@@ -483,7 +483,6 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
 }
 
 func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content
-	// TODO: timeout
 	r.vector = r.fixedVector[0:4]
 	if r.stream.agent.keepConn {
 		r.vector[0] = fcgiBeginKeepConn
@@ -986,7 +985,6 @@ func (r *fcgiResponse) examineHead() bool {
 	// content length is not known at this time, can't check.
 	return true
 }
-
 func (r *fcgiResponse) applyHeader(index int) bool {
 	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
@@ -1120,14 +1118,12 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 }
 
 func (r *fcgiResponse) cleanInput() {
-	if !r.hasContent() {
-		if _, _, err := r._recvStdout(); err != io.EOF {
-			r.headResult, r.failReason = StatusBadRequest, "bad stdout"
-		}
-		return
+	if r.hasContent() {
+		r.imme.set(r.pFore, r.inputEdge)
+		// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
+	} else if _, _, err := r._recvStdout(); err != io.EOF { // no content, receive endRequest
+		r.headResult, r.failReason = StatusBadRequest, "bad endRequest"
 	}
-	r.imme.set(r.pFore, r.inputEdge)
-	// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
 }
 
 func (r *fcgiResponse) hasContent() bool {
@@ -1180,9 +1176,8 @@ badRead:
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
 	if r.imme.notEmpty() {
-		p = r.input[r.imme.from:r.imme.edge]
+		p, err = r.input[r.imme.from:r.imme.edge], nil
 		r.imme.zero()
-		err = nil
 		return
 	}
 	// For better performance when reading response content, we need a 16K or larger r.records
@@ -1269,32 +1264,6 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 		}
 	}
 }
-
-/*
-func (r *fcgiResponse) _recvEndRequest() (appStatus int32, err error) { // after emptyStdout, endRequest is followed.
-	for { // only for endRequest records
-		kind, from, edge, err := r._recvRecord()
-		if err != nil {
-			return 0, err
-		}
-		if kind != fcgiTypeEndRequest {
-			if IsDebug(2) {
-				Debugf("fcgi unexpected type=%d payload=%s\n", kind, r.records[from:edge])
-			}
-			continue
-		}
-		if edge-from != 8 { // payloadLen of endRequest
-			return 0, fcgiReadBadRecord
-		}
-		appStatus = int32(r.records[from+3])
-		appStatus += int32(r.records[from+2]) << 8
-		appStatus += int32(r.records[from+1]) << 16
-		appStatus += int32(r.records[from]) << 24
-		return appStatus, nil
-	}
-}
-*/
-
 func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
 	remainSize := r.recordsEdge - r.recordsFrom
 	// At least an fcgi header must be immediate

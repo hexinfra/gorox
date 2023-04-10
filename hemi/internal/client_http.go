@@ -535,7 +535,6 @@ func (r *hResponse_) examineHead() bool {
 
 	return true
 }
-
 func (r *hResponse_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)

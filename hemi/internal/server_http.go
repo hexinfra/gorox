@@ -833,7 +833,7 @@ func (r *httpRequest_) examineHead() bool {
 		return false
 	}
 	if r.contentSize > r.maxContentSize {
-		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http server's limit"
+		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds server's limit"
 		return false
 	}
 
@@ -950,7 +950,6 @@ func (r *httpRequest_) examineHead() bool {
 
 	return true
 }
-
 func (r *httpRequest_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)

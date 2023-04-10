@@ -53,7 +53,7 @@ func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
 
-// App is the web application.
+// App is the Web application.
 type App struct {
 	// Mixins
 	Component_

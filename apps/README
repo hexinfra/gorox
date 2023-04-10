@@ -1,4 +1,4 @@
-This directory holds your web applications in gorox, generally one app one
+This directory holds your Web applications in gorox, generally one app one
 directory, but many related apps can be grouped into a container directory.
 
 Some builtin apps are:

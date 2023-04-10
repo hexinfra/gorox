@@ -145,6 +145,7 @@ func (b *TCPSBackend) Dial() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
+
 func (b *TCPSBackend) FetchConn() (WConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
@@ -184,6 +185,9 @@ func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
 }
 
 func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
+	if IsDebug(2) {
+		Debugf("tcpsNode=%d dial %s\n", n.id, n.address)
+	}
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
@@ -207,6 +211,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 		return getTConn(connID, n.backend, n, netConn, rawConn), nil
 	}
 }
+
 func (n *tcpsNode) fetchConn() (*TConn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
@@ -228,11 +233,18 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
+		if IsDebug(2) {
+			Debugf("TConn[node=%d id=%d] closed\n", tConn.node.id, tConn.id)
+		}
 		n.closeConn(tConn)
 	} else {
+		if IsDebug(2) {
+			Debugf("TConn[node=%d id=%d] pushed\n", tConn.node.id, tConn.id)
+		}
 		n.pushConn(tConn)
 	}
 }
+
 func (n *tcpsNode) closeConn(tConn *TConn) {
 	tConn.closeConn()
 	putTConn(tConn)

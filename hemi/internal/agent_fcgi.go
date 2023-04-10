@@ -1150,6 +1150,9 @@ func (r *fcgiResponse) takeContent() any {
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
 		// TODO: log err?
+		if IsDebug(2) {
+			Debugln(content.Error())
+		}
 	}
 	r.stream.markBroken()
 	return nil
@@ -1259,17 +1262,38 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 		if err != nil {
 			return 0, 0, err
 		}
-		if kind == fcgiTypeStdout && edge > from {
-			return from, edge, nil
-		}
-		if kind == fcgiTypeStdout || kind == fcgiTypeEndRequest {
+		switch kind {
+		case fcgiTypeStdout:
+			if edge > from {
+				return from, edge, nil
+			}
+			for {
+				kind, from, edge, err = r._recvRecord()
+				if kind == fcgiTypeEndRequest {
+					return 0, 0, io.EOF
+				}
+				if kind != fcgiTypeStderr {
+					return 0, 0, fcgiReadBadRecord
+				}
+				if IsDebug(2) && edge > from {
+					Debugf("fcgi stderr=%s\n", r.records[from:edge])
+				}
+			}
+		case fcgiTypeEndRequest:
+			if IsDebug(2) {
+				appStatus := int32(r.records[from]) << 24
+				appStatus |= int32(r.records[from+1]) << 16
+				appStatus |= int32(r.records[from+2]) << 8
+				appStatus |= int32(r.records[from+3])
+				Debugf("appStatus=%d protoStatus=%d\n", appStatus, r.records[4])
+			}
 			return 0, 0, io.EOF
-		}
-		if kind != fcgiTypeStderr {
+		case fcgiTypeStderr:
+			if IsDebug(2) && edge > from {
+				Debugf("fcgi stderr=%s\n", r.records[from:edge])
+			}
+		default:
 			return 0, 0, fcgiReadBadRecord
-		}
-		if IsDebug(2) && edge > from {
-			Debugf("fcgi stderr=%s\n", r.records[from:edge])
 		}
 	}
 }
@@ -1335,6 +1359,9 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
 	if err != nil {
 		return 0, err
+	}
+	if IsDebug(2) {
+		Debugf("_growRecords: r.records[r.recordsEdge:r.recordsEdge+n]=%v\n", r.records[r.recordsEdge:r.recordsEdge+int32(n)])
 	}
 	r.recordsEdge += int32(n)
 	return n, nil

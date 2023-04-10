@@ -522,7 +522,7 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 			}
 			e = httpInTooSlow
 		}
-		err = e // including io.EOF which is unexpected
+		err = e // including io.EOF which is unexpected here
 	}
 	// err != nil. TODO: log err
 	return false

@@ -1119,7 +1119,7 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 }
 
 func (r *fcgiResponse) cleanInput() {
-	if !r.hasContent() {
+	if !r.hasContent() { // we need an emptyStdout
 		from, edge, err := r._recvStdout()
 		if err != nil {
 			r.headResult, r.failReason = StatusBadRequest, err.Error()
@@ -1141,7 +1141,7 @@ func (r *fcgiResponse) hasContent() bool {
 	return true
 }
 func (r *fcgiResponse) takeContent() any {
-	switch content := r._recvContent().(type) {
+	switch content := r._recvContent().(type) { // we don't know the size of unsized content, so use tempFile only
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
@@ -1181,13 +1181,34 @@ badRead:
 	return err
 }
 func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
-	// TODO
-	// NOTE: refer to _readSizedContent1 and _readUnsizedContent1
-	if r.imme.notEmpty() {
-		// copy ...
-		r.imme.zero()
+	// for better performance when reading response content, we need a 16K or larger r.records
+	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
+		records := Get16K()
+		if imme := r.imme; imme.notEmpty() {
+			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+		}
+		r.records = records
 	}
-	return
+	if r.imme.notEmpty() {
+		p = r.records[r.imme.from:r.imme.edge]
+		if IsDebug(2) {
+			Debugf("imme=%s\n", p)
+		}
+		r.imme.zero()
+		err = nil
+		return
+	}
+	from, edge, err := r._recvStdout()
+	if err != nil {
+		if IsDebug(2) {
+			Debugf("error=%s\n", err.Error())
+		}
+		return nil, err
+	}
+	if from == edge {
+		return nil, io.EOF
+	}
+	return r.records[from:edge], nil
 }
 
 func (r *fcgiResponse) addTrailer(trailer *pair) bool { return true }  // fcgi doesn't support trailers
@@ -1351,19 +1372,6 @@ func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to gro
 			r.imme.sub(r.recordsFrom)
 		}
 		r.recordsFrom = 0
-	}
-}
-
-func (r *fcgiResponse) _switchRecords() { // for better performance when receiving response content, we need a 16K or larger r.records
-	if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
-		records := Get16K()
-		if imme := r.imme; imme.notEmpty() {
-			copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
-			r.imme.zero()
-		}
-		r.records = records
-	} else {
-		// Has been 16K or fcgiMaxRecords already, do nothing.
 	}
 }
 

@@ -1,22 +1,26 @@
-*.swp
+*.a
+*.dll
+*.dylib
+*.err
 *.exe
 *.exe~
-*.a
 *.lib
-*.dll
-*.so
-*.dylib
-*.out
-*.err
 *.log
-*.test
-*.prof
 *.mine
+*.out
+*.prof
+*.so
+*.swp
+*.test
 
 .idea
 .vscode
+
 .DS_Store
+.Spotlight-V100
+.Trashes
 desktop.ini
+Thumbs.db
 
 /dist
 /gomake

@@ -38,7 +38,7 @@ type httpProxy_ struct {
 	proxy_
 	// Assocs
 	app    *App   // the app to which the proxy belongs
-	cacher Cacher // the cache server which is used by this proxy
+	cacher Cacher // the cacher which is used by this proxy
 	// States
 	hostname            []byte      // ...
 	colonPort           []byte      // ...

@@ -32,7 +32,7 @@ type uwsgiAgent struct {
 	stage   *Stage      // current stage
 	app     *App        // the app to which the agent belongs
 	backend WireBackend // *TCPSBackend or *UnixBackend
-	cacher  Cacher      // the cache server which is used by this agent
+	cacher  Cacher      // the cacher which is used by this agent
 	// States
 	bufferClientContent bool // client content is buffered anyway?
 	bufferServerContent bool // server content is buffered anyway?

@@ -408,17 +408,20 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	return true
 }
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool {
-	return r._addParam(nil, name, value, false)
+	return r._addParam(name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool {
 	if !header.isUnderscore() || !r.stream.agent.preferUnderscore {
-		return r._addParam(fcgiBytesHTTP_, name, value, true)
+		return r._addParam(name, value, true)
 	}
 	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
 	return true
 }
-func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, http bool) bool {
-	nameLen, valueLen := len(prefix)+len(name), len(value)
+func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
+	nameLen, valueLen := len(name), len(value)
+	if http {
+		nameLen += len(fcgiBytesHTTP_)
+	}
 	paramSize := 1 + 1 + nameLen + valueLen
 	if nameLen > 127 {
 		paramSize += 3
@@ -446,10 +449,8 @@ func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, http b
 	}
 	r.params[from] = byte(valueLen)
 	from++
-	if len(prefix) > 0 {
-		from += copy(r.params[from:], prefix)
-	}
 	if http { // TODO: improve performance
+		from += copy(r.params[from:], fcgiBytesHTTP_)
 		last := from + copy(r.params[from:], name)
 		for i := from; i < last; i++ {
 			if b := r.params[i]; b >= 'a' && b <= 'z' {
@@ -786,7 +787,7 @@ func (r *fcgiResponse) recvHead() {
 		// r.headResult is set.
 		return
 	}
-	if !r.recvHeaders() || !r.examineHead() {
+	if !r.recvHeaders() || !r.examineHead() { // there is no control in FCGI, or, control is included in headers
 		// r.headResult is set.
 		return
 	}

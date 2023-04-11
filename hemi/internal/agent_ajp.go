@@ -114,4 +114,4 @@ type ajpResponse struct { // incoming. needs parsing
 	// TODO
 }
 
-// AJP protocol elements.
+//////////////////////////////////////// AJP protocol elements.

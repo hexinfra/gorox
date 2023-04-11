@@ -2011,7 +2011,7 @@ footer{padding:20px;}
 	return pages
 }()
 
-// General HTTP protocol elements.
+//////////////////////////////////////// General HTTP protocol elements.
 
 const ( // version codes. keep sync with ../hemi.go
 	Version1_0 = 0 // must be 0

@@ -7,7 +7,7 @@ normal mode
   ---------------
 
     client  ---http/1/2/3-->  handlet
-    client  ---http/1/2/3-->  reverse proxy  ---http/1/2/3/fastcgi-->  backend
+    client  ---http/1/2/3-->  reverse proxy  ---http/1/2/3/fcgi-->  backend
     client  ---http/1/2/3-->  forward proxy  ~~~http/1/2/3~~>  target
 
 socket mode

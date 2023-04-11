@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI agent handlet passes requests to backend FastCGI servers and cache responses.
+// FCGI agent handlet passes requests to backend FCGI servers and cache responses.
 
-// FastCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
+// FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
 // And we don't use request-side chunking due to the limitation of CGI/1.1 even
-// though FastCGI can do that through its framing protocol. Perhaps most FastCGI
+// though FCGI can do that through its framing protocol. Perhaps most FCGI
 // applications don't implement this feature either.
 
-// To avoid ambiguity, the term "content" in FastCGI specification is called "payload" in our implementation.
+// To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 
 package internal
 
@@ -1378,7 +1378,7 @@ var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
 )
 
-// FCGI protocol elements.
+//////////////////////////////////////// FCGI protocol elements.
 
 // FCGI Record = FCGI Header(8) + payload + padding
 // FCGI Header = version(1) + type(1) + requestId(2) + payloadLen(2) + paddingLen(1) + reserved(1)

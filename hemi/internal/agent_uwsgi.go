@@ -110,4 +110,4 @@ type uwsgiResponse struct { // incoming. needs parsing
 	// TODO
 }
 
-// UWSGI protocol elements.
+//////////////////////////////////////// UWSGI protocol elements.

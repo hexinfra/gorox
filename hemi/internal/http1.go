@@ -881,7 +881,7 @@ func (r *http1Out_) _slowCheck(err error) error {
 	return err
 }
 
-// HTTP/1 protocol elements.
+//////////////////////////////////////// HTTP/1 protocol elements.
 
 var ( // HTTP/1 byteses
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")

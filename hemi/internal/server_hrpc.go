@@ -7,7 +7,7 @@
 
 package internal
 
-// hrpcServer
+// hrpcServer is the HRPC server.
 type hrpcServer interface {
 	httpServer
 

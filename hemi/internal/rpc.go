@@ -52,7 +52,8 @@ func (s *Svc) OnPrepare() {
 
 func (s *Svc) linkHRPC(server hrpcServer) { s.hrpcServers = append(s.hrpcServers, server) }
 func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers, server) }
-func (s *Svc) GRPCServers() []GRPCServer  { return s.grpcServers }
+
+func (s *Svc) GRPCServers() []GRPCServer { return s.grpcServers }
 
 func (s *Svc) maintain() { // goroutine
 	Loop(time.Second, s.Shut, func(now time.Time) {

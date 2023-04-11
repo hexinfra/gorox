@@ -13,6 +13,7 @@ package internal
 // Maybe we can implement our own gRPC server following its official spec. TBD.
 type GRPCServer interface {
 	Server
+
 	RealServer() any
 	LinkSvcs()
 }

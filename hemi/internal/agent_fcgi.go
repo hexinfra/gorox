@@ -789,14 +789,18 @@ func (r *fcgiResponse) recvHead() {
 		r.headResult = -1
 		return
 	}
-	if !r.growHead() || !r.recvHeaders() || !r.examineHead() {
+	if !r.growHead() { // r.input must be empty because we don't use pipelining in requests.
+		// r.headResult is set.
+		return
+	}
+	if !r.recvHeaders() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
 	r.cleanInput()
 }
 func (r *fcgiResponse) growHead() bool { // we need more head data to be appended to r.input from r.records
-	// Is r.input full?
+	// Is r.input already full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so yes
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
 			r.headResult = StatusRequestHeaderFieldsTooLarge
@@ -816,24 +820,24 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 		}
 		r.input = input // a larger input is now used
 	}
-	// r.input is not full. Are there any existing stdout data?
+	// r.input is not full. Are there any existing stdout data in r.records?
 	if r.stdoutFrom == r.stdoutEdge { // no, we must receive a new non-empty stdout record
 		if from, edge, err := r._recvStdout(); err == nil {
 			r.stdoutFrom, r.stdoutEdge = from, edge
-		} else {
+		} else { // unexpected error or EOF
 			r.headResult = -1
 			return false
 		}
 	}
-	// There are some existing stdout data, use them.
-	usableSize := int32(cap(r.input)) - r.inputEdge
-	stdoutSize := r.stdoutEdge - r.stdoutFrom
+	// There are some existing stdout data in r.records now, copy them to r.input
+	freeSize := int32(cap(r.input)) - r.inputEdge
+	haveSize := r.stdoutEdge - r.stdoutFrom
 	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:r.stdoutEdge])
-	if usableSize < stdoutSize { // too much data
-		r.inputEdge += usableSize
-		r.stdoutFrom += usableSize
-	} else { // usableSize >= stdoutSize, take all stdout data
-		r.inputEdge += stdoutSize
+	if freeSize < haveSize { // too much data
+		r.inputEdge += freeSize
+		r.stdoutFrom += freeSize
+	} else { // freeSize >= haveSize, take all stdout data
+		r.inputEdge += haveSize
 		r.stdoutFrom, r.stdoutEdge = 0, 0
 	}
 	return true
@@ -1143,8 +1147,8 @@ func (r *fcgiResponse) hasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) takeContent() any {
-	switch content := r._recvContent().(type) { // we don't know the size of unsized content, so use tempFile only
+func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of unsized content
+	switch content := r._recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
@@ -1186,18 +1190,18 @@ badRead:
 	os.Remove(contentFile.Name())
 	return err
 }
-func (r *fcgiResponse) readContent() (p []byte, err error) { // data in stdout records
+func (r *fcgiResponse) readContent() (p []byte, err error) {
 	if r.imme.notEmpty() {
 		p, err = r.input[r.imme.from:r.imme.edge], nil
 		r.imme.zero()
 		return
 	}
-	// For better performance when reading response content, we need a 16K or larger r.records
 	/*
+		// For better performance when reading response content, we need a 16K or larger r.records
 		if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
 			records := Get16K()
-			if imme := r.imme; imme.notEmpty() {
-				copy(records[imme.from:imme.edge], r.records[imme.from:imme.edge])
+			if r.recordsFrom != r.recordsEdge { // there are existing stdout data
+				copy(records[r.recordsFrom:r.recordsEdge], r.records[r.recordsFrom:r.recordsEdge])
 			}
 			r.records = records
 		}
@@ -1257,7 +1261,7 @@ func (r *fcgiResponse) _tooSlow() bool {
 }
 
 func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
-	for {
+	for { // each record
 		kind, from, edge, err := r._recvRecord()
 		if err != nil {
 			return 0, 0, err
@@ -1267,11 +1271,13 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 			if edge > from {
 				return from, edge, nil
 			}
+			// emptyStdout. receive until endRequest
 			for {
 				kind, from, edge, err = r._recvRecord()
 				if kind == fcgiTypeEndRequest {
 					return 0, 0, io.EOF
 				}
+				// Only stderr records are allowed here.
 				if kind != fcgiTypeStderr {
 					return 0, 0, fcgiReadBadRecord
 				}
@@ -1292,7 +1298,7 @@ func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:e
 			if IsDebug(2) && edge > from {
 				Debugf("fcgi stderr=%s\n", r.records[from:edge])
 			}
-		default:
+		default: // unknown records
 			return 0, 0, fcgiReadBadRecord
 		}
 	}
@@ -1308,11 +1314,11 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 			return
 		}
 	}
-	// FCGI header is immediate.
+	// FCGI header is now immediate.
 	payloadLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
 	recordSize := fcgiHeaderSize + payloadLen + int32(r.records[r.recordsFrom+6]) // with padding
 	// Is the whole record immediate?
-	if recordSize > remainSize { // not immediate, we need to make it immediate by reading the missing bytes
+	if recordSize > remainSize { // no, we need to make it immediate by reading the missing bytes
 		// Shoud we switch to a larger r.records?
 		if recordSize > int32(cap(r.records)) { // yes, because this record is too large
 			var records []byte
@@ -1338,14 +1344,14 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	// Now recordSize <= remainSize, the record is immediate, so continue parsing it.
 	kind = r.records[r.recordsFrom+1]
 	from = r.recordsFrom + fcgiHeaderSize
-	edge = from + payloadLen
+	edge = from + payloadLen // payload edge, ignoring padding
 	if IsDebug(2) {
 		Debugf("_recvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
 	}
-	// Clean up positions.
-	if recordSize == remainSize { // all remain data are consumed, reset positions
+	// Clean up positions for next call.
+	if recordSize == remainSize { // all remain data are consumed, so reset positions
 		r.recordsFrom, r.recordsEdge = 0, 0
-	} else { // recordSize < remainSize, extra records exist, mark it for next recv
+	} else { // recordSize < remainSize, extra records exist, so mark it for next call
 		r.recordsFrom += recordSize
 	}
 	return
@@ -1359,9 +1365,6 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
 	if err != nil {
 		return 0, err
-	}
-	if IsDebug(2) {
-		Debugf("_growRecords: r.records[r.recordsEdge:r.recordsEdge+n]=%v\n", r.records[r.recordsEdge:r.recordsEdge+int32(n)])
 	}
 	r.recordsEdge += int32(n)
 	return n, nil

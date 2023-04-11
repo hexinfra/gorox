@@ -21,7 +21,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/limit"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/referer"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/rewrite"
+	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/head"

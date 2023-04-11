@@ -24,7 +24,7 @@ import ( // import contrib components here.
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/limit"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/mp4"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/referer"
-	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/rewrite"
+	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/webdav"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gzip"

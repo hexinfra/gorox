@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Rewrite handlets rewrite request path.
+// Rewriter handlets rewrite request path.
 
-package rewrite
+package rewriter
 
 import (
 	. "github.com/hexinfra/gorox/hemi/internal"
@@ -13,14 +13,14 @@ import (
 
 func init() {
 	RegisterHandlet("rewriter", func(name string, stage *Stage, app *App) Handlet {
-		h := new(rewriteChecker)
+		h := new(rewriterChecker)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// rewriteChecker
-type rewriteChecker struct {
+// rewriterChecker
+type rewriterChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,21 +29,21 @@ type rewriteChecker struct {
 	// States
 }
 
-func (h *rewriteChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *rewriterChecker) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *rewriteChecker) OnShutdown() {
+func (h *rewriterChecker) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *rewriteChecker) OnConfigure() {
+func (h *rewriterChecker) OnConfigure() {
 }
-func (h *rewriteChecker) OnPrepare() {
+func (h *rewriterChecker) OnPrepare() {
 }
 
-func (h *rewriteChecker) Handle(req Request, resp Response) (next bool) {
+func (h *rewriterChecker) Handle(req Request, resp Response) (next bool) {
 	// TODO
 	return true
 }

@@ -84,9 +84,8 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		defer backend1.StoreConn(conn1)
 	}
 
-	stream1 := conn1.Stream()
-	stream1.onUse(conn1)
-	defer stream1.onEnd()
+	stream1 := conn1.UseStream()
+	defer conn1.EndStream(stream1)
 
 	// TODO: use stream1.ForwardProxy() or stream1.ReverseProxy()
 

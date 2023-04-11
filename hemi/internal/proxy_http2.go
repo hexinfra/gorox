@@ -85,11 +85,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 
 	stream2 := conn2.FetchStream()
-	stream2.onUse(conn2, 123) // TODO
-	defer func() {
-		stream2.onEnd()
-		conn2.StoreStream(stream2)
-	}()
+	defer conn2.StoreStream(stream2)
 
 	// TODO: use stream2.ForwardProxy() or stream2.ReverseProxy()
 

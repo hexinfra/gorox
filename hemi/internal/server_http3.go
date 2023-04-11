@@ -278,16 +278,16 @@ func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *http3Stream) serveSocket() { // see RFC 9220
+func (s *http3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
-func (s *http3Stream) serveTCPTun() { // CONNECT method
+func (s *http3Stream) executeTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *http3Stream) serveUDPTun() { // see RFC 9298
+func (s *http3Stream) executeUDPTun() { // see RFC 9298
 	// TODO
 }
-func (s *http3Stream) serveNormal(app *App, req *http3Request, resp *http3Response) { // request & response
+func (s *http3Stream) executeNormal(app *App, req *http3Request, resp *http3Response) { // request & response
 	// TODO
 	app.dispatchHandlet(req, resp)
 }

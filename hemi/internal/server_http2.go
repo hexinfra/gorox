@@ -872,16 +872,16 @@ func (s *http2Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *http2Stream) serveSocket() { // see RFC 8441
+func (s *http2Stream) executeSocket() { // see RFC 8441
 	// TODO
 }
-func (s *http2Stream) serveTCPTun() { // CONNECT method
+func (s *http2Stream) executeTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *http2Stream) serveUDPTun() { // see RFC 9298
+func (s *http2Stream) executeUDPTun() { // see RFC 9298
 	// TODO
 }
-func (s *http2Stream) serveNormal(app *App, req *http2Request, resp *http2Response) { // request & response
+func (s *http2Stream) executeNormal(app *App, req *http2Request, resp *http2Response) { // request & response
 	// TODO
 	app.dispatchHandlet(req, resp)
 }

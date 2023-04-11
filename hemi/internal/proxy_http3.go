@@ -85,11 +85,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 
 	stream3 := conn3.FetchStream()
-	stream3.onUse(conn3, nil) // TODO
-	defer func() {
-		stream3.onEnd()
-		conn3.StoreStream(stream3)
-	}()
+	defer conn3.StoreStream(stream3)
 
 	// TODO: use stream3.ForwardProxy() or stream3.ReverseProxy()
 

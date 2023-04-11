@@ -188,11 +188,17 @@ func (c *H2Conn) onPut() {
 }
 
 func (c *H2Conn) FetchStream() *H2Stream {
-	// TODO
+	// TODO: stream.onUse()
 	return nil
 }
 func (c *H2Conn) StoreStream(stream *H2Stream) {
 	// TODO
+	stream.onEnd()
+}
+
+func (c *H2Conn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
 }
 
 func (c *H2Conn) setWriteDeadline(deadline time.Time) error {
@@ -223,7 +229,7 @@ func (c *H2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.netConn, p, n)
 }
 
-func (c *H2Conn) closeConn() { c.netConn.Close() }
+func (c *H2Conn) closeConn() { c.netConn.Close() } // used by codes other than dial
 
 // poolH2Stream
 var poolH2Stream sync.Pool
@@ -289,7 +295,18 @@ func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
-func (s *H2Stream) Execute() error {
+
+func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441
+	// TODO
+	return s.socket
+}
+func (s *H2Stream) ExecuteTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298
+	// TODO
+}
+func (s *H2Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
@@ -298,17 +315,6 @@ func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-
-func (s *H2Stream) StartSocket() *H2Socket { // see RFC 8441
-	// TODO
-	return s.socket
-}
-func (s *H2Stream) StartTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *H2Stream) StartUDPTun() { // see RFC 9298
 	// TODO
 }
 

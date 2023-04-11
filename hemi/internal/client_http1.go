@@ -260,9 +260,22 @@ func (c *H1Conn) onPut() {
 	c.hConn_.onPut()
 }
 
-func (c *H1Conn) Stream() *H1Stream { return &c.stream }
+func (c *H1Conn) UseStream() *H1Stream {
+	stream := &c.stream
+	stream.onUse(c)
+	return stream
+}
+func (c *H1Conn) EndStream(stream *H1Stream) {
+	stream.onEnd()
+}
 
-func (c *H1Conn) closeConn() { c.netConn.Close() }
+func (c *H1Conn) Close() error { // only used by clients of dial
+	netConn := c.netConn
+	putH1Conn(c)
+	return netConn.Close()
+}
+
+func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes other than dial
 
 // H1Stream is the client-side HTTP/1 stream.
 type H1Stream struct {
@@ -298,7 +311,21 @@ func (s *H1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
-func (s *H1Stream) Execute() error {
+
+func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
+	// TODO
+	// use s.startSocket()
+	return s.socket
+}
+func (s *H1Stream) ExecuteTCPTun() { // CONNECT method
+	// TODO
+	// use s.startTCPTun()
+}
+func (s *H1Stream) ExecuteUDPTun() { // upgrade: connect-udp
+	// TODO
+	// use s.startUDPTun()
+}
+func (s *H1Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
@@ -310,20 +337,6 @@ func (s *H1Stream) ForwardProxy(req Request, resp Response, bufferClientContent 
 func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
 	// TODO
 	return nil
-}
-
-func (s *H1Stream) StartSocket() *H1Socket { // upgrade: websocket
-	// TODO
-	// use s.startSocket()
-	return s.socket
-}
-func (s *H1Stream) StartTCPTun() { // CONNECT method
-	// TODO
-	// use s.startTCPTun()
-}
-func (s *H1Stream) StartUDPTun() { // upgrade: connect-udp
-	// TODO
-	// use s.startUDPTun()
 }
 
 func (s *H1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {

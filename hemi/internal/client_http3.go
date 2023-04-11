@@ -186,14 +186,20 @@ func (c *H3Conn) onPut() {
 }
 
 func (c *H3Conn) FetchStream() *H3Stream {
-	// TODO
+	// TODO: stream.onUse()
 	return nil
 }
 func (c *H3Conn) StoreStream(stream *H3Stream) {
 	// TODO
+	stream.onEnd()
 }
 
-func (c *H3Conn) closeConn() { c.quicConn.Close() }
+func (c *H3Conn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
+}
+
+func (c *H3Conn) closeConn() { c.quicConn.Close() } // used by codes other than dial
 
 // poolH3Stream
 var poolH3Stream sync.Pool
@@ -260,7 +266,18 @@ func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }
 func (s *H3Stream) Response() *H3Response { return &s.response }
-func (s *H3Stream) Execute() error {
+
+func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
+	// TODO
+	return s.socket
+}
+func (s *H3Stream) ExecuteTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *H3Stream) ExecuteUDPTun() { // see RFC 9298
+	// TODO
+}
+func (s *H3Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
@@ -269,17 +286,6 @@ func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-
-func (s *H3Stream) StartSocket() *H3Socket { // see RFC 9220
-	// TODO
-	return s.socket
-}
-func (s *H3Stream) StartTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *H3Stream) StartUDPTun() { // see RFC 9298
 	// TODO
 }
 

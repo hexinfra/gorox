@@ -166,15 +166,15 @@ func (s *http1Stream) execute(conn *http1Conn) {
 
 	if req.methodCode == MethodCONNECT { // tcpTun mode?
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
-		s.serveTCPTun()
+		s.executeTCPTun()
 		s.httpMode = httpModeTCPTun
-		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
+		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
 		return
 	}
 	if req.upgradeUDPTun { // udpTun mode?
-		s.serveUDPTun()
+		s.executeUDPTun()
 		s.httpMode = httpModeUDPTun
-		conn.keepConn = false // hijacked, so must close conn after s.serveTCPTun()
+		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
 		return
 	}
 
@@ -210,9 +210,9 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		if req.expectContinue && !s.writeContinue() {
 			return
 		}
-		s.serveSocket()
+		s.executeSocket()
 		s.httpMode = httpModeSocket
-		conn.keepConn = false // hijacked, so must close conn after s.serveSocket()
+		conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
 		return
 	}
 
@@ -244,7 +244,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-	s.serveNormal(app, req, resp)
+	s.executeNormal(app, req, resp)
 
 	if s.isBroken() {
 		s.conn.keepConn = false // i/o error
@@ -278,27 +278,27 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
-func (s *http1Stream) serveSocket() { // upgrade: websocket
+func (s *http1Stream) executeSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455)
 	// NOTICE: use idle timeout or clear read timeout
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
-func (s *http1Stream) serveTCPTun() { // CONNECT method
+func (s *http1Stream) executeTCPTun() { // CONNECT method
 	// TODO(diogin): implementation
 	// NOTICE: use idle timeout
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
-func (s *http1Stream) serveUDPTun() { // upgrade: connect-udp
+func (s *http1Stream) executeUDPTun() { // upgrade: connect-udp
 	// TODO(diogin): implementation (RFC 9298)
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
-func (s *http1Stream) serveNormal(app *App, req *http1Request, resp *http1Response) { // request & response
+func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content.
 		resp.sendChain()

@@ -17,8 +17,7 @@ func Main() {
 	hemi.SetTempDir(system.ExeDir + "/temp")
 	hemi.SetVarsDir(system.ExeDir + "/vars")
 
-	config := "stage{}"
-	stage, err := hemi.ApplyText(config)
+	stage, err := hemi.ApplyText("stage{}")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -27,21 +26,26 @@ func Main() {
 	defer stage.Quit()
 
 	outgate := stage.HTTP1Outgate()
+
 	conn, err := outgate.Dial("httpwg.org:80", false)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	// defer conn.Close()
+	defer conn.Close()
 
-	stream := conn.Stream()
+	stream := conn.UseStream()
+	defer conn.EndStream(stream)
+
 	req := stream.Request()
 	req.SetMethodURI("GET", "/", false)
 	req.AddHeader("host", "httpwg.org")
-	if err := stream.Execute(); err != nil {
+
+	if err := stream.ExecuteNormal(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+
 	resp := stream.Response()
 	fmt.Printf("status=%d\n", resp.Status())
 }

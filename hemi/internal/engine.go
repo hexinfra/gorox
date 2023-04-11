@@ -15,50 +15,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 )
 
-var ( // global variables shared between stages
-	_debug    atomic.Int32 // debug level
-	_baseOnce sync.Once    // protects _baseDir
-	_baseDir  atomic.Value // directory of the executable
-	_logsOnce sync.Once    // protects _logsDir
-	_logsDir  atomic.Value // directory of the log files
-	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the temp files
-	_varsOnce sync.Once    // protects _varsDir
-	_varsDir  atomic.Value // directory of the run-time data
-)
+var _debug atomic.Int32 // debug level
 
+func SetDebug(level int32)     { _debug.Store(level) }
 func IsDebug(level int32) bool { return _debug.Load() >= level }
-func BaseDir() string          { return _baseDir.Load().(string) }
-func LogsDir() string          { return _logsDir.Load().(string) }
-func TempDir() string          { return _tempDir.Load().(string) }
-func VarsDir() string          { return _varsDir.Load().(string) }
-
-func SetDebug(level int32)  { _debug.Store(level) }
-func SetBaseDir(dir string) { _baseOnce.Do(func() { _baseDir.Store(dir) }) }
-func SetLogsDir(dir string) {
-	_mkdir(dir)
-	_logsOnce.Do(func() { _logsDir.Store(dir) })
-}
-func SetTempDir(dir string) {
-	_mkdir(dir)
-	_tempOnce.Do(func() { _tempDir.Store(dir) })
-}
-func SetVarsDir(dir string) {
-	_mkdir(dir)
-	_varsOnce.Do(func() { _varsDir.Store(dir) })
-}
-func _mkdir(dir string) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(0)
-	}
-}
 
 func Debug(args ...any)                 { fmt.Print(args...) }
 func Debugln(args ...any)               { fmt.Println(args...) }
@@ -486,9 +451,6 @@ func (s *Stage) Start(id int32) {
 		Debugf("logsDir=%s\n", LogsDir())
 		Debugf("tempDir=%s\n", TempDir())
 		Debugf("varsDir=%s\n", VarsDir())
-	}
-	if BaseDir() == "" || LogsDir() == "" || TempDir() == "" || VarsDir() == "" {
-		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
 	}
 
 	// Init running environment

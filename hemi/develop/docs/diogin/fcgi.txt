@@ -1,0 +1,45 @@
+https://fastcgi-archives.github.io/FastCGI_Specification.html
+
+typedef struct {
+    version       uint8  // 1
+    type          uint8  // 1-10
+    requestId     uint16 // 1
+    contentLength uint16 // 0-65535
+    paddingLength uint8  // 0-255
+    reserved      uint8  // 0
+    content       [contentLength]byte
+    padding       [paddingLength]byte
+} FCGI_Record;
+
+FCGI_BEGIN_REQUEST=1: 启动一个请求
+
+  typedef struct {
+      role     uint16  // responder=1
+      flags    uint8   // keepConn=1, 否则=0
+      reserved [5]byte // 0
+  } beginRequest;
+
+FCGI_PARAMS=4: 承载 name-value 列表，由 web server 发给 fcgi server，流式
+
+  PARAMS 类型的 record，其 content 按以下编码：
+
+  1 1 name1 value1
+  1 4 name1 value4
+  4 1 name4 value1
+  4 4 name4 value4
+
+  某个 name/value 的长度 <= 127 时，编码为 1 字节，否则编码为 4 字节。
+
+FCGI_STDIN=5: 承载请求内容，由 web server 发给 fcgi server，流式
+
+FCGI_STDOUT=6: 承载响应内容，由 fcgi server 发给 web server，流式
+FCGI_STDERR=7: 承载响应错误，由 fcgi server 发给 web server，流式
+
+FCGI_END_REQUEST=3: 告诉 web server 响应结束
+
+  typedef struct {
+      appStatus      uint32
+      protocolStatus uint8
+      reserved       [3]byte
+  } endRequest;
+

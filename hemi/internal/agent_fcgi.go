@@ -1369,7 +1369,7 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	r.recordsEdge += int32(n)
 	return n, nil
 }
-func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to grow
+func (r *fcgiResponse) _slideRecords(records []byte) { // so we can get more space to grow
 	if r.recordsFrom > 0 {
 		copy(records, r.records[r.recordsFrom:r.recordsEdge])
 		r.recordsEdge -= r.recordsFrom

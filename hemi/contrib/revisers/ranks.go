@@ -8,9 +8,9 @@
 package revisers
 
 const ( // tunable
-	RankWrap    = 3
-	RankReplace = 5
-	RankSSI     = 7
+	RankSSI     = 3
+	RankWrap    = 5
+	RankReplace = 7
 )
 
 const ( // fixed

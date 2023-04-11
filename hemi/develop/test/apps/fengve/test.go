@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package alex
+package fengve
 
-import (
-	. "github.com/hexinfra/gorox/hemi"
-)
+func Main() {
+	println("hello")
+}
 
-func init() {
-	RegisterSvcInit("alex", func(svc *Svc) error {
-		return nil
-	})
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

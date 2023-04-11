@@ -1,9 +1,9 @@
-// Copyright (c) 2020-2023 Zhang Jingcheng <alex@gmail.com>.
+// Copyright (c) 2020-2023 Feng Wei <feng19910104@gmail.com>.
 // Copyright (c) 2022-2023 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package alex
+package fengve
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
@@ -11,21 +11,21 @@ import (
 )
 
 func init() {
-	RegisterAppInit("alex", func(app *App) error {
+	RegisterAppInit("fengve", func(app *App) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("alexHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(alexHandlet)
+	RegisterHandlet("fengveHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(fengveHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// alexHandlet
-type alexHandlet struct {
+// fengveHandlet
+type fengveHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -34,7 +34,7 @@ type alexHandlet struct {
 	// States
 }
 
-func (h *alexHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *fengveHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
@@ -44,20 +44,20 @@ func (h *alexHandlet) onCreate(name string, stage *Stage, app *App) {
 
 	h.SetRouter(h, r)
 }
-func (h *alexHandlet) OnShutdown() {
+func (h *fengveHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *alexHandlet) OnConfigure() {}
-func (h *alexHandlet) OnPrepare()   {}
+func (h *fengveHandlet) OnConfigure() {}
+func (h *fengveHandlet) OnPrepare()   {}
 
-func (h *alexHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *fengveHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
-func (h *alexHandlet) notFound(req Request, resp Response) {
+func (h *fengveHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
-func (h *alexHandlet) abc(req Request, resp Response) {
+func (h *fengveHandlet) abc(req Request, resp Response) {
 	resp.Send("abc")
 }

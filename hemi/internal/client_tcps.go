@@ -272,7 +272,7 @@ func putTConn(conn *TConn) {
 // TConn is a client-side connection to tcpsNode.
 type TConn struct { // only exported to hemi
 	// Mixins
-	pConn_
+	wConn_
 	// Conn states (non-zeros)
 	node    *tcpsNode       // associated node if client is TCPSBackend
 	netConn net.Conn        // TCP, TLS
@@ -281,13 +281,13 @@ type TConn struct { // only exported to hemi
 }
 
 func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.pConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.wConn_.onGet(id, client, client.MaxStreamsPerConn())
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *TConn) onPut() {
-	c.pConn_.onPut()
+	c.wConn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil

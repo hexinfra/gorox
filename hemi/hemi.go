@@ -38,17 +38,18 @@ var ( // core funcs
 
 	RegisterCronjob = internal.RegisterCronjob
 
-	IsDebug = internal.IsDebug
+	SetBaseDir = internal.SetBaseDir
+	SetLogsDir = internal.SetLogsDir
+	SetTempDir = internal.SetTempDir
+	SetVarsDir = internal.SetVarsDir
+
 	BaseDir = internal.BaseDir
 	LogsDir = internal.LogsDir
 	TempDir = internal.TempDir
 	VarsDir = internal.VarsDir
 
-	SetDebug   = internal.SetDebug
-	SetBaseDir = internal.SetBaseDir
-	SetLogsDir = internal.SetLogsDir
-	SetTempDir = internal.SetTempDir
-	SetVarsDir = internal.SetVarsDir
+	SetDebug = internal.SetDebug
+	IsDebug  = internal.IsDebug
 
 	Debug   = internal.Debug
 	Debugln = internal.Debugln

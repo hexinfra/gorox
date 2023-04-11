@@ -342,8 +342,8 @@ type WConn interface {
 	MarkBroken()
 }
 
-// pConn_ is a mixin for TConn and XConn.
-type pConn_ struct {
+// wConn_ is a mixin for TConn and XConn.
+type wConn_ struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
@@ -355,11 +355,11 @@ type pConn_ struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *pConn_) onGet(id int64, client client, maxStreams int32) {
+func (c *wConn_) onGet(id int64, client client, maxStreams int32) {
 	c.conn_.onGet(id, client)
 	c.maxStreams = maxStreams
 }
-func (c *pConn_) onPut() {
+func (c *wConn_) onPut() {
 	c.conn_.onPut()
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
@@ -367,16 +367,16 @@ func (c *pConn_) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *pConn_) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *wConn_) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
+func (c *wConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
-func (c *pConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
-func (c *pConn_) MarkBroken() {
+func (c *wConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
+func (c *wConn_) MarkBroken() {
 	c.markWriteBroken()
 	c.markReadBroken()
 }
 
-func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
-func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }
+func (c *wConn_) markWriteBroken() { c.writeBroken.Store(true) }
+func (c *wConn_) markReadBroken()  { c.readBroken.Store(true) }

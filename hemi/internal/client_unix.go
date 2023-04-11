@@ -203,7 +203,7 @@ func putXConn(conn *XConn) {
 // XConn is a client-side connection to unixNode.
 type XConn struct { // only exported to hemi
 	// Mixins
-	pConn_
+	wConn_
 	// Conn states (non-zeros)
 	node     *unixNode     // associated node if client is UnixBackend
 	unixConn *net.UnixConn // unix conn
@@ -211,12 +211,12 @@ type XConn struct { // only exported to hemi
 }
 
 func (c *XConn) onGet(id int64, client unixClient, node *unixNode, unixConn *net.UnixConn) {
-	c.pConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.wConn_.onGet(id, client, client.MaxStreamsPerConn())
 	c.node = node
 	c.unixConn = unixConn
 }
 func (c *XConn) onPut() {
-	c.pConn_.onPut()
+	c.wConn_.onPut()
 	c.node = nil
 	c.unixConn = nil
 }

@@ -29,11 +29,6 @@ var ( // global variables shared between stages
 	_varsDir  atomic.Value // directory of the run-time data
 )
 
-func BaseDir() string { return _baseDir.Load().(string) }
-func LogsDir() string { return _logsDir.Load().(string) }
-func TempDir() string { return _tempDir.Load().(string) }
-func VarsDir() string { return _varsDir.Load().(string) }
-
 func SetBaseDir(dir string) {
 	_baseOnce.Do(func() { _baseDir.Store(dir) })
 }
@@ -55,6 +50,11 @@ func _mkdir(dir string) {
 		os.Exit(0)
 	}
 }
+
+func BaseDir() string { return _baseDir.Load().(string) }
+func LogsDir() string { return _logsDir.Load().(string) }
+func TempDir() string { return _tempDir.Load().(string) }
+func VarsDir() string { return _varsDir.Load().(string) }
 
 func ApplyText(text string) (*Stage, error) {
 	_checkDirs()

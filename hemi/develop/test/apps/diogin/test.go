@@ -5,8 +5,45 @@
 
 package diogin
 
+import (
+	"fmt"
+	"github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/libraries/system"
+)
+
 func Main() {
-	println("hello")
+	hemi.SetBaseDir(system.ExeDir)
+	hemi.SetLogsDir(system.ExeDir + "/logs")
+	hemi.SetTempDir(system.ExeDir + "/temp")
+	hemi.SetVarsDir(system.ExeDir + "/vars")
+
+	config := "stage{}"
+	stage, err := hemi.ApplyText(config)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	stage.Start(1)
+	defer stage.Quit()
+
+	outgate := stage.HTTP1Outgate()
+	conn, err := outgate.Dial("httpwg.org:80", false)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	// defer conn.Close()
+
+	stream := conn.Stream()
+	req := stream.Request()
+	req.SetMethodURI("GET", "/", false)
+	req.AddHeader("host", "httpwg.org")
+	if err := stream.Execute(); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	resp := stream.Response()
+	fmt.Printf("status=%d\n", resp.Status())
 }
 
 func must(err error) {

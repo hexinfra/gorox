@@ -502,11 +502,6 @@ func (s *Stage) Start(id int32) {
 		UseExitln(err.Error())
 	}
 
-	// Check config requirements
-	if len(s.servers) == 0 && len(s.quicMeshers) == 0 && len(s.tcpsMeshers) == 0 && len(s.udpsMeshers) == 0 {
-		UseExitln("no server/mesher provided, nothing to serve")
-	}
-
 	s.linkServerApps()
 	s.linkServerSvcs()
 

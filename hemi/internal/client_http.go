@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"github.com/hexinfra/gorox/hemi/libraries/risky"
 	"sync/atomic"
 	"time"
 )
@@ -225,6 +226,9 @@ func (r *hRequest_) onEnd() { // for zeros
 
 func (r *hRequest_) Response() hResponse { return r.response }
 
+func (r *hRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
+	return r.shell.(hRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
+}
 func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false

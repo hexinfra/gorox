@@ -258,6 +258,13 @@ func (s *H3Stream) onEnd() { // for zeros
 func (s *H3Stream) keeper() keeper     { return s.conn.getClient() }
 func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 
+func (s *H3Stream) Request() *H3Request   { return &s.request }
+func (s *H3Stream) Response() *H3Response { return &s.response }
+func (s *H3Stream) Execute() error {
+	// TODO
+	return nil
+}
+
 func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
@@ -275,9 +282,6 @@ func (s *H3Stream) StartTCPTun() { // CONNECT method
 func (s *H3Stream) StartUDPTun() { // see RFC 9298
 	// TODO
 }
-
-func (s *H3Stream) Request() *H3Request   { return &s.request }
-func (s *H3Stream) Response() *H3Response { return &s.response }
 
 func (s *H3Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return s.conn.makeTempName(p, unixTime)

@@ -534,7 +534,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. 
 	return r._writeBytes(fcgiEmptyStdin)
 }
 func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
-	if contentText, ok := content.([]byte); ok { // text
+	if contentText, ok := content.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
 	} else if contentFile, ok := content.(*os.File); ok { // file
 		fileInfo, err := contentFile.Stat()
@@ -688,7 +688,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	pBack           int32    // element begins from. for parsing header elements
 	pFore           int32    // element spanning to. for parsing header elements
 	head            span     // for debugging
-	imme            span     // immediate bytes in r.input that belongs to content
+	imme            span     // immediate bytes in r.input that belongs to content, not headers
 	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	receiving       int8     // currently receiving. see httpSectionXXX
@@ -1110,13 +1110,13 @@ var ( // perfect hash table for response important headers
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
 
-func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool {
+func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool { // Connection = #connection-option
 	return r._delHeaders(pairs, from, edge)
 }
-func (r *fcgiResponse) checkTransferEncoding(pairs []pair, from int, edge int) bool {
+func (r *fcgiResponse) checkTransferEncoding(pairs []pair, from int, edge int) bool { // Transfer-Encoding = #transfer-coding
 	return r._delHeaders(pairs, from, edge)
 }
-func (r *fcgiResponse) checkUpgrade(pairs []pair, from int, edge int) bool {
+func (r *fcgiResponse) checkUpgrade(pairs []pair, from int, edge int) bool { // Upgrade = #protocol
 	return r._delHeaders(pairs, from, edge)
 }
 func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
@@ -1370,9 +1370,6 @@ func (r *fcgiResponse) _slideRecords(records []byte) { // so we get space to gro
 	if r.recordsFrom > 0 {
 		copy(records, r.records[r.recordsFrom:r.recordsEdge])
 		r.recordsEdge -= r.recordsFrom
-		if r.imme.notEmpty() {
-			r.imme.sub(r.recordsFrom)
-		}
 		r.recordsFrom = 0
 	}
 }

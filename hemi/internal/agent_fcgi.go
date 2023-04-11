@@ -653,14 +653,14 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream
 	// States (stocks)
-	stockRecords [8192]byte // for r.records
+	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP
 	stockInput   [_2K]byte  // for r.input
 	stockPrimes  [48]pair   // for r.primes
 	stockExtras  [16]pair   // for r.extras
 	// States (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// States (non-zeros)
-	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/16K/fcgiMaxRecords]
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	primes         []pair        // prime fcgi response headers
 	extras         []pair        // extra fcgi response headers
@@ -738,11 +738,7 @@ func (r *fcgiResponse) onUse() {
 }
 func (r *fcgiResponse) onEnd() {
 	if cap(r.records) != cap(r.stockRecords) {
-		if cap(r.records) == fcgiMaxRecords {
-			putFCGIRecords(r.records)
-		} else { // 16K
-			PutNK(r.records)
-		}
+		putFCGIRecords(r.records)
 		r.records = nil
 	}
 	if cap(r.input) != cap(r.stockInput) {
@@ -1190,16 +1186,6 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 		r.imme.zero()
 		return
 	}
-	/*
-		// For better performance when reading response content, we need a 16K or larger r.records
-		if cap(r.records) == cap(r.stockRecords) { // was using stock. switch to 16K
-			records := Get16K()
-			if r.recordsFrom != r.recordsEdge { // there are existing stdout data
-				copy(records[r.recordsFrom:r.recordsEdge], r.records[r.recordsFrom:r.recordsEdge])
-			}
-			r.records = records
-		}
-	*/
 	if from, edge, err := r._recvStdout(); from != edge {
 		return r.records[from:edge], nil
 	} else {
@@ -1315,16 +1301,8 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	if recordSize > remainSize { // no, we need to make it immediate by reading the missing bytes
 		// Shoud we switch to a larger r.records?
 		if recordSize > int32(cap(r.records)) { // yes, because this record is too large
-			var records []byte
-			if recordSize <= _16K {
-				records = Get16K()
-			} else { // recordSize > _16K
-				records = getFCGIRecords()
-			}
+			records := getFCGIRecords()
 			r._slideRecords(records)
-			if cap(r.records) != cap(r.stockRecords) {
-				PutNK(r.records) // must be 16K
-			}
 			r.records = records
 		}
 		// Now r.records is large enough to place this record, we can read the missing bytes of this record

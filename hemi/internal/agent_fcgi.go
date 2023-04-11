@@ -1242,46 +1242,40 @@ func (r *fcgiResponse) _tooSlow() bool {
 }
 
 func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
-	for { // each record
-		kind, from, edge, err := r._recvRecord()
-		if err != nil {
-			return 0, 0, err
+recv:
+	kind, from, edge, err := r._recvRecord()
+	if err != nil {
+		return 0, 0, err
+	}
+	if kind == fcgiTypeStdout && edge > from { // fast path
+		return from, edge, nil
+	}
+	if kind == fcgiTypeStderr {
+		if IsDebug(2) && edge > from {
+			Debugf("fcgi stderr=%s\n", r.records[from:edge])
 		}
-		switch kind {
-		case fcgiTypeStdout:
-			if edge > from {
-				return from, edge, nil
+		goto recv
+	}
+	switch kind {
+	case fcgiTypeStdout: // emptyStdout
+		for { // receive until endRequest
+			kind, from, edge, err = r._recvRecord()
+			if kind == fcgiTypeEndRequest {
+				return 0, 0, io.EOF
 			}
-			// emptyStdout. receive until endRequest
-			for {
-				kind, from, edge, err = r._recvRecord()
-				if kind == fcgiTypeEndRequest {
-					return 0, 0, io.EOF
-				}
-				// Only stderr records are allowed here.
-				if kind != fcgiTypeStderr {
-					return 0, 0, fcgiReadBadRecord
-				}
-				if IsDebug(2) && edge > from {
-					Debugf("fcgi stderr=%s\n", r.records[from:edge])
-				}
+			// Only stderr records are allowed here.
+			if kind != fcgiTypeStderr {
+				return 0, 0, fcgiReadBadRecord
 			}
-		case fcgiTypeEndRequest:
-			if IsDebug(2) {
-				appStatus := int32(r.records[from]) << 24
-				appStatus |= int32(r.records[from+1]) << 16
-				appStatus |= int32(r.records[from+2]) << 8
-				appStatus |= int32(r.records[from+3])
-				Debugf("appStatus=%d protoStatus=%d\n", appStatus, r.records[4])
-			}
-			return 0, 0, io.EOF
-		case fcgiTypeStderr:
+			// Must be stderr.
 			if IsDebug(2) && edge > from {
 				Debugf("fcgi stderr=%s\n", r.records[from:edge])
 			}
-		default: // unknown records
-			return 0, 0, fcgiReadBadRecord
 		}
+	case fcgiTypeEndRequest:
+		return 0, 0, io.EOF
+	default: // unknown record
+		return 0, 0, fcgiReadBadRecord
 	}
 }
 func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.

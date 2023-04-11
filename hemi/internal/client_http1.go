@@ -165,6 +165,9 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		n.markDown()
 		return nil, err
 	}
+	if IsDebug(2) {
+		Debugf("http1Node=%d dial %s OK!\n", n.id, n.address)
+	}
 	connID := n.backend.nextConnID()
 	if n.backend.tlsMode {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)

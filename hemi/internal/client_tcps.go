@@ -193,6 +193,9 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 		n.markDown()
 		return nil, err
 	}
+	if IsDebug(2) {
+		Debugf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
+	}
 	connID := n.backend.nextConnID()
 	if n.backend.tlsMode {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)

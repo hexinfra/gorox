@@ -418,9 +418,6 @@ func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) boo
 	return true
 }
 func (r *fcgiRequest) _addParam(prefix []byte, name []byte, value []byte, http bool) bool {
-	if IsDebug(2) {
-		Debugf("%s%s=%s\n", prefix, name, value)
-	}
 	nameLen, valueLen := len(prefix)+len(name), len(value)
 	paramSize := 1 + 1 + nameLen + valueLen
 	if nameLen > 127 {
@@ -1001,9 +998,6 @@ func (r *fcgiResponse) examineHead() bool {
 func (r *fcgiResponse) applyHeader(index int) bool {
 	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
-	if IsDebug(2) {
-		Debugf("%+v %s %s\n", *header, headerName, header.valueAt(r.input))
-	}
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse

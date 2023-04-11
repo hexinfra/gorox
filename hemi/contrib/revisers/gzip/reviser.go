@@ -28,9 +28,9 @@ type gzipReviser struct {
 	stage *Stage
 	app   *App
 	// States
-	compressLevel int
-	minLength     int64
-	contentTypes  []string
+	compressLevel  int
+	minLength      int64
+	onContentTypes []string
 }
 
 func (r *gzipReviser) onCreate(name string, stage *Stage, app *App) {
@@ -47,8 +47,8 @@ func (r *gzipReviser) OnConfigure() {
 	r.ConfigureInt("compressLevel", &r.compressLevel, nil, 1)
 	// minLength
 	r.ConfigureInt64("minLength", &r.minLength, func(value int64) bool { return value > 0 }, 0)
-	// contentTypes
-	r.ConfigureStringList("contentTypes", &r.contentTypes, nil, []string{})
+	// onContentTypes
+	r.ConfigureStringList("onContentTypes", &r.onContentTypes, nil, []string{"text/html"})
 }
 func (r *gzipReviser) OnPrepare() {
 }

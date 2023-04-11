@@ -8,9 +8,9 @@
 package test
 
 import (
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/develop"
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/diogin"
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/fengve"
-	"github.com/hexinfra/gorox/hemi/develop/test/apps/testee"
 	"os"
 )
 
@@ -25,6 +25,6 @@ func Main() {
 	case "diogin":
 		diogin.Main()
 	default:
-		testee.Main()
+		develop.Main()
 	}
 }

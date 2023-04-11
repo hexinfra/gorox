@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package testee
+package develop
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
@@ -11,21 +11,21 @@ import (
 )
 
 func init() {
-	RegisterAppInit("testee", func(app *App) error {
+	RegisterAppInit("develop", func(app *App) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("testeeHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(testeeHandlet)
+	RegisterHandlet("developHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(developHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// testeeHandlet
-type testeeHandlet struct {
+// developHandlet
+type developHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -34,7 +34,7 @@ type testeeHandlet struct {
 	// States
 }
 
-func (h *testeeHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *developHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
@@ -43,17 +43,17 @@ func (h *testeeHandlet) onCreate(name string, stage *Stage, app *App) {
 
 	h.SetRouter(h, r)
 }
-func (h *testeeHandlet) OnShutdown() {
+func (h *developHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *testeeHandlet) OnConfigure() {}
-func (h *testeeHandlet) OnPrepare()   {}
+func (h *developHandlet) OnConfigure() {}
+func (h *developHandlet) OnPrepare()   {}
 
-func (h *testeeHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *developHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
-func (h *testeeHandlet) notFound(req Request, resp Response) {
+func (h *developHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }

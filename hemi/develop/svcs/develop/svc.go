@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package testee
+package develop
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {
-	RegisterSvcInit("testee", func(svc *Svc) error {
+	RegisterSvcInit("develop", func(svc *Svc) error {
 		/*
 			ss := svc.GRPCServers()
 			for _, s := range ss {

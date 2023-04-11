@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package testee
+package develop
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 	"time"
 )
 
-func (h *testeeHandlet) GET_cookie_set(req Request, resp Response) {
+func (h *developHandlet) GET_cookie_set(req Request, resp Response) {
 	cookie1 := new(Cookie)
 	cookie1.Set("hello", "wo r,ld")
 	cookie1.SetMaxAge(99)
@@ -25,7 +25,7 @@ func (h *testeeHandlet) GET_cookie_set(req Request, resp Response) {
 
 	resp.SendBytes(nil)
 }
-func (h *testeeHandlet) GET_cookies(req Request, resp Response) {
+func (h *developHandlet) GET_cookies(req Request, resp Response) {
 	resp.Echo(req.C("hello"))
 	resp.Echo(req.C("world"))
 }

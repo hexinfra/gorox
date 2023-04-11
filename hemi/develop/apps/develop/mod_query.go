@@ -3,14 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package testee
+package develop
 
-func Main() {
-	http1TestHello()
-}
+import (
+	. "github.com/hexinfra/gorox/hemi"
+)
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
+func (h *developHandlet) GET_querystring(req Request, resp Response) {
+	resp.Send(req.QueryString())
 }

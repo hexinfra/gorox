@@ -11,21 +11,24 @@ import (
 	"time"
 )
 
-type Postgres struct {
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	DSN          *DSN
-}
-
-func (c *Postgres) Dial() error {
-	return nil
-}
-
 type DSN struct {
 	Host string // 1.2.3.4
 	Port string // 5432
 	User string // foo
 	Pass string // 123456
 	Name string // dbname
+}
+
+func Dial(dsn *DSN, timeout time.Duration) (*Postgres, error) {
+	return nil, nil
+}
+
+type Postgres struct {
+	dsn          *DSN
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+}
+
+func (c *Postgres) Close() error {
+	return nil
 }

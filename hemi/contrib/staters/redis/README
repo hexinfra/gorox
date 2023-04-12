@@ -1,1 +1,1 @@
-Redis stater stores sessions in Redis servers. It depends on Redis driver.
+Redis stater stores sessions in Redis servers.

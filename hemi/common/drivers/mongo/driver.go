@@ -7,5 +7,25 @@
 
 package mongo
 
+import (
+	"time"
+)
+
+type DSN struct {
+	Host string
+	Port string
+}
+
+func Dial(dsn *DSN, timeout time.Duration) (*Mongo, error) {
+	return nil, nil
+}
+
 type Mongo struct {
+	dsn *DSN
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+}
+
+func (c *Mongo) Close() error {
+	return nil
 }

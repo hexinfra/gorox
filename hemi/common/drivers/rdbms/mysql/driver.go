@@ -11,17 +11,6 @@ import (
 	"time"
 )
 
-type MySQL struct {
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	DSN          *DSN
-}
-
-func (c *MySQL) Dial() error {
-	return nil
-}
-
 type DSN struct {
 	Host string // 1.2.3.4
 	Port string // 3306
@@ -29,4 +18,18 @@ type DSN struct {
 	Pass string // 123456
 	Name string // dbname
 	Code string // utf8mb4
+}
+
+func Dial(dsn *DSN, timeout time.Duration) (*MySQL, error) {
+	return nil, nil
+}
+
+type MySQL struct {
+	dsn          *DSN
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+}
+
+func (c *MySQL) Close() error {
+	return nil
 }

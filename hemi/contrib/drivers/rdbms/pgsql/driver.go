@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// MySQL connector implementation.
+// PostgreSQL driver implementation.
 
-package mysql
+package pgsql
 
 import (
 	"time"
@@ -24,9 +24,8 @@ func (c *Client) Dial() error {
 
 type DSN struct {
 	Host string // 1.2.3.4
-	Port string // 3306
+	Port string // 5432
 	User string // foo
 	Pass string // 123456
 	Name string // dbname
-	Code string // utf8mb4
 }

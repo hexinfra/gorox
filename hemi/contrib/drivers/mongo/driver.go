@@ -3,9 +3,6 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Redis connector implementation.
+// MongoDB driver implementation.
 
-package redis
-
-type Client struct {
-}
+package mongo

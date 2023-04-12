@@ -499,9 +499,9 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			}
 		}
-		// content-type: text/html; charset=utf-8\r\n
+		// content-type: application/octet-stream\r\n
 		if r.oContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
 		}
 	}
 	// connection: keep-alive\r\n

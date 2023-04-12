@@ -105,7 +105,7 @@ func _newConfig() *config {
 		"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
 		"encodedPath": 7, // /abc, /%cc%dd
 		"queryString": 8, // ?x=y, ?y=z&z=%ff
-		"contentType": 9, // text/html; charset=utf-8
+		"contentType": 9, // application/json
 	}, signedComps)
 	return c
 }

@@ -38,7 +38,7 @@ func server(addr string, handle func(net.Conn)) {
 func handleText(conn net.Conn) { // 96% of nginx
 	defer conn.Close()
 	request := make([]byte, 48) // GET /hello HTTP/1.1\r\nHost: 192.168.1.10:9999\r\n\r\n
-	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html; charset=utf-8\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")
+	response := []byte("HTTP/1.1 200 OK\r\ndate: Sat, 08 Oct 2022 12:07:52 GMT\r\ncontent-length: 13\r\ncontent-type: text/html\r\nconnection: keep-alive\r\nserver: gorox\r\n\r\nhello, world!")
 	for {
 		if _, err := io.ReadFull(conn, request); err != nil { // syscall 1: read()
 			fmt.Printf("io.ReadFull()=%s\n", err.Error())

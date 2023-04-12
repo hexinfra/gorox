@@ -2349,7 +2349,7 @@ var ( // misc http strings & byteses.
 	bytesGzip           = []byte("gzip")
 	bytesBrotli         = []byte("br")
 	bytesIdentity       = []byte("identity")
-	bytesTypeHTMLUTF8   = []byte("text/html; charset=utf-8")
+	bytesTypeHTML       = []byte("text/html")
 	bytesTypeJSON       = []byte("application/json")
 	bytesURLEncodedForm = []byte("application/x-www-form-urlencoded")
 	bytesMultipartForm  = []byte("multipart/form-data")

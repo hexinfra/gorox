@@ -9,7 +9,7 @@ package internal
 
 import (
 	"bytes"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"sync/atomic"
 	"time"
 )

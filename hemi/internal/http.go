@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"net"
 	"os"

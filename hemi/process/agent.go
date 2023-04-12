@@ -9,7 +9,7 @@ package process
 
 import (
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/msgx"
+	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"net"
 )
 

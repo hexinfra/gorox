@@ -10,7 +10,7 @@ package hello
 import (
 	"context"
 	. "github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
 	"sync"
 	"syscall"

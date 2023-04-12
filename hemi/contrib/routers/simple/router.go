@@ -8,8 +8,8 @@
 package simple
 
 import (
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	. "github.com/hexinfra/gorox/hemi/internal"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
 )
 
 // simpleRouter implements Router.

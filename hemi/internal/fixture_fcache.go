@@ -9,7 +9,7 @@ package internal
 
 import (
 	"errors"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"os"
 	"sync"

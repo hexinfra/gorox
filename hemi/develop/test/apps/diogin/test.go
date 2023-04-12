@@ -8,7 +8,7 @@ package diogin
 import (
 	"fmt"
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 func Main() {

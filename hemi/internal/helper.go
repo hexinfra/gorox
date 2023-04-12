@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"math/rand"
 	"os"
 	"strings"

@@ -12,7 +12,7 @@ package internal
 import (
 	"bytes"
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"net"
 	"sync"

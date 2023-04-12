@@ -8,7 +8,7 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/libraries/quix"
+	"github.com/hexinfra/gorox/hemi/common/quix"
 	"sync"
 	"sync/atomic"
 	"time"

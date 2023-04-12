@@ -17,7 +17,7 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"net"
 	"os"

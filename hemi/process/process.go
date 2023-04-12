@@ -11,7 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"github.com/hexinfra/gorox/hemi/common/system"
 	"os"
 	"path/filepath"
 	"strings"

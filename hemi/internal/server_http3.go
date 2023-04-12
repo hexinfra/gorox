@@ -11,7 +11,7 @@ package internal
 
 import (
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/libraries/quix"
+	"github.com/hexinfra/gorox/hemi/common/quix"
 	"net"
 	"sync"
 	"time"

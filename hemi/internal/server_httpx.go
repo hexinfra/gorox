@@ -10,7 +10,7 @@ package internal
 import (
 	"context"
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/libraries/system"
+	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
 	"syscall"
 )

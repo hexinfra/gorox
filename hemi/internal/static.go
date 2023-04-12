@@ -8,7 +8,7 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/libraries/risky"
+	"github.com/hexinfra/gorox/hemi/common/risky"
 	"os"
 	"strconv"
 	"strings"

@@ -19,16 +19,16 @@ type DSN struct {
 	Name string // dbname
 }
 
-func Dial(dsn *DSN, timeout time.Duration) (*Postgres, error) {
+func Dial(dsn *DSN, timeout time.Duration) (*PgSQL, error) {
 	return nil, nil
 }
 
-type Postgres struct {
+type PgSQL struct {
 	dsn          *DSN
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 }
 
-func (c *Postgres) Close() error {
+func (c *PgSQL) Close() error {
 	return nil
 }

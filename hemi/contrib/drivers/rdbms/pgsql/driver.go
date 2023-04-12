@@ -11,14 +11,14 @@ import (
 	"time"
 )
 
-type Client struct {
+type Postgres struct {
 	DialTimeout  time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	DSN          *DSN
 }
 
-func (c *Client) Dial() error {
+func (c *Postgres) Dial() error {
 	return nil
 }
 

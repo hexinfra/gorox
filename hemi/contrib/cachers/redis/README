@@ -1,1 +1,1 @@
-Redis cacher stores cached hobjects in Redis servers.
+Redis cacher stores hobjects in Redis servers. It depends on Redis driver.

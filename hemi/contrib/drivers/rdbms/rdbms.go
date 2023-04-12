@@ -6,3 +6,6 @@
 // RDBMS abstraction.
 
 package rdbms
+
+type DBMS interface {
+}

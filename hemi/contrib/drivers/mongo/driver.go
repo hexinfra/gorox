@@ -6,3 +6,6 @@
 // MongoDB driver implementation.
 
 package mongo
+
+type Mongo struct {
+}

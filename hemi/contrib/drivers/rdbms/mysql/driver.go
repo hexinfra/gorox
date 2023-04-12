@@ -11,14 +11,14 @@ import (
 	"time"
 )
 
-type Client struct {
+type MySQL struct {
 	DialTimeout  time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	DSN          *DSN
 }
 
-func (c *Client) Dial() error {
+func (c *MySQL) Dial() error {
 	return nil
 }
 

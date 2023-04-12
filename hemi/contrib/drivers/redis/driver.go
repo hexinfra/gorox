@@ -7,5 +7,5 @@
 
 package redis
 
-type Client struct {
+type Redis struct {
 }

@@ -59,7 +59,7 @@ func (h *dioginHandlet) notFound(req Request, resp Response) {
 }
 
 func (h *dioginHandlet) GET_send(req Request, resp Response) {
-	resp.Send("c")
+	resp.Send("utf-8中文字符串")
 }
 func (h *dioginHandlet) GET_echo(req Request, resp Response) {
 	resp.Echo("a")

@@ -374,6 +374,12 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
 	}
+	if !r._addMetaParam(fcgiBytesServerSoftware, bytesGorox) { // SERVER_SOFTWARE
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesServerProtocol, req.UnsafeVersion()) { // SERVER_PROTOCOL
+		return false
+	}
 	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
 		return false
 	}
@@ -386,6 +392,14 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 		return false
 	}
 	if !r._addMetaParam(fcgiBytesScriptName, req.UnsafePath()) { // SCRIPT_NAME
+		return false
+	}
+	if value = req.UnsafeQueryString(); len(value) > 1 {
+		value = value[1:] // excluding '?'
+	} else {
+		value = nil
+	}
+	if !r._addMetaParam(fcgiBytesQueryString, value) { // QUERY_STRING
 		return false
 	}
 	if value = req.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
@@ -405,15 +419,14 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 		return false
 	}
 
-	// Finalize params
 	r.paramsHeader[4], r.paramsHeader[5] = byte(r.paramsEdge>>8), byte(r.paramsEdge)
 
 	return true
 }
-func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool {
+func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
 	return r._addParam(name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool {
+func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
 	if !header.isUnderscore() || !r.stream.agent.preferUnderscore {
 		return r._addParam(name, value, true)
 	}
@@ -436,6 +449,7 @@ func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // 
 	if !ok {
 		return false
 	}
+
 	if nameLen > 127 {
 		r.params[from] = byte(nameLen>>24) | 0x80
 		r.params[from+1] = byte(nameLen >> 16)
@@ -452,6 +466,7 @@ func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // 
 	}
 	r.params[from] = byte(valueLen)
 	from++
+
 	if http { // TODO: improve performance
 		from += copy(r.params[from:], fcgiBytesHTTP_)
 		last := from + copy(r.params[from:], name)
@@ -472,7 +487,7 @@ func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // 
 	}
 	return true
 }
-func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) {
+func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // to place more params into r.params[from:edge]
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in growParams")
 	}

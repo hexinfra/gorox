@@ -409,7 +409,7 @@ type Request interface {
 	UnsafeURI() []byte
 	UnsafePath() []byte
 	UnsafeEncodedPath() []byte
-	UnsafeQueryString() []byte
+	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
 	UnsafeQuery(name string) (value []byte, ok bool)
 	UnsafeHeader(name string) (value []byte, ok bool)
 	UnsafeCookie(name string) (value []byte, ok bool)

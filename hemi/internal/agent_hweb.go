@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// GWEB agent handlet passes requests to backend GWEB servers and cache responses.
+// HWEB agent handlet passes requests to backend HWEB servers and cache responses.
 
 package internal
 
-// gwebAgent
-type gwebAgent struct {
+// hwebAgent
+type hwebAgent struct {
 }
 
 // gStream
@@ -17,10 +17,10 @@ type gStream struct {
 
 // gRequest
 type gRequest struct {
-	gwebOut_
+	hwebOut_
 }
 
 // gResponse
 type gResponse struct {
-	gwebIn_
+	hwebIn_
 }

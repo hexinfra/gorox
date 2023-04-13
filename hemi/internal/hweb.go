@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// GWEB protocol elements, general incoming message and outgoing message implementation.
+// HWEB protocol elements, general incoming message and outgoing message implementation.
 
 package internal
 
-// gwebIn_
-type gwebIn_ struct {
+// hwebIn_
+type hwebIn_ struct {
 }
 
-// gwebOut_
-type gwebOut_ struct {
+// hwebOut_
+type hwebOut_ struct {
 }

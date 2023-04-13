@@ -16,11 +16,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICDealet, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICFilter, QUICEditor, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicDealetCreators, quicEditorCreators)
+	m.mesher_.onCreate(name, stage, quicFilterCreators, quicEditorCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -32,12 +32,12 @@ func (m *QUICMesher) OnShutdown() {
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealets, editors, cases
+	m.configureSubs() // filters, editors, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealets, editors, cases
+	m.prepareSubs() // filters, editors, cases
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -63,9 +63,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealets, editors, cases
+	m.WaitSubs() // filters, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("quicMesher=%s done\n", m.Name())
@@ -113,14 +113,14 @@ func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
 }
 
-// QUICDealet
-type QUICDealet interface {
+// QUICFilter
+type QUICFilter interface {
 	Component
 	Deal(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
-// QUICDealet_
-type QUICDealet_ struct {
+// QUICFilter_
+type QUICFilter_ struct {
 	Component_
 }
 
@@ -140,7 +140,7 @@ type QUICEditor_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICDealet, QUICEditor]
+	case_[*QUICMesher, QUICFilter, QUICEditor]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }

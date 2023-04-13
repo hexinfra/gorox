@@ -3,45 +3,45 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS proxy dealet implementation.
+// UDP/DTLS proxy filter implementation.
 
 package internal
 
 func init() {
-	RegisterUDPSDealet("udpsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet {
-		d := new(udpsProxy)
-		d.onCreate(name, stage, mesher)
-		return d
+	RegisterUDPSFilter("udpsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter {
+		f := new(udpsProxy)
+		f.onCreate(name, stage, mesher)
+		return f
 	})
 }
 
 // udpsProxy relays UDP/DTLS connections to another UDP/DTLS server.
 type udpsProxy struct {
 	// Mixins
-	UDPSDealet_
+	UDPSFilter_
 	proxy_
 	// Assocs
 	mesher *UDPSMesher
 	// States
 }
 
-func (d *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	d.MakeComp(name)
-	d.proxy_.onCreate(stage)
-	d.mesher = mesher
+func (f *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+	f.MakeComp(name)
+	f.proxy_.onCreate(stage)
+	f.mesher = mesher
 }
-func (d *udpsProxy) OnShutdown() {
-	d.mesher.SubDone()
-}
-
-func (d *udpsProxy) OnConfigure() {
-	d.proxy_.onConfigure(d)
-}
-func (d *udpsProxy) OnPrepare() {
-	d.proxy_.onPrepare(d)
+func (f *udpsProxy) OnShutdown() {
+	f.mesher.SubDone()
 }
 
-func (d *udpsProxy) Deal(conn *UDPSConn) (next bool) {
+func (f *udpsProxy) OnConfigure() {
+	f.proxy_.onConfigure(f)
+}
+func (f *udpsProxy) OnPrepare() {
+	f.proxy_.onPrepare(f)
+}
+
+func (f *udpsProxy) Deal(conn *UDPSConn) (next bool) {
 	// TODO
 	// NOTE: if configured as forward proxy, work as a SOCKS server? HTTP tunnel?
 	return

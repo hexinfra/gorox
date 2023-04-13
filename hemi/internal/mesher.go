@@ -16,16 +16,16 @@ type _mesher interface {
 }
 
 // mesher_ is the mixin for all meshers.
-type mesher_[M _mesher, G _gate, D _dealet, E _editor, C _case] struct {
+type mesher_[M _mesher, G _gate, D _filter, E _editor, C _case] struct {
 	// Mixins
 	Server_
 	// Assocs
 	gates   []G         // gates opened
-	dealets compDict[D] // defined dealets. indexed by name
+	filters compDict[D] // defined filters. indexed by name
 	editors compDict[E] // defined editors. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	dealetCreators map[string]func(name string, stage *Stage, mesher M) D
+	filterCreators map[string]func(name string, stage *Stage, mesher M) D
 	editorCreators map[string]func(name string, stage *Stage, mesher M) E
 	accessLog      []string // (file, rotate)
 	booker         *booker  // mesher access booker
@@ -33,11 +33,11 @@ type mesher_[M _mesher, G _gate, D _dealet, E _editor, C _case] struct {
 	nEditors       uint8    // used number of editorsByID in this mesher
 }
 
-func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealetCreators map[string]func(string, *Stage, M) D, editorCreators map[string]func(string, *Stage, M) E) {
+func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, filterCreators map[string]func(string, *Stage, M) D, editorCreators map[string]func(string, *Stage, M) E) {
 	m.Server_.OnCreate(name, stage)
-	m.dealets = make(compDict[D])
+	m.filters = make(compDict[D])
 	m.editors = make(compDict[E])
-	m.dealetCreators = dealetCreators
+	m.filterCreators = filterCreators
 	m.editorCreators = editorCreators
 	m.nEditors = 1 // position 0 is not used
 }
@@ -45,7 +45,7 @@ func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealetCreat
 func (m *mesher_[M, G, D, E, C]) shutdownSubs() {
 	m.cases.walk(C.OnShutdown)
 	m.editors.walk(E.OnShutdown)
-	m.dealets.walk(D.OnShutdown)
+	m.filters.walk(D.OnShutdown)
 }
 
 func (m *mesher_[M, G, D, E, C]) onConfigure() {
@@ -62,7 +62,7 @@ func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	}
 }
 func (m *mesher_[M, G, D, E, C]) configureSubs() {
-	m.dealets.walk(D.OnConfigure)
+	m.filters.walk(D.OnConfigure)
 	m.editors.walk(E.OnConfigure)
 	m.cases.walk(C.OnConfigure)
 }
@@ -74,25 +74,25 @@ func (m *mesher_[M, G, D, E, C]) onPrepare() {
 	}
 }
 func (m *mesher_[M, G, D, E, C]) prepareSubs() {
-	m.dealets.walk(D.OnPrepare)
+	m.filters.walk(D.OnPrepare)
 	m.editors.walk(E.OnPrepare)
 	m.cases.walk(C.OnPrepare)
 }
 
-func (m *mesher_[M, G, D, E, C]) createDealet(sign string, name string) D {
-	if _, ok := m.dealets[name]; ok {
-		UseExitln("conflicting dealet with a same name in mesher")
+func (m *mesher_[M, G, D, E, C]) createFilter(sign string, name string) D {
+	if _, ok := m.filters[name]; ok {
+		UseExitln("conflicting filter with a same name in mesher")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := m.dealetCreators[sign]
+	create, ok := m.filterCreators[sign]
 	if !ok {
-		UseExitln("unknown dealet sign: " + sign)
+		UseExitln("unknown filter sign: " + sign)
 	}
-	dealet := create(name, m.stage, m.shell.(M))
-	dealet.setShell(dealet)
-	m.dealets[name] = dealet
-	return dealet
+	filter := create(name, m.stage, m.shell.(M))
+	filter.setShell(filter)
+	m.filters[name] = filter
+	return filter
 }
 func (m *mesher_[M, G, D, E, C]) createEditor(sign string, name string) E {
 	if m.nEditors == 255 {
@@ -129,12 +129,12 @@ func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { // for fast searching
 }
 
 // case_ is a mixin.
-type case_[M _mesher, D _dealet, E _editor] struct {
+type case_[M _mesher, D _filter, E _editor] struct {
 	// Mixins
 	Component_
 	// Assocs
 	mesher  M   // associated mesher
-	dealets []D // dealets contained
+	filters []D // filters contained
 	editors []E // editors contained
 	// States
 	general  bool  // general match?
@@ -167,8 +167,8 @@ func (c *case_[M, D, E]) OnConfigure() {
 func (c *case_[M, D, E]) OnPrepare() {
 }
 
-func (c *case_[M, D, E]) addDealet(dealet D) {
-	c.dealets = append(c.dealets, dealet)
+func (c *case_[M, D, E]) addFilter(filter D) {
+	c.filters = append(c.filters, filter)
 }
 func (c *case_[M, D, E]) addEditor(editor E) {
 	c.editors = append(c.editors, editor)
@@ -231,7 +231,7 @@ func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
 	return false
 }
 
-type _dealet interface {
+type _filter interface {
 	Component
 }
 type _editor interface {

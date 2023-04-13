@@ -18,11 +18,11 @@ import (
 // UDPSMesher
 type UDPSMesher struct {
 	// Mixins
-	mesher_[*UDPSMesher, *udpsGate, UDPSDealet, UDPSEditor, *udpsCase]
+	mesher_[*UDPSMesher, *udpsGate, UDPSFilter, UDPSEditor, *udpsCase]
 }
 
 func (m *UDPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, udpsDealetCreators, udpsEditorCreators)
+	m.mesher_.onCreate(name, stage, udpsFilterCreators, udpsEditorCreators)
 }
 func (m *UDPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -34,12 +34,12 @@ func (m *UDPSMesher) OnShutdown() {
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealets, editors, cases
+	m.configureSubs() // filters, editors, cases
 }
 func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealets, editors, cases
+	m.prepareSubs() // filters, editors, cases
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {
@@ -69,9 +69,9 @@ func (m *UDPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealets, editors, cases
+	m.WaitSubs() // filters, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("udpsMesher=%s done\n", m.Name())
@@ -127,14 +127,14 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
 
-// UDPSDealet
-type UDPSDealet interface {
+// UDPSFilter
+type UDPSFilter interface {
 	Component
 	Deal(conn *UDPSConn) (next bool)
 }
 
-// UDPSDealet_
-type UDPSDealet_ struct {
+// UDPSFilter_
+type UDPSFilter_ struct {
 	Component_
 }
 
@@ -154,7 +154,7 @@ type UDPSEditor_ struct {
 // udpsCase
 type udpsCase struct {
 	// Mixins
-	case_[*UDPSMesher, UDPSDealet, UDPSEditor]
+	case_[*UDPSMesher, UDPSFilter, UDPSEditor]
 	// States
 	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
 }

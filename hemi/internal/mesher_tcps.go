@@ -19,11 +19,11 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSDealet, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSFilter, TCPSEditor, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsDealetCreators, tcpsEditorCreators)
+	m.mesher_.onCreate(name, stage, tcpsFilterCreators, tcpsEditorCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -35,12 +35,12 @@ func (m *TCPSMesher) OnShutdown() {
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealets, editors, cases
+	m.configureSubs() // filters, editors, cases
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealets, editors, cases
+	m.prepareSubs() // filters, editors, cases
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {
@@ -70,9 +70,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealets) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealets, editors, cases
+	m.WaitSubs() // filters, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("tcpsMesher=%s done\n", m.Name())
@@ -187,14 +187,14 @@ func (g *tcpsGate) onConnectionClosed() {
 	g.SubDone()
 }
 
-// TCPSDealet
-type TCPSDealet interface {
+// TCPSFilter
+type TCPSFilter interface {
 	Component
 	Deal(conn *TCPSConn) (next bool)
 }
 
-// TCPSDealet_
-type TCPSDealet_ struct {
+// TCPSFilter_
+type TCPSFilter_ struct {
 	// Mixins
 	Component_
 	// States
@@ -218,7 +218,7 @@ type TCPSEditor_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSDealet, TCPSEditor]
+	case_[*TCPSMesher, TCPSFilter, TCPSEditor]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -285,8 +285,8 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 	for _, editor := range c.editors {
 		conn.hookEditor(editor)
 	}
-	for _, dealet := range c.dealets {
-		if next := dealet.Deal(conn); !next {
+	for _, filter := range c.filters {
+		if next := filter.Deal(conn); !next {
 			return true
 		}
 	}

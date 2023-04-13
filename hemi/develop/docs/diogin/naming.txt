@@ -25,7 +25,7 @@ COMPONENTS
     uniture (...)
     backend (http1Backend, http2Backend, http3Backend, quicBackend, tcpsBackend, udpsBackend, unixBackend)
     mesher (quicMesher, tcpsMesher, udpsMesher)
-      dealet (...)
+      filter (...)
       editor (...)
       case [*]
     stater (localStater, redisStater, ...)

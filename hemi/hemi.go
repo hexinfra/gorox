@@ -17,11 +17,11 @@ const Version = "0.1.0-dev"
 var ( // core funcs
 	RegisterUniture = internal.RegisterUniture
 
-	RegisterQUICDealet = internal.RegisterQUICDealet
+	RegisterQUICFilter = internal.RegisterQUICFilter
 	RegisterQUICEditor = internal.RegisterQUICEditor
-	RegisterTCPSDealet = internal.RegisterTCPSDealet
+	RegisterTCPSFilter = internal.RegisterTCPSFilter
 	RegisterTCPSEditor = internal.RegisterTCPSEditor
-	RegisterUDPSDealet = internal.RegisterUDPSDealet
+	RegisterUDPSFilter = internal.RegisterUDPSFilter
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
 
 	RegisterStater = internal.RegisterStater
@@ -116,17 +116,17 @@ type ( // core types
 	WConn       = internal.WConn       // TConn | XConn
 
 	QUICMesher = internal.QUICMesher
-	QUICDealet = internal.QUICDealet
+	QUICFilter = internal.QUICFilter
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
 
 	TCPSMesher = internal.TCPSMesher
-	TCPSDealet = internal.TCPSDealet
+	TCPSFilter = internal.TCPSFilter
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
 
 	UDPSMesher = internal.UDPSMesher
-	UDPSDealet = internal.UDPSDealet
+	UDPSFilter = internal.UDPSFilter
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn
 
@@ -160,11 +160,11 @@ type ( // core types
 type ( // core mixins
 	Component_ = internal.Component_
 
-	QUICDealet_ = internal.QUICDealet_
+	QUICFilter_ = internal.QUICFilter_
 	QUICEditor_ = internal.QUICEditor_
-	TCPSDealet_ = internal.TCPSDealet_
+	TCPSFilter_ = internal.TCPSFilter_
 	TCPSEditor_ = internal.TCPSEditor_
-	UDPSDealet_ = internal.UDPSDealet_
+	UDPSFilter_ = internal.UDPSFilter_
 	UDPSEditor_ = internal.UDPSEditor_
 
 	Stater_ = internal.Stater_

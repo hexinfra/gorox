@@ -374,6 +374,9 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
 	}
+	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
+		return false
+	}
 	if len(scriptFilename) == 0 {
 		value = req.unsafeAbsPath()
 	} else {
@@ -1242,29 +1245,34 @@ func (r *fcgiResponse) _tooSlow() bool {
 }
 
 func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
+	const (
+		fcgiKindStdout     = 6 // [S] many (ends with an emptyStdout record)
+		fcgiKindStderr     = 7 // [S] many (ends with an emptyStderr record)
+		fcgiKindEndRequest = 3 // [D] only one
+	)
 recv:
 	kind, from, edge, err := r._recvRecord()
 	if err != nil {
 		return 0, 0, err
 	}
-	if kind == fcgiTypeStdout && edge > from { // fast path
+	if kind == fcgiKindStdout && edge > from { // fast path
 		return from, edge, nil
 	}
-	if kind == fcgiTypeStderr {
+	if kind == fcgiKindStderr {
 		if IsDebug(2) && edge > from {
 			Debugf("fcgi stderr=%s\n", r.records[from:edge])
 		}
 		goto recv
 	}
 	switch kind {
-	case fcgiTypeStdout: // emptyStdout
+	case fcgiKindStdout: // emptyStdout
 		for { // receive until endRequest
 			kind, from, edge, err = r._recvRecord()
-			if kind == fcgiTypeEndRequest {
+			if kind == fcgiKindEndRequest {
 				return 0, 0, io.EOF
 			}
 			// Only stderr records are allowed here.
-			if kind != fcgiTypeStderr {
+			if kind != fcgiKindStderr {
 				return 0, 0, fcgiReadBadRecord
 			}
 			// Must be stderr.
@@ -1272,7 +1280,7 @@ recv:
 				Debugf("fcgi stderr=%s\n", r.records[from:edge])
 			}
 		}
-	case fcgiTypeEndRequest:
+	case fcgiKindEndRequest:
 		return 0, 0, io.EOF
 	default: // unknown record
 		return 0, 0, fcgiReadBadRecord
@@ -1361,35 +1369,29 @@ const ( // fcgi constants
 // Discrete records are standalone.
 // Streamed records end with an empty record (payloadLen=0).
 
-const ( // request record types
-	fcgiTypeBeginRequest = 1 // [D] only one
-	fcgiTypeParams       = 4 // [S] only one in our implementation (ends with an emptyParams record)
-	fcgiTypeStdin        = 5 // [S] many (ends with an emptyStdin record)
-)
-
 var ( // request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes
-		1, fcgiTypeBeginRequest, // version, type
+		1, 1, // version, FCGI_BEGIN_REQUEST
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
 		0, 8, // payload length = 8
 		0, 0, // padding length = 0, reserved = 0
 		0, 1, 1, 0, 0, 0, 0, 0, // role=responder, flags=keepConn
 	}
 	fcgiBeginDontKeep = []byte{ // 16 bytes
-		1, fcgiTypeBeginRequest, // version, type
+		1, 1, // version, FCGI_BEGIN_REQUEST
 		0, 1, // request id = 1
 		0, 8, // payload length = 8
 		0, 0, // padding length = 0, reserved = 0
 		0, 1, 0, 0, 0, 0, 0, 0, // role=responder, flags=dontKeep
 	}
 	fcgiEmptyParams = []byte{ // 8 bytes
-		1, fcgiTypeParams, // version, type
+		1, 4, // version, FCGI_PARAMS
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
 	}
 	fcgiEmptyStdin = []byte{ // 8 bytes
-		1, fcgiTypeStdin, // version, type
+		1, 5, // version, FCGI_STDIN
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
@@ -1426,12 +1428,6 @@ var ( // request param names
 var ( // request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
-)
-
-const ( // response record types
-	fcgiTypeStdout     = 6 // [S] many (ends with an emptyStdout record)
-	fcgiTypeStderr     = 7 // [S] many (ends with an emptyStderr record)
-	fcgiTypeEndRequest = 3 // [D] only one
 )
 
 const ( // response header hashes

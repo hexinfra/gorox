@@ -17,6 +17,7 @@ type Svc struct {
 	Component_
 	// Assocs
 	stage       *Stage       // current stage
+	stater      Stater       // the stater which is used by this svc
 	hrpcServers []hrpcServer // linked hrpc servers. may be empty
 	grpcServers []GRPCServer // linked grpc servers. may be empty
 	// States
@@ -36,6 +37,18 @@ func (s *Svc) OnShutdown() {
 }
 
 func (s *Svc) OnConfigure() {
+	// withStater
+	if v, ok := s.Find("withStater"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if stater := s.stage.Stater(name); stater == nil {
+				UseExitf("unknown stater: '%s'\n", name)
+			} else {
+				s.stater = stater
+			}
+		} else {
+			UseExitln("invalid withStater")
+		}
+	}
 	// maxContentSize
 	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 && value <= _1G }, _16M)
 }

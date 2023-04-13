@@ -7,7 +7,7 @@ Program Dependencies
                         |                             |
                         v                             v
   +------+   +----------------------+   +------+ +---------+
-  | libs |<--+     apps & svcs      +-->| exts | |<process>|
+  | libs |<--+  apps & srvs & svcs  +-->| exts | |<process>|
   +------+   +--+----------------+--+   +--+---+ +----+----+
                 |                |         |          |
                 v                v         v          v

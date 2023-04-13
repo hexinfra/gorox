@@ -53,6 +53,30 @@ func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
 
+// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
+type Cacher interface {
+	Component
+	Maintain() // goroutine
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_
+type Cacher_ struct {
+	// Mixins
+	Component_
+}
+
+// Hobject is an HTTP object in cacher
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}
+
 // App is the Web application.
 type App struct {
 	// Mixins

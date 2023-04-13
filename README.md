@@ -35,7 +35,7 @@ Platforms
     * Apple macOS >= Catalina
     * Microsoft Windows >= 10
 
-  And these CPU architectures:
+  And these 64-bit CPU architectures:
 
     * AMD64, also known as x64, x86-64, Intel 64
     * ARM64, also known as AArch64

@@ -24,5 +24,3 @@ type gRequest struct {
 type gResponse struct {
 	gwebIn_
 }
-
-//////////////////////////////////////// GWEB protocol elements.

@@ -39,8 +39,8 @@ Platforms
 
     * AMD64, also known as x64, x86-64, Intel 64
     * ARM64, also known as AArch64
-    * RISC-V
-    * LoongArch
+    * RISC-V 64
+    * LoongArch 64
 
   Other platforms are currently not considered and probably don't work.
 

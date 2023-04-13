@@ -16,6 +16,37 @@ import (
 	"time"
 )
 
+// webServer is the interface for *httpxServer and *http3Server.
+type webServer interface {
+	Server
+	streamHolder
+	contentSaver
+
+	MaxContentSize() int64
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
+
+	linkApps()
+	findApp(hostname []byte) *App
+}
+
+// webGate is the interface for *httpxGate and *http3Gate.
+type webGate interface {
+	Gate
+	onConnectionClosed()
+}
+
+// webGate_ is the mixin for httpxGate and http3Gate.
+type webGate_ struct {
+	// Mixins
+	Gate_
+}
+
+func (g *webGate_) onConnectionClosed() {
+	g.DecConns()
+	g.SubDone()
+}
+
 // Stater component is the interface to storages of HTTP states. See RFC 6265.
 type Stater interface {
 	Component
@@ -85,7 +116,7 @@ type App struct {
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this app
-	servers  []httpServer      // linked http servers. may be empty
+	servers  []webServer       // linked web servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
@@ -362,7 +393,7 @@ func (a *App) Logf(format string, args ...any) {
 	}
 }
 
-func (a *App) linkServer(server httpServer) { a.servers = append(a.servers, server) }
+func (a *App) linkServer(server webServer) { a.servers = append(a.servers, server) }
 
 func (a *App) maintain() { // goroutine
 	Loop(time.Second, a.Shut, func(now time.Time) {

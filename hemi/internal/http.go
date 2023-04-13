@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// keeper is an httpServer or httpClient which keeps http connections and streams.
+// keeper is a webServer or httpClient which keeps http connections and streams.
 type keeper interface {
 	Stage() *Stage
 	TLSMode() bool

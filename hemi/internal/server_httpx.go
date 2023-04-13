@@ -105,7 +105,7 @@ func (s *httpxServer) Serve() { // goroutine
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Mixins
-	httpGate_
+	webGate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -113,7 +113,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(server *httpxServer, id int32) {
-	g.httpGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 

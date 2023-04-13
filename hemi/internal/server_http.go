@@ -20,20 +20,6 @@ import (
 	"time"
 )
 
-// httpServer is the interface for *httpxServer and *http3Server.
-type httpServer interface {
-	Server
-	streamHolder
-	contentSaver
-
-	MaxContentSize() int64
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
-
-	linkApps()
-	findApp(hostname []byte) *App
-}
-
 // httpServer_ is a mixin for httpxServer and http3Server.
 type httpServer_ struct {
 	// Mixins
@@ -42,7 +28,7 @@ type httpServer_ struct {
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
-	gates      []httpGate
+	gates      []webGate
 	defaultApp *App // default app
 	// States
 	forApps      []string            // for what apps
@@ -108,7 +94,7 @@ func (s *httpServer_) linkApps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		app.linkServer(s.shell.(httpServer))
+		app.linkServer(s.shell.(webServer))
 		if app.isDefault {
 			s.defaultApp = app
 		}
@@ -191,27 +177,10 @@ func (s *httpServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
-// httpGate is the interface for *httpxGate and *http3Gate.
-type httpGate interface {
-	Gate
-	onConnectionClosed()
-}
-
-// httpGate_ is the mixin for httpxGate and http3Gate.
-type httpGate_ struct {
-	// Mixins
-	Gate_
-}
-
-func (g *httpGate_) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
-
 // httpConn is the interface for *http[1-3]Conn.
 type httpConn interface {
 	serve() // goroutine
-	getServer() httpServer
+	getServer() webServer
 	isBroken() bool
 	markBroken()
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -222,9 +191,9 @@ type httpConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64      // the conn id
-	server httpServer // the server to which the conn belongs
-	gate   httpGate   // the gate to which the conn belongs
+	id     int64     // the conn id
+	server webServer // the server to which the conn belongs
+	gate   webGate   // the gate to which the conn belongs
 	// Conn states (zeros)
 	lastRead    time.Time    // deadline of last read operation
 	lastWrite   time.Time    // deadline of last write operation
@@ -233,7 +202,7 @@ type httpConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *httpConn_) onGet(id int64, server httpServer, gate httpGate) {
+func (c *httpConn_) onGet(id int64, server webServer, gate webGate) {
 	c.id = id
 	c.server = server
 	c.gate = gate
@@ -248,8 +217,8 @@ func (c *httpConn_) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *httpConn_) getServer() httpServer { return c.server }
-func (c *httpConn_) getGate() httpGate     { return c.gate }
+func (c *httpConn_) getServer() webServer { return c.server }
+func (c *httpConn_) getGate() webGate     { return c.gate }
 
 func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }

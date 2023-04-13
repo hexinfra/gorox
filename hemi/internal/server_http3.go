@@ -71,7 +71,7 @@ func (s *http3Server) Serve() { // goroutine
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Mixins
-	httpGate_
+	webGate_
 	// Assocs
 	server *http3Server
 	// States
@@ -79,7 +79,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
-	g.httpGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 

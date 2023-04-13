@@ -498,8 +498,8 @@ func (s *Stage) linkServerApps() {
 		Debugln("link apps to http servers")
 	}
 	for _, server := range s.servers {
-		if httpServer, ok := server.(httpServer); ok {
-			httpServer.linkApps()
+		if webServer, ok := server.(webServer); ok {
+			webServer.linkApps()
 		}
 	}
 }

@@ -9,7 +9,7 @@ package internal
 
 // hrpcServer is the HRPC server.
 type hrpcServer interface {
-	httpServer
+	webServer
 
 	linkSvcs()
 	findSvc(hostname []byte) *Svc

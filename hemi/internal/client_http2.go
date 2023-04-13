@@ -296,6 +296,10 @@ func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
 
+func (s *H2Stream) ExecuteNormal() error { // request & response
+	// TODO
+	return nil
+}
 func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441
 	// TODO
 	return s.socket
@@ -305,10 +309,6 @@ func (s *H2Stream) ExecuteTCPTun() { // CONNECT method
 }
 func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298
 	// TODO
-}
-func (s *H2Stream) ExecuteNormal() error { // request & response
-	// TODO
-	return nil
 }
 
 func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {

@@ -267,6 +267,10 @@ func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 func (s *H3Stream) Request() *H3Request   { return &s.request }
 func (s *H3Stream) Response() *H3Response { return &s.response }
 
+func (s *H3Stream) ExecuteNormal() error { // request & response
+	// TODO
+	return nil
+}
 func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
 	// TODO
 	return s.socket
@@ -276,10 +280,6 @@ func (s *H3Stream) ExecuteTCPTun() { // CONNECT method
 }
 func (s *H3Stream) ExecuteUDPTun() { // see RFC 9298
 	// TODO
-}
-func (s *H3Stream) ExecuteNormal() error { // request & response
-	// TODO
-	return nil
 }
 
 func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {

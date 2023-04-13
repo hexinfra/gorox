@@ -315,6 +315,10 @@ func (s *H1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
 
+func (s *H1Stream) ExecuteNormal() error { // request & response
+	// TODO
+	return nil
+}
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO
 	// use s.startSocket()
@@ -327,10 +331,6 @@ func (s *H1Stream) ExecuteTCPTun() { // CONNECT method
 func (s *H1Stream) ExecuteUDPTun() { // upgrade: connect-udp
 	// TODO
 	// use s.startUDPTun()
-}
-func (s *H1Stream) ExecuteNormal() error { // request & response
-	// TODO
-	return nil
 }
 
 func (s *H1Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {

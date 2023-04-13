@@ -280,14 +280,14 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 }
 func (s *http1Stream) executeSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455)
-	// NOTICE: use idle timeout or clear read timeout
+	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
 func (s *http1Stream) executeTCPTun() { // CONNECT method
 	// TODO(diogin): implementation
-	// NOTICE: use idle timeout
+	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()

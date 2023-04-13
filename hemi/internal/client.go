@@ -22,7 +22,7 @@ type client interface {
 	TLSMode() bool
 	WriteTimeout() time.Duration
 	ReadTimeout() time.Duration
-	IdleTimeout() time.Duration
+	AliveTimeout() time.Duration
 }
 
 // client_ is a mixin for outgates and backends.
@@ -37,7 +37,7 @@ type client_ struct {
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write operation timeout
 	readTimeout  time.Duration // read operation timeout
-	idleTimeout  time.Duration // conn alive timeout
+	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 }
 
@@ -60,8 +60,8 @@ func (c *client_) onConfigure() {
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
 	// readTimeout
 	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
-	// idleTimeout
-	c.ConfigureDuration("idleTimeout", &c.idleTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
+	// aliveTimeout
+	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
 }
 func (c *client_) onPrepare() {
 }
@@ -74,7 +74,7 @@ func (c *client_) Stage() *Stage               { return c.stage }
 func (c *client_) TLSMode() bool               { return c.tlsMode }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
-func (c *client_) IdleTimeout() time.Duration  { return c.idleTimeout }
+func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
 func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
@@ -105,7 +105,7 @@ func (o *outgate_) onPrepare() {
 func (o *outgate_) served() int64 { return o.nServed.Load() }
 func (o *outgate_) incServed()    { o.nServed.Add(1) }
 
-// backend is a group of nodes.
+// backend is a group of stateless nodes.
 type backend interface {
 	Component
 	client
@@ -198,7 +198,7 @@ func (b *backend_[N]) maintain() { // goroutine
 	b.stage.SubDone()
 }
 
-// node is a member of backend.
+// node is a member of backend. it must be stateless.
 type node interface {
 	setAddress(address string)
 	setWeight(weight int32)
@@ -304,7 +304,7 @@ type conn_ struct {
 func (c *conn_) onGet(id int64, client client) {
 	c.id = id
 	c.client = client
-	c.expire = time.Now().Add(client.IdleTimeout())
+	c.expire = time.Now().Add(client.AliveTimeout())
 }
 func (c *conn_) onPut() {
 	c.client = nil

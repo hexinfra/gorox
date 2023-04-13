@@ -158,15 +158,13 @@ func (b *TCPSBackend) StoreConn(conn WConn) {
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Mixins
-	node_
+	wNode_
 	// Assocs
-	backend *TCPSBackend
 	// States
 }
 
 func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
-	n.node_.init(id)
-	n.backend = backend
+	n.wNode_.init(id, backend)
 }
 
 func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
@@ -188,7 +186,8 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if IsDebug(2) {
 		Debugf("tcpsNode=%d dial %s\n", n.id, n.address)
 	}
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	backend := n.backend.(*TCPSBackend)
+	netConn, err := net.DialTimeout("tcp", n.address, backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -196,9 +195,9 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if IsDebug(2) {
 		Debugf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
 	}
-	connID := n.backend.nextConnID()
-	if n.backend.tlsMode {
-		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
+	connID := backend.nextConnID()
+	if backend.tlsMode {
+		tlsConn := tls.Client(netConn, backend.tlsConfig)
 		// TODO: timeout
 		if err := tlsConn.Handshake(); err != nil {
 			tlsConn.Close()

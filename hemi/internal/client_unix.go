@@ -148,15 +148,13 @@ func (b *UnixBackend) StoreConn(conn WConn) {
 // unixNode is a node in UnixBackend.
 type unixNode struct {
 	// Mixins
-	node_
+	wNode_
 	// Assocs
-	backend *UnixBackend
 	// States
 }
 
 func (n *unixNode) init(id int32, backend *UnixBackend) {
-	n.node_.init(id)
-	n.backend = backend
+	n.wNode_.init(id, backend)
 }
 
 func (n *unixNode) maintain(shut chan struct{}) { // goroutine

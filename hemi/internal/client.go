@@ -23,6 +23,7 @@ type client interface {
 	WriteTimeout() time.Duration
 	ReadTimeout() time.Duration
 	AliveTimeout() time.Duration
+	nextConnID() int64
 }
 
 // client_ is a mixin for outgates and backends.
@@ -321,9 +322,23 @@ func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 // connection-oriented backend, supports TCPS and Unix.
 type WireBackend interface {
 	backend
+	streamHolder
 	Dial() (WConn, error)
 	FetchConn() (WConn, error)
 	StoreConn(conn WConn)
+}
+
+// connection-oriented node, supports TCPS and Unix.
+type wNode_ struct {
+	// Mixins
+	node_
+	// Assocs
+	backend WireBackend
+}
+
+func (n *wNode_) init(id int32, backend WireBackend) {
+	n.node_.init(id)
+	n.backend = backend
 }
 
 // connection-oriented conn, supports TCPS and Unix.

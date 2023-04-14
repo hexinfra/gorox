@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General HTTP protocol elements, incoming message and outgoing message implementation.
+// General HTTP protocol elements.
 
 package internal
 

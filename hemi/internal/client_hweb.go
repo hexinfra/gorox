@@ -6,3 +6,31 @@
 // HWEB client implementation.
 
 package internal
+
+// hwebBackend
+type hwebBackend struct {
+}
+
+// hwebNode
+type hwebNode struct {
+}
+
+// hConn
+type hConn struct {
+	wConn_
+}
+
+// hStream
+type hStream struct {
+	wStream_
+}
+
+// hRequest
+type hRequest struct {
+	wRequest_
+}
+
+// hResponse
+type hResponse struct {
+	wResponse_
+}

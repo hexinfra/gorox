@@ -10,21 +10,3 @@ package internal
 // hwebAgent
 type hwebAgent struct {
 }
-
-// hConn
-type hConn struct {
-}
-
-// hStream
-type hStream struct {
-}
-
-// hRequest
-type hRequest struct {
-	webOut_
-}
-
-// hResponse
-type hResponse struct {
-	webIn_
-}

@@ -17,18 +17,20 @@ type hwebGate struct {
 
 // hwebConn
 type hwebConn struct {
+	webConn_
 }
 
 // hwebStream
 type hwebStream struct {
+	webStream_
 }
 
 // hwebRequest
 type hwebRequest struct {
-	webIn_
+	webRequest_
 }
 
 // hwebResponse
 type hwebResponse struct {
-	webOut_
+	webResponse_
 }

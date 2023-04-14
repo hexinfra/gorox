@@ -69,12 +69,12 @@ const ( // field flags
 
 on connection established:
 
-    -> kind=preface streamID=0 bodySize=?? body=[maxRecordBodySize=16376]
-    <- kind=preface streamID=0 bodySize=?? body=[maxRecordBodySize=16376 maxConcurrentStreams=10 totalStreams=1000]
+    -> kind=preface streamID=0 bodySize=4 body=[maxRecordBodySize=16376]
+    <- kind=preface streamID=0 bodySize=12 body=[maxRecordBodySize=16376 maxConcurrentStreams=10 totalStreams=1000]
 
 stream=1 (identity output):
 
-    -> kind=headers streamID=1 bodySize=?? body=[:method=GET :uri=/ host=example.com:8081]
+    -> kind=headers streamID=1 bodySize=?? body=[:method=GET :uri=/hello host=example.com:8081]
 
     <- kind=headers streamID=1 bodySize=?? body=[:status=200 content-length=12]
     <- kind=fragment streamID=1 bodySize=6 body=[hello,]
@@ -86,8 +86,8 @@ stream=2 (chunked output):
     -> kind=fragment streamID=2 bodySize=90 body=[...90...]
 
     <- kind=headers streamID=2 bodySize=?? body=[:status=200 content-type=text/html]
-    <- kind=fragment streamID=2 bodySize=777 body=[...777...]
-    <- kind=fragment streamID=2 bodySize=888 body=[...888...]
+    <- kind=fragment streamID=2 bodySize=77 body=[...77...]
+    <- kind=fragment streamID=2 bodySize=88 body=[...88...]
     <- kind=fragment streamID=2 bodySize=0 body=[]
     <- kind=trailers streamID=2 bodySize=?? body=[md5-digest=12345678901234567890123456789012]
 

@@ -33,8 +33,8 @@ func (r *hwebOut_) sendChainH() error {
 
 // message = headersRecord *fragmentRecord [ trailersRecord ]
 
-// headersRecord  = head *field
-// trailersRecord = head *field
+// headersRecord  = head 1*field
+// trailersRecord = head 1*field
 
 // field(32+) = flags(8) nameSize(8) valueSize(16) name value
 // name = 1*OCTET

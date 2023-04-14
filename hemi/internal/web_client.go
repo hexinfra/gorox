@@ -8,10 +8,10 @@
 package internal
 
 import (
-	"time"
 	"bytes"
-	"sync/atomic"
 	"github.com/hexinfra/gorox/hemi/common/risky"
+	"sync/atomic"
+	"time"
 )
 
 // webClient is the interface for http outgates and web backends.
@@ -904,18 +904,18 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// socket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
-type socket interface {
+// wSocket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
+type wSocket interface {
 }
 
-// socket_ is the mixin for H[1-3]Socket.
-type hSocket_ struct {
+// wSocket_ is the mixin for H[1-3]Socket.
+type wSocket_ struct {
 	// Assocs
-	shell socket // the concrete hSocket
+	shell wSocket // the concrete wSocket
 	// Stream states (zeros)
 }
 
-func (s *hSocket_) onUse() {
+func (s *wSocket_) onUse() {
 }
-func (s *hSocket_) onEnd() {
+func (s *wSocket_) onEnd() {
 }

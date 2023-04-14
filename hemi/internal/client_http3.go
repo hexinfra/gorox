@@ -400,7 +400,7 @@ var poolH3Socket sync.Pool
 // H3Socket is the client-side HTTP/3 websocket.
 type H3Socket struct {
 	// Mixins
-	hSocket_
+	wSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

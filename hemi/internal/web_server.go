@@ -8,15 +8,15 @@
 package internal
 
 import (
-	"sync/atomic"
-	"net"
-	"os"
 	"bytes"
 	"crypto/tls"
 	"errors"
-	"io"
-	"strconv"
 	"github.com/hexinfra/gorox/hemi/common/risky"
+	"io"
+	"net"
+	"os"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -1870,7 +1870,7 @@ func (r *webRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC
 		switch content := r._recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentText = content
-			r.contentTextKind = webContentTextPool        // so r.contentText can be freed on end
+			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
 		case tempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
@@ -3151,15 +3151,15 @@ type Socket interface {
 	Close() error
 }
 
-// httpSocket_ is the mixin for http[1-3]Socket.
-type httpSocket_ struct {
+// webSocket_ is the mixin for http[1-3]Socket.
+type webSocket_ struct {
 	// Assocs
 	shell Socket // the concrete Socket
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *httpSocket_) onUse() {
+func (s *webSocket_) onUse() {
 }
-func (s *httpSocket_) onEnd() {
+func (s *webSocket_) onEnd() {
 }

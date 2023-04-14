@@ -666,7 +666,7 @@ var poolH1Socket sync.Pool
 // H1Socket is the client-side HTTP/1 websocket.
 type H1Socket struct {
 	// Mixins
-	hSocket_
+	wSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

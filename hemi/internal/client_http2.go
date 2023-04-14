@@ -429,7 +429,7 @@ var poolH2Socket sync.Pool
 // H2Socket is the client-side HTTP/2 websocket.
 type H2Socket struct {
 	// Mixins
-	hSocket_
+	wSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

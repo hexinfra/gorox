@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web server implementation.
+// General Web server implementation for HTTP and HWEB.
 
 package internal
 
@@ -65,7 +65,7 @@ func (s *webServer_) onCreate(name string, stage *Stage) {
 func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.streamHolder_.onConfigure(shell, 0)
-	s.contentSaver_.onConfigure(shell, TempDir()+"/http/servers/"+s.name)
+	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
 	// forSvcs
@@ -285,7 +285,7 @@ func (s *webStream_) serveUDPTun() { // upgrade: connect-udp
 	// TODO
 }
 
-// Request is the server-side Web request and is the interface for *http[1-3]Request and *hwebRequest.
+// Request is the interface for *http[1-3]Request and *hwebRequest.
 type Request interface {
 	PeerAddr() net.Addr
 	App() *App
@@ -2588,7 +2588,7 @@ func (u *Upload) MoveTo(path string) error {
 	return nil
 }
 
-// Response is the server-side Web response and is the interface for *http[1-3]Response and *hwebResponse.
+// Response is the interface for *http[1-3]Response and *hwebResponse.
 type Response interface {
 	Request() Request
 
@@ -3144,22 +3144,22 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
-// Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.
+// Socket is the interface for *http[1-3]Socket.
 type Socket interface {
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
 }
 
-// webSocket_ is the mixin for http[1-3]Socket.
-type webSocket_ struct {
+// httpSocket_ is the mixin for http[1-3]Socket.
+type httpSocket_ struct {
 	// Assocs
 	shell Socket // the concrete Socket
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *webSocket_) onUse() {
+func (s *httpSocket_) onUse() {
 }
-func (s *webSocket_) onEnd() {
+func (s *httpSocket_) onEnd() {
 }

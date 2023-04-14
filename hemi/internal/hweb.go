@@ -8,3 +8,19 @@
 // HWEB is an HTTP gateway protocol like FCGI, but has a lot of improvements over FCGI.
 
 package internal
+
+// hwebIn_ is used by hwebRequest and hResponse.
+type hwebIn_ = webIn_
+
+func (r *hwebIn_) readContentH() (p []byte, err error) {
+	return
+}
+
+// hwebOut_ is used by hwebResponse and hRequest.
+type hwebOut_ = webOut_
+
+func (r *hwebOut_) sendChainH() error {
+	return nil
+}
+
+//////////////////////////////////////// HWEB protocol elements.

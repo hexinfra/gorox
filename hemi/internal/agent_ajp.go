@@ -93,7 +93,7 @@ func (h *ajpAgent) OnPrepare() {
 func (h *ajpAgent) IsProxy() bool { return true }
 func (h *ajpAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *ajpAgent) Handle(req Request, resp Response) (next bool) {
+func (h *ajpAgent) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation, use PConn
 	resp.Send("ajp")
 	return

@@ -7,17 +7,49 @@
 
 package internal
 
+import (
+	"sync"
+	"time"
+)
+
 // hwebBackend
 type hwebBackend struct {
+	// Mixins
+	webBackend_[*hwebNode]
 }
 
 // hwebNode
 type hwebNode struct {
+	// Mixins
+	webNode_
+	// Assocs
+	backend *hwebBackend
+	// States
+}
+
+func (n *hwebNode) maintain(shut chan struct{}) { // goroutine
+	Loop(time.Second, shut, func(now time.Time) {
+		// TODO: health check
+	})
+	// TODO: wait for all conns
+	if IsDebug(2) {
+		Debugf("http2Node=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 // hConn
 type hConn struct {
 	wConn_
+}
+
+// poolHStream
+var poolHStream sync.Pool
+
+func getHStream(conn *hConn, id uint32) *hStream {
+	return nil
+}
+func putHStream(stream *hStream) {
 }
 
 // hStream

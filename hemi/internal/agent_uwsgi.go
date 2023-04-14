@@ -89,7 +89,7 @@ func (h *uwsgiAgent) OnPrepare() {
 func (h *uwsgiAgent) IsProxy() bool { return true }
 func (h *uwsgiAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) {
+func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation, use PConn
 	resp.Send("uwsgi")
 	return

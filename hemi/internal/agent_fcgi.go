@@ -121,7 +121,7 @@ func (h *fcgiAgent) OnPrepare() {
 func (h *fcgiAgent) IsProxy() bool { return true }
 func (h *fcgiAgent) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
+func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) { // reverse only
 	var (
 		content  any
 		fConn    PConn

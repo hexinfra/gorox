@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web client implementation.
+// General Web client implementation for HTTP and HWEB.
 
 package internal
 
@@ -24,7 +24,7 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webClient_ is a mixin for webOutgate_ and webBackend_.
+// webClient_ is a mixin for httpOutgate_ and webBackend_.
 type webClient_ struct {
 	// Mixins
 	keeper_
@@ -38,7 +38,7 @@ func (h *webClient_) onCreate() {
 
 func (h *webClient_) onConfigure(shell Component, clientType string) {
 	h.streamHolder_.onConfigure(shell, 1000)
-	h.contentSaver_.onConfigure(shell, TempDir()+"/http/"+clientType+"/"+shell.Name())
+	h.contentSaver_.onConfigure(shell, TempDir()+"/web/"+clientType+"/"+shell.Name())
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 	// sendTimeout
@@ -51,29 +51,29 @@ func (h *webClient_) onPrepare(shell Component) {
 	h.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate.
-type webOutgate_ struct {
+// httpOutgate_ is the mixin for HTTP[1-3]Outgate.
+type httpOutgate_ struct {
 	// Mixins
 	outgate_
 	webClient_
 	// States
 }
 
-func (f *webOutgate_) onCreate(name string, stage *Stage) {
+func (f *httpOutgate_) onCreate(name string, stage *Stage) {
 	f.outgate_.onCreate(name, stage)
 	f.webClient_.onCreate()
 }
 
-func (f *webOutgate_) onConfigure(shell Component) {
+func (f *httpOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
 	f.webClient_.onConfigure(shell, "outgates")
 }
-func (f *webOutgate_) onPrepare(shell Component) {
+func (f *httpOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
 	f.webClient_.onPrepare(shell)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and hwebBackend.
 type webBackend_[N node] struct {
 	// Mixins
 	backend_[N]
@@ -100,7 +100,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// webNode_ is the mixin for http[1-3]Node.
+// webNode_ is the mixin for http[1-3]Node and hwebNode.
 type webNode_ struct {
 	// Mixins
 	node_
@@ -111,7 +111,7 @@ func (n *webNode_) init(id int32) {
 	n.node_.init(id)
 }
 
-// wConn is the interface for *H[1-3]Conn.
+// wConn is the interface for *H[1-3]Conn and *hConn.
 type wConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -119,7 +119,7 @@ type wConn interface {
 	markBroken()
 }
 
-// wConn_ is the mixin for H[1-3]Conn.
+// wConn_ is the mixin for H[1-3]Conn and hConn.
 type wConn_ struct {
 	// Mixins
 	conn_
@@ -155,7 +155,7 @@ func (c *wConn_) reachLimit() bool {
 func (c *wConn_) isBroken() bool { return c.broken.Load() }
 func (c *wConn_) markBroken()    { c.broken.Store(true) }
 
-// wStream_ is the mixin for H[1-3]Stream.
+// wStream_ is the mixin for H[1-3]Stream and hStream.
 type wStream_ struct {
 	// Mixins
 	stream_
@@ -182,14 +182,14 @@ func (s *wStream_) startUDPTun() { // upgrade: connect-udp
 	// TODO
 }
 
-// wRequest is the client-side HTTP request and the interface for *H[1-3]Request.
+// wRequest is the interface for *H[1-3]Request and *hRequest.
 type wRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// wRequest_ is the mixin for H[1-3]Request.
+// wRequest_ is the mixin for H[1-3]Request and hRequest.
 type wRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_
@@ -418,7 +418,7 @@ type upload struct {
 	// TODO
 }
 
-// wResponse is the client-side HTTP response and interface for *H[1-3]Response.
+// wResponse is the interface for *H[1-3]Response and *hResponse.
 type wResponse interface {
 	Status() int16
 	delHopHeaders()
@@ -904,18 +904,18 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// wSocket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
-type wSocket interface {
+// hSocket is the interface for *H[1-3]Socket.
+type hSocket interface {
 }
 
-// wSocket_ is the mixin for H[1-3]Socket.
-type wSocket_ struct {
+// hSocket_ is the mixin for H[1-3]Socket.
+type hSocket_ struct {
 	// Assocs
-	shell wSocket // the concrete wSocket
+	shell hSocket // the concrete hSocket
 	// Stream states (zeros)
 }
 
-func (s *wSocket_) onUse() {
+func (s *hSocket_) onUse() {
 }
-func (s *wSocket_) onEnd() {
+func (s *hSocket_) onEnd() {
 }

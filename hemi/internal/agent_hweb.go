@@ -10,3 +10,7 @@ package internal
 // hwebAgent
 type hwebAgent struct {
 }
+
+func (h *hwebAgent) Handle(req Request, resp Response) (next bool) { // reverse only
+	return
+}

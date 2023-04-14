@@ -37,19 +37,19 @@ func createHTTP3Outgate(stage *Stage) *HTTP3Outgate {
 // HTTP3Outgate
 type HTTP3Outgate struct {
 	// Mixins
-	webOutgate_
+	httpOutgate_
 	// States
 }
 
 func (f *HTTP3Outgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHTTP3Outgate, stage)
+	f.httpOutgate_.onCreate(signHTTP3Outgate, stage)
 }
 
 func (f *HTTP3Outgate) OnConfigure() {
-	f.webOutgate_.onConfigure(f)
+	f.httpOutgate_.onConfigure(f)
 }
 func (f *HTTP3Outgate) OnPrepare() {
-	f.webOutgate_.onPrepare(f)
+	f.httpOutgate_.onPrepare(f)
 }
 
 func (f *HTTP3Outgate) run() { // goroutine
@@ -400,7 +400,7 @@ var poolH3Socket sync.Pool
 // H3Socket is the client-side HTTP/3 websocket.
 type H3Socket struct {
 	// Mixins
-	wSocket_
+	hSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

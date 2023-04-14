@@ -3,7 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB server and its implementation.
+// HWEB server implementation.
+
+// HWEB doesn't support WebSocket.
 
 package internal
 

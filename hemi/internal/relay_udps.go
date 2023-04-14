@@ -19,15 +19,16 @@ func init() {
 type udpsRelay struct {
 	// Mixins
 	UDPSFilter_
-	proxy_
 	// Assocs
-	mesher *UDPSMesher
+	stage   *Stage
+	mesher  *UDPSMesher
+	backend *UDPSBackend
 	// States
 }
 
 func (f *udpsRelay) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	f.MakeComp(name)
-	f.proxy_.onCreate(stage)
+	f.stage = stage
 	f.mesher = mesher
 }
 func (f *udpsRelay) OnShutdown() {
@@ -35,10 +36,22 @@ func (f *udpsRelay) OnShutdown() {
 }
 
 func (f *udpsRelay) OnConfigure() {
-	f.proxy_.onConfigure(f)
+	// toBackend
+	if v, ok := f.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := f.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				f.backend = backend.(*UDPSBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for udpsRelay")
+	}
 }
 func (f *udpsRelay) OnPrepare() {
-	f.proxy_.onPrepare(f)
 }
 
 func (f *udpsRelay) Deal(conn *UDPSConn) (next bool) {

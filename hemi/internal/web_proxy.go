@@ -11,14 +11,16 @@ package internal
 type httpProxy_ struct {
 	// Mixins
 	Handlet_
-	proxy_
 	// Assocs
-	app    *App   // the app to which the proxy belongs
-	cacher Cacher // the cacher which is used by this proxy
+	stage   *Stage  // current stage
+	app     *App    // the app to which the proxy belongs
+	cacher  Cacher  // the cacher which is used by this proxy
+	backend backend // if works as forward proxy, this is nil
 	// States
 	hostname            []byte      // ...
 	colonPort           []byte      // ...
 	viaName             []byte      // ...
+	isForward           bool        // reverse if false
 	bufferClientContent bool        // buffer client content into tempFile?
 	bufferServerContent bool        // buffer server content into tempFile?
 	addRequestHeaders   [][2][]byte // headers appended to client request
@@ -29,12 +31,33 @@ type httpProxy_ struct {
 
 func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
-	h.proxy_.onCreate(stage)
+	h.stage = stage
 	h.app = app
 }
 
-func (h *httpProxy_) onConfigure(shell Component) {
-	h.proxy_.onConfigure(shell)
+func (h *httpProxy_) onConfigure() {
+	// proxyMode
+	if v, ok := h.Find("proxyMode"); ok {
+		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
+			h.isForward = mode == "forward"
+		} else {
+			UseExitln("invalid proxyMode")
+		}
+	}
+	// toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := h.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				h.backend = backend
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else if !h.isForward {
+		UseExitln("toBackend is required for reverse proxy")
+	}
 	if h.isForward && !h.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
@@ -65,8 +88,7 @@ func (h *httpProxy_) onConfigure(shell Component) {
 	// delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }
-func (h *httpProxy_) onPrepare(shell Component) {
-	h.proxy_.onPrepare(shell)
+func (h *httpProxy_) onPrepare() {
 }
 
 func (h *httpProxy_) IsProxy() bool { return true }
@@ -76,26 +98,48 @@ func (h *httpProxy_) IsCache() bool { return h.cacher != nil }
 type sockProxy_ struct {
 	// Mixins
 	Socklet_
-	proxy_
 	// Assocs
-	app *App // the app to which the proxy belongs
+	stage   *Stage  // current stage
+	app     *App    // the app to which the proxy belongs
+	backend backend // if works as forward proxy, this is nil
 	// States
+	isForward bool // reverse if false
 }
 
 func (s *sockProxy_) onCreate(name string, stage *Stage, app *App) {
 	s.MakeComp(name)
-	s.proxy_.onCreate(stage)
+	s.stage = stage
 	s.app = app
 }
 
-func (s *sockProxy_) onConfigure(shell Component) {
-	s.proxy_.onConfigure(shell)
+func (s *sockProxy_) onConfigure() {
+	// proxyMode
+	if v, ok := s.Find("proxyMode"); ok {
+		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
+			s.isForward = mode == "forward"
+		} else {
+			UseExitln("invalid proxyMode")
+		}
+	}
+	// toBackend
+	if v, ok := s.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := s.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				s.backend = backend
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else if !s.isForward {
+		UseExitln("toBackend is required for reverse proxy")
+	}
 	if s.isForward && !s.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }
-func (s *sockProxy_) onPrepare(shell Component) {
-	s.proxy_.onPrepare(shell)
+func (s *sockProxy_) onPrepare() {
 }
 
 func (s *sockProxy_) IsProxy() bool { return true }

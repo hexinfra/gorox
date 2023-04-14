@@ -35,10 +35,10 @@ func (h *http2Proxy) OnShutdown() {
 }
 
 func (h *http2Proxy) OnConfigure() {
-	h.httpProxy_.onConfigure(h)
+	h.httpProxy_.onConfigure()
 }
 func (h *http2Proxy) OnPrepare() {
-	h.httpProxy_.onPrepare(h)
+	h.httpProxy_.onPrepare()
 }
 
 func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -196,10 +196,10 @@ func (s *sock2Proxy) OnShutdown() {
 }
 
 func (s *sock2Proxy) OnConfigure() {
-	s.sockProxy_.onConfigure(s)
+	s.sockProxy_.onConfigure()
 }
 func (s *sock2Proxy) OnPrepare() {
-	s.sockProxy_.onPrepare(s)
+	s.sockProxy_.onPrepare()
 }
 
 func (s *sock2Proxy) Serve(req Request, sock Socket) { // forward or reverse

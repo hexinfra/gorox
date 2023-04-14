@@ -19,15 +19,16 @@ func init() {
 type quicRelay struct {
 	// Mixins
 	QUICFilter_
-	proxy_
 	// Assocs
-	mesher *QUICMesher
+	stage   *Stage
+	mesher  *QUICMesher
+	backend *QUICBackend
 	// States
 }
 
 func (f *quicRelay) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	f.MakeComp(name)
-	f.proxy_.onCreate(stage)
+	f.stage = stage
 	f.mesher = mesher
 }
 func (f *quicRelay) OnShutdown() {
@@ -35,10 +36,22 @@ func (f *quicRelay) OnShutdown() {
 }
 
 func (f *quicRelay) OnConfigure() {
-	f.proxy_.onConfigure(f)
+	// toBackend
+	if v, ok := f.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := f.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				f.backend = backend.(*QUICBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for quicRelay")
+	}
 }
 func (f *quicRelay) OnPrepare() {
-	f.proxy_.onPrepare(f)
 }
 
 func (f *quicRelay) Deal(conn *QUICConn, stream *QUICStream) (next bool) {

@@ -35,10 +35,10 @@ func (h *http3Proxy) OnShutdown() {
 }
 
 func (h *http3Proxy) OnConfigure() {
-	h.httpProxy_.onConfigure(h)
+	h.httpProxy_.onConfigure()
 }
 func (h *http3Proxy) OnPrepare() {
-	h.httpProxy_.onPrepare(h)
+	h.httpProxy_.onPrepare()
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -196,10 +196,10 @@ func (s *sock3Proxy) OnShutdown() {
 }
 
 func (s *sock3Proxy) OnConfigure() {
-	s.sockProxy_.onConfigure(s)
+	s.sockProxy_.onConfigure()
 }
 func (s *sock3Proxy) OnPrepare() {
-	s.sockProxy_.onPrepare(s)
+	s.sockProxy_.onPrepare()
 }
 
 func (s *sock3Proxy) Serve(req Request, sock Socket) { // forward or reverse

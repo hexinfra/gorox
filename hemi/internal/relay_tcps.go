@@ -19,15 +19,16 @@ func init() {
 type tcpsRelay struct {
 	// Mixins
 	TCPSFilter_
-	proxy_
 	// Assocs
-	mesher *TCPSMesher
+	stage   *Stage
+	mesher  *TCPSMesher
+	backend *TCPSBackend
 	// States
 }
 
 func (f *tcpsRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	f.MakeComp(name)
-	f.proxy_.onCreate(stage)
+	f.stage = stage
 	f.mesher = mesher
 }
 func (f *tcpsRelay) OnShutdown() {
@@ -35,10 +36,22 @@ func (f *tcpsRelay) OnShutdown() {
 }
 
 func (f *tcpsRelay) OnConfigure() {
-	f.proxy_.onConfigure(f)
+	// toBackend
+	if v, ok := f.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := f.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				f.backend = backend.(*TCPSBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for tcpsRelay")
+	}
 }
 func (f *tcpsRelay) OnPrepare() {
-	f.proxy_.onPrepare(f)
 }
 
 func (f *tcpsRelay) Deal(conn *TCPSConn) (next bool) {

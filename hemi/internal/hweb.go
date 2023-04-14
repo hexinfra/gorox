@@ -45,6 +45,49 @@ func (r *hwebOut_) sendChainH() error {
 	return nil
 }
 
+func (r *hwebOut_) echoHeadersH() error {
+	// TODO
+	return nil
+}
+func (r *hwebOut_) echoChainH() error {
+	// TODO
+	return nil
+}
+
+func (r *hwebOut_) trailerH(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *hwebOut_) addTrailerH(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *hwebOut_) trailersH() []byte {
+	// TODO
+	return nil
+}
+
+func (r *hwebOut_) passBytesH(p []byte) error {
+	// TODO
+	return nil
+}
+
+func (r *hwebOut_) finalizeUnsizedH() error {
+	// TODO
+	if r.nTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
+	return nil
+}
+
+func (r *hwebOut_) writeBlockH(block *Block, unsized bool) error {
+	// TODO
+	return nil
+}
+func (r *hwebOut_) writeVectorH() error {
+	return nil
+}
+
 //////////////////////////////////////// HWEB protocol elements.
 
 // head(64) = kind(8) streamID(24) flags(8) bodySize(24)

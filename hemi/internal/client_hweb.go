@@ -174,10 +174,25 @@ func (c *hConn) closeConn() { c.tcpConn.Close() } // used by codes other than di
 // poolHStream
 var poolHStream sync.Pool
 
-func getHStream(conn *hConn, id uint32) *hStream {
-	return nil
+func getHStream(conn *hConn, id int32) *hStream {
+	var stream *hStream
+	if x := poolHStream.Get(); x == nil {
+		stream = new(hStream)
+		req, resp := &stream.request, &stream.response
+		req.shell = req
+		req.stream = stream
+		req.response = resp
+		resp.shell = resp
+		resp.stream = stream
+	} else {
+		stream = x.(*hStream)
+	}
+	stream.onUse(conn, id)
+	return stream
 }
 func putHStream(stream *hStream) {
+	stream.onEnd()
+	poolHStream.Put(stream)
 }
 
 // hStream
@@ -191,12 +206,72 @@ type hStream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn *hConn
-	id   uint32
+	id   int32
 	// Stream states (zeros)
 	hStream0 // all values must be zero by default in this struct!
 }
 type hStream0 struct { // for fast reset, entirely
 }
+
+func (s *hStream) onUse(conn *hConn, id int32) { // for non-zeros
+	s.wStream_.onUse()
+	s.conn = conn
+	s.id = id
+	s.request.onUse(255)
+	s.response.onUse(255)
+}
+func (s *hStream) onEnd() { // for zeros
+	s.response.onEnd()
+	s.request.onEnd()
+	s.conn = nil
+	s.hStream0 = hStream0{}
+	s.wStream_.onEnd()
+}
+
+func (s *hStream) keeper() keeper     { return s.conn.getClient() }
+func (s *hStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+
+func (s *hStream) Request() *hRequest   { return &s.request }
+func (s *hStream) Response() *hResponse { return &s.response }
+
+func (s *hStream) ExecuteNormal() error { // request & response
+	// TODO
+	return nil
+}
+
+func (s *hStream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
+func (s *hStream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
+
+func (s *hStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.makeTempName(p, unixTime)
+}
+
+func (s *hStream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+	return nil
+}
+func (s *hStream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+	return nil
+}
+
+func (s *hStream) write(p []byte) (int, error) { // for content i/o only?
+	return 0, nil
+}
+func (s *hStream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+	return 0, nil
+}
+func (s *hStream) read(p []byte) (int, error) { // for content i/o only?
+	return 0, nil
+}
+func (s *hStream) readFull(p []byte) (int, error) { // for content i/o only?
+	return 0, nil
+}
+
+func (s *hStream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *hStream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // hRequest is the client-side HWEB request.
 type hRequest struct { // outgoing. needs building
@@ -222,6 +297,44 @@ func (r *hRequest) header(name []byte) (value []byte, ok bool) { return r.header
 func (r *hRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
 func (r *hRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
 func (r *hRequest) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+
+func (r *hRequest) AddCookie(name string, value string) bool {
+	// TODO. need some space to place the cookie
+	return false
+}
+func (r *hRequest) copyCookies(req Request) bool { // used by agents. merge into one "cookie" header?
+	// TODO: one by one?
+	return true
+}
+
+func (r *hRequest) sendChain() error { return r.sendChainH() }
+
+func (r *hRequest) echoHeaders() error {
+	// TODO
+	return nil
+}
+func (r *hRequest) echoChain() error { return r.echoChainH() }
+
+func (r *hRequest) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerH(name)
+}
+func (r *hRequest) addTrailer(name []byte, value []byte) bool {
+	return r.addTrailerH(name, value)
+}
+
+func (r *hRequest) passHeaders() error {
+	// TODO
+	return nil
+}
+func (r *hRequest) passBytes(p []byte) error { return r.passBytesH(p) }
+
+func (r *hRequest) finalizeHeaders() { // add at most 256 bytes
+	// TODO
+}
+func (r *hRequest) finalizeUnsized() error {
+	// TODO
+	return nil
+}
 
 func (r *hRequest) addedHeaders() []byte { return nil }
 func (r *hRequest) fixedHeaders() []byte { return nil }

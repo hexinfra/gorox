@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// keeper is a webServer or httpClient which keeps http connections and streams.
+// keeper is a webServer or webClient which keeps web connections and streams.
 type keeper interface {
 	Stage() *Stage
 	TLSMode() bool
@@ -32,7 +32,7 @@ type keeper interface {
 	SaveContentFilesDir() string
 }
 
-// keeper_ is the mixin for webServer_ and httpClient_.
+// keeper_ is the mixin for webServer_ and webClient_.
 type keeper_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content
@@ -65,7 +65,7 @@ type stream interface {
 	markBroken()
 }
 
-// stream is the mixin for webStream_ and hStream_.
+// stream is the mixin for webStream_ and wStream_.
 type stream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
@@ -1458,9 +1458,9 @@ const ( // HTTP incoming content text kinds
 	httpContentTextMake         // direct make
 )
 
-var ( // http incoming message errors
-	httpInBadChunk = errors.New("bad chunk")
-	httpInTooSlow  = errors.New("http incoming too slow")
+var ( // web incoming message errors
+	webInBadChunk = errors.New("bad chunk")
+	webInTooSlow  = errors.New("http incoming too slow")
 )
 
 // webOut is a *http[1-3]Response or *H[1-3]Request, used as shell by webOut_.
@@ -1769,7 +1769,7 @@ func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content dire
 		if !in.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
-			return httpOutTrailerFailed
+			return webOutTrailerFailed
 		}
 	}
 	return nil
@@ -1821,7 +1821,7 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 }
 func (r *webOut_) _beforeSend() error {
 	if r.isSent {
-		return httpOutAlreadySent
+		return webOutAlreadySent
 	}
 	r.isSent = true
 	return nil
@@ -1900,14 +1900,14 @@ func (r *webOut_) _tooSlow() bool {
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
-var ( // http outgoing message errors
-	httpOutTooSlow       = errors.New("http outgoing too slow")
-	httpOutWriteBroken   = errors.New("write broken")
-	httpOutUnknownStatus = errors.New("unknown status")
-	httpOutAlreadySent   = errors.New("already sent")
-	httpOutTooLarge      = errors.New("content too large")
-	httpOutMixedContent  = errors.New("mixed content mode")
-	httpOutTrailerFailed = errors.New("add trailer failed")
+var ( // web outgoing message errors
+	webOutTooSlow       = errors.New("http outgoing too slow")
+	webOutWriteBroken   = errors.New("write broken")
+	webOutUnknownStatus = errors.New("unknown status")
+	webOutAlreadySent   = errors.New("already sent")
+	webOutTooLarge      = errors.New("content too large")
+	webOutMixedContent  = errors.New("mixed content mode")
+	webOutTrailerFailed = errors.New("add trailer failed")
 )
 
 var httpTemplate = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}

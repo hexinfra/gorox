@@ -38,19 +38,19 @@ func createHTTP2Outgate(stage *Stage) *HTTP2Outgate {
 // HTTP2Outgate
 type HTTP2Outgate struct {
 	// Mixins
-	httpOutgate_
+	webOutgate_
 	// States
 }
 
 func (f *HTTP2Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP2Outgate, stage)
+	f.webOutgate_.onCreate(signHTTP2Outgate, stage)
 }
 
 func (f *HTTP2Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure(f)
+	f.webOutgate_.onConfigure(f)
 }
 func (f *HTTP2Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare(f)
+	f.webOutgate_.onPrepare(f)
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
@@ -74,19 +74,19 @@ func (f *HTTP2Outgate) StoreConn(conn *H2Conn) {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Mixins
-	httpBackend_[*http2Node]
+	webBackend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.httpBackend_.onConfigure(b)
+	b.webBackend_.onConfigure(b)
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.httpBackend_.onPrepare(b, len(b.nodes))
+	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
 func (b *HTTP2Backend) createNode(id int32) *http2Node {
@@ -106,14 +106,14 @@ func (b *HTTP2Backend) StoreConn(conn *H2Conn) {
 // http2Node
 type http2Node struct {
 	// Mixins
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP2Backend
 	// States
 }
 
 func (n *http2Node) init(id int32, backend *HTTP2Backend) {
-	n.httpNode_.init(id)
+	n.webNode_.init(id)
 	n.backend = backend
 }
 
@@ -136,7 +136,7 @@ func (n *http2Node) fetchConn() (*H2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n.backend, n, netConn, rawConn), nil
 }
-func (n *http2Node) storeConn(hConn *H2Conn) {
+func (n *http2Node) storeConn(wConn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -144,7 +144,7 @@ func (n *http2Node) storeConn(hConn *H2Conn) {
 // poolH2Conn is the client-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, client httpClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, client webClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		conn = new(H2Conn)
@@ -173,7 +173,7 @@ type H2Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, client httpClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H2Conn) onGet(id int64, client webClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
@@ -258,7 +258,7 @@ func putH2Stream(stream *H2Stream) {
 // H2Stream
 type H2Stream struct {
 	// Mixins
-	hStream_
+	wStream_
 	// Assocs
 	request  H2Request
 	response H2Response
@@ -275,7 +275,7 @@ type h2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
-	s.hStream_.onUse()
+	s.wStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -287,7 +287,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.socket = nil
 	s.conn = nil
 	s.h2Stream0 = h2Stream0{}
-	s.hStream_.onEnd()
+	s.wStream_.onEnd()
 }
 
 func (s *H2Stream) keeper() keeper     { return s.conn.getClient() }

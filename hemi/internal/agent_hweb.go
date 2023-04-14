@@ -11,20 +11,20 @@ package internal
 type hwebAgent struct {
 }
 
-// bConn
-type bConn struct {
+// hConn
+type hConn struct {
 }
 
-// bStream
-type bStream struct {
+// hStream
+type hStream struct {
 }
 
-// bRequest
-type bRequest struct {
+// hRequest
+type hRequest struct {
 	webOut_
 }
 
-// bResponse
-type bResponse struct {
+// hResponse
+type hResponse struct {
 	webIn_
 }

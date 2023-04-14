@@ -2737,7 +2737,7 @@ func (r *webResponse_) SetStatus(status int16) error {
 		}
 		return nil
 	} else { // 1xx are not allowed to set through SetStatus()
-		return httpOutUnknownStatus
+		return webOutUnknownStatus
 	}
 }
 func (r *webResponse_) Status() int16 { return r.status }
@@ -2828,7 +2828,7 @@ func (r *webResponse_) send() error {
 		if contentSize, ok := r.chain.Size(); ok {
 			r.contentSize = contentSize
 		} else {
-			return httpOutTooLarge
+			return webOutTooLarge
 		}
 	}
 	return r.shell.sendChain()
@@ -2836,13 +2836,13 @@ func (r *webResponse_) send() error {
 
 func (r *webResponse_) _beforeEcho() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if r.IsSent() {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpOutMixedContent
+		return webOutMixedContent
 	}
 	r.markSent()
 	r.markUnsized()
@@ -2860,7 +2860,7 @@ func (r *webResponse_) _beforeEcho() error {
 }
 func (r *webResponse_) echo() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	r.chain.PushTail(&r.block)
 	defer r.chain.free()
@@ -2878,7 +2878,7 @@ func (r *webResponse_) echo() error {
 }
 func (r *webResponse_) endUnsized() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if r.hasRevisers {
 		resp := r.shell.(Response)
@@ -4003,15 +4003,112 @@ type Hobject struct {
 	trailers any
 }
 
-// hConn is the interface for *H[1-3]Conn.
+// webClient is the interface for http outgates and web backends.
+type webClient interface {
+	client
+	streamHolder
+	contentSaver
+	MaxContentSize() int64
+	SendTimeout() time.Duration
+	RecvTimeout() time.Duration
+}
+
+// webClient_ is a mixin for webOutgate_ and webBackend_.
+type webClient_ struct {
+	// Mixins
+	keeper_
+	streamHolder_
+	contentSaver_ // so responses can save their large contents in local file system.
+	// States
+}
+
+func (h *webClient_) onCreate() {
+}
+
+func (h *webClient_) onConfigure(shell Component, clientType string) {
+	h.streamHolder_.onConfigure(shell, 1000)
+	h.contentSaver_.onConfigure(shell, TempDir()+"/http/"+clientType+"/"+shell.Name())
+	// maxContentSize
+	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+}
+func (h *webClient_) onPrepare(shell Component) {
+	h.streamHolder_.onPrepare(shell)
+	h.contentSaver_.onPrepare(shell, 0755)
+}
+
+// webOutgate_ is the mixin for HTTP[1-3]Outgate.
+type webOutgate_ struct {
+	// Mixins
+	outgate_
+	webClient_
+	// States
+}
+
+func (f *webOutgate_) onCreate(name string, stage *Stage) {
+	f.outgate_.onCreate(name, stage)
+	f.webClient_.onCreate()
+}
+
+func (f *webOutgate_) onConfigure(shell Component) {
+	f.outgate_.onConfigure()
+	f.webClient_.onConfigure(shell, "outgates")
+}
+func (f *webOutgate_) onPrepare(shell Component) {
+	f.outgate_.onPrepare()
+	f.webClient_.onPrepare(shell)
+}
+
+// webBackend_ is the mixin for HTTP[1-3]Backend.
+type webBackend_[N node] struct {
+	// Mixins
+	backend_[N]
+	webClient_
+	loadBalancer_
+	// States
+	health any // TODO
+}
+
+func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+	b.backend_.onCreate(name, stage, creator)
+	b.webClient_.onCreate()
+	b.loadBalancer_.init()
+}
+
+func (b *webBackend_[N]) onConfigure(shell Component) {
+	b.backend_.onConfigure()
+	b.webClient_.onConfigure(shell, "backends")
+	b.loadBalancer_.onConfigure(shell)
+}
+func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
+	b.backend_.onPrepare()
+	b.webClient_.onPrepare(shell)
+	b.loadBalancer_.onPrepare(numNodes)
+}
+
+// webNode_ is the mixin for http[1-3]Node.
+type webNode_ struct {
+	// Mixins
+	node_
+	// States
+}
+
+func (n *webNode_) init(id int32) {
+	n.node_.init(id)
+}
+
+// wConn is the interface for *H[1-3]Conn.
 type wConn interface {
-	getClient() httpClient
+	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 	isBroken() bool
 	markBroken()
 }
 
-// hConn_ is the mixin for H[1-3]Conn.
+// wConn_ is the mixin for H[1-3]Conn.
 type wConn_ struct {
 	// Mixins
 	conn_
@@ -4024,7 +4121,7 @@ type wConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *wConn_) onGet(id int64, client httpClient) {
+func (c *wConn_) onGet(id int64, client webClient) {
 	c.conn_.onGet(id, client)
 }
 func (c *wConn_) onPut() {
@@ -4034,7 +4131,7 @@ func (c *wConn_) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *wConn_) getClient() httpClient { return c.client.(httpClient) }
+func (c *wConn_) getClient() webClient { return c.client.(webClient) }
 
 func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -4047,8 +4144,8 @@ func (c *wConn_) reachLimit() bool {
 func (c *wConn_) isBroken() bool { return c.broken.Load() }
 func (c *wConn_) markBroken()    { c.broken.Store(true) }
 
-// hStream_ is the mixin for H[1-3]Stream.
-type hStream_ struct {
+// wStream_ is the mixin for H[1-3]Stream.
+type wStream_ struct {
 	// Mixins
 	stream_
 	// Stream states (stocks)
@@ -4057,20 +4154,20 @@ type hStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *hStream_) onUse() {
+func (s *wStream_) onUse() {
 	s.stream_.onUse()
 }
-func (s *hStream_) onEnd() {
+func (s *wStream_) onEnd() {
 	s.stream_.onEnd()
 }
 
-func (s *hStream_) startSocket() { // upgrade: websocket
+func (s *wStream_) startSocket() { // upgrade: websocket
 	// TODO
 }
-func (s *hStream_) startTCPTun() { // CONNECT method
+func (s *wStream_) startTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *hStream_) startUDPTun() { // upgrade: connect-udp
+func (s *wStream_) startUDPTun() { // upgrade: connect-udp
 	// TODO
 }
 
@@ -4138,13 +4235,13 @@ func (r *wRequest_) send() error { return r.shell.sendChain() }
 
 func (r *wRequest_) _beforeEcho() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if r.IsSent() {
 		return nil
 	}
 	if r.contentSize != -1 {
-		return httpOutMixedContent
+		return webOutMixedContent
 	}
 	r.markSent()
 	r.markUnsized()
@@ -4152,7 +4249,7 @@ func (r *wRequest_) _beforeEcho() error {
 }
 func (r *wRequest_) echo() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	r.chain.PushTail(&r.block)
 	defer r.chain.free()
@@ -4160,7 +4257,7 @@ func (r *wRequest_) echo() error {
 }
 func (r *wRequest_) endUnsized() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	return r.shell.finalizeUnsized()
 }

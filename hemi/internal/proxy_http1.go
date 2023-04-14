@@ -101,7 +101,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if err1 == nil && hasTrailers {
 			if !req1.copyTailFrom(req) {
 				stream1.markBroken()
-				err1 = httpOutTrailerFailed
+				err1 = webOutTrailerFailed
 			} else if err1 = req1.endUnsized(); err1 != nil {
 				stream1.markBroken()
 			}

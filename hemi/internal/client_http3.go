@@ -37,19 +37,19 @@ func createHTTP3Outgate(stage *Stage) *HTTP3Outgate {
 // HTTP3Outgate
 type HTTP3Outgate struct {
 	// Mixins
-	httpOutgate_
+	webOutgate_
 	// States
 }
 
 func (f *HTTP3Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP3Outgate, stage)
+	f.webOutgate_.onCreate(signHTTP3Outgate, stage)
 }
 
 func (f *HTTP3Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure(f)
+	f.webOutgate_.onConfigure(f)
 }
 func (f *HTTP3Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare(f)
+	f.webOutgate_.onPrepare(f)
 }
 
 func (f *HTTP3Outgate) run() { // goroutine
@@ -73,19 +73,19 @@ func (f *HTTP3Outgate) StoreConn(conn *H3Conn) {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Mixins
-	httpBackend_[*http3Node]
+	webBackend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.httpBackend_.onConfigure(b)
+	b.webBackend_.onConfigure(b)
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.httpBackend_.onPrepare(b, len(b.nodes))
+	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
 func (b *HTTP3Backend) createNode(id int32) *http3Node {
@@ -105,14 +105,14 @@ func (b *HTTP3Backend) StoreConn(conn *H3Conn) {
 // http3Node
 type http3Node struct {
 	// Mixins
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP3Backend
 	// States
 }
 
 func (n *http3Node) init(id int32, backend *HTTP3Backend) {
-	n.httpNode_.init(id)
+	n.webNode_.init(id)
 	n.backend = backend
 }
 
@@ -137,7 +137,7 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, n.backend, n, conn), nil
 }
-func (n *http3Node) storeConn(hConn *H3Conn) {
+func (n *http3Node) storeConn(wConn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -145,7 +145,7 @@ func (n *http3Node) storeConn(hConn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, client httpClient, node *http3Node, quicConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, client webClient, node *http3Node, quicConn *quix.Conn) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
@@ -173,7 +173,7 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, client httpClient, node *http3Node, quicConn *quix.Conn) {
+func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quicConn *quix.Conn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
@@ -228,7 +228,7 @@ func putH3Stream(stream *H3Stream) {
 // H3Stream
 type H3Stream struct {
 	// Mixins
-	hStream_
+	wStream_
 	// Assocs
 	request  H3Request
 	response H3Response
@@ -245,7 +245,7 @@ type h3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quicStream *quix.Stream) { // for non-zeros
-	s.hStream_.onUse()
+	s.wStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -258,7 +258,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.h3Stream0 = h3Stream0{}
-	s.hStream_.onEnd()
+	s.wStream_.onEnd()
 }
 
 func (s *H3Stream) keeper() keeper     { return s.conn.getClient() }

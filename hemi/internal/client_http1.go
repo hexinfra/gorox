@@ -40,20 +40,20 @@ func createHTTP1Outgate(stage *Stage) *HTTP1Outgate {
 // HTTP1Outgate
 type HTTP1Outgate struct {
 	// Mixins
-	httpOutgate_
+	webOutgate_
 	// States
 	conns any // TODO
 }
 
 func (f *HTTP1Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP1Outgate, stage)
+	f.webOutgate_.onCreate(signHTTP1Outgate, stage)
 }
 
 func (f *HTTP1Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure(f)
+	f.webOutgate_.onConfigure(f)
 }
 func (f *HTTP1Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare(f)
+	f.webOutgate_.onPrepare(f)
 }
 
 func (f *HTTP1Outgate) run() { // goroutine
@@ -88,19 +88,19 @@ func (f *HTTP1Outgate) Dial(address string, tlsMode bool) (*H1Conn, error) {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Mixins
-	httpBackend_[*http1Node]
+	webBackend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.httpBackend_.onConfigure(b)
+	b.webBackend_.onConfigure(b)
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.httpBackend_.onPrepare(b, len(b.nodes))
+	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
 func (b *HTTP1Backend) createNode(id int32) *http1Node {
@@ -120,14 +120,14 @@ func (b *HTTP1Backend) StoreConn(conn *H1Conn) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Mixins
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP1Backend
 	// States
 }
 
 func (n *http1Node) init(id int32, backend *HTTP1Backend) {
-	n.httpNode_.init(id)
+	n.webNode_.init(id)
 	n.backend = backend
 }
 
@@ -150,11 +150,11 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		hConn := conn.(*H1Conn)
-		if hConn.isAlive() && !hConn.reachLimit() && !down {
-			return hConn, nil
+		wConn := conn.(*H1Conn)
+		if wConn.isAlive() && !wConn.reachLimit() && !down {
+			return wConn, nil
 		}
-		n.closeConn(hConn)
+		n.closeConn(wConn)
 	}
 	if down {
 		return nil, errNodeDown
@@ -188,30 +188,30 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
 	}
 }
-func (n *http1Node) storeConn(hConn *H1Conn) {
-	if hConn.isBroken() || n.isDown() || !hConn.isAlive() || !hConn.keepConn {
+func (n *http1Node) storeConn(wConn *H1Conn) {
+	if wConn.isBroken() || n.isDown() || !wConn.isAlive() || !wConn.keepConn {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] closed\n", hConn.node.id, hConn.id)
+			Debugf("H1Conn[node=%d id=%d] closed\n", wConn.node.id, wConn.id)
 		}
-		n.closeConn(hConn)
+		n.closeConn(wConn)
 	} else {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] pushed\n", hConn.node.id, hConn.id)
+			Debugf("H1Conn[node=%d id=%d] pushed\n", wConn.node.id, wConn.id)
 		}
-		n.pushConn(hConn)
+		n.pushConn(wConn)
 	}
 }
 
-func (n *http1Node) closeConn(hConn *H1Conn) {
-	hConn.closeConn()
-	putH1Conn(hConn)
+func (n *http1Node) closeConn(wConn *H1Conn) {
+	wConn.closeConn()
+	putH1Conn(wConn)
 	n.SubDone()
 }
 
 // poolH1Conn is the client-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, client httpClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		conn = new(H1Conn)
@@ -249,7 +249,7 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, client httpClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H1Conn) onGet(id int64, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
@@ -283,7 +283,7 @@ func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes other than d
 // H1Stream is the client-side HTTP/1 stream.
 type H1Stream struct {
 	// Mixins
-	hStream_
+	wStream_
 	// Assocs
 	request  H1Request  // the client-side http/1 request
 	response H1Response // the client-side http/1 response
@@ -296,7 +296,7 @@ type H1Stream struct {
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.hStream_.onUse()
+	s.wStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -306,7 +306,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.hStream_.onEnd()
+	s.wStream_.onEnd()
 }
 
 func (s *H1Stream) keeper() keeper     { return s.conn.getClient() }

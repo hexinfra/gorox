@@ -221,7 +221,7 @@ func (r *http1In_) _readSizedContent1() (p []byte, err error) {
 			r.receivedSize += int64(size)
 			return r.bodyWindow[:size], nil
 		}
-		err = httpInTooSlow
+		err = webInTooSlow
 	}
 	return nil, err
 }
@@ -378,7 +378,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 		return r.bodyWindow[data.from:data.edge], nil
 	}
 badRead:
-	return nil, httpInBadChunk
+	return nil, webInBadChunk
 }
 
 func (r *http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
@@ -520,7 +520,7 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 			if !r._tooSlow() {
 				return true
 			}
-			e = httpInTooSlow
+			e = webInTooSlow
 		}
 		err = e // including io.EOF which is unexpected here
 	}
@@ -776,7 +776,7 @@ func (r *http1Out_) writeHeaders1() error { // used by echo and post
 }
 func (r *http1Out_) writeBlock1(block *Block, chunked bool) error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if block.IsText() {
 		return r._writeText1(block, chunked)
@@ -845,7 +845,7 @@ func (r *http1Out_) _writeFile1(block *Block, chunked bool) error { // file
 }
 func (r *http1Out_) writeBytes1(p []byte) error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if len(p) == 0 {
 		return nil
@@ -859,7 +859,7 @@ func (r *http1Out_) writeBytes1(p []byte) error {
 }
 func (r *http1Out_) writeVector1() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
 		return nil
@@ -873,7 +873,7 @@ func (r *http1Out_) writeVector1() error {
 }
 func (r *http1Out_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
-		err = httpOutTooSlow
+		err = webOutTooSlow
 	}
 	if err != nil {
 		r.stream.markBroken()

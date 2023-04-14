@@ -13,7 +13,7 @@ NAMING
     as mixin types:
 
       hRequest_
-      httpServer_
+      webServer_
 	  _client_
 
 
@@ -36,5 +36,5 @@ COMPONENTS
       socklet (hello, ...)
       rule [*]
     svc [*]
-    server (httpxServer, echoServer, http3Server, ...)
+    server (httpxServer, http3Server, echoServer, ...)
     cronjob (clean, ...)

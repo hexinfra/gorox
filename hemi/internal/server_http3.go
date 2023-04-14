@@ -28,12 +28,12 @@ func init() {
 // http3Server is the HTTP/3 server.
 type http3Server struct {
 	// Mixins
-	httpServer_
+	webServer_
 	// States
 }
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
+	s.webServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
 }
 func (s *http3Server) OnShutdown() {
@@ -44,10 +44,10 @@ func (s *http3Server) OnShutdown() {
 }
 
 func (s *http3Server) OnConfigure() {
-	s.httpServer_.onConfigure(s)
+	s.webServer_.onConfigure(s)
 }
 func (s *http3Server) OnPrepare() {
-	s.httpServer_.onPrepare(s)
+	s.webServer_.onPrepare(s)
 }
 
 func (s *http3Server) Serve() { // goroutine

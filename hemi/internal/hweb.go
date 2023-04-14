@@ -3,14 +3,8 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB protocol elements, general incoming message and outgoing message implementation.
+// HWEB protocol elements.
+
+// HWEB is an HTTP gateway protocol like FCGI, but has a lot of improvements over FCGI.
 
 package internal
-
-// hwebIn_
-type hwebIn_ struct {
-}
-
-// hwebOut_
-type hwebOut_ struct {
-}

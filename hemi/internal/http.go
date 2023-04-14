@@ -32,7 +32,7 @@ type keeper interface {
 	SaveContentFilesDir() string
 }
 
-// keeper_ is the mixin for httpServer_ and httpClient_.
+// keeper_ is the mixin for webServer_ and httpClient_.
 type keeper_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content

@@ -10,17 +10,3 @@ package internal
 // hwebAgent
 type hwebAgent struct {
 }
-
-// gStream
-type gStream struct {
-}
-
-// gRequest
-type gRequest struct {
-	hwebOut_
-}
-
-// gResponse
-type gResponse struct {
-	hwebIn_
-}

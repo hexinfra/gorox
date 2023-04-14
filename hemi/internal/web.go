@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"crypto/tls"
 	"os"
 	"reflect"
 	"strings"
@@ -16,7 +17,7 @@ import (
 	"time"
 )
 
-// webServer is the interface for *httpxServer and *http3Server.
+// webServer is the interface for *httpxServer, *http3Server, and *hwebServer.
 type webServer interface {
 	Server
 	streamHolder
@@ -30,13 +31,170 @@ type webServer interface {
 	findApp(hostname []byte) *App
 }
 
-// webGate is the interface for *httpxGate and *http3Gate.
+// webServer_ is a mixin for httpxServer, http3Server, and hwebServer.
+type webServer_ struct {
+	// Mixins
+	Server_
+	keeper_
+	streamHolder_
+	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
+	// Assocs
+	gates      []webGate
+	defaultApp *App // default app
+	// States
+	forApps      []string            // for what apps
+	exactApps    []*hostnameTo[*App] // like: ("example.com")
+	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
+	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
+	forSvcs      []string            // for what svcs
+	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
+	hrpcMode     bool                // works as HRPC server and dispatches to svcs instead of apps?
+	enableTCPTun bool                // allow CONNECT method?
+	enableUDPTun bool                // allow upgrade: connect-udp?
+}
+
+func (s *webServer_) onCreate(name string, stage *Stage) {
+	s.Server_.OnCreate(name, stage)
+}
+
+func (s *webServer_) onConfigure(shell Component) {
+	s.Server_.OnConfigure()
+	s.streamHolder_.onConfigure(shell, 0)
+	s.contentSaver_.onConfigure(shell, TempDir()+"/http/servers/"+s.name)
+	// forApps
+	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
+	// forSvcs
+	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
+	// hrpcMode
+	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
+	// enableTCPTun
+	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
+	// enableUDPTun
+	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
+	// maxContentSize
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T) // app has its own maxContentSize and will check again
+	// recvTimeout
+	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
+	// sendTimeout
+	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
+}
+func (s *webServer_) onPrepare(shell Component) {
+	s.Server_.OnPrepare()
+	s.streamHolder_.onPrepare(shell)
+	s.contentSaver_.onPrepare(shell, 0755)
+}
+
+func (s *webServer_) linkApps() {
+	for _, appName := range s.forApps {
+		app := s.stage.App(appName)
+		if app == nil {
+			continue
+		}
+		if s.tlsConfig != nil {
+			if app.tlsCertificate == "" || app.tlsPrivateKey == "" {
+				UseExitln("apps that bound to tls server must have certificates and private keys")
+			}
+			certificate, err := tls.LoadX509KeyPair(app.tlsCertificate, app.tlsPrivateKey)
+			if err != nil {
+				UseExitln(err.Error())
+			}
+			if IsDebug(1) {
+				Debugf("adding certificate to %s\n", s.ColonPort())
+			}
+			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
+		}
+		app.linkServer(s.shell.(webServer))
+		if app.isDefault {
+			s.defaultApp = app
+		}
+		// TODO: use hash table?
+		for _, hostname := range app.exactHostnames {
+			s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range app.suffixHostnames {
+			s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range app.prefixHostnames {
+			s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
+		}
+	}
+}
+func (s *webServer_) linkSvcs() {
+	for _, svcName := range s.forSvcs {
+		svc := s.stage.Svc(svcName)
+		if svc == nil {
+			continue
+		}
+		svc.linkHRPC(s.shell.(hrpcServer))
+		// TODO: use hash table?
+		for _, hostname := range svc.exactHostnames {
+			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.suffixHostnames {
+			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.prefixHostnames {
+			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+	}
+}
+
+func (s *webServer_) findApp(hostname []byte) *App {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactApps {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixApps {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixApps {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return s.defaultApp
+}
+func (s *webServer_) findSvc(hostname []byte) *Svc {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactSvcs {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixSvcs {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixSvcs {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return nil
+}
+
+// webGate is the interface for *httpxGate, *http3Gate, and *hwebGate.
 type webGate interface {
 	Gate
 	onConnectionClosed()
 }
 
-// webGate_ is the mixin for httpxGate and http3Gate.
+// webGate_ is the mixin for httpxGate, http3Gate, and hwebGate.
 type webGate_ struct {
 	// Mixins
 	Gate_
@@ -45,67 +203,6 @@ type webGate_ struct {
 func (g *webGate_) onConnectionClosed() {
 	g.DecConns()
 	g.SubDone()
-}
-
-// Stater component is the interface to storages of HTTP states. See RFC 6265.
-type Stater interface {
-	Component
-	Maintain() // goroutine
-	Set(sid []byte, session *Session)
-	Get(sid []byte) (session *Session)
-	Del(sid []byte) bool
-}
-
-// Stater_
-type Stater_ struct {
-	// Mixins
-	Component_
-}
-
-// Session is an HTTP session in stater
-type Session struct {
-	// TODO
-	ID     [40]byte // session id
-	Secret [40]byte // secret
-	Role   int8     // 0: default, >0: app defined values
-	Device int8     // terminal device type
-	state1 int8     // app defined state1
-	state2 int8     // app defined state2
-	state3 int32    // app defined state3
-	expire int64    // unix time
-	states map[string]string
-}
-
-func (s *Session) init() {
-	s.states = make(map[string]string)
-}
-
-func (s *Session) Get(name string) string        { return s.states[name] }
-func (s *Session) Set(name string, value string) { s.states[name] = value }
-func (s *Session) Del(name string)               { delete(s.states, name) }
-
-// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
-type Cacher interface {
-	Component
-	Maintain() // goroutine
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_
-type Cacher_ struct {
-	// Mixins
-	Component_
-}
-
-// Hobject is an HTTP object in cacher
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
 }
 
 // App is the Web application.
@@ -881,4 +978,65 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 		r.socklet.Serve(req, sock)
 	*/
 	return true
+}
+
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // goroutine
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session in stater
+type Session struct {
+	// TODO
+	ID     [40]byte // session id
+	Secret [40]byte // secret
+	Role   int8     // 0: default, >0: app defined values
+	Device int8     // terminal device type
+	state1 int8     // app defined state1
+	state2 int8     // app defined state2
+	state3 int32    // app defined state3
+	expire int64    // unix time
+	states map[string]string
+}
+
+func (s *Session) init() {
+	s.states = make(map[string]string)
+}
+
+func (s *Session) Get(name string) string        { return s.states[name] }
+func (s *Session) Set(name string, value string) { s.states[name] = value }
+func (s *Session) Del(name string)               { delete(s.states, name) }
+
+// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
+type Cacher interface {
+	Component
+	Maintain() // goroutine
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_
+type Cacher_ struct {
+	// Mixins
+	Component_
+}
+
+// Hobject is an HTTP object in cacher
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
 }

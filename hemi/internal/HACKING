@@ -24,7 +24,7 @@ THE HTTP PICTURE
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
-     [httpServer]  [Handlet]/[httpProxy]         [httpClient]
+     [webServer]   [Handlet]/[httpProxy]         [httpClient]
         1/2/3      /          /       \             1/2/3
                   /          /         \
                             /           \

@@ -495,7 +495,7 @@ func (s *Stage) Quit() {
 
 func (s *Stage) linkServerApps() {
 	if IsDebug(1) {
-		Debugln("link apps to http servers")
+		Debugln("link apps to web servers")
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
@@ -505,7 +505,7 @@ func (s *Stage) linkServerApps() {
 }
 func (s *Stage) linkServerSvcs() {
 	if IsDebug(1) {
-		Debugln("link svcs to http servers")
+		Debugln("link svcs to rpc servers")
 	}
 	for _, server := range s.servers {
 		if hrpcServer, ok := server.(hrpcServer); ok {

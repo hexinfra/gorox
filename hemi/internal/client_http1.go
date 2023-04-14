@@ -651,7 +651,7 @@ func (r *H1Response) cleanInput() {
 			}
 			r.receivedSize = r.contentSize
 			r.contentText = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
-			r.contentTextKind = httpContentTextInput
+			r.contentTextKind = webContentTextInput
 		}
 	} else { // unsized mode
 		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.

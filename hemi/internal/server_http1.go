@@ -305,7 +305,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 		conn.closeSafe = false
 	}
 	var content []byte
-	if errorPage, ok := httpErrorPages[status]; !ok {
+	if errorPage, ok := webErrorPages[status]; !ok {
 		content = http1Controls[status]
 	} else if req.failReason == "" {
 		content = errorPage
@@ -827,7 +827,7 @@ func (r *http1Request) cleanInput() {
 			}
 			r.receivedSize = r.contentSize        // content is received entirely.
 			r.contentText = r.input[r.pFore:edge] // exact.
-			r.contentTextKind = httpContentTextInput
+			r.contentTextKind = webContentTextInput
 		}
 		if r.contentSize == 0 {
 			r.formReceived = true // no content means no form, so mark it as "received"

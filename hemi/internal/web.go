@@ -9,3163 +9,2010 @@ package internal
 
 import (
 	"bytes"
-	"crypto/tls"
-	"errors"
-	"github.com/hexinfra/gorox/hemi/common/risky"
-	"io"
-	"net"
 	"os"
-	"reflect"
+	"github.com/hexinfra/gorox/hemi/common/risky"
+	"encoding/json"
+	"fmt"
+	"errors"
+	"io"
 	"strconv"
+	"net"
+	"reflect"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
-// webServer is the interface for *httpxServer, *http3Server, and *hwebServer.
-type webServer interface {
-	Server
-	streamHolder
-	contentSaver
-
+// keeper is a webServer or webClient which keeps web connections and streams.
+type keeper interface {
+	Stage() *Stage
+	TLSMode() bool
+	ReadTimeout() time.Duration  // timeout of a read operation
+	WriteTimeout() time.Duration // timeout of a write operation
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	SendTimeout() time.Duration  // timeout to send the whole message
 	MaxContentSize() int64
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
-
-	linkApps()
-	findApp(hostname []byte) *App
+	SaveContentFilesDir() string
 }
 
-// webServer_ is a mixin for httpxServer, http3Server, and hwebServer.
-type webServer_ struct {
-	// Mixins
-	Server_
-	keeper_
-	streamHolder_
-	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
-	// Assocs
-	gates      []webGate
-	defaultApp *App // default app
+// keeper_ is the mixin for webServer_ and webClient_.
+type keeper_ struct {
 	// States
-	forApps      []string            // for what apps
-	exactApps    []*hostnameTo[*App] // like: ("example.com")
-	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
-	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
-	forSvcs      []string            // for what svcs
-	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
-	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
-	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
-	hrpcMode     bool                // works as HRPC server and dispatches to svcs instead of apps?
-	enableTCPTun bool                // allow CONNECT method?
-	enableUDPTun bool                // allow upgrade: connect-udp?
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	sendTimeout    time.Duration // timeout to send the whole message
+	maxContentSize int64         // max content size allowed
 }
 
-func (s *webServer_) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
-}
+func (k *keeper_) RecvTimeout() time.Duration { return k.recvTimeout }
+func (k *keeper_) SendTimeout() time.Duration { return k.sendTimeout }
+func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
 
-func (s *webServer_) onConfigure(shell Component) {
-	s.Server_.OnConfigure()
-	s.streamHolder_.onConfigure(shell, 0)
-	s.contentSaver_.onConfigure(shell, TempDir()+"/http/servers/"+s.name)
-	// forApps
-	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
-	// forSvcs
-	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
-	// hrpcMode
-	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
-	// enableTCPTun
-	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
-	// enableUDPTun
-	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
-	// maxContentSize
-	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T) // app has its own maxContentSize and will check again
-	// recvTimeout
-	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
-	// sendTimeout
-	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
-}
-func (s *webServer_) onPrepare(shell Component) {
-	s.Server_.OnPrepare()
-	s.streamHolder_.onPrepare(shell)
-	s.contentSaver_.onPrepare(shell, 0755)
-}
+// stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
+type stream interface {
+	keeper() keeper
+	peerAddr() net.Addr
 
-func (s *webServer_) linkApps() {
-	for _, appName := range s.forApps {
-		app := s.stage.App(appName)
-		if app == nil {
-			continue
-		}
-		if s.tlsConfig != nil {
-			if app.tlsCertificate == "" || app.tlsPrivateKey == "" {
-				UseExitln("apps that bound to tls server must have certificates and private keys")
-			}
-			certificate, err := tls.LoadX509KeyPair(app.tlsCertificate, app.tlsPrivateKey)
-			if err != nil {
-				UseExitln(err.Error())
-			}
-			if IsDebug(1) {
-				Debugf("adding certificate to %s\n", s.ColonPort())
-			}
-			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
-		}
-		app.linkServer(s.shell.(webServer))
-		if app.isDefault {
-			s.defaultApp = app
-		}
-		// TODO: use hash table?
-		for _, hostname := range app.exactHostnames {
-			s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
-		}
-		// TODO: use radix trie?
-		for _, hostname := range app.suffixHostnames {
-			s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
-		}
-		// TODO: use radix trie?
-		for _, hostname := range app.prefixHostnames {
-			s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
-		}
-	}
-}
-func (s *webServer_) linkSvcs() {
-	for _, svcName := range s.forSvcs {
-		svc := s.stage.Svc(svcName)
-		if svc == nil {
-			continue
-		}
-		svc.linkHRPC(s.shell.(hrpcServer))
-		// TODO: use hash table?
-		for _, hostname := range svc.exactHostnames {
-			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
-		}
-		// TODO: use radix trie?
-		for _, hostname := range svc.suffixHostnames {
-			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
-		}
-		// TODO: use radix trie?
-		for _, hostname := range svc.prefixHostnames {
-			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
-		}
-	}
-}
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) (from int, edge int)
 
-func (s *webServer_) findApp(hostname []byte) *App {
-	// TODO: use hash table?
-	for _, exactMap := range s.exactApps {
-		if bytes.Equal(hostname, exactMap.hostname) {
-			return exactMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, suffixMap := range s.suffixApps {
-		if bytes.HasSuffix(hostname, suffixMap.hostname) {
-			return suffixMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, prefixMap := range s.prefixApps {
-		if bytes.HasPrefix(hostname, prefixMap.hostname) {
-			return prefixMap.target
-		}
-	}
-	return s.defaultApp
-}
-func (s *webServer_) findSvc(hostname []byte) *Svc {
-	// TODO: use hash table?
-	for _, exactMap := range s.exactSvcs {
-		if bytes.Equal(hostname, exactMap.hostname) {
-			return exactMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, suffixMap := range s.suffixSvcs {
-		if bytes.HasSuffix(hostname, suffixMap.hostname) {
-			return suffixMap.target
-		}
-	}
-	// TODO: use radix trie?
-	for _, prefixMap := range s.prefixSvcs {
-		if bytes.HasPrefix(hostname, prefixMap.hostname) {
-			return prefixMap.target
-		}
-	}
-	return nil
-}
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
 
-// webGate is the interface for *httpxGate, *http3Gate, and *hwebGate.
-type webGate interface {
-	Gate
-	onConnectionClosed()
-}
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
 
-// webGate_ is the mixin for httpxGate, http3Gate, and hwebGate.
-type webGate_ struct {
-	// Mixins
-	Gate_
-}
-
-func (g *webGate_) onConnectionClosed() {
-	g.DecConns()
-	g.SubDone()
-}
-
-// webConn is the interface for *http[1-3]Conn and *hwebConn.
-type webConn interface {
-	serve() // goroutine
-	getServer() webServer
-	isBroken() bool
+	isBroken() bool // if either side is broken, then the stream is broken
 	markBroken()
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
-// webConn_ is the mixin for http[1-3]Conn and hwebConn.
-type webConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id     int64     // the conn id
-	server webServer // the server to which the conn belongs
-	gate   webGate   // the gate to which the conn belongs
-	// Conn states (zeros)
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
-	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
-	usedStreams atomic.Int32 // num of streams served
-	broken      atomic.Bool  // is conn broken?
-}
-
-func (c *webConn_) onGet(id int64, server webServer, gate webGate) {
-	c.id = id
-	c.server = server
-	c.gate = gate
-}
-func (c *webConn_) onPut() {
-	c.server = nil
-	c.gate = nil
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-}
-
-func (c *webConn_) getServer() webServer { return c.server }
-func (c *webConn_) getGate() webGate     { return c.gate }
-
-func (c *webConn_) isBroken() bool { return c.broken.Load() }
-func (c *webConn_) markBroken()    { c.broken.Store(true) }
-
-func (c *webConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-// webStream_ is the mixin for http[1-3]Stream and hwebStream.
-type webStream_ struct {
-	// Mixins
-	stream_
+// stream is the mixin for webStream_ and wStream_.
+type stream_ struct {
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	region Region // a region-based memory pool
 	// Stream states (zeros)
+	httpMode int8 // http mode of current stream. see httpModeXXX
 }
 
-func (s *webStream_) onUse() {
-	s.stream_.onUse()
+func (s *stream_) onUse() { // for non-zeros
+	s.region.Init()
+	s.httpMode = httpModeNormal
 }
-func (s *webStream_) onEnd() {
-	s.stream_.onEnd()
-}
-
-func (s *webStream_) serveSocket() { // upgrade: websocket
-	// TODO
-}
-func (s *webStream_) serveTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *webStream_) serveUDPTun() { // upgrade: connect-udp
-	// TODO
+func (s *stream_) onEnd() { // for zeros
+	s.region.Free()
 }
 
-// Request is the server-side Web request and is the interface for *http[1-3]Request and *hwebRequest.
-type Request interface {
-	PeerAddr() net.Addr
-	App() *App
-	Svc() *Svc
+func (s *stream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-	VersionCode() uint8
-	IsHTTP1_0() bool
-	IsHTTP1_1() bool
-	IsHTTP1() bool
-	IsHTTP2() bool
-	IsHTTP3() bool
-	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
-
-	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
-	IsHTTP() bool
-	IsHTTPS() bool
-	Scheme() string // http, https
-
-	MethodCode() uint32
-	Method() string
-	IsGET() bool
-	IsPOST() bool
-	IsPUT() bool
-	IsDELETE() bool
-
-	IsAbsoluteForm() bool
-	IsAsteriskOptions() bool
-
-	Authority() string // hostname[:port]
-	Hostname() string  // hostname
-	ColonPort() string // :port
-
-	URI() string         // /encodedPath?queryString
-	Path() string        // /path
-	EncodedPath() string // /encodedPath
-	QueryString() string // including '?' if query string exists, otherwise empty
-
-	AddQuery(name string, value string) bool
-	HasQueries() bool
-	AllQueries() (queries [][2]string)
-	Q(name string) string
-	Qstr(name string, defaultValue string) string
-	Qint(name string, defaultValue int) int
-	Query(name string) (value string, ok bool)
-	Queries(name string) (values []string, ok bool)
-	HasQuery(name string) bool
-	DelQuery(name string) (deleted bool)
-
-	AddHeader(name string, value string) bool
-	HasHeaders() bool
-	AllHeaders() (headers [][2]string)
-	H(name string) string
-	Hstr(name string, defaultValue string) string
-	Hint(name string, defaultValue int) int
-	Header(name string) (value string, ok bool)
-	Headers(name string) (values []string, ok bool)
-	HasHeader(name string) bool
-	DelHeader(name string) (deleted bool)
-
-	UserAgent() string
-	ContentType() string
+// webIn is a *http[1-3]Request or *H[1-3]Response, used as shell by webIn_.
+type webIn interface {
 	ContentSize() int64
-	AcceptTrailers() bool
-
-	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
-	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
-
-	AddCookie(name string, value string) bool
-	HasCookies() bool
-	AllCookies() (cookies [][2]string)
-	C(name string) string
-	Cstr(name string, defaultValue string) string
-	Cint(name string, defaultValue int) int
-	Cookie(name string) (value string, ok bool)
-	Cookies(name string) (values []string, ok bool)
-	HasCookie(name string) bool
-	DelCookie(name string) (deleted bool)
-
-	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
-
-	HasContent() bool
 	isUnsized() bool
-	Content() string
-
-	AddForm(name string, value string) bool
-	HasForms() bool
-	AllForms() (forms [][2]string)
-	F(name string) string
-	Fstr(name string, defaultValue string) string
-	Fint(name string, defaultValue int) int
-	Form(name string) (value string, ok bool)
-	Forms(name string) (values []string, ok bool)
-	HasForm(name string) bool
-
-	HasUploads() bool
-	AllUploads() (uploads []*Upload)
-	U(name string) *Upload
-	Upload(name string) (upload *Upload, ok bool)
-	Uploads(name string) (uploads []*Upload, ok bool)
-	HasUpload(name string) bool
-
-	AddTrailer(name string, value string) bool
-	HasTrailers() bool
-	AllTrailers() (trailers [][2]string)
-	T(name string) string
-	Tstr(name string, defaultValue string) string
-	Tint(name string, defaultValue int) int
-	Trailer(name string) (value string, ok bool)
-	Trailers(name string) (values []string, ok bool)
-	HasTrailer(name string) bool
-	DelTrailer(name string) (deleted bool)
-
-	// Unsafe
-	UnsafeMake(size int) []byte
-	UnsafeVersion() []byte
-	UnsafeScheme() []byte
-	UnsafeMethod() []byte
-	UnsafeAuthority() []byte // hostname[:port]
-	UnsafeHostname() []byte
-	UnsafeColonPort() []byte
-	UnsafeURI() []byte
-	UnsafePath() []byte
-	UnsafeEncodedPath() []byte
-	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
-	UnsafeQuery(name string) (value []byte, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
-	UnsafeUserAgent() []byte
-	UnsafeContentLength() []byte
-	UnsafeContentType() []byte
-	UnsafeContent() []byte
-	UnsafeForm(name string) (value []byte, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
-
-	// Internal only
-	getPathInfo() os.FileInfo
-	unsafeAbsPath() []byte
-	makeAbsPath()
-	delHopHeaders()
-	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
-	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
-	getRanges() []rang
-	unsetHost()
-	takeContent() any
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
-	delHopTrailers()
+	HasTrailers() bool
 	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
-	hookReviser(reviser Reviser)
-	unsafeVariable(index int16) []byte
 }
 
-// webRequest_ is the mixin for http[1-3]Request and hwebRequest.
-type webRequest_ struct { // incoming. needs parsing
-	// Mixins
-	webIn_
+// webIn_ is a mixin for webRequest_ and wResponse_.
+type webIn_ struct { // incoming. needs parsing
+	// Assocs
+	shell  webIn  // *http[1-3]Request or *H[1-3]Response
+	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (stocks)
-	stockUploads [2]Upload // for r.uploads. 96B
+	stockInput  [1536]byte // for r.input
+	stockArray  [768]byte  // for r.array
+	stockPrimes [40]pair   // for r.primes
+	stockExtras [30]pair   // for r.extras
 	// Stream states (controlled)
-	ranges [2]rang // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
+	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
+	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
+	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
+	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
+	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
-	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
+	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	array          []byte        // store dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving
+	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
+	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse     bool          // treat the incoming message as response?
+	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_              byte          // padding
+	headResult     int16         // result of receiving message head. values are same as http status for convenience
+	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
-	path        []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath     []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
-	pathInfo    os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	app         *App        // target app of this request. set before processing stream
-	svc         *Svc        // target svc of this request. set before processing stream
-	formWindow  []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
-	webRequest0             // all values must be zero by default in this struct!
+	failReason  string    // the reason of headResult or bodyResult
+	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	recvTime    time.Time // the time when receiving message
+	bodyTime    time.Time // the time when first body read operation is performed on this stream
+	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
+	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
+	webIn0                // all values must be zero by default in this struct!
 }
-type webRequest0 struct { // for fast reset, entirely
-	gotInput        bool     // got some input from client? for request timeout handling
-	targetForm      int8     // http request-target form. see httpTargetXXX
-	asteriskOptions bool     // OPTIONS *?
-	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
-	methodCode      uint32   // known method code. 0: unknown method
-	method          span     // raw method -> r.input
-	authority       span     // raw hostname[:port] -> r.input
-	hostname        span     // raw hostname (without :port) -> r.input
-	colonPort       span     // raw colon port (:port, with ':') -> r.input
-	uri             span     // raw uri (raw path & raw query string) -> r.input
-	encodedPath     span     // raw path -> r.input
-	queryString     span     // raw query string (with '?') -> r.input
-	boundary        span     // boundary parameter of "multipart/form-data" if exists -> r.input
-	queries         zone     // decoded queries -> r.array
-	cookies         zone     // cookies ->r.input. temporarily used when checking cookie headers, set after cookie header is parsed
-	forms           zone     // decoded forms -> r.array
-	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
-	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
-	nRanges         int8     // num of ranges
-	expectContinue  bool     // expect: 100-continue?
-	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
-	pathInfoGot     bool     // is r.pathInfo got?
-	_               [4]byte  // padding
-	indexes         struct { // indexes of some selected singleton headers, for fast accessing
-		authorization      uint8 // authorization header ->r.input
-		host               uint8 // host header ->r.input
-		ifModifiedSince    uint8 // if-modified-since header ->r.input
-		ifRange            uint8 // if-range header ->r.input
-		ifUnmodifiedSince  uint8 // if-unmodified-since header ->r.input
-		proxyAuthorization uint8 // proxy-authorization header ->r.input
-		userAgent          uint8 // user-agent header ->r.input
-		_                  byte  // padding
-	}
-	zones struct { // zones of some selected headers, for fast accessing
-		acceptLanguage zone
-		expect         zone
-		forwarded      zone
-		ifMatch        zone // the zone of if-match in r.primes. may be not continuous
-		ifNoneMatch    zone // the zone of if-none-match in r.primes. may be not continuous
-		xForwardedFor  zone
-		_              [4]byte // padding
-	}
-	unixTimes struct { // parsed unixTimes
-		ifModifiedSince   int64 // parsed unix time of if-modified-since
-		ifRange           int64 // parsed unix time of if-range if is http-date format
-		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
-	}
-	cacheControl struct { // the cache-control info
-		noCache      bool  // no-cache directive in cache-control
-		noStore      bool  // no-store directive in cache-control
-		noTransform  bool  // no-transform directive in cache-control
-		onlyIfCached bool  // only-if-cached directive in cache-control
-		maxAge       int32 // max-age directive in cache-control
-		maxStale     int32 // max-stale directive in cache-control
-		minFresh     int32 // min-fresh directive in cache-control
-	}
-	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
-	forceEcho    bool      // use echo anyway?
-	_            byte      // padding
-	formReceived bool      // if content is a form, is it received?
-	formKind     int8      // deducted type of form. 0:not form. see formXXX
-	formEdge     int32     // edge position of the filled content in r.formWindow
-	pFieldName   span      // field name. used during receiving and parsing multipart form in case of sliding r.formWindow
-	consumedSize int64     // bytes of consumed content when consuming received tempFile. used by, for example, _recvMultipartForm.
+type webIn0 struct { // for fast reset, entirely
+	pBack            int32   // element begins from. for parsing control & headers & content & trailers elements
+	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
+	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	hasExtra         [8]bool // see kindXXX for indexes
+	dateTime         int64   // parsed unix time of date
+	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	arrayKind        int8    // kind of current r.array. see arrayKindXXX
+	receiving        int8    // currently receiving. see httpSectionXXX
+	headers          zone    // headers ->r.primes
+	hasRevisers      bool    // are there any revisers hooked on this incoming message?
+	upgradeSocket    bool    // upgrade: websocket?
+	upgradeUDPTun    bool    // upgrade: connect-udp?
+	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
+	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
+	iContentLength   uint8   // index of content-length header in r.primes
+	iContentLocation uint8   // index of content-location header in r.primes
+	iContentRange    uint8   // index of content-range header in r.primes
+	iContentType     uint8   // index of content-type header in r.primes
+	iDate            uint8   // index of date header in r.primes
+	_                [2]byte // padding
+	zConnection      zone    // zone of connection headers in r.primes. may not be continuous
+	zContentLanguage zone    // zone of content-language headers in r.primes. may not be continuous
+	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous
+	zVia             zone    // zone of via headers in r.primes. may not be continuous
+	contentReceived  bool    // is content received? if message has no content, it is true (received)
+	contentTextKind  int8    // kind of current r.contentText if it is text. see webContentTextXXX
+	receivedSize     int64   // bytes of currently received content. used by both sized & unsized content receiver
+	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
+	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	cFore            int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkEdge        int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
+	transferChunked  bool    // transfer-encoding: chunked? HTTP/1.1 only
+	overChunked      bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
+	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
-func (r *webRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.webIn_.onUse(versionCode, false) // asResponse = false
-
-	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
-}
-func (r *webRequest_) onEnd() { // for zeros
-	for _, upload := range r.uploads {
-		if upload.isMoved() {
-			continue
-		}
-		var path string
-		if upload.metaSet() {
-			path = upload.Path()
-		} else {
-			path = risky.WeakString(r.array[upload.pathFrom : upload.pathFrom+int32(upload.pathSize)])
-		}
-		if err := os.Remove(path); err != nil {
-			r.app.Logf("failed to remove uploaded file: %s, error: %s\n", path, err.Error())
-		}
-	}
-	r.uploads = nil
-
-	r.path = nil
-	r.absPath = nil
-	r.pathInfo = nil
-	r.app = nil
-	r.svc = nil
-	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
-	r.webRequest0 = webRequest0{}
-
-	r.webIn_.onEnd()
-}
-
-func (r *webRequest_) App() *App { return r.app }
-func (r *webRequest_) Svc() *Svc { return r.svc }
-
-func (r *webRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *webRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
-func (r *webRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
-func (r *webRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
-func (r *webRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
-
-func (r *webRequest_) MethodCode() uint32   { return r.methodCode }
-func (r *webRequest_) Method() string       { return string(r.UnsafeMethod()) }
-func (r *webRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
-func (r *webRequest_) IsGET() bool          { return r.methodCode == MethodGET }
-func (r *webRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
-func (r *webRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
-func (r *webRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
-func (r *webRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
-		r.methodCode = m.code
-	}
-}
-
-func (r *webRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
-func (r *webRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
-
-func (r *webRequest_) Authority() string       { return string(r.UnsafeAuthority()) }
-func (r *webRequest_) UnsafeAuthority() []byte { return r.input[r.authority.from:r.authority.edge] }
-func (r *webRequest_) Hostname() string        { return string(r.UnsafeHostname()) }
-func (r *webRequest_) UnsafeHostname() []byte  { return r.input[r.hostname.from:r.hostname.edge] }
-func (r *webRequest_) ColonPort() string {
-	if r.colonPort.notEmpty() {
-		return string(r.input[r.colonPort.from:r.colonPort.edge])
-	}
-	if r.schemeCode == SchemeHTTPS {
-		return stringColonPort443
+func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
+	if versionCode >= Version2 || asResponse {
+		r.input = r.stockInput[:]
 	} else {
-		return stringColonPort80
+		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
+	r.array = r.stockArray[:]
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
+	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.recvTimeout = r.stream.keeper().RecvTimeout()
+	r.maxContentSize = r.stream.keeper().MaxContentSize()
+	r.contentSize = -1 // no content
+	r.versionCode = versionCode
+	r.asResponse = asResponse
+	r.keepAlive = -1 // no connection header
+	r.headResult = StatusOK
+	r.bodyResult = StatusOK
 }
-func (r *webRequest_) UnsafeColonPort() []byte {
-	if r.colonPort.notEmpty() {
-		return r.input[r.colonPort.from:r.colonPort.edge]
-	}
-	if r.schemeCode == SchemeHTTPS {
-		return bytesColonPort443
+func (r *webIn_) onEnd() { // for zeros
+	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, so responses are not pipelined.
+		if cap(r.input) != cap(r.stockInput) {
+			PutNK(r.input)
+		}
+		r.input = nil
+		r.inputNext, r.inputEdge = 0, 0
 	} else {
-		return bytesColonPort80
+		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
+	if r.arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = nil // other array kinds are only references, just reset.
+	if cap(r.primes) != cap(r.stockPrimes) {
+		putPairs(r.primes)
+		r.primes = nil
+	}
+	if cap(r.extras) != cap(r.stockExtras) {
+		putPairs(r.extras)
+		r.extras = nil
+	}
+
+	r.failReason = ""
+
+	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
+		if r.overChunked { // only happens in HTTP/1.1 chunked mode
+			// Use bytes over received in r.bodyWindow as new r.input.
+			// This means the size list for r.bodyWindow must sync with r.input!
+			if cap(r.input) != cap(r.stockInput) {
+				PutNK(r.input)
+			}
+			r.input = r.bodyWindow // use r.bodyWindow as new r.input
+		}
+		// slide r.input. r.inputNext and r.inputEdge have already been set
+		copy(r.input, r.input[r.inputNext:r.inputEdge])
+		r.inputEdge -= r.inputNext
+		r.inputNext = 0
+	} else if r.bodyWindow != nil { // r.bodyWindow was used to receive content and failed to free. we free it here.
+		PutNK(r.bodyWindow)
+	}
+	r.bodyWindow = nil
+
+	r.recvTime = time.Time{}
+	r.bodyTime = time.Time{}
+
+	if r.contentTextKind == webContentTextPool {
+		PutNK(r.contentText)
+	}
+	r.contentText = nil // other content text kinds are only references, just reset.
+
+	if r.contentFile != nil {
+		r.contentFile.Close()
+		if IsDebug(2) {
+			Debugln("contentFile is left as is, not removed!")
+		} else if err := os.Remove(r.contentFile.Name()); err != nil {
+			// TODO: log?
+		}
+		r.contentFile = nil
+	}
+
+	r.webIn0 = webIn0{}
 }
 
-func (r *webRequest_) URI() string {
-	if r.uri.notEmpty() {
-		return string(r.input[r.uri.from:r.uri.edge])
-	} else { // use "/"
-		return stringSlash
-	}
-}
-func (r *webRequest_) UnsafeURI() []byte {
-	if r.uri.notEmpty() {
-		return r.input[r.uri.from:r.uri.edge]
-	} else { // use "/"
-		return bytesSlash
-	}
-}
-func (r *webRequest_) EncodedPath() string {
-	if r.encodedPath.notEmpty() {
-		return string(r.input[r.encodedPath.from:r.encodedPath.edge])
-	} else { // use "/"
-		return stringSlash
-	}
-}
-func (r *webRequest_) UnsafeEncodedPath() []byte {
-	if r.encodedPath.notEmpty() {
-		return r.input[r.encodedPath.from:r.encodedPath.edge]
-	} else { // use "/"
-		return bytesSlash
-	}
-}
-func (r *webRequest_) Path() string {
-	if len(r.path) != 0 {
-		return string(r.path)
-	} else { // use "/"
-		return stringSlash
-	}
-}
-func (r *webRequest_) UnsafePath() []byte {
-	if len(r.path) != 0 {
-		return r.path
-	} else { // use "/"
-		return bytesSlash
-	}
-}
-func (r *webRequest_) cleanPath() {
-	nPath := len(r.path)
-	if nPath <= 1 {
-		// Must be '/'.
-		return
-	}
-	slash := r.path[nPath-1] == '/'
-	pOrig, pReal := 1, 1
-	for pOrig < nPath {
-		if b := r.path[pOrig]; b == '/' {
-			pOrig++
-		} else if b == '.' && (pOrig+1 == nPath || r.path[pOrig+1] == '/') {
-			pOrig++
-		} else if b == '.' && r.path[pOrig+1] == '.' && (pOrig+2 == nPath || r.path[pOrig+2] == '/') {
-			pOrig += 2
-			if pReal > 1 {
-				pReal--
-				for pReal > 1 && r.path[pReal] != '/' {
-					pReal--
-				}
-			}
-		} else {
-			if pReal != 1 {
-				r.path[pReal] = '/'
-				pReal++
-			}
-			for pOrig < nPath && r.path[pOrig] != '/' {
-				r.path[pReal] = r.path[pOrig]
-				pReal++
-				pOrig++
-			}
-		}
-	}
-	if pReal != nPath {
-		if slash && pReal > 1 {
-			r.path[pReal] = '/'
-			pReal++
-		}
-		r.path = r.path[:pReal]
-	}
-}
-func (r *webRequest_) unsafeAbsPath() []byte {
-	return r.absPath
-}
-func (r *webRequest_) makeAbsPath() {
-	if r.app.webRoot == "" { // if app's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
-		return
-	}
-	webRoot := r.app.webRoot
-	r.absPath = r.UnsafeMake(len(webRoot) + len(r.UnsafePath()))
-	n := copy(r.absPath, webRoot)
-	copy(r.absPath[n:], r.UnsafePath())
-}
-func (r *webRequest_) getPathInfo() os.FileInfo {
-	if !r.pathInfoGot {
-		r.pathInfoGot = true
-		if pathInfo, err := os.Stat(risky.WeakString(r.absPath)); err == nil {
-			r.pathInfo = pathInfo
-		}
-	}
-	return r.pathInfo
-}
-func (r *webRequest_) QueryString() string {
-	return string(r.UnsafeQueryString())
-}
-func (r *webRequest_) UnsafeQueryString() []byte {
-	return r.input[r.queryString.from:r.queryString.edge]
-}
+func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+func (r *webIn_) PeerAddr() net.Addr         { return r.stream.peerAddr() }
 
-func (r *webRequest_) addQuery(query *pair) bool { // as prime
-	if edge, ok := r._addPrime(query); ok {
-		r.queries.edge = edge
+func (r *webIn_) VersionCode() uint8    { return r.versionCode }
+func (r *webIn_) IsHTTP1_0() bool       { return r.versionCode == Version1_0 }
+func (r *webIn_) IsHTTP1_1() bool       { return r.versionCode == Version1_1 }
+func (r *webIn_) IsHTTP1() bool         { return r.versionCode <= Version1_1 }
+func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
+func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
+func (r *webIn_) Version() string       { return httpVersionStrings[r.versionCode] }
+func (r *webIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
+
+func (r *webIn_) addHeader(header *pair) bool { // as prime
+	if edge, ok := r._addPrime(header); ok {
+		r.headers.edge = edge
 		return true
 	}
-	r.headResult, r.failReason = StatusURITooLong, "too many queries"
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *webRequest_) AddQuery(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindQuery)
+func (r *webIn_) AddHeader(name string, value string) bool { // as extra
+	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// TODO: parse and check?
+	// setFlags?
+	return r.addExtra(name, value, 0, kindHeader)
 }
-func (r *webRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
-func (r *webRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
-func (r *webRequest_) Q(name string) string {
-	value, _ := r.Query(name)
+func (r *webIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, kindHeader) }
+func (r *webIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, kindHeader) }
+func (r *webIn_) H(name string) string {
+	value, _ := r.Header(name)
 	return value
 }
-func (r *webRequest_) Qstr(name string, defaultValue string) string {
-	if value, ok := r.Query(name); ok {
+func (r *webIn_) Hstr(name string, defaultValue string) string {
+	if value, ok := r.Header(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *webRequest_) Qint(name string, defaultValue int) int {
-	if value, ok := r.Query(name); ok {
+func (r *webIn_) Hint(name string, defaultValue int) int {
+	if value, ok := r.Header(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
 		}
 	}
 	return defaultValue
 }
-func (r *webRequest_) Query(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.queries, kindQuery)
+func (r *webIn_) Header(name string) (value string, ok bool) {
+	v, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return string(v), ok
 }
-func (r *webRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.queries, kindQuery)
+func (r *webIn_) UnsafeHeader(name string) (value []byte, ok bool) {
+	return r.getPair(name, 0, r.headers, kindHeader)
 }
-func (r *webRequest_) Queries(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.queries, kindQuery)
+func (r *webIn_) Headers(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.headers, kindHeader)
 }
-func (r *webRequest_) HasQuery(name string) bool {
-	_, ok := r.getPair(name, 0, r.queries, kindQuery)
+func (r *webIn_) HasHeader(name string) bool {
+	_, ok := r.getPair(name, 0, r.headers, kindHeader)
 	return ok
 }
-func (r *webRequest_) DelQuery(name string) (deleted bool) {
-	return r.delPair(name, 0, r.queries, kindQuery)
+func (r *webIn_) DelHeader(name string) (deleted bool) {
+	// TODO: add restrictions on what headers are allowed to del?
+	return r.delPair(name, 0, r.headers, kindHeader)
+}
+func (r *webIn_) delHeader(name []byte, hash uint16) {
+	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
 }
 
-func (r *webRequest_) examineHead() bool {
-	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(i) {
-			// r.headResult is set.
+func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool { // data and params
+	field.setParsed()
+	if field.value.isEmpty() {
+		if desc.allowEmpty {
+			field.dataEdge = field.value.edge
+			return true
+		} else {
+			r.failReason = "field can't be empty"
 			return false
 		}
 	}
-	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies // make a copy. r.cookies is changed as cookie pairs below
-		r.cookies.from = uint8(len(r.primes))
-		for i := cookies.from; i < cookies.edge; i++ {
-			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
-				continue
-			}
-			if !r.parseCookie(cookie.value) { // r.cookies.edge is set in r.addCookie().
-				return false
-			}
-		}
-	}
-	if IsDebug(2) {
-		Debugln("======primes======")
-		for i := 0; i < len(r.primes); i++ {
-			prime := &r.primes[i]
-			prime.show(r._placeOf(prime))
-		}
-		Debugln("======extras======")
-		for i := 0; i < len(r.extras); i++ {
-			extra := &r.extras[i]
-			extra.show(r._placeOf(extra))
-		}
-	}
-
-	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
-	// apply a request to the target resource until the entire request
-	// header section is received, since later header fields might include
-	// conditionals, authentication credentials, or deliberately misleading
-	// duplicate header fields that would impact request processing.
-
-	// Basic checks against versions
-	switch r.versionCode {
-	case Version1_0:
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 0 // default is close for HTTP/1.0
-		}
-	case Version1_1:
-		if r.indexes.host == 0 {
-			// RFC 7230 (section 5.4):
-			// A client MUST send a Host header field in all HTTP/1.1 request messages.
-			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
-			return false
-		}
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		}
-	default: // HTTP/2 and HTTP/3
-		// Add here
-	}
-
-	if !r.determineContentMode() {
-		// r.headResult is set.
-		return false
-	}
-	if r.contentSize > r.maxContentSize {
-		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds server's limit"
-		return false
-	}
-
-	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
-		// RFC 6455 (section 4.1):
-		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
-		return false
-	}
-	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
-		// RFC 7232 (section 5):
-		// Likewise, a server
-		// MUST ignore the conditional request header fields defined by this
-		// specification when received with a request method that does not
-		// involve the selection or modification of a selected representation,
-		// such as CONNECT, OPTIONS, or TRACE.
-		if r.ifMatch != 0 {
-			r.delHeader(bytesIfMatch, hashIfMatch)
-			r.ifMatch = 0
-		}
-		if r.ifNoneMatch != 0 {
-			r.delHeader(bytesIfNoneMatch, hashIfNoneMatch)
-			r.ifNoneMatch = 0
-		}
-		if r.indexes.ifModifiedSince != 0 {
-			r._delPrime(r.indexes.ifModifiedSince)
-			r.indexes.ifModifiedSince = 0
-		}
-		if r.indexes.ifUnmodifiedSince != 0 {
-			r._delPrime(r.indexes.ifUnmodifiedSince)
-			r.indexes.ifUnmodifiedSince = 0
-		}
-		if r.indexes.ifRange != 0 {
-			r._delPrime(r.indexes.ifRange)
-			r.indexes.ifRange = 0
-		}
-	} else {
-		// RFC 9110 (section 13.1.3):
-		// A recipient MUST ignore the If-Modified-Since header field if the
-		// received field value is not a valid HTTP-date, the field value has
-		// more than one member, or if the request method is neither GET nor HEAD.
-		if r.indexes.ifModifiedSince != 0 && r.methodCode&(MethodGET|MethodHEAD) == 0 {
-			r._delPrime(r.indexes.ifModifiedSince) // we delete it.
-			r.indexes.ifModifiedSince = 0
-		}
-		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
-		if r.indexes.ifRange != 0 && r.nRanges == 0 {
-			r._delPrime(r.indexes.ifRange) // we delete it.
-			r.indexes.ifRange = 0
-		}
-	}
-	if r.contentSize == -1 { // no content
-		if r.expectContinue { // expect is used to send large content.
-			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header without content"
-			return false
-		}
-		if r.methodCode&(MethodPOST|MethodPUT) != 0 {
-			r.headResult, r.failReason = StatusLengthRequired, "POST and PUT must contain a content"
-			return false
-		}
-	} else { // content exists (sized or unsized)
-		// Content is not allowed in some methods, according to RFC 7231.
-		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
-			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
-			return false
-		}
-		if r.nContentCodings > 0 { // have content-encoding
-			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
-				return false
-			}
-		}
-		if r.iContentType == 0 { // no content-type
-			if r.methodCode == MethodOPTIONS {
-				// RFC 7231 (section 4.3.7):
-				// A client that generates an OPTIONS request containing a payload body
-				// MUST send a valid Content-Type header field describing the
-				// representation media type.
-				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
-				return false
-			}
-		} else { // content-type exists
-			header := &r.primes[r.iContentType]
-			contentType := header.dataAt(r.input)
-			bytesToLower(contentType)
-			if bytes.Equal(contentType, bytesURLEncodedForm) {
-				r.formKind = httpFormURLEncoded
-			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
-				for i := header.params.from; i < header.params.edge; i++ {
-					param := &r.extras[i]
-					if param.hash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
-						continue
-					}
-					if value := param.value; value.notEmpty() && value.size() <= 70 && r.input[value.edge-1] != ' ' {
-						// boundary := 0*69<bchars> bcharsnospace
-						// bchars := bcharsnospace / " "
-						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-						r.boundary = value
-						r.formKind = httpFormMultipart
-						break
-					}
+	text := field.value
+	if p[text.from] != '"' { // normal text
+	forData:
+		for spAt := int32(0); text.from < field.value.edge; text.from++ {
+			switch b := p[text.from]; b {
+			default:
+				spAt = 0
+			case ' ', '\t':
+				if spAt == 0 {
+					spAt = text.from
 				}
-				if r.formKind != httpFormMultipart {
-					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
+			case ';':
+				if spAt == 0 {
+					field.dataEdge = text.from
+				} else {
+					field.dataEdge = spAt
+				}
+				//Debugf("3=%s\n", string(field.dataAt(p)))
+				break forData
+			case ',':
+				if fully {
+					spAt = 0
+				} else {
+					field.dataEdge = text.from
+					field.value.edge = text.from
+					//Debugf("1=%s\n", string(field.dataAt(p)))
+					return true
+				}
+			case '(':
+				if desc.hasComment {
+					text.from++
+					for {
+						if text.from == field.value.edge {
+							r.failReason = "bad comment"
+							return false
+						}
+						if p[text.from] == ')' {
+							break
+						}
+						text.from++
+					}
+				} else {
+					spAt = 0
+				}
+			}
+		}
+		if text.from == field.value.edge { // exact data
+			field.dataEdge = text.from
+			//Debugf("2=%s\n", string(field.dataAt(p)))
+			return true
+		}
+	} else { // begins with '"'
+		text.from++
+		for {
+			if text.from == field.value.edge { // "...
+				field.dataEdge = text.from
+				//Debugf("4=%s\n", string(field.dataAt(p)))
+				return true
+			}
+			if p[text.from] == '"' {
+				break
+			}
+			text.from++
+		}
+		// "..."
+		if !desc.allowQuote {
+			r.failReason = "DQUOTE is not allowed"
+			return false
+		}
+		if text.from-field.value.from == 1 && !desc.allowEmpty { // ""
+			r.failReason = "field cannot be empty"
+			return false
+		}
+		field.setQuoted()
+		field.dataEdge = text.from
+		//Debugf("5=%s\n", string(field.dataAt(p)))
+		text.from++
+		if text.from == field.value.edge { // exact "..."
+			return true
+		}
+	afterValue:
+		for {
+			switch b := p[text.from]; b {
+			case ';':
+				break afterValue
+			case ' ', '\t':
+				text.from++
+			case ',':
+				if fully {
+					r.failReason = "comma after dquote"
+					return false
+				} else {
+					field.value.edge = text.from
+					return true
+				}
+			default:
+				r.failReason = "malformed DQUOTE and normal text"
+				return false
+			}
+			if text.from == field.value.edge {
+				return true
+			}
+		}
+	}
+	// text.from is at ';'
+	if !desc.allowParam {
+		r.failReason = "parameters are not allowed"
+		return false
+	}
+	field.params.from = uint8(len(r.extras))
+	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
+		haveSemic := false
+	forSemic:
+		for {
+			if text.from == field.value.edge {
+				return true
+			}
+			switch b := p[text.from]; b {
+			case ' ', '\t':
+				text.from++
+			case ';':
+				haveSemic = true
+				text.from++
+			case ',':
+				if fully {
+					r.failReason = "invalid parameter"
+					return false
+				} else {
+					field.value.edge = text.from
+					return true
+				}
+			default:
+				break forSemic
+			}
+		}
+		if !haveSemic {
+			r.failReason = "semicolon required in parameters"
+			return false
+		}
+		// parameter-name = token
+		text.edge = text.from
+		for {
+			if httpTchar[p[text.edge]] == 0 {
+				break
+			}
+			text.edge++
+			if text.edge == field.value.edge {
+				r.failReason = "only parameter-name is provided"
+				return false
+			}
+		}
+		nameSize := text.edge - text.from
+		if nameSize == 0 || nameSize > 255 {
+			r.failReason = "parameter-name out of range"
+			return false
+		}
+		if p[text.edge] != '=' {
+			r.failReason = "token '=' required"
+			return false
+		}
+		var param pair
+		param.hash = bytesHash(p[text.from:text.edge])
+		param.kind = kindParam
+		param.nameSize = uint8(nameSize)
+		param.nameFrom = text.from
+		param.place = field.place
+		text.edge++ // skip '='
+		// parameter-value = ( token / quoted-string )
+		if text.edge == field.value.edge {
+			r.failReason = "missing parameter-value"
+			return false
+		}
+		if p[text.edge] == '"' { // quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+			text.edge++
+			text.from = text.edge
+			for {
+				if text.edge == field.value.edge {
+					r.failReason = "invalid quoted-string"
+					return false
+				}
+				if p[text.edge] == '"' {
+					break
+				}
+				text.edge++
+			}
+			param.value = text
+			text.edge++
+		} else { // token
+			text.from = text.edge
+			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+				text.edge++
+			}
+			if text.edge == text.from {
+				r.failReason = "empty parameter-value is not allowed"
+				return false
+			}
+			param.value = text
+		}
+		if !r._addExtra(&param) {
+			r.failReason = "too many extras"
+			return false
+		}
+		field.params.edge = uint8(len(r.extras))
+		text.from = text.edge
+	}
+}
+func (r *webIn_) _splitField(field *pair, desc *desc, p []byte) bool {
+	field.setParsed()
+	// RFC 9110 (section 5.6.1.2):
+	// In other words, a recipient MUST accept lists that satisfy the following syntax:
+	// #element => [ element ] *( OWS "," OWS [ element ] )
+	var (
+		bakField  pair
+		subField  = *field
+		numSubs   = 0
+		needComma = false
+	)
+	subField.setSubField()
+	for { // each sub value
+		haveComma := false
+	forComma:
+		for subField.value.from < field.value.edge {
+			switch b := p[subField.value.from]; b {
+			case ' ', '\t':
+				subField.value.from++
+			case ',':
+				haveComma = true
+				subField.value.from++
+			default:
+				break forComma
+			}
+		}
+		if subField.value.from == field.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			r.failReason = "comma needed in multi-value field"
+			return false
+		}
+		subField.value.edge = field.value.edge
+		if !r._parseField(&subField, desc, p, false) {
+			// r.failReason is set.
+			return false
+		}
+		if numSubs == 0 { // first sub, save as backup
+			bakField = subField
+		} else { // numSubs >= 1, sub fields exist
+			if numSubs == 1 { // got the second sub field
+				field.setCommaValue() // mark main field as comma-value
+				if !r._addExtra(&bakField) {
+					r.failReason = "too many sub fields"
 					return false
 				}
 			}
-			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
+			if !r._addExtra(&subField) {
+				r.failReason = "too many sub fields"
 				return false
 			}
 		}
+		numSubs++
+		subField.value.from = subField.value.edge
+		needComma = true
 	}
-
-	return true
-}
-func (r *webRequest_) applyHeader(index uint8) bool {
-	header := &r.primes[index]
-	name := header.nameAt(r.input)
-	if sh := &webRequestSingletonHeaderTable[webRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
-		header.setSingleton()
-		if !sh.parse { // unnecessary to parse
-			header.setParsed()
-			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) {
-			r.headResult = StatusBadRequest
-			return false
+	if numSubs == 1 {
+		if bakField.isQuoted() {
+			field.setQuoted()
 		}
-		if !sh.check(r, header, index) {
-			// r.headResult is set.
-			return false
-		}
-	} else if mh := &webRequestImportantHeaderTable[webRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
-		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.desc, r.input) {
-			r.headResult = StatusBadRequest
-			return false
-		}
-		if header.isCommaValue() { // has sub headers, check them
-			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
-				// r.headResult is set.
-				return false
-			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
-			// r.headResult is set.
-			return false
-		}
-	} else {
-		// All other headers are treated as list-based headers.
+		field.params = bakField.params
+		field.dataEdge = bakField.dataEdge
 	}
 	return true
 }
 
-var ( // perfect hash table for request singleton headers
-	webRequestSingletonHeaderTable = [12]struct {
-		parse bool // need general parse or not
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*webRequest_, *pair, uint8) bool
-	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
-		0:  {false, desc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*webRequest_).checkIfUnmodifiedSince},
-		1:  {false, desc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*webRequest_).checkUserAgent},
-		2:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*webRequest_).checkContentLength},
-		3:  {false, desc{hashRange, false, false, false, false, bytesRange}, (*webRequest_).checkRange},
-		4:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*webRequest_).checkDate},
-		5:  {false, desc{hashHost, false, false, false, false, bytesHost}, (*webRequest_).checkHost},
-		6:  {false, desc{hashCookie, false, false, false, false, bytesCookie}, (*webRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*webRequest_).checkContentType},
-		8:  {false, desc{hashIfRange, false, false, false, false, bytesIfRange}, (*webRequest_).checkIfRange},
-		9:  {false, desc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*webRequest_).checkIfModifiedSince},
-		10: {false, desc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*webRequest_).checkAuthorization},
-		11: {false, desc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*webRequest_).checkProxyAuthorization},
-	}
-	webRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
-)
-
-func (r *webRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
-	// auth-scheme = token
-	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
-	// auth-param  = token BWS "=" BWS ( token / quoted-string )
-	// TODO
-	if r.indexes.authorization == 0 {
-		r.indexes.authorization = index
-		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization"
-		return false
-	}
-}
-func (r *webRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
-	if header.value.isEmpty() {
-		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
-		return false
-	}
-	if index == 255 {
-		r.headResult, r.failReason = StatusBadRequest, "too many pairs"
-		return false
-	}
-	// HTTP/2 and HTTP/3 allows multiple cookie headers, so we have to mark all the cookie headers.
-	if r.cookies.isEmpty() {
-		r.cookies.from = index
-	}
-	// And we can't inject cookies into headers zone while receiving headers, this will break the continuous nature of headers zone.
-	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
-	return true
-}
-func (r *webRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
-	// RFC 7230 (section 5.4): A server MUST respond with a 400 (Bad Request) status code to any
-	// HTTP/1.1 request message that lacks a Host header field and to any request message that
-	// contains more than one Host header field or a Host header field with an invalid field-value.
-	if r.indexes.host != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
-		return false
-	}
-	value := header.value
-	if value.notEmpty() {
-		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
-		// The scheme and host are case-insensitive and normally provided in lowercase;
-		// all other components are compared in a case-sensitive manner.
-		bytesToLower(r.input[value.from:value.edge])
-		if !r.parseAuthority(value.from, value.edge, r.authority.isEmpty()) {
-			r.headResult, r.failReason = StatusBadRequest, "bad host value"
-			return false
+func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
+	// RFC 7230 (section 3.3.2):
+	// If a message is received that has multiple Content-Length header
+	// fields with field-values consisting of the same decimal value, or a
+	// single Content-Length header field with a field value containing a
+	// list of identical decimal values (e.g., "Content-Length: 42, 42"),
+	// indicating that duplicate Content-Length header fields have been
+	// generated or combined by an upstream message processor, then the
+	// recipient MUST either reject the message as invalid or replace the
+	// duplicated field-values with a single valid Content-Length field
+	// containing that decimal value prior to determining the message body
+	// length or forwarding the message.
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
+		if size, ok := decToI64(header.valueAt(r.input)); ok {
+			r.contentSize = size
+			r.iContentLength = index
+			return true
 		}
 	}
-	r.indexes.host = index
-	return true
-}
-func (r *webRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
-}
-func (r *webRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
-	if r.indexes.ifRange != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range"
-		return false
-	}
-	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-		r.unixTimes.ifRange = modTime
-	}
-	r.indexes.ifRange = index
-	return true
-}
-func (r *webRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
-}
-func (r *webRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
-	// auth-scheme = token
-	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
-	// auth-param  = token BWS "=" BWS ( token / quoted-string )
-	// TODO
-	if r.indexes.proxyAuthorization == 0 {
-		r.indexes.proxyAuthorization = index
-		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization"
-		return false
-	}
-}
-func (r *webRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
-	if r.methodCode != MethodGET {
-		r._delPrime(index)
-		return true
-	}
-	if r.nRanges > 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated range"
-		return false
-	}
-	// Range        = range-unit "=" range-set
-	// range-set    = 1#range-spec
-	// range-spec   = int-range / suffix-range
-	// int-range    = first-pos "-" [ last-pos ]
-	// suffix-range = "-" suffix-length
-	rangeSet := header.valueAt(r.input)
-	nPrefix := len(bytesBytesEqual) // bytes=
-	if !bytes.Equal(rangeSet[0:nPrefix], bytesBytesEqual) {
-		r.headResult, r.failReason = StatusBadRequest, "unsupported range unit"
-		return false
-	}
-	rangeSet = rangeSet[nPrefix:]
-	if len(rangeSet) == 0 {
-		r.headResult, r.failReason = StatusBadRequest, "empty range-set"
-		return false
-	}
-	var from, last int64 // inclusive
-	state := 0           // select int-range or suffix-range
-	for i, n := 0, len(rangeSet); i < n; i++ {
-		b := rangeSet[i]
-		switch state {
-		case 0: // select int-range or suffix-range
-			if b >= '0' && b <= '9' {
-				from = int64(b - '0')
-				state = 1 // int-range
-			} else if b == '-' {
-				from = -1
-				last = 0
-				state = 4 // suffix-range
-			} else if b != ',' && b != ' ' {
-				goto badRange
-			}
-		case 1: // in first-pos = 1*DIGIT
-			for ; i < n; i++ {
-				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					from = from*10 + int64(b-'0')
-					if from < 0 {
-						goto badRange
-					}
-				} else if b == '-' {
-					state = 2 // select last-pos or not
-					break
-				} else {
-					goto badRange
-				}
-			}
-		case 2: // select last-pos or not
-			if b >= '0' && b <= '9' { // last-pos
-				last = int64(b - '0')
-				state = 3 // first-pos "-" last-pos
-			} else if b == ',' || b == ' ' { // not
-				// got: first-pos "-"
-				last = -1
-				if !r._addRange(from, last) {
-					return false
-				}
-				state = 0
-			} else {
-				goto badRange
-			}
-		case 3: // in last-pos = 1*DIGIT
-			for ; i < n; i++ {
-				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					last = last*10 + int64(b-'0')
-					if last < 0 {
-						goto badRange
-					}
-				} else if b == ',' || b == ' ' {
-					if from > last {
-						goto badRange
-					}
-					// got: first-pos "-" last-pos
-					if !r._addRange(from, last) {
-						return false
-					}
-					state = 0
-					break
-				} else {
-					goto badRange
-				}
-			}
-		case 4: // in suffix-length = 1*DIGIT
-			for ; i < n; i++ {
-				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					last = last*10 + int64(b-'0')
-					if last < 0 {
-						goto badRange
-					}
-				} else if b == ',' || b == ' ' {
-					// got: "-" suffix-length
-					if !r._addRange(from, last) {
-						return false
-					}
-					state = 0
-					break
-				} else {
-					goto badRange
-				}
-			}
-		}
-	}
-	if state == 1 || state == 4 && rangeSet[len(rangeSet)-1] == '-' {
-		goto badRange
-	}
-	if state == 2 {
-		last = -1
-	}
-	if (state == 2 || state == 3 || state == 4) && !r._addRange(from, last) {
-		return false
-	}
-	return true
-badRange:
-	r.headResult, r.failReason = StatusBadRequest, "invalid range"
+	// RFC 7230 (section 3.3.3):
+	// If a message is received without Transfer-Encoding and with
+	// either multiple Content-Length header fields having differing
+	// field-values or a single Content-Length header field having an
+	// invalid value, then the message framing is invalid and the
+	// recipient MUST treat it as an unrecoverable error.  If this is a
+	// request message, the server MUST respond with a 400 (Bad Request)
+	// status code and then close the connection.
+	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }
-func (r *webRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
-	if r.indexes.userAgent == 0 {
-		r.indexes.userAgent = index
+func (r *webIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
+	if r.iContentLocation == 0 && header.value.notEmpty() {
+		r.iContentLocation = index
 		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent"
-		return false
 	}
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
+	return false
 }
-func (r *webRequest_) _addRange(from int64, last int64) bool {
-	if r.nRanges == int8(cap(r.ranges)) {
-		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
-		return false
+func (r *webIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
+	// TODO
+	if r.iContentRange == 0 && header.value.notEmpty() {
+		r.iContentRange = index
+		return true
 	}
-	r.ranges[r.nRanges] = rang{from, last}
-	r.nRanges++
-	return true
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
+	return false
+}
+func (r *webIn_) checkContentType(header *pair, index uint8) bool { // Content-Type = media-type
+	// media-type = type "/" subtype *( OWS ";" OWS parameter )
+	// type = token
+	// subtype = token
+	// parameter = token "=" ( token / quoted-string )
+	if r.iContentType == 0 && !header.dataEmpty() {
+		r.iContentType = index
+		return true
+	}
+	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
+	return false
+}
+func (r *webIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
+	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
+}
+func (r *webIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
+	if *pIndex == 0 {
+		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+			*pIndex = index
+			*toTime = httpDate
+			return true
+		}
+	}
+	r.headResult, r.failReason = StatusBadRequest, "bad http-date"
+	return false
 }
 
-var ( // perfect hash table for request important headers
-	webRequestImportantHeaderTable = [16]struct {
-		desc  // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*webRequest_, []pair, uint8, uint8) bool
-	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {desc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*webRequest_).checkIfMatch},
-		1:  {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*webRequest_).checkContentLanguage},
-		2:  {desc{hashVia, false, false, false, true, bytesVia}, (*webRequest_).checkVia},
-		3:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*webRequest_).checkTransferEncoding}, // deliberately false
-		4:  {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*webRequest_).checkCacheControl},
-		5:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*webRequest_).checkConnection},
-		6:  {desc{hashForwarded, false, false, false, false, bytesForwarded}, (*webRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		7:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*webRequest_).checkUpgrade},
-		8:  {desc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*webRequest_).checkXForwardedFor},
-		9:  {desc{hashExpect, false, false, true, false, bytesExpect}, (*webRequest_).checkExpect},
-		10: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*webRequest_).checkAcceptEncoding},
-		11: {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*webRequest_).checkContentEncoding},
-		12: {desc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*webRequest_).checkAcceptLanguage},
-		13: {desc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*webRequest_).checkIfNoneMatch},
-		14: {desc{hashTE, false, false, true, false, bytesTE}, (*webRequest_).checkTE},
-		15: {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*webRequest_).checkTrailer},
-	}
-	webRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
-)
-
-func (r *webRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
-	// language-range = <language-range, see [RFC4647], Section 2.1>
-	// weight = OWS ";" OWS "q=" qvalue
-	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
-	if r.zones.acceptLanguage.isEmpty() {
-		r.zones.acceptLanguage.from = from
-	}
-	r.zones.acceptLanguage.edge = edge
-	if IsDebug(2) {
-		/*
-			for i := from; i < edge; i++ {
-				data := pairs[i].dataAt(r.input)
-				Debugf("lang=%s\n", string(data))
-			}
-		*/
-	}
-	return true
-}
-func (r *webRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
-	// cache-directive = token [ "=" ( token / quoted-string ) ]
+func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+	// codings        = content-coding / "identity" / "*"
+	// content-coding = token
 	for i := from; i < edge; i++ {
-		// TODO
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
+			break
+		}
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
+		var coding uint8
+		if bytes.Equal(data, bytesGzip) {
+			r.acceptGzip = true
+			coding = httpCodingGzip
+		} else if bytes.Equal(data, bytesBrotli) {
+			r.acceptBrotli = true
+			coding = httpCodingBrotli
+		} else if bytes.Equal(data, bytesDeflate) {
+			coding = httpCodingDeflate
+		} else if bytes.Equal(data, bytesCompress) {
+			coding = httpCodingCompress
+		} else if bytes.Equal(data, bytesIdentity) {
+			coding = httpCodingIdentity
+		} else {
+			// Empty or unknown content-coding, ignored
+			continue
+		}
+		r.acceptCodings[r.nAcceptCodings] = coding
+		r.nAcceptCodings++
 	}
 	return true
 }
-func (r *webRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
-	// expectation = token [ "=" ( token / quoted-string ) parameters ]
-	if r.versionCode >= Version1_1 {
-		if r.zones.expect.isEmpty() {
-			r.zones.expect.from = from
-		}
-		r.zones.expect.edge = edge
-		for i := from; i < edge; i++ {
-			data := pairs[i].dataAt(r.input)
-			bytesToLower(data) // the Expect field-value is case-insensitive.
-			if bytes.Equal(data, bytes100Continue) {
-				r.expectContinue = true
-			} else {
-				// Unknown expectation, ignored.
-			}
-		}
-	} else { // HTTP/1.0
-		// RFC 7231 (section 5.1.1):
-		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-		for i := from; i < edge; i++ {
-			pairs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
-		}
-	}
-	return true
-}
-func (r *webRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
-	if from == edge {
-		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
+func (r *webIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
+	if r.versionCode >= Version2 {
+		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
-	// forwarded-element = [ forwarded-pair ] *( ";" [ forwarded-pair ] )
-	// forwarded-pair    = token "=" value
-	// value             = token / quoted-string
-	if r.zones.forwarded.isEmpty() {
-		r.zones.forwarded.from = from
+	if r.zConnection.isEmpty() {
+		r.zConnection.from = from
 	}
-	r.zones.forwarded.edge = edge
+	r.zConnection.edge = edge
+	// connection-option = token
+	for i := from; i < edge; i++ {
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data) // connection options are case-insensitive.
+		if bytes.Equal(data, bytesKeepAlive) {
+			r.keepAlive = 1 // to be compatible with HTTP/1.0
+		} else if bytes.Equal(data, bytesClose) {
+			// Furthermore, the header field-name "Close" has been registered as
+			// "reserved", since using that name as an HTTP header field might
+			// conflict with the "close" connection option of the Connection header
+			// field (Section 6.1).
+			r.keepAlive = 0
+		}
+	}
 	return true
 }
-func (r *webRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
-	return r._checkMatch(pairs, from, edge, &r.zones.ifMatch, &r.ifMatch)
+func (r *webIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
+	// content-coding = token
+	for i := from; i < edge; i++ {
+		if r.nContentCodings == int8(cap(r.contentCodings)) {
+			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
+			return false
+		}
+		data := pairs[i].dataAt(r.input)
+		bytesToLower(data)
+		var coding uint8
+		if bytes.Equal(data, bytesGzip) {
+			coding = httpCodingGzip
+		} else if bytes.Equal(data, bytesBrotli) {
+			coding = httpCodingBrotli
+		} else if bytes.Equal(data, bytesDeflate) {
+			coding = httpCodingDeflate
+		} else if bytes.Equal(data, bytesCompress) {
+			coding = httpCodingCompress
+		} else {
+			// RFC 7231 (section 3.1.2.2):
+			// An origin server MAY respond with a status code of 415 (Unsupported
+			// Media Type) if a representation in the request message has a content
+			// coding that is not acceptable.
+
+			// TODO: but we can be proxies too...
+			r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip, deflate, compress, and br are supported"
+			return false
+		}
+		r.contentCodings[r.nContentCodings] = coding
+		r.nContentCodings++
+	}
+	return true
 }
-func (r *webRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
-	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
+func (r *webIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool { // Content-Language = #language-tag
+	if r.zContentLanguage.isEmpty() {
+		r.zContentLanguage.from = from
+	}
+	r.zContentLanguage.edge = edge
+	return true
 }
-func (r *webRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
-	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
-	// t-ranking = OWS ";" OWS "q=" rank
+func (r *webIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
+	// field-name = token
+	if r.zTrailer.isEmpty() {
+		r.zTrailer.from = from
+	}
+	r.zTrailer.edge = edge
+	return true
+}
+func (r *webIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+	if r.versionCode != Version1_1 {
+		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
+		return false
+	}
+	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
 	for i := from; i < edge; i++ {
 		data := pairs[i].dataAt(r.input)
 		bytesToLower(data)
-		if bytes.Equal(data, bytesTrailers) {
-			r.acceptTrailers = true
-		} else if r.versionCode > Version1_1 {
-			r.headResult, r.failReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
-			return false
-		}
-	}
-	return true
-}
-func (r *webRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	if r.versionCode == Version2 || r.versionCode == Version3 {
-		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
-		return false
-	}
-	if r.methodCode == MethodCONNECT {
-		// TODO: confirm this
-		return true
-	}
-	if r.versionCode == Version1_1 {
-		// protocol         = protocol-name ["/" protocol-version]
-		// protocol-name    = token
-		// protocol-version = token
-		for i := from; i < edge; i++ {
-			data := pairs[i].dataAt(r.input)
-			bytesToLower(data)
-			if bytes.Equal(data, bytesWebSocket) {
-				r.upgradeSocket = true
-			} else {
-				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
-			}
-		}
-	} else {
-		// RFC 7230 (section 6.7):
-		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
-		for i := from; i < edge; i++ {
-			pairs[i].zero() // we delete it.
-		}
-	}
-	return true
-}
-func (r *webRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
-	if from == edge {
-		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
-		return false
-	}
-	if r.zones.xForwardedFor.isEmpty() {
-		r.zones.xForwardedFor.from = from
-	}
-	r.zones.xForwardedFor.edge = edge
-	return true
-}
-func (r *webRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
-	if zMatch.isEmpty() {
-		zMatch.from = from
-	}
-	zMatch.edge = edge
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
-		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(data) == 1 && data[0] == '*' {
-			if nMatch != 0 {
-				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
-				return false
-			}
-			*match = -1 // *
-		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
-			if nMatch == -1 { // *
-				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
-				return false
-			}
-			if nMatch > 16 {
-				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
-				return false
-			}
-			*match++ // *match is 0 by default
-		}
-	}
-	return true
-}
-
-func (r *webRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
-	if save {
-		r.authority.set(from, edge)
-	}
-	// host = IP-literal / IPv4address / reg-name
-	// IP-literal = "[" ( IPv6address / IPvFuture  ) "]"
-	// port = *DIGIT
-	back, fore := from, from
-	if r.input[back] == '[' { // IP-literal
-		back++
-		fore = back
-		for fore < edge {
-			if b := r.input[fore]; (b >= 'a' && b <= 'f') || (b >= '0' && b <= '9') || b == ':' {
-				fore++
-			} else if b == ']' {
-				break
-			} else {
-				return false
-			}
-		}
-		if fore == edge || fore-back == 1 { // "[]" is illegal
-			return false
-		}
-		if save {
-			r.hostname.set(back, fore)
-		}
-		fore++
-		if fore == edge {
-			return true
-		}
-		if r.input[fore] != ':' {
-			return false
-		}
-	} else { // IPv4address or reg-name
-		for fore < edge {
-			if b := r.input[fore]; httpNchar[b] == 1 {
-				fore++
-			} else if b == ':' {
-				break
-			} else {
-				return false
-			}
-		}
-		if save {
-			r.hostname.set(back, fore)
-		}
-		if fore == edge {
-			return true
-		}
-	}
-	// Now fore is at ':'. cases are: ":", ":88"
-	back = fore
-	fore++
-	for fore < edge {
-		if b := r.input[fore]; b >= '0' && b <= '9' {
-			fore++
+		if bytes.Equal(data, bytesChunked) {
+			r.transferChunked = true
 		} else {
+			// RFC 7230 (section 3.3.1):
+			// A server that receives a request message with a transfer coding it
+			// does not understand SHOULD respond with 501 (Not Implemented).
+			r.headResult, r.failReason = StatusNotImplemented, "unknown transfer coding"
 			return false
 		}
-	}
-	if n := fore - back; n > 6 { // max len(":65535") == 6
-		return false
-	} else if n > 1 && save { // ":" alone is ignored
-		r.colonPort.set(back, fore)
 	}
 	return true
 }
-func (r *webRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
-	// cookie-pair = token "=" cookie-value
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
-	cookie := &r.mainPair
-	cookie.zero()
-	cookie.kind = kindCookie
-	cookie.place = placeInput // all received cookies are in r.input
-	cookie.nameFrom = cookieString.from
-	state := 0
-	for p := cookieString.from; p < cookieString.edge; p++ {
-		b := r.input[p]
-		switch state {
-		case 0: // expecting '=' to get cookie-name
-			if b == '=' {
-				if nameSize := p - cookie.nameFrom; nameSize > 0 && nameSize <= 255 {
-					cookie.nameSize = uint8(nameSize)
-					cookie.value.from = p + 1 // skip '='
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "cookie name out of range"
-					return false
-				}
-				state = 1
-			} else if httpTchar[b] != 0 {
-				cookie.hash += uint16(b)
-			} else {
-				r.headResult, r.failReason = StatusBadRequest, "invalid cookie name"
-				return false
-			}
-		case 1: // DQUOTE or not?
-			if b == '"' {
-				cookie.value.from++ // skip '"'
-				state = 3
-				continue
-			}
-			state = 2
-			fallthrough
-		case 2: // *cookie-octet, expecting ';'
-			if b == ';' {
-				cookie.value.edge = p
-				if !r.addCookie(cookie) {
-					return false
-				}
-				state = 5
-			} else if b < 0x21 || b == '"' || b == ',' || b == '\\' || b > 0x7e {
-				r.headResult, r.failReason = StatusBadRequest, "invalid cookie value"
-				return false
-			}
-		case 3: // (DQUOTE *cookie-octet DQUOTE), expecting '"'
-			if b == '"' {
-				cookie.value.edge = p
-				if !r.addCookie(cookie) {
-					return false
-				}
-				state = 4
-			} else if b < 0x20 || b == ';' || b == '\\' || b > 0x7e { // ` ` and `,` are allowed here!
-				r.headResult, r.failReason = StatusBadRequest, "invalid cookie value"
-				return false
-			}
-		case 4: // expecting ';'
-			if b != ';' {
-				r.headResult, r.failReason = StatusBadRequest, "invalid cookie separator"
-				return false
-			}
-			state = 5
-		case 5: // expecting SP
-			if b != ' ' {
-				r.headResult, r.failReason = StatusBadRequest, "invalid cookie SP"
-				return false
-			}
-			cookie.hash = 0         // reset for next cookie
-			cookie.nameFrom = p + 1 // skip ' '
-			state = 0
-		}
+func (r *webIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
+	if r.zVia.isEmpty() {
+		r.zVia.from = from
 	}
-	if state == 2 { // ';' not found
-		cookie.value.edge = cookieString.edge
-		if !r.addCookie(cookie) {
-			return false
-		}
-	} else if state == 4 { // ';' not found
-		if !r.addCookie(cookie) {
-			return false
-		}
-	} else { // 0, 1, 3, 5
-		r.headResult, r.failReason = StatusBadRequest, "invalid cookie string"
-		return false
-	}
+	r.zVia.edge = edge
 	return true
 }
 
-func (r *webRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *webRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *webRequest_) UnsafeUserAgent() []byte {
-	if r.indexes.userAgent == 0 {
+func (r *webIn_) determineContentMode() bool {
+	if r.transferChunked { // must be HTTP/1.1 and there is a transfer-encoding: chunked
+		if r.contentSize != -1 { // there is a content-length: nnn
+			// RFC 7230 (section 3.3.3):
+			// If a message is received with both a Transfer-Encoding and a
+			// Content-Length header field, the Transfer-Encoding overrides the
+			// Content-Length.  Such a message might indicate an attempt to
+			// perform request smuggling (Section 9.5) or response splitting
+			// (Section 9.4) and ought to be handled as an error.  A sender MUST
+			// remove the received Content-Length field prior to forwarding such
+			// a message downstream.
+			r.headResult, r.failReason = StatusBadRequest, "transfer-encoding conflits with content-length"
+			return false
+		}
+		r.contentSize = -2 // unsized
+	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
+		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
+		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
+	}
+	return true
+}
+func (r *webIn_) markUnsized()    { r.contentSize = -2 }
+func (r *webIn_) isUnsized() bool { return r.contentSize == -2 }
+
+func (r *webIn_) ContentSize() int64 { return r.contentSize }
+func (r *webIn_) UnsafeContentLength() []byte {
+	if r.iContentLength == 0 {
 		return nil
 	}
-	return r.primes[r.indexes.userAgent].valueAt(r.input)
+	return r.primes[r.iContentLength].valueAt(r.input)
 }
-func (r *webRequest_) getRanges() []rang {
-	if r.nRanges == 0 {
+func (r *webIn_) ContentType() string { return string(r.UnsafeContentType()) }
+func (r *webIn_) UnsafeContentType() []byte {
+	if r.iContentType == 0 {
 		return nil
 	}
-	return r.ranges[:r.nRanges]
+	return r.primes[r.iContentType].dataAt(r.input)
 }
 
-func (r *webRequest_) addCookie(cookie *pair) bool { // as prime
-	if edge, ok := r._addPrime(cookie); ok {
-		r.cookies.edge = edge
-		return true
-	}
-	r.headResult = StatusRequestHeaderFieldsTooLarge
-	return false
-}
-func (r *webRequest_) AddCookie(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindCookie)
-}
-func (r *webRequest_) HasCookies() bool                  { return r.hasPairs(r.cookies, kindCookie) }
-func (r *webRequest_) AllCookies() (cookies [][2]string) { return r.allPairs(r.cookies, kindCookie) }
-func (r *webRequest_) C(name string) string {
-	value, _ := r.Cookie(name)
-	return value
-}
-func (r *webRequest_) Cstr(name string, defaultValue string) string {
-	if value, ok := r.Cookie(name); ok {
-		return value
-	}
-	return defaultValue
-}
-func (r *webRequest_) Cint(name string, defaultValue int) int {
-	if value, ok := r.Cookie(name); ok {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return defaultValue
-}
-func (r *webRequest_) Cookie(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.cookies, kindCookie)
-	return string(v), ok
-}
-func (r *webRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.cookies, kindCookie)
-}
-func (r *webRequest_) Cookies(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.cookies, kindCookie)
-}
-func (r *webRequest_) HasCookie(name string) bool {
-	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
-	return ok
-}
-func (r *webRequest_) DelCookie(name string) (deleted bool) {
-	return r.delPair(name, 0, r.cookies, kindCookie)
-}
-func (r *webRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
-	for i := r.cookies.from; i < r.cookies.edge; i++ {
-		if cookie := &r.primes[i]; cookie.hash != 0 {
-			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtra[kindCookie] {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
-				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
-}
+func (r *webIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
-func (r *webRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
-	// Get etag without ""
-	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
-		etag = etag[1 : n-1]
-	}
-	// See RFC 9110 (section 13.2.2).
-	if asOrigin { // proxies ignore these tests.
-		if r.ifMatch != 0 && !r._testIfMatch(etag) {
-			return StatusPreconditionFailed, false
-		}
-		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r._testIfUnmodifiedSince(modTime) {
-			return StatusPreconditionFailed, false
-		}
-	}
-	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 && !r._testIfNoneMatch(etag) {
-		if getOrHead {
-			return StatusNotModified, false
-		} else {
-			return StatusPreconditionFailed, false
-		}
-	}
-	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r._testIfModifiedSince(modTime) {
-		return StatusNotModified, false
-	}
-	return StatusOK, true
-}
-func (r *webRequest_) _testIfMatch(etag []byte) (pass bool) {
-	if r.ifMatch == -1 { // *
-		return true
-	}
-	for i := r.zones.ifMatch.from; i < r.zones.ifMatch.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
-			continue
-		}
-		data := header.dataAt(r.input)
-		if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
-			return true
-		}
-	}
-	// TODO: extra?
-	return false
-}
-func (r *webRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
-	if r.ifNoneMatch == -1 { // *
-		return false
-	}
-	for i := r.zones.ifNoneMatch.from; i < r.zones.ifNoneMatch.edge; i++ {
-		header := &r.primes[i]
-		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
-			continue
-		}
-		if bytes.Equal(header.valueAt(r.input), etag) {
-			return false
-		}
-	}
-	// TODO: extra?
-	return true
-}
-func (r *webRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
-	return modTime > r.unixTimes.ifModifiedSince
-}
-func (r *webRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
-	return modTime <= r.unixTimes.ifUnmodifiedSince
-}
-
-func (r *webRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
-	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.unixTimes.ifRange == 0 && r._testIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._testIfRangeTime(modTime)) {
-			return true // StatusPartialContent
-		}
-	}
-	return false // StatusOK
-}
-func (r *webRequest_) _testIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange]
-	data := ifRange.dataAt(r.input)
-	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
-		return true
-	}
-	return false
-}
-func (r *webRequest_) _testIfRangeTime(modTime int64) (pass bool) {
-	return r.unixTimes.ifRange == modTime
-}
-
-func (r *webRequest_) unsetHost() { // used by proxies
-	r._delPrime(r.indexes.host) // zero safe
-}
-
-func (r *webRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
-func (r *webRequest_) Content() string  { return string(r.UnsafeContent()) }
-func (r *webRequest_) UnsafeContent() []byte {
-	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
-		return nil
-	}
-	return r.unsafeContent()
-}
-
-func (r *webRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
-	if r.formKind == httpFormNotForm || r.formReceived {
-		return
-	}
-	r.formReceived = true
-	r.forms.from = uint8(len(r.primes))
-	r.forms.edge = r.forms.from
-	if r.formKind == httpFormURLEncoded { // application/x-www-form-urlencoded
-		r._loadURLEncodedForm()
-	} else { // multipart/form-data
-		r._recvMultipartForm()
-	}
-}
-func (r *webRequest_) _loadURLEncodedForm() { // into memory entirely
+func (r *webIn_) unsafeContent() []byte {
 	r.loadContent()
 	if r.stream.isBroken() {
+		return nil
+	}
+	return r.contentText[0:r.receivedSize]
+}
+func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
+	if r.contentReceived {
+		// Content is in r.contentText already.
 		return
 	}
-	var (
-		state = 2 // to be consistent with r.recvControl() in HTTP/1
-		octet byte
-	)
-	form := &r.mainPair
-	form.zero()
-	form.kind = kindForm
-	form.place = placeArray // all received forms are placed in r.array
-	form.nameFrom = r.arrayEdge
-	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
-		b := r.contentText[i]
-		switch state {
-		case 2: // expecting '=' to get a name
-			if b == '=' {
-				if nameSize := r.arrayEdge - form.nameFrom; nameSize <= 255 {
-					form.nameSize = uint8(nameSize)
-					form.value.from = r.arrayEdge
-				} else {
-					r.bodyResult, r.failReason = StatusBadRequest, "form name too long"
-					return
-				}
-				state = 3
-			} else if httpPchar[b] > 0 { // including '?'
-				if b == '+' {
-					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
-				}
-				form.hash += uint16(b)
-				r.arrayPush(b)
-			} else if b == '%' {
-				state = 0x2f // '2' means from state 2
-			} else {
-				r.bodyResult, r.failReason = StatusBadRequest, "invalid form name"
-				return
+	r.contentReceived = true
+	switch content := r._recvContent(true).(type) { // retain
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		r.contentText = content // real content is r.contentText[:r.receivedSize]
+		r.contentTextKind = webContentTextPool
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+		contentFile := content.(*os.File)
+		if r.receivedSize == 0 { // unsized content can has 0 size
+			r.contentText = r.input
+			r.contentTextKind = webContentTextInput
+		} else { // r.receivedSize > 0
+			if r.receivedSize <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
+				r.contentText = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
+				r.contentTextKind = webContentTextPool
+			} else { // r.receivedSize > 64K1, content can be sized or unsized. just alloc
+				r.contentText = make([]byte, r.receivedSize)
+				r.contentTextKind = webContentTextMake
 			}
-		case 3: // expecting '&' to get a value
-			if b == '&' {
-				form.value.edge = r.arrayEdge
-				if form.nameSize > 0 {
-					r.addForm(form)
-				}
-				form.hash = 0 // reset for next form
-				form.nameFrom = r.arrayEdge
-				state = 2
-			} else if httpPchar[b] > 0 { // including '?'
-				if b == '+' {
-					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
-				}
-				r.arrayPush(b)
-			} else if b == '%' {
-				state = 0x3f // '3' means from state 3
-			} else {
-				r.bodyResult, r.failReason = StatusBadRequest, "invalid form value"
-				return
-			}
-		default: // expecting HEXDIG
-			half, ok := byteFromHex(b)
-			if !ok {
-				r.bodyResult, r.failReason = StatusBadRequest, "invalid pct encoding"
-				return
-			}
-			if state&0xf == 0xf { // expecting the first HEXDIG
-				octet = half << 4
-				state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
-			} else { // expecting the second HEXDIG
-				octet |= half
-				if state == 0x20 { // in name
-					form.hash += uint16(octet)
-				}
-				r.arrayPush(octet)
-				state >>= 4 // restore last state
+			if _, err := io.ReadFull(contentFile, r.contentText[:r.receivedSize]); err != nil {
+				// TODO: r.app.log
 			}
 		}
-	}
-	// Reaches end of content.
-	if state == 3 { // '&' not found
-		form.value.edge = r.arrayEdge
-		if form.nameSize > 0 {
-			r.addForm(form)
+		contentFile.Close()
+		if IsDebug(2) {
+			Debugln("contentFile is left as is, not removed!")
+		} else if err := os.Remove(contentFile.Name()); err != nil {
+			// TODO: r.app.log
 		}
-	} else { // '=' not found, or incomplete pct-encoded
-		r.bodyResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
-	}
-}
-func (r *webRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
-	r.pBack, r.pFore = 0, 0
-	r.consumedSize = r.receivedSize
-	if r.contentReceived { // (0, 64K1)
-		// r.contentText is set, r.contentTextKind == httpContentTextInput. r.formWindow refers to the exact r.contentText.
-		r.formWindow = r.contentText
-		r.formEdge = int32(len(r.formWindow))
-	} else { // content is not received
-		r.contentReceived = true
-		switch content := r._recvContent(true).(type) { // retain
-		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-			r.contentText = content
-			r.contentTextKind = httpContentTextPool        // so r.contentText can be freed on end
-			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
-			r.formEdge = int32(r.receivedSize)
-		case tempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
-			r.contentFile = content.(*os.File)
-			if r.receivedSize == 0 {
-				return // unsized content can be empty
-			}
-			// We need a window to read and parse. An adaptive r.formWindow is used
-			if r.receivedSize <= _4K {
-				r.formWindow = Get4K()
-			} else {
-				r.formWindow = Get16K()
-			}
-			defer func() {
-				PutNK(r.formWindow)
-				r.formWindow = nil
-			}()
-			r.formEdge = 0     // no initial data, will fill below
-			r.consumedSize = 0 // increases when we grow content
-			if !r._growMultipartForm() {
-				return
-			}
-		case error:
-			// TODO: log err
-			r.stream.markBroken()
-			return
-		}
-	}
-	template := r.UnsafeMake(3 + r.boundary.size() + 2) // \n--boundary--
-	template[0], template[1], template[2] = '\n', '-', '-'
-	n := 3 + copy(template[3:], r.input[r.boundary.from:r.boundary.edge])
-	separator := template[0:n] // \n--boundary
-	template[n], template[n+1] = '-', '-'
-	for { // each part in multipart
-		// Now r.formWindow is used for receiving --boundary-- EOL or --boundary EOL
-		for r.formWindow[r.pFore] != '\n' {
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-				return
-			}
-		}
-		if r.pBack == r.pFore {
-			r.stream.markBroken()
-			return
-		}
-		fore := r.pFore
-		if fore >= 1 && r.formWindow[fore-1] == '\r' {
-			fore--
-		}
-		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
-			// All parts are received.
-			if IsDebug(2) {
-				Debugln(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
-			}
-			return
-		} else if !bytes.Equal(r.formWindow[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
-			r.stream.markBroken()
-			return
-		}
-		// Skip '\n'
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-			return
-		}
-		// r.pFore is at fields of current part.
-		var part struct { // current part
-			valid  bool     // true if "name" parameter in "content-disposition" field is found
-			isFile bool     // true if "filename" parameter in "content-disposition" field is found
-			hash   uint16   // name hash
-			name   span     // to r.array. like: "avatar"
-			base   span     // to r.array. like: "michael.jpg", or empty if part is not a file
-			type_  span     // to r.array. like: "image/jpeg", or empty if part is not a file
-			path   span     // to r.array. like: "/path/to/391384576", or empty if part is not a file
-			osFile *os.File // if part is a file, this is used
-			form   pair     // if part is a form, this is used
-			upload Upload   // if part is a file, this is used. zeroed
-		}
-		part.form.kind = kindForm
-		part.form.place = placeArray // all received forms are placed in r.array
-		for {                        // each field in current part
-			// End of part fields?
-			if b := r.formWindow[r.pFore]; b == '\r' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-					return
-				}
-				if r.formWindow[r.pFore] != '\n' {
-					r.stream.markBroken()
-					return
-				}
-				break
-			} else if b == '\n' {
-				break
-			}
-			r.pBack = r.pFore // now r.formWindow is used for receiving field-name and onward
-			for {             // field name
-				b := r.formWindow[r.pFore]
-				if t := httpTchar[b]; t == 1 {
-					// Fast path, do nothing
-				} else if t == 2 { // A-Z
-					r.formWindow[r.pFore] = b + 0x20 // to lower
-				} else if t == 3 { // '_'
-					// For forms, do nothing
-				} else if b == ':' {
-					break
-				} else {
-					r.stream.markBroken()
-					return
-				}
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-					return
-				}
-			}
-			if r.pBack == r.pFore { // field-name cannot be empty
-				r.stream.markBroken()
-				return
-			}
-			r.pFieldName.set(r.pBack, r.pFore) // in case of sliding r.formWindow when r._growMultipartForm()
-			// Skip ':'
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-				return
-			}
-			// Skip OWS before field value
-			for r.formWindow[r.pFore] == ' ' || r.formWindow[r.pFore] == '\t' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-					return
-				}
-			}
-			r.pBack = r.pFore
-			// Now r.formWindow is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
-			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) { // content-disposition
-				// form-data; name="avatar"; filename="michael.jpg"
-				for r.formWindow[r.pFore] != ';' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-						return
-					}
-				}
-				if r.pBack == r.pFore || !bytes.Equal(r.formWindow[r.pBack:r.pFore], bytesFormData) {
-					r.stream.markBroken()
-					return
-				}
-				r.pBack = r.pFore // now r.formWindow is used for receiving parameters and onward
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-						return
-					}
-				}
-				fore := r.pFore
-				if r.formWindow[fore-1] == '\r' {
-					fore--
-				}
-				// Skip OWS after field value
-				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
-					fore--
-				}
-				paras := make([]para, 2) // for name & filename. won't escape to heap
-				n, ok := r._parseParas(r.formWindow, r.pBack, fore, paras)
-				if !ok {
-					r.stream.markBroken()
-					return
-				}
-				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
-					para := &paras[i]
-					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
-						if n := para.value.size(); n == 0 || n > 255 {
-							r.stream.markBroken()
-							return
-						}
-						part.valid = true // as long as we got a name, this part is valid
-						part.name.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "avatar"
-							r.stream.markBroken()
-							return
-						}
-						part.name.edge = r.arrayEdge
-						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value to hint this?
-						for p := para.value.from; p < para.value.edge; p++ {
-							part.hash += uint16(r.formWindow[p])
-						}
-					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
-						if n := para.value.size(); n == 0 || n > 255 {
-							r.stream.markBroken()
-							return
-						}
-						part.isFile = true
-
-						part.base.from = r.arrayEdge
-						if !r.arrayCopy(r.formWindow[para.value.from:para.value.edge]) { // add "michael.jpg"
-							r.stream.markBroken()
-							return
-						}
-						part.base.edge = r.arrayEdge
-
-						part.path.from = r.arrayEdge
-						if !r.arrayCopy(risky.ConstBytes(r.app.SaveContentFilesDir())) { // add "/path/to/"
-							r.stream.markBroken()
-							return
-						}
-						tempName := r.stream.buffer256() // buffer is enough for tempName
-						from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
-						if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
-							r.stream.markBroken()
-							return
-						}
-						part.path.edge = r.arrayEdge // pathSize is ensured to be <= 255.
-					} else {
-						// Other parameters are invalid.
-						r.stream.markBroken()
-						return
-					}
-				}
-			} else if bytes.Equal(fieldName, bytesContentType) { // content-type
-				// image/jpeg
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-						return
-					}
-				}
-				fore := r.pFore
-				if r.formWindow[fore-1] == '\r' {
-					fore--
-				}
-				// Skip OWS after field value
-				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
-					fore--
-				}
-				if n := fore - r.pBack; n == 0 || n > 255 {
-					r.stream.markBroken()
-					return
-				}
-				part.type_.from = r.arrayEdge
-				if !r.arrayCopy(r.formWindow[r.pBack:fore]) { // add "image/jpeg"
-					r.stream.markBroken()
-					return
-				}
-				part.type_.edge = r.arrayEdge
-			} else { // other fields are ignored
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-						return
-					}
-				}
-			}
-			// Skip '\n' and goto next field or end of fields
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-				return
-			}
-		}
-		if !part.valid { // no valid fields
-			r.stream.markBroken()
-			return
-		}
-		// Now all fields of the part are received. Skip end of fields and goto part data
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
-			return
-		}
-		if part.isFile {
-			// TODO: upload code
-			part.upload.hash = part.hash
-			part.upload.nameSize, part.upload.nameFrom = uint8(part.name.size()), part.name.from
-			part.upload.baseSize, part.upload.baseFrom = uint8(part.base.size()), part.base.from
-			part.upload.typeSize, part.upload.typeFrom = uint8(part.type_.size()), part.type_.from
-			part.upload.pathSize, part.upload.pathFrom = uint8(part.path.size()), part.path.from
-			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
-				if IsDebug(2) {
-					Debugln("OPENED")
-				}
-				part.osFile = osFile
-			} else {
-				if IsDebug(2) {
-					Debugln(err.Error())
-				}
-				part.osFile = nil
-			}
-		} else { // part must be a form
-			part.form.hash = part.hash
-			part.form.nameFrom = part.name.from
-			part.form.nameSize = uint8(part.name.size())
-			part.form.value.from = r.arrayEdge
-		}
-		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
-		for {             // each partial in current part
-			partial := r.formWindow[r.pBack:r.formEdge]
-			r.pFore = r.formEdge
-			mode := 0 // by default, we assume end of part ("\n--boundary") is not in partial
-			var i int
-			if i = bytes.Index(partial, separator); i >= 0 {
-				mode = 1 // end of part ("\n--boundary") is found in partial
-			} else if i = bytes.LastIndexByte(partial, '\n'); i >= 0 && bytes.HasPrefix(separator, partial[i:]) {
-				mode = 2 // partial ends with prefix of end of part ("\n--boundary")
-			}
-			if mode > 0 { // found "\n" at i
-				r.pFore = r.pBack + int32(i)
-				if r.pFore > r.pBack && r.formWindow[r.pFore-1] == '\r' {
-					r.pFore--
-				}
-				partial = r.formWindow[r.pBack:r.pFore] // pure data
-			}
-			if !part.isFile {
-				if !r.arrayCopy(partial) { // join form value
-					r.stream.markBroken()
-					return
-				}
-				if mode == 1 { // form part ends
-					part.form.value.edge = r.arrayEdge
-					r.addForm(&part.form)
-				}
-			} else if part.osFile != nil {
-				part.osFile.Write(partial)
-				if mode == 1 { // file part ends
-					r.addUpload(&part.upload)
-					part.osFile.Close()
-					if IsDebug(2) {
-						Debugln("CLOSED")
-					}
-				}
-			}
-			if mode == 1 {
-				r.pBack += int32(i + 1) // at the first '-' of "--boundary"
-				r.pFore = r.pBack       // next part starts here
-				break                   // part is received.
-			}
-			if mode == 2 {
-				r.pBack = r.pFore // from EOL (\r or \n). need more and continue
-			} else { // mode == 0
-				r.pBack, r.formEdge = 0, 0 // pure data, clean r.formWindow. need more and continue
-			}
-			// Grow more
-			if !r._growMultipartForm() {
-				return
-			}
-		}
-	}
-}
-func (r *webRequest_) _growMultipartForm() bool { // caller needs more data from content file
-	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
+	case error: // i/o error or unexpected EOF
+		// TODO: log error?
 		r.stream.markBroken()
-		return false
 	}
-	if r.pBack > 0 { // have useless data. slide to start
-		copy(r.formWindow, r.formWindow[r.pBack:r.formEdge])
-		r.formEdge -= r.pBack
-		r.pFore -= r.pBack
-		if r.pFieldName.notEmpty() {
-			r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
-		}
-		r.pBack = 0
-	}
-	n, err := r.contentFile.Read(r.formWindow[r.formEdge:])
-	r.formEdge += int32(n)
-	r.consumedSize += int64(n)
-	if err == io.EOF {
-		if r.consumedSize == r.receivedSize {
-			err = nil
-		} else {
-			err = io.ErrUnexpectedEOF
-		}
-	}
-	if err != nil {
-		r.stream.markBroken()
-		return false
-	}
-	return true
 }
-func (r *webRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
-	// param-string = *( OWS ";" OWS param-pair )
-	// param-pair   = token "=" param-value
-	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
-	// param-octet  = ?
-	back, fore := from, from
-	nAdd := 0
-	for {
-		nSemic := 0
-		for fore < edge {
-			if b := p[fore]; b == ' ' || b == '\t' {
-				fore++
-			} else if b == ';' {
-				nSemic++
-				fore++
-			} else {
+func (r *webIn_) takeContent() any { // used by proxies
+	if r.contentReceived {
+		if r.contentFile == nil {
+			return r.contentText // immediate
+		}
+		return r.contentFile
+	}
+	r.contentReceived = true
+	switch content := r._recvContent(true).(type) { // retain
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		r.contentText = content
+		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
+		return r.contentText[0:r.receivedSize]
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+		r.contentFile = content.(*os.File)
+		return r.contentFile
+	case error: // i/o error or unexpected EOF
+		// TODO: log err?
+	}
+	r.stream.markBroken()
+	return nil
+}
+func (r *webIn_) dropContent() { // if message content is not received, this will be called at last
+	switch content := r._recvContent(false).(type) { // don't retain
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		PutNK(content)
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+		if content != fakeFile { // this must not happen!
+			BugExitln("temp file is not fake when dropping content")
+		}
+	case error: // i/o error or unexpected EOF
+		// TODO: log error?
+		r.stream.markBroken()
+	}
+}
+func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
+	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
+			return err
+		}
+		// Since content is small, r.bodyWindow and tempFile are not needed.
+		contentText := GetNK(r.contentSize) // 4K/16K/64K1. max size of content is 64K1
+		r.receivedSize = int64(r.imme.size())
+		if r.receivedSize > 0 { // r.imme has data
+			copy(contentText, r.input[r.imme.from:r.imme.edge])
+			r.imme.zero()
+		}
+		n, err := r.stream.readFull(contentText[r.receivedSize:r.contentSize])
+		if err != nil {
+			PutNK(contentText)
+			return err
+		}
+		r.receivedSize += int64(n)
+		return contentText // []byte, fetched from pool
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to tempFile and return the file
+		contentFile, err := r._newTempFile(retain)
+		if err != nil {
+			return err
+		}
+		var p []byte
+		for {
+			p, err = r.shell.readContent()
+			if len(p) > 0 { // skip 0, nothing to write
+				if _, e := contentFile.Write(p); e != nil {
+					err = e
+					goto badRead
+				}
+			}
+			if err == io.EOF {
 				break
+			} else if err != nil {
+				goto badRead
 			}
 		}
-		if fore == edge || nSemic != 1 {
-			// `; ` and ` ` and `;;` are invalid
-			return nAdd, false
+		if _, err = contentFile.Seek(0, 0); err != nil {
+			goto badRead
 		}
-		back = fore // for name
-		for fore < edge {
-			if b := p[fore]; b == '=' {
-				break
-			} else if b == ';' || b == ' ' || b == '\t' {
-				// `; a; ` is invalid
-				return nAdd, false
-			} else {
-				fore++
-			}
+		return contentFile // the tempFile
+	badRead:
+		contentFile.Close()
+		if retain { // the tempFile is not fake, so must remove.
+			os.Remove(contentFile.Name())
 		}
-		if fore == edge || back == fore {
-			// `; a` and `; ="b"` are invalid
-			return nAdd, false
-		}
-		para := &paras[nAdd]
-		para.name.set(back, fore)
-		fore++ // skip '='
-		if fore == edge {
-			para.value.zero()
-			nAdd++
-			return nAdd, true
-		}
-		back = fore
-		if p[fore] == '"' {
-			fore++
-			for fore < edge && p[fore] != '"' {
-				fore++
-			}
-			if fore == edge {
-				para.value.set(back, fore) // value is "...
-			} else {
-				para.value.set(back+1, fore) // strip ""
-				fore++
-			}
-		} else {
-			for fore < edge && p[fore] != ';' && p[fore] != ' ' && p[fore] != '\t' {
-				fore++
-			}
-			para.value.set(back, fore)
-		}
-		nAdd++
-		if nAdd == len(paras) || fore == edge {
-			return nAdd, true
-		}
+		return err
 	}
 }
 
-func (r *webRequest_) addForm(form *pair) bool { // as prime
-	if edge, ok := r._addPrime(form); ok {
-		r.forms.edge = edge
+func (r *webIn_) addTrailer(trailer *pair) bool { // as prime
+	if edge, ok := r._addPrime(trailer); ok {
+		r.trailers.edge = edge
 		return true
 	}
-	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
+	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
 }
-func (r *webRequest_) AddForm(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindForm)
+func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
+	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// TODO: parse and check?
+	// setFlags?
+	return r.addExtra(name, value, 0, kindTrailer)
 }
-func (r *webRequest_) HasForms() bool {
-	r.parseHTMLForm()
-	return r.hasPairs(r.forms, kindForm)
-}
-func (r *webRequest_) AllForms() (forms [][2]string) {
-	r.parseHTMLForm()
-	return r.allPairs(r.forms, kindForm)
-}
-func (r *webRequest_) F(name string) string {
-	value, _ := r.Form(name)
+func (r *webIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, kindTrailer) }
+func (r *webIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, kindTrailer) }
+func (r *webIn_) T(name string) string {
+	value, _ := r.Trailer(name)
 	return value
 }
-func (r *webRequest_) Fstr(name string, defaultValue string) string {
-	if value, ok := r.Form(name); ok {
+func (r *webIn_) Tstr(name string, defaultValue string) string {
+	if value, ok := r.Trailer(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *webRequest_) Fint(name string, defaultValue int) int {
-	if value, ok := r.Form(name); ok {
+func (r *webIn_) Tint(name string, defaultValue int) int {
+	if value, ok := r.Trailer(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
 		}
 	}
 	return defaultValue
 }
-func (r *webRequest_) Form(name string) (value string, ok bool) {
-	r.parseHTMLForm()
-	v, ok := r.getPair(name, 0, r.forms, kindForm)
+func (r *webIn_) Trailer(name string) (value string, ok bool) {
+	v, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return string(v), ok
 }
-func (r *webRequest_) UnsafeForm(name string) (value []byte, ok bool) {
-	r.parseHTMLForm()
-	return r.getPair(name, 0, r.forms, kindForm)
+func (r *webIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
+	return r.getPair(name, 0, r.trailers, kindTrailer)
 }
-func (r *webRequest_) Forms(name string) (values []string, ok bool) {
-	r.parseHTMLForm()
-	return r.getPairs(name, 0, r.forms, kindForm)
+func (r *webIn_) Trailers(name string) (values []string, ok bool) {
+	return r.getPairs(name, 0, r.trailers, kindTrailer)
 }
-func (r *webRequest_) HasForm(name string) bool {
-	r.parseHTMLForm()
-	_, ok := r.getPair(name, 0, r.forms, kindForm)
+func (r *webIn_) HasTrailer(name string) bool {
+	_, ok := r.getPair(name, 0, r.trailers, kindTrailer)
 	return ok
 }
-func (r *webRequest_) DelForm(name string) (deleted bool) {
-	r.parseHTMLForm()
-	return r.delPair(name, 0, r.forms, kindForm)
+func (r *webIn_) DelTrailer(name string) (deleted bool) {
+	return r.delPair(name, 0, r.trailers, kindTrailer)
+}
+func (r *webIn_) delTrailer(name []byte, hash uint16) {
+	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
 }
 
-func (r *webRequest_) addUpload(upload *Upload) {
-	if len(r.uploads) == cap(r.uploads) {
-		if cap(r.uploads) == cap(r.stockUploads) {
-			uploads := make([]Upload, 0, 16)
-			r.uploads = append(uploads, r.uploads...)
-		} else if cap(r.uploads) == 16 {
-			uploads := make([]Upload, 0, 128)
-			r.uploads = append(uploads, r.uploads...)
-		} else {
-			// Ignore too many uploads
-			return
+func (r *webIn_) examineTail() bool {
+	for i := r.trailers.from; i < r.trailers.edge; i++ {
+		if !r.shell.applyTrailer(i) {
+			// r.bodyResult is set.
+			return false
 		}
 	}
-	r.uploads = append(r.uploads, *upload)
+	return true
 }
-func (r *webRequest_) HasUploads() bool {
-	r.parseHTMLForm()
-	return len(r.uploads) != 0
-}
-func (r *webRequest_) AllUploads() (uploads []*Upload) {
-	r.parseHTMLForm()
-	for i := 0; i < len(r.uploads); i++ {
-		upload := &r.uploads[i]
-		upload.setMeta(r.array)
-		uploads = append(uploads, upload)
+
+func (r *webIn_) arrayPush(b byte) {
+	r.array[r.arrayEdge] = b
+	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
+		r._growArray(1)
 	}
-	return uploads
 }
-func (r *webRequest_) U(name string) *Upload {
-	upload, _ := r.Upload(name)
-	return upload
+func (r *webIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->...->1G)
+	edge := r.arrayEdge + size
+	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
+		return false
+	}
+	if edge <= int32(cap(r.array)) {
+		return true
+	}
+	arrayKind := r.arrayKind
+	var array []byte
+	if edge <= _64K1 { // (stock, 64K1]
+		r.arrayKind = arrayKindPool
+		array = GetNK(int64(edge)) // 4K/16K/64K1
+	} else { // > _64K1
+		r.arrayKind = arrayKindMake
+		if edge <= _128K {
+			array = make([]byte, _128K)
+		} else if edge <= _256K {
+			array = make([]byte, _256K)
+		} else if edge <= _512K {
+			array = make([]byte, _512K)
+		} else if edge <= _1M {
+			array = make([]byte, _1M)
+		} else if edge <= _2M {
+			array = make([]byte, _2M)
+		} else if edge <= _4M {
+			array = make([]byte, _4M)
+		} else if edge <= _8M {
+			array = make([]byte, _8M)
+		} else if edge <= _16M {
+			array = make([]byte, _16M)
+		} else if edge <= _32M {
+			array = make([]byte, _32M)
+		} else if edge <= _64M {
+			array = make([]byte, _64M)
+		} else if edge <= _128M {
+			array = make([]byte, _128M)
+		} else if edge <= _256M {
+			array = make([]byte, _256M)
+		} else if edge <= _512M {
+			array = make([]byte, _512M)
+		} else { // <= _1G
+			array = make([]byte, _1G)
+		}
+	}
+	copy(array, r.array[0:r.arrayEdge])
+	if arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = array
+	return true
 }
-func (r *webRequest_) Upload(name string) (upload *Upload, ok bool) {
-	r.parseHTMLForm()
-	if n := len(r.uploads); n > 0 && name != "" {
-		hash := stringHash(name)
-		for i := 0; i < n; i++ {
-			if upload := &r.uploads[i]; upload.hash == hash && upload.nameEqualString(r.array, name) {
-				upload.setMeta(r.array)
-				return upload, true
+
+func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
+	if len(r.primes) == cap(r.primes) { // full
+		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
+			return 0, false
+		}
+		if IsDebug(2) {
+			Debugln("use large primes!")
+		}
+		r.primes = getPairs()
+		r.primes = append(r.primes, r.stockPrimes[:]...)
+	}
+	r.primes = append(r.primes, *prime)
+	return uint8(len(r.primes)), true
+}
+func (r *webIn_) _delPrime(i uint8) { r.primes[i].zero() }
+
+func (r *webIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
+	nameSize := len(name)
+	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
+		return false
+	}
+	valueSize := len(value)
+	if extraKind == kindForm { // for forms, max value size is 1G
+		if valueSize > _1G {
+			return false
+		}
+	} else if valueSize > _16K { // for non-forms, max value size is 16K
+		return false
+	}
+	if !r._growArray(int32(nameSize + valueSize)) { // extras are always placed in r.array
+		return false
+	}
+	extra := &r.mainPair
+	extra.zero()
+	if hash == 0 {
+		extra.hash = stringHash(name)
+	} else {
+		extra.hash = hash
+	}
+	extra.kind = extraKind
+	extra.place = placeArray
+	extra.nameFrom = r.arrayEdge
+	extra.nameSize = uint8(nameSize)
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], name))
+	extra.value.from = r.arrayEdge
+	r.arrayEdge += int32(copy(r.array[r.arrayEdge:], value))
+	extra.value.edge = r.arrayEdge
+	return r._addExtra(extra)
+}
+func (r *webIn_) _addExtra(extra *pair) bool {
+	if len(r.extras) == cap(r.extras) { // full
+		if cap(r.extras) != cap(r.stockExtras) { // too many extras
+			return false
+		}
+		if IsDebug(2) {
+			Debugln("use large extras!")
+		}
+		r.extras = getPairs()
+		r.extras = append(r.extras, r.stockExtras[:]...)
+	}
+	r.extras = append(r.extras, *extra)
+	r.hasExtra[extra.kind] = true
+	return true
+}
+
+func (r *webIn_) hasPairs(primes zone, extraKind int8) bool {
+	return primes.notEmpty() || r.hasExtra[extraKind]
+}
+func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
+	var pairs [][2]string
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collect values of main fields
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash != 0 {
+				p := r._placeOf(prime)
+				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
+			}
+		}
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
+					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
+				}
+			}
+		}
+	} else { // queries, cookies, forms, and params
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash != 0 {
+				p := r._placeOf(prime)
+				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
+			}
+		}
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
+					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
+				}
+			}
+		}
+	}
+	return pairs
+}
+func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
+	if name != "" {
+		if hash == 0 {
+			hash = stringHash(name)
+		}
+		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+			for i := primes.from; i < primes.edge; i++ {
+				if prime := &r.primes[i]; prime.hash == hash {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+							continue
+						}
+						if !prime.isCommaValue() {
+							return prime.dataAt(p), true
+						}
+					}
+				}
+			}
+			if r.hasExtra[extraKind] {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+							return extra.dataAt(p), true
+						}
+					}
+				}
+			}
+		} else { // queries, cookies, forms, and params
+			for i := primes.from; i < primes.edge; i++ {
+				if prime := &r.primes[i]; prime.hash == hash {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						return prime.valueAt(p), true
+					}
+				}
+			}
+			if r.hasExtra[extraKind] {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+						return extra.valueAt(r.array), true
+					}
+				}
 			}
 		}
 	}
 	return
 }
-func (r *webRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
-	r.parseHTMLForm()
-	if n := len(r.uploads); n > 0 && name != "" {
-		hash := stringHash(name)
-		for i := 0; i < n; i++ {
-			if upload := &r.uploads[i]; upload.hash == hash && upload.nameEqualString(r.array, name) {
-				upload.setMeta(r.array)
-				uploads = append(uploads, upload)
+func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
+	if name != "" {
+		if hash == 0 {
+			hash = stringHash(name)
+		}
+		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+			for i := primes.from; i < primes.edge; i++ {
+				if prime := &r.primes[i]; prime.hash == hash {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+							continue
+						}
+						if !prime.isCommaValue() {
+							values = append(values, string(prime.dataAt(p)))
+						}
+					}
+				}
+			}
+			if r.hasExtra[extraKind] {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+							values = append(values, string(extra.dataAt(p)))
+						}
+					}
+				}
+			}
+		} else { // queries, cookies, forms, and params
+			for i := primes.from; i < primes.edge; i++ {
+				if prime := &r.primes[i]; prime.hash == hash {
+					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+						values = append(values, string(prime.valueAt(p)))
+					}
+				}
+			}
+			if r.hasExtra[extraKind] {
+				for i := 0; i < len(r.extras); i++ {
+					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+						values = append(values, string(extra.valueAt(r.array)))
+					}
+				}
 			}
 		}
-		if len(uploads) > 0 {
+		if len(values) > 0 {
 			ok = true
 		}
 	}
 	return
 }
-func (r *webRequest_) HasUpload(name string) bool {
-	r.parseHTMLForm()
-	_, ok := r.Upload(name)
-	return ok
-}
-
-func (r *webRequest_) applyTrailer(index uint8) bool {
-	//trailer := &r.primes[index]
-	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
-	return true
-}
-
-func (r *webRequest_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
+func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
+	if name != "" {
+		if hash == 0 {
+			hash = stringHash(name)
 		}
-		if r.app != nil && edge > r.app.maxMemoryContentSize {
-			return false
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash == hash {
+				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+					prime.zero()
+					deleted = true
+				}
+			}
 		}
-		if !r._growArray(int32(len(p))) {
-			return false
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+					extra.zero()
+					deleted = true
+				}
+			}
 		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
 	}
-	return true
+	return
 }
-
-func (r *webRequest_) saveContentFilesDir() string {
-	if r.app != nil {
-		return r.app.SaveContentFilesDir()
+func (r *webIn_) _placeOf(pair *pair) []byte {
+	var place []byte
+	if pair.place == placeInput {
+		place = r.input
+	} else if pair.place == placeArray {
+		place = r.array
+	} else if pair.place == placeStatic2 {
+		place = http2BytesStatic
+	} else if pair.place == placeStatic3 {
+		place = http3BytesStatic
 	} else {
-		return r.stream.keeper().SaveContentFilesDir()
+		BugExitln("unknown pair.place")
+	}
+	return place
+}
+
+func (r *webIn_) delHopHeaders() { // used by proxies
+	r._delHopFields(r.headers, kindHeader, r.delHeader)
+}
+func (r *webIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
+	return r._forMainFields(r.headers, kindHeader, fn)
+}
+
+func (r *webIn_) delHopTrailers() { // used by proxies
+	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
+}
+func (r *webIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTrailersFrom(). excluding sub trailers
+	return r._forMainFields(r.trailers, kindTrailer, fn)
+}
+
+func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
+	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
+	delField(bytesProxyConnection, hashProxyConnection)
+	delField(bytesKeepAlive, hashKeepAlive)
+	if !r.asResponse { // as request
+		delField(bytesTE, hashTE)
+	}
+	delField(bytesTransferEncoding, hashTransferEncoding)
+	delField(bytesUpgrade, hashUpgrade)
+
+	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
+		prime := &r.primes[i]
+		// Skip fields that are not "connection: xxx"
+		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
+			continue
+		}
+		p := r._placeOf(prime)
+		optionName := prime.dataAt(p)
+		optionHash := bytesHash(optionName)
+		// Skip options that are "connection: connection"
+		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
+			continue
+		}
+		// Now remove options in primes and extras. Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
+		for j := fields.from; j < fields.edge; j++ {
+			if field := &r.primes[j]; field.hash == optionHash && field.nameEqualBytes(p, optionName) {
+				field.zero()
+			}
+		}
+		if !r.hasExtra[extraKind] {
+			continue
+		}
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash == optionHash && extra.kind == extraKind {
+				if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
+					extra.zero()
+				}
+			}
+		}
 	}
 }
-
-func (r *webRequest_) hookReviser(reviser Reviser) {
-	r.hasRevisers = true
-	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-	if reviser.ForceEcho() {
-		r.forceEcho = true
+func (r *webIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
+	for i := fields.from; i < fields.edge; i++ {
+		if field := &r.primes[i]; field.hash != 0 {
+			p := r._placeOf(field)
+			if !fn(field, field.nameAt(p), field.valueAt(p)) {
+				return false
+			}
+		}
 	}
-}
-
-func (r *webRequest_) unsafeVariable(index int16) []byte {
-	return webRequestVariables[index](r)
-}
-
-var webRequestVariables = [...]func(*webRequest_) []byte{ // keep sync with varCodes in config.go
-	(*webRequest_).UnsafeMethod,      // method
-	(*webRequest_).UnsafeScheme,      // scheme
-	(*webRequest_).UnsafeAuthority,   // authority
-	(*webRequest_).UnsafeHostname,    // hostname
-	(*webRequest_).UnsafeColonPort,   // colonPort
-	(*webRequest_).UnsafePath,        // path
-	(*webRequest_).UnsafeURI,         // uri
-	(*webRequest_).UnsafeEncodedPath, // encodedPath
-	(*webRequest_).UnsafeQueryString, // queryString
-	(*webRequest_).UnsafeContentType, // contentType
-}
-
-// Upload is a file uploaded by client.
-type Upload struct { // 48 bytes
-	hash     uint16 // hash of name, to support fast comparison
-	flags    uint8  // see upload flags
-	errCode  int8   // error code
-	nameSize uint8  // name size
-	baseSize uint8  // base size
-	typeSize uint8  // type size
-	pathSize uint8  // path size
-	nameFrom int32  // like: "avatar"
-	baseFrom int32  // like: "michael.jpg"
-	typeFrom int32  // like: "image/jpeg"
-	pathFrom int32  // like: "/path/to/391384576"
-	size     int64  // file size
-	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
-}
-
-func (u *Upload) nameEqualString(p []byte, x string) bool {
-	if int(u.nameSize) != len(x) {
-		return false
+	if r.hasExtra[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
+				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
 	}
-	if u.metaSet() {
-		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
-	}
-	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+	return true
 }
 
-const ( // upload flags
-	uploadFlagMetaSet = 0b10000000
-	uploadFlagIsMoved = 0b01000000
+func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
+	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
+		return fakeFile, nil
+	}
+	filesDir := r.shell.saveContentFilesDir()
+	pathSize := len(filesDir)
+	filePath := r.UnsafeMake(pathSize + 19) // 19 bytes is enough for int64
+	copy(filePath, filesDir)
+	from, edge := r.stream.makeTempName(filePath[pathSize:], r.recvTime.Unix())
+	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
+	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
+}
+func (r *webIn_) _beforeRead(toTime *time.Time) error {
+	now := time.Now()
+	if toTime.IsZero() {
+		*toTime = now
+	}
+	return r.stream.setReadDeadline(now.Add(r.stream.keeper().ReadTimeout()))
+}
+func (r *webIn_) _tooSlow() bool {
+	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
+}
+
+const ( // Web incoming content text kinds
+	webContentTextNone  = iota // must be 0
+	webContentTextInput        // refers to r.input
+	webContentTextPool         // fetched from pool
+	webContentTextMake         // direct make
 )
 
-func (u *Upload) setMeta(p []byte) {
-	if u.flags&uploadFlagMetaSet > 0 {
-		return
-	}
-	u.flags |= uploadFlagMetaSet
-	from := u.nameFrom
-	if u.baseFrom < from {
-		from = u.baseFrom
-	}
-	if u.pathFrom < from {
-		from = u.pathFrom
-	}
-	if u.typeFrom < from {
-		from = u.typeFrom
-	}
-	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
-	if u.pathFrom > max {
-		max = u.pathFrom
-		edge = u.pathFrom + int32(u.pathSize)
-	}
-	if u.baseFrom > max {
-		max = u.baseFrom
-		edge = u.baseFrom + int32(u.baseSize)
-	}
-	if u.nameFrom > max {
-		max = u.nameFrom
-		edge = u.nameFrom + int32(u.nameSize)
-	}
-	u.meta = string(p[from:edge]) // dup to avoid memory leak
-	u.nameFrom -= from
-	u.baseFrom -= from
-	u.typeFrom -= from
-	u.pathFrom -= from
-}
-func (u *Upload) metaSet() bool { return u.flags&uploadFlagMetaSet > 0 }
-func (u *Upload) setMoved()     { u.flags |= uploadFlagIsMoved }
-func (u *Upload) isMoved() bool { return u.flags&uploadFlagIsMoved > 0 }
-
-const ( // upload error codes
-	uploadOK        = 0
-	uploadError     = 1
-	uploadCantWrite = 2
-	uploadTooLarge  = 3
-	uploadPartial   = 4
-	uploadNoFile    = 5
+var ( // web incoming message errors
+	webInBadChunk = errors.New("bad chunk")
+	webInTooSlow  = errors.New("http incoming too slow")
 )
 
-var uploadErrors = [...]error{
-	nil, // no error
-	errors.New("general error"),
-	errors.New("cannot write"),
-	errors.New("too large"),
-	errors.New("partial"),
-	errors.New("no file"),
-}
-
-func (u *Upload) IsOK() bool   { return u.errCode == 0 }
-func (u *Upload) Error() error { return uploadErrors[u.errCode] }
-
-func (u *Upload) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
-func (u *Upload) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
-func (u *Upload) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
-func (u *Upload) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
-func (u *Upload) Size() int64  { return u.size }
-
-func (u *Upload) MoveTo(path string) error {
-	// TODO
-	return nil
-}
-
-// Response is the server-side Web response and is the interface for *http[1-3]Response and *hwebResponse.
-type Response interface {
-	Request() Request
-
-	SetStatus(status int16) error
-	Status() int16
-
-	MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with `""`
-	SetExpires(expires int64) bool
-	SetLastModified(lastModified int64) bool
-	AddContentType(contentType string) bool
-	AddHTTPSRedirection(authority string) bool
-	AddHostnameRedirection(hostname string) bool
-	AddDirectoryRedirection() bool
-
-	SetCookie(cookie *Cookie) bool
-
-	Header(name string) (value string, ok bool)
-	HasHeader(name string) bool
-	AddHeader(name string, value string) bool
-	AddHeaderBytes(name []byte, value []byte) bool
-	DelHeader(name string) bool
-	DelHeaderBytes(name []byte) bool
-
-	IsSent() bool
-	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
-
-	Send(content string) error
-	SendBytes(content []byte) error
-	SendJSON(content any) error
-	SendFile(contentPath string) error
-	SendBadRequest(content []byte) error                     // 400
-	SendForbidden(content []byte) error                      // 403
-	SendNotFound(content []byte) error                       // 404
-	SendMethodNotAllowed(allow string, content []byte) error // 405
-	SendInternalServerError(content []byte) error            // 500
-	SendNotImplemented(content []byte) error                 // 501
-	SendBadGateway(content []byte) error                     // 502
-	SendGatewayTimeout(content []byte) error                 // 504
-
-	Echo(chunk string) error
-	EchoBytes(chunk []byte) error
-	EchoFile(chunkPath string) error
-
-	AddTrailer(name string, value string) bool
-	AddTrailerBytes(name []byte, value []byte) bool
-
-	OutBuffer() []byte // mainly used by revisers
-
-	// Internal only
+// webOut is a *http[1-3]Response or *H[1-3]Request, used as shell by webOut_.
+type webOut interface {
+	control() []byte
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
+	delHeader(name []byte) (deleted bool)
+	delHeaderAt(o uint8)
 	addHeader(name []byte, value []byte) bool
-	delHeader(name []byte) bool
-	setConnectionClose()
-	copyHeadFrom(resp wResponse, viaName []byte) bool // used by proxies
-	sendText(content []byte) error
-	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendChain() error                                             // content
+	insertHeader(hash uint16, name []byte, value []byte) bool
+	removeHeader(hash uint16, name []byte) (deleted bool)
+	addedHeaders() []byte
+	fixedHeaders() []byte
+	finalizeHeaders()
+	send() error
+	sendChain() error // content
+	_beforeEcho() error
 	echoHeaders() error
+	echo() error
 	echoChain() error // chunks
+	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
-	endUnsized() error
 	finalizeUnsized() error
-	pass1xx(resp wResponse) bool              // used by proxies
-	pass(resp webIn) error                    // used by proxies
-	post(content any, hasTrailers bool) error // used by proxies
-	copyTailFrom(resp wResponse) bool         // used by proxies
-	hookReviser(reviser Reviser)
-	unsafeMake(size int) []byte
+	passHeaders() error       // used by proxies
+	passBytes(p []byte) error // used by proxies
 }
 
-// webResponse_ is the mixin for http[1-3]Response and hwebResponse.
-type webResponse_ struct { // outgoing. needs building
-	// Mixins
-	webOut_
+// webOut_ is a mixin for webResponse_ and wRequest_.
+type webOut_ struct { // outgoing. needs building
 	// Assocs
-	request Request // *http[1-3]Request
+	shell  webOut // *http[1-3]Response or *H[1-3]Request
+	stream stream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (stocks)
+	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
+	edges [128]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	block Block       // for r.chain. used when sending content or echoing chunks
+	chain Chain       // outgoing block chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
-	status    int16    // 200, 302, 404, 500, ...
-	start     [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
-	unixTimes struct {
-		expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	}
+	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
+	sendTimeout time.Duration // timeout to send the whole message
+	contentSize int64         // info of outgoing content. -1: not set, -2: unsized, >=0: size
+	versionCode uint8         // Version1_1, Version2, Version3
+	asRequest   bool          // use message as request?
+	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
+	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
-	app          *App   // associated app
-	svc          *Svc   // associated svc
-	outBuffer    []byte // used by revisers
-	webResponse0        // all values must be zero by default in this struct!
+	sendTime    time.Time   // the time when first send operation is performed
+	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
+	fixedVector [4][]byte   // for sending/echoing message. reset after stream
+	webOut0                 // all values must be zero by default in this struct!
 }
-type webResponse0 struct { // for fast reset, entirely
-	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	indexes  struct {
-		expires      uint8
-		lastModified uint8
+type webOut0 struct { // for fast reset, entirely
+	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not present at the same time
+	hasRevisers   bool   // are there any revisers hooked on this outgoing message?
+	isSent        bool   // whether the message is sent
+	forbidContent bool   // forbid content?
+	forbidFraming bool   // forbid content-length and transfer-encoding?
+	oContentType  uint8  // position of content-type in r.edges
+	oDate         uint8  // position of date in r.edges
+}
+
+func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
+	r.fields = r.stockFields[:]
+	r.sendTimeout = r.stream.keeper().SendTimeout()
+	r.contentSize = -1 // not set
+	r.versionCode = versionCode
+	r.asRequest = asRequest
+	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
+}
+func (r *webOut_) onEnd() { // for zeros
+	if cap(r.fields) != cap(r.stockFields) {
+		PutNK(r.fields)
+		r.fields = nil
 	}
+	// r.block is reset in echo(), and will be reset below if send() is used.
+	r.chain.free() // double free doesn't matter
+
+	r.sendTime = time.Time{}
+	r.vector = nil
+	r.fixedVector = [4][]byte{}
+	r.webOut0 = webOut0{}
 }
 
-func (r *webResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.webOut_.onUse(versionCode, false) // asRequest = false
-	r.status = StatusOK
-	r.unixTimes.expires = -1      // not set
-	r.unixTimes.lastModified = -1 // not set
+func (r *webOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+
+func (r *webOut_) AddContentType(contentType string) bool {
+	return r.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 }
-func (r *webResponse_) onEnd() { // for zeros
-	r.app = nil
-	r.svc = nil
-	if r.outBuffer != nil {
-		PutNK(r.outBuffer)
+
+func (r *webOut_) Header(name string) (value string, ok bool) {
+	v, ok := r.shell.header(risky.ConstBytes(name))
+	return string(v), ok
+}
+func (r *webOut_) HasHeader(name string) bool {
+	return r.shell.hasHeader(risky.ConstBytes(name))
+}
+func (r *webOut_) AddHeader(name string, value string) bool {
+	return r.AddHeaderBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+}
+func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
+	hash, valid, lower := r._nameCheck(name)
+	if !valid {
+		return false
 	}
-	r.webResponse0 = webResponse0{}
-	r.webOut_.onEnd()
-}
-
-func (r *webResponse_) Request() Request { return r.request }
-
-func (r *webResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 has its own control()
-	var start []byte
-	if r.status >= int16(len(httpControls)) || httpControls[r.status] == nil {
-		copy(r.start[:], httpTemplate[:])
-		r.start[8] = byte(r.status/100 + '0')
-		r.start[9] = byte(r.status/10%10 + '0')
-		r.start[10] = byte(r.status%10 + '0')
-		start = r.start[:len(httpTemplate)]
-	} else {
-		start = httpControls[r.status]
-	}
-	return start
-}
-
-func (r *webResponse_) SetStatus(status int16) error {
-	if status >= 200 && status < 1000 {
-		r.status = status
-		if status == StatusNoContent {
-			r.forbidFraming = true
-			r.forbidContent = true
-		} else if status == StatusNotModified {
-			// A server MAY send a Content-Length header field in a 304 (Not Modified) response to a conditional GET request.
-			r.forbidFraming = true // we forbid it.
-			r.forbidContent = true
+	for _, b := range value { // to prevent response splitting
+		if b == '\r' || b == '\n' {
+			return false
 		}
-		return nil
-	} else { // 1xx are not allowed to set through SetStatus()
-		return webOutUnknownStatus
 	}
+	return r.shell.insertHeader(hash, lower, value)
 }
-func (r *webResponse_) Status() int16 { return r.status }
+func (r *webOut_) DelHeader(name string) bool {
+	return r.DelHeaderBytes(risky.ConstBytes(name))
+}
+func (r *webOut_) DelHeaderBytes(name []byte) bool {
+	hash, valid, lower := r._nameCheck(name)
+	if !valid {
+		return false
+	}
+	return r.shell.removeHeader(hash, lower)
+}
+func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
+	n := len(name)
+	if n == 0 || n > 255 {
+		return 0, false, nil
+	}
+	allLower := true
+	for i := 0; i < n; i++ {
+		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
+			hash += uint16(b)
+		} else {
+			hash = 0
+			allLower = false
+			break
+		}
+	}
+	if allLower {
+		return hash, true, name
+	}
+	buffer := r.stream.buffer256()
+	for i := 0; i < n; i++ {
+		b := name[i]
+		if b >= 'A' && b <= 'Z' {
+			b += 0x20 // to lower
+		} else if !(b >= 'a' && b <= 'z' || b == '-') {
+			return 0, false, nil
+		}
+		hash += uint16(b)
+		buffer[i] = b
+	}
+	return hash, true, buffer[:n]
+}
 
-func (r *webResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
-	if modTime < 0 || fileSize < 0 {
-		return nil, false
-	}
-	p := r.unsafeMake(32)
-	p[0] = '"'
-	etag := p[1:]
-	n := i64ToHex(modTime, etag)
-	etag[n] = '-'
-	n++
-	if n > 13 {
-		return nil, false
-	}
-	n = 1 + n + i64ToHex(fileSize, etag[n:])
-	p[n] = '"'
-	return p[0 : n+1], true
+func (r *webOut_) markUnsized()    { r.contentSize = -2 }
+func (r *webOut_) isUnsized() bool { return r.contentSize == -2 }
+func (r *webOut_) markSent()       { r.isSent = true }
+func (r *webOut_) IsSent() bool    { return r.isSent }
+
+func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
+	return r._appendSingleton(&r.oContentType, bytesContentType, contentType)
 }
-func (r *webResponse_) SetExpires(expires int64) bool {
-	return r._setUnixTime(&r.unixTimes.expires, &r.indexes.expires, expires)
-}
-func (r *webResponse_) SetLastModified(lastModified int64) bool {
-	return r._setUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, lastModified)
+func (r *webOut_) appendDate(date []byte) (ok bool) {
+	return r._appendSingleton(&r.oDate, bytesDate, date)
 }
 
-func (r *webResponse_) SendBadRequest(content []byte) error { // 400
-	return r.sendError(StatusBadRequest, content)
+func (r *webOut_) deleteContentType() (deleted bool) { return r._deleteSingleton(&r.oContentType) }
+func (r *webOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.oDate) }
+
+func (r *webOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
+	if *pIndex > 0 || !r.shell.addHeader(name, value) {
+		return false
+	}
+	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
 }
-func (r *webResponse_) SendForbidden(content []byte) error { // 403
-	return r.sendError(StatusForbidden, content)
+func (r *webOut_) _deleteSingleton(pIndex *uint8) bool {
+	if *pIndex == 0 { // not exist
+		return false
+	}
+	r.shell.delHeaderAt(*pIndex)
+	*pIndex = 0
+	return true
 }
-func (r *webResponse_) SendNotFound(content []byte) error { // 404
-	return r.sendError(StatusNotFound, content)
+
+func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) bool {
+	if unixTime < 0 {
+		return false
+	}
+	if *pUnixTime == -2 { // set through general api
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	}
+	*pUnixTime = unixTime
+	return true
 }
-func (r *webResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
-	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
-	return r.sendError(StatusMethodNotAllowed, content)
+func (r *webOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
+	if *pUnixTime == -2 {
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	} else { // >= 0 or -1
+		*pUnixTime = -2
+	}
+	if !r.shell.addHeader(name, httpDate) {
+		return false
+	}
+	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	return true
 }
-func (r *webResponse_) SendInternalServerError(content []byte) error { // 500
-	return r.sendError(StatusInternalServerError, content)
+func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
+	if *pUnixTime == -1 {
+		return false
+	}
+	if *pUnixTime == -2 {
+		r.shell.delHeaderAt(*pIndex)
+		*pIndex = 0
+	}
+	*pUnixTime = -1
+	return true
 }
-func (r *webResponse_) SendNotImplemented(content []byte) error { // 501
-	return r.sendError(StatusNotImplemented, content)
+
+func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
+
+func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
+func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
+func (r *webOut_) SendJSON(content any) error {
+	// TODO: optimize performance
+	r.appendContentType(bytesTypeJSON)
+	data, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	return r.sendText(data)
 }
-func (r *webResponse_) SendBadGateway(content []byte) error { // 502
-	return r.sendError(StatusBadGateway, content)
+func (r *webOut_) SendFile(contentPath string) error {
+	file, err := os.Open(contentPath)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return err
+	}
+	return r.sendFile(file, info, true) // true to close on end
 }
-func (r *webResponse_) SendGatewayTimeout(content []byte) error { // 504
-	return r.sendError(StatusGatewayTimeout, content)
+
+func (r *webOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }
+func (r *webOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
+func (r *webOut_) EchoFile(chunkPath string) error {
+	file, err := os.Open(chunkPath)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return err
+	}
+	return r.echoFile(file, info, true) // true to close on end
 }
-func (r *webResponse_) sendError(status int16, content []byte) error {
+
+func (r *webOut_) Trailer(name string) (value string, ok bool) {
+	v, ok := r.shell.trailer(risky.ConstBytes(name))
+	return string(v), ok
+}
+func (r *webOut_) AddTrailer(name string, value string) bool {
+	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+}
+func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
+	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
+		return r.shell.addTrailer(name, value)
+	}
+	return false
+}
+
+func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content directly
+	pass := r.shell.passBytes
+	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized no matter the original content is sized or unsized
+		pass = r.EchoBytes
+	} else { // in is sized and there are no revisers, use passBytes
+		r.isSent = true
+		r.contentSize = in.ContentSize()
+		// TODO: find a way to reduce i/o syscalls if content is small?
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := in.readContent()
+		if len(p) >= 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	if in.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !in.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}) {
+			return webOutTrailerFailed
+		}
+	}
+	return nil
+}
+func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
+	if contentText, ok := content.([]byte); ok {
+		if hasTrailers { // if (in the future) we supports taking unsized content in buffer, this happens
+			return r.echoText(contentText)
+		} else {
+			return r.sendText(contentText)
+		}
+	} else if contentFile, ok := content.(*os.File); ok {
+		fileInfo, err := contentFile.Stat()
+		if err != nil {
+			contentFile.Close()
+			return err
+		}
+		if hasTrailers { // we must use unsized
+			return r.echoFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
+		} else {
+			return r.sendFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
+		}
+	} else { // nil means no content.
+		if err := r._beforeSend(); err != nil {
+			return err
+		}
+		r.forbidContent = true
+		return r.shell.send()
+	}
+}
+
+func (r *webOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	if err := r.SetStatus(status); err != nil {
-		return err
-	}
-	if content == nil {
-		content = httpErrorPages[status]
-	}
 	r.block.SetText(content)
 	r.chain.PushTail(&r.block)
-	r.contentSize = int64(len(content))
-	return r.shell.sendChain()
+	r.contentSize = int64(len(content)) // original size, may be revised
+	return r.shell.send()
 }
-func (r *webResponse_) send() error {
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		// Travel through revisers
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.BeforeSend(resp.Request(), resp)
-		}
-		for _, id := range r.revisers { // revise sized content
-			if id == 0 {
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.OnSend(resp.Request(), resp, &r.chain)
-		}
-		// Because r.chain may be altered/replaced by revisers, content size must be recalculated
-		if contentSize, ok := r.chain.Size(); ok {
-			r.contentSize = contentSize
-		} else {
-			return webOutTooLarge
-		}
+func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
+	if err := r._beforeSend(); err != nil {
+		return err
 	}
-	return r.shell.sendChain()
+	r.block.SetFile(content, info, shut)
+	r.chain.PushTail(&r.block)
+	r.contentSize = info.Size() // original size, may be revised
+	return r.shell.send()
+}
+func (r *webOut_) _beforeSend() error {
+	if r.isSent {
+		return webOutAlreadySent
+	}
+	r.isSent = true
+	return nil
 }
 
-func (r *webResponse_) _beforeEcho() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
+func (r *webOut_) echoText(chunk []byte) error {
+	if err := r.shell._beforeEcho(); err != nil {
+		return err
 	}
-	if r.IsSent() {
+	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		return nil
 	}
-	if r.contentSize != -1 {
-		return webOutMixedContent
-	}
-	r.markSent()
-	r.markUnsized()
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.BeforeEcho(resp.Request(), resp)
-		}
-	}
-	return r.shell.echoHeaders()
+	r.block.SetText(chunk)
+	defer r.block.zero()
+	return r.shell.echo()
 }
-func (r *webResponse_) echo() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
+func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
+	if err := r.shell._beforeEcho(); err != nil {
+		return err
 	}
-	r.chain.PushTail(&r.block)
-	defer r.chain.free()
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // revise unsized content
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.OnEcho(resp.Request(), resp, &r.chain)
+	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate the end
+		if shut {
+			chunk.Close()
 		}
+		return nil
 	}
-	return r.shell.echoChain()
-}
-func (r *webResponse_) endUnsized() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // finish content
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.FinishEcho(resp.Request(), resp)
-		}
-	}
-	return r.shell.finalizeUnsized()
+	r.block.SetFile(chunk, info, shut)
+	defer r.block.zero()
+	return r.shell.echo()
 }
 
-func (r *webResponse_) copyHeadFrom(resp wResponse, viaName []byte) bool { // used by proxies
-	resp.delHopHeaders()
-
-	// copy control (:status)
-	r.SetStatus(resp.Status())
-
-	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
-
-	// copy remaining headers from resp
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
-			return r.shell.addHeader(name, value)
-		}
-		return r.shell.insertHeader(header.hash, name, value)
-	}) {
-		return false
+func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
+	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
+		return
 	}
-
-	return true
+	return r._growFields(size)
+}
+func (r *webOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
+	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
+		return
+	}
+	return r._growFields(size)
+}
+func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not used at the same time
+	if size <= 0 || size > _16K { // size allowed: (0, 16K]
+		BugExitln("invalid size in _growFields")
+	}
+	from = int(r.fieldsEdge)
+	ceil := r.fieldsEdge + uint16(size)
+	last := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
+	if ceil < r.fieldsEdge || last > _16K || last < ceil {
+		// Overflow
+		return
+	}
+	if last > uint16(cap(r.fields)) { // last <= _16K
+		fields := GetNK(int64(last)) // 4K/16K
+		copy(fields, r.fields[0:r.fieldsEdge])
+		if cap(r.fields) != cap(r.stockFields) {
+			PutNK(r.fields)
+		}
+		r.fields = fields
+	}
+	r.fieldsEdge = ceil
+	edge, ok = int(r.fieldsEdge), true
+	return
 }
 
-var ( // perfect hash table for response critical headers
-	webResponseCriticalHeaderTable = [10]struct {
-		hash uint16
-		name []byte
-		fAdd func(*webResponse_, []byte) (ok bool)
-		fDel func(*webResponse_) (deleted bool)
-	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
-		0: {hashServer, bytesServer, nil, nil},       // forbidden
-		1: {hashSetCookie, bytesSetCookie, nil, nil}, // forbidden
-		2: {hashUpgrade, bytesUpgrade, nil, nil},     // forbidden
-		3: {hashDate, bytesDate, (*webResponse_).appendDate, (*webResponse_).deleteDate},
-		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // forbidden
-		5: {hashConnection, bytesConnection, nil, nil},             // forbidden
-		6: {hashLastModified, bytesLastModified, (*webResponse_).appendLastModified, (*webResponse_).deleteLastModified},
-		7: {hashExpires, bytesExpires, (*webResponse_).appendExpires, (*webResponse_).deleteExpires},
-		8: {hashContentLength, bytesContentLength, nil, nil}, // forbidden
-		9: {hashContentType, bytesContentType, (*webResponse_).appendContentType, (*webResponse_).deleteContentType},
+func (r *webOut_) _beforeWrite() error {
+	now := time.Now()
+	if r.sendTime.IsZero() {
+		r.sendTime = now
 	}
-	webResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+	return r.stream.setWriteDeadline(now.Add(r.stream.keeper().WriteTimeout()))
+}
+func (r *webOut_) _tooSlow() bool {
+	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
+}
+
+var ( // web outgoing message errors
+	webOutTooSlow       = errors.New("http outgoing too slow")
+	webOutWriteBroken   = errors.New("write broken")
+	webOutUnknownStatus = errors.New("unknown status")
+	webOutAlreadySent   = errors.New("already sent")
+	webOutTooLarge      = errors.New("content too large")
+	webOutMixedContent  = errors.New("mixed content mode")
+	webOutTrailerFailed = errors.New("add trailer failed")
 )
 
-func (r *webResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &webResponseCriticalHeaderTable[webResponseCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden to insert
-			return true // pretend to be successful
-		}
-		return h.fAdd(r, value)
-	}
-	return r.shell.addHeader(name, value)
-}
-func (r *webResponse_) appendExpires(expires []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
-}
-func (r *webResponse_) appendLastModified(lastModified []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
+var webTemplate = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
+var webControls = [...][]byte{ // size: 512*24B=12K. for both HTTP/2 and HTTP/3
+	// 1XX
+	StatusContinue:           []byte(":status 100"),
+	StatusSwitchingProtocols: []byte(":status 101"),
+	StatusProcessing:         []byte(":status 102"),
+	StatusEarlyHints:         []byte(":status 103"),
+	// 2XX
+	StatusOK:                         []byte(":status 200"),
+	StatusCreated:                    []byte(":status 201"),
+	StatusAccepted:                   []byte(":status 202"),
+	StatusNonAuthoritativeInfomation: []byte(":status 203"),
+	StatusNoContent:                  []byte(":status 204"),
+	StatusResetContent:               []byte(":status 205"),
+	StatusPartialContent:             []byte(":status 206"),
+	StatusMultiStatus:                []byte(":status 207"),
+	StatusAlreadyReported:            []byte(":status 208"),
+	StatusIMUsed:                     []byte(":status 226"),
+	// 3XX
+	StatusMultipleChoices:   []byte(":status 300"),
+	StatusMovedPermanently:  []byte(":status 301"),
+	StatusFound:             []byte(":status 302"),
+	StatusSeeOther:          []byte(":status 303"),
+	StatusNotModified:       []byte(":status 304"),
+	StatusUseProxy:          []byte(":status 305"),
+	StatusTemporaryRedirect: []byte(":status 307"),
+	StatusPermanentRedirect: []byte(":status 308"),
+	// 4XX
+	StatusBadRequest:                  []byte(":status 400"),
+	StatusUnauthorized:                []byte(":status 401"),
+	StatusPaymentRequired:             []byte(":status 402"),
+	StatusForbidden:                   []byte(":status 403"),
+	StatusNotFound:                    []byte(":status 404"),
+	StatusMethodNotAllowed:            []byte(":status 405"),
+	StatusNotAcceptable:               []byte(":status 406"),
+	StatusProxyAuthenticationRequired: []byte(":status 407"),
+	StatusRequestTimeout:              []byte(":status 408"),
+	StatusConflict:                    []byte(":status 409"),
+	StatusGone:                        []byte(":status 410"),
+	StatusLengthRequired:              []byte(":status 411"),
+	StatusPreconditionFailed:          []byte(":status 412"),
+	StatusContentTooLarge:             []byte(":status 413"),
+	StatusURITooLong:                  []byte(":status 414"),
+	StatusUnsupportedMediaType:        []byte(":status 415"),
+	StatusRangeNotSatisfiable:         []byte(":status 416"),
+	StatusExpectationFailed:           []byte(":status 417"),
+	StatusMisdirectedRequest:          []byte(":status 421"),
+	StatusUnprocessableEntity:         []byte(":status 422"),
+	StatusLocked:                      []byte(":status 423"),
+	StatusFailedDependency:            []byte(":status 424"),
+	StatusTooEarly:                    []byte(":status 425"),
+	StatusUpgradeRequired:             []byte(":status 426"),
+	StatusPreconditionRequired:        []byte(":status 428"),
+	StatusTooManyRequests:             []byte(":status 429"),
+	StatusRequestHeaderFieldsTooLarge: []byte(":status 431"),
+	StatusUnavailableForLegalReasons:  []byte(":status 451"),
+	// 5XX
+	StatusInternalServerError:           []byte(":status 500"),
+	StatusNotImplemented:                []byte(":status 501"),
+	StatusBadGateway:                    []byte(":status 502"),
+	StatusServiceUnavailable:            []byte(":status 503"),
+	StatusGatewayTimeout:                []byte(":status 504"),
+	StatusHTTPVersionNotSupported:       []byte(":status 505"),
+	StatusVariantAlsoNegotiates:         []byte(":status 506"),
+	StatusInsufficientStorage:           []byte(":status 507"),
+	StatusLoopDetected:                  []byte(":status 508"),
+	StatusNotExtended:                   []byte(":status 510"),
+	StatusNetworkAuthenticationRequired: []byte(":status 511"),
 }
 
-func (r *webResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &webResponseCriticalHeaderTable[webResponseCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden to remove
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.shell.delHeader(name)
-}
-func (r *webResponse_) deleteExpires() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
-}
-func (r *webResponse_) deleteLastModified() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
-}
-
-func (r *webResponse_) copyTailFrom(resp wResponse) bool { // used by proxies
-	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
-	})
-}
-
-func (r *webResponse_) hookReviser(reviser Reviser) {
-	r.hasRevisers = true
-	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-}
-
-func (r *webResponse_) OutBuffer() []byte {
-	if r.outBuffer == nil {
-		r.outBuffer = Get16K()
-	}
-	return r.outBuffer
-}
-
-// Cookie is a "set-cookie" sent to client.
-type Cookie struct {
-	name     string
-	value    string
-	expires  time.Time
-	maxAge   int64
-	domain   string
-	path     string
-	sameSite string
-	secure   bool
-	httpOnly bool
-	invalid  bool
-	quote    bool // if true, quote value with ""
-	aFrom    int8
-	aEdge    int8
-	ageBuf   [19]byte
-}
-
-func (c *Cookie) Set(name string, value string) bool {
-	// cookie-name = 1*cookie-octet
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	if name == "" {
-		c.invalid = true
-		return false
-	}
-	for i := 0; i < len(name); i++ {
-		if b := name[i]; httpKchar[b] == 0 {
-			c.invalid = true
-			return false
-		}
-	}
-	c.name = name
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	for i := 0; i < len(value); i++ {
-		b := value[i]
-		if httpKchar[b] == 1 {
+var webErrorPages = func() map[int16][]byte {
+	const template = `<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="utf-8">
+<title>%d %s</title>
+<style type="text/css">
+body{text-align:center;}
+header{font-size:72pt;}
+main{font-size:36pt;}
+footer{padding:20px;}
+</style>
+</head>
+<body>
+	<header>%d</header>
+	<main>%s</main>
+	<footer>Powered by Gorox</footer>
+</body>
+</html>`
+	pages := make(map[int16][]byte)
+	for status, control := range http1Controls {
+		if status < 400 || control == nil {
 			continue
 		}
-		if b == ' ' || b == ',' {
-			c.quote = true
-			continue
-		}
-		c.invalid = true
-		return false
+		phrase := control[len("HTTP/1.1 XXX ") : len(control)-2]
+		pages[int16(status)] = []byte(fmt.Sprintf(template, status, phrase, status, phrase))
 	}
-	c.value = value
-	return true
-}
-
-func (c *Cookie) SetDomain(domain string) bool {
-	// TODO: check domain
-	c.domain = domain
-	return true
-}
-func (c *Cookie) SetPath(path string) bool {
-	// path-value = *av-octet
-	// av-octet = %x20-3A / %x3C-7E
-	for i := 0; i < len(path); i++ {
-		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
-			c.invalid = true
-			return false
-		}
-	}
-	c.path = path
-	return true
-}
-func (c *Cookie) SetExpires(expires time.Time) bool {
-	expires = expires.UTC()
-	if expires.Year() < 1601 {
-		c.invalid = true
-		return false
-	}
-	c.expires = expires
-	return true
-}
-func (c *Cookie) SetMaxAge(maxAge int64)  { c.maxAge = maxAge }
-func (c *Cookie) SetSecure()              { c.secure = true }
-func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
-func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
-func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
-func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
-func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
-
-func (c *Cookie) size() int {
-	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
-	n := len(c.name) + 1 + len(c.value) // name=value
-	if c.quote {
-		n += 2 // ""
-	}
-	if !c.expires.IsZero() {
-		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
-	}
-	if c.maxAge > 0 {
-		from, edge := i64ToDec(c.maxAge, c.ageBuf[:])
-		c.aFrom, c.aEdge = int8(from), int8(edge)
-		n += len("; Max-Age=") + (edge - from)
-	} else if c.maxAge < 0 {
-		c.ageBuf[0] = '0'
-		c.aFrom, c.aEdge = 0, 1
-		n += len("; Max-Age=0")
-	}
-	if c.domain != "" {
-		n += len("; Domain=") + len(c.domain)
-	}
-	if c.path != "" {
-		n += len("; Path=") + len(c.path)
-	}
-	if c.secure {
-		n += len("; Secure")
-	}
-	if c.httpOnly {
-		n += len("; HttpOnly")
-	}
-	if c.sameSite != "" {
-		n += len("; SameSite=") + len(c.sameSite)
-	}
-	return n
-}
-func (c *Cookie) writeTo(p []byte) int {
-	i := copy(p, c.name)
-	p[i] = '='
-	i++
-	if c.quote {
-		p[i] = '"'
-		i++
-		i += copy(p[i:], c.value)
-		p[i] = '"'
-		i++
-	} else {
-		i += copy(p[i:], c.value)
-	}
-	if !c.expires.IsZero() {
-		i += copy(p[i:], "; Expires=")
-		i += clockWriteHTTPDate(p[i:], c.expires)
-	}
-	if c.maxAge != 0 {
-		i += copy(p[i:], "; Max-Age=")
-		i += copy(p[i:], c.ageBuf[c.aFrom:c.aEdge])
-	}
-	if c.domain != "" {
-		i += copy(p[i:], "; Domain=")
-		i += copy(p[i:], c.domain)
-	}
-	if c.path != "" {
-		i += copy(p[i:], "; Path=")
-		i += copy(p[i:], c.path)
-	}
-	if c.secure {
-		i += copy(p[i:], "; Secure")
-	}
-	if c.httpOnly {
-		i += copy(p[i:], "; HttpOnly")
-	}
-	if c.sameSite != "" {
-		i += copy(p[i:], "; SameSite=")
-		i += copy(p[i:], c.sameSite)
-	}
-	return i
-}
-
-// Socket is the server-side WebSocket and is the interface for *http[1-3]Socket.
-type Socket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-}
-
-// httpSocket_ is the mixin for http[1-3]Socket.
-type httpSocket_ struct {
-	// Assocs
-	shell Socket // the concrete Socket
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *httpSocket_) onUse() {
-}
-func (s *httpSocket_) onEnd() {
-}
+	return pages
+}()
 
 // App is the Web application.
 type App struct {
@@ -4001,910 +2848,4 @@ type Hobject struct {
 	headers  any
 	content  any
 	trailers any
-}
-
-// webClient is the interface for http outgates and web backends.
-type webClient interface {
-	client
-	streamHolder
-	contentSaver
-	MaxContentSize() int64
-	SendTimeout() time.Duration
-	RecvTimeout() time.Duration
-}
-
-// webClient_ is a mixin for webOutgate_ and webBackend_.
-type webClient_ struct {
-	// Mixins
-	keeper_
-	streamHolder_
-	contentSaver_ // so responses can save their large contents in local file system.
-	// States
-}
-
-func (h *webClient_) onCreate() {
-}
-
-func (h *webClient_) onConfigure(shell Component, clientType string) {
-	h.streamHolder_.onConfigure(shell, 1000)
-	h.contentSaver_.onConfigure(shell, TempDir()+"/http/"+clientType+"/"+shell.Name())
-	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
-	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
-	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
-}
-func (h *webClient_) onPrepare(shell Component) {
-	h.streamHolder_.onPrepare(shell)
-	h.contentSaver_.onPrepare(shell, 0755)
-}
-
-// webOutgate_ is the mixin for HTTP[1-3]Outgate.
-type webOutgate_ struct {
-	// Mixins
-	outgate_
-	webClient_
-	// States
-}
-
-func (f *webOutgate_) onCreate(name string, stage *Stage) {
-	f.outgate_.onCreate(name, stage)
-	f.webClient_.onCreate()
-}
-
-func (f *webOutgate_) onConfigure(shell Component) {
-	f.outgate_.onConfigure()
-	f.webClient_.onConfigure(shell, "outgates")
-}
-func (f *webOutgate_) onPrepare(shell Component) {
-	f.outgate_.onPrepare()
-	f.webClient_.onPrepare(shell)
-}
-
-// webBackend_ is the mixin for HTTP[1-3]Backend.
-type webBackend_[N node] struct {
-	// Mixins
-	backend_[N]
-	webClient_
-	loadBalancer_
-	// States
-	health any // TODO
-}
-
-func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b.backend_.onCreate(name, stage, creator)
-	b.webClient_.onCreate()
-	b.loadBalancer_.init()
-}
-
-func (b *webBackend_[N]) onConfigure(shell Component) {
-	b.backend_.onConfigure()
-	b.webClient_.onConfigure(shell, "backends")
-	b.loadBalancer_.onConfigure(shell)
-}
-func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
-	b.backend_.onPrepare()
-	b.webClient_.onPrepare(shell)
-	b.loadBalancer_.onPrepare(numNodes)
-}
-
-// webNode_ is the mixin for http[1-3]Node.
-type webNode_ struct {
-	// Mixins
-	node_
-	// States
-}
-
-func (n *webNode_) init(id int32) {
-	n.node_.init(id)
-}
-
-// wConn is the interface for *H[1-3]Conn.
-type wConn interface {
-	getClient() webClient
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
-	isBroken() bool
-	markBroken()
-}
-
-// wConn_ is the mixin for H[1-3]Conn.
-type wConn_ struct {
-	// Mixins
-	conn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	// Conn states (zeros)
-	counter     atomic.Int64 // used to make temp name
-	usedStreams atomic.Int32 // how many streams has been used?
-	broken      atomic.Bool  // is conn broken?
-}
-
-func (c *wConn_) onGet(id int64, client webClient) {
-	c.conn_.onGet(id, client)
-}
-func (c *wConn_) onPut() {
-	c.conn_.onPut()
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-}
-
-func (c *wConn_) getClient() webClient { return c.client.(webClient) }
-
-func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *wConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
-}
-
-func (c *wConn_) isBroken() bool { return c.broken.Load() }
-func (c *wConn_) markBroken()    { c.broken.Store(true) }
-
-// wStream_ is the mixin for H[1-3]Stream.
-type wStream_ struct {
-	// Mixins
-	stream_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *wStream_) onUse() {
-	s.stream_.onUse()
-}
-func (s *wStream_) onEnd() {
-	s.stream_.onEnd()
-}
-
-func (s *wStream_) startSocket() { // upgrade: websocket
-	// TODO
-}
-func (s *wStream_) startTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *wStream_) startUDPTun() { // upgrade: connect-udp
-	// TODO
-}
-
-// wRequest is the client-side HTTP request and the interface for *H[1-3]Request.
-type wRequest interface {
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
-	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
-}
-
-// wRequest_ is the mixin for H[1-3]Request.
-type wRequest_ struct { // outgoing. needs building
-	// Mixins
-	webOut_
-	// Assocs
-	response wResponse // the corresponding response
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	unixTimes struct {
-		ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	}
-	// Stream states (zeros)
-	wRequest0 // all values must be zero by default in this struct!
-}
-type wRequest0 struct { // for fast reset, entirely
-	indexes struct {
-		host              uint8
-		ifModifiedSince   uint8
-		ifRange           uint8
-		ifUnmodifiedSince uint8
-	}
-}
-
-func (r *wRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.webOut_.onUse(versionCode, true) // asRequest = true
-	r.unixTimes.ifModifiedSince = -1   // not set
-	r.unixTimes.ifUnmodifiedSince = -1 // not set
-}
-func (r *wRequest_) onEnd() { // for zeros
-	r.wRequest0 = wRequest0{}
-	r.webOut_.onEnd()
-}
-
-func (r *wRequest_) Response() wResponse { return r.response }
-
-func (r *wRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(wRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
-}
-func (r *wRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
-	// TODO: copy `:scheme $scheme` to r.fields
-	return false
-}
-func (r *wRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
-
-func (r *wRequest_) SetIfModifiedSince(since int64) bool {
-	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
-}
-func (r *wRequest_) SetIfUnmodifiedSince(since int64) bool {
-	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
-}
-
-func (r *wRequest_) send() error { return r.shell.sendChain() }
-
-func (r *wRequest_) _beforeEcho() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	if r.IsSent() {
-		return nil
-	}
-	if r.contentSize != -1 {
-		return webOutMixedContent
-	}
-	r.markSent()
-	r.markUnsized()
-	return r.shell.echoHeaders()
-}
-func (r *wRequest_) echo() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	r.chain.PushTail(&r.block)
-	defer r.chain.free()
-	return r.shell.echoChain()
-}
-func (r *wRequest_) endUnsized() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	return r.shell.finalizeUnsized()
-}
-
-func (r *wRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte) bool { // used by proxies
-	req.delHopHeaders()
-
-	// copy control (:method, :path, :authority, :scheme)
-	var uri []byte
-	if req.IsAsteriskOptions() { // OPTIONS *
-		// RFC 9112 (3.2.4):
-		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
-		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
-		uri = bytesAsterisk
-	} else {
-		uri = req.UnsafeURI()
-	}
-	if !r.shell.(wRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
-		return false
-	}
-	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
-		req.unsetHost()
-		if req.IsAbsoluteForm() {
-			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
-				return false
-			}
-		} else { // custom authority (hostname or colonPort)
-			if len(hostname) == 0 {
-				hostname = req.UnsafeHostname()
-			}
-			if len(colonPort) == 0 {
-				colonPort = req.UnsafeColonPort()
-			}
-			if !r.shell.(wRequest).setAuthority(hostname, colonPort) {
-				return false
-			}
-		}
-	}
-	if r.versionCode >= Version2 {
-		var scheme []byte
-		if r.stream.keeper().TLSMode() {
-			scheme = bytesSchemeHTTPS
-		} else {
-			scheme = bytesSchemeHTTP
-		}
-		if !r.setScheme(scheme) {
-			return false
-		}
-	} else {
-		// we have no way to set scheme in HTTP/1 unless we use absolute-form, which is a risk that many servers may not support it.
-	}
-
-	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(wRequest).copyCookies(req) {
-		return false
-	}
-	// TODO: An HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message and MAY send a Via header field in forwarded response messages.
-	// r.addHeader(viaName)
-
-	// copy remaining headers from req
-	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.shell.insertHeader(header.hash, name, value)
-	}) {
-		return false
-	}
-
-	return true
-}
-
-var ( // perfect hash table for request critical headers
-	wRequestCriticalHeaderTable = [12]struct {
-		hash uint16
-		name []byte
-		fAdd func(*wRequest_, []byte) (ok bool)
-		fDel func(*wRequest_) (deleted bool)
-	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
-		0:  {hashContentLength, bytesContentLength, nil, nil}, // forbidden
-		1:  {hashConnection, bytesConnection, nil, nil},       // forbidden
-		2:  {hashIfRange, bytesIfRange, (*wRequest_).appendIfRange, (*wRequest_).deleteIfRange},
-		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // forbidden
-		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*wRequest_).appendIfModifiedSince, (*wRequest_).deleteIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*wRequest_).appendIfUnmodifiedSince, (*wRequest_).deleteIfUnmodifiedSince},
-		6:  {hashHost, bytesHost, (*wRequest_).appendHost, (*wRequest_).deleteHost},
-		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // forbidden
-		8:  {hashContentType, bytesContentType, (*wRequest_).appendContentType, (*wRequest_).deleteContentType},
-		9:  {hashCookie, bytesCookie, nil, nil}, // forbidden
-		10: {hashDate, bytesDate, (*wRequest_).appendDate, (*wRequest_).deleteDate},
-		11: {hashVia, bytesVia, nil, nil}, // forbidden
-	}
-	wRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
-)
-
-func (r *wRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &wRequestCriticalHeaderTable[wRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden to insert
-			return true // pretend to be successful
-		}
-		return h.fAdd(r, value)
-	}
-	return r.shell.addHeader(name, value)
-}
-func (r *wRequest_) appendHost(host []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.host, bytesHost, host)
-}
-func (r *wRequest_) appendIfModifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
-}
-func (r *wRequest_) appendIfRange(ifRange []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
-}
-func (r *wRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
-}
-
-func (r *wRequest_) removeHeader(hash uint16, name []byte) bool {
-	h := &wRequestCriticalHeaderTable[wRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden to remove
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.shell.delHeader(name)
-}
-func (r *wRequest_) deleteHost() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.host)
-}
-func (r *wRequest_) deleteIfModifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
-}
-func (r *wRequest_) deleteIfRange() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.ifRange)
-}
-func (r *wRequest_) deleteIfUnmodifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
-}
-
-func (r *wRequest_) copyTailFrom(req Request) bool { // used by proxies
-	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
-	})
-}
-
-// upload is a file to be uploaded.
-type upload struct {
-	// TODO
-}
-
-// wResponse is the client-side HTTP response and interface for *H[1-3]Response.
-type wResponse interface {
-	Status() int16
-	delHopHeaders()
-	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
-	delHopTrailers()
-	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
-}
-
-// wResponse_ is the mixin for H[1-3]Response.
-type wResponse_ struct { // incoming. needs parsing
-	// Mixins
-	webIn_
-	// Stream states (stocks)
-	stockCookies [8]cookie // for r.cookies
-	// Stream states (controlled)
-	cookie cookie // to overcome the limitation of Go's escape analysis when receiving setCookies
-	// Stream states (non-zeros)
-	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=32/128)]
-	// Stream states (zeros)
-	wResponse0 // all values must be zero by default in this struct!
-}
-type wResponse0 struct { // for fast reset, entirely
-	status      int16    // 200, 302, 404, ...
-	acceptBytes bool     // accept-ranges: bytes?
-	hasAllow    bool     // has allow header?
-	age         int32    // age seconds
-	indexes     struct { // indexes of some selected singleton headers, for fast accessing
-		etag         uint8   // etag header ->r.input
-		expires      uint8   // expires header ->r.input
-		lastModified uint8   // last-modified header ->r.input
-		location     uint8   // location header ->r.input
-		server       uint8   // server header ->r.input
-		_            [3]byte // padding
-	}
-	zones struct { // zones of some selected headers, for fast accessing
-		allow  zone
-		altSvc zone
-		vary   zone
-		_      [2]byte // padding
-	}
-	unixTimes struct { // parsed unix times
-		expires      int64 // parsed unix time of expires
-		lastModified int64 // parsed unix time of last-modified
-	}
-	cacheControl struct { // the cache-control info
-		noCache         bool  // no-cache directive in cache-control
-		noStore         bool  // no-store directive in cache-control
-		noTransform     bool  // no-transform directive in cache-control
-		public          bool  // public directive in cache-control
-		private         bool  // private directive in cache-control
-		mustRevalidate  bool  // must-revalidate directive in cache-control
-		mustUnderstand  bool  // must-understand directive in cache-control
-		proxyRevalidate bool  // proxy-revalidate directive in cache-control
-		maxAge          int32 // max-age directive in cache-control
-		sMaxage         int32 // s-maxage directive in cache-control
-	}
-}
-
-func (r *wResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.webIn_.onUse(versionCode, true) // asResponse = true
-
-	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
-}
-func (r *wResponse_) onEnd() { // for zeros
-	if cap(r.cookies) != cap(r.stockCookies) {
-		// TODO: put?
-		r.cookies = nil
-	}
-	r.wResponse0 = wResponse0{}
-
-	r.webIn_.onEnd()
-}
-
-func (r *wResponse_) Status() int16 { return r.status }
-
-func (r *wResponse_) examineHead() bool {
-	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(i) {
-			// r.headResult is set.
-			return false
-		}
-	}
-	if IsDebug(2) {
-		for i := 0; i < len(r.primes); i++ {
-			prime := &r.primes[i]
-			prime.show(r._placeOf(prime))
-		}
-		for i := 0; i < len(r.extras); i++ {
-			extra := &r.extras[i]
-			extra.show(r._placeOf(extra))
-		}
-	}
-
-	// Basic checks against versions
-	switch r.versionCode {
-	case Version1_0: // we don't support HTTP/1.0 in client side
-		BugExitln("HTTP/1.0 must be denied prior")
-	case Version1_1:
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		}
-	default: // HTTP/2 and HTTP/3
-		// Add here
-	}
-
-	if !r.determineContentMode() {
-		// r.headResult is set.
-		return false
-	}
-	if r.status < StatusOK && r.contentSize != -1 {
-		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
-		return false
-	}
-	if r.contentSize > r.maxContentSize {
-		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http client's limit"
-		return false
-	}
-
-	return true
-}
-func (r *wResponse_) applyHeader(index uint8) bool {
-	header := &r.primes[index]
-	name := header.nameAt(r.input)
-	if sh := &wResponseSingletonHeaderTable[wResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
-		header.setSingleton()
-		if !sh.parse { // unnecessary to parse
-			header.setParsed()
-			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) {
-			r.headResult = StatusBadRequest
-			return false
-		}
-		if !sh.check(r, header, index) {
-			// r.headResult is set.
-			return false
-		}
-	} else if mh := &wResponseImportantHeaderTable[wResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
-		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.desc, r.input) {
-			r.headResult = StatusBadRequest
-			return false
-		}
-		if header.isCommaValue() { // has sub headers, check them
-			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
-				// r.headResult is set.
-				return false
-			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
-			// r.headResult is set.
-			return false
-		}
-	} else {
-		// All other headers are treated as list-based headers.
-	}
-	return true
-}
-
-var ( // perfect hash table for response singleton headers
-	wResponseSingletonHeaderTable = [12]struct {
-		parse bool // need general parse or not
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*wResponse_, *pair, uint8) bool
-	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
-		0:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*wResponse_).checkDate},
-		1:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*wResponse_).checkContentLength},
-		2:  {false, desc{hashAge, false, false, false, false, bytesAge}, (*wResponse_).checkAge},
-		3:  {false, desc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*wResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {false, desc{hashLastModified, false, false, false, false, bytesLastModified}, (*wResponse_).checkLastModified},
-		5:  {false, desc{hashLocation, false, false, false, false, bytesLocation}, (*wResponse_).checkLocation},
-		6:  {false, desc{hashExpires, false, false, false, false, bytesExpires}, (*wResponse_).checkExpires},
-		7:  {false, desc{hashContentRange, false, false, false, false, bytesContentRange}, (*wResponse_).checkContentRange},
-		8:  {false, desc{hashETag, false, false, false, false, bytesETag}, (*wResponse_).checkETag},
-		9:  {false, desc{hashServer, false, false, false, true, bytesServer}, (*wResponse_).checkServer},
-		10: {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*wResponse_).checkContentType},
-		11: {false, desc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*wResponse_).checkRetryAfter},
-	}
-	wResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
-)
-
-func (r *wResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
-	if header.value.isEmpty() {
-		r.headResult, r.failReason = StatusBadRequest, "empty age"
-		return false
-	}
-	// TODO
-	return true
-}
-func (r *wResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
-	r.indexes.etag = index
-	return true
-}
-func (r *wResponse_) checkExpires(header *pair, index uint8) bool { // Expires = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.unixTimes.expires)
-}
-func (r *wResponse_) checkLastModified(header *pair, index uint8) bool { // Last-Modified = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
-}
-func (r *wResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
-	r.indexes.location = index
-	return true
-}
-func (r *wResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
-	// TODO
-	return true
-}
-func (r *wResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
-	r.indexes.server = index
-	return true
-}
-func (r *wResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
-	if !r.parseSetCookie(header.value) {
-		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
-		return false
-	}
-	if len(r.cookies) == cap(r.cookies) {
-		if cap(r.cookies) == cap(r.stockCookies) {
-			cookies := make([]cookie, 0, 16)
-			r.cookies = append(cookies, r.cookies...)
-		} else if cap(r.cookies) == 16 {
-			cookies := make([]cookie, 0, 128)
-			r.cookies = append(cookies, r.cookies...)
-		} else {
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.cookies = append(r.cookies, r.cookie)
-	return true
-}
-
-var ( // perfect hash table for response important headers
-	wResponseImportantHeaderTable = [17]struct {
-		desc  // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*wResponse_, []pair, uint8, uint8) bool
-	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
-		0:  {desc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*wResponse_).checkAcceptRanges},
-		1:  {desc{hashVia, false, false, false, true, bytesVia}, (*wResponse_).checkVia},
-		2:  {desc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*wResponse_).checkWWWAuthenticate},
-		3:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*wResponse_).checkConnection},
-		4:  {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*wResponse_).checkContentEncoding},
-		5:  {desc{hashAllow, false, true, false, false, bytesAllow}, (*wResponse_).checkAllow},
-		6:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*wResponse_).checkTransferEncoding}, // deliberately false
-		7:  {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*wResponse_).checkTrailer},
-		8:  {desc{hashVary, false, false, false, false, bytesVary}, (*wResponse_).checkVary},
-		9:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*wResponse_).checkUpgrade},
-		10: {desc{hashProxyAuthenticate, false, false, false, false, bytesProxyAuthenticate}, (*wResponse_).checkProxyAuthenticate},
-		11: {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*wResponse_).checkCacheControl},
-		12: {desc{hashAltSvc, false, false, true, false, bytesAltSvc}, (*wResponse_).checkAltSvc},
-		13: {desc{hashCDNCacheControl, false, false, false, false, bytesCDNCacheControl}, (*wResponse_).checkCDNCacheControl},
-		14: {desc{hashCacheStatus, false, false, true, false, bytesCacheStatus}, (*wResponse_).checkCacheStatus},
-		15: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*wResponse_).checkAcceptEncoding},
-		16: {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*wResponse_).checkContentLanguage},
-	}
-	wResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
-)
-
-func (r *wResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
-	if from == edge {
-		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
-		return false
-	}
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
-		bytesToLower(data)
-		if bytes.Equal(data, bytesBytes) {
-			r.acceptBytes = true
-		} else {
-			// Ignore
-		}
-	}
-	return true
-}
-func (r *wResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // Allow = #method
-	r.hasAllow = true
-	if r.zones.allow.isEmpty() {
-		r.zones.allow.from = from
-	}
-	r.zones.allow.edge = edge
-	return true
-}
-func (r *wResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
-	if from == edge {
-		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
-		return false
-	}
-	if r.zones.altSvc.isEmpty() {
-		r.zones.altSvc.from = from
-	}
-	r.zones.altSvc.edge = edge
-	return true
-}
-func (r *wResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
-	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
-		// TODO
-	}
-	return true
-}
-func (r *wResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
-	// TODO
-	return true
-}
-func (r *wResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
-	// TODO
-	return true
-}
-func (r *wResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
-	// TODO
-	return true
-}
-func (r *wResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
-	if r.status < StatusOK || r.status == StatusNoContent {
-		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
-		return false
-	}
-	if r.status == StatusNotModified {
-		// TODO
-	}
-	return r.webIn_.checkTransferEncoding(pairs, from, edge)
-}
-func (r *wResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	// TODO: socket, tcptun, udptun?
-	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in normal mode"
-	return false
-}
-func (r *wResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
-	if r.zones.vary.isEmpty() {
-		r.zones.vary.from = from
-	}
-	r.zones.vary.edge = edge
-	return true
-}
-func (r *wResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
-	// TODO
-	return true
-}
-func (r *wResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
-	// TODO
-	return true
-}
-
-func (r *wResponse_) parseSetCookie(setCookieString span) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
-	// cookie-pair = token "=" cookie-value
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
-	// expires-av = "Expires=" sane-cookie-date
-	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
-	// domain-av = "Domain=" domain-value
-	// path-av = "Path=" path-value
-	// secure-av = "Secure"
-	// httponly-av = "HttpOnly"
-	// samesite-av = "SameSite=" samesite-value
-	// extension-av = <any CHAR except CTLs or ";">
-	cookie := &r.cookie
-	cookie.zero()
-	// TODO
-	return true
-}
-
-func (r *wResponse_) unsafeDate() []byte {
-	if r.iDate == 0 {
-		return nil
-	}
-	return r.primes[r.iDate].valueAt(r.input)
-}
-func (r *wResponse_) unsafeLastModified() []byte {
-	if r.indexes.lastModified == 0 {
-		return nil
-	}
-	return r.primes[r.indexes.lastModified].valueAt(r.input)
-}
-
-func (r *wResponse_) HasCookies() bool {
-	// TODO
-	return false
-}
-func (r *wResponse_) C(name string) string {
-	// TODO
-	return ""
-}
-func (r *wResponse_) Cookie(name string) (value string, ok bool) {
-	// TODO
-	return
-}
-func (r *wResponse_) UnsafeCookie(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *wResponse_) HasCookie(name string) bool {
-	// TODO
-	return false
-}
-func (r *wResponse_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
-	// TODO
-	return false
-}
-
-func (r *wResponse_) HasContent() bool {
-	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)
-	// responses do not include content.
-	if r.status == StatusNoContent || r.status == StatusNotModified {
-		return false
-	}
-	// All other responses do include content, although that content might
-	// be of zero length.
-	return r.contentSize >= 0 || r.isUnsized()
-}
-func (r *wResponse_) Content() string       { return string(r.unsafeContent()) }
-func (r *wResponse_) UnsafeContent() []byte { return r.unsafeContent() }
-
-func (r *wResponse_) applyTrailer(index uint8) bool {
-	//trailer := &r.primes[index]
-	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
-	return true
-}
-
-func (r *wResponse_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
-		}
-		if !r._growArray(int32(len(p))) {
-			return false
-		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
-	}
-	return true
-}
-
-func (r *wResponse_) addCookie(cookie *cookie) bool {
-	// TODO
-	return true
-}
-
-func (r *wResponse_) saveContentFilesDir() string {
-	return r.stream.keeper().SaveContentFilesDir()
-}
-
-// cookie is a "set-cookie" received from server.
-type cookie struct { // 24 bytes. refers to r.input
-	hash         uint16 // hash of name
-	nameFrom     int16  // foo
-	valueFrom    int16  // bar
-	valueEdge    int16  // edge of value
-	expiresFrom  int16  // Expires=Wed, 09 Jun 2021 10:18:14 GMT (fixed value length=29)
-	maxAgeFrom   int16  // Max-Age=123
-	domainFrom   int16  // Domain=example.com
-	pathFrom     int16  // Path=/abc
-	sameSiteFrom int16  // SameSite=Lax|Strict|None
-	nameSize     uint8  // <= 255
-	maxAgeSize   uint8  // <= 255
-	domainSize   uint8  // <= 255
-	pathSize     uint8  // <= 255
-	sameSiteSize uint8  // <= 255
-	flags        uint8  // secure(1), httpOnly(1), reserved(6)
-}
-
-func (c *cookie) zero() { *c = cookie{} }
-
-func (c *cookie) nameAt(t []byte) []byte {
-	return t[c.nameFrom : c.nameFrom+int16(c.nameSize)]
-}
-func (c *cookie) valueAt(t []byte) []byte {
-	return t[c.valueFrom:c.valueEdge]
-}
-func (c *cookie) expiresAt(t []byte) []byte {
-	return t[c.expiresFrom : c.expiresFrom+29]
-}
-func (c *cookie) maxAgeAt(t []byte) []byte {
-	return t[c.maxAgeFrom : c.maxAgeFrom+int16(c.maxAgeSize)]
-}
-func (c *cookie) domainAt(t []byte) []byte {
-	return t[c.domainFrom : c.domainFrom+int16(c.domainSize)]
-}
-func (c *cookie) pathAt(t []byte) []byte {
-	return t[c.pathFrom : c.pathFrom+int16(c.pathSize)]
-}
-func (c *cookie) sameSiteAt(t []byte) []byte {
-	return t[c.sameSiteFrom : c.sameSiteFrom+int16(c.sameSiteSize)]
-}
-func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
-func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
-
-// socket is the client-side HTTP websocket and the interface for *H[1-3]Socket.
-type socket interface {
-}
-
-// socket_ is the mixin for H[1-3]Socket.
-type hSocket_ struct {
-	// Assocs
-	shell socket // the concrete hSocket
-	// Stream states (zeros)
-}
-
-func (s *hSocket_) onUse() {
-}
-func (s *hSocket_) onEnd() {
 }

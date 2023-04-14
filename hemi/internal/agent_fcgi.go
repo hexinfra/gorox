@@ -708,7 +708,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	receiving       int8     // currently receiving. see httpSectionXXX
-	contentTextKind int8     // kind of current r.contentText. see httpContentTextXXX
+	contentTextKind int8     // kind of current r.contentText. see webContentTextXXX
 	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		contentType  uint8
@@ -777,7 +777,7 @@ func (r *fcgiResponse) onEnd() {
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
-	if r.contentTextKind == httpContentTextPool {
+	if r.contentTextKind == webContentTextPool {
 		PutNK(r.contentText)
 	}
 	r.contentText = nil // other content text kinds are only references, just reset.

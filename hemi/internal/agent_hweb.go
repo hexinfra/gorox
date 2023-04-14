@@ -10,3 +10,21 @@ package internal
 // hwebAgent
 type hwebAgent struct {
 }
+
+// wConn
+type wConn struct {
+}
+
+// wStream
+type wStream struct {
+}
+
+// wRequest
+type wRequest struct {
+	httpOut_
+}
+
+// wResponse
+type wResponse struct {
+	httpIn_
+}

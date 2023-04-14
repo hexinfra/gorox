@@ -6,7 +6,7 @@ Welcome
   Gorox is an advanced Web server, application server, RPC server, and proxy
   server. It can be used as:
 
-    * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, FCGI, uwsgi, AJP)
+    * Web Server (HTTP 1/2/3, TLS, WebSocket, HWEB, FCGI, uwsgi, AJP)
     * HTTP Proxy Server (Forward, Reverse, Caching, Tunneling)
     * Application Server for Go (Applications, Frameworks)
     * RPC Server for Go (HRPC Services, gRPC Services)
@@ -53,15 +53,15 @@ Quickstart
 
     shell> go version
 
-  Then build Gorox with Go (set CGO_ENABLED=0 if failed):
+  Then build Gorox with Go (if build failed, set CGO_ENABLED=0 and try again):
 
     shell> go build
 
-  To run Gorox as a daemon:
+  To run Gorox as a background daemon (if not, remove the "-daemon" option):
 
     shell> ./gorox serve -daemon
 
-  To check if it works, visit: http://localhost:3080. To exit server gracefully:
+  Visit http://localhost:3080 to check if it works. To exit server gracefully:
 
     shell> ./gorox quit
 
@@ -83,7 +83,7 @@ Performance
 
   Change the parameters and/or target URL to match your need.
 
-  Generally, the result is about 80% of nginx and slightly better than fasthttp.
+  Generally, the result is about 80% of nginx and slightly faster than fasthttp.
 
 
 Documentation

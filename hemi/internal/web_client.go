@@ -33,22 +33,22 @@ type webClient_ struct {
 	// States
 }
 
-func (h *webClient_) onCreate() {
+func (w *webClient_) onCreate() {
 }
 
-func (h *webClient_) onConfigure(shell Component, clientType string) {
-	h.streamHolder_.onConfigure(shell, 1000)
-	h.contentSaver_.onConfigure(shell, TempDir()+"/web/"+clientType+"/"+shell.Name())
+func (w *webClient_) onConfigure(shell Component, clientType string) {
+	w.streamHolder_.onConfigure(shell, 1000)
+	w.contentSaver_.onConfigure(shell, TempDir()+"/web/"+clientType+"/"+shell.Name())
 	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	shell.ConfigureInt64("maxContentSize", &w.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	shell.ConfigureDuration("sendTimeout", &w.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	shell.ConfigureDuration("recvTimeout", &w.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
 }
-func (h *webClient_) onPrepare(shell Component) {
-	h.streamHolder_.onPrepare(shell)
-	h.contentSaver_.onPrepare(shell, 0755)
+func (w *webClient_) onPrepare(shell Component) {
+	w.streamHolder_.onPrepare(shell)
+	w.contentSaver_.onPrepare(shell, 0755)
 }
 
 // httpOutgate_ is the mixin for HTTP[1-3]Outgate.

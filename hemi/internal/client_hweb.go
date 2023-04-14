@@ -84,14 +84,14 @@ func (n *hwebNode) storeConn(wConn *hConn) {
 // poolHConn is the client-side HWEB connection pool.
 var poolHConn sync.Pool
 
-func getHConn(id int64, client webClient, node *hwebNode, netConn net.Conn, rawConn syscall.RawConn) *hConn {
+func getHConn(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) *hConn {
 	var conn *hConn
 	if x := poolHConn.Get(); x == nil {
 		conn = new(hConn)
 	} else {
 		conn = x.(*hConn)
 	}
-	conn.onGet(id, client, node, netConn, rawConn)
+	conn.onGet(id, client, node, tcpConn, rawConn)
 	return conn
 }
 func putHConn(conn *hConn) {
@@ -106,23 +106,23 @@ type hConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *hwebNode // associated node
-	netConn net.Conn  // the connection (TCP/TLS)
+	node    *hwebNode    // associated node
+	tcpConn *net.TCPConn // the connection
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *hConn) onGet(id int64, client webClient, node *hwebNode, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *hConn) onGet(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
-	c.netConn = netConn
+	c.tcpConn = tcpConn
 	c.rawConn = rawConn
 }
 func (c *hConn) onPut() {
 	c.wConn_.onPut()
 	c.node = nil
-	c.netConn = nil
+	c.tcpConn = nil
 	c.rawConn = nil
 	c.activeStreams = 0
 }
@@ -143,7 +143,7 @@ func (c *hConn) Close() error { // only used by clients of dial
 
 func (c *hConn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+		if err := c.tcpConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
 		c.lastWrite = deadline
@@ -152,7 +152,7 @@ func (c *hConn) setWriteDeadline(deadline time.Time) error {
 }
 func (c *hConn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+		if err := c.tcpConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
 		c.lastRead = deadline
@@ -160,16 +160,16 @@ func (c *hConn) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *hConn) write(p []byte) (int, error) { return c.netConn.Write(p) }
+func (c *hConn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
 func (c *hConn) writev(vector *net.Buffers) (int64, error) {
 	// Will consume vector automatically
-	return vector.WriteTo(c.netConn)
+	return vector.WriteTo(c.tcpConn)
 }
 func (c *hConn) readAtLeast(p []byte, n int) (int, error) {
-	return io.ReadAtLeast(c.netConn, p, n)
+	return io.ReadAtLeast(c.tcpConn, p, n)
 }
 
-func (c *hConn) closeConn() { c.netConn.Close() } // used by codes other than dial
+func (c *hConn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
 
 // poolHStream
 var poolHStream sync.Pool

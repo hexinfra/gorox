@@ -21,6 +21,26 @@ func (r *hwebIn_) readContentH() (p []byte, err error) {
 // hwebOut_ is used by hwebResponse and hRequest.
 type hwebOut_ = webOut_
 
+func (r *hwebOut_) addHeaderH(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *hwebOut_) headerH(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *hwebOut_) hasHeaderH(name []byte) bool {
+	// TODO
+	return false
+}
+func (r *hwebOut_) delHeaderH(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+func (r *hwebOut_) delHeaderAtH(o uint8) {
+	// TODO
+}
+
 func (r *hwebOut_) sendChainH() error {
 	return nil
 }

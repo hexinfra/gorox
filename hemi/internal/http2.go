@@ -40,15 +40,15 @@ func (r *http2In_) readContent2() (p []byte, err error) {
 // http2Out_ is used by http2Response and H2Request.
 type http2Out_ = webOut_
 
+func (r *http2Out_) addHeader2(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
 func (r *http2Out_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
 func (r *http2Out_) hasHeader2(name []byte) bool {
-	// TODO
-	return false
-}
-func (r *http2Out_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }

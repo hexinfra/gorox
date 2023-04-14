@@ -132,15 +132,15 @@ func (b *UnixBackend) createNode(id int32) *unixNode {
 	return node
 }
 
-func (b *UnixBackend) Dial() (PConn, error) {
+func (b *UnixBackend) Dial() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *UnixBackend) FetchConn() (PConn, error) {
+func (b *UnixBackend) FetchConn() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *UnixBackend) StoreConn(conn PConn) {
+func (b *UnixBackend) StoreConn(conn SConn) {
 	xConn := conn.(*XConn)
 	xConn.node.storeConn(xConn)
 }
@@ -201,7 +201,7 @@ func putXConn(conn *XConn) {
 // XConn is a client-side connection to unixNode.
 type XConn struct { // only exported to hemi
 	// Mixins
-	pConn_
+	sConn_
 	// Conn states (non-zeros)
 	node     *unixNode     // associated node if client is UnixBackend
 	unixConn *net.UnixConn // unix conn
@@ -209,12 +209,12 @@ type XConn struct { // only exported to hemi
 }
 
 func (c *XConn) onGet(id int64, client unixClient, node *unixNode, unixConn *net.UnixConn) {
-	c.pConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.sConn_.onGet(id, client, client.MaxStreamsPerConn())
 	c.node = node
 	c.unixConn = unixConn
 }
 func (c *XConn) onPut() {
-	c.pConn_.onPut()
+	c.sConn_.onPut()
 	c.node = nil
 	c.unixConn = nil
 }

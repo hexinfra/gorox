@@ -204,16 +204,33 @@ func (s *hwebStream) onEnd() { // for zeros
 func (s *hwebStream) execute() { // goroutine
 }
 
-// hwebRequest
-type hwebRequest struct {
+// hwebRequest is the server-side HWEB request.
+type hwebRequest struct { // incoming. needs parsing
+	// Mixins
 	webRequest_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *hwebRequest) readContent() (p []byte, err error) {
-	return
-}
+func (r *hwebRequest) readContent() (p []byte, err error) { return r.readContentH() }
 
-// hwebResponse
-type hwebResponse struct {
+// hwebResponse is the server-side HWEB response.
+type hwebResponse struct { // outgoing. needs building
+	// Mixins
 	webResponse_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
+
+func (r *hwebResponse) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
+func (r *hwebResponse) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
+func (r *hwebResponse) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
+func (r *hwebResponse) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
+func (r *hwebResponse) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+
+func (r *hwebResponse) addedHeaders() []byte { return nil }
+func (r *hwebResponse) fixedHeaders() []byte { return nil }

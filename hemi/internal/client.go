@@ -199,7 +199,7 @@ func (b *backend_[N]) maintain() { // goroutine
 	b.stage.SubDone()
 }
 
-// node is a member of backend. it must be stateless.
+// node is a member of backend. node must be stateless.
 type node interface {
 	setAddress(address string)
 	setWeight(weight int32)
@@ -323,9 +323,9 @@ func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 type WireBackend interface {
 	backend
 	streamHolder
-	Dial() (PConn, error)
-	FetchConn() (PConn, error)
-	StoreConn(conn PConn)
+	Dial() (SConn, error)
+	FetchConn() (SConn, error)
+	StoreConn(conn SConn)
 }
 
 // connection-oriented node, supports TCPS and Unix.
@@ -342,7 +342,7 @@ func (n *wireNode_) init(id int32, backend WireBackend) {
 }
 
 // connection-oriented conn, supports TCPS and Unix.
-type PConn interface {
+type SConn interface {
 	conn
 	SetWriteDeadline(deadline time.Time) error
 	SetReadDeadline(deadline time.Time) error
@@ -357,8 +357,8 @@ type PConn interface {
 	MarkBroken()
 }
 
-// pConn_ is a mixin for TConn and XConn.
-type pConn_ struct {
+// sConn_ is a mixin for TConn and XConn.
+type sConn_ struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
@@ -370,11 +370,11 @@ type pConn_ struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *pConn_) onGet(id int64, client client, maxStreams int32) {
+func (c *sConn_) onGet(id int64, client client, maxStreams int32) {
 	c.conn_.onGet(id, client)
 	c.maxStreams = maxStreams
 }
-func (c *pConn_) onPut() {
+func (c *sConn_) onPut() {
 	c.conn_.onPut()
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
@@ -382,16 +382,16 @@ func (c *pConn_) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *pConn_) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *sConn_) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-func (c *pConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
+func (c *sConn_) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
-func (c *pConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
-func (c *pConn_) MarkBroken() {
+func (c *sConn_) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
+func (c *sConn_) MarkBroken() {
 	c.markWriteBroken()
 	c.markReadBroken()
 }
 
-func (c *pConn_) markWriteBroken() { c.writeBroken.Store(true) }
-func (c *pConn_) markReadBroken()  { c.readBroken.Store(true) }
+func (c *sConn_) markWriteBroken() { c.writeBroken.Store(true) }
+func (c *sConn_) markReadBroken()  { c.readBroken.Store(true) }

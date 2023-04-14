@@ -5,6 +5,8 @@
 
 // HWEB agent handlet passes requests to backend HWEB servers and cache responses.
 
+// HWEB agent handlets are reverse only, so they are agents, not proxies.
+
 package internal
 
 func init() {

@@ -29,15 +29,15 @@ func (r *http3In_) readContent3() (p []byte, err error) {
 // http3Out_ is used by http3Response and H3Request.
 type http3Out_ = webOut_
 
+func (r *http3Out_) addHeader3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
 func (r *http3Out_) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
 func (r *http3Out_) hasHeader3(name []byte) bool {
-	// TODO
-	return false
-}
-func (r *http3Out_) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }

@@ -141,16 +141,16 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 	return node
 }
 
-func (b *TCPSBackend) Dial() (PConn, error) {
+func (b *TCPSBackend) Dial() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *TCPSBackend) FetchConn() (PConn, error) {
+func (b *TCPSBackend) FetchConn() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *TCPSBackend) StoreConn(conn PConn) {
+func (b *TCPSBackend) StoreConn(conn SConn) {
 	tConn := conn.(*TConn)
 	tConn.node.storeConn(tConn)
 }
@@ -274,7 +274,7 @@ func putTConn(conn *TConn) {
 // TConn is a client-side connection to tcpsNode.
 type TConn struct { // only exported to hemi
 	// Mixins
-	pConn_
+	sConn_
 	// Conn states (non-zeros)
 	node    *tcpsNode       // associated node if client is TCPSBackend
 	netConn net.Conn        // TCP, TLS
@@ -283,13 +283,13 @@ type TConn struct { // only exported to hemi
 }
 
 func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.pConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.sConn_.onGet(id, client, client.MaxStreamsPerConn())
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *TConn) onPut() {
-	c.pConn_.onPut()
+	c.sConn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil

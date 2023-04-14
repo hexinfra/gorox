@@ -199,7 +199,7 @@ type hStream0 struct { // for fast reset, entirely
 }
 
 // hRequest is the client-side HWEB request.
-type hRequest struct {
+type hRequest struct { // outgoing. needs building
 	// Mixins
 	wRequest_
 	// Stream states (stocks)
@@ -208,8 +208,26 @@ type hRequest struct {
 	// Stream states (zeros)
 }
 
+func (r *hRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :uri = uri
+	// TODO: set :method and :uri
+	return false
+}
+func (r *hRequest) setAuthority(hostname []byte, colonPort []byte) bool { // used by agents
+	// TODO: set :authority
+	return false
+}
+
+func (r *hRequest) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
+func (r *hRequest) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
+func (r *hRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
+func (r *hRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
+func (r *hRequest) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+
+func (r *hRequest) addedHeaders() []byte { return nil }
+func (r *hRequest) fixedHeaders() []byte { return nil }
+
 // hResponse is the client-side HWEB response.
-type hResponse struct {
+type hResponse struct { // incoming. needs parsing
 	// Mixins
 	wResponse_
 	// Stream states (stocks)
@@ -217,3 +235,5 @@ type hResponse struct {
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
+
+func (r *hResponse) readContent() (p []byte, err error) { return r.readContentH() }

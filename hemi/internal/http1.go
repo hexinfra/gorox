@@ -531,6 +531,23 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 // http1Out_ is used by http1Response and H1Request.
 type http1Out_ = webOut_
 
+func (r *http1Out_) addHeader1(name []byte, value []byte) bool {
+	if len(name) == 0 {
+		return false
+	}
+	headerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], name)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += copy(r.fields[from:], value)
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
 func (r *http1Out_) header1(name []byte) (value []byte, ok bool) {
 	if r.nHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
@@ -558,23 +575,6 @@ func (r *http1Out_) hasHeader1(name []byte) bool {
 		}
 	}
 	return false
-}
-func (r *http1Out_) addHeader1(name []byte, value []byte) bool {
-	if len(name) == 0 {
-		return false
-	}
-	headerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], name)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
-		from += 2
-		from += copy(r.fields[from:], value)
-		r._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
 }
 func (r *http1Out_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)

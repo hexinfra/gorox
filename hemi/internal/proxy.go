@@ -5,6 +5,8 @@
 
 // General proxy implementation.
 
+// Proxies can be configured as either forward or reverse, while agents are reverse only.
+
 package internal
 
 // proxy_ is a mixin for proxies.

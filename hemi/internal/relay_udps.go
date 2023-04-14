@@ -3,45 +3,45 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS proxy filter implementation.
+// UDP/DTLS relay filter implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSFilter("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
-		f := new(tcpsProxy)
+	RegisterUDPSFilter("udpsRelay", func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter {
+		f := new(udpsRelay)
 		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
 
-// tcpsProxy relays TCP/TLS connections to another TCP/TLS server.
-type tcpsProxy struct {
+// udpsRelay relays UDP/DTLS connections to another UDP/DTLS server.
+type udpsRelay struct {
 	// Mixins
-	TCPSFilter_
+	UDPSFilter_
 	proxy_
 	// Assocs
-	mesher *TCPSMesher
+	mesher *UDPSMesher
 	// States
 }
 
-func (f *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (f *udpsRelay) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	f.MakeComp(name)
 	f.proxy_.onCreate(stage)
 	f.mesher = mesher
 }
-func (f *tcpsProxy) OnShutdown() {
+func (f *udpsRelay) OnShutdown() {
 	f.mesher.SubDone()
 }
 
-func (f *tcpsProxy) OnConfigure() {
+func (f *udpsRelay) OnConfigure() {
 	f.proxy_.onConfigure(f)
 }
-func (f *tcpsProxy) OnPrepare() {
+func (f *udpsRelay) OnPrepare() {
 	f.proxy_.onPrepare(f)
 }
 
-func (f *tcpsProxy) Deal(conn *TCPSConn) (next bool) {
+func (f *udpsRelay) Deal(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

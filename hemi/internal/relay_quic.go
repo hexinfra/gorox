@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC proxy filter implementation.
+// QUIC relay filter implementation.
 
 package internal
 
 func init() {
-	RegisterQUICFilter("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICFilter {
-		f := new(quicProxy)
+	RegisterQUICFilter("quicRelay", func(name string, stage *Stage, mesher *QUICMesher) QUICFilter {
+		f := new(quicRelay)
 		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
 
-// quicProxy relays QUIC connections to another QUIC server.
-type quicProxy struct {
+// quicRelay relays QUIC connections to another QUIC server.
+type quicRelay struct {
 	// Mixins
 	QUICFilter_
 	proxy_
@@ -25,23 +25,23 @@ type quicProxy struct {
 	// States
 }
 
-func (f *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+func (f *quicRelay) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	f.MakeComp(name)
 	f.proxy_.onCreate(stage)
 	f.mesher = mesher
 }
-func (f *quicProxy) OnShutdown() {
+func (f *quicRelay) OnShutdown() {
 	f.mesher.SubDone()
 }
 
-func (f *quicProxy) OnConfigure() {
+func (f *quicRelay) OnConfigure() {
 	f.proxy_.onConfigure(f)
 }
-func (f *quicProxy) OnPrepare() {
+func (f *quicRelay) OnPrepare() {
 	f.proxy_.onPrepare(f)
 }
 
-func (f *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
+func (f *quicRelay) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

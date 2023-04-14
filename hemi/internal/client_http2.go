@@ -38,19 +38,19 @@ func createHTTP2Outgate(stage *Stage) *HTTP2Outgate {
 // HTTP2Outgate
 type HTTP2Outgate struct {
 	// Mixins
-	httpOutgate_
+	webOutgate_
 	// States
 }
 
 func (f *HTTP2Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP2Outgate, stage)
+	f.webOutgate_.onCreate(signHTTP2Outgate, stage)
 }
 
 func (f *HTTP2Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure(f)
+	f.webOutgate_.onConfigure(f)
 }
 func (f *HTTP2Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare(f)
+	f.webOutgate_.onPrepare(f)
 }
 
 func (f *HTTP2Outgate) run() { // goroutine
@@ -429,7 +429,7 @@ var poolH2Socket sync.Pool
 // H2Socket is the client-side HTTP/2 websocket.
 type H2Socket struct {
 	// Mixins
-	hSocket_
+	wSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

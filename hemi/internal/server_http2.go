@@ -1235,7 +1235,7 @@ var poolHTTP2Socket sync.Pool
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {
 	// Mixins
-	httpSocket_
+	webSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

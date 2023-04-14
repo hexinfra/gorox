@@ -421,7 +421,7 @@ var poolHTTP3Socket sync.Pool
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
 	// Mixins
-	httpSocket_
+	webSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

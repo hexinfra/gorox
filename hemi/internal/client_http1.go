@@ -40,20 +40,20 @@ func createHTTP1Outgate(stage *Stage) *HTTP1Outgate {
 // HTTP1Outgate
 type HTTP1Outgate struct {
 	// Mixins
-	httpOutgate_
+	webOutgate_
 	// States
 	conns any // TODO
 }
 
 func (f *HTTP1Outgate) onCreate(stage *Stage) {
-	f.httpOutgate_.onCreate(signHTTP1Outgate, stage)
+	f.webOutgate_.onCreate(signHTTP1Outgate, stage)
 }
 
 func (f *HTTP1Outgate) OnConfigure() {
-	f.httpOutgate_.onConfigure(f)
+	f.webOutgate_.onConfigure(f)
 }
 func (f *HTTP1Outgate) OnPrepare() {
-	f.httpOutgate_.onPrepare(f)
+	f.webOutgate_.onPrepare(f)
 }
 
 func (f *HTTP1Outgate) run() { // goroutine
@@ -666,7 +666,7 @@ var poolH1Socket sync.Pool
 // H1Socket is the client-side HTTP/1 websocket.
 type H1Socket struct {
 	// Mixins
-	hSocket_
+	wSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

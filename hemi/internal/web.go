@@ -47,7 +47,7 @@ func (k *keeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *keeper_) SendTimeout() time.Duration { return k.sendTimeout }
 func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
 
-// stream is the HTTP request-response exchange and the interface for *http[1-3]Stream and *H[1-3]Stream.
+// stream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
 	keeper() keeper
 	peerAddr() net.Addr

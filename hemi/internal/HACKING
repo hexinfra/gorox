@@ -57,8 +57,8 @@ NOTES
   * proxies can be forward or reverse.
   * agents are reverse only.
 
-HTTP SERVER -> HTTP PROXY -> HTTP CLIENT
-----------------------------------------
+WEB SERVER -> WEB PROXY -> WEB CLIENT
+-------------------------------------
 
   * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in client side.
   * we support revisers in server side, but we don't support revisers in client side.

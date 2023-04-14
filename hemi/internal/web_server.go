@@ -3151,15 +3151,15 @@ type Socket interface {
 	Close() error
 }
 
-// httpSocket_ is the mixin for http[1-3]Socket.
-type httpSocket_ struct {
+// webSocket_ is the mixin for http[1-3]Socket.
+type webSocket_ struct {
 	// Assocs
 	shell Socket // the concrete Socket
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *httpSocket_) onUse() {
+func (s *webSocket_) onUse() {
 }
-func (s *httpSocket_) onEnd() {
+func (s *webSocket_) onEnd() {
 }

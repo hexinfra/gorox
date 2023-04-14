@@ -24,7 +24,7 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webClient_ is a mixin for httpOutgate_ and webBackend_.
+// webClient_ is a mixin for webOutgate_ and webBackend_.
 type webClient_ struct {
 	// Mixins
 	keeper_
@@ -51,24 +51,24 @@ func (w *webClient_) onPrepare(shell Component) {
 	w.contentSaver_.onPrepare(shell, 0755)
 }
 
-// httpOutgate_ is the mixin for HTTP[1-3]Outgate.
-type httpOutgate_ struct {
+// webOutgate_ is the mixin for HTTP[1-3]Outgate.
+type webOutgate_ struct {
 	// Mixins
 	outgate_
 	webClient_
 	// States
 }
 
-func (f *httpOutgate_) onCreate(name string, stage *Stage) {
+func (f *webOutgate_) onCreate(name string, stage *Stage) {
 	f.outgate_.onCreate(name, stage)
 	f.webClient_.onCreate()
 }
 
-func (f *httpOutgate_) onConfigure(shell Component) {
+func (f *webOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
 	f.webClient_.onConfigure(shell, "outgates")
 }
-func (f *httpOutgate_) onPrepare(shell Component) {
+func (f *webOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
 	f.webClient_.onPrepare(shell)
 }
@@ -904,18 +904,18 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// hSocket is the interface for *H[1-3]Socket.
-type hSocket interface {
+// wSocket is the interface for *H[1-3]Socket.
+type wSocket interface {
 }
 
-// hSocket_ is the mixin for H[1-3]Socket.
-type hSocket_ struct {
+// wSocket_ is the mixin for H[1-3]Socket.
+type wSocket_ struct {
 	// Assocs
-	shell hSocket // the concrete hSocket
+	shell wSocket // the concrete wSocket
 	// Stream states (zeros)
 }
 
-func (s *hSocket_) onUse() {
+func (s *wSocket_) onUse() {
 }
-func (s *hSocket_) onEnd() {
+func (s *wSocket_) onEnd() {
 }

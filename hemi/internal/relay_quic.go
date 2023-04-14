@@ -41,8 +41,10 @@ func (f *quicRelay) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
+			} else if quicBackend, ok := backend.(*QUICBackend); ok {
+				f.backend = quicBackend
 			} else {
-				f.backend = backend.(*QUICBackend)
+				UseExitf("incorrect backend '%s' for quicRelay\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

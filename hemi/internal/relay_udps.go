@@ -41,8 +41,10 @@ func (f *udpsRelay) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
+			} else if udpsBackend, ok := backend.(*UDPSBackend); ok {
+				f.backend = udpsBackend
 			} else {
-				f.backend = backend.(*UDPSBackend)
+				UseExitf("incorrect backend '%s' for udpsRelay\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

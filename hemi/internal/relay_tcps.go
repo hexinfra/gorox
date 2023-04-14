@@ -41,8 +41,10 @@ func (f *tcpsRelay) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
+			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
+				f.backend = tcpsBackend
 			} else {
-				f.backend = backend.(*TCPSBackend)
+				UseExitf("incorrect backend '%s' for tcpsRelay\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

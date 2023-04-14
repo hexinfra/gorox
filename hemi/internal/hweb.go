@@ -26,97 +26,69 @@ func (r *hwebOut_) sendChainH() error {
 
 //////////////////////////////////////// HWEB protocol elements.
 
-// head(64) = kind(8) streamID(24) bodySize(32)
+// head(64) = kind(8) streamID(24) flags(8) bodySize(24)
 
-// prefaceRecord = head prefaceBody
-// prefaceBody = *setting
+// prefaceRecord = head *setting
 // setting(32) = code(8) value(24)
 
-// request = message
-// response = message
-// message = headersRecord *contentRecord [ trailersRecord ]
+// message = headersRecord *fragmentRecord [ trailersRecord ]
 
-// headersRecord = head headersBody
-// headersBody = fieldsBody
-// fieldsBody = *field
-// field = flags(8) nameSize(8) valueSize(16) name value
+// headersRecord  = head *field
+// trailersRecord = head *field
+
+// field(32+) = flags(8) nameSize(8) valueSize(16) name value
 // name = 1*OCTET
 // value = *OCTET
 
-// contentRecord = head contentBody
-// contentBody = identityBody | chunkedBody
-// identityBody = *OCTET
-// chunkedBody = *chunk lastChunk
-// chunk = chunkSize(32) chunkData
-// chunkData = 1*OCTET
-// lastChunk = 0x00000000
-
-// trailersRecord = head trailersBody
-// trailersBody = fieldsBody
-
-const hwebVersion = 1
+// fragmentRecord = head *OCTET
 
 const ( // record kinds
 	hwebKindPreface  = 0
 	hwebKindHeaders  = 1
-	hwebKindContent  = 2
+	hwebKindFragment = 2
 	hwebKindTrailers = 3
 )
 
 const ( // setting codes
-	hwebSettingMaxTotalStreams   = 0 // default value
-	hwebSettingMaxActiveStreams  = 1 // default value
-	hwebSettingMaxFieldsBodySize = 2 // default value
+	hwebSettingMaxRecordBodySize    = 0
+	hwebSettingMaxConcurrentStreams = 1
+	hwebSettingTotalStreams         = 2
 )
 
-var hwebSettingDefaults = [...]int32{ // limit: 16777215
-	hwebSettingMaxTotalStreams:   10000,
-	hwebSettingMaxActiveStreams:  100,
-	hwebSettingMaxFieldsBodySize: 16384,
+var hwebSettingDefaults = [...]int32{
+	hwebSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
+	hwebSettingMaxConcurrentStreams: 100,   // allow: [1-16777215]
+	hwebSettingTotalStreams:         1000,  // allow: [10-16777215]
 }
 
 const ( // field flags
-	hwebFieldFlagPseudo = 0b00000001 // pseudo field?
+	hwebFieldFlagPseudo = 0b00000001 // pseudo field or not
 )
 
 /*
 
-  prefaceRecord ->
-    kind=0 streamID=0 bodySize=?? body=[??]
+on connection established:
 
-  <- prefaceRecord
-    kind=0 streamID=0 bodySize=?? body=[??]
+    -> kind=preface streamID=0 bodySize=?? body=[maxRecordBodySize=16376]
+    <- kind=preface streamID=0 bodySize=?? body=[maxRecordBodySize=16376 maxConcurrentStreams=10 totalStreams=1000]
 
+stream=1 (identity output):
 
-request=1
+    -> kind=headers streamID=1 bodySize=?? body=[:method=GET :uri=/ host=example.com:8081]
 
-  headersRecord ->
-    kind=1 streamID=1 bodySize=77 body=[..77..]
+    <- kind=headers streamID=1 bodySize=?? body=[:status=200 content-length=12]
+    <- kind=fragment streamID=1 bodySize=6 body=[hello,]
+    <- kind=fragment streamID=1 bodySize=6 body=[world!]
 
-response=1
+stream=2 (chunked output):
 
-  <- headersRecord
-    kind=1 streamID=1 bodySize=88 body=[..88..]
-  <- contentRecord
-    kind=2 streamID=1 bodySize=999 body=[...999...]
+    -> kind=headers streamID=2 bodySize=?? body=[:method=POST :uri=/abc?d=e host=example.com:8081 content-length=90]
+    -> kind=fragment streamID=2 bodySize=90 body=[...90...]
 
-
-request=2
-
-  headersRecord ->
-    kind=1 streamID=2 bodySize=11 body=[..11..]
-  contentRecord ->
-    kind=2 streamID=2 bodySize=222 body=[..222..]
-
-response=2
-
-  <- headersRecord
-    kind=1 streamID=2 bodySize=33 body=[..33..]
-  <- contentRecord
-    kind=2 streamID=2 bodySize=444 body=[...444...]
-  <- contentRecord
-    kind=2 streamID=2 bodySize=555 body=[...555...]
-  <- trailersRecord
-    kind=3 streamID=2 bodySize=66 body=[..66..]
+    <- kind=headers streamID=2 bodySize=?? body=[:status=200 content-type=text/html]
+    <- kind=fragment streamID=2 bodySize=777 body=[...777...]
+    <- kind=fragment streamID=2 bodySize=888 body=[...888...]
+    <- kind=fragment streamID=2 bodySize=0 body=[]
+    <- kind=trailers streamID=2 bodySize=?? body=[md5-digest=12345678901234567890123456789012]
 
 */

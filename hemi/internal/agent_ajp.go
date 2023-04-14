@@ -94,7 +94,7 @@ func (h *ajpAgent) IsProxy() bool { return true }
 func (h *ajpAgent) IsCache() bool { return h.cacher != nil }
 
 func (h *ajpAgent) Handle(req Request, resp Response) (next bool) {
-	// TODO: implementation, use WConn
+	// TODO: implementation, use PConn
 	resp.Send("ajp")
 	return
 }

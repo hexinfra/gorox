@@ -113,7 +113,7 @@ type ( // core types
 	XConn       = internal.XConn
 
 	WireBackend = internal.WireBackend // TCPSBackend | UnixBackend
-	WConn       = internal.WConn       // TConn | XConn
+	PConn       = internal.PConn       // TConn | XConn
 
 	QUICMesher = internal.QUICMesher
 	QUICFilter = internal.QUICFilter

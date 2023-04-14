@@ -132,15 +132,15 @@ func (b *UnixBackend) createNode(id int32) *unixNode {
 	return node
 }
 
-func (b *UnixBackend) Dial() (WConn, error) {
+func (b *UnixBackend) Dial() (PConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *UnixBackend) FetchConn() (WConn, error) {
+func (b *UnixBackend) FetchConn() (PConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *UnixBackend) StoreConn(conn WConn) {
+func (b *UnixBackend) StoreConn(conn PConn) {
 	xConn := conn.(*XConn)
 	xConn.node.storeConn(xConn)
 }
@@ -148,13 +148,13 @@ func (b *UnixBackend) StoreConn(conn WConn) {
 // unixNode is a node in UnixBackend.
 type unixNode struct {
 	// Mixins
-	wNode_
+	wireNode_
 	// Assocs
 	// States
 }
 
 func (n *unixNode) init(id int32, backend *UnixBackend) {
-	n.wNode_.init(id, backend)
+	n.wireNode_.init(id, backend)
 }
 
 func (n *unixNode) maintain(shut chan struct{}) { // goroutine
@@ -201,7 +201,7 @@ func putXConn(conn *XConn) {
 // XConn is a client-side connection to unixNode.
 type XConn struct { // only exported to hemi
 	// Mixins
-	wConn_
+	pConn_
 	// Conn states (non-zeros)
 	node     *unixNode     // associated node if client is UnixBackend
 	unixConn *net.UnixConn // unix conn
@@ -209,12 +209,12 @@ type XConn struct { // only exported to hemi
 }
 
 func (c *XConn) onGet(id int64, client unixClient, node *unixNode, unixConn *net.UnixConn) {
-	c.wConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.pConn_.onGet(id, client, client.MaxStreamsPerConn())
 	c.node = node
 	c.unixConn = unixConn
 }
 func (c *XConn) onPut() {
-	c.wConn_.onPut()
+	c.pConn_.onPut()
 	c.node = nil
 	c.unixConn = nil
 }

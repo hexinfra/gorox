@@ -124,7 +124,7 @@ func (h *fcgiAgent) IsCache() bool { return h.cacher != nil }
 func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 	var (
 		content  any
-		fConn    WConn
+		fConn    PConn
 		fErr     error
 		fContent any
 	)
@@ -234,7 +234,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) {
 // poolFCGIStream
 var poolFCGIStream sync.Pool
 
-func getFCGIStream(agent *fcgiAgent, conn WConn) *fcgiStream {
+func getFCGIStream(agent *fcgiAgent, conn PConn) *fcgiStream {
 	var stream *fcgiStream
 	if x := poolFCGIStream.Get(); x == nil {
 		stream = new(fcgiStream)
@@ -263,12 +263,12 @@ type fcgiStream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	agent  *fcgiAgent // associated agent
-	conn   WConn      // associated conn
+	conn   PConn      // associated conn
 	region Region     // a region-based memory pool
 	// Stream states (zeros)
 }
 
-func (s *fcgiStream) onUse(agent *fcgiAgent, conn WConn) {
+func (s *fcgiStream) onUse(agent *fcgiAgent, conn PConn) {
 	s.agent = agent
 	s.conn = conn
 	s.region.Init()

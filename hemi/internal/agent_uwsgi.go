@@ -90,7 +90,7 @@ func (h *uwsgiAgent) IsProxy() bool { return true }
 func (h *uwsgiAgent) IsCache() bool { return h.cacher != nil }
 
 func (h *uwsgiAgent) Handle(req Request, resp Response) (next bool) {
-	// TODO: implementation, use WConn
+	// TODO: implementation, use PConn
 	resp.Send("uwsgi")
 	return
 }

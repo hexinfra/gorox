@@ -12,11 +12,11 @@ THE WEB PICTURE
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
   [REVISERS]      ^    -------pass/post----->                 ^
                   |                                           |
-  httpIn_         | stream                    httpOut_        | stream
+  webIn_          | stream                    webOut_         | stream
   ^ - stream -----+                           ^ - stream -----+
   | - shell ------+                           | - shell ------+
-  |               | httpIn                    |               | httpOut
-  +-webRequest_   |                           +-hRequest_     |
+  |               | webIn                     |               | webOut
+  +-webRequest_   |                           +-wRequest_     |
     ^ - webConn --+---> http[1-3]Conn           ^ - hConn ----+---> H[1-3]Conn
     |             |                             |             |
     |             v                             |             v
@@ -31,11 +31,11 @@ THE WEB PICTURE
   <--http[1-3]Stream--                        <---H[1-3]Stream----
   [REVISERS]       ^   <------pass/post------                ^
                    |                                         |
-  httpOut_         | stream                   httpIn_        | stream
+  webOut_          | stream                   webIn_         | stream
   ^ - stream ------+                          ^ - stream ----+
   | - shell -------+                          | - shell -----+
-  |                | httpOut                  |              | httpIn
-  +-webResponse_   |                          +-hResponse_   |
+  |                | webOut                   |              | webIn
+  +-webResponse_   |                          +-wResponse_   |
     ^ - webConn ---+---> http[1-3]Conn          ^ - hConn ---+---> H[1-3]Conn
     |              |                            |            |
     |              v                            |            v

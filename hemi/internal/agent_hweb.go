@@ -21,10 +21,10 @@ type bStream struct {
 
 // bRequest
 type bRequest struct {
-	httpOut_
+	webOut_
 }
 
 // bResponse
 type bResponse struct {
-	httpIn_
+	webIn_
 }

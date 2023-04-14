@@ -95,7 +95,7 @@ func _newConfig() *config {
 
 		// udps conn vars. keep sync with udpsConnVariables in mesher_udps.go
 
-		// http request vars. keep sync with httpRequestVariables in server_http.go
+		// http request vars. keep sync with webRequestVariables in server_http.go
 		"method":      0, // GET, POST, ...
 		"scheme":      1, // http, https
 		"authority":   2, // example.com, example.org:8080

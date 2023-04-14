@@ -975,7 +975,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	return true // HTTP/1.0 doesn't support trailer.
 }
 
-func (r *http1Response) pass1xx(resp hResponse) bool { // used by proxies
+func (r *http1Response) pass1xx(resp wResponse) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

@@ -12,7 +12,7 @@ NAMING
 
     as mixin types:
 
-      hRequest_
+      wRequest_
       webServer_
 	  _client_
 

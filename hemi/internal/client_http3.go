@@ -163,7 +163,7 @@ func putH3Conn(conn *H3Conn) {
 // H3Conn
 type H3Conn struct {
 	// Mixins
-	hConn_
+	wConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -174,12 +174,12 @@ type H3Conn struct {
 }
 
 func (c *H3Conn) onGet(id int64, client httpClient, node *http3Node, quicConn *quix.Conn) {
-	c.hConn_.onGet(id, client)
+	c.wConn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
 }
 func (c *H3Conn) onPut() {
-	c.hConn_.onPut()
+	c.wConn_.onPut()
 	c.node = nil
 	c.quicConn = nil
 	c.activeStreams = 0
@@ -319,7 +319,7 @@ func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 // H3Request is the client-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building
 	// Mixins
-	hRequest_
+	wRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -385,7 +385,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil }
 // H3Response is the client-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing
 	// Mixins
-	hResponse_
+	wResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

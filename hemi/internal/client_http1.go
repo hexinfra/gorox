@@ -236,7 +236,7 @@ func putH1Conn(conn *H1Conn) {
 // H1Conn is the client-side HTTP/1 connection.
 type H1Conn struct {
 	// Mixins
-	hConn_
+	wConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -250,7 +250,7 @@ type H1Conn struct {
 }
 
 func (c *H1Conn) onGet(id int64, client httpClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.hConn_.onGet(id, client)
+	c.wConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -260,7 +260,7 @@ func (c *H1Conn) onPut() {
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.hConn_.onPut()
+	c.wConn_.onPut()
 }
 
 func (c *H1Conn) UseStream() *H1Stream {
@@ -378,7 +378,7 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 // H1Request is the client-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
 	// Mixins
-	hRequest_
+	wRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -515,7 +515,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 // H1Response is the client-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
 	// Mixins
-	hResponse_
+	wResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

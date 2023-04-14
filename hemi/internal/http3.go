@@ -13,7 +13,7 @@ import (
 )
 
 // http3In_ is used by http3Request and H3Response.
-type http3In_ = httpIn_
+type http3In_ = webIn_
 
 func (r *http3In_) _growHeaders3(size int32) bool {
 	// TODO
@@ -27,7 +27,7 @@ func (r *http3In_) readContent3() (p []byte, err error) {
 }
 
 // http3Out_ is used by http3Response and H3Request.
-type http3Out_ = httpOut_
+type http3Out_ = webOut_
 
 func (r *http3Out_) header3(name []byte) (value []byte, ok bool) {
 	// TODO

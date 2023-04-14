@@ -25,10 +25,10 @@ type hwebStream struct {
 
 // hwebRequest
 type hwebRequest struct {
-	httpIn_
+	webIn_
 }
 
 // hwebResponse
 type hwebResponse struct {
-	httpOut_
+	webOut_
 }

@@ -162,7 +162,7 @@ func putH2Conn(conn *H2Conn) {
 // H2Conn
 type H2Conn struct {
 	// Mixins
-	hConn_
+	wConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -174,13 +174,13 @@ type H2Conn struct {
 }
 
 func (c *H2Conn) onGet(id int64, client httpClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.hConn_.onGet(id, client)
+	c.wConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *H2Conn) onPut() {
-	c.hConn_.onPut()
+	c.wConn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
@@ -348,7 +348,7 @@ func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 // H2Request is the client-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building
 	// Mixins
-	hRequest_
+	wRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -414,7 +414,7 @@ func (r *H2Request) fixedHeaders() []byte { return nil }
 // H2Response is the client-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing
 	// Mixins
-	hResponse_
+	wResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

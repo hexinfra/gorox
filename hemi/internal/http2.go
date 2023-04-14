@@ -13,7 +13,7 @@ import (
 )
 
 // http2In_ is used by http2Request and H2Response.
-type http2In_ = httpIn_
+type http2In_ = webIn_
 
 func (r *http2In_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
@@ -38,7 +38,7 @@ func (r *http2In_) readContent2() (p []byte, err error) {
 }
 
 // http2Out_ is used by http2Response and H2Request.
-type http2Out_ = httpOut_
+type http2Out_ = webOut_
 
 func (r *http2Out_) header2(name []byte) (value []byte, ok bool) {
 	// TODO

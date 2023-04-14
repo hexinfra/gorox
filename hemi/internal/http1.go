@@ -14,7 +14,7 @@ import (
 )
 
 // http1In_ is used by http1Request and H1Response.
-type http1In_ = httpIn_
+type http1In_ = webIn_
 
 func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
@@ -529,7 +529,7 @@ func (r *http1In_) growChunked1() bool { // HTTP/1 is not a binary protocol, we 
 }
 
 // http1Out_ is used by http1Response and H1Request.
-type http1Out_ = httpOut_
+type http1Out_ = webOut_
 
 func (r *http1Out_) header1(name []byte) (value []byte, ok bool) {
 	if r.nHeaders > 1 && len(name) > 0 {

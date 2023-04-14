@@ -667,7 +667,7 @@ func putFCGIRecords(records []byte) {
 	poolFCGIRecords.Put(records)
 }
 
-// fcgiResponse must implements httpIn and hResponse interface.
+// fcgiResponse must implements webIn and wResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream
@@ -1218,7 +1218,7 @@ func (r *fcgiResponse) HasTrailers() bool             { return false } // fcgi d
 
 func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't support trailers
 
-func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by httpIn interface
+func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by webIn interface
 
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
 func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers

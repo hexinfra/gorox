@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// udpsRelay relays UDP/DTLS connections to another UDP/DTLS server.
+// udpsRelay relays UDP/DTLS connections to backend UDP/DTLS server.
 type udpsRelay struct {
 	// Mixins
 	UDPSFilter_

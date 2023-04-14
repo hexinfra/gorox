@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// tcpsRelay relays TCP/TLS connections to another TCP/TLS server.
+// tcpsRelay relays TCP/TLS connections to backend TCP/TLS server.
 type tcpsRelay struct {
 	// Mixins
 	TCPSFilter_

@@ -7,6 +7,7 @@
 
 // HWEB is a binary HTTP gateway protocol like FCGI, but has a lot of improvements over FCGI.
 // HWEB also borrows some ideas from HTTP/2.
+// Currently HWEB only supports normal request/response model.
 
 package internal
 
@@ -72,7 +73,7 @@ on connection established:
     -> kind=preface streamID=0 bodySize=4 body=[maxRecordBodySize=16376]
     <- kind=preface streamID=0 bodySize=12 body=[maxRecordBodySize=16376 maxConcurrentStreams=10 totalStreams=1000]
 
-stream=1 (identity output):
+stream=1 (sized output):
 
     -> kind=headers streamID=1 bodySize=?? body=[:method=GET :uri=/hello host=example.com:8081]
 
@@ -80,7 +81,7 @@ stream=1 (identity output):
     <- kind=fragment streamID=1 bodySize=6 body=[hello,]
     <- kind=fragment streamID=1 bodySize=6 body=[world!]
 
-stream=2 (chunked output):
+stream=2 (unsized output):
 
     -> kind=headers streamID=2 bodySize=?? body=[:method=POST :uri=/abc?d=e host=example.com:8081 content-length=90]
     -> kind=fragment streamID=2 bodySize=90 body=[...90...]

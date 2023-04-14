@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"io"
 	"net"
 	"sync"
 	"syscall"
@@ -80,6 +81,24 @@ func (n *hwebNode) storeConn(wConn *hConn) {
 	// TODO
 }
 
+// poolHConn is the client-side HWEB connection pool.
+var poolHConn sync.Pool
+
+func getHConn(id int64, client webClient, node *hwebNode, netConn net.Conn, rawConn syscall.RawConn) *hConn {
+	var conn *hConn
+	if x := poolHConn.Get(); x == nil {
+		conn = new(hConn)
+	} else {
+		conn = x.(*hConn)
+	}
+	conn.onGet(id, client, node, netConn, rawConn)
+	return conn
+}
+func putHConn(conn *hConn) {
+	conn.onPut()
+	poolHConn.Put(conn)
+}
+
 // hConn
 type hConn struct {
 	// Mixins
@@ -107,6 +126,50 @@ func (c *hConn) onPut() {
 	c.rawConn = nil
 	c.activeStreams = 0
 }
+
+func (c *hConn) FetchStream() *hStream {
+	// TODO: stream.onUse()
+	return nil
+}
+func (c *hConn) StoreStream(stream *hStream) {
+	// TODO
+	stream.onEnd()
+}
+
+func (c *hConn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
+}
+
+func (c *hConn) setWriteDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+func (c *hConn) setReadDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+
+func (c *hConn) write(p []byte) (int, error) { return c.netConn.Write(p) }
+func (c *hConn) writev(vector *net.Buffers) (int64, error) {
+	// Will consume vector automatically
+	return vector.WriteTo(c.netConn)
+}
+func (c *hConn) readAtLeast(p []byte, n int) (int, error) {
+	return io.ReadAtLeast(c.netConn, p, n)
+}
+
+func (c *hConn) closeConn() { c.netConn.Close() } // used by codes other than dial
 
 // poolHStream
 var poolHStream sync.Pool

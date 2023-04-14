@@ -169,8 +169,8 @@ func (g *httpxGate) serveTCP() { // goroutine
 				g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			webConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
+			go webConn.serve() // webConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -207,8 +207,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 			if connState.NegotiatedProtocol == "h2" {
 				getHTTPConn = getHTTP2Conn
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			webConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
+			go webConn.serve() // webConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -227,7 +227,7 @@ func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
+func getHTTP2Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webConn {
 	var conn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		conn = new(http2Conn)
@@ -245,7 +245,7 @@ func putHTTP2Conn(conn *http2Conn) {
 // http2Conn is the server-side HTTP/2 connection.
 type http2Conn struct {
 	// Mixins
-	httpConn_
+	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
@@ -285,7 +285,7 @@ type http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, server, gate)
+	c.webConn_.onGet(id, server, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.frames == nil {
@@ -304,7 +304,7 @@ func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netCon
 	}
 }
 func (c *http2Conn) onPut() {
-	c.httpConn_.onPut()
+	c.webConn_.onPut()
 	c.netConn = nil
 	c.rawConn = nil
 	// c.frames is reserved
@@ -1025,7 +1025,7 @@ func putHTTP2Stream(stream *http2Stream) {
 // http2Stream is the server-side HTTP/2 stream.
 type http2Stream struct {
 	// Mixins
-	httpStream_
+	webStream_
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
@@ -1046,7 +1046,7 @@ type http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
-	s.httpStream_.onUse()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
@@ -1057,7 +1057,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.httpStream_.onEnd()
+	s.webStream_.onEnd()
 	s.conn = nil
 	s.http2Stream0 = http2Stream0{}
 }
@@ -1124,7 +1124,7 @@ func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct { // incoming. needs parsing
 	// Mixins
-	httpRequest_
+	webRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1151,7 +1151,7 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 // http2Response is the server-side HTTP/2 response.
 type http2Response struct { // outgoing. needs building
 	// Mixins
-	httpResponse_
+	webResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

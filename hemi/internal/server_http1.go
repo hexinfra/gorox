@@ -23,7 +23,7 @@ import (
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
+func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webConn {
 	var conn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		conn = new(http1Conn)
@@ -48,7 +48,7 @@ func putHTTP1Conn(conn *http1Conn) {
 // http1Conn is the server-side HTTP/1 connection.
 type http1Conn struct {
 	// Mixins
-	httpConn_
+	webConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -62,7 +62,7 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, server, gate)
+	c.webConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -80,7 +80,7 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
-	c.httpConn_.onPut()
+	c.webConn_.onPut()
 }
 
 func (c *http1Conn) serve() { // goroutine
@@ -135,7 +135,7 @@ func (c *http1Conn) closeConn() {
 // http1Stream is the server-side HTTP/1 stream.
 type http1Stream struct {
 	// Mixins
-	httpStream_
+	webStream_
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
@@ -252,7 +252,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s.httpStream_.onUse()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -261,7 +261,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.conn = nil
-	s.httpStream_.onEnd()
+	s.webStream_.onEnd()
 }
 
 func (s *http1Stream) keeper() keeper     { return s.conn.getServer() }
@@ -394,7 +394,7 @@ func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct { // incoming. needs parsing
 	// Mixins
-	httpRequest_
+	webRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -842,14 +842,14 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
 	// Mixins
-	httpResponse_
+	webResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in httpResponse_
+func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in webResponse_
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template

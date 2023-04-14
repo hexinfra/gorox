@@ -65,7 +65,7 @@ type stream interface {
 	markBroken()
 }
 
-// stream is the mixin for httpStream_ and hStream_.
+// stream is the mixin for webStream_ and hStream_.
 type stream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
@@ -99,7 +99,7 @@ type httpIn interface {
 	saveContentFilesDir() string
 }
 
-// httpIn_ is a mixin for httpRequest_ and hResponse_.
+// httpIn_ is a mixin for webRequest_ and hResponse_.
 type httpIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell  httpIn // *http[1-3]Request or *H[1-3]Response
@@ -1489,7 +1489,7 @@ type httpOut interface {
 	passBytes(p []byte) error // used by proxies
 }
 
-// httpOut_ is a mixin for httpResponse_ and hRequest_.
+// httpOut_ is a mixin for webResponse_ and hRequest_.
 type httpOut_ struct { // outgoing. needs building
 	// Assocs
 	shell  httpOut // *http[1-3]Response or *H[1-3]Request

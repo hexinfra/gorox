@@ -43,6 +43,5 @@ func (f *tcpsProxy) OnPrepare() {
 
 func (f *tcpsProxy) Deal(conn *TCPSConn) (next bool) {
 	// TODO
-	// NOTE: if configured as forward proxy, work as a SOCKS server? HTTP tunnel?
 	return
 }

@@ -3,14 +3,13 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// SOCKS server.
+// SOCKS 5 server.
 
-package socks
+package internal
 
 import (
 	"context"
 	"github.com/hexinfra/gorox/hemi/common/system"
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"net"
 	"sync"
 	"syscall"

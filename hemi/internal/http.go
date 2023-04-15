@@ -12,6 +12,7 @@ const ( // version codes. keep sync with ../hemi.go
 	Version1_1 = 1
 	Version2   = 2
 	Version3   = 3
+	Version255 = 255 // for hweb
 )
 
 var ( // version strings and byteses

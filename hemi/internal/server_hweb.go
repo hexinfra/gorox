@@ -190,8 +190,8 @@ type hwebStream0 struct { // for fast reset, entirely
 func (s *hwebStream) onUse(conn *hwebConn) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
-	s.request.onUse(255)
-	s.response.onUse(255)
+	s.request.onUse(Version255)
+	s.response.onUse(Version255)
 }
 func (s *hwebStream) onEnd() { // for zeros
 	s.response.onEnd()

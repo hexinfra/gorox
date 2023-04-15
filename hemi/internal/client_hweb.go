@@ -217,8 +217,8 @@ func (s *hStream) onUse(conn *hConn, id int32) { // for non-zeros
 	s.wStream_.onUse()
 	s.conn = conn
 	s.id = id
-	s.request.onUse(255)
-	s.response.onUse(255)
+	s.request.onUse(Version255)
+	s.response.onUse(Version255)
 }
 func (s *hStream) onEnd() { // for zeros
 	s.response.onEnd()

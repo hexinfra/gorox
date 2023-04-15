@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// rpcServer
+type rpcServer interface {
+	LinkSvcs()
+}
+
 // Svc is the RPC service.
 type Svc struct {
 	// Mixins

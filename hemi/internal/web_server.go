@@ -126,7 +126,7 @@ func (s *webServer_) linkApps() {
 		}
 	}
 }
-func (s *webServer_) linkSvcs() {
+func (s *webServer_) LinkSvcs() {
 	for _, svcName := range s.forSvcs {
 		svc := s.stage.Svc(svcName)
 		if svc == nil {

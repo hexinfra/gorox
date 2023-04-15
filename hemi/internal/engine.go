@@ -509,7 +509,7 @@ func (s *Stage) linkServerSvcs() {
 	}
 	for _, server := range s.servers {
 		if hrpcServer, ok := server.(hrpcServer); ok {
-			hrpcServer.linkSvcs()
+			hrpcServer.LinkSvcs()
 		} else if grpcServer, ok := server.(GRPCServer); ok {
 			grpcServer.LinkSvcs()
 		}

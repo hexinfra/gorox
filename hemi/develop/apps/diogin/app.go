@@ -58,6 +58,9 @@ func (h *dioginHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")
 }
 
+func (h *dioginHandlet) GET_(req Request, resp Response) {
+	resp.Send("diogin's index page")
+}
 func (h *dioginHandlet) GET_send(req Request, resp Response) {
 	resp.Send("utf-8中文字符串")
 }

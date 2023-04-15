@@ -484,12 +484,12 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 }
 func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
-	if !resp.IsSent() { // only happens on sized content.
+	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
-	} else if resp.isUnsized() { // write last chunk and trailers (if exist)
+	} else if resp.isUnsized() { // end unsized content and write trailers (if exist)
 		resp.endUnsized()
 	}
-	if !req.contentReceived {
+	if !req.contentReceived { // content exists but is not used, we receive and drop it here
 		req.dropContent()
 	}
 }
@@ -525,7 +525,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 		resp.AddHeaderBytes(bytesAllow, bytesGET)
 	}
 	resp.finalizeHeaders()
-	if req.methodCode == MethodHEAD || resp.forbidContent { // yes, we follow the method semantic even we are in abnormal
+	if req.methodCode == MethodHEAD || resp.forbidContent { // we follow the method semantic even we are in abnormal
 		resp.vector = resp.fixedVector[0:3]
 	} else {
 		resp.vector = resp.fixedVector[0:4]

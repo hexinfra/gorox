@@ -305,14 +305,14 @@ type Request interface {
 	Scheme() string // http, https
 
 	MethodCode() uint32
-	Method() string
+	Method() string // GET, POST, ...
 	IsGET() bool
 	IsPOST() bool
 	IsPUT() bool
 	IsDELETE() bool
 
-	IsAbsoluteForm() bool
-	IsAsteriskOptions() bool
+	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
+	IsAsteriskOptions() bool // OPTIONS *
 
 	Authority() string // hostname[:port]
 	Hostname() string  // hostname

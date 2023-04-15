@@ -5,6 +5,8 @@
 
 // SOCKS 5 server.
 
+// Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "websocket".
+
 package internal
 
 import (

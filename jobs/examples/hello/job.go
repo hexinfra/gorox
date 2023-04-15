@@ -42,9 +42,17 @@ func (j *helloCronjob) OnConfigure() {}
 func (j *helloCronjob) OnPrepare()   {}
 
 func (j *helloCronjob) Schedule() { // goroutine
-	Loop(time.Second, j.Shut, func(now time.Time) {
-		fmt.Println("hello, gorox!")
-	})
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+loop:
+	for {
+		select {
+		case <-j.Shut:
+			break loop
+		case now := <-ticker.C:
+			fmt.Printf("hello, gorox! time=%s\n", now.String())
+		}
+	}
 	if IsDebug(2) {
 		Debugf("helloCronjob=%s done\n", j.Name())
 	}

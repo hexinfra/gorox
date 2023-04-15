@@ -64,6 +64,8 @@ var ( // core funcs
 
 	ApplyFile = internal.ApplyFile
 	ApplyText = internal.ApplyText
+
+	Loop = internal.Loop
 )
 
 type ( // core types

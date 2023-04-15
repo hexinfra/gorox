@@ -6,3 +6,7 @@
 // Import your jobs.
 
 package jobs
+
+import (
+	_ "github.com/hexinfra/gorox/jobs/examples/hello"
+)

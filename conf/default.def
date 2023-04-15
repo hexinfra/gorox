@@ -204,8 +204,8 @@ stage {
 	}
 
 	// cronjobs
-	cleanCronjob "cc" {
+	cleanCronjob {
 	}
-	statCronjob "sc" {
+	statCronjob {
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 const Version = "0.1.0-dev"
 
-var ( // core funcs
+var ( // registers
 	RegisterUniture = internal.RegisterUniture
 
 	RegisterQUICFilter = internal.RegisterQUICFilter
@@ -37,7 +37,9 @@ var ( // core funcs
 	RegisterServer = internal.RegisterServer
 
 	RegisterCronjob = internal.RegisterCronjob
+)
 
+var ( // core funcs
 	SetBaseDir = internal.SetBaseDir
 	SetLogsDir = internal.SetLogsDir
 	SetTempDir = internal.SetTempDir
@@ -75,7 +77,7 @@ type ( // core types
 	QUICOutgate  = internal.QUICOutgate
 	TCPSOutgate  = internal.TCPSOutgate
 	UDPSOutgate  = internal.UDPSOutgate
-	UnixOutgate  = internal.UnixOutgate
+	UNIXOutgate  = internal.UNIXOutgate
 
 	Uniture = internal.Uniture
 
@@ -109,10 +111,10 @@ type ( // core types
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
 
-	UnixBackend = internal.UnixBackend
+	UNIXBackend = internal.UNIXBackend
 	XConn       = internal.XConn
 
-	WireBackend = internal.WireBackend // TCPSBackend | UnixBackend
+	WireBackend = internal.WireBackend // TCPSBackend | UNIXBackend
 	SConn       = internal.SConn       // TConn | XConn
 
 	QUICMesher = internal.QUICMesher

@@ -206,7 +206,7 @@ type desc struct {
 
 // rang defines a range.
 type rang struct { // 16 bytes
-	from, last int64 // [from, last]
+	from, last int64 // [from-last], inclusive
 }
 
 // para is a name-value parameter in multipart/form-data.

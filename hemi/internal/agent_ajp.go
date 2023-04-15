@@ -35,7 +35,7 @@ type ajpAgent struct {
 	// Assocs
 	stage   *Stage      // current stage
 	app     *App        // the app to which the agent belongs
-	backend WireBackend // *TCPSBackend or *UnixBackend
+	backend WireBackend // *TCPSBackend or *UNIXBackend
 	cacher  Cacher      // the cacher which is used by this agent
 	// States
 	bufferClientContent bool // client content is buffered anyway?

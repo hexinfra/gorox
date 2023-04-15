@@ -319,7 +319,7 @@ func (c *conn_) setNext(next conn) { c.next = next }
 
 func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
 
-// connection-oriented backend, supports TCPS and Unix.
+// connection-oriented backend, supports TCPS and UNIX.
 type WireBackend interface {
 	backend
 	streamHolder
@@ -328,7 +328,7 @@ type WireBackend interface {
 	StoreConn(conn SConn)
 }
 
-// connection-oriented node, supports TCPS and Unix.
+// connection-oriented node, supports TCPS and UNIX.
 type wireNode_ struct {
 	// Mixins
 	node_
@@ -341,7 +341,7 @@ func (n *wireNode_) init(id int32, backend WireBackend) {
 	n.backend = backend
 }
 
-// connection-oriented conn, supports TCPS and Unix.
+// connection-oriented conn, supports TCPS and UNIX.
 type SConn interface {
 	conn
 	SetWriteDeadline(deadline time.Time) error

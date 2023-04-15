@@ -15,15 +15,15 @@ import (
 )
 
 func init() {
-	registerFixture(signUnixOutgate)
+	registerFixture(signUNIXOutgate)
 	registerBackend("unixBackend", func(name string, stage *Stage) backend {
-		b := new(UnixBackend)
+		b := new(UNIXBackend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// unixClient is the interface for UnixOutgate and UnixBackend.
+// unixClient is the interface for UNIXOutgate and UNIXBackend.
 type unixClient interface {
 	client
 	streamHolder
@@ -46,38 +46,38 @@ func (u *unixClient_) onPrepare(shell Component) {
 	u.streamHolder_.onPrepare(shell)
 }
 
-const signUnixOutgate = "unixOutgate"
+const signUNIXOutgate = "unixOutgate"
 
-func createUnixOutgate(stage *Stage) *UnixOutgate {
-	unix := new(UnixOutgate)
+func createUNIXOutgate(stage *Stage) *UNIXOutgate {
+	unix := new(UNIXOutgate)
 	unix.onCreate(stage)
 	unix.setShell(unix)
 	return unix
 }
 
-// UnixOutgate component.
-type UnixOutgate struct {
+// UNIXOutgate component.
+type UNIXOutgate struct {
 	// Mixins
 	outgate_
 	unixClient_
 	// States
 }
 
-func (f *UnixOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signUnixOutgate, stage)
+func (f *UNIXOutgate) onCreate(stage *Stage) {
+	f.outgate_.onCreate(signUNIXOutgate, stage)
 	f.unixClient_.onCreate()
 }
 
-func (f *UnixOutgate) OnConfigure() {
+func (f *UNIXOutgate) OnConfigure() {
 	f.outgate_.onConfigure()
 	f.unixClient_.onConfigure(f)
 }
-func (f *UnixOutgate) OnPrepare() {
+func (f *UNIXOutgate) OnPrepare() {
 	f.outgate_.onPrepare()
 	f.unixClient_.onPrepare(f)
 }
 
-func (f *UnixOutgate) run() { // goroutine
+func (f *UNIXOutgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
@@ -87,20 +87,20 @@ func (f *UnixOutgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *UnixOutgate) Dial(address string) (*XConn, error) {
+func (f *UNIXOutgate) Dial(address string) (*XConn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UnixOutgate) FetchConn(address string) (*XConn, error) {
+func (f *UNIXOutgate) FetchConn(address string) (*XConn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UnixOutgate) StoreConn(conn *XConn) {
+func (f *UNIXOutgate) StoreConn(conn *XConn) {
 	// TODO
 }
 
-// UnixBackend component.
-type UnixBackend struct {
+// UNIXBackend component.
+type UNIXBackend struct {
 	// Mixins
 	backend_[*unixNode]
 	unixClient_
@@ -109,43 +109,43 @@ type UnixBackend struct {
 	health any // TODO
 }
 
-func (b *UnixBackend) onCreate(name string, stage *Stage) {
+func (b *UNIXBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
 	b.unixClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
-func (b *UnixBackend) OnConfigure() {
+func (b *UNIXBackend) OnConfigure() {
 	b.backend_.onConfigure()
 	b.unixClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 }
-func (b *UnixBackend) OnPrepare() {
+func (b *UNIXBackend) OnPrepare() {
 	b.backend_.onPrepare()
 	b.unixClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *UnixBackend) createNode(id int32) *unixNode {
+func (b *UNIXBackend) createNode(id int32) *unixNode {
 	node := new(unixNode)
 	node.init(id, b)
 	return node
 }
 
-func (b *UnixBackend) Dial() (SConn, error) {
+func (b *UNIXBackend) Dial() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *UnixBackend) FetchConn() (SConn, error) {
+func (b *UNIXBackend) FetchConn() (SConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *UnixBackend) StoreConn(conn SConn) {
+func (b *UNIXBackend) StoreConn(conn SConn) {
 	xConn := conn.(*XConn)
 	xConn.node.storeConn(xConn)
 }
 
-// unixNode is a node in UnixBackend.
+// unixNode is a node in UNIXBackend.
 type unixNode struct {
 	// Mixins
 	wireNode_
@@ -153,7 +153,7 @@ type unixNode struct {
 	// States
 }
 
-func (n *unixNode) init(id int32, backend *UnixBackend) {
+func (n *unixNode) init(id int32, backend *UNIXBackend) {
 	n.wireNode_.init(id, backend)
 }
 
@@ -203,7 +203,7 @@ type XConn struct { // only exported to hemi
 	// Mixins
 	sConn_
 	// Conn states (non-zeros)
-	node     *unixNode     // associated node if client is UnixBackend
+	node     *unixNode     // associated node if client is UNIXBackend
 	unixConn *net.UnixConn // unix conn
 	// Conn states (zeros)
 }

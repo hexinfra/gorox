@@ -77,7 +77,6 @@ type ( // core types
 	QUICOutgate  = internal.QUICOutgate
 	TCPSOutgate  = internal.TCPSOutgate
 	UDPSOutgate  = internal.UDPSOutgate
-	UNIXOutgate  = internal.UNIXOutgate
 
 	Uniture = internal.Uniture
 
@@ -110,12 +109,6 @@ type ( // core types
 
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
-
-	UNIXBackend = internal.UNIXBackend
-	XConn       = internal.XConn
-
-	WireBackend = internal.WireBackend // TCPSBackend | UNIXBackend
-	SConn       = internal.SConn       // TConn | XConn
 
 	QUICMesher = internal.QUICMesher
 	QUICFilter = internal.QUICFilter

@@ -177,7 +177,7 @@ func (n *quicNode) fetchConn() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (n *quicNode) storeConn(conn *QConn) {
+func (n *quicNode) storeConn(qConn *QConn) {
 	// Note: A QConn can be used concurrently, limited by maxStreams.
 	// TODO
 }

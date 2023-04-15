@@ -31,8 +31,6 @@ stage {
 	}
 	udpsOutgate {
 	}
-	unixOutgate {
-	}
 
 	// unitures
 	demoUniture {
@@ -50,8 +48,6 @@ stage {
 	tcpsBackend "tb" {
 	}
 	udpsBackend "ub" {
-	}
-	unixBackend "xb" {
 	}
 
 	// meshers

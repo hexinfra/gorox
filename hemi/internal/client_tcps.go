@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -141,30 +142,31 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 	return node
 }
 
-func (b *TCPSBackend) Dial() (SConn, error) {
+func (b *TCPSBackend) Dial() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *TCPSBackend) FetchConn() (SConn, error) {
+func (b *TCPSBackend) FetchConn() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *TCPSBackend) StoreConn(conn SConn) {
-	tConn := conn.(*TConn)
-	tConn.node.storeConn(tConn)
+func (b *TCPSBackend) StoreConn(conn *TConn) {
+	conn.node.storeConn(conn)
 }
 
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Mixins
-	wireNode_
+	node_
 	// Assocs
+	backend *TCPSBackend
 	// States
 }
 
 func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
-	n.wireNode_.init(id, backend)
+	n.node_.init(id)
+	n.backend = backend
 }
 
 func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
@@ -186,8 +188,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if IsDebug(2) {
 		Debugf("tcpsNode=%d dial %s\n", n.id, n.address)
 	}
-	backend := n.backend.(*TCPSBackend)
-	netConn, err := net.DialTimeout("tcp", n.address, backend.dialTimeout)
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -195,9 +196,9 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if IsDebug(2) {
 		Debugf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
 	}
-	connID := backend.nextConnID()
-	if backend.tlsMode {
-		tlsConn := tls.Client(netConn, backend.tlsConfig)
+	connID := n.backend.nextConnID()
+	if n.backend.tlsMode {
+		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
 		// TODO: timeout
 		if err := tlsConn.Handshake(); err != nil {
 			tlsConn.Close()
@@ -274,31 +275,47 @@ func putTConn(conn *TConn) {
 // TConn is a client-side connection to tcpsNode.
 type TConn struct { // only exported to hemi
 	// Mixins
-	sConn_
+	conn_
 	// Conn states (non-zeros)
-	node    *tcpsNode       // associated node if client is TCPSBackend
-	netConn net.Conn        // TCP, TLS
-	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP
+	node       *tcpsNode       // associated node if client is TCPSBackend
+	netConn    net.Conn        // TCP, TLS
+	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP
+	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)
+	counter     atomic.Int64 // used to make temp name
+	usedStreams atomic.Int32 // how many streams has been used?
+	writeBroken atomic.Bool  // write-side broken?
+	readBroken  atomic.Bool  // read-side broken?
 }
 
 func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.sConn_.onGet(id, client, client.MaxStreamsPerConn())
+	c.conn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.maxStreams = client.MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
-	c.sConn_.onPut()
+	c.conn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.writeBroken.Store(false)
+	c.readBroken.Store(false)
 }
 
 func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
 
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }
+
+func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
+
+func (c *TConn) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
@@ -342,3 +359,12 @@ func (c *TConn) Close() error { // only used by clients of dial
 }
 
 func (c *TConn) closeConn() { c.netConn.Close() } // used by codes other than dial
+
+func (c *TConn) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
+func (c *TConn) MarkBroken() {
+	c.markWriteBroken()
+	c.markReadBroken()
+}
+
+func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
+func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }

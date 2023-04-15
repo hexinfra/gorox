@@ -79,7 +79,6 @@ type Stage struct {
 	quicOutgate  *QUICOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
-	unixOutgate  *UNIXOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
 	unitures     compDict[Uniture]     // indexed by sign
 	backends     compDict[backend]     // indexed by backendName
@@ -116,7 +115,6 @@ func (s *Stage) onCreate() {
 	s.quicOutgate = createQUICOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
-	s.unixOutgate = createUNIXOutgate(s)
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
@@ -128,7 +126,6 @@ func (s *Stage) onCreate() {
 	s.fixtures[signQUICOutgate] = s.quicOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
-	s.fixtures[signUNIXOutgate] = s.unixOutgate
 
 	s.unitures = make(compDict[Uniture])
 	s.backends = make(compDict[backend])
@@ -194,7 +191,6 @@ func (s *Stage) OnShutdown() {
 	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.unixOutgate.OnShutdown()  // we don't treat this as goroutine
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -410,7 +406,6 @@ func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
-func (s *Stage) UNIXOutgate() *UNIXOutgate   { return s.unixOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }

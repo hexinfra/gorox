@@ -9,7 +9,8 @@ Welcome
     * Web Server (HTTP 1/2/3, TLS, WebSocket, HWEB, FCGI, uwsgi, AJP)
     * Application Server for Go (Applications, Frameworks)
     * RPC Server for Go (HRPC Services, gRPC Services)
-    * HTTP Proxy Server (Forward, Reverse, Tunneling, Caching)
+    * HTTP Proxy Server (HTTP 1/2/3, WebSocket, Forward, Reverse, Caching)
+    * General Reverse Proxy (QUIC, TCP/TLS, UDP/DTLS)
     * Service Mesh (Data Plane)
     * ... and more through its highly extensible compoments design!
 

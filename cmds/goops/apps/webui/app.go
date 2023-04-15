@@ -47,5 +47,5 @@ type webuiHandlet struct {
 
 func (h *webuiHandlet) OnPrepare() {
 	h.Sitex.OnPrepare()
-	h.rocks = h.Stage().Server("cli").(*RocksServer)
+	h.rocks = h.Stage().Server("rocks").(*RocksServer)
 }

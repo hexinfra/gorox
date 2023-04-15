@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package iface
+package cmdui
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	RegisterAppInit("iface", func(app *App) error {
+	RegisterAppInit("cmdui", func(app *App) error {
 		return nil
 	})
 }
@@ -52,7 +52,7 @@ func (h *v1Handlet) OnShutdown() {
 func (h *v1Handlet) OnConfigure() {
 }
 func (h *v1Handlet) OnPrepare() {
-	h.rocks = h.stage.Server("cli").(*RocksServer)
+	h.rocks = h.stage.Server("rocks").(*RocksServer)
 }
 
 func (h *v1Handlet) Handle(req Request, resp Response) (next bool) {

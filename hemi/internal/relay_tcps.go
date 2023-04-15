@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// tcpsRelay passes TCP/TLS connections to another TCP/TLS server.
+// tcpsRelay relays TCP/TLS connections to backend TCP/TLS server.
 type tcpsRelay struct {
 	// Mixins
 	TCPSFilter_
@@ -24,7 +24,6 @@ type tcpsRelay struct {
 	mesher  *TCPSMesher
 	backend *TCPSBackend
 	// States
-	proxyMode string
 }
 
 func (f *tcpsRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
@@ -37,16 +36,6 @@ func (f *tcpsRelay) OnShutdown() {
 }
 
 func (f *tcpsRelay) OnConfigure() {
-	// proxyMode
-	if v, ok := f.Find("proxyMode"); ok {
-		if mode, ok := v.String(); ok && (mode == "socks" || mode == "https" || mode == "reverse") {
-			f.proxyMode = mode
-		} else {
-			UseExitln("invalid proxyMode")
-		}
-	} else {
-		f.proxyMode = "reverse"
-	}
 	// toBackend
 	if v, ok := f.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -60,8 +49,8 @@ func (f *tcpsRelay) OnConfigure() {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if f.proxyMode == "reverse" {
-		UseExitln("toBackend is required for reverse proxy")
+	} else {
+		UseExitln("toBackend is required for tcpsRelay")
 	}
 }
 func (f *tcpsRelay) OnPrepare() {
@@ -70,14 +59,4 @@ func (f *tcpsRelay) OnPrepare() {
 func (f *tcpsRelay) Handle(conn *TCPSConn) (next bool) {
 	// TODO
 	return
-}
-
-func (f *tcpsRelay) socks(conn *TCPSConn) {
-	// TODO: SOCKS 5
-}
-func (f *tcpsRelay) https(conn *TCPSConn) {
-	// TODO: HTTP CONNECT
-}
-func (f *tcpsRelay) reverse(conn *TCPSConn) {
-	// TODO: reverse
 }

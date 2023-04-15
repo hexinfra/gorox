@@ -34,6 +34,7 @@ import ( // import contrib components here.
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/wrap"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
+	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"

@@ -7,11 +7,12 @@
 
 // Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "websocket".
 
-package internal
+package socks
 
 import (
 	"context"
 	"github.com/hexinfra/gorox/hemi/common/system"
+	. "github.com/hexinfra/gorox/hemi/internal"
 	"net"
 	"sync"
 	"syscall"

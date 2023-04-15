@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB agent handlet passes requests to backend HWEB servers and cache responses.
+// HWEB agent handlet relays requests to backend HWEB servers and cache responses.
 
 // HWEB agent handlets are reverse only, so they are agents, not proxies.
 

@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// http3Proxy handlet passes requests to backend HTTP/3 servers and cache responses.
+// http3Proxy handlet passes requests to another HTTP/3 servers and cache responses.
 type http3Proxy struct {
 	// Mixins
 	httpProxy_
@@ -181,7 +181,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock3Proxy socklet relays websockets to backend WebSocket/3 servers.
+// sock3Proxy socklet passes websockets to another WebSocket/3 servers.
 type sock3Proxy struct {
 	// Mixins
 	sockProxy_

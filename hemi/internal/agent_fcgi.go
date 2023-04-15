@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI agent handlet passes requests to backend FCGI servers and cache responses.
+// FCGI agent handlet relays requests to backend FCGI servers and cache responses.
 
 // FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
 // And we don't use request-side chunking due to the limitation of CGI/1.1 even

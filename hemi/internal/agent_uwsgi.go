@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI agent handlet passes requests to backend uWSGI servers and cache responses.
+// UWSGI agent handlet relays requests to backend uWSGI servers and cache responses.
 
 // UWSGI is mainly for Python applications.
 

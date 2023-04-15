@@ -78,7 +78,7 @@ func (h *httpProxy_) onConfigure() {
 	// colonPort
 	h.ConfigureBytes("colonPort", &h.colonPort, nil, nil)
 	// viaName
-	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox)
+	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox) // via: gorox
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

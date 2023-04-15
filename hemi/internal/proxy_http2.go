@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// http2Proxy handlet passes requests to backend HTTP/2 servers and cache responses.
+// http2Proxy handlet passes requests to another HTTP/2 servers and cache responses.
 type http2Proxy struct {
 	// Mixins
 	httpProxy_
@@ -181,7 +181,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock2Proxy socklet relays websockets to backend WebSocket/2 servers.
+// sock2Proxy socklet passes websockets to another WebSocket/2 servers.
 type sock2Proxy struct {
 	// Mixins
 	sockProxy_

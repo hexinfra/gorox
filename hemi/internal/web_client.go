@@ -192,7 +192,7 @@ type wRequest interface {
 // wRequest_ is the mixin for H[1-3]Request and hRequest.
 type wRequest_ struct { // outgoing. needs building
 	// Mixins
-	webOut_
+	webOut_ // outgoing web message
 	// Assocs
 	response wResponse // the corresponding response
 	// Stream states (stocks)
@@ -430,7 +430,7 @@ type wResponse interface {
 // wResponse_ is the mixin for H[1-3]Response.
 type wResponse_ struct { // incoming. needs parsing
 	// Mixins
-	webIn_
+	webIn_ // incoming web message
 	// Stream states (stocks)
 	stockCookies [8]cookie // for r.cookies
 	// Stream states (controlled)

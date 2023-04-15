@@ -2349,9 +2349,12 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 		if !rule.isMatch(req) {
 			continue
 		}
-		rule.executeSocket(req, sock)
-		// TODO: log?
-		return
+		if processed := rule.executeSocket(req, sock); processed {
+			if rule.logAccess && a.booker != nil {
+				// TODO: log?
+			}
+			return
+		}
 	}
 	// If we reach here, it means the socket is not processed by any rule in this app.
 	sock.Close()

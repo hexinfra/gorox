@@ -9,6 +9,7 @@ package exts
 
 import ( // import contrib components here.
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
+	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"

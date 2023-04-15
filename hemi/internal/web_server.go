@@ -443,7 +443,7 @@ type Request interface {
 // webRequest_ is the mixin for http[1-3]Request and hwebRequest.
 type webRequest_ struct { // incoming. needs parsing
 	// Mixins
-	webIn_
+	webIn_ // incoming web message
 	// Stream states (stocks)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
@@ -2663,7 +2663,7 @@ type Response interface {
 // webResponse_ is the mixin for http[1-3]Response and hwebResponse.
 type webResponse_ struct { // outgoing. needs building
 	// Mixins
-	webOut_
+	webOut_ // outgoing web message
 	// Assocs
 	request Request // *http[1-3]Request
 	// Stream states (stocks)

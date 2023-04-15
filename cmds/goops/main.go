@@ -9,7 +9,9 @@ package main
 
 import (
 	_ "github.com/hexinfra/gorox/cmds/goops/apps"
+	_ "github.com/hexinfra/gorox/cmds/goops/jobs"
 	_ "github.com/hexinfra/gorox/cmds/goops/srvs"
+	_ "github.com/hexinfra/gorox/cmds/goops/svcs"
 )
 
 import "github.com/hexinfra/gorox/hemi/process"

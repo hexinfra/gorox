@@ -67,17 +67,17 @@ func (f *tcpsRelay) OnConfigure() {
 func (f *tcpsRelay) OnPrepare() {
 }
 
-func (f *tcpsRelay) Deal(conn *TCPSConn) (next bool) {
+func (f *tcpsRelay) Handle(conn *TCPSConn) (next bool) {
 	// TODO
 	return
 }
 
-func (f *tcpsRelay) dealSOCKS(conn *TCPSConn) {
+func (f *tcpsRelay) socks(conn *TCPSConn) {
 	// TODO: SOCKS 5
 }
-func (f *tcpsRelay) dealHTTPS(conn *TCPSConn) {
+func (f *tcpsRelay) https(conn *TCPSConn) {
 	// TODO: HTTP CONNECT
 }
-func (f *tcpsRelay) deal(conn *TCPSConn) {
+func (f *tcpsRelay) reverse(conn *TCPSConn) {
 	// TODO: reverse
 }

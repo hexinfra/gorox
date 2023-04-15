@@ -43,7 +43,7 @@ func (f *helloFilter) OnConfigure() {
 func (f *helloFilter) OnPrepare() {
 }
 
-func (f *helloFilter) Deal(conn *TCPSConn) (next bool) {
+func (f *helloFilter) Handle(conn *TCPSConn) (next bool) {
 	conn.Write([]byte("hello, world"))
 	conn.Close()
 	return false

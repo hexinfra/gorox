@@ -116,7 +116,7 @@ func (g *quicGate) onConnectionClosed() {
 // QUICFilter
 type QUICFilter interface {
 	Component
-	Deal(conn *QUICConn, stream *QUICStream) (next bool)
+	Handle(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
 // QUICFilter_

@@ -190,7 +190,7 @@ func (g *tcpsGate) onConnectionClosed() {
 // TCPSFilter
 type TCPSFilter interface {
 	Component
-	Deal(conn *TCPSConn) (next bool)
+	Handle(conn *TCPSConn) (next bool)
 }
 
 // TCPSFilter_
@@ -286,7 +286,7 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 		conn.hookEditor(editor)
 	}
 	for _, filter := range c.filters {
-		if next := filter.Deal(conn); !next {
+		if next := filter.Handle(conn); !next {
 			return true
 		}
 	}

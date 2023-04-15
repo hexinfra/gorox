@@ -130,7 +130,7 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 // UDPSFilter
 type UDPSFilter interface {
 	Component
-	Deal(conn *UDPSConn) (next bool)
+	Handle(conn *UDPSConn) (next bool)
 }
 
 // UDPSFilter_

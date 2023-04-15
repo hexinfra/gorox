@@ -43,7 +43,7 @@ func (f *dnsFilter) OnConfigure() {
 func (f *dnsFilter) OnPrepare() {
 }
 
-func (f *dnsFilter) Deal(conn *UDPSConn) (next bool) {
+func (f *dnsFilter) Handle(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

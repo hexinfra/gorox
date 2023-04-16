@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-// rpcServer
-type rpcServer interface {
-	LinkSvcs()
-}
-
 // Svc is the RPC service.
 type Svc struct {
 	// Mixins
@@ -23,7 +18,7 @@ type Svc struct {
 	// Assocs
 	stage       *Stage        // current stage
 	stater      Stater        // the stater which is used by this svc
-	hrpcServers []*hrpcServer // linked hrpc servers. may be empty
+	hrpcServers []*hwebServer // linked hrpc servers. may be empty
 	grpcServers []GRPCServer  // linked grpc servers. may be empty
 	// States
 	hostnames       [][]byte // should be used by HRPC only
@@ -68,7 +63,7 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) linkHRPC(server *hrpcServer) { s.hrpcServers = append(s.hrpcServers, server) }
+func (s *Svc) linkHRPC(server *hwebServer) { s.hrpcServers = append(s.hrpcServers, server) }
 func (s *Svc) LinkGRPC(server GRPCServer)  { s.grpcServers = append(s.grpcServers, server) }
 
 func (s *Svc) GRPCServers() []GRPCServer { return s.grpcServers }
@@ -83,6 +78,6 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatchHRPC() {
+func (s *Svc) dispatchHRPC(req *hwebRequest, resp *hwebResponse) {
 	// TODO
 }

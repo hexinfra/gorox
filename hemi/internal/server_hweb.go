@@ -33,6 +33,7 @@ func (s *hwebServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 }
 func (s *hwebServer) OnShutdown() {
+	// TODO
 }
 
 func (s *hwebServer) OnConfigure() {
@@ -255,6 +256,31 @@ func (s *hwebStream) onEnd() { // for zeros
 }
 
 func (s *hwebStream) execute() { // goroutine
+}
+
+func (s *hwebStream) writeContinue() bool { // 100 continue
+	// TODO
+	return false
+}
+func (s *hwebStream) executeWebApp(app *App, req *hwebRequest, resp *hwebResponse) { // request & response
+	// TODO
+	//app.dispatchHandlet(req, resp)
+}
+func (s *hwebStream) executeRPCSvc(svc *Svc, req *hwebRequest, resp *hwebResponse) {
+	// TODO
+	svc.dispatchHRPC(req, resp)
+}
+func (s *hwebStream) serveAbnormal(req *hwebRequest, resp *hwebResponse) { // 4xx & 5xx
+	// TODO
+}
+func (s *hwebStream) executeSocket() { // upgrade: websocket
+	// TODO
+}
+func (s *hwebStream) executeTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *hwebStream) executeUDPTun() { // upgrade: connect-udp
+	// TODO
 }
 
 // hwebRequest is the server-side HWEB request.

@@ -5,6 +5,8 @@
 
 // HWEB server implementation.
 
+// HWEB follows HTTP/1.1 Semantics.
+
 package internal
 
 import (
@@ -14,6 +16,14 @@ import (
 	"sync"
 	"syscall"
 )
+
+func init() {
+	RegisterServer("hwebServer", func(name string, stage *Stage) Server {
+		s := new(hwebServer)
+		s.onCreate(name, stage)
+		return s
+	})
+}
 
 // hwebServer is the HWEB server.
 type hwebServer struct {
@@ -26,7 +36,10 @@ func (s *hwebServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 }
 func (s *hwebServer) OnShutdown() {
-	// TODO
+	// We don't close(s.Shut) here.
+	for _, gate := range s.gates {
+		gate.shutdown()
+	}
 }
 
 func (s *hwebServer) OnConfigure() {
@@ -84,8 +97,8 @@ func (g *hwebGate) open() error {
 	return err
 }
 func (g *hwebGate) shutdown() error {
-	// TODO
-	return nil
+	g.MarkShut()
+	return g.gate.Close()
 }
 
 func (g *hwebGate) serve() { // goroutine
@@ -145,22 +158,35 @@ func putHWEBConn(conn *hwebConn) {
 	poolHWEBConn.Put(conn)
 }
 
-// hwebConn
+// hwebConn is the server-side HWEB connection.
 type hwebConn struct {
+	// Mixins
 	webConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	hwebConn0 // all values must be zero by default in this struct!
+}
+type hwebConn0 struct { // for fast reset, entirely
 }
 
 func (c *hwebConn) onGet(id int64, server *hwebServer, gate *hwebGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.webConn_.onGet(id, server, gate)
+	// TODO
 }
 func (c *hwebConn) onPut() {
 	c.webConn_.onPut()
+	// TODO
 }
 
 func (c *hwebConn) serve() { // goroutine
 	// TODO
 }
 func (c *hwebConn) receive() { // goroutine
+	// TODO
+}
+
+func (c *hwebConn) closeConn() {
 	// TODO
 }
 
@@ -175,7 +201,7 @@ func putHWEBStream(stream *hwebStream) {
 	// TODO
 }
 
-// hwebStream
+// hwebStream is the server-side HWEB stream.
 type hwebStream struct {
 	// Mixins
 	webStream_
@@ -210,6 +236,9 @@ func (s *hwebStream) execute() { // goroutine
 	// TODO
 	putHWEBStream(s)
 }
+
+func (s *hwebStream) keeper() keeper     { return nil }
+func (s *hwebStream) peerAddr() net.Addr { return nil }
 
 func (s *hwebStream) writeContinue() bool { // 100 continue
 	// TODO

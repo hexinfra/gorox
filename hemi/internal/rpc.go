@@ -13,7 +13,6 @@ import (
 
 // GRPCServer is the interface for all gRPC servers.
 // Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
-// Maybe we can implement our own gRPC server following its official spec, see type grpcServer. TBD.
 type GRPCServer interface {
 	Server
 

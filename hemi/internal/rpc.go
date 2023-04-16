@@ -16,8 +16,26 @@ import (
 type GRPCServer interface {
 	Server
 
-	LinkSvcs()       // TODO
+	LinkSvcs()
 	RealServer() any // TODO
+}
+
+// hrpcServer is the HRPC server.
+type hrpcServer interface {
+	webServer
+
+	linkSvcs()
+	findSvc(hostname []byte) *Svc
+}
+
+// hrpcRequest
+type hrpcRequest interface {
+	// TODO
+}
+
+// hrpcResponse
+type hrpcResponse interface {
+	// TODO
 }
 
 // Svc is the RPC service.
@@ -25,10 +43,10 @@ type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage       *Stage        // current stage
-	stater      Stater        // the stater which is used by this svc
-	hrpcServers []*hwebServer // linked hrpc servers. may be empty
-	grpcServers []GRPCServer  // linked grpc servers. may be empty
+	stage       *Stage       // current stage
+	stater      Stater       // the stater which is used by this svc
+	hrpcServers []hrpcServer // linked hrpc servers. may be empty
+	grpcServers []GRPCServer // linked grpc servers. may be empty
 	// States
 	hostnames       [][]byte // should be used by HRPC only
 	maxContentSize  int64    // max content size allowed
@@ -72,8 +90,8 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) linkHRPC(server *hwebServer) { s.hrpcServers = append(s.hrpcServers, server) }
-func (s *Svc) LinkGRPC(server GRPCServer)  { s.grpcServers = append(s.grpcServers, server) }
+func (s *Svc) linkHRPC(server hrpcServer) { s.hrpcServers = append(s.hrpcServers, server) }
+func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers, server) }
 
 func (s *Svc) GRPCServers() []GRPCServer { return s.grpcServers }
 
@@ -87,6 +105,6 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatchHRPC(req *hwebRequest, resp *hwebResponse) {
+func (s *Svc) dispatchHRPC(req hrpcRequest, resp hrpcResponse) {
 	// TODO
 }

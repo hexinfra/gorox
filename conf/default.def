@@ -179,13 +179,15 @@ stage {
 	http3Server "h3s" {
 	}
 	httpxServer "hxs" {
+		.forApps         = ()
+		.forSvcs         = ()
 		.address         = string,required
+		.hrpcMode        = false
 		.tlsMode         = false
 		.readTimeout     = 60s
 		.writeTimeout    = 60s
 		.numGates        = runtime.NumCPU()
 		.maxConnsPerGate = 100000
-		.forApps         = ()
 		.enableTCPTun    = false
 		.enableUDPTun    = false
 		.maxContentSize  = 1T

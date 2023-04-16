@@ -448,7 +448,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-	s.executeNormal(app, req, resp)
+	s.executeWebApp(app, req, resp)
 
 	if s.isBroken() {
 		s.conn.keepConn = false // i/o error
@@ -482,7 +482,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
-func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Response) { // request & response
+func (s *http1Stream) executeWebApp(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
@@ -492,6 +492,10 @@ func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Resp
 	if !req.contentReceived { // content exists but is not used, we receive and drop it here
 		req.dropContent()
 	}
+}
+func (s *http1Stream) executeRPCSvc(svc *Svc, req *http1Request, resp *http1Response) { // request & response
+	// TODO
+	svc.dispatchHRPC(req, resp)
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn

@@ -45,10 +45,15 @@ type webServer_ struct {
 	gates      []webGate
 	defaultApp *App // default app
 	// States
+	hrpcMode     bool                // works as HRPC server and dispatches to svcs instead of apps?
 	forApps      []string            // for what apps
 	exactApps    []*hostnameTo[*App] // like: ("example.com")
 	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
 	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
+	forSvcs      []string            // for what svcs
+	exactSvcs    []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs   []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs   []*hostnameTo[*Svc] // like: ("www.example.*")
 	enableTCPTun bool                // allow CONNECT method?
 	enableUDPTun bool                // allow upgrade: connect-udp?
 }
@@ -61,8 +66,12 @@ func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
+	// hrpcMode
+	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
+	// forSvcs
+	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
 	// enableTCPTun
 	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
 	// enableUDPTun
@@ -137,6 +146,49 @@ func (s *webServer_) findApp(hostname []byte) *App {
 		}
 	}
 	return s.defaultApp
+}
+
+func (s *webServer_) linkSvcs() {
+	for _, svcName := range s.forSvcs {
+		svc := s.stage.Svc(svcName)
+		if svc == nil {
+			continue
+		}
+		svc.linkHRPC(s.shell.(hrpcServer))
+		// TODO: use hash table?
+		for _, hostname := range svc.exactHostnames {
+			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.suffixHostnames {
+			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.prefixHostnames {
+			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+	}
+}
+func (s *webServer_) findSvc(hostname []byte) *Svc {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactSvcs {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixSvcs {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixSvcs {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return nil
 }
 
 // webGate is the interface for *httpxGate, *http3Gate, and *hwebGate.

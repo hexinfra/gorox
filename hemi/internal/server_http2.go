@@ -872,9 +872,13 @@ func (s *http2Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *http2Stream) executeNormal(app *App, req *http2Request, resp *http2Response) { // request & response
+func (s *http2Stream) executeWebApp(app *App, req *http2Request, resp *http2Response) { // request & response
 	// TODO
 	app.dispatchHandlet(req, resp)
+}
+func (s *http2Stream) executeRPCSvc(svc *Svc, req *http2Request, resp *http2Response) { // request & response
+	// TODO
+	svc.dispatchHRPC(req, resp)
 }
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO

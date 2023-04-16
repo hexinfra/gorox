@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+func init() {
+	registerFixture(signHWEBOutgate)
+}
+
 const signHWEBOutgate = "hwebOutgate"
 
 func createHWEBOutgate(stage *Stage) *HWEBOutgate {

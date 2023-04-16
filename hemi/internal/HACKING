@@ -24,7 +24,7 @@ THE WEB PICTURE
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
-     [webServer]   [Handlet]/[httpProxy]         [webClient]
+     [webServer]   [Handlet]/[webProxy]          [webClient]
         1/2/3      /          /       \             1/2/3
                   /          /         \
                             /           \

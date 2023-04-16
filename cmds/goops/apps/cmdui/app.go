@@ -19,15 +19,15 @@ func init() {
 }
 
 func init() {
-	RegisterHandlet("v1Handlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(v1Handlet)
+	RegisterHandlet("cmdv1Handlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(cmdv1Handlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// v1Handlet
-type v1Handlet struct {
+// cmdv1Handlet
+type cmdv1Handlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -37,7 +37,7 @@ type v1Handlet struct {
 	// States
 }
 
-func (h *v1Handlet) onCreate(name string, stage *Stage, app *App) {
+func (h *cmdv1Handlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
@@ -45,22 +45,22 @@ func (h *v1Handlet) onCreate(name string, stage *Stage, app *App) {
 	r := simple.New()
 	h.SetRouter(h, r)
 }
-func (h *v1Handlet) OnShutdown() {
+func (h *cmdv1Handlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *v1Handlet) OnConfigure() {
+func (h *cmdv1Handlet) OnConfigure() {
 }
-func (h *v1Handlet) OnPrepare() {
+func (h *cmdv1Handlet) OnPrepare() {
 	h.rocks = h.stage.Server("rocks").(*RocksServer)
 }
 
-func (h *v1Handlet) Handle(req Request, resp Response) (next bool) {
+func (h *cmdv1Handlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, nil)
 	return
 }
 
-func (h *v1Handlet) GET_(req Request, resp Response) {
+func (h *cmdv1Handlet) GET_(req Request, resp Response) {
 	text := fmt.Sprintf("%d\n", h.rocks.NumConns())
 	resp.Send(text)
 }

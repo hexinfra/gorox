@@ -14,8 +14,8 @@ type httpProxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage
 	app     *App    // the app to which the proxy belongs
-	cacher  Cacher  // the cacher which is used by this proxy
 	backend backend // if works as forward proxy, this is nil
+	cacher  Cacher  // the cacher which is used by this proxy
 	// States
 	hostname            []byte      // ...
 	colonPort           []byte      // ...

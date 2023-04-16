@@ -295,3 +295,16 @@ func (r *hwebResponse) delHeaderAt(o uint8)                        { r.delHeader
 
 func (r *hwebResponse) addedHeaders() []byte { return nil }
 func (r *hwebResponse) fixedHeaders() []byte { return nil }
+
+// poolHWEBSocket
+var poolHWEBSocket sync.Pool
+
+// hwebSocket is the server-side HWEB websocket.
+type hwebSocket struct {
+	// Mixins
+	webSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}

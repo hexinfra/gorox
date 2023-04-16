@@ -34,7 +34,6 @@ func init() {
 type httpxServer struct {
 	// Mixins
 	webServer_
-	// Assocs
 	// States
 	forceScheme  int8 // scheme that must be used
 	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
@@ -398,6 +397,11 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		}
 	} else if req.schemeCode == SchemeHTTPS && server.adjustScheme {
 		req.schemeCode = SchemeHTTP
+	}
+
+	// TODO
+	if server.hrpcMode {
+	} else {
 	}
 
 	app := server.findApp(req.UnsafeHostname())

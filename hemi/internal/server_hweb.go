@@ -19,7 +19,6 @@ import (
 type hwebServer struct {
 	// Mixins
 	webServer_
-	// Assocs
 	// States
 }
 
@@ -159,17 +158,21 @@ func (c *hwebConn) onPut() {
 }
 
 func (c *hwebConn) serve() { // goroutine
+	// TODO
 }
 func (c *hwebConn) receive() { // goroutine
+	// TODO
 }
 
 // poolHWEBStream is the server-side HWEB stream pool.
 var poolHWEBStream sync.Pool
 
 func getHWEBStream(conn *hwebConn, id uint32) *hwebStream {
+	// TODO
 	return nil
 }
 func putHWEBStream(stream *hwebStream) {
+	// TODO
 }
 
 // hwebStream
@@ -204,6 +207,8 @@ func (s *hwebStream) onEnd() { // for zeros
 }
 
 func (s *hwebStream) execute() { // goroutine
+	// TODO
+	putHWEBStream(s)
 }
 
 func (s *hwebStream) writeContinue() bool { // 100 continue

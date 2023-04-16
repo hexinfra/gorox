@@ -5,6 +5,8 @@
 
 // HWEB client implementation.
 
+// HWEB follows HTTP/1.1 Semantics.
+
 package internal
 
 import (
@@ -17,6 +19,11 @@ import (
 
 func init() {
 	registerFixture(signHWEBOutgate)
+	registerBackend("hwebBackend", func(name string, stage *Stage) backend {
+		b := new(hwebBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 const signHWEBOutgate = "hwebOutgate"
@@ -68,6 +75,7 @@ func (f *HWEBOutgate) StoreConn(conn *H2Conn) {
 type hwebBackend struct {
 	// Mixins
 	webBackend_[*hwebNode]
+	// States
 }
 
 func (b *hwebBackend) onCreate(name string, stage *Stage) {
@@ -123,7 +131,10 @@ func (n *hwebNode) maintain(shut chan struct{}) { // goroutine
 func (n *hwebNode) fetchConn() (*hConn, error) {
 	// Note: An hConn can be used concurrently, limited by maxStreams.
 	// TODO
-	return nil, nil
+	var tcpConn *net.TCPConn
+	var rawConn syscall.RawConn
+	connID := n.backend.nextConnID()
+	return getHConn(connID, n.backend, n, tcpConn, rawConn), nil
 }
 func (n *hwebNode) storeConn(wConn *hConn) {
 	// Note: An hConn can be used concurrently, limited by maxStreams.
@@ -251,6 +262,7 @@ type hStream struct {
 	// Assocs
 	request  hRequest
 	response hResponse
+	socket   *hSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -272,6 +284,7 @@ func (s *hStream) onUse(conn *hConn, id int32) { // for non-zeros
 func (s *hStream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
+	s.socket = nil
 	s.conn = nil
 	s.hStream0 = hStream0{}
 	s.wStream_.onEnd()
@@ -283,6 +296,24 @@ func (s *hStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 func (s *hStream) Request() *hRequest   { return &s.request }
 func (s *hStream) Response() *hResponse { return &s.response }
 
+func (s *hStream) ExecuteNormal() error { // request & response
+	// TODO
+	return nil
+}
+func (s *hStream) ExecuteSocket() *hSocket { // upgrade: websocket
+	// TODO
+	return s.socket
+}
+func (s *hStream) ExecuteTCPTun() { // CONNECT method
+	// TODO
+}
+func (s *hStream) ExecuteUDPTun() { // upgrade: connect-udp
+	// TODO
+}
+
+func (s *hStream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
 func (s *hStream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
@@ -391,3 +422,16 @@ type hResponse struct { // incoming. needs parsing
 }
 
 func (r *hResponse) readContent() (p []byte, err error) { return r.readContentH() }
+
+// poolHSocket
+var poolHSocket sync.Pool
+
+// hSocket is the client-side HWEB websocket.
+type hSocket struct {
+	// Mixins
+	wSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}

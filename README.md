@@ -10,12 +10,12 @@ Welcome
     * Application Server for Go (Applications, Frameworks)
     * RPC Server for Go (HRPC Services, gRPC Services)
     * Web Proxy Server (HTTP 1/2/3, WebSocket, Forward, Reverse, Caching)
-    * Layer 4 Reverse Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
+    * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
     * Service Mesh (Data Plane)
     * ... and more through its highly extensible compoments design!
 
-  There is also a control plane program called Goops which is distributed
-  with Gorox and can be used to manage your Gorox cluster optionally.
+  There is also a controller program called Goops which is distributed with
+  Gorox and can be used to manage your Gorox cluster optionally.
 
   For more details about Gorox and Goops, please see: https://gorox.io/ .
 

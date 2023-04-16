@@ -234,14 +234,6 @@ func (s *hStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 func (s *hStream) Request() *hRequest   { return &s.request }
 func (s *hStream) Response() *hResponse { return &s.response }
 
-func (s *hStream) ExecuteNormal() error { // request & response
-	// TODO
-	return nil
-}
-
-func (s *hStream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
 func (s *hStream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }

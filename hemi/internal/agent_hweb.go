@@ -84,5 +84,6 @@ func (h *hwebAgent) IsProxy() bool { return true }
 func (h *hwebAgent) IsCache() bool { return h.cacher != nil }
 
 func (h *hwebAgent) Handle(req Request, resp Response) (next bool) { // reverse only
+	// TODO
 	return
 }

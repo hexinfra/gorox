@@ -5,9 +5,9 @@
 
 // HWEB protocol elements.
 
-// HWEB is a binary HTTP gateway protocol like FCGI, but has a lot of improvements over FCGI.
+// HWEB is a binary HTTP gateway protocol like FCGI, but has many improvements over FCGI.
 // HWEB also borrows some ideas from HTTP/2.
-// Currently HWEB only supports normal request/response model.
+// Currently HWEB only supports normal request/response mode. WebSocket, TCP tunnel, and UDP tunnel are not supported.
 
 package internal
 
@@ -95,7 +95,7 @@ func (r *hwebOut_) writeVectorH() error {
 // prefaceRecord = head *setting
 // setting(32) = code(8) value(24)
 
-// message = headersRecord *fragmentRecord [ trailersRecord ]
+// request/response = headersRecord *fragmentRecord [ trailersRecord ]
 
 // headersRecord  = head 1*field
 // trailersRecord = head 1*field

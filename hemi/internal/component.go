@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const ( // comp list
+const ( // component list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate
 	compUniture               // ...

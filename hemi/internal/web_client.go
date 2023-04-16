@@ -51,7 +51,7 @@ func (w *webClient_) onPrepare(shell Component) {
 	w.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate.
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEBOutgate.
 type webOutgate_ struct {
 	// Mixins
 	outgate_

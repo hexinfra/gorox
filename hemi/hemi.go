@@ -74,6 +74,7 @@ type ( // core types
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP3Outgate = internal.HTTP3Outgate
+	HWEBOutgate  = internal.HWEBOutgate
 	QUICOutgate  = internal.QUICOutgate
 	TCPSOutgate  = internal.TCPSOutgate
 	UDPSOutgate  = internal.UDPSOutgate

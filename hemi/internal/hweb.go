@@ -5,9 +5,12 @@
 
 // HWEB protocol elements.
 
-// HWEB is a binary HTTP gateway protocol like FCGI, but has many improvements over FCGI.
-// HWEB also borrows some ideas from HTTP/2.
-// Currently HWEB only supports normal request/response mode. WebSocket, TCP tunnel, and UDP tunnel are not supported.
+// HWEB is a binary HTTP/1.1 protocol. It borrows some ideas from HTTP/2, but is
+// simplified and optimized for IDC's internal communication. Its simple design
+// makes it very simple to implement as a server or client.
+
+// Currently HWEB only supports normal request/response mode. Other HTTP modes,
+// like WebSocket, TCP tunnel, and UDP tunnel are not supported.
 
 package internal
 
@@ -90,69 +93,71 @@ func (r *hwebOut_) writeVectorH() error {
 
 //////////////////////////////////////// HWEB protocol elements.
 
-// head(64) = kind(8) streamID(24) flags(8) bodySize(24)
+// recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 
-// prefaceRecord = head *setting
-// setting(32) = code(8) value(24)
+// prefaceRecord = recordHead *setting
+//   setting(32) = code(8) value(24)
 
-// request/response = headersRecord *fragmentRecord [ trailersRecord ]
+// request  = headersRecord *segmentRecord [ trailersRecord ]
+// response = headersRecord *segmentRecord [ trailersRecord ]
 
-// headersRecord  = head 1*field
-// trailersRecord = head 1*field
+// headersRecord  = recordHead 1*nameValue
+// trailersRecord = recordHead 1*nameValue
 
-// field(32+) = flags(8) nameSize(8) valueSize(16) name value
-// name = 1*OCTET
-// value = *OCTET
+//   nameValue = nameSize(8) valueSize(24) name value
+//     name = 1*OCTET
+//     value = *OCTET
 
-// fragmentRecord = head *OCTET
+// segmentRecord = recordHead *OCTET
 
-const ( // record kinds
-	hwebKindPreface  = 0
-	hwebKindHeaders  = 1
-	hwebKindFragment = 2
-	hwebKindTrailers = 3
+// On TCP connection established, client sends a preface record, then server sends one, too.
+// Whenever a client kicks a new request, it must use the least unused streamID starting from 1.
+// A streamID is considered as unused after a response with this streamID was received entirely.
+// If concurrent streams exceeds the limit set in preface, server can close the connection.
+
+const ( // record types
+	hwebTypePreface  = 0 // contains connection settings
+	hwebTypeHeaders  = 1 // contains name-value pairs for headers
+	hwebTypeSegment  = 2 // contains content segment
+	hwebTypeTrailers = 3 // contains name-value pairs for trailers
 )
 
 const ( // setting codes
 	hwebSettingMaxRecordBodySize    = 0
-	hwebSettingMaxConcurrentStreams = 1
-	hwebSettingTotalStreams         = 2
+	hwebSettingMaxStreams           = 1
+	hwebSettingMaxConcurrentStreams = 2
 )
 
 var hwebSettingDefaults = [...]int32{
 	hwebSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	hwebSettingMaxConcurrentStreams: 100,   // allow: [1-16777215]
-	hwebSettingTotalStreams:         1000,  // allow: [10-16777215]
+	hwebSettingMaxStreams:           1000,  // allow: [1-16777215]
+	hwebSettingMaxConcurrentStreams: 100,   // allow: [1-16777215]. cannot be larger than maxStreams
 }
-
-const ( // field flags
-	hwebFieldFlagPseudo = 0b00000001 // pseudo field or not
-)
 
 /*
 
 on connection established:
 
-    -> kind=preface streamID=0 bodySize=4 body=[maxRecordBodySize=16376]
-    <- kind=preface streamID=0 bodySize=12 body=[maxRecordBodySize=16376 maxConcurrentStreams=10 totalStreams=1000]
+    -> type=preface streamID=0 bodySize=4 body=[maxRecordBodySize=16376]
+    <- type=preface streamID=0 bodySize=12 body=[maxRecordBodySize=16376 maxStreams=1000 maxConcurrentStreams=10]
 
 stream=1 (sized output):
 
-    -> kind=headers streamID=1 bodySize=?? body=[:method=GET :uri=/hello host=example.com:8081]
+    -> type=headers streamID=1 bodySize=? body=[:method=GET :target=/hello host=example.com:8081]
 
-    <- kind=headers streamID=1 bodySize=?? body=[:status=200 content-length=12]
-    <- kind=fragment streamID=1 bodySize=6 body=[hello,]
-    <- kind=fragment streamID=1 bodySize=6 body=[world!]
+    <- type=headers streamID=1 bodySize=? body=[:status=200 content-length=12]
+    <- type=segment streamID=1 bodySize=6 body=[hello,]
+    <- type=segment streamID=1 bodySize=6 body=[world!]
 
 stream=2 (unsized output):
 
-    -> kind=headers streamID=2 bodySize=?? body=[:method=POST :uri=/abc?d=e host=example.com:8081 content-length=90]
-    -> kind=fragment streamID=2 bodySize=90 body=[...90...]
+    -> type=headers streamID=2 bodySize=? body=[:method=POST :target=/abc?d=e host=example.com:8081 content-length=90]
+    -> type=segment streamID=2 bodySize=90 body=[...90...]
 
-    <- kind=headers streamID=2 bodySize=?? body=[:status=200 content-type=text/html]
-    <- kind=fragment streamID=2 bodySize=77 body=[...77...]
-    <- kind=fragment streamID=2 bodySize=88 body=[...88...]
-    <- kind=fragment streamID=2 bodySize=0 body=[]
-    <- kind=trailers streamID=2 bodySize=?? body=[md5-digest=12345678901234567890123456789012]
+    <- type=headers streamID=2 bodySize=? body=[:status=200 content-type=text/html]
+    <- type=segment streamID=2 bodySize=77 body=[...77...]
+    <- type=segment streamID=2 bodySize=88 body=[...88...]
+    <- type=segment streamID=2 bodySize=0 body=[] // ends of content
+    <- type=trailers streamID=2 bodySize=? body=[md5-digest=12345678901234567890123456789012]
 
 */

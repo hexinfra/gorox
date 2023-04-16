@@ -15,6 +15,51 @@ import (
 	"time"
 )
 
+const signHWEBOutgate = "hwebOutgate"
+
+func createHWEBOutgate(stage *Stage) *HWEBOutgate {
+	hweb := new(HWEBOutgate)
+	hweb.onCreate(stage)
+	hweb.setShell(hweb)
+	return hweb
+}
+
+// HWEBOutgate
+type HWEBOutgate struct {
+	// Mixins
+	webOutgate_
+	// States
+}
+
+func (f *HWEBOutgate) onCreate(stage *Stage) {
+	f.webOutgate_.onCreate(signHWEBOutgate, stage)
+}
+
+func (f *HWEBOutgate) OnConfigure() {
+	f.webOutgate_.onConfigure(f)
+}
+func (f *HWEBOutgate) OnPrepare() {
+	f.webOutgate_.onPrepare(f)
+}
+
+func (f *HWEBOutgate) run() { // goroutine
+	Loop(time.Second, f.Shut, func(now time.Time) {
+		// TODO
+	})
+	if IsDebug(2) {
+		Debugln("hwebOutgate done")
+	}
+	f.stage.SubDone()
+}
+
+func (f *HWEBOutgate) FetchConn(address string, tlsMode bool) (*H2Conn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *HWEBOutgate) StoreConn(conn *H2Conn) {
+	// TODO
+}
+
 // hwebBackend
 type hwebBackend struct {
 	// Mixins
@@ -66,7 +111,7 @@ func (n *hwebNode) maintain(shut chan struct{}) { // goroutine
 	})
 	// TODO: wait for all conns
 	if IsDebug(2) {
-		Debugf("http2Node=%d done\n", n.id)
+		Debugf("hwebNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

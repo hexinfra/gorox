@@ -3,22 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB agent handlet relays requests to backend HWEB servers and cache responses.
-
-// HWEB agent handlets are reverse only, so they are agents, not proxies.
+// HWEB proxy handlet implementation.
 
 package internal
 
 func init() {
-	RegisterHandlet("hwebAgent", func(name string, stage *Stage, app *App) Handlet {
-		h := new(hwebAgent)
+	RegisterHandlet("hwebProxy", func(name string, stage *Stage, app *App) Handlet {
+		h := new(hwebProxy)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// hwebAgent
-type hwebAgent struct {
+// hwebProxy
+type hwebProxy struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
@@ -32,16 +30,16 @@ type hwebAgent struct {
 	bufferServerContent bool // server content is buffered anyway?
 }
 
-func (h *hwebAgent) onCreate(name string, stage *Stage, app *App) {
+func (h *hwebProxy) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *hwebAgent) OnShutdown() {
+func (h *hwebProxy) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *hwebAgent) OnConfigure() {
+func (h *hwebProxy) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/hweb/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -51,13 +49,13 @@ func (h *hwebAgent) OnConfigure() {
 			} else if hwebBackend, ok := backend.(*hwebBackend); ok {
 				h.backend = hwebBackend
 			} else {
-				UseExitf("incorrect backend '%s' for hwebAgent\n", name)
+				UseExitf("incorrect backend '%s' for hwebProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for hwebAgent")
+		UseExitln("toBackend is required for hwebProxy")
 	}
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
@@ -76,14 +74,14 @@ func (h *hwebAgent) OnConfigure() {
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
-func (h *hwebAgent) OnPrepare() {
+func (h *hwebProxy) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *hwebAgent) IsProxy() bool { return true }
-func (h *hwebAgent) IsCache() bool { return h.cacher != nil }
+func (h *hwebProxy) IsProxy() bool { return true }
+func (h *hwebProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *hwebAgent) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO
 	return
 }

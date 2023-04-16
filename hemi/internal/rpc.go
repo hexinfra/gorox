@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+// GRPCServer is the interface for all gRPC servers.
+// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
+// Maybe we can implement our own gRPC server following its official spec, see type grpcServer. TBD.
+type GRPCServer interface {
+	Server
+
+	LinkSvcs()       // TODO
+	RealServer() any // TODO
+}
+
 // Svc is the RPC service.
 type Svc struct {
 	// Mixins

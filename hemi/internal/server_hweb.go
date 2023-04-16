@@ -65,7 +65,7 @@ func (s *hwebServer) Serve() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *hwebServer) LinkSvcs() {
+func (s *hwebServer) linkSvcs() {
 	for _, svcName := range s.forSvcs {
 		svc := s.stage.Svc(svcName)
 		if svc == nil {
@@ -266,7 +266,7 @@ func (s *hwebStream) executeWebApp(app *App, req *hwebRequest, resp *hwebRespons
 	// TODO
 	//app.dispatchHandlet(req, resp)
 }
-func (s *hwebStream) executeRPCSvc(svc *Svc, req *hwebRequest, resp *hwebResponse) {
+func (s *hwebStream) executeRPCSvc(svc *Svc, req *hwebRequest, resp *hwebResponse) { // request & response
 	// TODO
 	svc.dispatchHRPC(req, resp)
 }

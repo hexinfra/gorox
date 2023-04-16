@@ -7,13 +7,7 @@
 
 package internal
 
-// GRPCServer is the interface for all gRPC servers.
-// Due to gRPC's large dependancies, to keep Hemi small, we won't implement our own gRPC server.
-// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
-// Maybe we can implement our own gRPC server following its official spec. TBD.
-type GRPCServer interface {
-	Server
-
-	LinkSvcs()
-	RealServer() any
+// grpcServer
+type grpcServer struct {
+	// TODO
 }

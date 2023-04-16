@@ -186,8 +186,6 @@ stage {
 		.numGates        = runtime.NumCPU()
 		.maxConnsPerGate = 100000
 		.forApps         = ()
-		.forSvcs         = ()
-		.hrpcMode        = false
 		.enableTCPTun    = false
 		.enableUDPTun    = false
 		.maxContentSize  = 1T

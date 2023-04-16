@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
@@ -21,6 +22,11 @@ type hwebServer struct {
 	webServer_
 	// Assocs
 	// States
+	hrpcMode   bool                // works as HRPC server and dispatches to svcs instead of apps?
+	forSvcs    []string            // for what svcs
+	exactSvcs  []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs []*hostnameTo[*Svc] // like: ("www.example.*")
 }
 
 func (s *hwebServer) onCreate(name string, stage *Stage) {
@@ -31,6 +37,10 @@ func (s *hwebServer) OnShutdown() {
 
 func (s *hwebServer) OnConfigure() {
 	s.webServer_.onConfigure(s)
+	// hrpcMode
+	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
+	// forSvcs
+	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
 }
 func (s *hwebServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
@@ -52,6 +62,49 @@ func (s *hwebServer) Serve() { // goroutine
 		Debugf("hwebServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
+}
+
+func (s *hwebServer) LinkSvcs() {
+	for _, svcName := range s.forSvcs {
+		svc := s.stage.Svc(svcName)
+		if svc == nil {
+			continue
+		}
+		svc.linkHRPC(s)
+		// TODO: use hash table?
+		for _, hostname := range svc.exactHostnames {
+			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.suffixHostnames {
+			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.prefixHostnames {
+			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+	}
+}
+func (s *hwebServer) findSvc(hostname []byte) *Svc {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactSvcs {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixSvcs {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixSvcs {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return nil
 }
 
 // hwebGate is a gate of hwebServer.

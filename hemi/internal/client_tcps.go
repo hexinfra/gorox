@@ -344,6 +344,15 @@ func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
 	return io.ReadAtLeast(c.netConn, p, min)
 }
 
+func (c *TConn) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
+func (c *TConn) MarkBroken() {
+	c.markWriteBroken()
+	c.markReadBroken()
+}
+
+func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
+func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
+
 func (c *TConn) CloseWrite() error {
 	if c.client.TLSMode() {
 		return c.netConn.(*tls.Conn).CloseWrite()
@@ -359,12 +368,3 @@ func (c *TConn) Close() error { // only used by clients of dial
 }
 
 func (c *TConn) closeConn() { c.netConn.Close() } // used by codes other than dial
-
-func (c *TConn) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }
-func (c *TConn) MarkBroken() {
-	c.markWriteBroken()
-	c.markReadBroken()
-}
-
-func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
-func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }

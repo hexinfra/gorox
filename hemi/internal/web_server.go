@@ -251,12 +251,12 @@ func (c *webConn_) onPut() {
 func (c *webConn_) getServer() webServer { return c.server }
 func (c *webConn_) getGate() webGate     { return c.gate }
 
-func (c *webConn_) isBroken() bool { return c.broken.Load() }
-func (c *webConn_) markBroken()    { c.broken.Store(true) }
-
 func (c *webConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
+
+func (c *webConn_) isBroken() bool { return c.broken.Load() }
+func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
 // webStream_ is the mixin for http[1-3]Stream and hwebStream.
 type webStream_ struct {

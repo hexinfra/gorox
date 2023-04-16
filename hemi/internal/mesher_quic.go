@@ -113,6 +113,98 @@ func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
 }
 
+// poolQUICConn
+var poolQUICConn sync.Pool
+
+func getQUICConn(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) *QUICConn {
+	var conn *QUICConn
+	if x := poolQUICConn.Get(); x == nil {
+		conn = new(QUICConn)
+	} else {
+		conn = x.(*QUICConn)
+	}
+	conn.onGet(id, stage, mesher, gate, quicConn)
+	return conn
+}
+func putQUICConn(conn *QUICConn) {
+	conn.onPut()
+	poolQUICConn.Put(conn)
+}
+
+// QUICConn
+type QUICConn struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id       int64
+	stage    *Stage // current stage
+	mesher   *QUICMesher
+	gate     *quicGate
+	quicConn *quix.Conn
+	// Conn states (zeros)
+	editors [32]uint8
+}
+
+func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
+	c.id = id
+	c.stage = stage
+	c.mesher = mesher
+	c.gate = gate
+	c.quicConn = quicConn
+}
+func (c *QUICConn) onPut() {
+	c.stage = nil
+	c.mesher = nil
+	c.gate = nil
+	c.quicConn = nil
+	c.editors = [32]uint8{}
+}
+
+func (c *QUICConn) serve() { // goroutine
+	for _, kase := range c.mesher.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.Close()
+	putQUICConn(c)
+}
+
+func (c *QUICConn) Close() error {
+	// TODO
+	return nil
+}
+
+func (c *QUICConn) unsafeVariable(index int16) []byte {
+	return quicConnVariables[index](c)
+}
+
+// quicConnVariables
+var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
+	// TODO
+}
+
+// QUICStream
+type QUICStream struct {
+}
+
+func (s *QUICStream) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *QUICStream) Read(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+
+// quicStreamVariables
+var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
+	// TODO
+}
+
 // QUICFilter
 type QUICFilter interface {
 	Component
@@ -206,96 +298,4 @@ func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value 
 func (c *quicCase) execute(conn *QUICConn) (processed bool) {
 	// TODO
 	return false
-}
-
-// poolQUICConn
-var poolQUICConn sync.Pool
-
-func getQUICConn(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) *QUICConn {
-	var conn *QUICConn
-	if x := poolQUICConn.Get(); x == nil {
-		conn = new(QUICConn)
-	} else {
-		conn = x.(*QUICConn)
-	}
-	conn.onGet(id, stage, mesher, gate, quicConn)
-	return conn
-}
-func putQUICConn(conn *QUICConn) {
-	conn.onPut()
-	poolQUICConn.Put(conn)
-}
-
-// QUICConn
-type QUICConn struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id       int64
-	stage    *Stage // current stage
-	mesher   *QUICMesher
-	gate     *quicGate
-	quicConn *quix.Conn
-	// Conn states (zeros)
-	editors [32]uint8
-}
-
-func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
-	c.id = id
-	c.stage = stage
-	c.mesher = mesher
-	c.gate = gate
-	c.quicConn = quicConn
-}
-func (c *QUICConn) onPut() {
-	c.stage = nil
-	c.mesher = nil
-	c.gate = nil
-	c.quicConn = nil
-	c.editors = [32]uint8{}
-}
-
-func (c *QUICConn) serve() { // goroutine
-	for _, kase := range c.mesher.cases {
-		if !kase.isMatch(c) {
-			continue
-		}
-		if processed := kase.execute(c); processed {
-			break
-		}
-	}
-	c.Close()
-	putQUICConn(c)
-}
-
-func (c *QUICConn) Close() error {
-	// TODO
-	return nil
-}
-
-func (c *QUICConn) unsafeVariable(index int16) []byte {
-	return quicConnVariables[index](c)
-}
-
-// quicConnVariables
-var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
-	// TODO
-}
-
-// QUICStream
-type QUICStream struct {
-}
-
-func (s *QUICStream) Write(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-func (s *QUICStream) Read(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-
-// quicStreamVariables
-var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
-	// TODO
 }

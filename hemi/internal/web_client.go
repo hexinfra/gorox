@@ -144,12 +144,12 @@ func (c *wConn_) onPut() {
 
 func (c *wConn_) getClient() webClient { return c.client.(webClient) }
 
-func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
 func (c *wConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
+}
+
+func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *wConn_) isBroken() bool { return c.broken.Load() }

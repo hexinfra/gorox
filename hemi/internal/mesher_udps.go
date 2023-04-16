@@ -127,6 +127,86 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
 
+// poolUDPSConn
+var poolUDPSConn sync.Pool
+
+func getUDPSConn(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+	var conn *UDPSConn
+	if x := poolUDPSConn.Get(); x == nil {
+		conn = new(UDPSConn)
+	} else {
+		conn = x.(*UDPSConn)
+	}
+	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
+	return conn
+}
+func putUDPSConn(conn *UDPSConn) {
+	conn.onPut()
+	poolUDPSConn.Put(conn)
+}
+
+// UDPSConn
+type UDPSConn struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stage   *Stage // current stage
+	mesher  *UDPSMesher
+	gate    *udpsGate
+	netConn *net.UDPConn
+	rawConn syscall.RawConn
+	// Conn states (zeros)
+}
+
+func (c *UDPSConn) onGet(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
+	c.id = id
+	c.stage = stage
+	c.mesher = mesher
+	c.gate = gate
+	c.netConn = netConn
+	c.rawConn = rawConn
+}
+func (c *UDPSConn) onPut() {
+	c.stage = nil
+	c.mesher = nil
+	c.gate = nil
+	c.netConn = nil
+	c.rawConn = nil
+}
+
+func (c *UDPSConn) serve() { // goroutine
+	for _, kase := range c.mesher.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.closeConn()
+	putUDPSConn(c)
+}
+
+func (c *UDPSConn) Close() error {
+	netConn := c.netConn
+	putUDPSConn(c)
+	return netConn.Close()
+}
+
+func (c *UDPSConn) closeConn() {
+	c.netConn.Close()
+}
+
+func (c *UDPSConn) unsafeVariable(index int16) []byte {
+	return udpsConnVariables[index](c)
+}
+
+// udpsConnVariables
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
+	// TODO
+}
+
 // UDPSFilter
 type UDPSFilter interface {
 	Component
@@ -220,84 +300,4 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value 
 func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
 	// TODO
 	return false
-}
-
-// poolUDPSConn
-var poolUDPSConn sync.Pool
-
-func getUDPSConn(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
-	var conn *UDPSConn
-	if x := poolUDPSConn.Get(); x == nil {
-		conn = new(UDPSConn)
-	} else {
-		conn = x.(*UDPSConn)
-	}
-	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
-	return conn
-}
-func putUDPSConn(conn *UDPSConn) {
-	conn.onPut()
-	poolUDPSConn.Put(conn)
-}
-
-// UDPSConn
-type UDPSConn struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	mesher  *UDPSMesher
-	gate    *udpsGate
-	netConn *net.UDPConn
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-}
-
-func (c *UDPSConn) onGet(id int64, stage *Stage, mesher *UDPSMesher, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.mesher = mesher
-	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
-}
-func (c *UDPSConn) onPut() {
-	c.stage = nil
-	c.mesher = nil
-	c.gate = nil
-	c.netConn = nil
-	c.rawConn = nil
-}
-
-func (c *UDPSConn) serve() { // goroutine
-	for _, kase := range c.mesher.cases {
-		if !kase.isMatch(c) {
-			continue
-		}
-		if processed := kase.execute(c); processed {
-			break
-		}
-	}
-	c.closeConn()
-	putUDPSConn(c)
-}
-
-func (c *UDPSConn) Close() error {
-	netConn := c.netConn
-	putUDPSConn(c)
-	return netConn.Close()
-}
-
-func (c *UDPSConn) closeConn() {
-	c.netConn.Close()
-}
-
-func (c *UDPSConn) unsafeVariable(index int16) []byte {
-	return udpsConnVariables[index](c)
-}
-
-// udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
-	// TODO
 }

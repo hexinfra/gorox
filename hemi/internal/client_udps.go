@@ -237,9 +237,6 @@ func (c *UConn) onPut() {
 
 func (c *UConn) getClient() udpsClient { return c.client.(udpsClient) }
 
-func (c *UConn) isBroken() bool { return c.broken.Load() }
-func (c *UConn) markBroken()    { c.broken.Store(true) }
-
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.udpConn.SetWriteDeadline(deadline); err != nil {
@@ -261,6 +258,9 @@ func (c *UConn) SetReadDeadline(deadline time.Time) error {
 
 func (c *UConn) Write(p []byte) (n int, err error) { return c.udpConn.Write(p) }
 func (c *UConn) Read(p []byte) (n int, err error)  { return c.udpConn.Read(p) }
+
+func (c *UConn) isBroken() bool { return c.broken.Load() }
+func (c *UConn) markBroken()    { c.broken.Store(true) }
 
 func (c *UConn) Close() error { // only used by clients of dial
 	udpConn := c.udpConn

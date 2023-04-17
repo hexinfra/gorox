@@ -229,6 +229,12 @@ In addition to dirs listed above, these dirs are used:
   * misc/ - Place misc resource of your project,
   * test/ - Place tests for your project.
 
+After Gorox is started, 3 dirs are created:
+
+  * logs/ - Place running logs,
+  * temp/ - Place temp files which are safe to remove when Gorox is shutdown,
+  * vars/ - Place dynamic data files used by Gorox.
+
 
 Documentation
 =============

@@ -207,10 +207,27 @@ The logical architecture of Gorox internal (called Hemi Engine) looks like this:
 
 Components marked as (*) are user programmable. They are placed in these dirs:
 
-  * apps/ - Place your Web applications,
-  * jobs/ - Place your Cronjobs,
-  * srvs/ - Place your General servers,
-  * svcs/ - Place your RPC services.
+  * apps/ - Place your Web applications, possibly written in Go,
+  * jobs/ - Place your Cronjobs written in Go and scheduled by Gorox,
+  * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
+  * svcs/ - Place your RPC services, may be gRPC or HRPC.
+
+
+Layout
+======
+
+In addition to dirs listed above, these dirs are used:
+
+  * cmds/ - Place your auxiliary commands,
+  * conf/ - Place configs for Gorox and your commands,
+  * data/ - Place static shared files of your project,
+  * docs/ - Place docs of your project,
+  * exts/ - Place extended components written for your project,
+  * hemi/ - The Hemi Engine,
+  * idls/ - Place your Interface Description Language files,
+  * libs/ - Place libs written by you for your project,
+  * misc/ - Place misc resource of your project,
+  * test/ - Place tests for your project.
 
 
 Documentation

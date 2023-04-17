@@ -237,7 +237,7 @@ func (s *hwebStream) execute() { // goroutine
 	putHWEBStream(s)
 }
 
-func (s *hwebStream) keeper() keeper     { return nil }
+func (s *hwebStream) keeper() webKeeper  { return nil }
 func (s *hwebStream) peerAddr() net.Addr { return nil }
 
 func (s *hwebStream) writeContinue() bool { // 100 continue

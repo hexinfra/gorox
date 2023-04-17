@@ -24,7 +24,7 @@ import (
 )
 
 // keeper is a webServer or webClient which keeps web connections and streams.
-type keeper interface {
+type webKeeper interface {
 	Stage() *Stage
 	TLSMode() bool
 	ReadTimeout() time.Duration  // timeout of a read operation
@@ -49,7 +49,7 @@ func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
 
 // stream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {
-	keeper() keeper
+	keeper() webKeeper
 	peerAddr() net.Addr
 
 	buffer256() []byte

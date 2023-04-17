@@ -309,7 +309,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.wStream_.onEnd()
 }
 
-func (s *H1Stream) keeper() keeper     { return s.conn.getClient() }
+func (s *H1Stream) keeper() webKeeper  { return s.conn.getClient() }
 func (s *H1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }

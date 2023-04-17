@@ -472,7 +472,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *http1Stream) keeper() keeper     { return s.conn.getServer() }
+func (s *http1Stream) keeper() webKeeper  { return s.conn.getServer() }
 func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue

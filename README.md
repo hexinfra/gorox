@@ -14,8 +14,8 @@ server. It can be used as:
   * Service Mesh (Data Plane)
   * ... and more through its highly extensible compoments design!
 
-There is also a controller program called Goops which is distributed with
-Gorox and can be used to manage your Gorox cluster optionally.
+There is also a controller program called Goops which is distributed with Gorox
+and can be used to manage your Gorox cluster optionally.
 
 For more details about Gorox and Goops, please see: https://gorox.io/ .
 
@@ -52,23 +52,23 @@ Quickstart
 To start using Gorox, you can download the official binary distributions. If you
 need to build from source, please ensure you have Go >= 1.19 installed:
 
-  * shell> go version
+    shell> go version
 
 Then build Gorox with Go (if build failed, set CGO_ENABLED=0 and try again):
 
-  * shell> go build
+    shell> go build
 
 To run Gorox as a background daemon (if not, remove the "-daemon" option):
 
-  * shell> ./gorox serve -daemon
+    shell> ./gorox serve -daemon
 
 Visit http://localhost:3080 to check if it works. To exit server gracefully:
 
-  * shell> ./gorox quit
+    shell> ./gorox quit
 
 For more actions and options, run:
 
-  * shell> ./gorox -h
+    shell> ./gorox -h
 
 To install, move the whole Gorox directory to where you like. To uninstall,
 remove the whole Gorox directory.
@@ -79,8 +79,8 @@ Performance
 
 Gorox is fast. You can use wrk to perform a simple benchmark:
 
-  * shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello
-  * shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello.html
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello
+    shell> wrk -d 8s -c 240 -t 12 http://localhost:3080/hello.html
 
 Change the parameters and/or target URL to match your need.
 
@@ -255,14 +255,14 @@ Community
 
 Currently Github Discussions is used for discussing:
 
-  https://github.com/hexinfra/gorox/discussions
+    https://github.com/hexinfra/gorox/discussions
 
 
 Contact
 =======
 
-Gorox is originally written by Zhang Jingcheng <diogin@gmail.com>.
-You can also contact him through Twitter: @diogin.
+Gorox is originally written by Zhang Jingcheng <diogin@gmail.com>. You can also
+contact him through Twitter: @diogin.
 
 The official website of the Gorox project is at:
 
@@ -281,7 +281,7 @@ Contributing
 
 Gorox is hosted at Github:
 
-  https://github.com/hexinfra/gorox
+    https://github.com/hexinfra/gorox
 
 Fork this repository and contribute your patch through Github Pull Requests.
 

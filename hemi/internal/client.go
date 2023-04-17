@@ -64,6 +64,7 @@ func (c *client_) onConfigure() {
 	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
 }
 func (c *client_) onPrepare() {
+	// Currently nothing.
 }
 
 func (c *client_) OnShutdown() {
@@ -80,10 +81,10 @@ func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
 // outgate
 type outgate interface {
-	served() int64
+	served() int64 // number of conns or streams that are served through this outgate
 }
 
-// outgate_
+// outgate_ is the mixin for outgates.
 type outgate_ struct {
 	// Mixins
 	client_
@@ -112,7 +113,7 @@ type backend interface {
 	maintain() // goroutine
 }
 
-// backend_
+// backend_ is the mixin for backends.
 type backend_[N node] struct {
 	// Mixins
 	client_
@@ -218,9 +219,9 @@ type node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		size int  // size of the list
 		head conn // head element
 		tail conn // tail element
+		qnty int  // size of the list
 	}
 }
 
@@ -241,13 +242,13 @@ func (n *node_) pullConn() conn {
 	list.Lock()
 	defer list.Unlock()
 
-	if list.size == 0 {
+	if list.qnty == 0 {
 		return nil
 	}
 	conn := list.head
 	list.head = conn.getNext()
 	conn.setNext(nil)
-	list.size--
+	list.qnty--
 	return conn
 }
 func (n *node_) pushConn(conn conn) {
@@ -255,14 +256,14 @@ func (n *node_) pushConn(conn conn) {
 	list.Lock()
 	defer list.Unlock()
 
-	if list.size == 0 {
+	if list.qnty == 0 {
 		list.head = conn
 		list.tail = conn
 	} else { // >= 1
 		list.tail.setNext(conn)
 		list.tail = conn
 	}
-	list.size++
+	list.qnty++
 }
 
 func (n *node_) closeFree() int {
@@ -273,10 +274,10 @@ func (n *node_) closeFree() int {
 	for conn := list.head; conn != nil; conn = conn.getNext() {
 		conn.closeConn()
 	}
-	size := list.size
-	list.size = 0
+	qnty := list.qnty
+	list.qnty = 0
 	list.head, list.tail = nil, nil
-	return size
+	return qnty
 }
 
 var errNodeDown = errors.New("node is down")
@@ -289,7 +290,7 @@ type conn interface {
 	closeConn()
 }
 
-// conn_ is a mixin for client conns.
+// conn_ is the mixin for client conns.
 type conn_ struct {
 	// Conn states (non-zeros)
 	next   conn      // the link

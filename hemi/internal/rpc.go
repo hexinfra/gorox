@@ -11,15 +11,6 @@ import (
 	"time"
 )
 
-// GRPCServer is the interface for all gRPC servers.
-// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
-type GRPCServer interface {
-	Server
-
-	LinkSvcs()
-	RealServer() any // TODO
-}
-
 // hrpcServer is the HRPC server.
 type hrpcServer interface {
 	webServer
@@ -36,6 +27,15 @@ type hrpcRequest interface {
 // hrpcResponse
 type hrpcResponse interface {
 	// TODO
+}
+
+// GRPCServer is the interface for all gRPC servers.
+// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
+type GRPCServer interface {
+	Server
+
+	LinkSvcs()
+	RealServer() any // TODO
 }
 
 // Svc is the RPC service.

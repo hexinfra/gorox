@@ -261,7 +261,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.wStream_.onEnd()
 }
 
-func (s *H3Stream) keeper() keeper     { return s.conn.getClient() }
+func (s *H3Stream) keeper() webKeeper  { return s.conn.getClient() }
 func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }

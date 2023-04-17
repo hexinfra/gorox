@@ -185,16 +185,16 @@ The logical architecture of Gorox internal (called Hemi Engine) looks like this:
 
 ```
 +--------------------------------------------+     ^    shutdown
-|                  cronjob                   |     |       |
+|                cronjob(*)                  |     |       |
 +--------+---+--------------+----------------+     |       |
 |        |   |      rpc     |      web       |     |       |
 |        | s |     server   |     server     |     |       |
 | mesher | e | [gate][conn] |  [gate][conn]  |     |       |
 | filter | r +--------------+----------------+     |       |
-| editor | v |              |  app  reviser  |     |       |
-|  case  | e |     svc      | socklet handlet|     |       |
+| editor | v |              | app(*) reviser |     |       |
+|  case  | e |   svc(*)     | socklet handlet|     |       |
 |        | r |          +---+--+ rule +------+     |       |
-|        |   |          |stater|      |cacher|     |       |
+|        |(*)|          |stater|      |cacher|     |       |
 +--------+---+----------+------+------+------+     |       |
 |           [node] [conn] backend            |     |       |
 +---+---+---+---+---+---+---+---+------------+     |       |
@@ -204,6 +204,13 @@ The logical architecture of Gorox internal (called Hemi Engine) looks like this:
 +-----------+---------------+----------------+  prepare    v
 
 ```
+
+Components marked as (*) are user programmable. They are placed in these dirs:
+
+  * apps/ - Place your Web applications,
+  * jobs/ - Place your Cronjobs,
+  * srvs/ - Place your General servers,
+  * svcs/ - Place your RPC services.
 
 
 Documentation

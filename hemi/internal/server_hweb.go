@@ -5,7 +5,7 @@
 
 // HWEB server implementation.
 
-// HWEB follows HTTP/1.1 Semantics.
+// HWEB is a simplified HTTP/2.
 
 package internal
 
@@ -221,8 +221,8 @@ type hwebStream0 struct { // for fast reset, entirely
 func (s *hwebStream) onUse(conn *hwebConn) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
-	s.request.onUse(Version255)
-	s.response.onUse(Version255)
+	s.request.onUse(VersionH)
+	s.response.onUse(VersionH)
 }
 func (s *hwebStream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -255,13 +255,13 @@ func (s *hwebStream) executeRPCSvc(svc *Svc, req *hwebRequest, resp *hwebRespons
 func (s *hwebStream) serveAbnormal(req *hwebRequest, resp *hwebResponse) { // 4xx & 5xx
 	// TODO
 }
-func (s *hwebStream) executeSocket() { // upgrade: websocket
+func (s *hwebStream) executeSocket() { // see RFC 8441: https://www.rfc-editor.org/rfc/rfc8441.html
 	// TODO
 }
 func (s *hwebStream) executeTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *hwebStream) executeUDPTun() { // upgrade: connect-udp
+func (s *hwebStream) executeUDPTun() { // see RFC 9298: https://www.rfc-editor.org/rfc/rfc9298.html
 	// TODO
 }
 

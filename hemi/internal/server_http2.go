@@ -883,13 +883,13 @@ func (s *http2Stream) executeRPCSvc(svc *Svc, req *http2Request, resp *http2Resp
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO
 }
-func (s *http2Stream) executeSocket() { // see RFC 8441
+func (s *http2Stream) executeSocket() { // see RFC 8441: https://www.rfc-editor.org/rfc/rfc8441.html
 	// TODO
 }
 func (s *http2Stream) executeTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *http2Stream) executeUDPTun() { // see RFC 9298
+func (s *http2Stream) executeUDPTun() { // see RFC 9298: https://www.rfc-editor.org/rfc/rfc9298.html
 	// TODO
 }
 

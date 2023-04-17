@@ -13,8 +13,8 @@ func init() {
 		h.onCreate(name, stage, app)
 		return h
 	})
-	RegisterSocklet("sockhProxy", func(name string, stage *Stage, app *App) Socklet {
-		s := new(sockhProxy)
+	RegisterSocklet("hsockProxy", func(name string, stage *Stage, app *App) Socklet {
+		s := new(hsockProxy)
 		s.onCreate(name, stage, app)
 		return s
 	})
@@ -46,28 +46,28 @@ func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward 
 	return
 }
 
-// sockhProxy socklet passes websockets to another WebSocket/HWEB servers.
-type sockhProxy struct {
+// hsockProxy socklet passes websockets to another WebSocket/HWEB servers.
+type hsockProxy struct {
 	// Mixins
 	sockProxy_
 	// States
 }
 
-func (s *sockhProxy) onCreate(name string, stage *Stage, app *App) {
+func (s *hsockProxy) onCreate(name string, stage *Stage, app *App) {
 	s.sockProxy_.onCreate(name, stage, app)
 }
-func (s *sockhProxy) OnShutdown() {
+func (s *hsockProxy) OnShutdown() {
 	s.app.SubDone()
 }
 
-func (s *sockhProxy) OnConfigure() {
+func (s *hsockProxy) OnConfigure() {
 	s.sockProxy_.onConfigure()
 }
-func (s *sockhProxy) OnPrepare() {
+func (s *hsockProxy) OnPrepare() {
 	s.sockProxy_.onPrepare()
 }
 
-func (s *sockhProxy) Serve(req Request, sock Socket) { // forward or reverse
+func (s *hsockProxy) Serve(req Request, sock Socket) { // forward or reverse
 	// TODO(diogin): Implementation
 	if s.isForward {
 	} else {

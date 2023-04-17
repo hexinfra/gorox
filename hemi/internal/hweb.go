@@ -5,9 +5,7 @@
 
 // HWEB protocol elements.
 
-// HWEB is a binary HTTP/1.1 protocol. It borrows some ideas from HTTP/2, but is
-// simplified and optimized for IDC's internal communication. Its simple design
-// makes it very simple to implement a server or client.
+// HWEB is a simplified HTTP/2. Its design makes it easy to implement a server or client.
 
 package internal
 
@@ -95,19 +93,18 @@ func (r *hwebOut_) writeVectorH() error {
 // initRecord = recordHead *setting
 //   setting(32) = settingCode(8) settingValue(24)
 
-// sizeRecord = recordHead bufferSize(3)
-
 // request  = headRecord *dataRecord [ tailRecord ]
 // response = headRecord *dataRecord [ tailRecord ]
 
-// headRecord = recordHead 1*nameValue
-// tailRecord = recordHead 1*nameValue
+//   headRecord = recordHead 1*nameValue
+//   tailRecord = recordHead 1*nameValue
 
-//   nameValue = nameSize(8) valueSize(24) name value
-//     name  = 1*OCTET
-//     value = *OCTET
+//     nameValue = nameSize(8) valueSize(24) name value
+//       name  = 1*OCTET
+//       value = *OCTET
 
-// dataRecord = recordHead *OCTET
+//   dataRecord = recordHead *OCTET
+//   sizeRecord = recordHead bufferSize(3)
 
 // On TCP connection established, client sends an init record, then server sends one, too.
 // Whenever a client kicks a new request, it must use the least unused streamID starting from 1.
@@ -115,11 +112,15 @@ func (r *hwebOut_) writeVectorH() error {
 // If concurrent streams exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
-	hwebTypeInit = 0 // contains connection settings
-	hwebTypeSize = 1 // available buffer size for receiving content
-	hwebTypeHead = 2 // contains name-value pairs for headers
-	hwebTypeData = 3 // contains content data
-	hwebTypeTail = 4 // contains name-value pairs for trailers
+	hwebTypeINIT = 0 // contains connection settings
+	hwebTypeHEAD = 1 // contains name-value pairs for headers
+	hwebTypeDATA = 2 // contains content data
+	hwebTypeSIZE = 3 // available buffer size for receiving content
+	hwebTypeTAIL = 4 // contains name-value pairs for trailers
+)
+
+const ( // record flags
+	hwebFlagEndDATA = 0b00000001 // indicating end of DATA
 )
 
 const ( // setting codes

@@ -12,7 +12,7 @@ const ( // version codes. keep sync with ../hemi.go
 	Version1_1 = 1
 	Version2   = 2
 	Version3   = 3
-	Version255 = 255 // for hweb
+	VersionH   = 4 // HWEB
 )
 
 var ( // version strings and byteses
@@ -20,21 +20,25 @@ var ( // version strings and byteses
 	stringHTTP1_1      = "HTTP/1.1"
 	stringHTTP2        = "HTTP/2"
 	stringHTTP3        = "HTTP/3"
+	stringHWEB         = "HWEB"
 	bytesHTTP1_0       = []byte(stringHTTP1_0)
 	bytesHTTP1_1       = []byte(stringHTTP1_1)
 	bytesHTTP2         = []byte(stringHTTP2)
 	bytesHTTP3         = []byte(stringHTTP3)
+	bytesHWEB          = []byte(stringHWEB)
 	httpVersionStrings = [...]string{
 		Version1_0: stringHTTP1_0,
 		Version1_1: stringHTTP1_1,
 		Version2:   stringHTTP2,
 		Version3:   stringHTTP3,
+		VersionH:   stringHWEB,
 	}
 	httpVersionByteses = [...][]byte{
 		Version1_0: bytesHTTP1_0,
 		Version1_1: bytesHTTP1_1,
 		Version2:   bytesHTTP2,
 		Version3:   bytesHTTP3,
+		VersionH:   bytesHWEB,
 	}
 )
 

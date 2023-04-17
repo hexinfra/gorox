@@ -300,14 +300,14 @@ func (s *H2Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441
+func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://www.rfc-editor.org/rfc/rfc8441.html
 	// TODO
 	return s.socket
 }
 func (s *H2Stream) ExecuteTCPTun() { // CONNECT method
 	// TODO
 }
-func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298
+func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298: https://www.rfc-editor.org/rfc/rfc9298.html
 	// TODO
 }
 

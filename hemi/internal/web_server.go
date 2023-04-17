@@ -1345,7 +1345,7 @@ func (r *webRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE
 	return true
 }
 func (r *webRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	if r.versionCode == Version2 || r.versionCode == Version3 {
+	if r.versionCode > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
 		return false
 	}
@@ -1366,7 +1366,7 @@ func (r *webRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { 
 				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
 			}
 		}
-	} else {
+	} else { // HTTP/1.0
 		// RFC 7230 (section 6.7):
 		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
 		for i := from; i < edge; i++ {

@@ -7,7 +7,7 @@
 
 package internal
 
-// httpProxy_ is the mixin for http[1-3]Proxy.
+// httpProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
 type httpProxy_ struct {
 	// Mixins
 	Handlet_
@@ -94,7 +94,7 @@ func (h *httpProxy_) onPrepare() {
 func (h *httpProxy_) IsProxy() bool { return true }
 func (h *httpProxy_) IsCache() bool { return h.cacher != nil }
 
-// sockProxy_ is the mixin for sock[1-3]Proxy.
+// sockProxy_ is the mixin for sock[1-3]Proxy and hsockProxy.
 type sockProxy_ struct {
 	// Mixins
 	Socklet_

@@ -9,14 +9,14 @@
 
 package internal
 
-// hweb2In_
+// hweb2In_ is used by hweb2Request and b2Response.
 type hweb2In_ = webIn_
 
 func (r *hweb2In_) readContentB2() (p []byte, err error) {
 	return
 }
 
-// hweb2Out_
+// hweb2Out_ is used by hweb2Response and b2Request.
 type hweb2Out_ = webOut_
 
 func (r *hweb2Out_) addHeaderB2(name []byte, value []byte) bool {
@@ -120,7 +120,7 @@ const ( // record types
 )
 
 const ( // record flags
-	hweb2FlagEndDATA = 0b00000001 // indicating end of DATA
+	hwebFlagEndStream = 0b00000001 // end of stream, used by HEAD, DATA, and TAIL
 )
 
 const ( // setting codes
@@ -146,16 +146,16 @@ on connection established:
 
 stream=1 (sized output):
 
-    --> type=HEAD streamID=1 bodySize=?     body=[:method=GET :target=/hello host=example.com:8081]
+    --> type=HEAD streamID=1 bodySize=?     body=[:method=GET :path=/hello host=example.com:8081] // endStream=1
 
     <-- type=HEAD streamID=1 bodySize=?     body=[:status=200 content-length=12]
     <-- type=DATA streamID=1 bodySize=6     body=[hello,]
-    <-- type=DATA streamID=1 bodySize=6     body=[world!]
+    <-- type=DATA streamID=1 bodySize=6     body=[world!] // endStream=1
 
 stream=2 (unsized output):
 
-    --> type=HEAD streamID=2 bodySize=?     body=[:method=POST :target=/abc?d=e host=example.com:8081 content-length=90]
-    --> type=DATA streamID=2 bodySize=90    body=[...90...]
+    --> type=HEAD streamID=2 bodySize=?     body=[:method=POST :path=/abc?d=e host=example.com:8081 content-length=90]
+    --> type=DATA streamID=2 bodySize=90    body=[...90...] // endStream=1
 
     <-- type=HEAD streamID=2 bodySize=?     body=[:status=200 content-type=text/html;charset=utf-8]
     <-- type=DATA streamID=2 bodySize=16376 body=[...16376...]
@@ -163,7 +163,6 @@ stream=2 (unsized output):
     <-- type=DATA streamID=2 bodySize=123   body=[...123...]
     ==> type=SIZE streamID=2 bodySize=3     body=16376
     <-- type=DATA streamID=2 bodySize=4567  body=[...4567...]
-    <-- type=DATA streamID=2 bodySize=0     body=[] // flagEndDATA=1
-    <-- type=TAIL streamID=2 bodySize=?     body=[md5-digest=12345678901234567890123456789012]
+    <-- type=TAIL streamID=2 bodySize=?     body=[md5-digest=12345678901234567890123456789012] // endStream=1
 
 */

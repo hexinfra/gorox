@@ -14,7 +14,7 @@ import (
 
 const ( // component list
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, hwebOutgate, quicOutgate, tcpsOutgate, udpsOutgate
+	compFixture               // clock, fcache, resolver, http1Outgate, http2Outgate, http3Outgate, hweb2Outgate, quicOutgate, tcpsOutgate, udpsOutgate
 	compUniture               // ...
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend
 	compQUICMesher            // quicMesher

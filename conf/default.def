@@ -25,7 +25,7 @@ stage {
 	}
 	http3Outgate {
 	}
-	hwebOutgate {
+	hweb2Outgate {
 	}
 	quicOutgate {
 	}

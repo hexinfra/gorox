@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// webServer is the interface for *httpxServer, *http3Server, and *hwebServer.
+// webServer is the interface for *httpxServer, *http3Server, and *hweb2Server.
 type webServer interface {
 	Server
 	streamHolder
@@ -34,7 +34,7 @@ type webServer interface {
 	findApp(hostname []byte) *App
 }
 
-// webServer_ is a mixin for httpxServer, http3Server, and hwebServer.
+// webServer_ is a mixin for httpxServer, http3Server, and hweb2Server.
 type webServer_ struct {
 	// Mixins
 	Server_
@@ -191,13 +191,13 @@ func (s *webServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
-// webGate is the interface for *httpxGate, *http3Gate, and *hwebGate.
+// webGate is the interface for *httpxGate, *http3Gate, and *hweb2Gate.
 type webGate interface {
 	Gate
 	onConnectionClosed()
 }
 
-// webGate_ is the mixin for httpxGate, http3Gate, and hwebGate.
+// webGate_ is the mixin for httpxGate, http3Gate, and hweb2Gate.
 type webGate_ struct {
 	// Mixins
 	Gate_
@@ -208,7 +208,7 @@ func (g *webGate_) onConnectionClosed() {
 	g.SubDone()
 }
 
-// webConn is the interface for *http[1-3]Conn and *hwebConn.
+// webConn is the interface for *http[1-3]Conn and *hweb2Conn.
 type webConn interface {
 	serve() // goroutine
 	getServer() webServer
@@ -217,7 +217,7 @@ type webConn interface {
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
-// webConn_ is the mixin for http[1-3]Conn and hwebConn.
+// webConn_ is the mixin for http[1-3]Conn and hweb2Conn.
 type webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -258,7 +258,7 @@ func (c *webConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 func (c *webConn_) isBroken() bool { return c.broken.Load() }
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
-// Request is the interface for *http[1-3]Request and *hwebRequest.
+// Request is the interface for *http[1-3]Request and *hweb2Request.
 type Request interface {
 	PeerAddr() net.Addr
 	App() *App
@@ -413,7 +413,7 @@ type Request interface {
 	unsafeVariable(index int16) []byte
 }
 
-// serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
+// serverRequest_ is the mixin for http[1-3]Request and hweb2Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
@@ -2561,7 +2561,7 @@ func (u *Upload) MoveTo(path string) error {
 	return nil
 }
 
-// Response is the interface for *http[1-3]Response and *hwebResponse.
+// Response is the interface for *http[1-3]Response and *hweb2Response.
 type Response interface {
 	Request() Request
 
@@ -2633,7 +2633,7 @@ type Response interface {
 	unsafeMake(size int) []byte
 }
 
-// serverResponse_ is the mixin for http[1-3]Response and hwebResponse.
+// serverResponse_ is the mixin for http[1-3]Response and hweb2Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message

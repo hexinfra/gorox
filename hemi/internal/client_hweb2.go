@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB client implementation.
+// HWEB/2 client implementation.
 
-// HWEB is a simplified HTTP/2.
+// HWEB/2 is a simplified HTTP/2.
 
 package internal
 
@@ -18,168 +18,168 @@ import (
 )
 
 func init() {
-	registerFixture(signHWEBOutgate)
-	registerBackend("hwebBackend", func(name string, stage *Stage) backend {
-		b := new(hwebBackend)
+	registerFixture(signHWEB2Outgate)
+	registerBackend("hweb2Backend", func(name string, stage *Stage) backend {
+		b := new(hweb2Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-const signHWEBOutgate = "hwebOutgate"
+const signHWEB2Outgate = "hweb2Outgate"
 
-func createHWEBOutgate(stage *Stage) *HWEBOutgate {
-	hweb := new(HWEBOutgate)
-	hweb.onCreate(stage)
-	hweb.setShell(hweb)
-	return hweb
+func createHWEB2Outgate(stage *Stage) *HWEB2Outgate {
+	hweb2 := new(HWEB2Outgate)
+	hweb2.onCreate(stage)
+	hweb2.setShell(hweb2)
+	return hweb2
 }
 
-// HWEBOutgate
-type HWEBOutgate struct {
+// HWEB2Outgate
+type HWEB2Outgate struct {
 	// Mixins
 	webOutgate_
 	// States
 }
 
-func (f *HWEBOutgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHWEBOutgate, stage)
+func (f *HWEB2Outgate) onCreate(stage *Stage) {
+	f.webOutgate_.onCreate(signHWEB2Outgate, stage)
 }
 
-func (f *HWEBOutgate) OnConfigure() {
+func (f *HWEB2Outgate) OnConfigure() {
 	f.webOutgate_.onConfigure(f)
 }
-func (f *HWEBOutgate) OnPrepare() {
+func (f *HWEB2Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
 }
 
-func (f *HWEBOutgate) run() { // goroutine
+func (f *HWEB2Outgate) run() { // goroutine
 	Loop(time.Second, f.Shut, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("hwebOutgate done")
+		Debugln("hweb2Outgate done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *HWEBOutgate) FetchConn(address string, tlsMode bool) (*H2Conn, error) {
+func (f *HWEB2Outgate) FetchConn(address string, tlsMode bool) (*b2Conn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *HWEBOutgate) StoreConn(conn *H2Conn) {
+func (f *HWEB2Outgate) StoreConn(conn *b2Conn) {
 	// TODO
 }
 
-// hwebBackend
-type hwebBackend struct {
+// hweb2Backend
+type hweb2Backend struct {
 	// Mixins
-	webBackend_[*hwebNode]
+	webBackend_[*hweb2Node]
 	// States
 }
 
-func (b *hwebBackend) onCreate(name string, stage *Stage) {
+func (b *hweb2Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *hwebBackend) OnConfigure() {
+func (b *hweb2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *hwebBackend) OnPrepare() {
+func (b *hweb2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *hwebBackend) createNode(id int32) *hwebNode {
-	node := new(hwebNode)
+func (b *hweb2Backend) createNode(id int32) *hweb2Node {
+	node := new(hweb2Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *hwebBackend) FetchConn() (*hConn, error) {
+func (b *hweb2Backend) FetchConn() (*b2Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *hwebBackend) StoreConn(conn *hConn) {
+func (b *hweb2Backend) StoreConn(conn *b2Conn) {
 	conn.node.storeConn(conn)
 }
 
-// hwebNode
-type hwebNode struct {
+// hweb2Node
+type hweb2Node struct {
 	// Mixins
 	webNode_
 	// Assocs
-	backend *hwebBackend
+	backend *hweb2Backend
 	// States
 }
 
-func (n *hwebNode) init(id int32, backend *hwebBackend) {
+func (n *hweb2Node) init(id int32, backend *hweb2Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
 }
 
-func (n *hwebNode) maintain(shut chan struct{}) { // goroutine
+func (n *hweb2Node) maintain(shut chan struct{}) { // goroutine
 	Loop(time.Second, shut, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if IsDebug(2) {
-		Debugf("hwebNode=%d done\n", n.id)
+		Debugf("hweb2Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *hwebNode) fetchConn() (*hConn, error) {
-	// Note: An hConn can be used concurrently, limited by maxStreams.
+func (n *hweb2Node) fetchConn() (*b2Conn, error) {
+	// Note: An b2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var tcpConn *net.TCPConn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
-	return getHConn(connID, n.backend, n, tcpConn, rawConn), nil
+	return getB2Conn(connID, n.backend, n, tcpConn, rawConn), nil
 }
-func (n *hwebNode) storeConn(wConn *hConn) {
-	// Note: An hConn can be used concurrently, limited by maxStreams.
+func (n *hweb2Node) storeConn(wConn *b2Conn) {
+	// Note: An b2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
-// poolHConn is the client-side HWEB connection pool.
-var poolHConn sync.Pool
+// poolB2Conn is the client-side HWEB/2 connection pool.
+var poolB2Conn sync.Pool
 
-func getHConn(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) *hConn {
-	var conn *hConn
-	if x := poolHConn.Get(); x == nil {
-		conn = new(hConn)
+func getB2Conn(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *b2Conn {
+	var conn *b2Conn
+	if x := poolB2Conn.Get(); x == nil {
+		conn = new(b2Conn)
 	} else {
-		conn = x.(*hConn)
+		conn = x.(*b2Conn)
 	}
 	conn.onGet(id, client, node, tcpConn, rawConn)
 	return conn
 }
-func putHConn(conn *hConn) {
+func putB2Conn(conn *b2Conn) {
 	conn.onPut()
-	poolHConn.Put(conn)
+	poolB2Conn.Put(conn)
 }
 
-// hConn
-type hConn struct {
+// b2Conn
+type b2Conn struct {
 	// Mixins
 	wConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *hwebNode    // associated node
+	node    *hweb2Node   // associated node
 	tcpConn *net.TCPConn // the connection
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *hConn) onGet(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
+func (c *b2Conn) onGet(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
 	c.tcpConn = tcpConn
 	c.rawConn = rawConn
 }
-func (c *hConn) onPut() {
+func (c *b2Conn) onPut() {
 	c.wConn_.onPut()
 	c.node = nil
 	c.tcpConn = nil
@@ -187,21 +187,21 @@ func (c *hConn) onPut() {
 	c.activeStreams = 0
 }
 
-func (c *hConn) FetchStream() *hStream {
+func (c *b2Conn) FetchStream() *hStream {
 	// TODO: stream.onUse()
 	return nil
 }
-func (c *hConn) StoreStream(stream *hStream) {
+func (c *b2Conn) StoreStream(stream *hStream) {
 	// TODO
 	stream.onEnd()
 }
 
-func (c *hConn) Close() error { // only used by clients of dial
+func (c *b2Conn) Close() error { // only used by clients of dial
 	// TODO
 	return nil
 }
 
-func (c *hConn) setWriteDeadline(deadline time.Time) error {
+func (c *b2Conn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.tcpConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -210,7 +210,7 @@ func (c *hConn) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *hConn) setReadDeadline(deadline time.Time) error {
+func (c *b2Conn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.tcpConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -220,21 +220,21 @@ func (c *hConn) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *hConn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
-func (c *hConn) writev(vector *net.Buffers) (int64, error) {
+func (c *b2Conn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
+func (c *b2Conn) writev(vector *net.Buffers) (int64, error) {
 	// Will consume vector automatically
 	return vector.WriteTo(c.tcpConn)
 }
-func (c *hConn) readAtLeast(p []byte, n int) (int, error) {
+func (c *b2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.tcpConn, p, n)
 }
 
-func (c *hConn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
+func (c *b2Conn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
 
 // poolHStream
 var poolHStream sync.Pool
 
-func getHStream(conn *hConn, id int32) *hStream {
+func getHStream(conn *b2Conn, id int32) *hStream {
 	var stream *hStream
 	if x := poolHStream.Get(); x == nil {
 		stream = new(hStream)
@@ -266,7 +266,7 @@ type hStream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *hConn
+	conn *b2Conn
 	id   int32
 	// Stream states (zeros)
 	hStream0 // all values must be zero by default in this struct!
@@ -274,12 +274,12 @@ type hStream struct {
 type hStream0 struct { // for fast reset, entirely
 }
 
-func (s *hStream) onUse(conn *hConn, id int32) { // for non-zeros
+func (s *hStream) onUse(conn *b2Conn, id int32) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
-	s.request.onUse(VersionH)
-	s.response.onUse(VersionH)
+	s.request.onUse(Version2)
+	s.response.onUse(Version2)
 }
 func (s *hStream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -345,7 +345,7 @@ func (s *hStream) readFull(p []byte) (int, error) { // for content i/o only?
 func (s *hStream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *hStream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-// hRequest is the client-side HWEB request.
+// hRequest is the client-side HWEB/2 request.
 type hRequest struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
@@ -411,7 +411,7 @@ func (r *hRequest) finalizeUnsized() error {
 func (r *hRequest) addedHeaders() []byte { return nil }
 func (r *hRequest) fixedHeaders() []byte { return nil }
 
-// hResponse is the client-side HWEB response.
+// hResponse is the client-side HWEB/2 response.
 type hResponse struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_
@@ -426,7 +426,7 @@ func (r *hResponse) readContent() (p []byte, err error) { return r.readContentH(
 // poolHSocket
 var poolHSocket sync.Pool
 
-// hSocket is the client-side HWEB websocket.
+// hSocket is the client-side HWEB/2 websocket.
 type hSocket struct {
 	// Mixins
 	clientSocket_

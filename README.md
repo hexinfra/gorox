@@ -6,10 +6,10 @@ Welcome to Gorox!
 Gorox is an advanced Web server, application server, RPC server, and proxy
 server. It can be used as:
 
-  * Web Server (HTTP 1/2/3, HWEB, WebSocket, TLS, FCGI, uwsgi, AJP)
+  * Web Server (HTTP 1/2/3, WebSocket, HWEB/2, TLS, FCGI, uwsgi, AJP)
   * Application Server for Go (Applications, Frameworks)
   * RPC Server for Go (HRPC Services, gRPC Services)
-  * Web Proxy Server (HTTP 1/2/3, HWEB, WebSocket, Forward, Reverse, Caching)
+  * Web Proxy Server (HTTP 1/2/3, WebSocket, HWEB/2, Forward, Reverse, Caching)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
   * Service Mesh (Data Plane)
   * ... and more through its highly extensible compoments design!
@@ -177,7 +177,7 @@ Layout
 
 By default, Gorox uses these dirs:
 
-  * apps/ - Place your Web applications, possibly written in Go,
+  * apps/ - Place your Web applications,
   * cmds/ - Place your auxiliary commands,
   * conf/ - Place configs for Gorox and your commands,
   * data/ - Place static shared files of your project,
@@ -192,10 +192,10 @@ By default, Gorox uses these dirs:
   * svcs/ - Place your RPC services, may be gRPC or HRPC.
   * test/ - Place tests for your project.
 
-After Gorox is started, 3 dirs are created:
+After Gorox is started, 3 extra dirs are created:
 
   * logs/ - Place running logs,
-  * temp/ - Place temp files which are safe to remove when Gorox is shutdown,
+  * temp/ - Place temp files which are safe to remove after Gorox is shutdown,
   * vars/ - Place dynamic data files used by Gorox.
 
 

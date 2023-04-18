@@ -7,7 +7,7 @@
 
 package internal
 
-// normalProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
+// normalProxy_ is the mixin for http[1-3]Proxy and hweb2Proxy.
 type normalProxy_ struct {
 	// Mixins
 	Handlet_

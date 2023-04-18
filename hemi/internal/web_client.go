@@ -51,7 +51,7 @@ func (w *webClient_) onPrepare(shell Component) {
 	w.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEBOutgate.
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB2Outgate.
 type webOutgate_ struct {
 	// Mixins
 	outgate_
@@ -73,7 +73,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 	f.webClient_.onPrepare(shell)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and hwebBackend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and hweb2Backend.
 type webBackend_[N node] struct {
 	// Mixins
 	backend_[N]
@@ -100,7 +100,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// webNode_ is the mixin for http[1-3]Node and hwebNode.
+// webNode_ is the mixin for http[1-3]Node and hweb2Node.
 type webNode_ struct {
 	// Mixins
 	node_
@@ -111,7 +111,7 @@ func (n *webNode_) init(id int32) {
 	n.node_.init(id)
 }
 
-// wConn is the interface for *H[1-3]Conn and *hConn.
+// wConn is the interface for *H[1-3]Conn and *b2Conn.
 type wConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -119,7 +119,7 @@ type wConn interface {
 	markBroken()
 }
 
-// wConn_ is the mixin for H[1-3]Conn and hConn.
+// wConn_ is the mixin for H[1-3]Conn and b2Conn.
 type wConn_ struct {
 	// Mixins
 	conn_

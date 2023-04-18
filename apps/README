@@ -22,7 +22,7 @@ To add a new Go app named "bar":
   4. Import package "bar" in "import.go",
   5. Add app "bar" in "../conf/gorox.conf" and link it to your web servers.
 
-In gorox, a web server (like httpxServer, http3Server, and hwebServer) can host
+In gorox, a web server (like httpxServer, http3Server, and hweb2Server) can host
 many apps, whereas an app can be linked to many web servers.
 
 For examples, see builtin apps.

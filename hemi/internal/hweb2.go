@@ -3,74 +3,74 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB protocol elements.
+// HWEB/2 protocol elements.
 
-// HWEB is a simplified HTTP/2. Its design makes it easy to implement a server or client.
+// HWEB/2 is a simplified HTTP/2. Its design makes it easy to implement a server or client.
 
 package internal
 
-// hwebIn_ is used by hwebRequest and hResponse.
-type hwebIn_ = webIn_
+// hweb2In_
+type hweb2In_ = webIn_
 
-func (r *hwebIn_) readContentH() (p []byte, err error) {
+func (r *hweb2In_) readContentH() (p []byte, err error) {
 	return
 }
 
-// hwebOut_ is used by hwebResponse and hRequest.
-type hwebOut_ = webOut_
+// hweb2Out_
+type hweb2Out_ = webOut_
 
-func (r *hwebOut_) addHeaderH(name []byte, value []byte) bool {
+func (r *hweb2Out_) addHeaderH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) headerH(name []byte) (value []byte, ok bool) {
+func (r *hweb2Out_) headerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hwebOut_) hasHeaderH(name []byte) bool {
+func (r *hweb2Out_) hasHeaderH(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) delHeaderH(name []byte) (deleted bool) {
+func (r *hweb2Out_) delHeaderH(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *hwebOut_) delHeaderAtH(o uint8) {
+func (r *hweb2Out_) delHeaderAtH(o uint8) {
 	// TODO
 }
 
-func (r *hwebOut_) sendChainH() error {
+func (r *hweb2Out_) sendChainH() error {
 	return nil
 }
 
-func (r *hwebOut_) echoHeadersH() error {
+func (r *hweb2Out_) echoHeadersH() error {
 	// TODO
 	return nil
 }
-func (r *hwebOut_) echoChainH() error {
+func (r *hweb2Out_) echoChainH() error {
 	// TODO
 	return nil
 }
 
-func (r *hwebOut_) trailerH(name []byte) (value []byte, ok bool) {
+func (r *hweb2Out_) trailerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hwebOut_) addTrailerH(name []byte, value []byte) bool {
+func (r *hweb2Out_) addTrailerH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) trailersH() []byte {
+func (r *hweb2Out_) trailersH() []byte {
 	// TODO
 	return nil
 }
 
-func (r *hwebOut_) passBytesH(p []byte) error {
+func (r *hweb2Out_) passBytesH(p []byte) error {
 	// TODO
 	return nil
 }
 
-func (r *hwebOut_) finalizeUnsizedH() error {
+func (r *hweb2Out_) finalizeUnsizedH() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -78,15 +78,15 @@ func (r *hwebOut_) finalizeUnsizedH() error {
 	return nil
 }
 
-func (r *hwebOut_) writeBlockH(block *Block, unsized bool) error {
+func (r *hweb2Out_) writeBlockH(block *Block, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *hwebOut_) writeVectorH() error {
+func (r *hweb2Out_) writeVectorH() error {
 	return nil
 }
 
-//////////////////////////////////////// HWEB protocol elements.
+//////////////////////////////////////// HWEB/2 protocol elements.
 
 // recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 
@@ -112,29 +112,29 @@ func (r *hwebOut_) writeVectorH() error {
 // If concurrent streams exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
-	hwebTypeINIT = 0 // contains connection settings
-	hwebTypeHEAD = 1 // contains name-value pairs for headers
-	hwebTypeDATA = 2 // contains content data
-	hwebTypeSIZE = 3 // available buffer size for receiving content
-	hwebTypeTAIL = 4 // contains name-value pairs for trailers
+	hweb2TypeINIT = 0 // contains connection settings
+	hweb2TypeHEAD = 1 // contains name-value pairs for headers
+	hweb2TypeDATA = 2 // contains content data
+	hweb2TypeSIZE = 3 // available buffer size for receiving content
+	hweb2TypeTAIL = 4 // contains name-value pairs for trailers
 )
 
 const ( // record flags
-	hwebFlagEndDATA = 0b00000001 // indicating end of DATA
+	hweb2FlagEndDATA = 0b00000001 // indicating end of DATA
 )
 
 const ( // setting codes
-	hwebSettingMaxRecordBodySize    = 0
-	hwebSettingInitialBufferSize    = 1
-	hwebSettingMaxStreams           = 2
-	hwebSettingMaxConcurrentStreams = 3
+	hweb2SettingMaxRecordBodySize    = 0
+	hweb2SettingInitialBufferSize    = 1
+	hweb2SettingMaxStreams           = 2
+	hweb2SettingMaxConcurrentStreams = 3
 )
 
-var hwebSettingDefaults = [...]int32{
-	hwebSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	hwebSettingInitialBufferSize:    16376, // allow: [16376-16777215]
-	hwebSettingMaxStreams:           1000,  // allow: [100-16777215]
-	hwebSettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
+var hweb2SettingDefaults = [...]int32{
+	hweb2SettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
+	hweb2SettingInitialBufferSize:    16376, // allow: [16376-16777215]
+	hweb2SettingMaxStreams:           1000,  // allow: [100-16777215]
+	hweb2SettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
 }
 
 /*

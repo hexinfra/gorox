@@ -302,7 +302,7 @@ var poolHWEBSocket sync.Pool
 // hwebSocket is the server-side HWEB websocket.
 type hwebSocket struct {
 	// Mixins
-	webSocket_
+	serverSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

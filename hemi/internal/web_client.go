@@ -877,18 +877,21 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// wSocket is the interface for *H[1-3]Socket.
-type wSocket interface {
+// socket is the interface for *H[1-3]Socket.
+type socket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
 }
 
-// wSocket_ is the mixin for H[1-3]Socket.
-type wSocket_ struct {
+// clientSocket_ is the mixin for H[1-3]Socket.
+type clientSocket_ struct {
 	// Assocs
-	shell wSocket // the concrete wSocket
+	shell socket // the concrete socket
 	// Stream states (zeros)
 }
 
-func (s *wSocket_) onUse() {
+func (s *clientSocket_) onUse() {
 }
-func (s *wSocket_) onEnd() {
+func (s *clientSocket_) onEnd() {
 }

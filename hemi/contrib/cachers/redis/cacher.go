@@ -39,8 +39,10 @@ func (c *redisCacher) OnShutdown() {
 }
 
 func (c *redisCacher) OnConfigure() {
+	// TODO
 }
 func (c *redisCacher) OnPrepare() {
+	// TODO
 }
 
 func (c *redisCacher) Maintain() { // goroutine

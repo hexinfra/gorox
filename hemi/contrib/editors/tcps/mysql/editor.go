@@ -39,8 +39,10 @@ func (e *mysqlViewer) OnShutdown() {
 }
 
 func (e *mysqlViewer) OnConfigure() {
+	// TODO
 }
 func (e *mysqlViewer) OnPrepare() {
+	// TODO
 }
 
 func (e *mysqlViewer) OnInput(conn *TCPSConn, kind int8) {

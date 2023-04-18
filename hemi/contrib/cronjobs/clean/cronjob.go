@@ -38,8 +38,10 @@ func (j *cleanCronjob) OnShutdown() {
 }
 
 func (j *cleanCronjob) OnConfigure() {
+	// TODO
 }
 func (j *cleanCronjob) OnPrepare() {
+	// TODO
 }
 
 func (j *cleanCronjob) Schedule() { // goroutine

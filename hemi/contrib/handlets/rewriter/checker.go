@@ -39,8 +39,10 @@ func (h *rewriterChecker) OnShutdown() {
 }
 
 func (h *rewriterChecker) OnConfigure() {
+	// TODO
 }
 func (h *rewriterChecker) OnPrepare() {
+	// TODO
 }
 
 func (h *rewriterChecker) Handle(req Request, resp Response) (next bool) {

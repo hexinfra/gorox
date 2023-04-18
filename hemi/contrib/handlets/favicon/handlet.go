@@ -39,8 +39,10 @@ func (h *faviconHandlet) OnShutdown() {
 }
 
 func (h *faviconHandlet) OnConfigure() {
+	// TODO
 }
 func (h *faviconHandlet) OnPrepare() {
+	// TODO
 }
 
 func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {

@@ -45,7 +45,7 @@ type Server_ struct {
 	maxConnsPerGate int32         // max concurrent connections allowed per gate
 }
 
-func (s *Server_) OnCreate(name string, stage *Stage) {
+func (s *Server_) OnCreate(name string, stage *Stage) { // exported
 	s.MakeComp(name)
 	s.stage = stage
 }
@@ -82,6 +82,7 @@ func (s *Server_) OnConfigure() {
 	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) bool { return value > 0 }, 100000)
 }
 func (s *Server_) OnPrepare() {
+	// Currently nothing.
 }
 
 func (s *Server_) Stage() *Stage               { return s.stage }
@@ -109,10 +110,10 @@ type Gate_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	id       int32
-	address  string
-	shut     atomic.Bool
-	maxConns int32
+	id       int32        // gate id
+	address  string       // listening address
+	shut     atomic.Bool  // is gate shut?
+	maxConns int32        // max concurrent conns allowed
 	numConns atomic.Int32 // TODO: false sharing
 }
 

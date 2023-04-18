@@ -45,6 +45,7 @@ func (r *wrapReviser) OnConfigure() {
 	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankWrap)
 }
 func (r *wrapReviser) OnPrepare() {
+	// TODO
 }
 
 func (r *wrapReviser) Rank() int8 { return r.rank }

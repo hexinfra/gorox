@@ -39,8 +39,10 @@ func (h *accessChecker) OnShutdown() {
 }
 
 func (h *accessChecker) OnConfigure() {
+	// TODO
 }
 func (h *accessChecker) OnPrepare() {
+	// TODO
 }
 
 func (h *accessChecker) Handle(req Request, resp Response) (next bool) {

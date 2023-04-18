@@ -39,8 +39,10 @@ func (s *helloSocklet) OnShutdown() {
 }
 
 func (s *helloSocklet) OnConfigure() {
+	// TODO
 }
 func (s *helloSocklet) OnPrepare() {
+	// TODO
 }
 
 func (s *helloSocklet) Serve(req Request, sock Socket) {

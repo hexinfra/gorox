@@ -39,8 +39,10 @@ func (e *redisViewer) OnShutdown() {
 }
 
 func (e *redisViewer) OnConfigure() {
+	// TODO
 }
 func (e *redisViewer) OnPrepare() {
+	// TODO
 }
 
 func (e *redisViewer) OnInput(conn *TCPSConn, kind int8) {

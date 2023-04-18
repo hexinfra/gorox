@@ -39,8 +39,10 @@ func (f *dnsFilter) OnShutdown() {
 }
 
 func (f *dnsFilter) OnConfigure() {
+	// TODO
 }
 func (f *dnsFilter) OnPrepare() {
+	// TODO
 }
 
 func (f *dnsFilter) Handle(conn *UDPSConn) (next bool) {

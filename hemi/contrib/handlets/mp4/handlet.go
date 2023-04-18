@@ -39,8 +39,10 @@ func (h *mp4Handlet) OnShutdown() {
 }
 
 func (h *mp4Handlet) OnConfigure() {
+	// TODO
 }
 func (h *mp4Handlet) OnPrepare() {
+	// TODO
 }
 
 func (h *mp4Handlet) Handle(req Request, resp Response) (next bool) {

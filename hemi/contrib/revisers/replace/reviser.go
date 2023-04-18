@@ -45,6 +45,7 @@ func (r *replaceReviser) OnConfigure() {
 	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankReplace)
 }
 func (r *replaceReviser) OnPrepare() {
+	// TODO
 }
 
 func (r *replaceReviser) Rank() int8 { return r.rank }

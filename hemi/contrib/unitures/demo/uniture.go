@@ -37,8 +37,10 @@ func (u *demoUniture) OnShutdown() {
 }
 
 func (u *demoUniture) OnConfigure() {
+	// TODO
 }
 func (u *demoUniture) OnPrepare() {
+	// TODO
 }
 
 func (u *demoUniture) Run() { // goroutine

@@ -38,8 +38,10 @@ func (c *memCacher) OnShutdown() {
 }
 
 func (c *memCacher) OnConfigure() {
+	// TODO
 }
 func (c *memCacher) OnPrepare() {
+	// TODO
 }
 
 func (c *memCacher) Maintain() { // goroutine

@@ -40,8 +40,10 @@ func (f *echoFilter) OnShutdown() {
 }
 
 func (f *echoFilter) OnConfigure() {
+	// TODO
 }
 func (f *echoFilter) OnPrepare() {
+	// TODO
 }
 
 func (f *echoFilter) Handle(conn *TCPSConn) (next bool) {

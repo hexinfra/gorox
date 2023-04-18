@@ -39,8 +39,10 @@ func (h *refererChecker) OnShutdown() {
 }
 
 func (h *refererChecker) OnConfigure() {
+	// TODO
 }
 func (h *refererChecker) OnPrepare() {
+	// TODO
 }
 
 func (h *refererChecker) Handle(req Request, resp Response) (next bool) {

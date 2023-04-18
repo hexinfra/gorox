@@ -39,8 +39,10 @@ func (f *helloFilter) OnShutdown() {
 }
 
 func (f *helloFilter) OnConfigure() {
+	// TODO
 }
 func (f *helloFilter) OnPrepare() {
+	// TODO
 }
 
 func (f *helloFilter) Handle(conn *TCPSConn) (next bool) {

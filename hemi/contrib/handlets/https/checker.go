@@ -47,6 +47,7 @@ func (h *httpsChecker) OnConfigure() {
 	h.ConfigureString("authority", &h.authority, nil, "")
 }
 func (h *httpsChecker) OnPrepare() {
+	// TODO
 }
 
 func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {

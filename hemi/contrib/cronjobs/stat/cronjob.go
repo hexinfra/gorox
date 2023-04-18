@@ -38,8 +38,10 @@ func (j *statCronjob) OnShutdown() {
 }
 
 func (j *statCronjob) OnConfigure() {
+	// TODO
 }
 func (j *statCronjob) OnPrepare() {
+	// TODO
 }
 
 func (j *statCronjob) Schedule() { // goroutine

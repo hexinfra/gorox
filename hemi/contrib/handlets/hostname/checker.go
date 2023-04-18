@@ -55,6 +55,7 @@ func (h *hostnameChecker) OnConfigure() {
 	h.ConfigureBool("permanent", &h.permanent, false)
 }
 func (h *hostnameChecker) OnPrepare() {
+	// TODO
 }
 
 func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {

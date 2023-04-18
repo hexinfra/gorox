@@ -45,6 +45,7 @@ func (r *ssiReviser) OnConfigure() {
 	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankSSI)
 }
 func (r *ssiReviser) OnPrepare() {
+	// TODO
 }
 
 func (r *ssiReviser) Rank() int8 { return r.rank }

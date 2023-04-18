@@ -39,8 +39,10 @@ func (s *redisStater) OnShutdown() {
 }
 
 func (s *redisStater) OnConfigure() {
+	// TODO
 }
 func (s *redisStater) OnPrepare() {
+	// TODO
 }
 
 func (s *redisStater) Maintain() { // goroutine

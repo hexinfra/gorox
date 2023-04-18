@@ -39,8 +39,10 @@ func (h *webdavHandlet) OnShutdown() {
 }
 
 func (h *webdavHandlet) OnConfigure() {
+	// TODO
 }
 func (h *webdavHandlet) OnPrepare() {
+	// TODO
 }
 
 func (h *webdavHandlet) Handle(req Request, resp Response) (next bool) {

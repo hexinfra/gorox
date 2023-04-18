@@ -51,6 +51,7 @@ func (r *gzipReviser) OnConfigure() {
 	r.ConfigureStringList("onContentTypes", &r.onContentTypes, nil, []string{"text/html"})
 }
 func (r *gzipReviser) OnPrepare() {
+	// TODO
 }
 
 func (r *gzipReviser) Rank() int8      { return RankGzip }

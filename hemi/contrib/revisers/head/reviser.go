@@ -54,6 +54,7 @@ func (r *headReviser) OnConfigure() {
 	r.ConfigureStringList("delResponse", &r.delResponse, nil, []string{})
 }
 func (r *headReviser) OnPrepare() {
+	// TODO
 }
 
 func (r *headReviser) Rank() int8 { return RankHead }

@@ -34,7 +34,7 @@ type Sitex struct {
 	hostnameSites map[string]*Site // hostname -> site, for routing
 }
 
-func (h *Sitex) OnCreate(name string, stage *Stage, app *App) {
+func (h *Sitex) OnCreate(name string, stage *Stage, app *App) { // exported
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
@@ -95,6 +95,7 @@ func (h *Sitex) OnConfigure() {
 	h.ConfigureString("rdbms", &h.rdbms, nil, "")
 }
 func (h *Sitex) OnPrepare() {
+	// TODO
 }
 
 func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.

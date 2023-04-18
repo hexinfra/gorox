@@ -1,36 +1,106 @@
 <style type="text/css">
-article h1 { text-align:center; background:#d0e0f0; }
-article > ol { padding-left:30px; list-style-type: none; }
-article h2 { background:#d0f0e0; }
-article h3 { background:#f0e0d0; }
-article h1, article h2, article h3, article h4, article h5, article h6 { padding:5px; }
-article p { padding:5px; }
-article code { display:block; padding:10px; background:#fff0f0; }
-article ul { background:#efefef; }
-article li { padding:2px; }
-article dt { font-weight:bold; font-style:italic; }
-article a { text-decoration:none; }
-article table { border-collapse:collapse; }
-article th, article td { border:1px solid #000; }
+	article h1 {
+		text-align: center;
+		background: #d0e0f0;
+	}
+
+	article>ol {
+		padding-left: 30px;
+		list-style-type: none;
+	}
+
+	article h2 {
+		background: #d0f0e0;
+	}
+
+	article h3 {
+		background: #f0e0d0;
+	}
+
+	article h1,
+	article h2,
+	article h3,
+	article h4,
+	article h5,
+	article h6 {
+		padding: 5px;
+	}
+
+	article p {
+		padding: 5px;
+		background: #ffffff;
+	}
+
+	article code {
+		display: block;
+		padding: 10px;
+		background: #fff0f0;
+		white-space: pre-line;
+		line-height: 22px;
+	}
+
+	article code.pre {
+		white-space: pre;
+		-moz-tab-size: 2;
+		-o-tab-size: 2;
+		-webkit-tab-size: 2;
+		tab-size: 2;
+	}
+
+
+	article ul {
+		background: #efefef;
+	}
+
+	article li {
+		padding: 2px;
+	}
+
+	article dt {
+		font-weight: bold;
+		font-style: italic;
+	}
+
+	article a {
+		text-decoration: none;
+	}
+
+	article table {
+		border-collapse: collapse;
+	}
+
+	article th,
+	article td {
+		border: 1px solid #000;
+	}
+
+	table.none tr td {
+		border-collapse: collapse;
+		border: none;
+		height: 22px
+	}
 </style>
 
 <article>
-<h1>Gorox 参考手册</h1>
-<p>本文列出 Gorox 内各组件的详尽参考。</p>
+	<h1>Gorox 参考手册</h1>
+	<p>本文列出 Gorox 内各组件的详尽参考。</p>
 
 	<h2>目录</h2>
 	<ol>
 		<li><a href="#stage">stage</a></li>
+		<li><a href="#stage-constants">stage &gt; constants</a></li>
+		<li><a href="#stage-properties">stage &gt;properties</a></li>
+
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
 		<li><a href="#stage-resolver">stage &gt; resolver</a></li>
 		<li><a href="#stage-http1Outgate">stage &gt; http1Outgate</a></li>
 		<li><a href="#stage-http2Outgate">stage &gt; http2Outgate</a></li>
 		<li><a href="#stage-http3Outgate">stage &gt; http3Outgate</a></li>
-		<li><a href="#stage-hweb2Outgate">stage &gt; hweb2Outgate</a></li>
 		<li><a href="#stage-quicOutgate">stage &gt; quicOutgate</a></li>
 		<li><a href="#stage-tcpsOutgate">stage &gt; tcpsOutgate</a></li>
 		<li><a href="#stage-udpsOutgate">stage &gt; udpsOutgate</a></li>
+		<li><a href="#stage-unixOutgate">stage &gt; unixOutgate</a></li>
 		<li><a href="#stage-demoUniture">stage &gt; demoUniture</a></li>
 		<li><a href="#stage-http1Backend">stage &gt; http1Backend</a></li>
 		<li><a href="#stage-http2Backend">stage &gt; http2Backend</a></li>
@@ -38,108 +108,500 @@ article th, article td { border:1px solid #000; }
 		<li><a href="#stage-quicBackend">stage &gt; quicBackend</a></li>
 		<li><a href="#stage-tcpsBackend">stage &gt; tcpsBackend</a></li>
 		<li><a href="#stage-udpsBackend">stage &gt; udpsBackend</a></li>
+		<li><a href="#stage-unixBackend">stage &gt; unixBackend</a></li>
 		<li>stage &gt; quicMesher</li>
 		<li>stage &gt; quicMesher &gt; case</li>
-		<li>stage &gt; quicMesher &gt; [case &gt;] quicRelay</li>
+		<li>stage &gt; quicMesher &gt; [case &gt;] quicProxy</li>
 		<li>stage &gt; tcpsMesher</li>
 		<li>stage &gt; tcpsMesher &gt; case</li>
-		<li>stage &gt; tcpsMesher &gt; [case &gt;] echoFilter</li>
-		<li>stage &gt; tcpsMesher &gt; [case &gt;] helloFilter</li>
-		<li>stage &gt; tcpsMesher &gt; [case &gt;] tcpsRelay</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] echoDealet</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] helloDealet</li>
+		<li>stage &gt; tcpsMesher &gt; [case &gt;] tcpsProxy</li>
 		<li>stage &gt; tcpsMesher &gt; [case &gt;] mysqlEditor</li>
 		<li>stage &gt; tcpsMesher &gt; [case &gt;] redisEditor</li>
 		<li>stage &gt; udpsMesher</li>
 		<li>stage &gt; udpsMesher &gt; case</li>
-		<li>stage &gt; udpsMesher &gt; [case &gt;] dnsFilter</li>
-		<li>stage &gt; udpsMesher &gt; [case &gt;] udpsRelay</li>
+		<li>stage &gt; udpsMesher &gt; [case &gt;] dnsDealet</li>
+		<li>stage &gt; udpsMesher &gt; [case &gt;] udpsProxy</li>
 		<li>stage &gt; localStater</li>
 		<li>stage &gt; redisStater</li>
-		<li>stage &gt; localCacher</li>
-		<li>stage &gt; redisCacher</li>
-		<li>stage &gt; app</li>
-		<li>stage &gt; app &gt; rule</li>
-		<li>stage &gt; app &gt; [rule &gt;] accessChecker</li>
-		<li>stage &gt; app &gt; [rule &gt;] hostnameChecker</li>
-		<li>stage &gt; app &gt; [rule &gt;] httpsChecker</li>
-		<li>stage &gt; app &gt; [rule &gt;] limitChecker</li>
-		<li>stage &gt; app &gt; [rule &gt;] refererChecker</li>
-		<li>stage &gt; app &gt; [rule &gt;] rewriter</li>
-		<li>stage &gt; app &gt; [rule &gt;] ajpAgent</li>
-		<li>stage &gt; app &gt; [rule &gt;] favicon</li>
-		<li>stage &gt; app &gt; [rule &gt;] fcgiAgent</li>
-		<li>stage &gt; app &gt; [rule &gt;] http1Proxy</li>
-		<li>stage &gt; app &gt; [rule &gt;] http2Proxy</li>
-		<li>stage &gt; app &gt; [rule &gt;] http3Proxy</li>
-		<li>stage &gt; app &gt; [rule &gt;] sitex</li>
-		<li>stage &gt; app &gt; [rule &gt;] static</li>
-		<li>stage &gt; app &gt; [rule &gt;] uwsgiAgent</li>
-		<li>stage &gt; app &gt; [rule &gt;] webdavHandlet</li>
-		<li>stage &gt; app &gt; [rule &gt;] gzipReviser</li>
-		<li>stage &gt; app &gt; [rule &gt;] headReviser</li>
-		<li>stage &gt; app &gt; [rule &gt;] replaceReviser</li>
-		<li>stage &gt; app &gt; [rule &gt;] ssiReviser</li>
-		<li>stage &gt; app &gt; [rule &gt;] wrapReviser</li>
-		<li>stage &gt; app &gt; [rule &gt;] helloSocklet</li>
-		<li>stage &gt; app &gt; [rule &gt;] sock1Proxy</li>
-		<li>stage &gt; app &gt; [rule &gt;] sock2Proxy</li>
-		<li>stage &gt; app &gt; [rule &gt;] sock3Proxy</li>
-		<li>stage &gt; svc</li>
-		<li>stage &gt; echoServer</li>
-		<li>stage &gt; http3Server</li>
-		<li>stage &gt; httpxServer</li>
-		<li>stage &gt; socksServer</li>
-		<li>stage &gt; cleanCronjob</li>
-		<li>stage &gt; statCronjob</li>
+		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
+		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
+		<li><a href="#stage-app">stage &gt; app</a></li>
+		<li><a href="#stage-app-rule">stage &gt; app &gt; rule</a></li>
+		<li><a href="#stage-app-accessChecker">stage &gt; app &gt; [rule &gt;] accessChecker</a></li>
+		<li><a href="#stage-app-hostnameChecker">stage &gt; app &gt; [rule &gt;] hostnameChecker</a></li>
+		<li><a href="#stage-app-httpsChecker">stage &gt; app &gt; [rule &gt;] httpsChecker</a></li>
+		<li> <a href="#stage-app-limitChecker">stage &gt; app &gt; [rule &gt;] limitChecker</a></li>
+		<li> <a href="#stage-app-refererChecker">stage &gt; app &gt; [rule &gt;] refererChecker</a></li>
+		<li> <a href="#stage-app-rewriter">stage &gt; app &gt; [rule &gt;] rewriter</a></li>
+		<li> <a href="#stage-app-ajpAgent">stage &gt; app &gt; [rule &gt;] ajpAgent</a></li>
+		<li> <a href="#stage-app-favicon">stage &gt; app &gt; [rule &gt;] favicon</a></li>
+		<li> <a href="#stage-app-fcgiAgent">stage &gt; app &gt; [rule &gt;] fcgiAgent</a></li>
+		<li> <a href="#stage-app-http1Proxy">stage &gt; app &gt; [rule &gt;] http1Proxy</a></li>
+		<li> <a href="#stage-app-http2Proxy">stage &gt; app &gt; [rule &gt;] http2Proxy</a></li>
+		<li> <a href="#stage-app-http3Proxy">stage &gt; app &gt; [rule &gt;] http3Proxy</a></li>
+		<li> <a href="#stage-app-sitex">stage &gt; app &gt; [rule &gt;] sitex</a></li>
+		<li> <a href="#stage-app-static">stage &gt; app &gt; [rule &gt;] static</a></li>
+		<li> <a href="#stage-app-uwsgiAgent">stage &gt; app &gt; [rule &gt;] uwsgiAgent</a></li>
+		<li> <a href="#stage-app-webdavHandlet">stage &gt; app &gt; [rule &gt;] webdavHandlet</a></li>
+		<li> <a href="#stage-app-gzipReviser">stage &gt; app &gt; [rule &gt;] gzipReviser</a></li>
+		<li> <a href="#stage-app-headReviser">stage &gt; app &gt; [rule &gt;] headReviser</a></li>
+		<li> <a href="#stage-app-replaceReviser">stage &gt; app &gt; [rule &gt;] replaceReviser</a></li>
+		<li> <a href="#stage-app-ssiReviser">stage &gt; app &gt; [rule &gt;] ssiReviser</a></li>
+		<li> <a href="#stage-app-wrapReviser">stage &gt; app &gt; [rule &gt;] wrapReviser</a></li>
+		<li> <a href="#stage-app-helloSocklet">stage &gt; app &gt; [rule &gt;] helloSocklet</a></li>
+		<li> <a href="#stage-app-sock1Proxy">stage &gt; app &gt; [rule &gt;] sock1Proxy</a></li>
+		<li> <a href="#stage-app-sock2Proxy">stage &gt; app &gt; [rule &gt;] sock2Proxy</a></li>
+		<li> <a href="#stage-app-sock3Proxy">stage &gt; app &gt; [rule &gt;] sock3Proxy</a></li>
+		<li><a href="#stage-svc">stage &gt; svc</a></li>
+		<li><a href="#stage-echoServer">stage &gt; echoServer</a></li>
+		<li><a href="#stage-http3Server">stage &gt; http3Server</a></li>
+		<li><a href="#stage-httpxServer">stage &gt; httpxServer</a></li>
+		<li><a href="#stage-socksServer">stage &gt; socksServer</a></li>
+		<li><a href="#stage-cleanCronjob">stage &gt; cleanCronjob</a></li>
+		<li><a href="#stage-statCronjob">stage &gt; statCronjob</a></li>
 	</ol>
 
 	<h2>组件</h2>
 	<ol>
 		<li id="stage">
 			<h3>stage</h3>
+			<p>stage是gorox工作进程的运行阶段，其余的配置和组件都必须在stage内部。</p>
+			<code>语法: stage { ... }
+				默认值: 无
+				是否必须: 必须，且唯一
+			</code>
+			<p>例子</p>
+
+			<code class="pre">stage {
+	.logFile = %logsDir + "/worker.log"
+
+	app "example" {
+		.hostnames = ("*.example.com")
+		.webRoot = "/var/www"
+		static {}
+	}
+
+	httpxServer "main" {
+		.forApps = ("example")
+		.address = ":5080"
+	}
+}
+			</code>
+		</li>
+
+		<li id="stage-constants">
+			<h3>stage &gt; 常量</h3>
+			<p>gorox启动以后时候定义好的值</p>
 			<ul>
-				<li>logFile</li>
-				<li>cpuFile</li>
-				<li>hepFile</li>
+				<li>
+					<code class="pre">%baseDir : gorox 可执行文件的当前目录
+
+%logsDir : 启动gorox时候 参数-logs指定的的目录，
+	 如果指定的是绝对目录，则采用这个目录。
+	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
+	 如果未指定目录，则 %baseDir 加上 logs，作为日志目录。
+
+%tempDir : 启动gorox时候 参数-temps指定的的目录，
+	 如果指定的是绝对目录，则采用这个目录。
+	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
+	 如果未指定目录，则 %baseDir 加上 temp，作为临时文件的目录。
+
+
+%varsDir : 启动gorox时候 参数-vars指定的的目录，
+	 如果指定的是绝对目录，则采用这个目录。
+	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
+	 如果未指定目录，则 %baseDir 加上 vars，作为vars目录。
+					</code>
+				</li>
+
+
 			</ul>
 		</li>
+
+		<li id="stage-properties">
+			<h3>stage &gt; properties</h3>
+			<p>stage下可以使用属性列表</p>
+
+			<ul>
+				<li>
+					<p>.logFile: gorox内部运行产生的日志（非访问日志）</p>
+					<code class="pre">语法：.logFile filename
+默认值：%logsDir + "/worker.log"
+上下文： stage 
+
+// 例子
+stage {
+.logFile = %logsDir + "/worker.log"
+}
+</code>
+
+					<p>.cpuFile: 采集gorox 5s的CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu</p>
+					<code>语法：.cpuFile filename
+默认值：%tempDir + "/cpu.prof"
+上下文： stage
+
+// 例子
+stage {
+	.cpuFile = %tempDir + "/cpu.prof"
+}
+</code>
+
+
+					<p>.hepFile: 采集gorox 5s的heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap</p>
+					<code>语法：.hepFile filename
+默认值：%tempDir + "/hep.prof"
+上下文： stage
+
+// 例子
+stage {
+	.hepFile = %tempDir + "/hep.prof"
+}
+</code>
+
+
+
+					<p>.thrFile: 采集gorox 5s的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread</p>
+					<code>语法：.thrFile filename
+默认值：%tempDir + "/thr.prof"
+上下文： stage
+
+// 例子
+stage {
+	.thrFile = %tempDir + "/thr.prof"
+}
+</code>
+
+
+					<p>.grtFile: 采集gorox进程内所有当前goroutine的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine</p>
+					<code>语法：.grtFile filename
+默认值：%tempDir + "/grt.prof"
+上下文： stage
+
+// 例子
+stage {
+	.grtFile = %tempDir + "/grt.prof"
+}
+</code>
+
+
+					<p>.blkFile: 采集gorox 5s内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block</p>
+					<code>语法：.blkFile filename
+默认值：%tempDir + "/blk.prof"
+上下文： stage
+
+// 例子
+stage {
+	.blkFile = %tempDir + "/blk.prof"
+}
+</code>
+
+
+				</li>
+
+
+			</ul>
+		</li>
+
+
 		<li id="stage-clock">
 			<h3>stage &gt; clock</h3>
-			<ul>
-				<li>logFile</li>
-			</ul>
+			<p>gorox获取时间并且缓存时间，每隔100ms更新一次，目前不可配置。用于http header中的date、expires、last-modified等</p>
 		</li>
 		<li id="stage-fcache">
 			<h3>stage &gt; fcache</h3>
+			<p>将静态文件缓存在内存中</p>
 			<ul>
-				<li>logFile</li>
+				<li>
+					<p>.smallFileSize 小于等于这个值的文件，将会把文件数据缓存在内存，大于这个值将会缓存文件对象</p>
+					<code>语法：.smallFileSize byteSize
+					默认值：64K
+					取值范围：(0, 512M]
+					上下文： fcache
+					
+					// 例子
+					fcache {
+						.smallFileSize = 65535
+					}
+					</code>
+				</li>
+				<li>
+					<p>.maxSmallFiles 最大缓存的小文件数量。</p>
+					<code>语法：.smallFileSize size
+						默认值：1000
+						取值范围：(0, +∞)
+						上下文： fcache
+						
+						// 例子
+						fcache {
+							.maxSmallFiles = 1000
+						}
+						</code>
+				</li>
+				<li>
+					<p>.maxLargeFiles 最大缓存的大文件对象数量。</p>
+					<code>语法：.maxLargeFiles size
+						默认值：500
+						取值范围：(0, +∞)
+						上下文： fcache
+						
+						// 例子
+						fcache {
+							.maxLargeFiles = 1000
+						}
+					</code>
+				</li>
+
+
+				<li>
+					<p>.cacheTimeout 缓存时长。</p>
+					<code>语法：.cacheTimeout durations
+						默认值：1s
+						取值范围：(0s, +∞)
+						上下文： fcache
+						
+						// 例子
+						fcache {
+							.cacheTimeout = 1s
+						}
+					</code>
+				</li>
+
+
+
 			</ul>
 		</li>
 		<li id="stage-resolver">
 			<h3>stage &gt; resolver</h3>
-			<ul>
-				<li>logFile</li>
-			</ul>
+			<p>resolver: 用于DNS解析ip4、ip6等</p>
 		</li>
 		<li id="stage-http1Outgate">
 			<h3>stage &gt; http1Outgate</h3>
+			<p>http1.1 正向代理，通过转发gorox转发http请求</p>
 			<ul>
-				<li>logFile</li>
+				<li>
+					<code class="pre">http1Outgate test {
+	.tlsMode = false
+	.proxyMode = forward  //TODO: 
+	.dialTimeout = 10s
+	.writeTimeout = 30s
+	.readTimeout = 30s
+	.idleTimeout = 4s
+	.maxStreamsPerConn = 1000
+	.saveContentFilesDir = "%tempDir/http/http1Outgate/test"
+	.maxContentSize = 1T
+	.sendTimeout = 60s
+	.recvTimeout = 60s
+}</code>
+				</li>
+
+				<li>
+					<p>.tlsMode 是否开启tls协议（https）</p>
+					<code>语法：.tlsMode bool
+		默认值：false
+		取值范围： false | true
+	</code>
+				</li>
+
+				<li>
+					<p>.proxyMode 代理模式</p>
+					<code>语法：.proxyMode = ""
+						默认值：""
+						取值范围： forward | reverse
+					</code>
+				</li>
+
+				<li>
+					<p>.dialTimeout 连接超时时间</p>
+					<code>语法：.dialTimeout duration
+		默认值：10s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+
+				<li>
+					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.writeTimeout duration
+		默认值：30s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+
+				<li>
+					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.readTimeout duration
+		默认值：30s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+
+				<li>
+					<p>.idleTimeout 连接空闲时长，超过这个时间就从连接池剔除此连接。</p>
+					<code>语法：.idleTimeout duration
+		默认值：4s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+				<li>
+					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
+					<code>语法：.maxStreamsPerConn int
+		默认值：1000
+		取值范围：(0s, +∞)
+	</code>
+				</li>
+
+				<li>
+					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<code>语法：.saveContentFilesDir path
+		默认值：%tempDir/http/http1Outgate/name
+		取值范围：-
+	</code>
+				</li>
+
+
+				<li>
+					<p>.maxContentSize http数据包最大限制</p>
+					<code>语法：.maxContentSize size
+		默认值：1T
+		取值范围： (0s, 内存最大值)
+	</code>
+				</li>
+
+				<li>
+					<p>.sendTimeout 发送整个http数据超时时间。</p>
+					<code>语法：.sendTimeout duration
+		默认值：60s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+
+
+				<li>
+					<p>.recvTimeout 接收整个http数据超时时间。</p>
+					<code>语法：.recvTimeout duration
+		默认值：60s
+		取值范围： (0s, 10m]
+	</code>
+				</li>
+
+
 			</ul>
 		</li>
 		<li id="stage-http2Outgate">
 			<h3>stage &gt; http2Outgate</h3>
+			<p>http2 正向代理，通过转发gorox转发http请求</p>
 			<ul>
-				<li>logFile</li>
+				<li>
+					<code class="pre">http1Outgate test {
+	.tlsMode = false
+	.proxyMode = forward  //TODO: 
+	.dialTimeout = 10s
+	.writeTimeout = 30s
+	.readTimeout = 30s
+	.idleTimeout = 4s
+	.maxStreamsPerConn = 1000
+	.saveContentFilesDir = "%tempDir/http/http1Outgate/test"
+	.maxContentSize = 1T
+	.sendTimeout = 60s
+	.recvTimeout = 60s
+}</code>
+				</li>
+
+				<li>
+					<p>.tlsMode 是否开启tls协议（https）</p>
+					<code>语法：.tlsMode = false
+						默认值：false
+						取值范围： false | true
+					</code>
+				</li>
+
+				<li>
+					<p>.proxyMode 代理模式</p>
+					<code>语法：.tlsMode string
+						默认值：false
+						取值范围： forward | reverse
+					</code>
+				</li>
+
+				<li>
+					<p>.dialTimeout 连接超时时间</p>
+					<code>语法：.dialTimeout duration
+						默认值：10s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+				<li>
+					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.writeTimeout duration
+						默认值：30s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+				<li>
+					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.readTimeout duration
+						默认值：30s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+				<li>
+					<p>.idleTimeout 连接空闲时长，超过这个时间就从连接池剔除此连接。</p>
+					<code>语法：.idleTimeout duration
+						默认值：4s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+				<li>
+					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
+					<code>语法：.maxStreamsPerConn int
+						默认值：1000
+						取值范围：(0s, +∞)
+					</code>
+				</li>
+
+				<li>
+					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<code>语法：.saveContentFilesDir path
+						默认值：%tempDir/http/http1Outgate/name
+						取值范围：-
+					</code>
+				</li>
+
+
+				<li>
+					<p>.maxContentSize http数据包最大限制</p>
+					<code>语法：.maxContentSize size
+						默认值：1T
+						取值范围： (0, 内存最大值]
+					</code>
+				</li>
+
+				<li>
+					<p>.sendTimeout 发送整个http数据超时时间。</p>
+					<code>语法：.sendTimeout duration
+						默认值：60s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+
+				<li>
+					<p>.recvTimeout 接收整个http数据超时时间。</p>
+					<code>语法：.recvTimeout duration
+						默认值：60s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+
 			</ul>
 		</li>
 		<li id="stage-http3Outgate">
 			<h3>stage &gt; http3Outgate</h3>
-			<ul>
-				<li>logFile</li>
-			</ul>
-		</li>
-		<li id="stage-hweb2Outgate">
-			<h3>stage &gt; hweb2Outgate</h3>
 			<ul>
 				<li>logFile</li>
 			</ul>
@@ -158,6 +620,12 @@ article th, article td { border:1px solid #000; }
 		</li>
 		<li id="stage-udpsOutgate">
 			<h3>stage &gt; udpsOutgate</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+		<li id="stage-unixOutgate">
+			<h3>stage &gt; unixOutgate</h3>
 			<ul>
 				<li>logFile</li>
 			</ul>
@@ -204,6 +672,1245 @@ article th, article td { border:1px solid #000; }
 				<li>logFile</li>
 			</ul>
 		</li>
-	</ol>
 
+		<li id="stage-unixBackend">
+			<h3>stage &gt; unixBackend</h3>
+			<ul>
+				<li>logFile</li>
+			</ul>
+		</li>
+
+		<li id="stage-localCacher">
+			<h3>stage &gt; localCacher</h3>
+			<p>localCacher：本地文件cache，根据http的header信息把远端的数据缓存在本地。</p>
+			<ul>
+				<li>
+					<p>.cacheDir 缓存目录</p>
+					<code>语法：.cacheDir path
+					默认值： %varsDir/cachers/cache_name
+					取值范围：-
+				</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-redisCacher">
+			<h3>stage &gt; redisCacher</h3>
+			<p>redisCacher：根据http的header信息把远端的数据缓存在redis中。</p>
+			<ul>
+				<li>
+					<p>.nodes 节点列表</p>
+					<code>语法：.nodes list
+						默认值： ()
+						取值范围：-
+					</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-app">
+			<h3>stage &gt; app </h3>
+			<p>app：应用服务器的配置说明</p>
+			<ul>
+				<li>
+					<code>语法：.app [name] {....}
+					默认值：-
+					取值范围：-
+				</code>
+					<p>例子</p>
+					<code class="pre">stage {
+	http1Backend "h1b" {
+		.balancer = "roundRobin"
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 1],
+			["address": "127.0.0.1:3090", "weight": 1],
+		)
+	}
+
+	app "proxy" {
+		.hostnames = ("example.com" "*.example.com" "www.example*")
+		.saveContentFilesDir = %tempDir + "/apps/name"
+		.webRoot =  "/var/www"
+		.accessLog = (%logsDir + "/app-zh_cn.log", "day")
+		.maxMemoryContentSize = 16M
+		.maxUploadContentSize = 128M
+		.settings = []
+		.proxyOnly = false
+		.withStater = ""
+		.logFormat = ""
+		.file404 = ""
+		.tlsCertificate = ""
+		.tlsPrivateKey = ""
+
+		rule $path -f { // 如果是文件就使用static处理
+			static {}
+		}
+
+		rule { // 文件以外的全部转发到 h1b 对应的服务上
+			http1Proxy {
+				.toBackend = "h1b"
+			}
+		}
+	}
+
+	httpxServer "main" {
+		.forApps = ("proxy")
+		.address = ":80"
+	}
+}
+
+				</code>
+				</li>
+
+				<li>
+					<p>.hostnames 当前app的hostname可以配置多个。</p>
+					<code>语法： .hostnames ("example.com", "*.example.com")
+					默认值： -  //必须配置
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<code>语法：.saveContentFilesDir path
+						默认值：%tempDir/http/http1Outgate/name
+						取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.webRoot web资源的根路径，存放图片、代码等文件</p>
+					<code>语法： .webRoot path
+					默认值： -  // 必须配置
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.accessLog 配置访问日志，有2个参数，第一个是日志文件，第二个的轮换规则。</p>
+					<code>语法： .accessLog (file, rotate)
+					默认值： -
+					取值范围：-
+
+					//TODO: rotate 配置规则
+				</code>
+
+				</li>
+
+				<li>
+					<p>.maxMemoryContentSize 一个请求可以加载到内存中的最大内容大小。</p>
+					<code>语法： .maxMemoryContentSize size
+					默认值： 16M
+					取值范围：(0, 1G]
+				</code>
+				</li>
+
+
+				<li>
+					<p>.maxUploadContentSize 一个请求可以上传最大文件的上限。</p>
+					<code>语法： .maxUploadContentSize size
+					默认值：128M
+					取值范围：(0, 1T]
+				</code>
+				</li>
+
+				<li>
+					<p>.settings 用户的自定义数据。</p>
+					<code>语法： .settings = ["bar" : "foo", "bar2" : "foo2"]
+						默认值： - 
+						取值范围：-
+				</code>
+				</li>
+				<li>
+					<p>.proxyOnly 当前app仅仅用于代理使用？</p>
+					<code>语法： .proxyOnly = false
+					默认值： false
+					取值范围：false | true
+					</code>
+				</li>
+
+				<li>
+					<p>.withStater 使用那个stater。</p>
+					<code>语法： .withStater = "Stater-name"
+					默认值： -  
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.logFormat 当前app的访问日志格式化。</p>
+					<code>语法： .logFormat = ""
+					默认值： -  
+					取值范围：-
+				</code>
+
+					<p>例子</p>
+					<code>格式说明 //TODO:</code>
+				</li>
+
+
+				<li>
+					<p>.file404 当前app的404配置。</p>
+					<code>语法： .file404 = "file path"
+					默认值： -  
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.tlsCertificate SSL/TLS证书路径，格式为crt、pem、der等。如果要开启https则必须配置。</p>
+					<code>语法： .tlsCertificate = "file path"
+					默认值： -  
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.tlsPrivateKey SSL/TLS的私钥路径，格式为key、pem、der等。如果要开启https则必须配置。</p>
+					<code>语法： .tlsPrivateKey = "file path"
+					默认值： - 
+					取值范围：-
+				</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-app-rule">
+			<h3>stage &gt; app &gt; rule </h3>
+			<p>rule：在请求中根据某些特定的URL对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
+			<ul>
+				<li>
+					<p>rule 匹配规则</p>
+					<code>语法： rule &lt;name&gt; &lt;cond&gt; { .. }
+				默认值： rule {}  匹配所有
+				取值范围：-
+			</code>
+
+					<p>rule 属性说明</p>
+
+					<p>.logAccess 是否开启日志。</p>
+					<code>语法：.logAccess = false
+				默认值： false
+				取值范围：true | false
+			</code>
+
+					<p>.returnCode 设置http返回码。</p>
+					<code>语法：.returnCode = 200
+				默认值： -
+				取值范围：[100, 600)
+			</code>
+
+					<p>.returnText 设置http内容。</p>
+					<code>语法：.returnText = "xxxx"
+				默认值： -
+				取值范围：任意值
+			</code>
+
+					<p>.handlets 使用自定义的handlets进行处理。</p>
+					<code>语法：.handlets = ("handlets_bar", "handlets_foo")
+				默认值： -
+				取值范围：任意值
+			</code>
+
+					<p>.socklets 使用自定义的socklets进行处理。</p>
+					<code>语法：.socklets = ("socklets_bar", "socklets_foo")
+				默认值： -
+				取值范围：-
+			</code>
+
+					<p>.revisers 使用自定义的revisers进行处理。</p>
+					<code>语法：.revisers = ("revisers_bar", "revisers_foo")
+				默认值： -
+				取值范围：-
+			</code>
+
+					</code>
+					<p>rule 变量 说明</p>
+					<code><table class="none">
+				<tr>
+					<td width="120">$method</td>
+					<td>HTTP的请求方法（GET、POST、HEAD等）。</td>
+				</tr>
+				<tr>
+					<td>$scheme</td>
+					<td>请求协议HTTP、HTTPS等。</td>
+				</tr>
+				<tr>
+					<td>$authority</td>
+					<td>域名和端口部分，如：www.example.com, www.example.org:8080。</td>
+				</tr>
+				<tr>
+					<td>$hostname</td>
+					<td>url中域名的部分，如：www.example.com。</td>
+				</tr>
+				<tr>
+					<td>$colonPort</td>
+					<td>带冒号的端口，如果uri没有端口则使用默认，HTTP默认是:80, HTTPS默认是:443。</td>
+				</tr>
+				<tr>
+					<td>$path</td>
+					<td>url中path的部分，如/a/b/c。</td>
+				</tr>
+
+				<tr>
+					<td>$encodedPath</td>
+					<td>url中path的部分，如果path部分包含urlencode，则保留。</td>
+				</tr>
+
+				<tr>
+					<td>$queryString</td>
+					<td>url中参数的部分，如?a=1&b=2。</td>
+				</tr>
+
+					<tr>
+						<td>$uri</td>
+						<td>url中path和queryString，如：/a/b/c?a=1&b=2。</td>
+					</tr>
+
+						<tr>
+							<td>$contentType</td>
+							<td>HTTP的请求头里面content-Type的值。</td>
+						</tr>
+			</table>
+</code>
+					<p>rule 条件 说明</p>
+					<code class="pre">==	变量和给定值，是否完全匹配。
+^=	变量和给定值，是否前缀匹配。
+$=	变量和给定值，是否后缀匹配。
+~=	变量和给定值，通过正则表达式进行匹配。
+-f	判断变量是否是文件。
+-d	判断变量是否是目录。
+-e	判断文件或者目录是否存在。
+-D	{(*Rule).dirMatchWithWebRoot, true},
+-E	{(*Rule).existMatchWithWebRoot, true},
+!=	变量和给定值，是否不匹配。
+!^	变量和给定值，是否前缀不匹配。
+!$	变量和给定值，是否前缀不匹配。
+!~	变量和给定值，通过正则表达式是否匹配失败。
+!f	判断变量是否不是文件。
+!d	判断变量是否不是目录。
+!e	判断文件或者目录是否不存在。
+	</code>
+
+					<p>rule 例子</p>
+					<code class="pre">tcpsBackend "fpm" {
+	.balancer = "roundRobin"
+	.nodes = (
+		["address": "127.0.0.1:9000"],
+	)
+}
+
+app "main" {
+		
+	rule $path == /phpstatus { // 全匹配
+		fcgiAgent {
+			.toBackend = "fpm"
+		}
+	}
+
+	// favicon.ico 不记录日志
+	rule $path == "/favicon.ico" {
+		.logAccess = false
+	}
+
+	// 通过前缀匹配，划分子服务
+	rule $path ^= "/user" { // 用户服务
+		http1Proxy { 
+			.toBackend = "user_center"
+		}
+	}
+
+	rule $path ^= "/order" { // 订单服务
+		http1Proxy {
+			.toBackend = "order_server"
+		}
+	}
+
+	// 禁止对外访问
+	rule $path $= (".doc", ".docx", ".pdf") { 
+		.returnCode = 403
+	}
+
+	// 静态资源添加cache
+	rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") {
+		static {}
+		headReviser {
+			.addResponse = ["cache-control" : "max-age=86400"]
+		}
+	}
+
+	rule $path ~= "\.php$" {
+		fcgiAgent {
+			.toBackend = "fpm"
+		}
+	}
+
+	//升级版本
+	rule $queryString ~= "version=4.11" {
+		.returnCode = 302
+		headReviser {
+			.addResponse = ["Location" : "/upgrade.html"]
+		}
+	}
+
+	// 文件路径变更
+	rule $path !-e {
+		.returnCode = 302
+		headReviser {
+			.addResponse = ["Location" : "new_path" + $uri]
+		}
+	}
+
+	// 允许浏览目录
+	rule $path -d {
+		static {
+			.autoIndex = true
+		}
+	}
+}
+	</code>
+				</li>
+
+			</ul>
+		</li>
+
+		<li id="stage-app-accessChecker">
+			<h3>stage &gt; app &gt; accessChecker </h3>
+		</li>
+
+		<li id="stage-app-hostnameChecker">
+			<h3>stage &gt; app &gt; hostnameChecker </h3>
+			<p> hostnameChecker 对域名做检测。</p>
+			<ul>
+				<li>
+					<p>.hostname 期望的域名。</p>
+					<code>语法 .hostname = ""
+				默认值： -
+				取值范围：-
+			</code>
+				</li>
+				<li>
+					<p>.permanent 如果为true，并且url的hostname和配置的不一致，则跳转到配置的域名上。</p>
+					<code>语法： .permanent = false
+				默认值： false
+				取值范围：false | true
+			</code>
+				</li>
+			</ul>
+
+		</li>
+
+		<li id="stage-app-httpsChecker">
+			<h3>stage &gt; app &gt; httpsChecker </h3>
+			<p> httpsChecker 对请求是否是https做检测。</p>
+			<ul>
+				<li>
+					<p>.authority 301跳转url的authority</p>
+					<code>语法 .authorit = hostname:port
+						默认值： -
+						取值范围：-
+					</code>
+				</li>
+				<li>
+					<p>.permanent 如果为true，并且url的不是https，则使用https跳转到authority上。</p>
+					<code>语法： .permanent = false
+						默认值： false
+						取值范围：false | true
+					</code>
+				</li>
+			</ul>
+
+		</li>
+		<li id="stage-app-limitChecker">
+			<h3>stage &gt; app &gt; limitChecker </h3>
+		</li>
+
+		<li id="stage-app-refererChecker">
+			<h3>stage &gt; app &gt; refererChecker </h3>
+		</li>
+
+		<li id="stage-app-rewriter">
+			<h3>stage &gt; app &gt; rewriter </h3>
+		</li>
+
+		<li id="stage-app-favicon">
+			<h3>stage &gt; app &gt; favicon </h3>
+		</li>
+
+		<li id="stage-app-ajpAgent">
+			<h3>stage &gt; app &gt; ajpAgent </h3>
+		</li>
+
+		<li id="stage-app-uwsgiAgent">
+			<h3>stage &gt; app &gt; uwsgiAgent </h3>
+		</li>
+
+		<li id="stage-app-fcgiAgent">
+			<h3>stage &gt; app &gt; fcgiAgent </h3>
+			<p>fcgiAgent 用于fastcgi协议的后端代理，比如代理php-fpm。 </p>
+			<code class="pre">语法：fcgiAgent [name] { ... }
+
+// 例子
+stage {
+	tcpsBackend "php-fpm" {
+		.balancer = "roundRobin"
+		.nodes = (
+			["address": "127.0.0.1:9000"],
+			["address": "127.0.0.1:9001"],
+		)
+	}
+
+	app "main" {
+		.webRoot = %baseDir + "/apps/diogin/root"
+
+		fcgiAgent "fpm" {
+			.toBackend = "php-fpm"
+		}
+
+		rule $hostname == "localhost" {
+			.handlets = ("fpm")
+		}
+
+		rule $path ~= "\.php$" {
+			fcgiAgent {
+				.toBackend = "php-fpm"
+			}
+		}
+	}
+}
+</code>
+			<ul>
+				<li>
+					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
+					<code>语法： .saveContentFilesDir = "path"  
+				默认值：%tempDir+"/fcgi/"+name
+			</code>
+				</li>
+
+				<li>
+					<p>.toBackend 配置反向代理的名称</p>
+					<code>语法：  .toBackend = "proxy_name"
+				默认值：- ; 必填项
+			</code>
+				</li>
+
+				<li>
+					<p>.withCacher 选择使用cache的名字。</p>
+					<code>语法： .withCacher = "cacher-name"
+				默认值： -  
+				取值范围：-
+			</code>
+				</li>
+				<li>
+					<p>.scriptFilename 执行脚本的名称，如果为空则使用url中的脚本名称</p>
+					<code>语法：.scriptFilename = ""
+				默认值： ""
+				取值范围：-
+			</code>
+				</li>
+				<li>
+					<p>.keepConn gorox和fastcgi服务之间是否保存长连接？</p>
+					<code>语法：.keepConn = false
+				默认值： false
+				取值范围：false | true
+			</code>
+				</li>
+				<li>
+					<p>.bufferClientContent 是否开启客户端缓冲区？</p>
+					<code>语法：.bufferClientContent = true
+				默认值： true
+				取值范围：false | true
+			</code>
+				</li>
+
+				<li>
+					<p>.bufferServerContent 是否开启服务端缓冲区？</p>
+					<code>语法：.bufferServerContent = true
+					默认值： true
+					取值范围：false | true
+					</code>
+				</li>
+
+				<li>
+					<p>.sendTimeout 发送整个cgi数据包超时时间。0意味着不设置超时时间。</p>
+					<code>语法：.sendTimeout = 60s
+				默认值：60s
+				取值范围： [0s, 10m]
+			</code>
+				</li>
+
+				<li>
+					<p>.recvTimeout 读取整个cgi数据包超时时间。0意味着不设置超时时间。</p>
+					<code>语法：.recvTimeout = duration
+				默认值：60s
+				取值范围： [0s, 10m]
+			</code>
+				</li>
+
+				<li>
+					<p>.maxContentSize cgi数据包最大限制</p>
+					<code>语法：.maxContentSize = 128M
+				默认值：1T
+				取值范围： [0, +]
+			</code>
+				</li>
+
+				<li>
+					<p>.preferUnderscore 当header同时存在"foo-bar"与"foo_bar", 优先选择"foo_bar"</p>
+					<code>语法：.preferUnderscore = false
+				默认值：false
+				取值范围： false | true
+			</code>
+				</li>
+
+				<li>
+					<p>完整的例子</p>
+					<code class="pre">stage {
+	tcpsBackend "php-fpm" {
+		.balancer = "roundRobin"
+		.nodes = (
+			["address": "127.0.0.1:9000"],
+			["address": "127.0.0.1:9001"],
+		)
+	}
+
+	app "main" {
+		.webRoot = %baseDir + "/apps/diogin/root"
+
+		fcgiAgent "php-fpm" {
+			.toBackend = "php-fpm"
+		}
+
+		rule $path ~= "\.php$" {
+			.handlets = ("php-fpm")
+			.sendTimeout = 60s
+			.recvTimeout = 60s
+			.scriptFilename = "index.php" //永远执行index.php
+			.keepConn = true
+			.preferUnderscore = true
+		}
+	}
+}
+</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-app-http1Proxy">
+			<h3>stage &gt; app &gt; http1Proxy </h3>
+			<p>http1Proxy 用于http1.x协议的后端代理。</p>
+			<code class="pre">语法：http1Proxy [name] { ... }
+
+http1Proxy  {
+	.proxyMode = "reverse"
+	.toBackend = "proxy_name"
+	.viaName = "gorox"
+	.bufferClientContent = true
+	.bufferServerContent = true
+	.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+	.addRequestHeaders = (
+		["x-root-id" : "xxx-xxx-xxx-xxx"],
+		["X-Real-IP" : "$remote_addr"],
+	)
+}</code>
+			<ul>
+				<li>
+					<p>.proxyMode 代理模式</p>
+					<code>语法：.proxyMode = ""
+					默认值： ""
+					取值范围： forward | reverse
+				</code>
+
+
+				</li>
+
+				<li>
+					<p>.toBackend 配置代理的名称</p>
+					<code>语法：  .toBackend = "proxy_name"
+					默认值：- ; 必填项
+				</code>
+				</li>
+
+				<li>
+					<p>.withCacher 选择使用cache的名字。</p>
+					<code>语法： .withCacher = "cacher-name"
+					默认值： -  
+					取值范围：-
+				</code>
+				</li>
+
+				<li>
+					<p>.hostname 如果配置了，向后端转发时，就采用这个hostname</p>
+					<code>语法： .hostname = ""
+					默认值： ""
+					取值范围：-
+				</code>
+				</li>
+
+
+				<li>
+					<p>.colonPort 如果配置了，向后端转发时，就采用这个hostname</p>
+					<code>语法： .colonPort = ":8080" 
+					默认值： ""
+					取值范围：-
+				</code>
+				</li>
+
+
+				<li>
+					<p> .viaName 配置代理的名称 </p>
+					<code>语法： .viaName = ""
+						默认值： -  
+						取值范围：-
+				</code>
+				</li>
+
+
+				<li>
+					<p>.bufferClientContent 是否开启客户端缓冲区？</p>
+					<code>语法：.bufferClientContent = true
+							默认值： true
+							取值范围：false | true
+				</code>
+				</li>
+
+				<li>
+					<p>.bufferServerContent 是否开启服务端缓冲区？</p>
+					<code>语法：.bufferServerContent = true
+					默认值： true
+					取值范围：false | true
+				</code>
+				</li>
+
+				<li>
+					<p> .delRequestHeaders 向后转发请求时候需要去除的header信息。</p>
+					<code>语法：.delRequestHeaders = ("header1", "header2")
+					默认值： nil
+					取值范围：-
+				</code>
+				</li>
+
+
+				<li>
+					<p> .addRequestHeaders 向后转发请求时候需要添加的header信息。</p>
+					<code class="pre">语法：.addRequestHeaders = (
+	   ("viaName", "goprox"),
+	   ("X-Real-IP", "xxxx"),
+   )
+默认值： nil
+取值范围：-
+</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-app-http2Proxy">
+			<h3>stage &gt; app &gt; http2Proxy </h3>
+		</li>
+
+		<li id="stage-app-http3Proxy">
+			<h3>stage &gt; app &gt; http3Proxy </h3>
+		</li>
+
+		<li id="stage-app-sitex">
+			<h3>stage &gt; app &gt; sitex </h3>
+		</li>
+
+		<li id="stage-app-static">
+			<h3>stage &gt; app &gt; static </h3>
+			<p>static 处理静态资源，例如（js、css、html）等。</p>
+			<code class="pre">static{
+	.webRoot = "/var/www"
+	.indexFile = "index.html"
+	.autoIndex = true
+	.mimeTypes = [
+		"jpg": "image/jpeg",
+		"jpeg": "image/jpeg",
+	]
+	.defaultType = "application/octet-stream"
+}
+</code>
+			<ul>
+				<li>
+
+					<p>.webRoot 设置请求的根目录。会把.webRoot的值和url中的path结合起来读取文件。</p>
+					<code>语法： .webRoot = "path" 
+		默认值：-; 不能为空
+		取值范围：-
+	</code>
+				</li>
+				<li>
+					<p>.aliasTo //TODO:</p>
+					<code>
+		.aliasTo = "path" 不能为空
+	</code>
+				</li>
+				<li>
+					<p>.indexFile 定义索引文件的名称，如果请求以斜杠结尾，gorox会将其视为对目录的请求，并尝试在该目录中查找索引文件。</p>
+					<code>语法： .indexFile = "index.html"
+		默认值：index.html
+		取值范围：-
+	</code>
+				</li>
+				<li>
+					<p>.autoIndex 对访问文件夹是否开启目录索引？</p>
+					<code>语法 .autoIndex = false
+		默认值：false
+		取值范围：false | true
+	</code>
+				</li>
+				<li>
+					<p>.mimeTypes</p>
+					<code class="pre">语法 .mimeTypes = ["html": "text/html", "jpg": "image/jpeg",]
+默认值：[
+	"7z": "application/x-7z-compressed",
+	"atom": "application/atom+xml",
+	"bin": "application/octet-stream",
+	"bmp": "image/x-ms-bmp",
+	"css": "text/css",
+	"deb": "application/octet-stream",
+	"dll": "application/octet-stream",
+	"doc": "application/msword",
+	"dmg": "application/octet-stream",
+	"exe": "application/octet-stream",
+	"flv": "video/x-flv",
+	"gif": "image/gif",
+	"htm": "text/html",
+	"html": "text/html",
+	"ico": "image/x-icon",
+	"img": "application/octet-stream",
+	"iso": "application/octet-stream",
+	"jar": "application/java-archive",
+	"jpg": "image/jpeg",
+	"jpeg": "image/jpeg",
+	"js": "application/javascript",
+	"json": "application/json",
+	"m4a": "audio/x-m4a",
+	"mov": "video/quicktime",
+	"mp3": "audio/mpeg",
+	"mp4": "video/mp4",
+	"mpeg": "video/mpeg",
+	"mpg": "video/mpeg",
+	"pdf": "application/pdf",
+	"png": "image/png",
+	"ppt": "application/vnd.ms-powerpoint",
+	"ps": "application/postscript",
+	"rar": "application/x-rar-compressed",
+	"rss": "application/rss+xml",
+	"rtf": "application/rtf",
+	"svg": "image/svg+xml",
+	"txt": "text/plain",
+	"war": "application/java-archive",
+	"webm": "video/webm",
+	"webp": "image/webp",
+	"xls": "application/vnd.ms-excel",
+	"xml": "text/xml",
+	"zip": "application/zip",
+]
+取值范围：-</code>
+				</li>
+				<li>
+					<p>.defaultType</p>
+					<code>语法： .defaultType = "application/octet-stream" 
+		默认值： application/octet-stream; 不能为空
+		取值范围：从 mimeTypes选择
+	</code>
+
+				</li>
+			</ul>
+
+
+		<li id="stage-app-webdavHandlet">
+			<h3>stage &gt; app &gt; webdavHandlet </h3>
+		</li>
+		<li id="stage-app-gzipReviser">
+			<h3>stage &gt; app &gt; gzipReviser </h3>
+			<p>gzipReviser gzip压缩相关的配置</p>
+			<code>gzipReviser {
+	.compressLevel = 1
+	.minLength = 8k // 开启压缩的最小长度
+   .onContentTypes = ("text/html") // 压缩的类型
+}
+	</code>
+
+			<ul>
+				<li>
+					<p>.compressLevel 压缩级别，其中1代表压缩速度最快，9代表压缩比最高。</p>
+					<code>语法： .compressLevel = 1
+		默认值： 1
+		取值范围：[1-9]
+	</code>
+
+				</li>
+
+				<li>
+					<p>.minLength 多小一下的数据不进行压缩。</p>
+					<code>语法： .minLength = 8K
+		默认值： -
+		取值范围：(0, maxInt64]
+	</code>
+
+				</li>
+
+				<li>
+					<p>.onContentTypes 开启压缩的类型。</p>
+					<code>语法： .onContentTypes = ("text/html", "text/css")
+		默认值： ("text/html")
+		取值范围：从 mimeTypes选择
+	</code>
+
+				</li>
+
+			</ul>
+		</li>
+		<li id="stage-app-headReviser">
+			<h3>stage &gt; app &gt; headReviser </h3>
+			<p>headReviser 对header做添加和删除。</p>
+			<ul>
+				<li>
+					<p>.addResponse 添加响应头信息。</p>
+					<code class="pre">语法：.addResponse = [
+  "cache-control" : "max-age=86400",
+  "date": "Mon, 14 Sep 2015 03:19:14 GMT",
+]
+默认值：-
+</code>
+				</li>
+
+				<li>
+					<p>.addRequest 添加请求头信息用于转发请求。</p>
+					<code class="pre">语法：.addRequest = [
+  "env" : "gray",
+  "x-root-id": "xxx-xxx-xxx-xxx",
+]
+默认值：-
+</code>
+				</li>
+
+				<li>
+					<p>.delRequest 删除请求头信息，一般用于转发请求。</p>
+					<code> 语法：.delRequest = ("cookie", "date")
+	默认值：-
+	</code>
+				</li>
+
+				<li>
+					<p>.delResponse 删除响应头信息</p>
+					<code> 语法：.delResponse = ("cookie", "date")
+默认值：-
+</code>
+				</li>
+
+				<li>
+					<p>例子</p>
+					<code class="pre">app "test" {
+	.hostnames = ("gorox.net")
+	rule  {
+		static { }
+		headReviser {
+			.addResponse = ["cache-control" : "max-age=86400"]
+			.addRequest = ["env" : "gray"]
+			.delRequest = ("cookie", "date")
+			.delResponse = ("cookie", "date")
+		}
+		gzipReviser {
+			.onContentTypes = ("text/css", "application/javascript")
+		}
+	}
+}
+</code>
+				</li>
+			</ul>
+		</li>
+		<li id="stage-app-replaceReviser">
+			<h3>stage &gt; app &gt; replaceReviser </h3>
+		</li>
+
+		<li id="stage-app-ssiReviser">
+			<h3>stage &gt; app &gt; ssiReviser </h3>
+		</li>
+
+		<li id="stage-app-wrapReviser">
+			<h3>stage &gt; app &gt; wrapReviser </h3>
+		</li>
+
+		<li id="stage-app-sock1Proxy">
+			<h3>stage &gt; app &gt; sock1Proxy </h3>
+			<code>
+
+	</code>
+		</li>
+
+		<li id="stage-app-sock2Proxy">
+			<h3>stage &gt; app &gt; sock2Proxy </h3>
+		</li>
+
+		<li id="stage-app-sock3Proxy">
+			<h3>stage &gt; app &gt; sock3Proxy </h3>
+		</li>
+
+		<li id="stage-svc">
+			<h3>stage &gt; svc </h3>
+		</li>
+
+		<li id="stage-httpxServer">
+			<h3>stage &gt; httpxServer </h3>
+			<p>httpxServer goroxy中对http1.1和http2服务端配置。</p>
+			<code class="pre">stage{
+	app "example_com" {
+		.hostnames = ("example.com" "*.example.com")
+		.webRoot = "/var/www"
+		.tlsCertificate = "/etc/tls/example_com.pem"
+		.tlsPrivateKey = "/etc/tls/example_com.key"
+	}
+
+	httpxServer{
+		.address = ":8080" // required
+		.tlsMode = false
+		.readTimeout = 60s
+		.writeTimeout = 60s
+		// .numGates = runtime.NumCPU() ; 不可配置，设置为cpu的核心数。
+		.maxConnsPerGate = 100000
+		.forApps = ("example_com")
+		.forSvcs = ("test_svcs")
+		.hrpcMode = false
+		.enableTCPTun = false
+		.enableUDPTun = false
+		.maxContentSize = 1T
+		.recvTimeout = 120s
+		.sendTimeout = 120s
+		.forceScheme = ""
+		.adjustScheme = true
+		.enableHTTP2 = false
+		.h2cMode = false
+	}
+}
+</code>
+			<ul>
+				<li>
+					<p>.address 服务要监听的IP和PORT，省略IP代表监听所有网卡的IP。</p>
+					<code> 语法：.address = "127.0.0.1:8080"
+			    默认值：-; 必填项 
+		</code>
+				</li>
+
+
+				<p>.tlsMode 是否开启tls协议（支持https）</p>
+				<code>语法：.tlsMode bool
+			默认值：false
+			取值范围： false | true
+		</code>
+
+				<li>
+					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.readTimeout duration
+			默认值：60s
+			取值范围： (0s, 10m]
+		</code>
+				</li>
+
+				<li>
+					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.writeTimeout duration
+									默认值：60s
+									取值范围： (0s, 10m]
+								</code>
+				</li>
+
+				<li>
+					<p>.numGates 同时监听连接的线程数据量，默认CPU的核心数，目前不可配置</p>
+					<code>语法：.numGates = runtime.NumCPU()
+			默认值：runtime.NumCPU() // 目前不可配置
+			取值范围： (0s, 10m]
+		</code>
+				</li>
+		</li>
+
+
+		<li>
+			<p>.maxConnsPerGate 每个Gate允许的最大并发连接数。</p>
+			<code>语法：.maxConnsPerGate = 100000
+			默认值：100000
+			取值范围： (0, MaxInt32]
+		</code>
+		</li>
+
+
+		<li>
+			<p>.forApps 当前httpxServer应用于那些App。</p>
+			<code>语法：.forApps = ("test" "test2")
+			默认值：nil
+		</code>
+		</li>
+
+		<li>
+			<p>.forSvcs 当前httpxServer应用于那些Svcs。</p>
+			<code>语法：.forSvcs = ("test" "test2")
+			默认值：nil
+		</code>
+		</li>
+
+
+		<li>
+			<p>.hrpcMode 是否作为HRPC服务？</p>
+
+			<code>语法 .hrpcMode = false
+			默认值：false
+			取值范围：false | true
+		</code>
+		</li>
+
+		<li>
+			<p>.enableTCPTun 是否开启tcp tunnel？这样http 代理就可以转发https请求了。</p>
+			<code>语法 .enableTCPTun = false
+		默认值：false
+		取值范围：false | true
+	</code>
+		</li>
+
+		<li>
+			<p>.enableUDPTun 是否开启udp tunnel？</p>
+			<code>语法 .enableUDPTun = false
+		默认值：false
+		取值范围：false | true
+	</code>
+		</li>
+
+		<li>
+			<p>.maxContentSize 数据包最大限制</p>
+			<code>语法：.maxContentSize size
+		默认值：1T
+		取值范围： (0s, 内存最大值)
+	</code>
+		</li>
+
+
+
+		<li>
+			<p>.recvTimeout 接收整个数据包的超时时间。</p>
+			<code>语法：.recvTimeout = 120s
+		默认值：120s
+		取值范围： (0s, 10m]
+	</code>
+		</li>
+
+		<li>
+			<p>.sendTimeout 发送整个数据包的超时时间。</p>
+			<code>语法：.sendTimeout = 120s
+		默认值：120s
+		取值范围： (0s, 10m]
+	</code>
+		</li>
+
+		<li>
+			<p>.adjustScheme 是否矫正协议？如果在http请求行里面使用了绝对URL，并且绝对URL协议与当前的请求不一致。</p>
+			<code>语法：.adjustScheme = false
+	默认值：false
+	取值范围：false | true
+	</code>
+
+			<p>例子</p>
+			<code>
+		如果在https请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到http协议上。
+		GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1
+
+	</code>
+		</li>
+
+		<li>
+			<p>.forceScheme 强制使用http或者https协议，如果请求和配置不一样则301跳转到指定协议上。</p>
+			<code>语法：.forceScheme = "https"
+		默认值：- 
+		取值范围：http | https
+	</code>
+		</li>
+
+		<li>
+			<p>.enableHTTP2 是否开启http2协议。</p>
+			<code>语法： .enableHTTP2 = false
+		默认值：false
+		取值范围：false | true
+	</code>
+		</li>
+
+		<li>
+			<p>.h2cMode 是否仅支持http2协议？</p>
+			<code>语法：.h2cMode = false
+		默认值：false
+		取值范围：false | true
+	</code>
+		</li>
+		</ul>
+
+		</li>
+
+		<li id="stage-http3Server">
+			<h3>stage &gt; http3Server </h3>
+		</li>
+
+		<li id="stage-socksServer">
+			<h3>stage &gt; socksServer </h3>
+
+			<code class="pre">
+stage {
+	socksServer "socks" {
+		.address = ":1080"
+		.tlsMode = false
+		.readTimeout = 60s
+		.writeTimeout = 60s
+		.numGates = NumCPU()
+		.maxConnsPerGate = 1000
+	}
+}
+</code>
+
+			<ul>
+				<li>
+					<p>.address 服务要监听的IP和PORT，省略IP代表监听所有网卡的IP。</p>
+					<code> 语法：.address = "127.0.0.1:8080"
+							    默认值：-; 必填项 
+						</code>
+				</li>
+
+
+				<p>.tlsMode 是否开启tls协议（支持https）</p>
+				<code>语法：.tlsMode bool
+							默认值：false
+							取值范围： false | true
+						</code>
+
+				<li>
+					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.readTimeout duration
+							默认值：60s
+							取值范围： (0s, 10m]
+						</code>
+				</li>
+
+				<li>
+					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.writeTimeout duration
+						默认值：60s
+						取值范围： (0s, 10m]
+					</code>
+				</li>
+
+				<li>
+					<p>.maxConnsPerGate 每个Gate允许的最大并发连接数。</p>
+					<code>语法：.maxConnsPerGate = 100000
+						默认值：100000
+						取值范围： (0, MaxInt32]
+					</code>
+				</li>
+			</ul>
+		</li>
+
+		<li id="stage-cleanCronjob">
+			<h3>stage &gt; cleanCronjob </h3>
+		</li>
+
+		<li id="stage-statCronjob">
+			<h3>stage &gt; statCronjob </h3>
+		</li>
+	</ol>
 </article>

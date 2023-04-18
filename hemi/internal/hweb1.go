@@ -5,7 +5,7 @@
 
 // HWEB/1 protocol elements.
 
-// HWEB/1 is a simplified HTTP/1.1. Its design makes it easy to implement a server or client.
+// HWEB/1 is a binary HTTP/1.1. Its design makes it easy to implement a server or client.
 
 package internal
 
@@ -42,6 +42,6 @@ stream=2 (unsized output):
     <-- bodySize=123   body=[...123...] // chunk
     <-- bodySize=4567  body=[...4567...] // chunk
     <-- bodySize=0     body=[] // last chunk
-    <-- bodySize=?     body=[] // trailers, MUST exist, MAY be empty
+    <-- bodySize=?     body=[] // trailers, MUST exist in chunked mode, MAY be empty
 
 */

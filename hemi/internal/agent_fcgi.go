@@ -10,6 +10,8 @@
 // though FCGI can do that through its framing protocol. Perhaps most FCGI
 // applications don't implement this feature either.
 
+// In response side, FCGI applications mostly use "unsized" output.
+
 // To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 
 package internal

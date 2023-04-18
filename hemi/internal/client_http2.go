@@ -364,11 +364,11 @@ func (r *H2Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	return false
 }
 
-func (r *H2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
-func (r *H2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
-func (r *H2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *H2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *H2Request) delHeaderAt(o uint8)                        { r.delHeaderAt2(o) }
+func (r *H2Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderH2(name, value) }
+func (r *H2Request) header(name []byte) (value []byte, ok bool) { return r.headerH2(name) }
+func (r *H2Request) hasHeader(name []byte) bool                 { return r.hasHeaderH2(name) }
+func (r *H2Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderH2(name) }
+func (r *H2Request) delHeaderAt(o uint8)                        { r.delHeaderAtH2(o) }
 
 func (r *H2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -379,26 +379,26 @@ func (r *H2Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H2Request) sendChain() error { return r.sendChain2() }
+func (r *H2Request) sendChain() error { return r.sendChainH2() }
 
 func (r *H2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) echoChain() error { return r.echoChain2() }
+func (r *H2Request) echoChain() error { return r.echoChainH2() }
 
 func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer2(name)
+	return r.trailerH2(name)
 }
 func (r *H2Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer2(name, value)
+	return r.addTrailerH2(name, value)
 }
 
 func (r *H2Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H2Request) passBytes(p []byte) error { return r.passBytes2(p) }
+func (r *H2Request) passBytes(p []byte) error { return r.passBytesH2(p) }
 
 func (r *H2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -421,7 +421,7 @@ type H2Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2() }
+func (r *H2Response) readContent() (p []byte, err error) { return r.readContentH2() }
 
 // poolH2Socket
 var poolH2Socket sync.Pool

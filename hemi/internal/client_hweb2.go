@@ -5,7 +5,7 @@
 
 // HWEB/2 client implementation.
 
-// HWEB/2 is a simplified HTTP/2.
+// HWEB/2 is a simplified HTTP/2 without WebSocket, TCP Tunnel, and UDP Tunnel support.
 
 package internal
 

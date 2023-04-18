@@ -1920,6 +1920,15 @@ func (r *webOut_) _beforeWrite() error {
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.keeper().WriteTimeout()))
 }
+func (r *webOut_) _slowCheck(err error) error {
+	if err == nil && r._tooSlow() {
+		err = webOutTooSlow
+	}
+	if err != nil {
+		r.stream.markBroken()
+	}
+	return err
+}
 func (r *webOut_) _tooSlow() bool {
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }

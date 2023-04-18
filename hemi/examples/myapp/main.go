@@ -4,8 +4,8 @@ package main
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/process"
 	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/process"
 )
 
 const usage = `

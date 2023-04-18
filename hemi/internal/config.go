@@ -29,20 +29,28 @@ var ( // global variables shared between stages
 	_varsDir  atomic.Value // directory of the run-time data
 )
 
-func SetBaseDir(dir string) {
-	_baseOnce.Do(func() { _baseDir.Store(dir) })
+func SetBaseDir(dir string) { // only once!
+	_baseOnce.Do(func() {
+		_baseDir.Store(dir)
+	})
 }
-func SetLogsDir(dir string) {
-	_mkdir(dir)
-	_logsOnce.Do(func() { _logsDir.Store(dir) })
+func SetLogsDir(dir string) { // only once!
+	_logsOnce.Do(func() {
+		_mkdir(dir)
+		_logsDir.Store(dir)
+	})
 }
-func SetTempDir(dir string) {
-	_mkdir(dir)
-	_tempOnce.Do(func() { _tempDir.Store(dir) })
+func SetTempDir(dir string) { // only once!
+	_tempOnce.Do(func() {
+		_mkdir(dir)
+		_tempDir.Store(dir)
+	})
 }
-func SetVarsDir(dir string) {
-	_mkdir(dir)
-	_varsOnce.Do(func() { _varsDir.Store(dir) })
+func SetVarsDir(dir string) { // only once!
+	_varsOnce.Do(func() {
+		_mkdir(dir)
+		_varsDir.Store(dir)
+	})
 }
 func _mkdir(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {

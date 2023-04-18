@@ -50,7 +50,7 @@ func (h *staticHandlet) OnShutdown() {
 
 func (h *staticHandlet) OnConfigure() {
 	// webRoot
-	if v, ok := h.Prop("webRoot"); ok {
+	if v, ok := h.Find("webRoot"); ok {
 		if dir, ok := v.String(); ok && dir != "" {
 			h.webRoot = dir
 		} else {
@@ -69,7 +69,7 @@ func (h *staticHandlet) OnConfigure() {
 		}
 	}
 	// aliasTo
-	if v, ok := h.Prop("aliasTo"); ok {
+	if v, ok := h.Find("aliasTo"); ok {
 		if fromTo, ok := v.StringListN(2); ok {
 			h.aliasTo = fromTo
 		} else {
@@ -83,7 +83,7 @@ func (h *staticHandlet) OnConfigure() {
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
 	// mimeTypes
-	if v, ok := h.Prop("mimeTypes"); ok {
+	if v, ok := h.Find("mimeTypes"); ok {
 		if mimeTypes, ok := v.StringDict(); ok {
 			h.mimeTypes = make(map[string]string)
 			for ext, mimeType := range staticDefaultMimeTypes {

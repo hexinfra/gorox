@@ -54,7 +54,7 @@ func (h *ajpAgent) OnShutdown() {
 func (h *ajpAgent) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/ajp/"+h.name)
 	// toBackend
-	if v, ok := h.Prop("toBackend"); ok {
+	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
@@ -70,7 +70,7 @@ func (h *ajpAgent) OnConfigure() {
 		UseExitln("toBackend is required for ajpAgent")
 	}
 	// withCacher
-	if v, ok := h.Prop("withCacher"); ok {
+	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if cacher := h.stage.Cacher(name); cacher == nil {
 				UseExitf("unknown cacher: '%s'\n", name)

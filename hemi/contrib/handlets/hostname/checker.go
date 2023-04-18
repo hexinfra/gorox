@@ -42,7 +42,7 @@ func (h *hostnameChecker) OnShutdown() {
 
 func (h *hostnameChecker) OnConfigure() {
 	// hostname
-	if v, ok := h.Prop("hostname"); ok {
+	if v, ok := h.Find("hostname"); ok {
 		if hostname, ok := v.String(); ok {
 			h.hostname = hostname
 		} else {

@@ -53,7 +53,7 @@ func (s *RocksServer) OnShutdown() {
 
 func (s *RocksServer) OnConfigure() {
 	// address
-	if v, ok := s.Prop("address"); ok {
+	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
 			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
 				UseExitln("bad address: " + address)

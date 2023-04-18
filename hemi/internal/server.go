@@ -52,7 +52,7 @@ func (s *Server_) OnCreate(name string, stage *Stage) { // exported
 
 func (s *Server_) OnConfigure() {
 	// address
-	if v, ok := s.Prop("address"); ok {
+	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
 			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
 				UseExitln("bad address: " + address)

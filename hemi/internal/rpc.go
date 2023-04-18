@@ -65,7 +65,7 @@ func (s *Svc) OnShutdown() {
 
 func (s *Svc) OnConfigure() {
 	// withStater
-	if v, ok := s.Prop("withStater"); ok {
+	if v, ok := s.Find("withStater"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if stater := s.stage.Stater(name); stater == nil {
 				UseExitf("unknown stater: '%s'\n", name)

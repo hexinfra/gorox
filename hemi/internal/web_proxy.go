@@ -37,7 +37,7 @@ func (h *normalProxy_) onCreate(name string, stage *Stage, app *App) {
 
 func (h *normalProxy_) onConfigure() {
 	// proxyMode
-	if v, ok := h.Prop("proxyMode"); ok {
+	if v, ok := h.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
 			h.isForward = mode == "forward"
 		} else {
@@ -45,7 +45,7 @@ func (h *normalProxy_) onConfigure() {
 		}
 	}
 	// toBackend
-	if v, ok := h.Prop("toBackend"); ok {
+	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
@@ -62,7 +62,7 @@ func (h *normalProxy_) onConfigure() {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 	// withCacher
-	if v, ok := h.Prop("withCacher"); ok {
+	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if cacher := h.stage.Cacher(name); cacher == nil {
 				UseExitf("unknown cacher: '%s'\n", name)
@@ -114,7 +114,7 @@ func (s *socketProxy_) onCreate(name string, stage *Stage, app *App) {
 
 func (s *socketProxy_) onConfigure() {
 	// proxyMode
-	if v, ok := s.Prop("proxyMode"); ok {
+	if v, ok := s.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
 			s.isForward = mode == "forward"
 		} else {
@@ -122,7 +122,7 @@ func (s *socketProxy_) onConfigure() {
 		}
 	}
 	// toBackend
-	if v, ok := s.Prop("toBackend"); ok {
+	if v, ok := s.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := s.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)

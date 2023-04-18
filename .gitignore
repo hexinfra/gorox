@@ -22,27 +22,20 @@
 desktop.ini
 Thumbs.db
 
-/dist
+dist/
+logs/
+temp/
+vars/
+
 /gomake
 
-/logs
-/temp
-/vars
 /goben
 /goops
 /gorox
 
-/hemi/develop/logs
-/hemi/develop/temp
-/hemi/develop/vars
 /hemi/develop/develop
 
-/hemi/example/logs
-/hemi/example/temp
-/hemi/example/vars
-/hemi/example/example
+/hemi/examples/embed/embed
+/hemi/examples/myapp/myapp
 
-/hemi/gosites/logs
-/hemi/gosites/temp
-/hemi/gosites/vars
 /hemi/gosites/gosites

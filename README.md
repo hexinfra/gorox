@@ -93,7 +93,7 @@ Architecture
 Deployment
 ----------
 
-A modest deployment architecture using Gorox might like this:
+A typical deployment architecture using Gorox might like this:
 
 ```
            mobile  pc iot
@@ -136,15 +136,15 @@ A modest deployment architecture using Gorox might like this:
 In this typical architecture, with various configurations, Gorox can play ALL of
 the roles in "gorox cluster":
 
-  * edgeProxy1: This is the Edge Proxy, also works as an API Gateway or WAF,
-  * app1: This is a Web application implemented directly on Gorox,
-  * srv1: This is a TCP server implemented directly on Gorox,
-  * svc1: This is a public RPC service implemented directly on Gorox,
-  * sidecar1: This is a Service Mesh sidecar for svc1,
-  * app2: This is a reverse proxy passing requests to PHP-FPM or Tomcat server,
-  * svc2: This is a private RPC service implemented directly on Gorox,
-  * sidecar2: This is a Service Mesh sidecar for svc2,
-  * job1: This is a background application doing something periodically.
+  * edgeProxy1: The Edge Proxy, also works as an API Gateway or WAF,
+  * app1: A Web application implemented directly on Gorox,
+  * srv1: A TCP server implemented directly on Gorox,
+  * svc1: A public RPC service implemented directly on Gorox,
+  * sidecar1: A Service Mesh sidecar for svc1,
+  * app2: A gateway passing requests to PHP-FPM / Tomcat application server,
+  * svc2: A private RPC service implemented directly on Gorox,
+  * sidecar2: A Service Mesh sidecar for svc2,
+  * job1: A background application in Gorox doing something periodically.
 
 The whole "gorox cluster" can optionally be managed by a Goops instance. In this
 configuration, all Gorox instances in "gorox cluster" are connected to the Goops
@@ -157,13 +157,7 @@ Processes
 A Gorox instance has a pair of processes: a leader, and a worker:
 
 ```
-                   +----------------+
-                   | goops instance |
-                   +----------------+
-                           ^
-                           | goroxConn
-                           v
-                   +-------+--------+         +----------------+ public traffic
+                   +----------------+         +----------------+ public traffic
           admConn  |                | cmdPipe |                |<=============>
 operator --------->| leader process |<------->| worker process |<=============>
                    |                |         |                |<=============>
@@ -172,8 +166,8 @@ operator --------->| leader process |<------->| worker process |<=============>
 
 Leader process manages the worker process, which do the real and heavy work.
 
-A Gorox instance can be controlled by operators through the admin interface in
-leader process. Alternately, it can connects to a Goops instance and delegate
+A Gorox instance can be controlled by operators through the admin interface of
+leader process. Alternately, it can connects to a Goops instance and delegates
 its administration to Goops. In this way, the admin interface in leader process
 is disabled.
 

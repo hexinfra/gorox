@@ -27,7 +27,6 @@ func main() {
 
 	myConfig := `
 stage {
-    .logFile = %logsDir + "/example-worker.log"
     app "example" {
         .hostnames = ("*")
         .webRoot   = %baseDir + "/root"

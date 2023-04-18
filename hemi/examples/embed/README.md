@@ -6,7 +6,7 @@ To build:
 
 To run:
 
-  shell> ./example
+  shell> ./embed
 
 To visit:
 

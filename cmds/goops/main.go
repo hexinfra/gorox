@@ -7,14 +7,14 @@
 
 package main
 
+import "github.com/hexinfra/gorox/hemi/process"
+
 import (
 	_ "github.com/hexinfra/gorox/cmds/goops/apps"
 	_ "github.com/hexinfra/gorox/cmds/goops/jobs"
 	_ "github.com/hexinfra/gorox/cmds/goops/srvs"
 	_ "github.com/hexinfra/gorox/cmds/goops/svcs"
 )
-
-import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Goops (%s)

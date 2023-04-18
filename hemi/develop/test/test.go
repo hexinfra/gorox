@@ -8,10 +8,13 @@
 package test
 
 import (
+	"os"
+)
+
+import (
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/develop"
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/diogin"
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/fengve"
-	"os"
 )
 
 func Main() {

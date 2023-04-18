@@ -5,11 +5,11 @@
 
 package main
 
+import "github.com/hexinfra/gorox/hemi/process"
+
 import (
 	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
 )
-
-import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Gosites (%s)

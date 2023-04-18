@@ -11,6 +11,8 @@ import (
 	"os"
 )
 
+import "github.com/hexinfra/gorox/hemi/process"
+
 import (
 	_ "github.com/hexinfra/gorox/hemi/develop/apps"
 	_ "github.com/hexinfra/gorox/hemi/develop/exts"
@@ -19,8 +21,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/develop/svcs"
 	"github.com/hexinfra/gorox/hemi/develop/test"
 )
-
-import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Develop (%s)

@@ -11,6 +11,8 @@ import (
 	"os"
 )
 
+import "github.com/hexinfra/gorox/hemi/process"
+
 import (
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
@@ -19,8 +21,6 @@ import (
 	_ "github.com/hexinfra/gorox/svcs"
 	"github.com/hexinfra/gorox/test"
 )
-
-import "github.com/hexinfra/gorox/hemi/process"
 
 const usage = `
 Gorox (%s)

@@ -7,6 +7,9 @@ package diogin
 
 import (
 	"fmt"
+)
+
+import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/system"
 )

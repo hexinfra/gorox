@@ -1,4 +1,4 @@
-module myapp
+module my/embed
 
 go 1.19
 

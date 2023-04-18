@@ -606,7 +606,7 @@ func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct { // incoming. needs parsing
 	// Mixins
-	webRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1054,14 +1054,14 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
 	// Mixins
-	webResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in webResponse_
+func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in serverResponse_
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template
@@ -1187,7 +1187,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	return true // HTTP/1.0 doesn't support trailer.
 }
 
-func (r *http1Response) pass1xx(resp wResponse) bool { // used by proxies
+func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

@@ -319,7 +319,7 @@ func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 // H3Request is the client-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building
 	// Mixins
-	wRequest_
+	clientRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -385,7 +385,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil }
 // H3Response is the client-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing
 	// Mixins
-	wResponse_
+	clientResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

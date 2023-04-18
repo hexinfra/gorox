@@ -329,7 +329,7 @@ func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct { // incoming. needs parsing
 	// Mixins
-	webRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -341,7 +341,7 @@ func (r *http3Request) readContent() (p []byte, err error) { return r.readConten
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building
 	// Mixins
-	webResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -388,7 +388,7 @@ func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
 
-func (r *http3Response) pass1xx(resp wResponse) bool { // used by proxies
+func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

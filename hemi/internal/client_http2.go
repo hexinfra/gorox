@@ -348,7 +348,7 @@ func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 // H2Request is the client-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building
 	// Mixins
-	wRequest_
+	clientRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -414,7 +414,7 @@ func (r *H2Request) fixedHeaders() []byte { return nil }
 // H2Response is the client-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing
 	// Mixins
-	wResponse_
+	clientResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

@@ -268,7 +268,7 @@ func (s *hwebStream) executeUDPTun() { // see RFC 9298: https://www.rfc-editor.o
 // hwebRequest is the server-side HWEB request.
 type hwebRequest struct { // incoming. needs parsing
 	// Mixins
-	webRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -280,7 +280,7 @@ func (r *hwebRequest) readContent() (p []byte, err error) { return r.readContent
 // hwebResponse is the server-side HWEB response.
 type hwebResponse struct { // outgoing. needs building
 	// Mixins
-	webResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

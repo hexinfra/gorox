@@ -923,7 +923,7 @@ func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct { // incoming. needs parsing
 	// Mixins
-	webRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -950,7 +950,7 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 // http2Response is the server-side HTTP/2 response.
 type http2Response struct { // outgoing. needs building
 	// Mixins
-	webResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -997,7 +997,7 @@ func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
 
-func (r *http2Response) pass1xx(resp wResponse) bool { // used by proxies
+func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

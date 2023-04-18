@@ -378,7 +378,7 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 // H1Request is the client-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
 	// Mixins
-	wRequest_
+	clientRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -515,7 +515,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 // H1Response is the client-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
 	// Mixins
-	wResponse_
+	clientResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

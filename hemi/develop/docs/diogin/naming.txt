@@ -12,7 +12,6 @@ NAMING
 
     as mixin types:
 
-      wRequest_
       webServer_
 	  _client_
 

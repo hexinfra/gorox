@@ -348,7 +348,7 @@ func (s *hStream) markBroken()    { s.conn.markBroken() }      // TODO: limit th
 // hRequest is the client-side HWEB request.
 type hRequest struct { // outgoing. needs building
 	// Mixins
-	wRequest_
+	clientRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -414,7 +414,7 @@ func (r *hRequest) fixedHeaders() []byte { return nil }
 // hResponse is the client-side HWEB response.
 type hResponse struct { // incoming. needs parsing
 	// Mixins
-	wResponse_
+	clientResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

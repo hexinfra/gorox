@@ -123,7 +123,7 @@ type webIn interface {
 	saveContentFilesDir() string
 }
 
-// webIn_ is a mixin for webRequest_ and wResponse_.
+// webIn_ is a mixin for serverRequest_ and clientResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell  webIn     // *http[1-3]Request or *H[1-3]Response
@@ -1513,7 +1513,7 @@ type webOut interface {
 	passBytes(p []byte) error // used by proxies
 }
 
-// webOut_ is a mixin for webResponse_ and wRequest_.
+// webOut_ is a mixin for serverResponse_ and clientRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
 	shell  webOut    // *http[1-3]Response or *H[1-3]Request

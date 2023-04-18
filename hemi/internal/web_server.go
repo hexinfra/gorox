@@ -413,8 +413,8 @@ type Request interface {
 	unsafeVariable(index int16) []byte
 }
 
-// webRequest_ is the mixin for http[1-3]Request and hwebRequest.
-type webRequest_ struct { // incoming. needs parsing
+// serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
+type serverRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
@@ -424,15 +424,15 @@ type webRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
-	path        []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath     []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
-	pathInfo    os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	app         *App        // target app of this request. set before processing stream
-	svc         *Svc        // target svc of this request. set before processing stream
-	formWindow  []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
-	webRequest0             // all values must be zero by default in this struct!
+	path           []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
+	absPath        []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
+	app            *App        // target app of this request. set before processing stream
+	svc            *Svc        // target svc of this request. set before processing stream
+	formWindow     []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
+	serverRequest0             // all values must be zero by default in this struct!
 }
-type webRequest0 struct { // for fast reset, entirely
+type serverRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
 	targetForm      int8     // http request-target form. see httpTargetXXX
 	asteriskOptions bool     // OPTIONS *?
@@ -499,12 +499,12 @@ type webRequest0 struct { // for fast reset, entirely
 	consumedSize int64     // bytes of consumed content when consuming received tempFile. used by, for example, _recvMultipartForm.
 }
 
-func (r *webRequest_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverRequest_) onUse(versionCode uint8) { // for non-zeros
 	r.webIn_.onUse(versionCode, false) // asResponse = false
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
-func (r *webRequest_) onEnd() { // for zeros
+func (r *serverRequest_) onEnd() { // for zeros
 	for _, upload := range r.uploads {
 		if upload.isMoved() {
 			continue
@@ -527,41 +527,41 @@ func (r *webRequest_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
-	r.webRequest0 = webRequest0{}
+	r.serverRequest0 = serverRequest0{}
 
 	r.webIn_.onEnd()
 }
 
-func (r *webRequest_) App() *App { return r.app }
-func (r *webRequest_) Svc() *Svc { return r.svc }
+func (r *serverRequest_) App() *App { return r.app }
+func (r *serverRequest_) Svc() *Svc { return r.svc }
 
-func (r *webRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *webRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
-func (r *webRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
-func (r *webRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
-func (r *webRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
+func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
+func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
 
-func (r *webRequest_) MethodCode() uint32   { return r.methodCode }
-func (r *webRequest_) Method() string       { return string(r.UnsafeMethod()) }
-func (r *webRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
-func (r *webRequest_) IsGET() bool          { return r.methodCode == MethodGET }
-func (r *webRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
-func (r *webRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
-func (r *webRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
-func (r *webRequest_) recognizeMethod(method []byte, hash uint16) {
+func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
+func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
+func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
+func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
+func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
+func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
+func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
+func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
 	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
 
-func (r *webRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
-func (r *webRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
+func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
+func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 
-func (r *webRequest_) Authority() string       { return string(r.UnsafeAuthority()) }
-func (r *webRequest_) UnsafeAuthority() []byte { return r.input[r.authority.from:r.authority.edge] }
-func (r *webRequest_) Hostname() string        { return string(r.UnsafeHostname()) }
-func (r *webRequest_) UnsafeHostname() []byte  { return r.input[r.hostname.from:r.hostname.edge] }
-func (r *webRequest_) ColonPort() string {
+func (r *serverRequest_) Authority() string       { return string(r.UnsafeAuthority()) }
+func (r *serverRequest_) UnsafeAuthority() []byte { return r.input[r.authority.from:r.authority.edge] }
+func (r *serverRequest_) Hostname() string        { return string(r.UnsafeHostname()) }
+func (r *serverRequest_) UnsafeHostname() []byte  { return r.input[r.hostname.from:r.hostname.edge] }
+func (r *serverRequest_) ColonPort() string {
 	if r.colonPort.notEmpty() {
 		return string(r.input[r.colonPort.from:r.colonPort.edge])
 	}
@@ -571,7 +571,7 @@ func (r *webRequest_) ColonPort() string {
 		return stringColonPort80
 	}
 }
-func (r *webRequest_) UnsafeColonPort() []byte {
+func (r *serverRequest_) UnsafeColonPort() []byte {
 	if r.colonPort.notEmpty() {
 		return r.input[r.colonPort.from:r.colonPort.edge]
 	}
@@ -582,49 +582,49 @@ func (r *webRequest_) UnsafeColonPort() []byte {
 	}
 }
 
-func (r *webRequest_) URI() string {
+func (r *serverRequest_) URI() string {
 	if r.uri.notEmpty() {
 		return string(r.input[r.uri.from:r.uri.edge])
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *webRequest_) UnsafeURI() []byte {
+func (r *serverRequest_) UnsafeURI() []byte {
 	if r.uri.notEmpty() {
 		return r.input[r.uri.from:r.uri.edge]
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *webRequest_) EncodedPath() string {
+func (r *serverRequest_) EncodedPath() string {
 	if r.encodedPath.notEmpty() {
 		return string(r.input[r.encodedPath.from:r.encodedPath.edge])
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *webRequest_) UnsafeEncodedPath() []byte {
+func (r *serverRequest_) UnsafeEncodedPath() []byte {
 	if r.encodedPath.notEmpty() {
 		return r.input[r.encodedPath.from:r.encodedPath.edge]
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *webRequest_) Path() string {
+func (r *serverRequest_) Path() string {
 	if len(r.path) != 0 {
 		return string(r.path)
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *webRequest_) UnsafePath() []byte {
+func (r *serverRequest_) UnsafePath() []byte {
 	if len(r.path) != 0 {
 		return r.path
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *webRequest_) cleanPath() {
+func (r *serverRequest_) cleanPath() {
 	nPath := len(r.path)
 	if nPath <= 1 {
 		// Must be '/'.
@@ -665,10 +665,10 @@ func (r *webRequest_) cleanPath() {
 		r.path = r.path[:pReal]
 	}
 }
-func (r *webRequest_) unsafeAbsPath() []byte {
+func (r *serverRequest_) unsafeAbsPath() []byte {
 	return r.absPath
 }
-func (r *webRequest_) makeAbsPath() {
+func (r *serverRequest_) makeAbsPath() {
 	if r.app.webRoot == "" { // if app's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
 		return
 	}
@@ -677,7 +677,7 @@ func (r *webRequest_) makeAbsPath() {
 	n := copy(r.absPath, webRoot)
 	copy(r.absPath[n:], r.UnsafePath())
 }
-func (r *webRequest_) getPathInfo() os.FileInfo {
+func (r *serverRequest_) getPathInfo() os.FileInfo {
 	if !r.pathInfoGot {
 		r.pathInfoGot = true
 		if pathInfo, err := os.Stat(risky.WeakString(r.absPath)); err == nil {
@@ -686,14 +686,14 @@ func (r *webRequest_) getPathInfo() os.FileInfo {
 	}
 	return r.pathInfo
 }
-func (r *webRequest_) QueryString() string {
+func (r *serverRequest_) QueryString() string {
 	return string(r.UnsafeQueryString())
 }
-func (r *webRequest_) UnsafeQueryString() []byte {
+func (r *serverRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
-func (r *webRequest_) addQuery(query *pair) bool { // as prime
+func (r *serverRequest_) addQuery(query *pair) bool { // as prime
 	if edge, ok := r._addPrime(query); ok {
 		r.queries.edge = edge
 		return true
@@ -701,22 +701,22 @@ func (r *webRequest_) addQuery(query *pair) bool { // as prime
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *webRequest_) AddQuery(name string, value string) bool { // as extra
+func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindQuery)
 }
-func (r *webRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
-func (r *webRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
-func (r *webRequest_) Q(name string) string {
+func (r *serverRequest_) HasQueries() bool                  { return r.hasPairs(r.queries, kindQuery) }
+func (r *serverRequest_) AllQueries() (queries [][2]string) { return r.allPairs(r.queries, kindQuery) }
+func (r *serverRequest_) Q(name string) string {
 	value, _ := r.Query(name)
 	return value
 }
-func (r *webRequest_) Qstr(name string, defaultValue string) string {
+func (r *serverRequest_) Qstr(name string, defaultValue string) string {
 	if value, ok := r.Query(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *webRequest_) Qint(name string, defaultValue int) int {
+func (r *serverRequest_) Qint(name string, defaultValue int) int {
 	if value, ok := r.Query(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -724,25 +724,25 @@ func (r *webRequest_) Qint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *webRequest_) Query(name string) (value string, ok bool) {
+func (r *serverRequest_) Query(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return string(v), ok
 }
-func (r *webRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.queries, kindQuery)
 }
-func (r *webRequest_) Queries(name string) (values []string, ok bool) {
+func (r *serverRequest_) Queries(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.queries, kindQuery)
 }
-func (r *webRequest_) HasQuery(name string) bool {
+func (r *serverRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return ok
 }
-func (r *webRequest_) DelQuery(name string) (deleted bool) {
+func (r *serverRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
 
-func (r *webRequest_) examineHead() bool {
+func (r *serverRequest_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
 		if !r.applyHeader(i) {
 			// r.headResult is set.
@@ -923,10 +923,10 @@ func (r *webRequest_) examineHead() bool {
 
 	return true
 }
-func (r *webRequest_) applyHeader(index uint8) bool {
+func (r *serverRequest_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)
-	if sh := &webRequestSingletonHeaderTable[webRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
+	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
@@ -939,7 +939,7 @@ func (r *webRequest_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &webRequestImportantHeaderTable[webRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
+	} else if mh := &serverRequestImportantHeaderTable[serverRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.desc, r.input) {
 			r.headResult = StatusBadRequest
@@ -961,28 +961,28 @@ func (r *webRequest_) applyHeader(index uint8) bool {
 }
 
 var ( // perfect hash table for request singleton headers
-	webRequestSingletonHeaderTable = [12]struct {
+	serverRequestSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
 		desc       // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*webRequest_, *pair, uint8) bool
+		check func(*serverRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
-		0:  {false, desc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*webRequest_).checkIfUnmodifiedSince},
-		1:  {false, desc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*webRequest_).checkUserAgent},
-		2:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*webRequest_).checkContentLength},
-		3:  {false, desc{hashRange, false, false, false, false, bytesRange}, (*webRequest_).checkRange},
-		4:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*webRequest_).checkDate},
-		5:  {false, desc{hashHost, false, false, false, false, bytesHost}, (*webRequest_).checkHost},
-		6:  {false, desc{hashCookie, false, false, false, false, bytesCookie}, (*webRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*webRequest_).checkContentType},
-		8:  {false, desc{hashIfRange, false, false, false, false, bytesIfRange}, (*webRequest_).checkIfRange},
-		9:  {false, desc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*webRequest_).checkIfModifiedSince},
-		10: {false, desc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*webRequest_).checkAuthorization},
-		11: {false, desc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*webRequest_).checkProxyAuthorization},
+		0:  {false, desc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
+		1:  {false, desc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
+		2:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
+		3:  {false, desc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
+		4:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
+		5:  {false, desc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
+		6:  {false, desc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
+		8:  {false, desc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
+		9:  {false, desc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
+		10: {false, desc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
+		11: {false, desc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*serverRequest_).checkProxyAuthorization},
 	}
-	webRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
+	serverRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
 
-func (r *webRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -995,7 +995,7 @@ func (r *webRequest_) checkAuthorization(header *pair, index uint8) bool { // Au
 		return false
 	}
 }
-func (r *webRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
+func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
 	if header.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
@@ -1012,7 +1012,7 @@ func (r *webRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = 
 	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
-func (r *webRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
+func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
 	// RFC 7230 (section 5.4): A server MUST respond with a 400 (Bad Request) status code to any
 	// HTTP/1.1 request message that lacks a Host header field and to any request message that
 	// contains more than one Host header field or a Host header field with an invalid field-value.
@@ -1034,10 +1034,10 @@ func (r *webRequest_) checkHost(header *pair, index uint8) bool { // Host = host
 	r.indexes.host = index
 	return true
 }
-func (r *webRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
+func (r *serverRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
 }
-func (r *webRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
+func (r *serverRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range"
 		return false
@@ -1048,10 +1048,10 @@ func (r *webRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range
 	r.indexes.ifRange = index
 	return true
 }
-func (r *webRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
+func (r *serverRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *webRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -1064,7 +1064,7 @@ func (r *webRequest_) checkProxyAuthorization(header *pair, index uint8) bool { 
 		return false
 	}
 }
-func (r *webRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
+func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
 		r._delPrime(index)
 		return true
@@ -1188,7 +1188,7 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
-func (r *webRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent == 0 {
 		r.indexes.userAgent = index
 		return true
@@ -1197,7 +1197,7 @@ func (r *webRequest_) checkUserAgent(header *pair, index uint8) bool { // User-A
 		return false
 	}
 }
-func (r *webRequest_) _addRange(from int64, last int64) bool {
+func (r *serverRequest_) _addRange(from int64, last int64) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
@@ -1208,31 +1208,31 @@ func (r *webRequest_) _addRange(from int64, last int64) bool {
 }
 
 var ( // perfect hash table for request important headers
-	webRequestImportantHeaderTable = [16]struct {
+	serverRequestImportantHeaderTable = [16]struct {
 		desc  // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*webRequest_, []pair, uint8, uint8) bool
+		check func(*serverRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {desc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*webRequest_).checkIfMatch},
-		1:  {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*webRequest_).checkContentLanguage},
-		2:  {desc{hashVia, false, false, false, true, bytesVia}, (*webRequest_).checkVia},
-		3:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*webRequest_).checkTransferEncoding}, // deliberately false
-		4:  {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*webRequest_).checkCacheControl},
-		5:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*webRequest_).checkConnection},
-		6:  {desc{hashForwarded, false, false, false, false, bytesForwarded}, (*webRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		7:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*webRequest_).checkUpgrade},
-		8:  {desc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*webRequest_).checkXForwardedFor},
-		9:  {desc{hashExpect, false, false, true, false, bytesExpect}, (*webRequest_).checkExpect},
-		10: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*webRequest_).checkAcceptEncoding},
-		11: {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*webRequest_).checkContentEncoding},
-		12: {desc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*webRequest_).checkAcceptLanguage},
-		13: {desc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*webRequest_).checkIfNoneMatch},
-		14: {desc{hashTE, false, false, true, false, bytesTE}, (*webRequest_).checkTE},
-		15: {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*webRequest_).checkTrailer},
+		0:  {desc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*serverRequest_).checkIfMatch},
+		1:  {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
+		2:  {desc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
+		3:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
+		4:  {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
+		5:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
+		6:  {desc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		7:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
+		8:  {desc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*serverRequest_).checkXForwardedFor},
+		9:  {desc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
+		10: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
+		11: {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
+		12: {desc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
+		13: {desc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
+		14: {desc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
+		15: {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
 	}
-	webRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
+	serverRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )
 
-func (r *webRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
@@ -1250,14 +1250,14 @@ func (r *webRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) 
 	}
 	return true
 }
-func (r *webRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *serverRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *webRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
+func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.versionCode >= Version1_1 {
 		if r.zones.expect.isEmpty() {
@@ -1282,7 +1282,7 @@ func (r *webRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { /
 	}
 	return true
 }
-func (r *webRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
+func (r *serverRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
 		return false
@@ -1296,13 +1296,13 @@ func (r *webRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool 
 	r.zones.forwarded.edge = edge
 	return true
 }
-func (r *webRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
+func (r *serverRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
 	return r._checkMatch(pairs, from, edge, &r.zones.ifMatch, &r.ifMatch)
 }
-func (r *webRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
+func (r *serverRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
 	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
-func (r *webRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
+func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
@@ -1317,7 +1317,7 @@ func (r *webRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE
 	}
 	return true
 }
-func (r *webRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
 		return false
@@ -1348,7 +1348,7 @@ func (r *webRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { 
 	}
 	return true
 }
-func (r *webRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+func (r *serverRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
 		return false
@@ -1359,7 +1359,7 @@ func (r *webRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) b
 	r.zones.xForwardedFor.edge = edge
 	return true
 }
-func (r *webRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
+func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
 	if zMatch.isEmpty() {
 		zMatch.from = from
 	}
@@ -1388,7 +1388,7 @@ func (r *webRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *
 	return true
 }
 
-func (r *webRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
+func (r *serverRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
 	if save {
 		r.authority.set(from, edge)
 	}
@@ -1455,7 +1455,7 @@ func (r *webRequest_) parseAuthority(from int32, edge int32, save bool) bool { /
 	}
 	return true
 }
-func (r *webRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
+func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
@@ -1547,22 +1547,22 @@ func (r *webRequest_) parseCookie(cookieString span) bool { // cookie-string = c
 	return true
 }
 
-func (r *webRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *webRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *webRequest_) UnsafeUserAgent() []byte {
+func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
+func (r *serverRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
 	}
 	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
-func (r *webRequest_) getRanges() []rang {
+func (r *serverRequest_) getRanges() []rang {
 	if r.nRanges == 0 {
 		return nil
 	}
 	return r.ranges[:r.nRanges]
 }
 
-func (r *webRequest_) addCookie(cookie *pair) bool { // as prime
+func (r *serverRequest_) addCookie(cookie *pair) bool { // as prime
 	if edge, ok := r._addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1570,22 +1570,22 @@ func (r *webRequest_) addCookie(cookie *pair) bool { // as prime
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
 }
-func (r *webRequest_) AddCookie(name string, value string) bool { // as extra
+func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindCookie)
 }
-func (r *webRequest_) HasCookies() bool                  { return r.hasPairs(r.cookies, kindCookie) }
-func (r *webRequest_) AllCookies() (cookies [][2]string) { return r.allPairs(r.cookies, kindCookie) }
-func (r *webRequest_) C(name string) string {
+func (r *serverRequest_) HasCookies() bool                  { return r.hasPairs(r.cookies, kindCookie) }
+func (r *serverRequest_) AllCookies() (cookies [][2]string) { return r.allPairs(r.cookies, kindCookie) }
+func (r *serverRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
 }
-func (r *webRequest_) Cstr(name string, defaultValue string) string {
+func (r *serverRequest_) Cstr(name string, defaultValue string) string {
 	if value, ok := r.Cookie(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *webRequest_) Cint(name string, defaultValue int) int {
+func (r *serverRequest_) Cint(name string, defaultValue int) int {
 	if value, ok := r.Cookie(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -1593,24 +1593,24 @@ func (r *webRequest_) Cint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *webRequest_) Cookie(name string) (value string, ok bool) {
+func (r *serverRequest_) Cookie(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return string(v), ok
 }
-func (r *webRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.cookies, kindCookie)
 }
-func (r *webRequest_) Cookies(name string) (values []string, ok bool) {
+func (r *serverRequest_) Cookies(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.cookies, kindCookie)
 }
-func (r *webRequest_) HasCookie(name string) bool {
+func (r *serverRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return ok
 }
-func (r *webRequest_) DelCookie(name string) (deleted bool) {
+func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
-func (r *webRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *serverRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.hash != 0 {
 			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
@@ -1630,7 +1630,7 @@ func (r *webRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte
 	return true
 }
 
-func (r *webRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
+func (r *serverRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
 	// Get etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
@@ -1657,7 +1657,7 @@ func (r *webRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) 
 	}
 	return StatusOK, true
 }
-func (r *webRequest_) _testIfMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _testIfMatch(etag []byte) (pass bool) {
 	if r.ifMatch == -1 { // *
 		return true
 	}
@@ -1674,7 +1674,7 @@ func (r *webRequest_) _testIfMatch(etag []byte) (pass bool) {
 	// TODO: extra?
 	return false
 }
-func (r *webRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	if r.ifNoneMatch == -1 { // *
 		return false
 	}
@@ -1690,14 +1690,14 @@ func (r *webRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 	// TODO: extra?
 	return true
 }
-func (r *webRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
 	return modTime > r.unixTimes.ifModifiedSince
 }
-func (r *webRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
 	return modTime <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *webRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
+func (r *serverRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
 	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
 		if (r.unixTimes.ifRange == 0 && r._testIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._testIfRangeTime(modTime)) {
 			return true // StatusPartialContent
@@ -1705,7 +1705,7 @@ func (r *webRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (p
 	}
 	return false // StatusOK
 }
-func (r *webRequest_) _testIfRangeETag(etag []byte) (pass bool) {
+func (r *serverRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	ifRange := &r.primes[r.indexes.ifRange]
 	data := ifRange.dataAt(r.input)
 	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
@@ -1713,24 +1713,24 @@ func (r *webRequest_) _testIfRangeETag(etag []byte) (pass bool) {
 	}
 	return false
 }
-func (r *webRequest_) _testIfRangeTime(modTime int64) (pass bool) {
+func (r *serverRequest_) _testIfRangeTime(modTime int64) (pass bool) {
 	return r.unixTimes.ifRange == modTime
 }
 
-func (r *webRequest_) unsetHost() { // used by proxies
+func (r *serverRequest_) unsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
 
-func (r *webRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
-func (r *webRequest_) Content() string  { return string(r.UnsafeContent()) }
-func (r *webRequest_) UnsafeContent() []byte {
+func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
+func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
+func (r *serverRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
 	return r.unsafeContent()
 }
 
-func (r *webRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
+func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
 	if r.formKind == httpFormNotForm || r.formReceived {
 		return
 	}
@@ -1743,7 +1743,7 @@ func (r *webRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
 		r._recvMultipartForm()
 	}
 }
-func (r *webRequest_) _loadURLEncodedForm() { // into memory entirely
+func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 	r.loadContent()
 	if r.stream.isBroken() {
 		return
@@ -1831,7 +1831,7 @@ func (r *webRequest_) _loadURLEncodedForm() { // into memory entirely
 		r.bodyResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
 	}
 }
-func (r *webRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
+func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
 	r.pBack, r.pFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
@@ -2175,7 +2175,7 @@ func (r *webRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC
 		}
 	}
 }
-func (r *webRequest_) _growMultipartForm() bool { // caller needs more data from content file
+func (r *serverRequest_) _growMultipartForm() bool { // caller needs more data from content file
 	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
@@ -2205,7 +2205,7 @@ func (r *webRequest_) _growMultipartForm() bool { // caller needs more data from
 	}
 	return true
 }
-func (r *webRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
+func (r *serverRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -2276,7 +2276,7 @@ func (r *webRequest_) _parseParas(p []byte, from int32, edge int32, paras []para
 	}
 }
 
-func (r *webRequest_) addForm(form *pair) bool { // as prime
+func (r *serverRequest_) addForm(form *pair) bool { // as prime
 	if edge, ok := r._addPrime(form); ok {
 		r.forms.edge = edge
 		return true
@@ -2284,28 +2284,28 @@ func (r *webRequest_) addForm(form *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
 	return false
 }
-func (r *webRequest_) AddForm(name string, value string) bool { // as extra
+func (r *serverRequest_) AddForm(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindForm)
 }
-func (r *webRequest_) HasForms() bool {
+func (r *serverRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)
 }
-func (r *webRequest_) AllForms() (forms [][2]string) {
+func (r *serverRequest_) AllForms() (forms [][2]string) {
 	r.parseHTMLForm()
 	return r.allPairs(r.forms, kindForm)
 }
-func (r *webRequest_) F(name string) string {
+func (r *serverRequest_) F(name string) string {
 	value, _ := r.Form(name)
 	return value
 }
-func (r *webRequest_) Fstr(name string, defaultValue string) string {
+func (r *serverRequest_) Fstr(name string, defaultValue string) string {
 	if value, ok := r.Form(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *webRequest_) Fint(name string, defaultValue int) int {
+func (r *serverRequest_) Fint(name string, defaultValue int) int {
 	if value, ok := r.Form(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -2313,30 +2313,30 @@ func (r *webRequest_) Fint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *webRequest_) Form(name string) (value string, ok bool) {
+func (r *serverRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
 	v, ok := r.getPair(name, 0, r.forms, kindForm)
 	return string(v), ok
 }
-func (r *webRequest_) UnsafeForm(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
 	return r.getPair(name, 0, r.forms, kindForm)
 }
-func (r *webRequest_) Forms(name string) (values []string, ok bool) {
+func (r *serverRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
 	return r.getPairs(name, 0, r.forms, kindForm)
 }
-func (r *webRequest_) HasForm(name string) bool {
+func (r *serverRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.getPair(name, 0, r.forms, kindForm)
 	return ok
 }
-func (r *webRequest_) DelForm(name string) (deleted bool) {
+func (r *serverRequest_) DelForm(name string) (deleted bool) {
 	r.parseHTMLForm()
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 
-func (r *webRequest_) addUpload(upload *Upload) {
+func (r *serverRequest_) addUpload(upload *Upload) {
 	if len(r.uploads) == cap(r.uploads) {
 		if cap(r.uploads) == cap(r.stockUploads) {
 			uploads := make([]Upload, 0, 16)
@@ -2351,11 +2351,11 @@ func (r *webRequest_) addUpload(upload *Upload) {
 	}
 	r.uploads = append(r.uploads, *upload)
 }
-func (r *webRequest_) HasUploads() bool {
+func (r *serverRequest_) HasUploads() bool {
 	r.parseHTMLForm()
 	return len(r.uploads) != 0
 }
-func (r *webRequest_) AllUploads() (uploads []*Upload) {
+func (r *serverRequest_) AllUploads() (uploads []*Upload) {
 	r.parseHTMLForm()
 	for i := 0; i < len(r.uploads); i++ {
 		upload := &r.uploads[i]
@@ -2364,11 +2364,11 @@ func (r *webRequest_) AllUploads() (uploads []*Upload) {
 	}
 	return uploads
 }
-func (r *webRequest_) U(name string) *Upload {
+func (r *serverRequest_) U(name string) *Upload {
 	upload, _ := r.Upload(name)
 	return upload
 }
-func (r *webRequest_) Upload(name string) (upload *Upload, ok bool) {
+func (r *serverRequest_) Upload(name string) (upload *Upload, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.uploads); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2381,7 +2381,7 @@ func (r *webRequest_) Upload(name string) (upload *Upload, ok bool) {
 	}
 	return
 }
-func (r *webRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
+func (r *serverRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.uploads); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2397,19 +2397,19 @@ func (r *webRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
 	}
 	return
 }
-func (r *webRequest_) HasUpload(name string) bool {
+func (r *serverRequest_) HasUpload(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.Upload(name)
 	return ok
 }
 
-func (r *webRequest_) applyTrailer(index uint8) bool {
+func (r *serverRequest_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 
-func (r *webRequest_) arrayCopy(p []byte) bool {
+func (r *serverRequest_) arrayCopy(p []byte) bool {
 	if len(p) > 0 {
 		edge := r.arrayEdge + int32(len(p))
 		if edge < r.arrayEdge { // overflow
@@ -2426,7 +2426,7 @@ func (r *webRequest_) arrayCopy(p []byte) bool {
 	return true
 }
 
-func (r *webRequest_) saveContentFilesDir() string {
+func (r *serverRequest_) saveContentFilesDir() string {
 	if r.app != nil {
 		return r.app.SaveContentFilesDir()
 	} else {
@@ -2434,7 +2434,7 @@ func (r *webRequest_) saveContentFilesDir() string {
 	}
 }
 
-func (r *webRequest_) hookReviser(reviser Reviser) {
+func (r *serverRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 	if reviser.ForceEcho() {
@@ -2442,21 +2442,21 @@ func (r *webRequest_) hookReviser(reviser Reviser) {
 	}
 }
 
-func (r *webRequest_) unsafeVariable(index int16) []byte {
-	return webRequestVariables[index](r)
+func (r *serverRequest_) unsafeVariable(index int16) []byte {
+	return serverRequestVariables[index](r)
 }
 
-var webRequestVariables = [...]func(*webRequest_) []byte{ // keep sync with varCodes in config.go
-	(*webRequest_).UnsafeMethod,      // method
-	(*webRequest_).UnsafeScheme,      // scheme
-	(*webRequest_).UnsafeAuthority,   // authority
-	(*webRequest_).UnsafeHostname,    // hostname
-	(*webRequest_).UnsafeColonPort,   // colonPort
-	(*webRequest_).UnsafePath,        // path
-	(*webRequest_).UnsafeURI,         // uri
-	(*webRequest_).UnsafeEncodedPath, // encodedPath
-	(*webRequest_).UnsafeQueryString, // queryString
-	(*webRequest_).UnsafeContentType, // contentType
+var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes in config.go
+	(*serverRequest_).UnsafeMethod,      // method
+	(*serverRequest_).UnsafeScheme,      // scheme
+	(*serverRequest_).UnsafeAuthority,   // authority
+	(*serverRequest_).UnsafeHostname,    // hostname
+	(*serverRequest_).UnsafeColonPort,   // colonPort
+	(*serverRequest_).UnsafePath,        // path
+	(*serverRequest_).UnsafeURI,         // uri
+	(*serverRequest_).UnsafeEncodedPath, // encodedPath
+	(*serverRequest_).UnsafeQueryString, // queryString
+	(*serverRequest_).UnsafeContentType, // contentType
 }
 
 // Upload is a file uploaded by client.
@@ -2616,7 +2616,7 @@ type Response interface {
 	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHeadFrom(resp wResponse, viaName []byte) bool // used by proxies
+	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content
@@ -2625,16 +2625,16 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
-	pass1xx(resp wResponse) bool              // used by proxies
+	pass1xx(resp response) bool               // used by proxies
 	pass(resp webIn) error                    // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
-	copyTailFrom(resp wResponse) bool         // used by proxies
+	copyTailFrom(resp response) bool          // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
 
-// webResponse_ is the mixin for http[1-3]Response and hwebResponse.
-type webResponse_ struct { // outgoing. needs building
+// serverResponse_ is the mixin for http[1-3]Response and hwebResponse.
+type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
@@ -2649,12 +2649,12 @@ type webResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	app          *App   // associated app
-	svc          *Svc   // associated svc
-	outBuffer    []byte // used by revisers
-	webResponse0        // all values must be zero by default in this struct!
+	app             *App   // associated app
+	svc             *Svc   // associated svc
+	outBuffer       []byte // used by revisers
+	serverResponse0        // all values must be zero by default in this struct!
 }
-type webResponse0 struct { // for fast reset, entirely
+type serverResponse0 struct { // for fast reset, entirely
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 	indexes  struct {
 		expires      uint8
@@ -2662,25 +2662,25 @@ type webResponse0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *webResponse_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
 	r.webOut_.onUse(versionCode, false) // asRequest = false
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set
 }
-func (r *webResponse_) onEnd() { // for zeros
+func (r *serverResponse_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
 	if r.outBuffer != nil {
 		PutNK(r.outBuffer)
 	}
-	r.webResponse0 = webResponse0{}
+	r.serverResponse0 = serverResponse0{}
 	r.webOut_.onEnd()
 }
 
-func (r *webResponse_) Request() Request { return r.request }
+func (r *serverResponse_) Request() Request { return r.request }
 
-func (r *webResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 has its own control()
+func (r *serverResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 has its own control()
 	var start []byte
 	if r.status >= int16(len(webControls)) || webControls[r.status] == nil {
 		copy(r.start[:], webTemplate[:])
@@ -2694,7 +2694,7 @@ func (r *webResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 
 	return start
 }
 
-func (r *webResponse_) SetStatus(status int16) error {
+func (r *serverResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {
 		r.status = status
 		if status == StatusNoContent {
@@ -2710,9 +2710,9 @@ func (r *webResponse_) SetStatus(status int16) error {
 		return webOutUnknownStatus
 	}
 }
-func (r *webResponse_) Status() int16 { return r.status }
+func (r *serverResponse_) Status() int16 { return r.status }
 
-func (r *webResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
+func (r *serverResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
 	if modTime < 0 || fileSize < 0 {
 		return nil, false
 	}
@@ -2729,39 +2729,39 @@ func (r *webResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool
 	p[n] = '"'
 	return p[0 : n+1], true
 }
-func (r *webResponse_) SetExpires(expires int64) bool {
+func (r *serverResponse_) SetExpires(expires int64) bool {
 	return r._setUnixTime(&r.unixTimes.expires, &r.indexes.expires, expires)
 }
-func (r *webResponse_) SetLastModified(lastModified int64) bool {
+func (r *serverResponse_) SetLastModified(lastModified int64) bool {
 	return r._setUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, lastModified)
 }
 
-func (r *webResponse_) SendBadRequest(content []byte) error { // 400
+func (r *serverResponse_) SendBadRequest(content []byte) error { // 400
 	return r.sendError(StatusBadRequest, content)
 }
-func (r *webResponse_) SendForbidden(content []byte) error { // 403
+func (r *serverResponse_) SendForbidden(content []byte) error { // 403
 	return r.sendError(StatusForbidden, content)
 }
-func (r *webResponse_) SendNotFound(content []byte) error { // 404
+func (r *serverResponse_) SendNotFound(content []byte) error { // 404
 	return r.sendError(StatusNotFound, content)
 }
-func (r *webResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
+func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
 	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
-func (r *webResponse_) SendInternalServerError(content []byte) error { // 500
+func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500
 	return r.sendError(StatusInternalServerError, content)
 }
-func (r *webResponse_) SendNotImplemented(content []byte) error { // 501
+func (r *serverResponse_) SendNotImplemented(content []byte) error { // 501
 	return r.sendError(StatusNotImplemented, content)
 }
-func (r *webResponse_) SendBadGateway(content []byte) error { // 502
+func (r *serverResponse_) SendBadGateway(content []byte) error { // 502
 	return r.sendError(StatusBadGateway, content)
 }
-func (r *webResponse_) SendGatewayTimeout(content []byte) error { // 504
+func (r *serverResponse_) SendGatewayTimeout(content []byte) error { // 504
 	return r.sendError(StatusGatewayTimeout, content)
 }
-func (r *webResponse_) sendError(status int16, content []byte) error {
+func (r *serverResponse_) sendError(status int16, content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
@@ -2776,7 +2776,7 @@ func (r *webResponse_) sendError(status int16, content []byte) error {
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain()
 }
-func (r *webResponse_) send() error {
+func (r *serverResponse_) send() error {
 	if r.hasRevisers {
 		resp := r.shell.(Response)
 		// Travel through revisers
@@ -2804,7 +2804,7 @@ func (r *webResponse_) send() error {
 	return r.shell.sendChain()
 }
 
-func (r *webResponse_) _beforeEcho() error {
+func (r *serverResponse_) _beforeEcho() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -2828,7 +2828,7 @@ func (r *webResponse_) _beforeEcho() error {
 	}
 	return r.shell.echoHeaders()
 }
-func (r *webResponse_) echo() error {
+func (r *serverResponse_) echo() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -2846,7 +2846,7 @@ func (r *webResponse_) echo() error {
 	}
 	return r.shell.echoChain()
 }
-func (r *webResponse_) endUnsized() error {
+func (r *serverResponse_) endUnsized() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -2863,7 +2863,7 @@ func (r *webResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *webResponse_) copyHeadFrom(resp wResponse, viaName []byte) bool { // used by proxies
+func (r *serverResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2885,28 +2885,28 @@ func (r *webResponse_) copyHeadFrom(resp wResponse, viaName []byte) bool { // us
 }
 
 var ( // perfect hash table for response critical headers
-	webResponseCriticalHeaderTable = [10]struct {
+	serverResponseCriticalHeaderTable = [10]struct {
 		hash uint16
 		name []byte
-		fAdd func(*webResponse_, []byte) (ok bool)
-		fDel func(*webResponse_) (deleted bool)
+		fAdd func(*serverResponse_, []byte) (ok bool)
+		fDel func(*serverResponse_) (deleted bool)
 	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
 		0: {hashServer, bytesServer, nil, nil},       // forbidden
 		1: {hashSetCookie, bytesSetCookie, nil, nil}, // forbidden
 		2: {hashUpgrade, bytesUpgrade, nil, nil},     // forbidden
-		3: {hashDate, bytesDate, (*webResponse_).appendDate, (*webResponse_).deleteDate},
+		3: {hashDate, bytesDate, (*serverResponse_).appendDate, (*serverResponse_).deleteDate},
 		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // forbidden
 		5: {hashConnection, bytesConnection, nil, nil},             // forbidden
-		6: {hashLastModified, bytesLastModified, (*webResponse_).appendLastModified, (*webResponse_).deleteLastModified},
-		7: {hashExpires, bytesExpires, (*webResponse_).appendExpires, (*webResponse_).deleteExpires},
+		6: {hashLastModified, bytesLastModified, (*serverResponse_).appendLastModified, (*serverResponse_).deleteLastModified},
+		7: {hashExpires, bytesExpires, (*serverResponse_).appendExpires, (*serverResponse_).deleteExpires},
 		8: {hashContentLength, bytesContentLength, nil, nil}, // forbidden
-		9: {hashContentType, bytesContentType, (*webResponse_).appendContentType, (*webResponse_).deleteContentType},
+		9: {hashContentType, bytesContentType, (*serverResponse_).appendContentType, (*serverResponse_).deleteContentType},
 	}
-	webResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+	serverResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
 
-func (r *webResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &webResponseCriticalHeaderTable[webResponseCriticalHeaderFind(hash)]
+func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fAdd == nil { // mainly because this header is forbidden to insert
 			return true // pretend to be successful
@@ -2915,15 +2915,15 @@ func (r *webResponse_) insertHeader(hash uint16, name []byte, value []byte) bool
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *webResponse_) appendExpires(expires []byte) (ok bool) {
+func (r *serverResponse_) appendExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
 }
-func (r *webResponse_) appendLastModified(lastModified []byte) (ok bool) {
+func (r *serverResponse_) appendLastModified(lastModified []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
-func (r *webResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &webResponseCriticalHeaderTable[webResponseCriticalHeaderFind(hash)]
+func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fDel == nil { // mainly because this header is forbidden to remove
 			return true // pretend to be successful
@@ -2932,25 +2932,25 @@ func (r *webResponse_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-func (r *webResponse_) deleteExpires() (deleted bool) {
+func (r *serverResponse_) deleteExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
 }
-func (r *webResponse_) deleteLastModified() (deleted bool) {
+func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *webResponse_) copyTailFrom(resp wResponse) bool { // used by proxies
+func (r *serverResponse_) copyTailFrom(resp response) bool { // used by proxies
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
 }
 
-func (r *webResponse_) hookReviser(reviser Reviser) {
+func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-func (r *webResponse_) OutBuffer() []byte {
+func (r *serverResponse_) OutBuffer() []byte {
 	if r.outBuffer == nil {
 		r.outBuffer = Get16K()
 	}

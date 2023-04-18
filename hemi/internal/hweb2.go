@@ -12,65 +12,65 @@ package internal
 // hweb2In_
 type hweb2In_ = webIn_
 
-func (r *hweb2In_) readContentH() (p []byte, err error) {
+func (r *hweb2In_) readContentB2() (p []byte, err error) {
 	return
 }
 
 // hweb2Out_
 type hweb2Out_ = webOut_
 
-func (r *hweb2Out_) addHeaderH(name []byte, value []byte) bool {
+func (r *hweb2Out_) addHeaderB2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) headerH(name []byte) (value []byte, ok bool) {
+func (r *hweb2Out_) headerB2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hweb2Out_) hasHeaderH(name []byte) bool {
+func (r *hweb2Out_) hasHeaderB2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) delHeaderH(name []byte) (deleted bool) {
+func (r *hweb2Out_) delHeaderB2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) delHeaderAtH(o uint8) {
+func (r *hweb2Out_) delHeaderAtB2(o uint8) {
 	// TODO
 }
 
-func (r *hweb2Out_) sendChainH() error {
+func (r *hweb2Out_) sendChainB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) echoHeadersH() error {
+func (r *hweb2Out_) echoHeadersB2() error {
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) echoChainH() error {
+func (r *hweb2Out_) echoChainB2() error {
 	// TODO
 	return nil
 }
 
-func (r *hweb2Out_) trailerH(name []byte) (value []byte, ok bool) {
+func (r *hweb2Out_) trailerB2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hweb2Out_) addTrailerH(name []byte, value []byte) bool {
+func (r *hweb2Out_) addTrailerB2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) trailersH() []byte {
+func (r *hweb2Out_) trailersB2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *hweb2Out_) passBytesH(p []byte) error {
+func (r *hweb2Out_) passBytesB2(p []byte) error {
 	// TODO
 	return nil
 }
 
-func (r *hweb2Out_) finalizeUnsizedH() error {
+func (r *hweb2Out_) finalizeUnsizedB2() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -78,11 +78,11 @@ func (r *hweb2Out_) finalizeUnsizedH() error {
 	return nil
 }
 
-func (r *hweb2Out_) writeBlockH(block *Block, unsized bool) error {
+func (r *hweb2Out_) writeBlockB2(block *Block, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) writeVectorH() error {
+func (r *hweb2Out_) writeVectorB2() error {
 	return nil
 }
 

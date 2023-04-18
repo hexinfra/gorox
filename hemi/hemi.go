@@ -185,7 +185,6 @@ const ( // core constants
 	Version1_1 = internal.Version1_1
 	Version2   = internal.Version2
 	Version3   = internal.Version3
-	VersionH   = internal.VersionH
 
 	SchemeHTTP  = internal.SchemeHTTP
 	SchemeHTTPS = internal.SchemeHTTPS

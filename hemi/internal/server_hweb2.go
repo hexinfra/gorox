@@ -266,7 +266,7 @@ type hweb2Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *hweb2Request) readContent() (p []byte, err error) { return r.readContentH() }
+func (r *hweb2Request) readContent() (p []byte, err error) { return r.readContentB2() }
 
 // hweb2Response is the server-side HWEB/2 response.
 type hweb2Response struct { // outgoing. needs building
@@ -278,11 +278,11 @@ type hweb2Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *hweb2Response) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
-func (r *hweb2Response) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
-func (r *hweb2Response) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
-func (r *hweb2Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
-func (r *hweb2Response) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+func (r *hweb2Response) addHeader(name []byte, value []byte) bool   { return r.addHeaderB2(name, value) }
+func (r *hweb2Response) header(name []byte) (value []byte, ok bool) { return r.headerB2(name) }
+func (r *hweb2Response) hasHeader(name []byte) bool                 { return r.hasHeaderB2(name) }
+func (r *hweb2Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
+func (r *hweb2Response) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
 
 func (r *hweb2Response) addedHeaders() []byte { return nil }
 func (r *hweb2Response) fixedHeaders() []byte { return nil }

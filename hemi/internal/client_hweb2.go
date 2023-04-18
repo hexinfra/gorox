@@ -187,11 +187,11 @@ func (c *b2Conn) onPut() {
 	c.activeStreams = 0
 }
 
-func (c *b2Conn) FetchStream() *hStream {
+func (c *b2Conn) FetchStream() *b2Stream {
 	// TODO: stream.onUse()
 	return nil
 }
-func (c *b2Conn) StoreStream(stream *hStream) {
+func (c *b2Conn) StoreStream(stream *b2Stream) {
 	// TODO
 	stream.onEnd()
 }
@@ -231,13 +231,13 @@ func (c *b2Conn) readAtLeast(p []byte, n int) (int, error) {
 
 func (c *b2Conn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
 
-// poolHStream
-var poolHStream sync.Pool
+// poolB2Stream
+var poolB2Stream sync.Pool
 
-func getHStream(conn *b2Conn, id int32) *hStream {
-	var stream *hStream
-	if x := poolHStream.Get(); x == nil {
-		stream = new(hStream)
+func getB2Stream(conn *b2Conn, id int32) *b2Stream {
+	var stream *b2Stream
+	if x := poolB2Stream.Get(); x == nil {
+		stream = new(b2Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -245,108 +245,96 @@ func getHStream(conn *b2Conn, id int32) *hStream {
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		stream = x.(*hStream)
+		stream = x.(*b2Stream)
 	}
 	stream.onUse(conn, id)
 	return stream
 }
-func putHStream(stream *hStream) {
+func putB2Stream(stream *b2Stream) {
 	stream.onEnd()
-	poolHStream.Put(stream)
+	poolB2Stream.Put(stream)
 }
 
-// hStream
-type hStream struct {
+// b2Stream
+type b2Stream struct {
 	// Mixins
 	webStream_
 	// Assocs
-	request  hRequest
-	response hResponse
-	socket   *hSocket
+	request  b2Request
+	response b2Response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn *b2Conn
 	id   int32
 	// Stream states (zeros)
-	hStream0 // all values must be zero by default in this struct!
+	b2Stream0 // all values must be zero by default in this struct!
 }
-type hStream0 struct { // for fast reset, entirely
+type b2Stream0 struct { // for fast reset, entirely
 }
 
-func (s *hStream) onUse(conn *b2Conn, id int32) { // for non-zeros
+func (s *b2Stream) onUse(conn *b2Conn, id int32) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
 }
-func (s *hStream) onEnd() { // for zeros
+func (s *b2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.socket = nil
 	s.conn = nil
-	s.hStream0 = hStream0{}
+	s.b2Stream0 = b2Stream0{}
 	s.webStream_.onEnd()
 }
 
-func (s *hStream) keeper() webKeeper  { return s.conn.getClient() }
-func (s *hStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+func (s *b2Stream) keeper() webKeeper  { return s.conn.getClient() }
+func (s *b2Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
-func (s *hStream) Request() *hRequest   { return &s.request }
-func (s *hStream) Response() *hResponse { return &s.response }
+func (s *b2Stream) Request() *b2Request   { return &s.request }
+func (s *b2Stream) Response() *b2Response { return &s.response }
 
-func (s *hStream) ExecuteNormal() error { // request & response
+func (s *b2Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
-func (s *hStream) ExecuteSocket() *hSocket { // see RFC 8441: https://www.rfc-editor.org/rfc/rfc8441.html
-	// TODO
-	return s.socket
-}
-func (s *hStream) ExecuteTCPTun() { // CONNECT method
+
+func (s *b2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (s *hStream) ExecuteUDPTun() { // see RFC 9298: https://www.rfc-editor.org/rfc/rfc9298.html
+func (s *b2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 
-func (s *hStream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-func (s *hStream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-
-func (s *hStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *b2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return s.conn.makeTempName(p, unixTime)
 }
 
-func (s *hStream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *b2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *hStream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *b2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *hStream) write(p []byte) (int, error) { // for content i/o only?
+func (s *b2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *hStream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (s *b2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *hStream) read(p []byte) (int, error) { // for content i/o only?
+func (s *b2Stream) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *hStream) readFull(p []byte) (int, error) { // for content i/o only?
+func (s *b2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-func (s *hStream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *hStream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *b2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *b2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-// hRequest is the client-side HWEB/2 request.
-type hRequest struct { // outgoing. needs building
+// b2Request is the client-side HWEB/2 request.
+type b2Request struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
 	// Stream states (stocks)
@@ -355,64 +343,64 @@ type hRequest struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *hRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :uri = uri
+func (r *b2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :uri = uri
 	// TODO: set :method and :uri
 	return false
 }
-func (r *hRequest) setAuthority(hostname []byte, colonPort []byte) bool { // used by agents
+func (r *b2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by agents
 	// TODO: set :authority
 	return false
 }
 
-func (r *hRequest) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
-func (r *hRequest) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
-func (r *hRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
-func (r *hRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
-func (r *hRequest) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+func (r *b2Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderB2(name, value) }
+func (r *b2Request) header(name []byte) (value []byte, ok bool) { return r.headerB2(name) }
+func (r *b2Request) hasHeader(name []byte) bool                 { return r.hasHeaderB2(name) }
+func (r *b2Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
+func (r *b2Request) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
 
-func (r *hRequest) AddCookie(name string, value string) bool {
+func (r *b2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *hRequest) copyCookies(req Request) bool { // used by agents. merge into one "cookie" header?
+func (r *b2Request) copyCookies(req Request) bool { // used by agents. merge into one "cookie" header?
 	// TODO: one by one?
 	return true
 }
 
-func (r *hRequest) sendChain() error { return r.sendChainH() }
+func (r *b2Request) sendChain() error { return r.sendChainB2() }
 
-func (r *hRequest) echoHeaders() error {
+func (r *b2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *hRequest) echoChain() error { return r.echoChainH() }
+func (r *b2Request) echoChain() error { return r.echoChainB2() }
 
-func (r *hRequest) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH(name)
+func (r *b2Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerB2(name)
 }
-func (r *hRequest) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailerH(name, value)
+func (r *b2Request) addTrailer(name []byte, value []byte) bool {
+	return r.addTrailerB2(name, value)
 }
 
-func (r *hRequest) passHeaders() error {
+func (r *b2Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *hRequest) passBytes(p []byte) error { return r.passBytesH(p) }
+func (r *b2Request) passBytes(p []byte) error { return r.passBytesB2(p) }
 
-func (r *hRequest) finalizeHeaders() { // add at most 256 bytes
+func (r *b2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *hRequest) finalizeUnsized() error {
+func (r *b2Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }
 
-func (r *hRequest) addedHeaders() []byte { return nil }
-func (r *hRequest) fixedHeaders() []byte { return nil }
+func (r *b2Request) addedHeaders() []byte { return nil }
+func (r *b2Request) fixedHeaders() []byte { return nil }
 
-// hResponse is the client-side HWEB/2 response.
-type hResponse struct { // incoming. needs parsing
+// b2Response is the client-side HWEB/2 response.
+type b2Response struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_
 	// Stream states (stocks)
@@ -421,17 +409,4 @@ type hResponse struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *hResponse) readContent() (p []byte, err error) { return r.readContentH() }
-
-// poolHSocket
-var poolHSocket sync.Pool
-
-// hSocket is the client-side HWEB/2 websocket.
-type hSocket struct {
-	// Mixins
-	clientSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
+func (r *b2Response) readContent() (p []byte, err error) { return r.readContentB2() }

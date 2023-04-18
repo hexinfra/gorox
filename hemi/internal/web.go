@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// keeper is a webServer or webClient which keeps web connections and streams.
+// webKeeper is a webServer or webClient which keeps web connections and streams.
 type webKeeper interface {
 	Stage() *Stage
 	TLSMode() bool
@@ -35,17 +35,17 @@ type webKeeper interface {
 	SaveContentFilesDir() string
 }
 
-// keeper_ is the mixin for webServer_ and webClient_.
-type keeper_ struct {
+// webKeeper_ is the mixin for webServer_ and webClient_.
+type webKeeper_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	sendTimeout    time.Duration // timeout to send the whole message
 	maxContentSize int64         // max content size allowed
 }
 
-func (k *keeper_) RecvTimeout() time.Duration { return k.recvTimeout }
-func (k *keeper_) SendTimeout() time.Duration { return k.sendTimeout }
-func (k *keeper_) MaxContentSize() int64      { return k.maxContentSize }
+func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
+func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
+func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }
 
 // stream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type stream interface {

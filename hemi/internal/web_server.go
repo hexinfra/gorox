@@ -38,7 +38,7 @@ type webServer interface {
 type webServer_ struct {
 	// Mixins
 	Server_
-	keeper_
+	webKeeper_
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs

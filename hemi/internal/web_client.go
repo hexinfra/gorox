@@ -27,7 +27,7 @@ type webClient interface {
 // webClient_ is a mixin for webOutgate_ and webBackend_.
 type webClient_ struct {
 	// Mixins
-	keeper_
+	webKeeper_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States

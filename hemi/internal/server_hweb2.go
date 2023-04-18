@@ -15,6 +15,7 @@ import (
 	"net"
 	"sync"
 	"syscall"
+	"time"
 )
 
 func init() {
@@ -256,6 +257,33 @@ func (s *hweb2Stream) serveAbnormal(req *hweb2Request, resp *hweb2Response) { //
 	// TODO
 }
 
+func (s *hweb2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return s.conn.makeTempName(p, unixTime)
+}
+
+func (s *hweb2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+	return nil
+}
+func (s *hweb2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+	return nil
+}
+
+func (s *hweb2Stream) read(p []byte) (int, error) { // for content i/o only
+	return 0, nil
+}
+func (s *hweb2Stream) readFull(p []byte) (int, error) { // for content i/o only
+	return 0, nil
+}
+func (s *hweb2Stream) write(p []byte) (int, error) { // for content i/o only
+	return 0, nil
+}
+func (s *hweb2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+	return 0, nil
+}
+
+func (s *hweb2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *hweb2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+
 // hweb2Request is the server-side HWEB/2 request.
 type hweb2Request struct { // incoming. needs parsing
 	// Mixins
@@ -283,6 +311,68 @@ func (r *hweb2Response) header(name []byte) (value []byte, ok bool) { return r.h
 func (r *hweb2Response) hasHeader(name []byte) bool                 { return r.hasHeaderB2(name) }
 func (r *hweb2Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
 func (r *hweb2Response) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
+
+func (r *hweb2Response) AddHTTPSRedirection(authority string) bool {
+	// TODO
+	return false
+}
+func (r *hweb2Response) AddHostnameRedirection(hostname string) bool {
+	// TODO
+	return false
+}
+func (r *hweb2Response) AddDirectoryRedirection() bool {
+	// TODO
+	return false
+}
+func (r *hweb2Response) setConnectionClose() { BugExitln("not used in HWEB/2") }
+
+func (r *hweb2Response) SetCookie(cookie *Cookie) bool {
+	// TODO
+	return false
+}
+
+func (r *hweb2Response) sendChain() error { return r.sendChainB2() }
+
+func (r *hweb2Response) echoHeaders() error { // headers are sent immediately upon echoing.
+	// TODO
+	return nil
+}
+func (r *hweb2Response) echoChain() error { return r.echoChainB2() }
+
+func (r *hweb2Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerB2(name)
+}
+func (r *hweb2Response) addTrailer(name []byte, value []byte) bool {
+	return r.addTrailerB2(name, value)
+}
+
+func (r *hweb2Response) pass1xx(resp response) bool { // used by proxies
+	resp.delHopHeaders()
+	r.status = resp.Status()
+	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r.insertHeader(header.hash, name, value)
+	}) {
+		return false
+	}
+	// TODO
+	// For next use.
+	r.onEnd()
+	r.onUse(Version2)
+	return false
+}
+func (r *hweb2Response) passHeaders() error {
+	// TODO
+	return nil
+}
+func (r *hweb2Response) passBytes(p []byte) error { return r.passBytesB2(p) }
+
+func (r *hweb2Response) finalizeHeaders() { // add at most 256 bytes
+	// TODO
+}
+func (r *hweb2Response) finalizeUnsized() error {
+	// TODO
+	return nil
+}
 
 func (r *hweb2Response) addedHeaders() []byte { return nil } // TODO
 func (r *hweb2Response) fixedHeaders() []byte { return nil } // TODO

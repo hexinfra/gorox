@@ -258,33 +258,6 @@ func (c *webConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 func (c *webConn_) isBroken() bool { return c.broken.Load() }
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
-// webStream_ is the mixin for http[1-3]Stream and hwebStream.
-type webStream_ struct {
-	// Mixins
-	stream_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *webStream_) onUse() {
-	s.stream_.onUse()
-}
-func (s *webStream_) onEnd() {
-	s.stream_.onEnd()
-}
-
-func (s *webStream_) serveSocket() { // upgrade: websocket
-	// TODO
-}
-func (s *webStream_) serveTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *webStream_) serveUDPTun() { // upgrade: connect-udp
-	// TODO
-}
-
 // Request is the interface for *http[1-3]Request and *hwebRequest.
 type Request interface {
 	PeerAddr() net.Addr

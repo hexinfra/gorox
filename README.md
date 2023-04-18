@@ -93,7 +93,7 @@ Architecture
 Deployment
 ----------
 
-A typical deployment architecture using Gorox might like this:
+A typical deployment architecture using Gorox might looks like this:
 
 ```
            mobile  pc iot
@@ -151,10 +151,10 @@ configuration, all Gorox instances in "gorox cluster" are connected to the Goops
 instance and under its control.
 
 
-Processes
----------
+Process
+-------
 
-A Gorox instance has a pair of processes: a leader, and a worker:
+A Gorox instance has two processes: a leader process, and a worker process:
 
 ```
                    +----------------+         +----------------+ public traffic
@@ -172,46 +172,12 @@ its administration to Goops. In this way, the admin interface in leader process
 is disabled.
 
 
-Internals
----------
-
-The logical architecture of Gorox internal (called Hemi Engine) looks like this:
-
-```
-+--------------------------------------------+     ^    shutdown
-|                cronjob(*)                  |     |       |
-+--------+---+--------------+----------------+     |       |
-|        |   |      rpc     |      web       |     |       |
-|        | s |     server   |     server     |     |       |
-| mesher | e | [gate][conn] |  [gate][conn]  |     |       |
-| filter | r +--------------+----------------+     |       |
-| editor | v |              | app(*) reviser |     |       |
-|  case  | e |   svc(*)     | socklet handlet|     |       |
-|        | r |          +---+--+ rule +------+     |       |
-|        |(*)|          |stater|      |cacher|     |       |
-+--------+---+----------+------+------+------+     |       |
-|           [node] [conn] backend            |     |       |
-+---+---+---+---+---+---+---+---+------------+     |       |
-| o | u | t | g | a | t | e | s |   uniture  |     |       |
-+---+---+---+---+---+---+---+---+------------+     |       |
-|   clock   |     fcache    |    resolver    |     |       |
-+-----------+---------------+----------------+  prepare    v
-
-```
-
-Components marked as (*) are user programmable. They are placed in these dirs:
-
-  * apps/ - Place your Web applications, possibly written in Go,
-  * jobs/ - Place your Cronjobs written in Go and scheduled by Gorox,
-  * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
-  * svcs/ - Place your RPC services, may be gRPC or HRPC.
-
-
 Layout
 ======
 
-In addition to dirs listed above, these dirs are used:
+By default, Gorox uses these dirs:
 
+  * apps/ - Place your Web applications, possibly written in Go,
   * cmds/ - Place your auxiliary commands,
   * conf/ - Place configs for Gorox and your commands,
   * data/ - Place static shared files of your project,
@@ -219,8 +185,11 @@ In addition to dirs listed above, these dirs are used:
   * exts/ - Place extended components written for your project,
   * hemi/ - The Hemi Engine,
   * idls/ - Place your Interface Description Language files,
+  * jobs/ - Place your Cronjobs written in Go and scheduled by Gorox,
   * libs/ - Place libs written by you for your project,
   * misc/ - Place misc resource of your project,
+  * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
+  * svcs/ - Place your RPC services, may be gRPC or HRPC.
   * test/ - Place tests for your project.
 
 After Gorox is started, 3 dirs are created:

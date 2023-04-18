@@ -23,22 +23,22 @@ func init() {
 // hwebProxy handlet passes requests to another HWEB servers and cache responses.
 type hwebProxy struct {
 	// Mixins
-	httpProxy_
+	normalProxy_
 	// States
 }
 
 func (h *hwebProxy) onCreate(name string, stage *Stage, app *App) {
-	h.httpProxy_.onCreate(name, stage, app)
+	h.normalProxy_.onCreate(name, stage, app)
 }
 func (h *hwebProxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *hwebProxy) OnConfigure() {
-	h.httpProxy_.onConfigure()
+	h.normalProxy_.onConfigure()
 }
 func (h *hwebProxy) OnPrepare() {
-	h.httpProxy_.onPrepare()
+	h.normalProxy_.onPrepare()
 }
 
 func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -49,22 +49,22 @@ func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward 
 // hsockProxy socklet passes websockets to another WebSocket/HWEB servers.
 type hsockProxy struct {
 	// Mixins
-	sockProxy_
+	socketProxy_
 	// States
 }
 
 func (s *hsockProxy) onCreate(name string, stage *Stage, app *App) {
-	s.sockProxy_.onCreate(name, stage, app)
+	s.socketProxy_.onCreate(name, stage, app)
 }
 func (s *hsockProxy) OnShutdown() {
 	s.app.SubDone()
 }
 
 func (s *hsockProxy) OnConfigure() {
-	s.sockProxy_.onConfigure()
+	s.socketProxy_.onConfigure()
 }
 func (s *hsockProxy) OnPrepare() {
-	s.sockProxy_.onPrepare()
+	s.socketProxy_.onPrepare()
 }
 
 func (s *hsockProxy) Serve(req Request, sock Socket) { // forward or reverse

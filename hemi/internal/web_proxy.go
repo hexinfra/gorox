@@ -7,8 +7,8 @@
 
 package internal
 
-// httpProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
-type httpProxy_ struct {
+// normalProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
+type normalProxy_ struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,13 +29,13 @@ type httpProxy_ struct {
 	delResponseHeaders  [][]byte    // server response headers to delete
 }
 
-func (h *httpProxy_) onCreate(name string, stage *Stage, app *App) {
+func (h *normalProxy_) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
 
-func (h *httpProxy_) onConfigure() {
+func (h *normalProxy_) onConfigure() {
 	// proxyMode
 	if v, ok := h.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
@@ -88,14 +88,14 @@ func (h *httpProxy_) onConfigure() {
 	// delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }
-func (h *httpProxy_) onPrepare() {
+func (h *normalProxy_) onPrepare() {
 }
 
-func (h *httpProxy_) IsProxy() bool { return true }
-func (h *httpProxy_) IsCache() bool { return h.cacher != nil }
+func (h *normalProxy_) IsProxy() bool { return true }
+func (h *normalProxy_) IsCache() bool { return h.cacher != nil }
 
-// sockProxy_ is the mixin for sock[1-3]Proxy and hsockProxy.
-type sockProxy_ struct {
+// socketProxy_ is the mixin for sock[1-3]Proxy and hsockProxy.
+type socketProxy_ struct {
 	// Mixins
 	Socklet_
 	// Assocs
@@ -106,13 +106,13 @@ type sockProxy_ struct {
 	isForward bool // reverse if false
 }
 
-func (s *sockProxy_) onCreate(name string, stage *Stage, app *App) {
+func (s *socketProxy_) onCreate(name string, stage *Stage, app *App) {
 	s.MakeComp(name)
 	s.stage = stage
 	s.app = app
 }
 
-func (s *sockProxy_) onConfigure() {
+func (s *socketProxy_) onConfigure() {
 	// proxyMode
 	if v, ok := s.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
@@ -139,7 +139,7 @@ func (s *sockProxy_) onConfigure() {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 }
-func (s *sockProxy_) onPrepare() {
+func (s *socketProxy_) onPrepare() {
 }
 
-func (s *sockProxy_) IsProxy() bool { return true }
+func (s *socketProxy_) IsProxy() bool { return true }

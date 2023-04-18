@@ -163,7 +163,7 @@ stream=2 (unsized output):
     <-- type=DATA streamID=2 bodySize=123   body=[...123...]
     ==> type=SIZE streamID=2 bodySize=3     body=16376
     <-- type=DATA streamID=2 bodySize=4567  body=[...4567...]
-    <-- type=DATA streamID=2 bodySize=0     body=[] // end of response content
+    <-- type=DATA streamID=2 bodySize=0     body=[] // flagEndDATA=1
     <-- type=TAIL streamID=2 bodySize=?     body=[md5-digest=12345678901234567890123456789012]
 
 */

@@ -20,7 +20,7 @@ var ( // version strings and byteses
 	stringHTTP1_1      = "HTTP/1.1"
 	stringHTTP2        = "HTTP/2"
 	stringHTTP3        = "HTTP/3"
-	stringHWEB         = "HWEB"
+	stringHWEB         = "HTTP/2" // HWEB is a simplified HTTP/2
 	bytesHTTP1_0       = []byte(stringHTTP1_0)
 	bytesHTTP1_1       = []byte(stringHTTP1_1)
 	bytesHTTP2         = []byte(stringHTTP2)

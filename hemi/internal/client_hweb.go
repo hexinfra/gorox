@@ -258,7 +258,7 @@ func putHStream(stream *hStream) {
 // hStream
 type hStream struct {
 	// Mixins
-	wStream_
+	webStream_
 	// Assocs
 	request  hRequest
 	response hResponse
@@ -275,7 +275,7 @@ type hStream0 struct { // for fast reset, entirely
 }
 
 func (s *hStream) onUse(conn *hConn, id int32) { // for non-zeros
-	s.wStream_.onUse()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(VersionH)
@@ -287,7 +287,7 @@ func (s *hStream) onEnd() { // for zeros
 	s.socket = nil
 	s.conn = nil
 	s.hStream0 = hStream0{}
-	s.wStream_.onEnd()
+	s.webStream_.onEnd()
 }
 
 func (s *hStream) keeper() webKeeper  { return s.conn.getClient() }

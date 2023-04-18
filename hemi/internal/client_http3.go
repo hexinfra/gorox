@@ -228,7 +228,7 @@ func putH3Stream(stream *H3Stream) {
 // H3Stream
 type H3Stream struct {
 	// Mixins
-	wStream_
+	webStream_
 	// Assocs
 	request  H3Request
 	response H3Response
@@ -245,7 +245,7 @@ type h3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quicStream *quix.Stream) { // for non-zeros
-	s.wStream_.onUse()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -258,7 +258,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.h3Stream0 = h3Stream0{}
-	s.wStream_.onEnd()
+	s.webStream_.onEnd()
 }
 
 func (s *H3Stream) keeper() webKeeper  { return s.conn.getClient() }

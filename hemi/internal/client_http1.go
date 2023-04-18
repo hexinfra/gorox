@@ -283,7 +283,7 @@ func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes other than d
 // H1Stream is the client-side HTTP/1 stream.
 type H1Stream struct {
 	// Mixins
-	wStream_
+	webStream_
 	// Assocs
 	request  H1Request  // the client-side http/1 request
 	response H1Response // the client-side http/1 response
@@ -296,7 +296,7 @@ type H1Stream struct {
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.wStream_.onUse()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -306,7 +306,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.wStream_.onEnd()
+	s.webStream_.onEnd()
 }
 
 func (s *H1Stream) keeper() webKeeper  { return s.conn.getClient() }

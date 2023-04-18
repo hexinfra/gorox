@@ -23,22 +23,22 @@ func init() {
 // http3Proxy handlet passes requests to another HTTP/3 servers and cache responses.
 type http3Proxy struct {
 	// Mixins
-	httpProxy_
+	normalProxy_
 	// States
 }
 
 func (h *http3Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.httpProxy_.onCreate(name, stage, app)
+	h.normalProxy_.onCreate(name, stage, app)
 }
 func (h *http3Proxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *http3Proxy) OnConfigure() {
-	h.httpProxy_.onConfigure()
+	h.normalProxy_.onConfigure()
 }
 func (h *http3Proxy) OnPrepare() {
-	h.httpProxy_.onPrepare()
+	h.normalProxy_.onPrepare()
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
@@ -184,22 +184,22 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 // sock3Proxy socklet passes websockets to another WebSocket/3 servers.
 type sock3Proxy struct {
 	// Mixins
-	sockProxy_
+	socketProxy_
 	// States
 }
 
 func (s *sock3Proxy) onCreate(name string, stage *Stage, app *App) {
-	s.sockProxy_.onCreate(name, stage, app)
+	s.socketProxy_.onCreate(name, stage, app)
 }
 func (s *sock3Proxy) OnShutdown() {
 	s.app.SubDone()
 }
 
 func (s *sock3Proxy) OnConfigure() {
-	s.sockProxy_.onConfigure()
+	s.socketProxy_.onConfigure()
 }
 func (s *sock3Proxy) OnPrepare() {
-	s.sockProxy_.onPrepare()
+	s.socketProxy_.onPrepare()
 }
 
 func (s *sock3Proxy) Serve(req Request, sock Socket) { // forward or reverse

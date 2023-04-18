@@ -155,33 +155,6 @@ func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 func (c *wConn_) isBroken() bool { return c.broken.Load() }
 func (c *wConn_) markBroken()    { c.broken.Store(true) }
 
-// wStream_ is the mixin for H[1-3]Stream and hStream.
-type wStream_ struct {
-	// Mixins
-	stream_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *wStream_) onUse() {
-	s.stream_.onUse()
-}
-func (s *wStream_) onEnd() {
-	s.stream_.onEnd()
-}
-
-func (s *wStream_) startSocket() { // upgrade: websocket
-	// TODO
-}
-func (s *wStream_) startTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *wStream_) startUDPTun() { // upgrade: connect-udp
-	// TODO
-}
-
 // wRequest is the interface for *H[1-3]Request and *hRequest.
 type wRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool

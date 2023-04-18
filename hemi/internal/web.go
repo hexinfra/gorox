@@ -47,8 +47,8 @@ func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
 func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }
 
-// stream is the interface for *http[1-3]Stream and *H[1-3]Stream.
-type stream interface {
+// webStream
+type webStream interface {
 	keeper() webKeeper
 	peerAddr() net.Addr
 
@@ -68,8 +68,8 @@ type stream interface {
 	markBroken()
 }
 
-// stream is the mixin for webStream_ and wStream_.
-type stream_ struct {
+// webStream
+type webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
 	// Stream states (controlled)
@@ -86,16 +86,30 @@ const ( // stream modes
 	streamModeUDPTun = 3 // upgrade: connect-udp
 )
 
-func (s *stream_) onUse() { // for non-zeros
+func (s *webStream_) onUse() { // for non-zeros
 	s.region.Init()
 	s.mode = streamModeNormal
 }
-func (s *stream_) onEnd() { // for zeros
+func (s *webStream_) onEnd() { // for zeros
 	s.region.Free()
 }
 
-func (s *stream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (s *webStream_) startTCPTun() { // as client
+	// TODO: CONNECT method
+}
+func (s *webStream_) startUDPTun() { // as client
+	// TODO: upgrade connect-udp
+}
+
+func (s *webStream_) serveTCPTun() { // as server
+	// TODO: CONNECT method
+}
+func (s *webStream_) serveUDPTun() { // as server
+	// TODO: upgrade connect-udp
+}
 
 // webIn is a *http[1-3]Request or *H[1-3]Response, used as shell by webIn_.
 type webIn interface {
@@ -112,8 +126,8 @@ type webIn interface {
 // webIn_ is a mixin for webRequest_ and wResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell  webIn  // *http[1-3]Request or *H[1-3]Response
-	stream stream // *http[1-3]Stream or *H[1-3]Stream
+	shell  webIn     // *http[1-3]Request or *H[1-3]Response
+	stream webStream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
@@ -1502,8 +1516,8 @@ type webOut interface {
 // webOut_ is a mixin for webResponse_ and wRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell  webOut // *http[1-3]Response or *H[1-3]Request
-	stream stream // *http[1-3]Stream or *H[1-3]Stream
+	shell  webOut    // *http[1-3]Response or *H[1-3]Request
+	stream webStream // *http[1-3]Stream or *H[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)

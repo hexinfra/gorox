@@ -76,12 +76,19 @@ type stream_ struct {
 	// Stream states (non-zeros)
 	region Region // a region-based memory pool
 	// Stream states (zeros)
-	httpMode int8 // http mode of current stream. see httpModeXXX
+	mode int8 // working mode of current stream. see streamModeXXX
 }
+
+const ( // stream modes
+	streamModeNormal = 0 // request & response, must be 0
+	streamModeSocket = 1 // upgrade: websocket
+	streamModeTCPTun = 2 // CONNECT method
+	streamModeUDPTun = 3 // upgrade: connect-udp
+)
 
 func (s *stream_) onUse() { // for non-zeros
 	s.region.Init()
-	s.httpMode = httpModeNormal
+	s.mode = streamModeNormal
 }
 func (s *stream_) onEnd() { // for zeros
 	s.region.Free()

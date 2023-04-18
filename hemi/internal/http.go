@@ -163,11 +163,6 @@ const ( // status codes. keep sync with ../hemi.go
 )
 
 const ( // misc http types
-	httpModeNormal = 0 // request & response, must be 0
-	httpModeSocket = 1 // upgrade: websocket
-	httpModeTCPTun = 2 // CONNECT method
-	httpModeUDPTun = 3 // upgrade: connect-udp
-
 	httpTargetOrigin    = 0 // must be 0
 	httpTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]
 	httpTargetAuthority = 2 // hostname:port

@@ -294,7 +294,7 @@ func (c *http1Conn) serve() { // goroutine
 			break
 		}
 	}
-	if stream.httpMode == httpModeNormal {
+	if stream.mode == streamModeNormal {
 		c.closeConn()
 	} else {
 		// It's switcher's responsibility to call c.closeConn()
@@ -352,7 +352,7 @@ type http1Stream struct {
 func (s *http1Stream) execute(conn *http1Conn) {
 	s.onUse(conn)
 	defer func() {
-		if s.httpMode == httpModeNormal {
+		if s.mode == streamModeNormal {
 			s.onEnd()
 		} else {
 			// It's switcher's responsibility to call s.onEnd()
@@ -370,13 +370,13 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if req.methodCode == MethodCONNECT { // tcpTun mode?
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.executeTCPTun()
-		s.httpMode = httpModeTCPTun
+		s.mode = streamModeTCPTun
 		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
 		return
 	}
 	if req.upgradeUDPTun { // udpTun mode?
 		s.executeUDPTun()
-		s.httpMode = httpModeUDPTun
+		s.mode = streamModeUDPTun
 		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
 		return
 	}
@@ -419,7 +419,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 			return
 		}
 		s.executeSocket()
-		s.httpMode = httpModeSocket
+		s.mode = streamModeSocket
 		conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
 		return
 	}

@@ -1025,8 +1025,8 @@ func (r *http2Response) finalizeUnsized() error {
 	return nil
 }
 
-func (r *http2Response) addedHeaders() []byte { return nil }
-func (r *http2Response) fixedHeaders() []byte { return nil }
+func (r *http2Response) addedHeaders() []byte { return nil } // TODO
+func (r *http2Response) fixedHeaders() []byte { return nil } // TODO
 
 // poolHTTP2Socket
 var poolHTTP2Socket sync.Pool

@@ -284,5 +284,5 @@ func (r *hweb2Response) hasHeader(name []byte) bool                 { return r.h
 func (r *hweb2Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
 func (r *hweb2Response) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
 
-func (r *hweb2Response) addedHeaders() []byte { return nil }
-func (r *hweb2Response) fixedHeaders() []byte { return nil }
+func (r *hweb2Response) addedHeaders() []byte { return nil } // TODO
+func (r *hweb2Response) fixedHeaders() []byte { return nil } // TODO

@@ -14,14 +14,14 @@ package internal
 // request  = headRecord *dataRecord [ tailRecord ]
 // response = headRecord *dataRecord [ tailRecord ]
 
-//   headRecord = bodySize(64) 1*nameValue
-//   tailRecord = bodySize(64) 1*nameValue
+//   headRecord = reserved(1) bodySize(63) 1*nameValue
+//   tailRecord = reserved(1) bodySize(63) 1*nameValue
 
 //     nameValue = nameSize(8) valueSize(24) name value
 //       name  = 1*OCTET
 //       value = *OCTET
 
-//   dataRecord = bodySize *OCTET
+//   dataRecord = reserved(1) bodySize(63) *OCTET
 
 /*
 
@@ -41,7 +41,7 @@ stream=2 (unsized output):
     <-- bodySize=16376 body=[...16376...] // chunk
     <-- bodySize=123   body=[...123...] // chunk
     <-- bodySize=4567  body=[...4567...] // chunk
-    <-- bodySize=0     body=[] // last chunk
+    <-- bodySize=0     body=[] // last chunk, MUST exist in chunked mode, MUST be empty
     <-- bodySize=?     body=[] // trailers, MUST exist in chunked mode, MAY be empty
 
 */

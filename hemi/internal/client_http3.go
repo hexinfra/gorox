@@ -335,11 +335,11 @@ func (r *H3Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	return false
 }
 
-func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
-func (r *H3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
-func (r *H3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *H3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *H3Request) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
+func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderH3(name, value) }
+func (r *H3Request) header(name []byte) (value []byte, ok bool) { return r.headerH3(name) }
+func (r *H3Request) hasHeader(name []byte) bool                 { return r.hasHeaderH3(name) }
+func (r *H3Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderH3(name) }
+func (r *H3Request) delHeaderAt(o uint8)                        { r.delHeaderAtH3(o) }
 
 func (r *H3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -350,26 +350,26 @@ func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 	return true
 }
 
-func (r *H3Request) sendChain() error { return r.sendChain3() }
+func (r *H3Request) sendChain() error { return r.sendChainH3() }
 
 func (r *H3Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) echoChain() error { return r.echoChain3() }
+func (r *H3Request) echoChain() error { return r.echoChainH3() }
 
 func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer3(name)
+	return r.trailerH3(name)
 }
 func (r *H3Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer3(name, value)
+	return r.addTrailerH3(name, value)
 }
 
 func (r *H3Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *H3Request) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *H3Request) passBytes(p []byte) error { return r.passBytesH3(p) }
 
 func (r *H3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -392,7 +392,7 @@ type H3Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *H3Response) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *H3Response) readContent() (p []byte, err error) { return r.readContentH3() }
 
 // poolH3Socket
 var poolH3Socket sync.Pool

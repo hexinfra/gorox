@@ -408,8 +408,8 @@ func (r *H2Request) finalizeUnsized() error {
 	return nil
 }
 
-func (r *H2Request) addedHeaders() []byte { return nil }
-func (r *H2Request) fixedHeaders() []byte { return nil }
+func (r *H2Request) addedHeaders() []byte { return nil } // TODO
+func (r *H2Request) fixedHeaders() []byte { return nil } // TODO
 
 // H2Response is the client-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing

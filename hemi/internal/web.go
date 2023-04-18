@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// webKeeper is a webServer or webClient which keeps web connections and streams.
+// webKeeper is a webServer or webClient which keeps their connections and streams.
 type webKeeper interface {
 	Stage() *Stage
 	TLSMode() bool
@@ -47,7 +47,7 @@ func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
 func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }
 
-// webStream
+// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
 	keeper() webKeeper
 	peerAddr() net.Addr
@@ -68,7 +68,7 @@ type webStream interface {
 	markBroken()
 }
 
-// webStream
+// webStream is the mixin for http[1-3]Stream and H[1-3]Stream.
 type webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// webClient is the interface for http outgates and web backends.
+// webClient is the interface for web outgates and web backends.
 type webClient interface {
 	client
 	streamHolder
@@ -155,14 +155,14 @@ func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 func (c *wConn_) isBroken() bool { return c.broken.Load() }
 func (c *wConn_) markBroken()    { c.broken.Store(true) }
 
-// request is the interface for *H[1-3]Request and *hRequest.
+// request is the interface for *H[1-3]Request and *b2Request.
 type request interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// clientRequest_ is the mixin for H[1-3]Request and hRequest.
+// clientRequest_ is the mixin for H[1-3]Request and b2Request.
 type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
@@ -391,7 +391,7 @@ type upload struct {
 	// TODO
 }
 
-// response is the interface for *H[1-3]Response and *hResponse.
+// response is the interface for *H[1-3]Response and *b2Response.
 type response interface {
 	Status() int16
 	delHopHeaders()
@@ -400,7 +400,7 @@ type response interface {
 	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
 }
 
-// clientResponse_ is the mixin for H[1-3]Response.
+// clientResponse_ is the mixin for H[1-3]Response and b2Response.
 type clientResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message

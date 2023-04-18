@@ -336,7 +336,7 @@ type http3Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *http3Request) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *http3Request) readContent() (p []byte, err error) { return r.readContentH3() }
 
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building
@@ -348,11 +348,11 @@ type http3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
-func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
-func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *http3Response) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
+func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeaderH3(name, value) }
+func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.headerH3(name) }
+func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeaderH3(name) }
+func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderH3(name) }
+func (r *http3Response) delHeaderAt(o uint8)                        { r.delHeaderAtH3(o) }
 
 func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -373,19 +373,19 @@ func (r *http3Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http3Response) sendChain() error { return r.sendChain3() }
+func (r *http3Response) sendChain() error { return r.sendChainH3() }
 
 func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing.
 	// TODO
 	return nil
 }
-func (r *http3Response) echoChain() error { return r.echoChain3() }
+func (r *http3Response) echoChain() error { return r.echoChainH3() }
 
 func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer3(name)
+	return r.trailerH3(name)
 }
 func (r *http3Response) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer3(name, value)
+	return r.addTrailerH3(name, value)
 }
 
 func (r *http3Response) pass1xx(resp response) bool { // used by proxies
@@ -406,7 +406,7 @@ func (r *http3Response) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *http3Response) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *http3Response) passBytes(p []byte) error { return r.passBytesH3(p) }
 
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

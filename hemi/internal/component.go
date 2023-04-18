@@ -175,7 +175,6 @@ type Component interface {
 	Name() string
 
 	OnConfigure()
-	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
 	ConfigureBool(name string, prop *bool, defaultValue bool)
 	ConfigureInt64(name string, prop *int64, check func(value int64) bool, defaultValue int64)
@@ -222,16 +221,12 @@ func (c *Component_) MakeComp(name string) {
 
 func (c *Component_) Name() string { return c.name }
 
-func (c *Component_) Find(name string) (value Value, ok bool) {
+func (c *Component_) Prop(name string) (value Value, ok bool) {
 	for component := c.shell; component != nil; component = component.getParent() {
-		if value, ok = component.Prop(name); ok {
+		if value, ok = c.props[name]; ok {
 			break
 		}
 	}
-	return
-}
-func (c *Component_) Prop(name string) (value Value, ok bool) {
-	value, ok = c.props[name]
 	return
 }
 
@@ -273,7 +268,7 @@ func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, c
 }
 
 func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) bool, defaultValue T) {
-	if v, ok := c.Find(name); ok {
+	if v, ok := c.Prop(name); ok {
 		if value, ok := conv(&v); ok && (check == nil || check(value)) {
 			*prop = value
 		} else {

@@ -771,7 +771,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 	case tokenProperty: // .property
 		if propRef := current.text; prop == "" || prop == propRef {
 			panic(errors.New("config error: cannot refer to self"))
-		} else if valueRef, ok := component.Find(propRef); !ok {
+		} else if valueRef, ok := component.Prop(propRef); !ok {
 			panic(fmt.Errorf("config error: refer to a prop that doesn't exist in line %d\n", current.line))
 		} else {
 			*value = valueRef
@@ -802,7 +802,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		} else if c.currentIs(tokenProperty) {
 			if propRef := current.text; prop == "" || prop == propRef {
 				panic(errors.New("config error: cannot refer to self"))
-			} else if valueRef, ok := component.Find(propRef); !ok {
+			} else if valueRef, ok := component.Prop(propRef); !ok {
 				panic(errors.New("config error: refere to a prop that doesn't exist"))
 			} else {
 				str = valueRef

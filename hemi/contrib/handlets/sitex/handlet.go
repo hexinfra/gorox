@@ -47,7 +47,7 @@ func (h *Sitex) OnShutdown() {
 
 func (h *Sitex) OnConfigure() {
 	// sites
-	v, ok := h.Find("sites")
+	v, ok := h.Prop("sites")
 	if !ok {
 		UseExitln("sites must be defined")
 	}

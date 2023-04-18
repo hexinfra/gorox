@@ -2096,7 +2096,7 @@ func (a *App) OnConfigure() {
 	a.contentSaver_.onConfigure(a, TempDir()+"/apps/"+a.name)
 
 	// hostnames
-	if v, ok := a.Find("hostnames"); ok {
+	if v, ok := a.Prop("hostnames"); ok {
 		hostnames, ok := v.StringList()
 		if !ok || len(hostnames) == 0 {
 			UseExitln("empty hostnames")
@@ -2146,7 +2146,7 @@ func (a *App) OnConfigure() {
 	// tlsPrivateKey
 	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) bool { return value != "" }, "")
 	// accessLog
-	if v, ok := a.Find("accessLog"); ok {
+	if v, ok := a.Prop("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
 			a.accessLog = log
 		} else {
@@ -2178,7 +2178,7 @@ func (a *App) OnConfigure() {
 		}
 	}
 	// withStater
-	if v, ok := a.Find("withStater"); ok {
+	if v, ok := a.Prop("withStater"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if stater := a.stage.Stater(name); stater == nil {
 				UseExitf("unknown stater: '%s'\n", name)
@@ -2552,7 +2552,7 @@ func (r *Rule) OnConfigure() {
 	r.ConfigureBytes("returnText", &r.returnText, nil, nil)
 
 	// handlets
-	if v, ok := r.Find("handlets"); ok {
+	if v, ok := r.Prop("handlets"); ok {
 		if len(r.socklets) > 0 {
 			UseExitln("cannot mix handlets and socklets in a rule")
 		}
@@ -2572,7 +2572,7 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 	// revisers
-	if v, ok := r.Find("revisers"); ok {
+	if v, ok := r.Prop("revisers"); ok {
 		if len(r.revisers) != 0 {
 			UseExitln("specifying revisers is not allowed while there are literal revisers")
 		}
@@ -2589,7 +2589,7 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 	// socklets
-	if v, ok := r.Find("socklets"); ok {
+	if v, ok := r.Prop("socklets"); ok {
 		if len(r.handlets) > 0 {
 			UseExitln("cannot mix socklets and handlets in a rule")
 		}

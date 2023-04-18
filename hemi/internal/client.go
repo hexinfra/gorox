@@ -133,7 +133,7 @@ func (b *backend_[N]) onCreate(name string, stage *Stage, creator interface{ cre
 func (b *backend_[N]) onConfigure() {
 	b.client_.onConfigure()
 	// nodes
-	v, ok := b.Find("nodes")
+	v, ok := b.Prop("nodes")
 	if !ok {
 		UseExitln("nodes is required for backends")
 	}

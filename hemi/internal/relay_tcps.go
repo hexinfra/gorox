@@ -38,7 +38,7 @@ func (f *tcpsRelay) OnShutdown() {
 
 func (f *tcpsRelay) OnConfigure() {
 	// proxyMode
-	if v, ok := f.Find("proxyMode"); ok {
+	if v, ok := f.Prop("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "socks" || mode == "https" || mode == "reverse") {
 			f.proxyMode = mode
 		} else {
@@ -48,7 +48,7 @@ func (f *tcpsRelay) OnConfigure() {
 		f.proxyMode = "reverse"
 	}
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := f.Prop("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)

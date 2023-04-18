@@ -37,7 +37,7 @@ func (f *udpsRelay) OnShutdown() {
 
 func (f *udpsRelay) OnConfigure() {
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := f.Prop("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)

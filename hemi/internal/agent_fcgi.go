@@ -72,7 +72,7 @@ func (h *fcgiAgent) OnShutdown() {
 func (h *fcgiAgent) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/fcgi/"+h.name)
 	// toBackend
-	if v, ok := h.Find("toBackend"); ok {
+	if v, ok := h.Prop("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
@@ -88,7 +88,7 @@ func (h *fcgiAgent) OnConfigure() {
 		UseExitln("toBackend is required for fcgiAgent")
 	}
 	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	if v, ok := h.Prop("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if cacher := h.stage.Cacher(name); cacher == nil {
 				UseExitf("unknown cacher: '%s'\n", name)

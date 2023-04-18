@@ -51,7 +51,7 @@ func (m *mesher_[M, G, D, E, C]) shutdownSubs() {
 func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	m.Server_.OnConfigure()
 	// accessLog
-	if v, ok := m.Find("accessLog"); ok {
+	if v, ok := m.Prop("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
 			m.accessLog = log
 		} else {

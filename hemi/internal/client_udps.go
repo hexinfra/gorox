@@ -29,20 +29,6 @@ type udpsClient interface {
 	client
 }
 
-// udpsClient_
-type udpsClient_ struct {
-	// Mixins
-	// States
-}
-
-func (u *udpsClient_) onCreate() {
-}
-
-func (u *udpsClient_) onConfigure(shell Component) {
-}
-func (u *udpsClient_) onPrepare(shell Component) {
-}
-
 const signUDPSOutgate = "udpsOutgate"
 
 func createUDPSOutgate(stage *Stage) *UDPSOutgate {
@@ -56,22 +42,18 @@ func createUDPSOutgate(stage *Stage) *UDPSOutgate {
 type UDPSOutgate struct {
 	// Mixins
 	outgate_
-	udpsClient_
 	// States
 }
 
 func (f *UDPSOutgate) onCreate(stage *Stage) {
 	f.outgate_.onCreate(signUDPSOutgate, stage)
-	f.udpsClient_.onCreate()
 }
 
 func (f *UDPSOutgate) OnConfigure() {
 	f.outgate_.onConfigure()
-	f.udpsClient_.onConfigure(f)
 }
 func (f *UDPSOutgate) OnPrepare() {
 	f.outgate_.onConfigure()
-	f.udpsClient_.onPrepare(f)
 }
 
 func (f *UDPSOutgate) run() { // goroutine
@@ -100,7 +82,6 @@ func (f *UDPSOutgate) StoreConn(conn *UConn) {
 type UDPSBackend struct {
 	// Mixins
 	backend_[*udpsNode]
-	udpsClient_
 	loadBalancer_
 	// States
 	health any // TODO
@@ -108,18 +89,15 @@ type UDPSBackend struct {
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
-	b.udpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
 	b.backend_.onConfigure()
-	b.udpsClient_.onConfigure(b)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
 	b.backend_.onPrepare()
-	b.udpsClient_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 

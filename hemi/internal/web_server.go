@@ -64,6 +64,7 @@ func (s *webServer_) onCreate(name string, stage *Stage) {
 
 func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
+	s.webKeeper_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
 	// hrpcMode
@@ -76,12 +77,6 @@ func (s *webServer_) onConfigure(shell Component) {
 	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
 	// enableUDPTun
 	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
-	// maxContentSize
-	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 }, _1T) // app has its own maxContentSize and will check again
-	// recvTimeout
-	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
-	// sendTimeout
-	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) bool { return value > 0 }, 120*time.Second)
 }
 func (s *webServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()

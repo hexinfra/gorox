@@ -43,6 +43,15 @@ type webKeeper_ struct {
 	maxContentSize int64         // max content size allowed
 }
 
+func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) bool { return value > 0 }, sendTimeout)
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) bool { return value > 0 }, recvTimeout)
+	// maxContentSize
+	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+}
+
 func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
 func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }

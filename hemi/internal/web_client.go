@@ -24,60 +24,39 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webClient_ is a mixin for webOutgate_ and webBackend_.
-type webClient_ struct {
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB2Outgate.
+type webOutgate_ struct {
 	// Mixins
+	outgate_
 	webKeeper_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
 }
 
-func (w *webClient_) onCreate() {
-}
-
-func (w *webClient_) onConfigure(shell Component, clientType string) {
-	w.streamHolder_.onConfigure(shell, 1000)
-	w.contentSaver_.onConfigure(shell, TempDir()+"/web/"+clientType+"/"+shell.Name())
-	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &w.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
-	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &w.sendTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
-	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &w.recvTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
-}
-func (w *webClient_) onPrepare(shell Component) {
-	w.streamHolder_.onPrepare(shell)
-	w.contentSaver_.onPrepare(shell, 0755)
-}
-
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB2Outgate.
-type webOutgate_ struct {
-	// Mixins
-	outgate_
-	webClient_
-	// States
-}
-
 func (f *webOutgate_) onCreate(name string, stage *Stage) {
 	f.outgate_.onCreate(name, stage)
-	f.webClient_.onCreate()
 }
 
 func (f *webOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	f.webClient_.onConfigure(shell, "outgates")
+	f.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	f.streamHolder_.onConfigure(shell, 1000)
+	f.contentSaver_.onConfigure(shell, TempDir()+"/web/outgates/"+shell.Name())
 }
 func (f *webOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
-	f.webClient_.onPrepare(shell)
+	f.streamHolder_.onPrepare(shell)
+	f.contentSaver_.onPrepare(shell, 0755)
 }
 
 // webBackend_ is the mixin for HTTP[1-3]Backend and hweb2Backend.
 type webBackend_[N node] struct {
 	// Mixins
 	backend_[N]
-	webClient_
+	webKeeper_
+	streamHolder_
+	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
 	// States
 	health any // TODO
@@ -85,18 +64,20 @@ type webBackend_[N node] struct {
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
 	b.backend_.onCreate(name, stage, creator)
-	b.webClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.backend_.onConfigure()
-	b.webClient_.onConfigure(shell, "backends")
+	b.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b.streamHolder_.onConfigure(shell, 1000)
+	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.backend_.onPrepare()
-	b.webClient_.onPrepare(shell)
+	b.streamHolder_.onPrepare(shell)
+	b.contentSaver_.onPrepare(shell, 0755)
 	b.loadBalancer_.onPrepare(numNodes)
 }
 

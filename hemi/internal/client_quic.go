@@ -29,23 +29,6 @@ type quicClient interface {
 	streamHolder
 }
 
-// quicClient_
-type quicClient_ struct {
-	// Mixins
-	streamHolder_
-	// States
-}
-
-func (q *quicClient_) onCreate() {
-}
-
-func (q *quicClient_) onConfigure(shell Component) {
-	q.streamHolder_.onConfigure(shell, 1000)
-}
-func (q *quicClient_) onPrepare(shell Component) {
-	q.streamHolder_.onPrepare(shell)
-}
-
 const signQUICOutgate = "quicOutgate"
 
 func createQUICOutgate(stage *Stage) *QUICOutgate {
@@ -59,22 +42,21 @@ func createQUICOutgate(stage *Stage) *QUICOutgate {
 type QUICOutgate struct {
 	// Mixins
 	outgate_
-	quicClient_
+	streamHolder_
 	// States
 }
 
 func (f *QUICOutgate) onCreate(stage *Stage) {
 	f.outgate_.onCreate(signQUICOutgate, stage)
-	f.quicClient_.onCreate()
 }
 
 func (f *QUICOutgate) OnConfigure() {
 	f.outgate_.onConfigure()
-	f.quicClient_.onConfigure(f)
+	f.streamHolder_.onConfigure(f, 1000)
 }
 func (f *QUICOutgate) OnPrepare() {
 	f.outgate_.onPrepare()
-	f.quicClient_.onPrepare(f)
+	f.streamHolder_.onPrepare(f)
 }
 
 func (f *QUICOutgate) run() { // goroutine
@@ -102,7 +84,7 @@ func (f *QUICOutgate) StoreConn(conn *QConn) {
 type QUICBackend struct {
 	// Mixins
 	backend_[*quicNode]
-	quicClient_
+	streamHolder_
 	loadBalancer_
 	// States
 	health any // TODO
@@ -110,18 +92,17 @@ type QUICBackend struct {
 
 func (b *QUICBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
-	b.quicClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
 func (b *QUICBackend) OnConfigure() {
 	b.backend_.onConfigure()
-	b.quicClient_.onConfigure(b)
+	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUICBackend) OnPrepare() {
 	b.backend_.onPrepare()
-	b.quicClient_.onPrepare(b)
+	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 

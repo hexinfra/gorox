@@ -32,23 +32,6 @@ type tcpsClient interface {
 	streamHolder
 }
 
-// tcpsClient_
-type tcpsClient_ struct {
-	// Mixins
-	streamHolder_
-	// States
-}
-
-func (t *tcpsClient_) onCreate() {
-}
-
-func (t *tcpsClient_) onConfigure(shell Component) {
-	t.streamHolder_.onConfigure(shell, 1000)
-}
-func (t *tcpsClient_) onPrepare(shell Component) {
-	t.streamHolder_.onPrepare(shell)
-}
-
 const signTCPSOutgate = "tcpsOutgate"
 
 func createTCPSOutgate(stage *Stage) *TCPSOutgate {
@@ -62,22 +45,21 @@ func createTCPSOutgate(stage *Stage) *TCPSOutgate {
 type TCPSOutgate struct {
 	// Mixins
 	outgate_
-	tcpsClient_
+	streamHolder_
 	// States
 }
 
 func (f *TCPSOutgate) onCreate(stage *Stage) {
 	f.outgate_.onCreate(signTCPSOutgate, stage)
-	f.tcpsClient_.onCreate()
 }
 
 func (f *TCPSOutgate) OnConfigure() {
 	f.outgate_.onConfigure()
-	f.tcpsClient_.onConfigure(f)
+	f.streamHolder_.onConfigure(f, 1000)
 }
 func (f *TCPSOutgate) OnPrepare() {
 	f.outgate_.onPrepare()
-	f.tcpsClient_.onPrepare(f)
+	f.streamHolder_.onPrepare(f)
 }
 
 func (f *TCPSOutgate) run() { // goroutine
@@ -113,7 +95,7 @@ func (f *TCPSOutgate) Dial(address string, tlsMode bool) (*TConn, error) {
 type TCPSBackend struct {
 	// Mixins
 	backend_[*tcpsNode]
-	tcpsClient_
+	streamHolder_
 	loadBalancer_
 	// States
 	health any // TODO
@@ -121,18 +103,17 @@ type TCPSBackend struct {
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.backend_.onCreate(name, stage, b)
-	b.tcpsClient_.onCreate()
 	b.loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
 	b.backend_.onConfigure()
-	b.tcpsClient_.onConfigure(b)
+	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *TCPSBackend) OnPrepare() {
 	b.backend_.onPrepare()
-	b.tcpsClient_.onPrepare(b)
+	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 

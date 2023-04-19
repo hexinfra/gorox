@@ -37,7 +37,7 @@ stream=2 (unsized output):
     --> bodySize=?     body=[:method=POST :target=/abc?d=e host=example.com:8081 content-length=90]
     --> bodySize=90    body=[...90...]
 
-    <-- bodySize=?     body=[:status=200 content-type=text/html;charset=utf-8]
+    <-- bodySize=?     body=[:status=200 content-type=text/html;charset=utf-8 transfer-encoding=chunked]
     <-- bodySize=16376 body=[...16376...] // chunk
     <-- bodySize=123   body=[...123...] // chunk
     <-- bodySize=4567  body=[...4567...] // chunk

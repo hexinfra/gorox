@@ -46,7 +46,7 @@ func (f *echoFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *echoFilter) Handle(conn *TCPSConn) (next bool) {
+func (f *echoFilter) Process(conn *TCPSConn) (next bool) {
 	// TODO: deadline?
 	io.Copy(conn, conn)
 	return false

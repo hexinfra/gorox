@@ -210,7 +210,7 @@ var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes 
 // UDPSFilter
 type UDPSFilter interface {
 	Component
-	Handle(conn *UDPSConn) (next bool)
+	Process(conn *UDPSConn) (next bool)
 }
 
 // UDPSFilter_

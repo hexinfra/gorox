@@ -67,7 +67,7 @@ func (f *tcpsRelay) OnConfigure() {
 func (f *tcpsRelay) OnPrepare() {
 }
 
-func (f *tcpsRelay) Handle(conn *TCPSConn) (next bool) {
+func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
 	// TODO
 	return
 }

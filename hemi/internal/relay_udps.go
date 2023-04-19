@@ -56,7 +56,7 @@ func (f *udpsRelay) OnConfigure() {
 func (f *udpsRelay) OnPrepare() {
 }
 
-func (f *udpsRelay) Handle(conn *UDPSConn) (next bool) {
+func (f *udpsRelay) Process(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

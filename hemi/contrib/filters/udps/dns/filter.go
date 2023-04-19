@@ -45,7 +45,7 @@ func (f *dnsFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *dnsFilter) Handle(conn *UDPSConn) (next bool) {
+func (f *dnsFilter) Process(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

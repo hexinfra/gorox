@@ -307,7 +307,7 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 // TCPSFilter
 type TCPSFilter interface {
 	Component
-	Handle(conn *TCPSConn) (next bool)
+	Process(conn *TCPSConn) (next bool)
 }
 
 // TCPSFilter_
@@ -403,7 +403,7 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 		conn.hookEditor(editor)
 	}
 	for _, filter := range c.filters {
-		if next := filter.Handle(conn); !next {
+		if next := filter.Process(conn); !next {
 			return true
 		}
 	}

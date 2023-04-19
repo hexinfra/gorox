@@ -45,7 +45,7 @@ func (f *helloFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *helloFilter) Handle(conn *TCPSConn) (next bool) {
+func (f *helloFilter) Process(conn *TCPSConn) (next bool) {
 	conn.Write([]byte("hello, world"))
 	conn.Close()
 	return false

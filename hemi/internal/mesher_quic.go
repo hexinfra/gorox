@@ -208,7 +208,7 @@ var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCo
 // QUICFilter
 type QUICFilter interface {
 	Component
-	Handle(conn *QUICConn, stream *QUICStream) (next bool)
+	Process(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
 // QUICFilter_

@@ -187,6 +187,28 @@ func (c *hweb2Conn) receive() { // goroutine
 	// TODO
 }
 
+func (c *hweb2Conn) setReadDeadline(deadline time.Time) error {
+	// TODO
+	return nil
+}
+func (c *hweb2Conn) setWriteDeadline(deadline time.Time) error {
+	// TODO
+	return nil
+}
+
+func (c *hweb2Conn) readAtLeast(p []byte, n int) (int, error) {
+	// TODO
+	return 0, nil
+}
+func (c *hweb2Conn) write(p []byte) (int, error) {
+	// TODO
+	return 0, nil
+}
+func (c *hweb2Conn) writev(vector *net.Buffers) (int64, error) {
+	// TODO
+	return 0, nil
+}
+
 func (c *hweb2Conn) closeConn() {
 	// TODO
 }

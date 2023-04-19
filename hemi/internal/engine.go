@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Stage component and basic elements exist between multiple stages.
+// Basic components and elements exist between multiple stages.
 
 package internal
 
@@ -701,4 +701,36 @@ func (s *Stage) ProfBlock() {
 	time.Sleep(5 * time.Second)
 	pprof.Lookup("block").WriteTo(file, 1)
 	runtime.SetBlockProfileRate(0)
+}
+
+// fixture component.
+//
+// Fixtures only exist in internal, and are created by stage.
+// Some critical functions, like clock and name resolver, are
+// implemented as fixtures.
+type fixture interface {
+	Component
+	run() // goroutine
+}
+
+// Uniture component.
+//
+// Unitures behave like fixtures except that they are optional
+// and extendible, so users can create their own unitures.
+type Uniture interface {
+	Component
+	Run() // goroutine
+}
+
+// Cronjob component
+type Cronjob interface {
+	Component
+	Schedule() // goroutine
+}
+
+// Cronjob_ is the mixin for all cronjobs.
+type Cronjob_ struct {
+	// Mixins
+	Component_
+	// States
 }

@@ -343,11 +343,11 @@ type b2Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *b2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :uri = uri
+func (r *b2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :uri
 	return false
 }
-func (r *b2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by agents
+func (r *b2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: set :authority
 	return false
 }
@@ -362,7 +362,7 @@ func (r *b2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *b2Request) copyCookies(req Request) bool { // used by agents. merge into one "cookie" header?
+func (r *b2Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header?
 	// TODO: one by one?
 	return true
 }

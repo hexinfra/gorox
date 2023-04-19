@@ -1,7 +1,7 @@
 Hemi
 ====
 
-  Hemi is the engine of Gorox.
+Hemi is the engine of Gorox.
 
 Architecture
 ============
@@ -30,3 +30,7 @@ The logical architecture of Hemi Engine looks like this:
 
 ```
 
+Examples
+========
+
+For examples showing how to use Hemi, see: https://github.com/hexinfra/examples

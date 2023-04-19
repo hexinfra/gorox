@@ -64,13 +64,13 @@ func (r *gzipReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bo
 	return chain, true
 }
 
-func (r *gzipReviser) BeforePull(req Request, resp Response) { // unsized
+func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *gzipReviser) OnPull(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *gzipReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
 	return chain, true
 }
-func (r *gzipReviser) FinishPull(req Request, resp Response) { // unsized
+func (r *gzipReviser) FinishDraw(req Request, resp Response) { // unsized
 	// TODO
 }
 

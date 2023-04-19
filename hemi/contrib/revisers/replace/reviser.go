@@ -57,13 +57,13 @@ func (r *replaceReviser) OnRecv(req Request, resp Response, chain Chain) (Chain,
 	return chain, true
 }
 
-func (r *replaceReviser) BeforePull(req Request, resp Response) { // unsized
+func (r *replaceReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) OnPull(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *replaceReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
 	return chain, true
 }
-func (r *replaceReviser) FinishPull(req Request, resp Response) { // unsized
+func (r *replaceReviser) FinishDraw(req Request, resp Response) { // unsized
 	// TODO
 }
 

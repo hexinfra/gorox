@@ -2464,9 +2464,9 @@ type Reviser interface {
 	BeforeRecv(req Request, resp Response) // for sized content
 	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
 
-	BeforePull(req Request, resp Response) // for unsized content
-	OnPull(req Request, resp Response, chain Chain) (Chain, bool)
-	FinishPull(req Request, resp Response) // for unsized content
+	BeforeDraw(req Request, resp Response) // for unsized content
+	OnDraw(req Request, resp Response, chain Chain) (Chain, bool)
+	FinishDraw(req Request, resp Response) // for unsized content
 
 	BeforeSend(req Request, resp Response) // for sized content
 	OnSend(req Request, resp Response, content *Chain)

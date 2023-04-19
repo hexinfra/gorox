@@ -24,7 +24,7 @@ type tcpsRelay struct {
 	mesher  *TCPSMesher
 	backend *TCPSBackend
 	// States
-	proxyMode string
+	process func(*TCPSConn)
 }
 
 func (f *tcpsRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
@@ -37,15 +37,22 @@ func (f *tcpsRelay) OnShutdown() {
 }
 
 func (f *tcpsRelay) OnConfigure() {
+	f.process = f.relay
+	isReverse := true
 	// proxyMode
 	if v, ok := f.Find("proxyMode"); ok {
-		if mode, ok := v.String(); ok && (mode == "socks" || mode == "https" || mode == "reverse") {
-			f.proxyMode = mode
+		if mode, ok := v.String(); ok {
+			switch mode {
+			case "socks":
+				f.process = f.socks
+				isReverse = false
+			case "https":
+				f.process = f.https
+				isReverse = false
+			}
 		} else {
 			UseExitln("invalid proxyMode")
 		}
-	} else {
-		f.proxyMode = "reverse"
 	}
 	// toBackend
 	if v, ok := f.Find("toBackend"); ok {
@@ -60,7 +67,7 @@ func (f *tcpsRelay) OnConfigure() {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if f.proxyMode == "reverse" {
+	} else if isReverse {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
@@ -68,16 +75,16 @@ func (f *tcpsRelay) OnPrepare() {
 }
 
 func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
-	// TODO
-	return
+	f.process(conn)
+	return false
 }
 
-func (f *tcpsRelay) socks(conn *TCPSConn) {
-	// TODO: SOCKS 5
+func (f *tcpsRelay) relay(conn *TCPSConn) { // reverse proxy
+	// TODO
 }
-func (f *tcpsRelay) https(conn *TCPSConn) {
-	// TODO: HTTP CONNECT
+func (f *tcpsRelay) socks(conn *TCPSConn) { // SOCKS 5
+	// TODO
 }
-func (f *tcpsRelay) reverse(conn *TCPSConn) {
-	// TODO: reverse
+func (f *tcpsRelay) https(conn *TCPSConn) { // HTTP CONNECT
+	// TODO
 }

@@ -150,7 +150,6 @@ The whole "gorox cluster" can optionally be managed by a Goops instance. In this
 configuration, all Gorox instances in "gorox cluster" are connected to the Goops
 instance and under its control.
 
-
 Process
 -------
 
@@ -170,6 +169,32 @@ A Gorox instance can be controlled by operators through the admin interface of
 leader process. Alternately, it can connects to a Goops instance and delegates
 its administration to Goops. In this way, the admin interface in leader process
 is disabled.
+
+Dependencies
+------------
+
+Gorox has following dependencies:
+
+```
+  +-------------------------------------------------------------+
+  |                            <gorox>                          |
+  +-------------+-------------------------------+----------+----+
+                |                               |          |
+                v                               v          v
+  +------+   +---------------------------+   +------+ +---------+
+  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<process>|
+  +------+   +--+---------------------+--+   +--+---+ +----+----+
+                |                     |         |          |
+                v                     v         v          v
+  +-----------------------+   +---------------------------------+
+  |       <contrib>       |<--+              <hemi>             |
+  +-----------+-----------+   +-----------------+---------------+
+              |                                 |
+              v                                 v
+  +-------------------------------------------------------------+
+  |                         <internal>                          |
+  +-------------------------------------------------------------+
+```
 
 
 Layout

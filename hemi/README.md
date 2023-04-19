@@ -4,37 +4,10 @@ Hemi
 Hemi is the engine of Gorox.
 
 
-Dependencies
-============
-
-Programs (for example, Gorox) using Hemi Engine have following dependencies:
-
-```
-  +-------------------------------------------------------------+
-  |                            <gorox>                          |
-  +-------------+-------------------------------+----------+----+
-                |                               |          |
-                v                               v          v
-  +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<process>|
-  +------+   +--+---------------------+--+   +--+---+ +----+----+
-                |                     |         |          |
-                v                     v         v          v
-  +-----------------------+   +---------------------------------+
-  |       <contrib>       |<--+              <hemi>             |
-  +-----------+-----------+   +-----------------+---------------+
-              |                                 |
-              v                                 v
-  +-------------------------------------------------------------+
-  |                         <internal>                          |
-  +-------------------------------------------------------------+
-```
-
-
 Architecture
 ============
 
-The logical architecture of Hemi Engine looks like this:
+The logical architecture of a Stage in Hemi Engine looks like this:
 
 ```
 +--------------------------------------------+     ^    shutdown

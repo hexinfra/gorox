@@ -9,12 +9,16 @@
 		list-style-type: none;
 	}
 
-	article h2 {
-		background: #d0f0e0;
+	article h3 {
+		margin: 12px 0px;
 	}
 
-	article h3 {
-		background: #f0e0d0;
+	a,
+	a:hover,
+	a:active,
+	a:focus,
+	a:visited {
+		color: #0022e4;
 	}
 
 	article h1,
@@ -34,9 +38,12 @@
 	article code {
 		display: block;
 		padding: 10px;
-		background: #fff0f0;
 		white-space: pre-line;
 		line-height: 22px;
+		background-color: #f5f5f5;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		margin-right: 20px;
 	}
 
 	article code.pre {
@@ -48,9 +55,7 @@
 	}
 
 
-	article ul {
-		background: #efefef;
-	}
+	article ul {}
 
 	article li {
 		padding: 2px;
@@ -163,8 +168,7 @@
 		<li><a href="#stage-statCronjob">stage &gt; statCronjob</a></li>
 	</ol>
 
-	<h2>组件</h2>
-	<ol>
+	<ol style="margin-top:10px">
 		<li id="stage">
 			<h3>stage</h3>
 			<p>stage是gorox工作进程的运行阶段，其余的配置和组件都必须在stage内部。</p>
@@ -1102,11 +1106,11 @@ app "main" {
 
 		<li id="stage-app-httpsChecker">
 			<h3>stage &gt; app &gt; httpsChecker </h3>
-			<p> httpsChecker 对请求是否是https做检测。</p>
+			<p> httpsChecker 对请求是否是https做检测。如果开启检测并且.authority不为空，则使用https跳转到authority上。</p>
 			<ul>
 				<li>
 					<p>.authority 301跳转url的authority</p>
-					<code>语法 .authorit = hostname:port
+					<code>语法 .authority = hostname:port
 						默认值： -
 						取值范围：-
 					</code>
@@ -1279,15 +1283,15 @@ stage {
 
 		fcgiAgent "php-fpm" {
 			.toBackend = "php-fpm"
-		}
-
-		rule $path ~= "\.php$" {
-			.handlets = ("php-fpm")
 			.sendTimeout = 60s
 			.recvTimeout = 60s
 			.scriptFilename = "index.php" //永远执行index.php
 			.keepConn = true
 			.preferUnderscore = true
+		}
+
+		rule $path ~= "\.php$" {
+			.handlets = ("php-fpm")
 		}
 	}
 }

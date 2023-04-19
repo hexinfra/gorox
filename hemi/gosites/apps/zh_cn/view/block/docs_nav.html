@@ -1,21 +1,42 @@
 <style type="text/css">
-nav{background:#ca8;}
+	nav {
+		padding-left: 10px;
+		border-right-width: 1px;
+		border-right-style: solid;
+		border-right-color: #ccc;
+	}
+
+
+	nav h3 {
+		margin-top: 20px;
+		margin-bottom: 10px;
+	}
+
+	nav li {
+		line-height: 25px;
+	}
+
+	nav .fixed {
+		top: 0%;
+		position: fixed;
+	}
 </style>
 
 <nav>
-	<h2>快捷链接</h2>
-	<h3>Gorox 文档</h3>
-	<ul>
-		<li><a href="/docs/gorox/operation">操作手册</a></li>
-		<li><a href="/docs/gorox/developer">开发者手册</a></li>
-		<li><a href="/docs/gorox/committer">贡献者手册</a></li>
-		<li><a href="/docs/gorox/reference">参考手册</a></li>
-	</ul>
-	<h3>Goops 文档</h3>
-	<ul>
-		<li><a href="/docs/goops/operation">操作手册</a></li>
-		<li><a href="/docs/goops/developer">开发者手册</a></li>
-		<li><a href="/docs/goops/committer">贡献者手册</a></li>
-		<li><a href="/docs/goops/reference">参考手册</a></li>
-	</ul>
+	<div class="fixed">
+		<h3>Gorox 文档</h3>
+		<ul>
+			<li><a href="/docs/gorox/operation">操作手册</a></li>
+			<li><a href="/docs/gorox/developer">开发者手册</a></li>
+			<li><a href="/docs/gorox/committer">贡献者手册</a></li>
+			<li><a href="/docs/gorox/reference">参考手册</a></li>
+		</ul>
+		<h3>Goops 文档</h3>
+		<ul>
+			<li><a href="/docs/goops/operation">操作手册</a></li>
+			<li><a href="/docs/goops/developer">开发者手册</a></li>
+			<li><a href="/docs/goops/committer">贡献者手册</a></li>
+			<li><a href="/docs/goops/reference">参考手册</a></li>
+		</ul>
+	</div>
 </nav>

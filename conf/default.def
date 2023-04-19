@@ -19,19 +19,90 @@ stage {
 	}
 	resolver {
 	}
-	http1Outgate {
+
+	http1Outgate "h1o" {
+		.tlsMode = false
+		.proxyMode = forward
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/http1Outgate/h1o" 
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
 	}
-	http2Outgate {
+
+	http2Outgate "h2o" {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/http2Outgate/h2o"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
 	}
-	http3Outgate {
+
+	http3Outgate "h3o" {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/http3Outgate/h3o"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
 	}
+
 	hweb2Outgate {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/hweb2Outgate/test"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
 	}
+
 	quicOutgate {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
 	}
+
 	tcpsOutgate {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
 	}
+
 	udpsOutgate {
+		.tlsMode = false
+		.proxyMode = forward  
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
 	}
 
 	// unitures
@@ -40,18 +111,101 @@ stage {
 
 	// backends
 	http1Backend "h1b" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
+		.balancer = "roundRobin"
 	}
+
 	http2Backend "h2b" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
+		.balancer = "roundRobin"
 	}
+
 	http3Backend "h3b" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
+		.balancer = "ipHash"
 	}
+
 	hweb2Backend "b2b" {
 	}
+
 	quicBackend "qb" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.maxStreamsPerConn = 1000
+		.balancer = "random"
 	}
+
 	tcpsBackend "tb" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.maxStreamsPerConn = 1000
+		.balancer = "random"
 	}
+
 	udpsBackend "ub" {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.aliveTimeout = 4s
+		.nodes = (
+			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+		)
+		.balancer = "random"
 	}
 
 	// meshers
@@ -64,6 +218,7 @@ stage {
 		.maxConnsPerGate = 100000
 		// cases
 	}
+
 	tcpsMesher "tm" {
 		.address         = string,required
 		.tlsMode         = false
@@ -73,6 +228,7 @@ stage {
 		.maxConnsPerGate = 100000
 		// cases
 	}
+
 	udpsMesher "um" {
 		.address         = string,required
 		.tlsMode         = false
@@ -85,15 +241,21 @@ stage {
 
 	// staters
 	localStater "ls" {
+		.stateDir = %VarsDir + "/staters/ls"
 	}
+
 	redisStater "rs" {
+		
 	}
 
 	// cachers
 	localCacher "lc" {
+		.cacheDir = %VarsDir + "/cacheDir/lc"
 	}
+
 	memCacher "mc" {
 	}
+
 	redisCacher "rc" {
 	}
 
@@ -110,14 +272,20 @@ stage {
 		.maxUploadContentSize = 128M
 		.settings             = []
 		.proxyOnly            = false
-		.withStater           = ""
+		.withStater           = "ls"
 
 		// handlets
 		accessChecker "ah" {
 		}
+
 		hostnameChecker "hh" {
+			.hostname = "www.example.cpm"
+			.permanent = true
 		}
+
 		httpsChecker "hh" {
+			.authorit = "www.example.cpm"
+			.permanent = true
 		}
 		limitChecker "lh" {
 		}
@@ -129,20 +297,88 @@ stage {
 		}
 		favicon "fh" {
 		}
+	
 		fcgiAgent "fh" {
+			.saveContentFilesDir = %tempDir +"/fcgi/fh"
+			.toBackend = "php-fpm"
+			.sendTimeout = 60s
+			.recvTimeout = 60s
+			.scriptFilename = "index.php" //永远执行index.php
+			.keepConn = true
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.preferUnderscore = true
+			.withCacher = "cacher name"
 		}
+
 		http1Proxy "hh" {
+			.proxyMode = "reverse"
+			.toBackend = "proxy_name"
+			.viaName = "gorox"
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addRequestHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+				["X-Real-IP" : "$remote_addr"],
+			)
+
+			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addResponseHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+				["X-Real-IP" : "$remote_addr"],
+			)
 		}
+
 		http2Proxy "hh" {
+			.proxyMode = "reverse"
+			.toBackend = "proxy_name"
+			.viaName = "gorox"
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addRequestHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+				["X-Real-IP" : "$remote_addr"],
+			)
+
+			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addResponseHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+				["X-Real-IP" : "$remote_addr"],
+			)
 		}
 		http3Proxy "hh" {
 		}
+
 		hweb2Proxy "bh" {
 		}
+
 		sitex "sh" {
+			.rdbms = "mysql://user:pass@host:port/dbname?charset=utf8mb4"
+			.sites = [
+				"front": [
+					"hostnames": ("gorox.net"),
+					"viewDir": %baseDir + "/apps/en_us/view",
+					"settings": [
+						"en_us": "gorox.net",
+						"zh_cn": "www.gorox.net",
+					],
+				],
+			]
 		}
+
 		static "sh" {
+			.webRoot = "/var/www"
+			.indexFile = "index.html"
+			.autoIndex = true
+			.mimeTypes = [
+				"jpg": "image/jpeg",
+				"jpeg": "image/jpeg",
+			]
+			.defaultType = "application/octet-stream"
 		}
+
 		uwsgiAgent "uh" {
 		}
 		webdavHandlet "wh" {
@@ -150,8 +386,17 @@ stage {
 
 		// revisers
 		gzipReviser "gr" {
+			.compressLevel = 1
+			.minLength = 8k 
+			.onContentTypes = ("text/html") 
+
 		}
+
 		headReviser "hr" {
+			.addResponse = ["cache-control" : "max-age=86400"]
+			.addRequest = ["env" : "gray"]
+			.delRequest = ("cookie", "date")
+			.delResponse = ("cookie", "date")
 		}
 		replaceReviser "rr" {
 		}
@@ -173,17 +418,87 @@ stage {
 		// rules
 		rule "r1" condition {
 		}
+
+		rule $path == /phpstatus { 
+			fcgiAgent {
+				.toBackend = "fpm"
+			}
+		}
+
+		// favicon.ico  doesnot record logAccess
+		rule $path == "/favicon.ico" {
+			.logAccess = false
+		}
+
+		//  url = /user/xxxx ---> user center server
+		rule $path ^= "/user" {
+			http1Proxy { 
+				.toBackend = "user_center"
+			}
+		}
+
+		//  url = /order/xxxx ---> order server
+		rule $path ^= "/order" {
+			http1Proxy {
+				.toBackend = "order_server"
+			}
+		}
+
+		// Forbidden
+		rule $path $= (".doc", ".docx", ".pdf") { 
+			.returnCode = 403
+		}
+
+		// http cache
+		rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") {
+			static {}
+			headReviser {
+				.addResponse = ["cache-control" : "max-age=86400"]
+			}
+		}
+
+		rule $path ~= "\.php$" {
+			fcgiAgent {
+				.toBackend = "fpm"
+			}
+		}
+
+		rule $queryString ~= "version=4.11" {
+			.returnCode = 302
+			headReviser {
+				.addResponse = ["Location" : "/upgrade.html"]
+			}
+		}
+
+		// file path change
+		rule $path !-e {
+			.returnCode = 302
+			headReviser {
+				.addResponse = ["Location" : "new_path" + $uri]
+			}
+		}
+
+		// autoIndex
+		rule $path -d {
+			static {
+				.autoIndex = true
+			}
+		}
 	}
 
 	// svcs
 	svc "s" {
+		withStater = "Stater name"
+		maxContentSize = 16G
 	}
 
 	// servers
 	echoServer "es" {
 	}
+
 	http3Server "h3s" {
 	}
+
 	httpxServer "hxs" {
 		.forApps         = ()
 		.forSvcs         = ()
@@ -204,8 +519,10 @@ stage {
 		.enableHTTP2     = false
 		.h2cMode         = false
 	}
+
 	hweb2Server "b2s" {
 	}
+
 	socksServer "ss" {
 	}
 

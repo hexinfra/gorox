@@ -50,7 +50,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 	f.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and hweb2Backend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and HWEB2Backend.
 type webBackend_[N node] struct {
 	// Mixins
 	backend_[N]
@@ -92,7 +92,7 @@ func (n *webNode_) init(id int32) {
 	n.node_.init(id)
 }
 
-// wConn is the interface for *H[1-3]Conn and *b2Conn.
+// wConn is the interface for *H[1-3]Conn and *B2Conn.
 type wConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -100,7 +100,7 @@ type wConn interface {
 	markBroken()
 }
 
-// wConn_ is the mixin for H[1-3]Conn and b2Conn.
+// wConn_ is the mixin for H[1-3]Conn and B2Conn.
 type wConn_ struct {
 	// Mixins
 	conn_
@@ -136,14 +136,14 @@ func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 func (c *wConn_) isBroken() bool { return c.broken.Load() }
 func (c *wConn_) markBroken()    { c.broken.Store(true) }
 
-// request is the interface for *H[1-3]Request and *b2Request.
+// request is the interface for *H[1-3]Request and *B2Request.
 type request interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// clientRequest_ is the mixin for H[1-3]Request and b2Request.
+// clientRequest_ is the mixin for H[1-3]Request and B2Request.
 type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
@@ -361,7 +361,7 @@ type upload struct {
 	// TODO
 }
 
-// response is the interface for *H[1-3]Response and *b2Response.
+// response is the interface for *H[1-3]Response and *B2Response.
 type response interface {
 	Status() int16
 	delHopHeaders()
@@ -370,7 +370,7 @@ type response interface {
 	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
 }
 
-// clientResponse_ is the mixin for H[1-3]Response and b2Response.
+// clientResponse_ is the mixin for H[1-3]Response and B2Response.
 type clientResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message

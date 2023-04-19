@@ -9,14 +9,14 @@
 
 package internal
 
-// hweb2In_ is used by hweb2Request and b2Response.
+// hweb2In_ is used by hweb2Request and B2Response.
 type hweb2In_ = webIn_
 
 func (r *hweb2In_) readContentB2() (p []byte, err error) {
 	return
 }
 
-// hweb2Out_ is used by hweb2Response and b2Request.
+// hweb2Out_ is used by hweb2Response and B2Request.
 type hweb2Out_ = webOut_
 
 func (r *hweb2Out_) addHeaderB2(name []byte, value []byte) bool {

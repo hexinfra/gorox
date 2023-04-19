@@ -19,8 +19,8 @@ import (
 
 func init() {
 	registerFixture(signHWEB2Outgate)
-	registerBackend("hweb2Backend", func(name string, stage *Stage) backend {
-		b := new(hweb2Backend)
+	registerBackend("HWEB2Backend", func(name string, stage *Stage) backend {
+		b := new(HWEB2Backend)
 		b.onCreate(name, stage)
 		return b
 	})
@@ -63,43 +63,43 @@ func (f *HWEB2Outgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *HWEB2Outgate) FetchConn(address string, tlsMode bool) (*b2Conn, error) {
+func (f *HWEB2Outgate) FetchConn(address string, tlsMode bool) (*B2Conn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *HWEB2Outgate) StoreConn(conn *b2Conn) {
+func (f *HWEB2Outgate) StoreConn(conn *B2Conn) {
 	// TODO
 }
 
-// hweb2Backend
-type hweb2Backend struct {
+// HWEB2Backend
+type HWEB2Backend struct {
 	// Mixins
 	webBackend_[*hweb2Node]
 	// States
 }
 
-func (b *hweb2Backend) onCreate(name string, stage *Stage) {
+func (b *HWEB2Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *hweb2Backend) OnConfigure() {
+func (b *HWEB2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *hweb2Backend) OnPrepare() {
+func (b *HWEB2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *hweb2Backend) createNode(id int32) *hweb2Node {
+func (b *HWEB2Backend) createNode(id int32) *hweb2Node {
 	node := new(hweb2Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *hweb2Backend) FetchConn() (*b2Conn, error) {
+func (b *HWEB2Backend) FetchConn() (*B2Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *hweb2Backend) StoreConn(conn *b2Conn) {
+func (b *HWEB2Backend) StoreConn(conn *B2Conn) {
 	conn.node.storeConn(conn)
 }
 
@@ -108,11 +108,11 @@ type hweb2Node struct {
 	// Mixins
 	webNode_
 	// Assocs
-	backend *hweb2Backend
+	backend *HWEB2Backend
 	// States
 }
 
-func (n *hweb2Node) init(id int32, backend *hweb2Backend) {
+func (n *hweb2Node) init(id int32, backend *HWEB2Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
 }
@@ -128,39 +128,39 @@ func (n *hweb2Node) maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-func (n *hweb2Node) fetchConn() (*b2Conn, error) {
-	// Note: An b2Conn can be used concurrently, limited by maxStreams.
+func (n *hweb2Node) fetchConn() (*B2Conn, error) {
+	// Note: An B2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var tcpConn *net.TCPConn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
 	return getB2Conn(connID, n.backend, n, tcpConn, rawConn), nil
 }
-func (n *hweb2Node) storeConn(wConn *b2Conn) {
-	// Note: An b2Conn can be used concurrently, limited by maxStreams.
+func (n *hweb2Node) storeConn(wConn *B2Conn) {
+	// Note: An B2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
 // poolB2Conn is the client-side HWEB/2 connection pool.
 var poolB2Conn sync.Pool
 
-func getB2Conn(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *b2Conn {
-	var conn *b2Conn
+func getB2Conn(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *B2Conn {
+	var conn *B2Conn
 	if x := poolB2Conn.Get(); x == nil {
-		conn = new(b2Conn)
+		conn = new(B2Conn)
 	} else {
-		conn = x.(*b2Conn)
+		conn = x.(*B2Conn)
 	}
 	conn.onGet(id, client, node, tcpConn, rawConn)
 	return conn
 }
-func putB2Conn(conn *b2Conn) {
+func putB2Conn(conn *B2Conn) {
 	conn.onPut()
 	poolB2Conn.Put(conn)
 }
 
-// b2Conn
-type b2Conn struct {
+// B2Conn
+type B2Conn struct {
 	// Mixins
 	wConn_
 	// Conn states (stocks)
@@ -173,13 +173,13 @@ type b2Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *b2Conn) onGet(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
+func (c *B2Conn) onGet(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.wConn_.onGet(id, client)
 	c.node = node
 	c.tcpConn = tcpConn
 	c.rawConn = rawConn
 }
-func (c *b2Conn) onPut() {
+func (c *B2Conn) onPut() {
 	c.wConn_.onPut()
 	c.node = nil
 	c.tcpConn = nil
@@ -187,21 +187,21 @@ func (c *b2Conn) onPut() {
 	c.activeStreams = 0
 }
 
-func (c *b2Conn) FetchStream() *b2Stream {
+func (c *B2Conn) FetchStream() *B2Stream {
 	// TODO: stream.onUse()
 	return nil
 }
-func (c *b2Conn) StoreStream(stream *b2Stream) {
+func (c *B2Conn) StoreStream(stream *B2Stream) {
 	// TODO
 	stream.onEnd()
 }
 
-func (c *b2Conn) Close() error { // only used by clients of dial
+func (c *B2Conn) Close() error { // only used by clients of dial
 	// TODO
 	return nil
 }
 
-func (c *b2Conn) setWriteDeadline(deadline time.Time) error {
+func (c *B2Conn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.tcpConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -210,7 +210,7 @@ func (c *b2Conn) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *b2Conn) setReadDeadline(deadline time.Time) error {
+func (c *B2Conn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.tcpConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -220,24 +220,24 @@ func (c *b2Conn) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *b2Conn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
-func (c *b2Conn) writev(vector *net.Buffers) (int64, error) {
+func (c *B2Conn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
+func (c *B2Conn) writev(vector *net.Buffers) (int64, error) {
 	// Will consume vector automatically
 	return vector.WriteTo(c.tcpConn)
 }
-func (c *b2Conn) readAtLeast(p []byte, n int) (int, error) {
+func (c *B2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.tcpConn, p, n)
 }
 
-func (c *b2Conn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
+func (c *B2Conn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
 
 // poolB2Stream
 var poolB2Stream sync.Pool
 
-func getB2Stream(conn *b2Conn, id int32) *b2Stream {
-	var stream *b2Stream
+func getB2Stream(conn *B2Conn, id int32) *B2Stream {
+	var stream *B2Stream
 	if x := poolB2Stream.Get(); x == nil {
-		stream = new(b2Stream)
+		stream = new(B2Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -245,27 +245,27 @@ func getB2Stream(conn *b2Conn, id int32) *b2Stream {
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		stream = x.(*b2Stream)
+		stream = x.(*B2Stream)
 	}
 	stream.onUse(conn, id)
 	return stream
 }
-func putB2Stream(stream *b2Stream) {
+func putB2Stream(stream *B2Stream) {
 	stream.onEnd()
 	poolB2Stream.Put(stream)
 }
 
-// b2Stream
-type b2Stream struct {
+// B2Stream
+type B2Stream struct {
 	// Mixins
 	webStream_
 	// Assocs
-	request  b2Request
-	response b2Response
+	request  B2Request
+	response B2Response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *b2Conn
+	conn *B2Conn
 	id   int32
 	// Stream states (zeros)
 	b2Stream0 // all values must be zero by default in this struct!
@@ -273,14 +273,14 @@ type b2Stream struct {
 type b2Stream0 struct { // for fast reset, entirely
 }
 
-func (s *b2Stream) onUse(conn *b2Conn, id int32) { // for non-zeros
+func (s *B2Stream) onUse(conn *B2Conn, id int32) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
 }
-func (s *b2Stream) onEnd() { // for zeros
+func (s *B2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.conn = nil
@@ -288,53 +288,53 @@ func (s *b2Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *b2Stream) keeper() webKeeper  { return s.conn.getClient() }
-func (s *b2Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+func (s *B2Stream) keeper() webKeeper  { return s.conn.getClient() }
+func (s *B2Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
-func (s *b2Stream) Request() *b2Request   { return &s.request }
-func (s *b2Stream) Response() *b2Response { return &s.response }
+func (s *B2Stream) Request() *B2Request   { return &s.request }
+func (s *B2Stream) Response() *B2Response { return &s.response }
 
-func (s *b2Stream) ExecuteNormal() error { // request & response
+func (s *B2Stream) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
 
-func (s *b2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *B2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (s *b2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (s *B2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 
-func (s *b2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *B2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return s.conn.makeTempName(p, unixTime)
 }
 
-func (s *b2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *B2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *b2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *B2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *b2Stream) write(p []byte) (int, error) { // for content i/o only?
+func (s *B2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *b2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (s *B2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *b2Stream) read(p []byte) (int, error) { // for content i/o only?
+func (s *B2Stream) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *b2Stream) readFull(p []byte) (int, error) { // for content i/o only?
+func (s *B2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-func (s *b2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *b2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *B2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *B2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-// b2Request is the client-side HWEB/2 request.
-type b2Request struct { // outgoing. needs building
+// B2Request is the client-side HWEB/2 request.
+type B2Request struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
 	// Stream states (stocks)
@@ -343,64 +343,64 @@ type b2Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *b2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
+func (r *B2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :uri
 	return false
 }
-func (r *b2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *B2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: set :authority
 	return false
 }
 
-func (r *b2Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderB2(name, value) }
-func (r *b2Request) header(name []byte) (value []byte, ok bool) { return r.headerB2(name) }
-func (r *b2Request) hasHeader(name []byte) bool                 { return r.hasHeaderB2(name) }
-func (r *b2Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
-func (r *b2Request) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
+func (r *B2Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderB2(name, value) }
+func (r *B2Request) header(name []byte) (value []byte, ok bool) { return r.headerB2(name) }
+func (r *B2Request) hasHeader(name []byte) bool                 { return r.hasHeaderB2(name) }
+func (r *B2Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderB2(name) }
+func (r *B2Request) delHeaderAt(o uint8)                        { r.delHeaderAtB2(o) }
 
-func (r *b2Request) AddCookie(name string, value string) bool {
+func (r *B2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *b2Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header?
+func (r *B2Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header?
 	// TODO: one by one?
 	return true
 }
 
-func (r *b2Request) sendChain() error { return r.sendChainB2() }
+func (r *B2Request) sendChain() error { return r.sendChainB2() }
 
-func (r *b2Request) echoHeaders() error {
+func (r *B2Request) echoHeaders() error {
 	// TODO
 	return nil
 }
-func (r *b2Request) echoChain() error { return r.echoChainB2() }
+func (r *B2Request) echoChain() error { return r.echoChainB2() }
 
-func (r *b2Request) trailer(name []byte) (value []byte, ok bool) {
+func (r *B2Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerB2(name)
 }
-func (r *b2Request) addTrailer(name []byte, value []byte) bool {
+func (r *B2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerB2(name, value)
 }
 
-func (r *b2Request) passHeaders() error {
+func (r *B2Request) passHeaders() error {
 	// TODO
 	return nil
 }
-func (r *b2Request) passBytes(p []byte) error { return r.passBytesB2(p) }
+func (r *B2Request) passBytes(p []byte) error { return r.passBytesB2(p) }
 
-func (r *b2Request) finalizeHeaders() { // add at most 256 bytes
+func (r *B2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *b2Request) finalizeUnsized() error {
+func (r *B2Request) finalizeUnsized() error {
 	// TODO
 	return nil
 }
 
-func (r *b2Request) addedHeaders() []byte { return nil } // TODO
-func (r *b2Request) fixedHeaders() []byte { return nil } // TODO
+func (r *B2Request) addedHeaders() []byte { return nil } // TODO
+func (r *B2Request) fixedHeaders() []byte { return nil } // TODO
 
-// b2Response is the client-side HWEB/2 response.
-type b2Response struct { // incoming. needs parsing
+// B2Response is the client-side HWEB/2 response.
+type B2Response struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_
 	// Stream states (stocks)
@@ -409,4 +409,4 @@ type b2Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *b2Response) readContent() (p []byte, err error) { return r.readContentB2() }
+func (r *B2Response) readContent() (p []byte, err error) { return r.readContentB2() }

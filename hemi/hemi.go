@@ -102,6 +102,12 @@ type ( // core types
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
 
+	HWEB2Backend = internal.HWEB2Backend
+	B2Conn       = internal.B2Conn
+	B2Stream     = internal.B2Stream
+	B2Request    = internal.B2Request
+	B2Response   = internal.B2Response
+
 	QUICBackend = internal.QUICBackend
 	QConn       = internal.QConn
 

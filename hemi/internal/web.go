@@ -106,17 +106,17 @@ func (s *webStream_) onEnd() { // for zeros
 func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-func (s *webStream_) startTCPTun() { // as client
+func (s *webStream_) tcpTunClient() {
 	// TODO: CONNECT method
 }
-func (s *webStream_) startUDPTun() { // as client
+func (s *webStream_) udpTunClient() {
 	// TODO: upgrade connect-udp
 }
 
-func (s *webStream_) serveTCPTun() { // as server
+func (s *webStream_) tcpTunServer() {
 	// TODO: CONNECT method
 }
-func (s *webStream_) serveUDPTun() { // as server
+func (s *webStream_) udpTunServer() {
 	// TODO: upgrade connect-udp
 }
 
@@ -1511,7 +1511,7 @@ type webOut interface {
 	finalizeHeaders()
 	send() error
 	sendChain() error // content
-	_beforeEcho() error
+	beforeRevise()
 	echoHeaders() error
 	echo() error
 	echoChain() error // chunks
@@ -1861,7 +1861,7 @@ func (r *webOut_) _beforeSend() error {
 }
 
 func (r *webOut_) echoText(chunk []byte) error {
-	if err := r.shell._beforeEcho(); err != nil {
+	if err := r._beforeEcho(); err != nil {
 		return err
 	}
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
@@ -1872,7 +1872,7 @@ func (r *webOut_) echoText(chunk []byte) error {
 	return r.shell.echo()
 }
 func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
-	if err := r.shell._beforeEcho(); err != nil {
+	if err := r._beforeEcho(); err != nil {
 		return err
 	}
 	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate the end
@@ -1884,6 +1884,23 @@ func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	r.block.SetFile(chunk, info, shut)
 	defer r.block.zero()
 	return r.shell.echo()
+}
+func (r *webOut_) _beforeEcho() error {
+	if r.stream.isBroken() {
+		return webOutWriteBroken
+	}
+	if r.IsSent() {
+		return nil
+	}
+	if r.contentSize != -1 {
+		return webOutMixedContent
+	}
+	r.markSent()
+	r.markUnsized()
+	if r.hasRevisers {
+		r.shell.beforeRevise()
+	}
+	return r.shell.echoHeaders()
 }
 
 func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
@@ -1943,7 +1960,7 @@ func (r *webOut_) _tooSlow() bool {
 }
 
 var ( // web outgoing message errors
-	webOutTooSlow       = errors.New("http outgoing too slow")
+	webOutTooSlow       = errors.New("web outgoing too slow")
 	webOutWriteBroken   = errors.New("write broken")
 	webOutUnknownStatus = errors.New("unknown status")
 	webOutAlreadySent   = errors.New("already sent")
@@ -2344,12 +2361,14 @@ func (a *App) maintain() { // goroutine
 	a.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
+
 	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
 	a.rules.goWalk((*Rule).OnShutdown)
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
 	a.handlets.goWalk(Handlet.OnShutdown)
 	a.WaitSubs() // handlets, revisers, socklets, rules
+
 	if a.booker != nil {
 		// TODO: close access log file
 	}

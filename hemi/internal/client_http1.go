@@ -326,11 +326,11 @@ func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 }
 func (s *H1Stream) ExecuteTCPTun() { // CONNECT method
 	// TODO
-	// use s.startTCPTun()
+	// use s.tcpTunClient()
 }
 func (s *H1Stream) ExecuteUDPTun() { // upgrade: connect-udp
 	// TODO
-	// use s.startUDPTun()
+	// use s.udpTunClient()
 }
 
 func (s *H1Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {

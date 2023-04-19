@@ -198,19 +198,8 @@ func (r *clientRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *clientRequest_) send() error { return r.shell.sendChain() }
 
-func (r *clientRequest_) _beforeEcho() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	if r.IsSent() {
-		return nil
-	}
-	if r.contentSize != -1 {
-		return webOutMixedContent
-	}
-	r.markSent()
-	r.markUnsized()
-	return r.shell.echoHeaders()
+func (r *clientRequest_) beforeRevise() {
+	// Revising is not supported in client side.
 }
 func (r *clientRequest_) echo() error {
 	if r.stream.isBroken() {

@@ -2795,29 +2795,15 @@ func (r *serverResponse_) send() error {
 	return r.shell.sendChain()
 }
 
-func (r *serverResponse_) _beforeEcho() error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	if r.IsSent() {
-		return nil
-	}
-	if r.contentSize != -1 {
-		return webOutMixedContent
-	}
-	r.markSent()
-	r.markUnsized()
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.app.reviserByID(id)
-			reviser.BeforeEcho(resp.Request(), resp)
+func (r *serverResponse_) beforeRevise() {
+	resp := r.shell.(Response)
+	for _, id := range r.revisers { // revise headers
+		if id == 0 { // id of effective reviser is ensured to be > 0
+			continue
 		}
+		reviser := r.app.reviserByID(id)
+		reviser.BeforeEcho(resp.Request(), resp)
 	}
-	return r.shell.echoHeaders()
 }
 func (r *serverResponse_) echo() error {
 	if r.stream.isBroken() {

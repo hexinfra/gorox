@@ -377,7 +377,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if req.upgradeUDPTun { // udpTun mode?
 		s.executeUDPTun()
 		s.mode = streamModeUDPTun
-		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
+		conn.keepConn = false // hijacked, so must close conn after s.executeUDPTun()
 		return
 	}
 

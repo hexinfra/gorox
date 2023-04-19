@@ -36,20 +36,20 @@ func SetBaseDir(dir string) { // only once!
 }
 func SetLogsDir(dir string) { // only once!
 	_logsOnce.Do(func() {
-		_mkdir(dir)
 		_logsDir.Store(dir)
+		_mkdir(dir)
 	})
 }
 func SetTempDir(dir string) { // only once!
 	_tempOnce.Do(func() {
-		_mkdir(dir)
 		_tempDir.Store(dir)
+		_mkdir(dir)
 	})
 }
 func SetVarsDir(dir string) { // only once!
 	_varsOnce.Do(func() {
-		_mkdir(dir)
 		_varsDir.Store(dir)
+		_mkdir(dir)
 	})
 }
 func _mkdir(dir string) {

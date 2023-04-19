@@ -13,56 +13,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 )
-
-var ( // global variables shared between stages
-	_baseOnce sync.Once    // protects _baseDir
-	_baseDir  atomic.Value // directory of the executable
-	_logsOnce sync.Once    // protects _logsDir
-	_logsDir  atomic.Value // directory of the log files
-	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the temp files
-	_varsOnce sync.Once    // protects _varsDir
-	_varsDir  atomic.Value // directory of the run-time data
-)
-
-func SetBaseDir(dir string) { // only once!
-	_baseOnce.Do(func() {
-		_baseDir.Store(dir)
-	})
-}
-func SetLogsDir(dir string) { // only once!
-	_logsOnce.Do(func() {
-		_logsDir.Store(dir)
-		_mkdir(dir)
-	})
-}
-func SetTempDir(dir string) { // only once!
-	_tempOnce.Do(func() {
-		_tempDir.Store(dir)
-		_mkdir(dir)
-	})
-}
-func SetVarsDir(dir string) { // only once!
-	_varsOnce.Do(func() {
-		_varsDir.Store(dir)
-		_mkdir(dir)
-	})
-}
-func _mkdir(dir string) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(0)
-	}
-}
-
-func BaseDir() string { return _baseDir.Load().(string) }
-func LogsDir() string { return _logsDir.Load().(string) }
-func TempDir() string { return _tempDir.Load().(string) }
-func VarsDir() string { return _varsDir.Load().(string) }
 
 func ApplyText(text string) (*Stage, error) {
 	_checkDirs()

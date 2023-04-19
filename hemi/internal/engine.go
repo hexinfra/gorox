@@ -3,55 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Basic components and elements exist between multiple stages.
+// Stage components.
 
 package internal
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"sync/atomic"
 	"time"
 	"unsafe"
 )
-
-var _debug atomic.Int32 // debug level
-
-func SetDebug(level int32)     { _debug.Store(level) }
-func IsDebug(level int32) bool { return _debug.Load() >= level }
-
-func Debug(args ...any)                 { fmt.Print(args...) }
-func Debugln(args ...any)               { fmt.Println(args...) }
-func Debugf(format string, args ...any) { fmt.Printf(format, args...) }
-
-const ( // exit codes. keep sync with ../hemi.go
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(args ...any) { exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any) { exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any) { exitln(CodeEnv, "[ENV] ", args...) }
-
-func BugExitf(format string, args ...any) { exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { exitf(CodeEnv, "[ENV] ", format, args...) }
-
-func exitln(exitCode int, prefix string, args ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
-	os.Exit(exitCode)
-}
-func exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
-	os.Exit(exitCode)
-}
 
 // createStage creates a new stage which runs alongside existing stage.
 func createStage() *Stage {

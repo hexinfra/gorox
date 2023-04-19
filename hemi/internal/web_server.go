@@ -485,8 +485,7 @@ type serverRequest0 struct { // for fast reset, entirely
 		minFresh     int32 // min-fresh directive in cache-control
 	}
 	revisers     [32]uint8 // reviser ids which will apply on this request. indexed by reviser order
-	forceEcho    bool      // use echo anyway?
-	_            byte      // padding
+	_            [2]byte   // padding
 	formReceived bool      // if content is a form, is it received?
 	formKind     int8      // deducted type of form. 0:not form. see formXXX
 	formEdge     int32     // edge position of the filled content in r.formWindow
@@ -2432,9 +2431,6 @@ func (r *serverRequest_) saveContentFilesDir() string {
 func (r *serverRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-	if reviser.ForceEcho() {
-		r.forceEcho = true
-	}
 }
 
 func (r *serverRequest_) unsafeVariable(index int16) []byte {

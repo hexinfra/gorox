@@ -2458,8 +2458,7 @@ type Reviser interface {
 	Component
 	identifiable
 
-	Rank() int8      // 0-31 (with 0-15 as tunable, 16-31 as fixed)
-	ForceEcho() bool // use echo anyway?
+	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
 	BeforeRecv(req Request, resp Response) // for sized content
 	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
@@ -2483,8 +2482,6 @@ type Reviser_ struct {
 	identifiable_
 	// States
 }
-
-func (r *Reviser_) ForceEcho() bool { return false } // override this if needed
 
 // Socklet component handles the websocket.
 type Socklet interface {

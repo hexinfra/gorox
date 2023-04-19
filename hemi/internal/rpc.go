@@ -96,7 +96,7 @@ func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers
 func (s *Svc) GRPCServers() []GRPCServer  { return s.grpcServers }
 
 func (s *Svc) maintain() { // goroutine
-	Loop(time.Second, s.Shut, func(now time.Time) {
+	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

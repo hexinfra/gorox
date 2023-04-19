@@ -75,7 +75,7 @@ func (f *UDPSOutgate) OnPrepare() {
 }
 
 func (f *UDPSOutgate) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
@@ -155,8 +155,8 @@ func (n *udpsNode) init(id int32, backend *UDPSBackend) {
 	n.backend = backend
 }
 
-func (n *udpsNode) maintain(shut chan struct{}) { // goroutine
-	Loop(time.Second, shut, func(now time.Time) {
+func (n *udpsNode) maintain() { // goroutine
+	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns

@@ -81,7 +81,7 @@ func (f *TCPSOutgate) OnPrepare() {
 }
 
 func (f *TCPSOutgate) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
@@ -169,8 +169,8 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 	n.backend = backend
 }
 
-func (n *tcpsNode) maintain(shut chan struct{}) { // goroutine
-	Loop(time.Second, shut, func(now time.Time) {
+func (n *tcpsNode) maintain() { // goroutine
+	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	n.markDown()

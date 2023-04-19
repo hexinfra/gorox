@@ -2332,7 +2332,7 @@ func (a *App) Logf(format string, args ...any) {
 func (a *App) linkServer(server webServer) { a.servers = append(a.servers, server) }
 
 func (a *App) maintain() { // goroutine
-	Loop(time.Second, a.Shut, func(now time.Time) {
+	a.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))

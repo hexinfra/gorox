@@ -46,7 +46,9 @@ func (h *forumHandlet) onCreate(name string, stage *Stage, app *App) {
 
 	h.SetRouter(h, r)
 }
-func (h *forumHandlet) OnShutdown() { h.app.SubDone() }
+func (h *forumHandlet) OnShutdown() {
+	h.app.SubDone()
+}
 
 func (h *forumHandlet) OnConfigure() {
 }

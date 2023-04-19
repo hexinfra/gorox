@@ -44,7 +44,7 @@ func (u *demoUniture) OnPrepare() {
 }
 
 func (u *demoUniture) Run() { // goroutine
-	Loop(time.Second, u.Shut, func(now time.Time) {
+	u.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

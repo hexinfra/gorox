@@ -46,7 +46,7 @@ func (c *redisCacher) OnPrepare() {
 }
 
 func (c *redisCacher) Maintain() { // goroutine
-	Loop(time.Second, c.Shut, func(now time.Time) {
+	c.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

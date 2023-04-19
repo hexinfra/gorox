@@ -68,7 +68,7 @@ func (f *fcacheFixture) OnPrepare() {
 }
 
 func (f *fcacheFixture) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		f.rwMutex.Lock()
 		for path, entry := range f.entries {
 			if entry.last.After(now) {

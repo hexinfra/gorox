@@ -185,14 +185,15 @@ func (b *backend_[N]) onPrepare() {
 }
 
 func (b *backend_[N]) maintain() { // goroutine
-	shutNodes := make(chan struct{})
 	for _, node := range b.nodes {
 		b.IncSub(1) // one more node
-		go node.maintain(shutNodes)
+		go node.maintain()
 	}
-	<-b.Shut         // waiting for backend shutdown signal
-	close(shutNodes) // this will notify all nodes
-	b.WaitSubs()     // nodes
+	<-b.Shut // waiting for backend shutdown signal
+	for _, node := range b.nodes {
+		node.shutdown()
+	}
+	b.WaitSubs() // nodes
 	if IsDebug(2) {
 		Debugf("backend=%s done\n", b.Name())
 	}
@@ -204,13 +205,15 @@ type node interface {
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
-	maintain(shut chan struct{}) // goroutine
+	maintain() // goroutine
+	shutdown()
 }
 
 // node_ is a mixin for backend nodes.
 type node_ struct {
 	// Mixins
 	subsWaiter_
+	shutdownable_
 	// States
 	id        int32       // the node id
 	address   string      // hostname:port
@@ -226,6 +229,7 @@ type node_ struct {
 }
 
 func (n *node_) init(id int32) {
+	n.shutdownable_.init()
 	n.id = id
 }
 
@@ -278,6 +282,10 @@ func (n *node_) closeFree() int {
 	list.qnty = 0
 	list.head, list.tail = nil, nil
 	return qnty
+}
+
+func (n *node_) shutdown() {
+	close(n.Shut)
 }
 
 var errNodeDown = errors.New("node is down")

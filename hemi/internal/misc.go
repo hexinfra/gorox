@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"sync"
-	"time"
 )
 
 const ( // array kinds
@@ -18,19 +17,6 @@ const ( // array kinds
 	arrayKindPool         // got from sync.Pool
 	arrayKindMake         // made from make([]byte)
 )
-
-func Loop(interval time.Duration, shut chan struct{}, fn func(now time.Time)) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-shut:
-			return
-		case now := <-ticker.C:
-			fn(now)
-		}
-	}
-}
 
 func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
 	// TODO: improvement

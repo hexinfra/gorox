@@ -78,7 +78,7 @@ func (f *QUICOutgate) OnPrepare() {
 }
 
 func (f *QUICOutgate) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
@@ -157,8 +157,8 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 	n.backend = backend
 }
 
-func (n *quicNode) maintain(shut chan struct{}) { // goroutine
-	Loop(time.Second, shut, func(now time.Time) {
+func (n *quicNode) maintain() { // goroutine
+	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns

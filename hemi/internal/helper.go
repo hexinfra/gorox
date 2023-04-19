@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // poolPairs
@@ -669,6 +670,28 @@ type subsWaiter_ struct {
 func (w *subsWaiter_) IncSub(n int) { w.subs.Add(n) }
 func (w *subsWaiter_) WaitSubs()    { w.subs.Wait() }
 func (w *subsWaiter_) SubDone()     { w.subs.Done() }
+
+// shutdownable_
+type shutdownable_ struct {
+	Shut chan struct{} // used to notify target shutdown
+}
+
+func (s *shutdownable_) init() {
+	s.Shut = make(chan struct{})
+}
+
+func (s *shutdownable_) Loop(interval time.Duration, fn func(now time.Time)) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.Shut:
+			return
+		case now := <-ticker.C:
+			fn(now)
+		}
+	}
+}
 
 // identifiable
 type identifiable interface {

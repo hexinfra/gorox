@@ -45,7 +45,7 @@ func (j *statCronjob) OnPrepare() {
 }
 
 func (j *statCronjob) Schedule() { // goroutine
-	Loop(time.Minute, j.Shut, func(now time.Time) {
+	j.Loop(time.Minute, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

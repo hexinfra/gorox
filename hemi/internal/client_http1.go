@@ -57,7 +57,7 @@ func (f *HTTP1Outgate) OnPrepare() {
 }
 
 func (f *HTTP1Outgate) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
@@ -131,8 +131,8 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.backend = backend
 }
 
-func (n *http1Node) maintain(shut chan struct{}) { // goroutine
-	Loop(time.Second, shut, func(now time.Time) {
+func (n *http1Node) maintain() { // goroutine
+	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	n.markDown()

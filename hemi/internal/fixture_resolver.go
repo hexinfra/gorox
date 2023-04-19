@@ -47,7 +47,7 @@ func (f *resolverFixture) OnPrepare() {
 }
 
 func (f *resolverFixture) run() { // goroutine
-	Loop(time.Second, f.Shut, func(now time.Time) {
+	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

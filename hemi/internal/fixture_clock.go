@@ -52,7 +52,7 @@ func (f *clockFixture) OnPrepare() {
 }
 
 func (f *clockFixture) run() { // goroutine
-	Loop(f.resolution, f.Shut, func(now time.Time) {
+	f.Loop(f.resolution, func(now time.Time) {
 		now = now.UTC()
 		weekday := now.Weekday()       // weekday: 0-6
 		year, month, day := now.Date() // month: 1-12

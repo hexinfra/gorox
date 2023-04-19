@@ -204,6 +204,7 @@ type Component interface {
 type Component_ struct {
 	// Mixins
 	subsWaiter_
+	shutdownable_
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
@@ -211,13 +212,12 @@ type Component_ struct {
 	name  string           // main, ...
 	props map[string]Value // name1=value1, ...
 	info  any              // extra info about this component, used by config
-	Shut  chan struct{}    // used to notify component to shutdown
 }
 
 func (c *Component_) MakeComp(name string) {
+	c.shutdownable_.init()
 	c.name = name
 	c.props = make(map[string]Value)
-	c.Shut = make(chan struct{})
 }
 
 func (c *Component_) Name() string { return c.name }

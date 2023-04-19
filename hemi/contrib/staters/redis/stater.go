@@ -46,7 +46,7 @@ func (s *redisStater) OnPrepare() {
 }
 
 func (s *redisStater) Maintain() { // goroutine
-	Loop(time.Second, s.Shut, func(now time.Time) {
+	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {

@@ -45,6 +45,8 @@ stage {
 	}
 	http3Backend "h3b" {
 	}
+	hweb2Backend "b2b" {
+	}
 	quicBackend "qb" {
 	}
 	tcpsBackend "tb" {
@@ -90,6 +92,8 @@ stage {
 	// cachers
 	localCacher "lc" {
 	}
+	memCacher "mc" {
+	}
 	redisCacher "rc" {
 	}
 
@@ -132,6 +136,8 @@ stage {
 		http2Proxy "hh" {
 		}
 		http3Proxy "hh" {
+		}
+		hweb2Proxy "bh" {
 		}
 		sitex "sh" {
 		}
@@ -197,6 +203,8 @@ stage {
 		.adjustScheme    = true
 		.enableHTTP2     = false
 		.h2cMode         = false
+	}
+	hweb2Server "b2s" {
 	}
 	socksServer "ss" {
 	}

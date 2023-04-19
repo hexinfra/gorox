@@ -11,24 +11,25 @@ stage {
 	// fixtures
 	clock {
 	}
+
 	fcache {
 		.smallFileSize = 65535
 		.maxSmallFiles = 1000
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
+
 	resolver {
 	}
 
 	http1Outgate "h1o" {
 		.tlsMode = false
-		.proxyMode = forward
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/http1Outgate/h1o" 
+		.saveContentFilesDir = %tempDir + "/http/http1Outgate/h1o" 
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -36,13 +37,12 @@ stage {
 
 	http2Outgate "h2o" {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/http2Outgate/h2o"
+		.saveContentFilesDir = %tempDir + "/http/http2Outgate/h2o"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -50,27 +50,25 @@ stage {
 
 	http3Outgate "h3o" {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/http3Outgate/h3o"
+		.saveContentFilesDir = %tempDir + "/http/http3Outgate/h3o"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
 
-	hweb2Outgate {
+	hweb2Outgate "hweb2O" {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/hweb2Outgate/test"
+		.saveContentFilesDir = %tempDir + "/http/hweb2Outgate/hweb2O"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -78,7 +76,6 @@ stage {
 
 	quicOutgate {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
@@ -88,7 +85,6 @@ stage {
 
 	tcpsOutgate {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
@@ -98,7 +94,6 @@ stage {
 
 	udpsOutgate {
 		.tlsMode = false
-		.proxyMode = forward  
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
@@ -121,7 +116,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.saveContentFilesDir = %tempDir + "/web/backends/h1b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -139,7 +134,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.saveContentFilesDir = %tempDir + "/web/backends/h2b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -157,7 +152,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = "%tempDir/http/backends/h1b"
+		.saveContentFilesDir = %tempDir + "/web/backends/h3b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -273,6 +268,7 @@ stage {
 		.settings             = []
 		.proxyOnly            = false
 		.withStater           = "ls"
+		.saveContentFilesDir  = %tempDir + "/apps/a"
 
 		// handlets
 		accessChecker "ah" {
@@ -284,7 +280,7 @@ stage {
 		}
 
 		httpsChecker "hh" {
-			.authorit = "www.example.cpm"
+			.authority = "www.example.cpm"
 			.permanent = true
 		}
 		limitChecker "lh" {
@@ -299,7 +295,7 @@ stage {
 		}
 	
 		fcgiAgent "fh" {
-			.saveContentFilesDir = %tempDir +"/fcgi/fh"
+			.saveContentFilesDir = %tempDir + "/fcgi/fh"
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s
@@ -320,13 +316,11 @@ stage {
 			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
 			.addRequestHeaders = (
 				["x-root-id" : "xxx-xxx-xxx-xxx"],
-				["X-Real-IP" : "$remote_addr"],
 			)
 
 			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
 			.addResponseHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-				["X-Real-IP" : "$remote_addr"],
+				["cache-control" : "max-age=86400"],
 			)
 		}
 
@@ -339,15 +333,14 @@ stage {
 			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
 			.addRequestHeaders = (
 				["x-root-id" : "xxx-xxx-xxx-xxx"],
-				["X-Real-IP" : "$remote_addr"],
 			)
 
 			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
 			.addResponseHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-				["X-Real-IP" : "$remote_addr"],
+				["cache-control" : "max-age=86400"],
 			)
 		}
+
 		http3Proxy "hh" {
 		}
 
@@ -389,7 +382,6 @@ stage {
 			.compressLevel = 1
 			.minLength = 8k 
 			.onContentTypes = ("text/html") 
-
 		}
 
 		headReviser "hr" {
@@ -398,6 +390,7 @@ stage {
 			.delRequest = ("cookie", "date")
 			.delResponse = ("cookie", "date")
 		}
+
 		replaceReviser "rr" {
 		}
 		ssiReviser "sr" {
@@ -500,7 +493,7 @@ stage {
 	}
 
 	httpxServer "hxs" {
-		.forApps         = ()
+		.forApps         = ("foo", "bar")
 		.forSvcs         = ()
 		.address         = string,required
 		.hrpcMode        = false

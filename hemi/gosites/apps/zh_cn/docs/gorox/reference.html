@@ -94,7 +94,7 @@
 	<ol>
 		<li><a href="#stage">stage</a></li>
 		<li><a href="#stage-constants">stage &gt; constants</a></li>
-		<li><a href="#stage-properties">stage &gt;properties</a></li>
+		<li><a href="#stage-properties">stage &gt; properties</a></li>
 
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
@@ -171,13 +171,12 @@
 	<ol style="margin-top:10px">
 		<li id="stage">
 			<h3>stage</h3>
-			<p>stage是gorox工作进程的运行阶段，其余的配置和组件都必须在stage内部。</p>
+			<p>stage 是 gorox 工作进程的运行阶段，其余的配置和组件都必须在 stage 内部。</p>
 			<code>语法: stage { ... }
 				默认值: 无
 				是否必须: 必须，且唯一
 			</code>
 			<p>例子</p>
-
 			<code class="pre">stage {
 	.logFile = %logsDir + "/worker.log"
 
@@ -191,184 +190,148 @@
 		.forApps = ("example")
 		.address = ":5080"
 	}
-}
-			</code>
+}</code>
+
+<p>stage 配置定义的数据类型。</p>
+<code class="pre">Boolean:     true, false
+Strings:     "", "foo", "abc`def", `abc"def`
+Integers:    0, 314, 2222222222
+Sizes:       1K, 2M, 3G, 4T
+Durations:   1s, 2m, 3h, 4d
+Lists:       (), ("a", "b"), ("c", 2, [])
+Dicts:       [], ["a" : 1, "b" : ("two")]
+</code>
 		</li>
 
 		<li id="stage-constants">
-			<h3>stage &gt; 常量</h3>
-			<p>gorox启动以后时候定义好的值</p>
+			<h3>stage &gt; constants</h3>
+			<p>gorox 启动之后会定义如下常量，并且在整个运行阶段都不会再次修改。</p>
 			<ul>
 				<li>
 					<code class="pre">%baseDir : gorox 可执行文件的当前目录
 
-%logsDir : 启动gorox时候 参数-logs指定的的目录，
+%logsDir : 启动 gorox 时候 参数 -logs 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
 	 如果未指定目录，则 %baseDir 加上 logs，作为日志目录。
 
-%tempDir : 启动gorox时候 参数-temps指定的的目录，
+%tempDir : 启动 gorox 时候 参数 -temps 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
 	 如果未指定目录，则 %baseDir 加上 temp，作为临时文件的目录。
 
-
-%varsDir : 启动gorox时候 参数-vars指定的的目录，
+%varsDir : 启动 gorox 时候 参数 -vars 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则 %baseDir 加上 vars，作为vars目录。
-					</code>
+	 如果未指定目录，则 %baseDir 加上 vars，作为vars目录。</code>
 				</li>
-
-
 			</ul>
 		</li>
 
 		<li id="stage-properties">
 			<h3>stage &gt; properties</h3>
-			<p>stage下可以使用属性列表</p>
-
+			<p>stage 属性列表。</p>
+<code class="pre">stage {
+	.logFile = %logsDir + "/worker.log"
+	.cpuFile = %tempDir + "/cpu.prof"
+	.hepFile = %tempDir + "/hep.prof"
+	.thrFile = %tempDir + "/thr.prof"
+	.grtFile = %tempDir + "/grt.prof"
+	.blkFile = %tempDir + "/blk.prof"
+}</code>
 			<ul>
 				<li>
-					<p>.logFile: gorox内部运行产生的日志（非访问日志）</p>
-					<code class="pre">语法：.logFile filename
-默认值：%logsDir + "/worker.log"
-上下文： stage 
+					<p>.logFile: gorox 内部运行产生的日志（非访问日志）。</p>
+					<code>语法：.logFile = "filename"
+					默认值：%logsDir + "/worker.log"
+					上下文： stage 
+					</code>
 
-// 例子
-stage {
-.logFile = %logsDir + "/worker.log"
-}
-</code>
+					<p>.cpuFile: 采集 gorox 5s 的 CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu。
+					</p>
+					<code>语法：.cpuFile = "filename"
+						默认值：%tempDir + "/cpu.prof"
+						上下文： stage
+					</code>
 
-					<p>.cpuFile: 采集gorox 5s的CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu</p>
-					<code>语法：.cpuFile filename
-默认值：%tempDir + "/cpu.prof"
-上下文： stage
+					<p>.hepFile: 采集 gorox 5s 的 heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap。</p>
+					<code>语法：.hepFile = "filename"
+						默认值：%tempDir + "/hep.prof"
+						上下文： stage
+					</code>
 
-// 例子
-stage {
-	.cpuFile = %tempDir + "/cpu.prof"
-}
-</code>
-
-
-					<p>.hepFile: 采集gorox 5s的heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap</p>
-					<code>语法：.hepFile filename
-默认值：%tempDir + "/hep.prof"
-上下文： stage
-
-// 例子
-stage {
-	.hepFile = %tempDir + "/hep.prof"
-}
-</code>
+					<p>.thrFile: 采集 gorox 5s 的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread。</p>
+					<code>语法：.thrFile = "filename"
+						默认值：%tempDir + "/thr.prof"
+						上下文： stage
+					</code>
 
 
+					<p>.grtFile: 采集 gorox 进程内所有当前 goroutine 的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine。</p>
+					<code>语法：.grtFile = "filename"
+						默认值：%tempDir + "/grt.prof"
+						上下文： stage
+					</code>
 
-					<p>.thrFile: 采集gorox 5s的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread</p>
-					<code>语法：.thrFile filename
-默认值：%tempDir + "/thr.prof"
-上下文： stage
-
-// 例子
-stage {
-	.thrFile = %tempDir + "/thr.prof"
-}
-</code>
-
-
-					<p>.grtFile: 采集gorox进程内所有当前goroutine的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine</p>
-					<code>语法：.grtFile filename
-默认值：%tempDir + "/grt.prof"
-上下文： stage
-
-// 例子
-stage {
-	.grtFile = %tempDir + "/grt.prof"
-}
-</code>
-
-
-					<p>.blkFile: 采集gorox 5s内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block</p>
-					<code>语法：.blkFile filename
-默认值：%tempDir + "/blk.prof"
-上下文： stage
-
-// 例子
-stage {
-	.blkFile = %tempDir + "/blk.prof"
-}
-</code>
-
+					<p>.blkFile: 采集 gorox 5s 内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block。</p>
+					<code>语法：.blkFile = "filename"
+						默认值：%tempDir + "/blk.prof"
+						上下文： stage
+					</code>
 
 				</li>
-
-
 			</ul>
 		</li>
 
 
 		<li id="stage-clock">
 			<h3>stage &gt; clock</h3>
-			<p>gorox获取时间并且缓存时间，每隔100ms更新一次，目前不可配置。用于http header中的date、expires、last-modified等</p>
+			<p>clock：gorox 获取时间并且缓存时间，每隔100ms更新一次，目前不可配置。用于http header中的date、expires、last-modified等</p>
 		</li>
 		<li id="stage-fcache">
 			<h3>stage &gt; fcache</h3>
-			<p>将静态文件缓存在内存中</p>
+			<p>fcache：将静态文件缓存在内存中</p>
+<code class="pre">stage { 
+	fcache {
+		.smallFileSize = 65535
+		.maxSmallFiles = 1000
+		.maxLargeFiles = 500
+		.cacheTimeout = 1s
+	}
+}</code>
 			<ul>
 				<li>
 					<p>.smallFileSize 小于等于这个值的文件，将会把文件数据缓存在内存，大于这个值将会缓存文件对象</p>
-					<code>语法：.smallFileSize byteSize
+					<code>语法：.smallFileSize = Sizes
 					默认值：64K
 					取值范围：(0, 512M]
 					上下文： fcache
-					
-					// 例子
-					fcache {
-						.smallFileSize = 65535
-					}
 					</code>
 				</li>
 				<li>
 					<p>.maxSmallFiles 最大缓存的小文件数量。</p>
-					<code>语法：.smallFileSize size
+					<code>语法：.smallFileSize = Integers
 						默认值：1000
-						取值范围：(0, +∞)
+						取值范围：(0, maxInt32)
 						上下文： fcache
-						
-						// 例子
-						fcache {
-							.maxSmallFiles = 1000
-						}
 						</code>
 				</li>
 				<li>
 					<p>.maxLargeFiles 最大缓存的大文件对象数量。</p>
-					<code>语法：.maxLargeFiles size
+					<code>语法：.maxLargeFiles = Integers
 						默认值：500
-						取值范围：(0, +∞)
+						取值范围：(0, maxInt32)
 						上下文： fcache
-						
-						// 例子
-						fcache {
-							.maxLargeFiles = 1000
-						}
 					</code>
 				</li>
 
 
 				<li>
 					<p>.cacheTimeout 缓存时长。</p>
-					<code>语法：.cacheTimeout durations
+					<code>语法：.cacheTimeout = Durations
 						默认值：1s
-						取值范围：(0s, +∞)
+						取值范围：(0s, +)
 						上下文： fcache
-						
-						// 例子
-						fcache {
-							.cacheTimeout = 1s
-						}
 					</code>
 				</li>
 
@@ -761,9 +724,7 @@ stage {
 		.forApps = ("proxy")
 		.address = ":80"
 	}
-}
-
-				</code>
+}</code>
 				</li>
 
 				<li>
@@ -1879,9 +1840,9 @@ stage {
 
 				<p>.tlsMode 是否开启tls协议（支持https）</p>
 				<code>语法：.tlsMode bool
-							默认值：false
-							取值范围： false | true
-						</code>
+					默认值：false
+					取值范围： false | true
+				</code>
 
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>

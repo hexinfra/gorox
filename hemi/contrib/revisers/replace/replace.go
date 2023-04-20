@@ -57,6 +57,12 @@ func (r *replaceReviser) OnRecv(req Request, resp Response, chain Chain) (Chain,
 	return chain, true
 }
 
+func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
+	// TODO
+}
+func (r *replaceReviser) OnSend(req Request, resp Response, content *Chain) {
+}
+
 func (r *replaceReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
@@ -65,12 +71,6 @@ func (r *replaceReviser) OnDraw(req Request, resp Response, chain Chain) (Chain,
 }
 func (r *replaceReviser) FinishDraw(req Request, resp Response) { // unsized
 	// TODO
-}
-
-func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
-	// TODO
-}
-func (r *replaceReviser) OnSend(req Request, resp Response, content *Chain) {
 }
 
 func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // unsized

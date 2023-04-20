@@ -57,16 +57,6 @@ func (r *wrapReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bo
 	return chain, true
 }
 
-func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // unsized
-	// TODO
-}
-func (r *wrapReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
-	return chain, true
-}
-func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
-	// TODO
-}
-
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
@@ -76,6 +66,16 @@ func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) {
 		block.SetText([]byte("d"))
 		content.PushTail(block)
 	}
+}
+
+func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // unsized
+	// TODO
+}
+func (r *wrapReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
+	return chain, true
+}
+func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
+	// TODO
 }
 
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized

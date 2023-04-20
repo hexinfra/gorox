@@ -63,6 +63,12 @@ func (r *gzipReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bo
 	return chain, true
 }
 
+func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
+	// TODO
+}
+func (r *gzipReviser) OnSend(req Request, resp Response, content *Chain) {
+}
+
 func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
@@ -71,12 +77,6 @@ func (r *gzipReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bo
 }
 func (r *gzipReviser) FinishDraw(req Request, resp Response) { // unsized
 	// TODO
-}
-
-func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
-	// TODO
-}
-func (r *gzipReviser) OnSend(req Request, resp Response, content *Chain) {
 }
 
 func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // unsized

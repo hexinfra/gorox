@@ -62,7 +62,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 
 	if h.isForward {
 		outgate1 := h.stage.http1Outgate
-		conn1, err1 = outgate1.Dial(req.Authority(), req.IsHTTPS()) // TODO: use hostname + colonPort
+		conn1, err1 = outgate1.Dial(req.Hostname() + req.ColonPort(), req.IsHTTPS())
 		if err1 != nil {
 			if IsDebug(1) {
 				Debugln(err1.Error())
@@ -70,7 +70,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			resp.SendBadGateway(nil)
 			return
 		}
-		defer conn1.closeConn()
+		defer conn1.Close()
 	} else { // reverse
 		backend1 := h.backend.(*HTTP1Backend)
 		conn1, err1 = backend1.FetchConn()

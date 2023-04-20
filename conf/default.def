@@ -12,17 +12,20 @@ stage {
 	clock {
 	}
 
-	fcache {
+	// singleton, only one is allowed in stage.
+	fcache { 
 		.smallFileSize = 65535
 		.maxSmallFiles = 1000
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
 
+	// singleton, only one is allowed in stage.
 	resolver {
 	}
 
-	http1Outgate "h1o" {
+	// singleton, only one is allowed in stage.
+	http1Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -35,7 +38,8 @@ stage {
 		.recvTimeout = 60s
 	}
 
-	http2Outgate "h2o" {
+	// singleton, only one is allowed in stage.
+	http2Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -48,7 +52,8 @@ stage {
 		.recvTimeout = 60s
 	}
 
-	http3Outgate "h3o" {
+	// singleton, only one is allowed in stage.
+	http3Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -61,7 +66,8 @@ stage {
 		.recvTimeout = 60s
 	}
 
-	hweb2Outgate "hweb2O" {
+	// singleton, only one is allowed in stage.
+	hweb2Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -74,6 +80,7 @@ stage {
 		.recvTimeout = 60s
 	}
 
+	// singleton, only one is allowed in stage.
 	quicOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -83,6 +90,7 @@ stage {
 		.maxStreamsPerConn = 1000
 	}
 
+	// singleton, only one is allowed in stage.
 	tcpsOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -92,6 +100,7 @@ stage {
 		.maxStreamsPerConn = 1000
 	}
 
+	// singleton, only one is allowed in stage.
 	udpsOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -100,7 +109,7 @@ stage {
 		.idleTimeout = 4s
 	}
 
-	// unitures
+	// unitures, singleton, only one is allowed in stage.
 	demoUniture {
 	}
 
@@ -519,9 +528,11 @@ stage {
 	socksServer "ss" {
 	}
 
-	// cronjobs
+	// cronjobs, singleton, only one is allowed in stage.
 	cleanCronjob {
 	}
+
+	// singleton, only one is allowed in stage.
 	statCronjob {
 	}
 }

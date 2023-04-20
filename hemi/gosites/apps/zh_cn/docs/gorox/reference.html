@@ -193,7 +193,7 @@
 }</code>
 
 <p>stage 配置定义的数据类型。</p>
-<code class="pre">Boolean:     true, false
+<code class="pre">Booleans:     true, false
 Strings:     "", "foo", "abc`def", `abc"def`
 Integers:    0, 314, 2222222222
 Sizes:       1K, 2M, 3G, 4T
@@ -244,39 +244,33 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<p>.logFile: gorox 内部运行产生的日志（非访问日志）。</p>
 					<code>语法：.logFile = "filename"
 					默认值：%logsDir + "/worker.log"
-					上下文： stage 
 					</code>
 
 					<p>.cpuFile: 采集 gorox 5s 的 CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu。
 					</p>
 					<code>语法：.cpuFile = "filename"
 						默认值：%tempDir + "/cpu.prof"
-						上下文： stage
 					</code>
 
 					<p>.hepFile: 采集 gorox 5s 的 heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap。</p>
 					<code>语法：.hepFile = "filename"
 						默认值：%tempDir + "/hep.prof"
-						上下文： stage
 					</code>
 
 					<p>.thrFile: 采集 gorox 5s 的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread。</p>
 					<code>语法：.thrFile = "filename"
 						默认值：%tempDir + "/thr.prof"
-						上下文： stage
 					</code>
 
 
 					<p>.grtFile: 采集 gorox 进程内所有当前 goroutine 的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine。</p>
 					<code>语法：.grtFile = "filename"
 						默认值：%tempDir + "/grt.prof"
-						上下文： stage
 					</code>
 
 					<p>.blkFile: 采集 gorox 5s 内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block。</p>
 					<code>语法：.blkFile = "filename"
 						默认值：%tempDir + "/blk.prof"
-						上下文： stage
 					</code>
 
 				</li>
@@ -305,7 +299,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法：.smallFileSize = Sizes
 					默认值：64K
 					取值范围：(0, 512M]
-					上下文： fcache
 					</code>
 				</li>
 				<li>
@@ -313,7 +306,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法：.smallFileSize = Integers
 						默认值：1000
 						取值范围：(0, maxInt32)
-						上下文： fcache
 						</code>
 				</li>
 				<li>
@@ -321,7 +313,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法：.maxLargeFiles = Integers
 						默认值：500
 						取值范围：(0, maxInt32)
-						上下文： fcache
 					</code>
 				</li>
 
@@ -331,7 +322,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法：.cacheTimeout = Durations
 						默认值：1s
 						取值范围：(0s, +)
-						上下文： fcache
 					</code>
 				</li>
 
@@ -341,11 +331,11 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		</li>
 		<li id="stage-resolver">
 			<h3>stage &gt; resolver</h3>
-			<p>resolver: 用于DNS解析ip4、ip6等</p>
+			<p>resolver: 用于DNS解析ip4、ip6等。</p>
 		</li>
 		<li id="stage-http1Outgate">
 			<h3>stage &gt; http1Outgate</h3>
-			<p>http1.1 正向代理，通过转发gorox转发http请求</p>
+			<p>http1.1 正向代理，通过转发gorox转发http请求。</p>
 			<ul>
 				<li>
 					<code class="pre">http1Outgate test {
@@ -365,7 +355,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 
 				<li>
 					<p>.tlsMode 是否开启tls协议（https）</p>
-					<code>语法：.tlsMode bool
+					<code>语法：.tlsMode = bool
 		默认值：false
 		取值范围： false | true
 	</code>

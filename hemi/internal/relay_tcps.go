@@ -75,7 +75,7 @@ func (f *tcpsRelay) OnPrepare() {
 	// Currently nothing.
 }
 
-func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
+func (f *tcpsRelay) Deal(conn *TCPSConn) (next bool) {
 	f.process(conn)
 	return false
 }

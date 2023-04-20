@@ -130,7 +130,7 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 // UDPSDealer
 type UDPSDealer interface {
 	Component
-	Process(conn *UDPSConn) (next bool)
+	Deal(conn *UDPSConn) (next bool)
 }
 
 // UDPSDealer_

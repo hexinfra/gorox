@@ -56,7 +56,7 @@ func (f *quicRelay) OnConfigure() {
 func (f *quicRelay) OnPrepare() {
 }
 
-func (f *quicRelay) Process(conn *QUICConn, stream *QUICStream) (next bool) {
+func (f *quicRelay) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

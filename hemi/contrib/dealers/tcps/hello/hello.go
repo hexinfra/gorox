@@ -13,9 +13,9 @@ import (
 
 func init() {
 	RegisterTCPSDealer("helloDealer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
-		f := new(helloDealer)
-		f.onCreate(name, stage, mesher)
-		return f
+		d := new(helloDealer)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
@@ -29,23 +29,23 @@ type helloDealer struct {
 	// States
 }
 
-func (f *helloDealer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *helloDealer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *helloDealer) OnShutdown() {
-	f.mesher.SubDone()
-}
-
-func (f *helloDealer) OnConfigure() {
-	// TODO
-}
-func (f *helloDealer) OnPrepare() {
-	// TODO
+func (d *helloDealer) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *helloDealer) Process(conn *TCPSConn) (next bool) {
+func (d *helloDealer) OnConfigure() {
+	// TODO
+}
+func (d *helloDealer) OnPrepare() {
+	// TODO
+}
+
+func (d *helloDealer) Deal(conn *TCPSConn) (next bool) {
 	conn.Send(helloBytes)
 	return false
 }

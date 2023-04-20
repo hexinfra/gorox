@@ -190,7 +190,7 @@ func (g *tcpsGate) onConnectionClosed() {
 // TCPSDealer
 type TCPSDealer interface {
 	Component
-	Process(conn *TCPSConn) (next bool)
+	Deal(conn *TCPSConn) (next bool)
 }
 
 // TCPSDealer_
@@ -286,7 +286,7 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 		conn.hookEditor(editor)
 	}
 	for _, dealer := range c.dealers {
-		if next := dealer.Process(conn); !next {
+		if next := dealer.Deal(conn); !next {
 			return true
 		}
 	}

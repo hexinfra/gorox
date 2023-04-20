@@ -13,9 +13,9 @@ import (
 
 func init() {
 	RegisterUDPSDealer("dnsDealer", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer {
-		f := new(dnsDealer)
-		f.onCreate(name, stage, mesher)
-		return f
+		d := new(dnsDealer)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
@@ -29,23 +29,23 @@ type dnsDealer struct {
 	// States
 }
 
-func (f *dnsDealer) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *dnsDealer) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *dnsDealer) OnShutdown() {
-	f.mesher.SubDone()
-}
-
-func (f *dnsDealer) OnConfigure() {
-	// TODO
-}
-func (f *dnsDealer) OnPrepare() {
-	// TODO
+func (d *dnsDealer) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *dnsDealer) Process(conn *UDPSConn) (next bool) {
+func (d *dnsDealer) OnConfigure() {
+	// TODO
+}
+func (d *dnsDealer) OnPrepare() {
+	// TODO
+}
+
+func (d *dnsDealer) Deal(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

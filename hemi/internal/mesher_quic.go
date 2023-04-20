@@ -116,7 +116,7 @@ func (g *quicGate) onConnectionClosed() {
 // QUICDealer
 type QUICDealer interface {
 	Component
-	Process(conn *QUICConn, stream *QUICStream) (next bool)
+	Deal(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
 // QUICDealer_

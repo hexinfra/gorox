@@ -26,3 +26,8 @@ func (v *view) render(args map[string]value) string {
 func (v *view) compile() error {
 	return nil
 }
+
+var (
+	htmlLL = []byte("{{")
+	htmlRR = []byte("}}")
+)

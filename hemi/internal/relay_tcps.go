@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS relay filter implementation.
+// TCP/TLS relay dealer implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSFilter("tcpsRelay", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
+	RegisterTCPSDealer("tcpsRelay", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
 		f := new(tcpsRelay)
 		f.onCreate(name, stage, mesher)
 		return f
@@ -18,10 +18,10 @@ func init() {
 // tcpsRelay passes TCP/TLS connections to another TCP/TLS server.
 type tcpsRelay struct {
 	// Mixins
-	TCPSFilter_
+	TCPSDealer_
 	// Assocs
 	stage   *Stage       // current stage
-	mesher  *TCPSMesher  // the mesher to which the filter belongs
+	mesher  *TCPSMesher  // the mesher to which the dealer belongs
 	backend *TCPSBackend // if works as forward proxy, this is nil
 	// States
 	process func(*TCPSConn)
@@ -81,8 +81,13 @@ func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
 }
 
 func (f *tcpsRelay) relay(conn *TCPSConn) { // reverse proxy
-	// TODO
+	tConn, err := f.backend.Dial()
+	if err != nil {
+		return
+	}
+	defer tConn.Close()
 }
+
 func (f *tcpsRelay) socks(conn *TCPSConn) { // SOCKS
 	// TODO
 }

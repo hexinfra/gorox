@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS relay filter implementation.
+// UDP/DTLS relay dealer implementation.
 
 package internal
 
 func init() {
-	RegisterUDPSFilter("udpsRelay", func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter {
+	RegisterUDPSDealer("udpsRelay", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer {
 		f := new(udpsRelay)
 		f.onCreate(name, stage, mesher)
 		return f
@@ -18,7 +18,7 @@ func init() {
 // udpsRelay relays UDP/DTLS connections to backend UDP/DTLS server.
 type udpsRelay struct {
 	// Mixins
-	UDPSFilter_
+	UDPSDealer_
 	// Assocs
 	stage   *Stage
 	mesher  *UDPSMesher

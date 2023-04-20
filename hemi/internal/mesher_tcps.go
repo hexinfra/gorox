@@ -19,11 +19,11 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSFilter, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsFilterCreators, tcpsEditorCreators)
+	m.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -35,12 +35,12 @@ func (m *TCPSMesher) OnShutdown() {
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // filters, editors, cases
+	m.configureSubs() // dealers, editors, cases
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // filters, editors, cases
+	m.prepareSubs() // dealers, editors, cases
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {
@@ -70,9 +70,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // filters, editors, cases
+	m.WaitSubs() // dealers, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("tcpsMesher=%s done\n", m.Name())
@@ -187,131 +187,14 @@ func (g *tcpsGate) onConnectionClosed() {
 	g.SubDone()
 }
 
-// poolTCPSConn
-var poolTCPSConn sync.Pool
-
-func getTCPSConn(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
-	var conn *TCPSConn
-	if x := poolTCPSConn.Get(); x == nil {
-		conn = new(TCPSConn)
-	} else {
-		conn = x.(*TCPSConn)
-	}
-	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
-	return conn
-}
-func putTCPSConn(conn *TCPSConn) {
-	conn.onPut()
-	poolTCPSConn.Put(conn)
-}
-
-// TCPSConn
-type TCPSConn struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	mesher  *TCPSMesher
-	gate    *tcpsGate
-	netConn net.Conn
-	rawConn syscall.RawConn
-	region  Region
-	// Conn states (zeros)
-	tcpsConn0
-}
-type tcpsConn0 struct {
-	editors  [32]uint8
-	nEditors int8
-}
-
-func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.mesher = mesher
-	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
-	c.region.Init()
-}
-func (c *TCPSConn) onPut() {
-	c.stage = nil
-	c.mesher = nil
-	c.gate = nil
-	c.netConn = nil
-	c.rawConn = nil
-	c.region.Free()
-	c.tcpsConn0 = tcpsConn0{}
-}
-
-func (c *TCPSConn) serve() { // goroutine
-	for _, kase := range c.mesher.cases {
-		if !kase.isMatch(c) {
-			continue
-		}
-		if processed := kase.execute(c); processed {
-			break
-		}
-	}
-	c.closeConn()
-	putTCPSConn(c)
-}
-
-func (c *TCPSConn) hookEditor(editor TCPSEditor) {
-	if c.nEditors == int8(len(c.editors)) {
-		BugExitln("hook too many editors")
-	}
-	c.editors[c.nEditors] = editor.ID()
-	c.nEditors++
-}
-
-func (c *TCPSConn) Read(p []byte) (n int, err error) {
-	// TODO
-	if c.nEditors > 0 {
-	} else {
-	}
-	return c.netConn.Read(p)
-}
-func (c *TCPSConn) Write(p []byte) (n int, err error) {
-	// TODO
-	if c.nEditors > 0 {
-	} else {
-	}
-	return c.netConn.Write(p)
-}
-
-func (c *TCPSConn) Close() error {
-	netConn := c.netConn
-	putTCPSConn(c)
-	return netConn.Close()
-}
-
-func (c *TCPSConn) closeConn() {
-	c.netConn.Close()
-	c.gate.onConnectionClosed()
-}
-
-func (c *TCPSConn) unsafeVariable(index int16) []byte {
-	return tcpsConnVariables[index](c)
-}
-
-// tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
-	nil, // srcHost
-	nil, // srcPort
-	nil, // transport
-	nil, // serverName
-	nil, // nextProto
-}
-
-// TCPSFilter
-type TCPSFilter interface {
+// TCPSDealer
+type TCPSDealer interface {
 	Component
 	Process(conn *TCPSConn) (next bool)
 }
 
-// TCPSFilter_
-type TCPSFilter_ struct {
+// TCPSDealer_
+type TCPSDealer_ struct {
 	// Mixins
 	Component_
 	// States
@@ -335,7 +218,7 @@ type TCPSEditor_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSFilter, TCPSEditor]
+	case_[*TCPSMesher, TCPSDealer, TCPSEditor]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -402,10 +285,141 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 	for _, editor := range c.editors {
 		conn.hookEditor(editor)
 	}
-	for _, filter := range c.filters {
-		if next := filter.Process(conn); !next {
+	for _, dealer := range c.dealers {
+		if next := dealer.Process(conn); !next {
 			return true
 		}
 	}
 	return false
+}
+
+// poolTCPSConn
+var poolTCPSConn sync.Pool
+
+func getTCPSConn(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+	var conn *TCPSConn
+	if x := poolTCPSConn.Get(); x == nil {
+		conn = new(TCPSConn)
+	} else {
+		conn = x.(*TCPSConn)
+	}
+	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
+	return conn
+}
+func putTCPSConn(conn *TCPSConn) {
+	conn.onPut()
+	poolTCPSConn.Put(conn)
+}
+
+// TCPSConn
+type TCPSConn struct {
+	// Conn states (stocks)
+	stockInput [8192]byte // for c.input
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stage   *Stage // current stage
+	mesher  *TCPSMesher
+	gate    *tcpsGate
+	netConn net.Conn
+	rawConn syscall.RawConn
+	region  Region
+	input   []byte // input buffer
+	// Conn states (zeros)
+	tcpsConn0
+}
+type tcpsConn0 struct {
+	editors  [32]uint8
+	nEditors int8
+}
+
+func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.id = id
+	c.stage = stage
+	c.mesher = mesher
+	c.gate = gate
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.region.Init()
+	c.input = c.stockInput[:]
+}
+func (c *TCPSConn) onPut() {
+	c.stage = nil
+	c.mesher = nil
+	c.gate = nil
+	c.netConn = nil
+	c.rawConn = nil
+	c.region.Free()
+	if cap(c.input) != cap(c.stockInput) {
+		PutNK(c.input)
+		c.input = nil
+	}
+	c.tcpsConn0 = tcpsConn0{}
+}
+
+func (c *TCPSConn) serve() { // goroutine
+	for _, kase := range c.mesher.cases {
+		if !kase.isMatch(c) {
+			continue
+		}
+		if processed := kase.execute(c); processed {
+			break
+		}
+	}
+	c.closeConn()
+	putTCPSConn(c)
+}
+
+func (c *TCPSConn) hookEditor(editor TCPSEditor) {
+	if c.nEditors == int8(len(c.editors)) {
+		BugExitln("hook too many editors")
+	}
+	c.editors[c.nEditors] = editor.ID()
+	c.nEditors++
+}
+
+func (c *TCPSConn) Recv() (p []byte, err error) {
+	n, err := c.netConn.Read(c.input)
+	if err != nil {
+		return nil, err
+	}
+	// TODO
+	if c.nEditors > 0 {
+	} else {
+	}
+	return c.input[:n], nil
+}
+func (c *TCPSConn) Send(p []byte) (err error) {
+	// TODO
+	if c.nEditors > 0 {
+	} else {
+	}
+	_, err = c.netConn.Write(p)
+	return
+}
+
+func (c *TCPSConn) closeWrite() {
+	if c.mesher.TLSMode() {
+		c.netConn.(*tls.Conn).CloseWrite()
+	} else {
+		c.netConn.(*net.TCPConn).CloseWrite()
+	}
+}
+
+func (c *TCPSConn) closeConn() {
+	c.netConn.Close()
+	c.gate.onConnectionClosed()
+}
+
+func (c *TCPSConn) unsafeVariable(index int16) []byte {
+	return tcpsConnVariables[index](c)
+}
+
+// tcpsConnVariables
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
+	nil, // srcHost
+	nil, // srcPort
+	nil, // transport
+	nil, // serverName
+	nil, // nextProto
 }

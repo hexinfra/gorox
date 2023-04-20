@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// DNS filters can respond DNS requests.
+// DNS dealers can respond DNS requests.
 
 package dns
 
@@ -12,40 +12,40 @@ import (
 )
 
 func init() {
-	RegisterUDPSFilter("dnsFilter", func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter {
-		f := new(dnsFilter)
+	RegisterUDPSDealer("dnsDealer", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer {
+		f := new(dnsDealer)
 		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
 
-// dnsFilter
-type dnsFilter struct {
+// dnsDealer
+type dnsDealer struct {
 	// Mixins
-	UDPSFilter_
+	UDPSDealer_
 	// Assocs
 	stage  *Stage
 	mesher *UDPSMesher
 	// States
 }
 
-func (f *dnsFilter) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+func (f *dnsDealer) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	f.MakeComp(name)
 	f.stage = stage
 	f.mesher = mesher
 }
-func (f *dnsFilter) OnShutdown() {
+func (f *dnsDealer) OnShutdown() {
 	f.mesher.SubDone()
 }
 
-func (f *dnsFilter) OnConfigure() {
+func (f *dnsDealer) OnConfigure() {
 	// TODO
 }
-func (f *dnsFilter) OnPrepare() {
+func (f *dnsDealer) OnPrepare() {
 	// TODO
 }
 
-func (f *dnsFilter) Process(conn *UDPSConn) (next bool) {
+func (f *dnsDealer) Process(conn *UDPSConn) (next bool) {
 	// TODO
 	return
 }

@@ -18,13 +18,13 @@ const ( // component list
 	compUniture               // ...
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend
 	compQUICMesher            // quicMesher
-	compQUICFilter            // quicRelay, ...
+	compQUICDealer            // quicRelay, ...
 	compQUICEditor            // ...
 	compTCPSMesher            // tcpsMesher
-	compTCPSFilter            // tcpsRelay, ...
+	compTCPSDealer            // tcpsRelay, ...
 	compTCPSEditor            // ...
 	compUDPSMesher            // udpsMesher
-	compUDPSFilter            // udpsRelay, ...
+	compUDPSDealer            // udpsRelay, ...
 	compUDPSEditor            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
@@ -62,11 +62,11 @@ var ( // global maps, shared between stages
 	creatorsLock       sync.RWMutex
 	unitureCreators    = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
-	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
+	quicDealerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealer)
 	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
-	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
+	tcpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer)
 	tcpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor)
-	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
+	udpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer)
 	udpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
@@ -94,20 +94,20 @@ func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture
 func registerBackend(sign string, create func(name string, stage *Stage) backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
-	_registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
+func RegisterQUICDealer(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealer) {
+	_registerComponent1(sign, compQUICDealer, quicDealerCreators, create)
 }
 func RegisterQUICEditor(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICEditor) {
 	_registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
 }
-func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
-	_registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
+func RegisterTCPSDealer(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer) {
+	_registerComponent1(sign, compTCPSDealer, tcpsDealerCreators, create)
 }
 func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor) {
 	_registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
 }
-func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
-	_registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
+func RegisterUDPSDealer(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer) {
+	_registerComponent1(sign, compUDPSDealer, udpsDealerCreators, create)
 }
 func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor) {
 	_registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
@@ -144,7 +144,7 @@ func _registerComponent0[T Component](sign string, comp int16, creators map[stri
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // filter, editor, handlet, reviser, socklet
+func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealer, editor, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 

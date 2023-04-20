@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Hello filters print a welcome text.
+// Hello dealers print a welcome text.
 
 package hello
 
@@ -12,41 +12,44 @@ import (
 )
 
 func init() {
-	RegisterTCPSFilter("helloFilter", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
-		f := new(helloFilter)
+	RegisterTCPSDealer("helloDealer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
+		f := new(helloDealer)
 		f.onCreate(name, stage, mesher)
 		return f
 	})
 }
 
-// helloFilter
-type helloFilter struct {
+// helloDealer
+type helloDealer struct {
 	// Mixins
-	TCPSFilter_
+	TCPSDealer_
 	// Assocs
 	stage  *Stage
 	mesher *TCPSMesher
 	// States
 }
 
-func (f *helloFilter) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (f *helloDealer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	f.MakeComp(name)
 	f.stage = stage
 	f.mesher = mesher
 }
-func (f *helloFilter) OnShutdown() {
+func (f *helloDealer) OnShutdown() {
 	f.mesher.SubDone()
 }
 
-func (f *helloFilter) OnConfigure() {
+func (f *helloDealer) OnConfigure() {
 	// TODO
 }
-func (f *helloFilter) OnPrepare() {
+func (f *helloDealer) OnPrepare() {
 	// TODO
 }
 
-func (f *helloFilter) Process(conn *TCPSConn) (next bool) {
-	conn.Write([]byte("hello, world"))
-	conn.Close()
+func (f *helloDealer) Process(conn *TCPSConn) (next bool) {
+	conn.Send(helloBytes)
 	return false
 }
+
+var (
+	helloBytes = []byte("hello, world!")
+)

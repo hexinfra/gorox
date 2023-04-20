@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC relay filter implementation.
+// QUIC relay dealer implementation.
 
 package internal
 
 func init() {
-	RegisterQUICFilter("quicRelay", func(name string, stage *Stage, mesher *QUICMesher) QUICFilter {
+	RegisterQUICDealer("quicRelay", func(name string, stage *Stage, mesher *QUICMesher) QUICDealer {
 		f := new(quicRelay)
 		f.onCreate(name, stage, mesher)
 		return f
@@ -18,7 +18,7 @@ func init() {
 // quicRelay relays QUIC connections to backend QUIC server.
 type quicRelay struct {
 	// Mixins
-	QUICFilter_
+	QUICDealer_
 	// Assocs
 	stage   *Stage
 	mesher  *QUICMesher

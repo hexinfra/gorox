@@ -18,11 +18,11 @@ import (
 // UDPSMesher
 type UDPSMesher struct {
 	// Mixins
-	mesher_[*UDPSMesher, *udpsGate, UDPSFilter, UDPSEditor, *udpsCase]
+	mesher_[*UDPSMesher, *udpsGate, UDPSDealer, UDPSEditor, *udpsCase]
 }
 
 func (m *UDPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, udpsFilterCreators, udpsEditorCreators)
+	m.mesher_.onCreate(name, stage, udpsDealerCreators, udpsEditorCreators)
 }
 func (m *UDPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -34,12 +34,12 @@ func (m *UDPSMesher) OnShutdown() {
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // filters, editors, cases
+	m.configureSubs() // dealers, editors, cases
 }
 func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // filters, editors, cases
+	m.prepareSubs() // dealers, editors, cases
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {
@@ -69,9 +69,9 @@ func (m *UDPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // filters, editors, cases
+	m.WaitSubs() // dealers, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("udpsMesher=%s done\n", m.Name())
@@ -125,6 +125,101 @@ func (g *udpsGate) serveTLS() { // goroutine
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
+}
+
+// UDPSDealer
+type UDPSDealer interface {
+	Component
+	Process(conn *UDPSConn) (next bool)
+}
+
+// UDPSDealer_
+type UDPSDealer_ struct {
+	Component_
+}
+
+// UDPSEditor
+type UDPSEditor interface {
+	Component
+	identifiable
+	OnInput(conn *UDPSConn, data []byte) (next bool)
+}
+
+// UDPSEditor_
+type UDPSEditor_ struct {
+	Component_
+	identifiable_
+}
+
+// udpsCase
+type udpsCase struct {
+	// Mixins
+	case_[*UDPSMesher, UDPSDealer, UDPSEditor]
+	// States
+	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
+}
+
+func (c *udpsCase) OnConfigure() {
+	c.case_.OnConfigure()
+	if c.info != nil {
+		cond := c.info.(caseCond)
+		if matcher, ok := udpsCaseMatchers[cond.compare]; ok {
+			c.matcher = matcher
+		} else {
+			UseExitln("unknown compare in case condition")
+		}
+	}
+}
+func (c *udpsCase) OnPrepare() {
+	c.case_.OnPrepare()
+}
+
+func (c *udpsCase) isMatch(conn *UDPSConn) bool {
+	if c.general {
+		return true
+	}
+	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
+}
+
+var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []byte) bool{
+	"==": (*udpsCase).equalMatch,
+	"^=": (*udpsCase).prefixMatch,
+	"$=": (*udpsCase).suffixMatch,
+	"~=": (*udpsCase).regexpMatch,
+	"!=": (*udpsCase).notEqualMatch,
+	"!^": (*udpsCase).notPrefixMatch,
+	"!$": (*udpsCase).notSuffixMatch,
+	"!~": (*udpsCase).notRegexpMatch,
+}
+
+func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
+	return c.case_.equalMatch(value)
+}
+func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= patterns
+	return c.case_.prefixMatch(value)
+}
+func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
+	return c.case_.suffixMatch(value)
+}
+func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
+	return c.case_.regexpMatch(value)
+}
+func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool { // value != patterns
+	return c.case_.notEqualMatch(value)
+}
+func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value !^ patterns
+	return c.case_.notPrefixMatch(value)
+}
+func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
+	return c.case_.notSuffixMatch(value)
+}
+func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
+	return c.case_.notRegexpMatch(value)
+}
+
+func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
+	// TODO
+	return false
 }
 
 // poolUDPSConn
@@ -205,99 +300,4 @@ func (c *UDPSConn) unsafeVariable(index int16) []byte {
 // udpsConnVariables
 var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
 	// TODO
-}
-
-// UDPSFilter
-type UDPSFilter interface {
-	Component
-	Process(conn *UDPSConn) (next bool)
-}
-
-// UDPSFilter_
-type UDPSFilter_ struct {
-	Component_
-}
-
-// UDPSEditor
-type UDPSEditor interface {
-	Component
-	identifiable
-	OnInput(conn *UDPSConn, data []byte) (next bool)
-}
-
-// UDPSEditor_
-type UDPSEditor_ struct {
-	Component_
-	identifiable_
-}
-
-// udpsCase
-type udpsCase struct {
-	// Mixins
-	case_[*UDPSMesher, UDPSFilter, UDPSEditor]
-	// States
-	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
-}
-
-func (c *udpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := udpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
-		}
-	}
-}
-func (c *udpsCase) OnPrepare() {
-	c.case_.OnPrepare()
-}
-
-func (c *udpsCase) isMatch(conn *UDPSConn) bool {
-	if c.general {
-		return true
-	}
-	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
-}
-
-var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []byte) bool{
-	"==": (*udpsCase).equalMatch,
-	"^=": (*udpsCase).prefixMatch,
-	"$=": (*udpsCase).suffixMatch,
-	"~=": (*udpsCase).regexpMatch,
-	"!=": (*udpsCase).notEqualMatch,
-	"!^": (*udpsCase).notPrefixMatch,
-	"!$": (*udpsCase).notSuffixMatch,
-	"!~": (*udpsCase).notRegexpMatch,
-}
-
-func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
-	return c.case_.equalMatch(value)
-}
-func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= patterns
-	return c.case_.prefixMatch(value)
-}
-func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
-	return c.case_.suffixMatch(value)
-}
-func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
-	return c.case_.regexpMatch(value)
-}
-func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool { // value != patterns
-	return c.case_.notEqualMatch(value)
-}
-func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value !^ patterns
-	return c.case_.notPrefixMatch(value)
-}
-func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
-	return c.case_.notSuffixMatch(value)
-}
-func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
-	return c.case_.notRegexpMatch(value)
-}
-
-func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
-	// TODO
-	return false
 }

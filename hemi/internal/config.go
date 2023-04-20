@@ -260,8 +260,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compQUICFilter:
-			c.parseQUICFilter(current, mesher, nil)
+		case compQUICDealer:
+			c.parseQUICDealer(current, mesher, nil)
 		case compQUICEditor:
 			c.parseQUICEditor(current, mesher, nil)
 		case compCase:
@@ -271,8 +271,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		}
 	}
 }
-func (c *config) parseQUICFilter(sign token, mesher *QUICMesher, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseQUICDealer(sign token, mesher *QUICMesher, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
+	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
 func (c *config) parseQUICEditor(sign token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
@@ -306,8 +306,8 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compQUICFilter:
-			c.parseQUICFilter(current, mesher, kase)
+		case compQUICDealer:
+			c.parseQUICDealer(current, mesher, kase)
 		case compQUICEditor:
 			c.parseQUICEditor(current, mesher, kase)
 		default:
@@ -333,8 +333,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compTCPSFilter:
-			c.parseTCPSFilter(current, mesher, nil)
+		case compTCPSDealer:
+			c.parseTCPSDealer(current, mesher, nil)
 		case compTCPSEditor:
 			c.parseTCPSEditor(current, mesher, nil)
 		case compCase:
@@ -344,8 +344,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseTCPSFilter(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseTCPSDealer(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
+	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
 func (c *config) parseTCPSEditor(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
@@ -379,8 +379,8 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compTCPSFilter:
-			c.parseTCPSFilter(current, mesher, kase)
+		case compTCPSDealer:
+			c.parseTCPSDealer(current, mesher, kase)
 		case compTCPSEditor:
 			c.parseTCPSEditor(current, mesher, kase)
 		default:
@@ -406,8 +406,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compUDPSFilter:
-			c.parseUDPSFilter(current, mesher, nil)
+		case compUDPSDealer:
+			c.parseUDPSDealer(current, mesher, nil)
 		case compUDPSEditor:
 			c.parseUDPSEditor(current, mesher, nil)
 		case compCase:
@@ -417,8 +417,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseUDPSFilter(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseUDPSDealer(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
+	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
 func (c *config) parseUDPSEditor(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
@@ -452,8 +452,8 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compUDPSFilter:
-			c.parseUDPSFilter(current, mesher, kase)
+		case compUDPSDealer:
+			c.parseUDPSDealer(current, mesher, kase)
 		case compUDPSEditor:
 			c.parseUDPSEditor(current, mesher, kase)
 		default:
@@ -831,7 +831,7 @@ func parseComponent0[T Component](c *config, sign token, stage *Stage, create fu
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // filter, editor
+func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text

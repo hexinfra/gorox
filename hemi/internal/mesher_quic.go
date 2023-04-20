@@ -16,11 +16,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICFilter, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICEditor, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicFilterCreators, quicEditorCreators)
+	m.mesher_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -32,12 +32,12 @@ func (m *QUICMesher) OnShutdown() {
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // filters, editors, cases
+	m.configureSubs() // dealers, editors, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // filters, editors, cases
+	m.prepareSubs() // dealers, editors, cases
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -63,9 +63,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.filters) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // filters, editors, cases
+	m.WaitSubs() // dealers, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("quicMesher=%s done\n", m.Name())
@@ -111,6 +111,101 @@ func (g *quicGate) justClose(quicConn *quix.Conn) {
 }
 func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
+}
+
+// QUICDealer
+type QUICDealer interface {
+	Component
+	Process(conn *QUICConn, stream *QUICStream) (next bool)
+}
+
+// QUICDealer_
+type QUICDealer_ struct {
+	Component_
+}
+
+// QUICEditor
+type QUICEditor interface {
+	Component
+	identifiable
+	OnInput(conn *QUICConn, data []byte) (next bool)
+}
+
+// QUICEditor_
+type QUICEditor_ struct {
+	Component_
+	identifiable_
+}
+
+// quicCase
+type quicCase struct {
+	// Mixins
+	case_[*QUICMesher, QUICDealer, QUICEditor]
+	// States
+	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
+}
+
+func (c *quicCase) OnConfigure() {
+	c.case_.OnConfigure()
+	if c.info != nil {
+		cond := c.info.(caseCond)
+		if matcher, ok := quicCaseMatchers[cond.compare]; ok {
+			c.matcher = matcher
+		} else {
+			UseExitln("unknown compare in case condition")
+		}
+	}
+}
+func (c *quicCase) OnPrepare() {
+	c.case_.OnPrepare()
+}
+
+func (c *quicCase) isMatch(conn *QUICConn) bool {
+	if c.general {
+		return true
+	}
+	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
+}
+
+var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []byte) bool{
+	"==": (*quicCase).equalMatch,
+	"^=": (*quicCase).prefixMatch,
+	"$=": (*quicCase).suffixMatch,
+	"~=": (*quicCase).regexpMatch,
+	"!=": (*quicCase).notEqualMatch,
+	"!^": (*quicCase).notPrefixMatch,
+	"!$": (*quicCase).notSuffixMatch,
+	"!~": (*quicCase).notRegexpMatch,
+}
+
+func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool { // value == patterns
+	return c.case_.equalMatch(value)
+}
+func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool { // value ^= patterns
+	return c.case_.prefixMatch(value)
+}
+func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool { // value $= patterns
+	return c.case_.suffixMatch(value)
+}
+func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool { // value ~= patterns
+	return c.case_.regexpMatch(value)
+}
+func (c *quicCase) notEqualMatch(conn *QUICConn, value []byte) bool { // value != patterns
+	return c.case_.notEqualMatch(value)
+}
+func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool { // value !^ patterns
+	return c.case_.notPrefixMatch(value)
+}
+func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool { // value !$ patterns
+	return c.case_.notSuffixMatch(value)
+}
+func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
+	return c.case_.notRegexpMatch(value)
+}
+
+func (c *quicCase) execute(conn *QUICConn) (processed bool) {
+	// TODO
+	return false
 }
 
 // poolQUICConn
@@ -203,99 +298,4 @@ func (s *QUICStream) Read(p []byte) (n int, err error) {
 // quicStreamVariables
 var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
 	// TODO
-}
-
-// QUICFilter
-type QUICFilter interface {
-	Component
-	Process(conn *QUICConn, stream *QUICStream) (next bool)
-}
-
-// QUICFilter_
-type QUICFilter_ struct {
-	Component_
-}
-
-// QUICEditor
-type QUICEditor interface {
-	Component
-	identifiable
-	OnInput(conn *QUICConn, data []byte) (next bool)
-}
-
-// QUICEditor_
-type QUICEditor_ struct {
-	Component_
-	identifiable_
-}
-
-// quicCase
-type quicCase struct {
-	// Mixins
-	case_[*QUICMesher, QUICFilter, QUICEditor]
-	// States
-	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
-}
-
-func (c *quicCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := quicCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
-		}
-	}
-}
-func (c *quicCase) OnPrepare() {
-	c.case_.OnPrepare()
-}
-
-func (c *quicCase) isMatch(conn *QUICConn) bool {
-	if c.general {
-		return true
-	}
-	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
-}
-
-var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []byte) bool{
-	"==": (*quicCase).equalMatch,
-	"^=": (*quicCase).prefixMatch,
-	"$=": (*quicCase).suffixMatch,
-	"~=": (*quicCase).regexpMatch,
-	"!=": (*quicCase).notEqualMatch,
-	"!^": (*quicCase).notPrefixMatch,
-	"!$": (*quicCase).notSuffixMatch,
-	"!~": (*quicCase).notRegexpMatch,
-}
-
-func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool { // value == patterns
-	return c.case_.equalMatch(value)
-}
-func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool { // value ^= patterns
-	return c.case_.prefixMatch(value)
-}
-func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool { // value $= patterns
-	return c.case_.suffixMatch(value)
-}
-func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool { // value ~= patterns
-	return c.case_.regexpMatch(value)
-}
-func (c *quicCase) notEqualMatch(conn *QUICConn, value []byte) bool { // value != patterns
-	return c.case_.notEqualMatch(value)
-}
-func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool { // value !^ patterns
-	return c.case_.notPrefixMatch(value)
-}
-func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool { // value !$ patterns
-	return c.case_.notSuffixMatch(value)
-}
-func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
-	return c.case_.notRegexpMatch(value)
-}
-
-func (c *quicCase) execute(conn *QUICConn) (processed bool) {
-	// TODO
-	return false
 }

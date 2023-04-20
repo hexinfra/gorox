@@ -87,6 +87,47 @@ Change the parameters and/or target URL to match your need.
 Generally, the result is about 80% of nginx and slightly faster than fasthttp.
 
 
+Documentation
+=============
+
+View Gorox documentation online:
+
+  * English version: https://gorox.io/docs
+  * Chinese version: https://www.gorox.io/docs
+
+Or view locally (ensure your local server under hemi/gosites is started):
+
+  * English version: http://gorox.net:5080/docs
+  * Chinese version: http://www.gorox.net:5080/docs
+
+
+Layout
+======
+
+By default, Gorox uses these dirs:
+
+  * apps/ - Place your Web applications,
+  * cmds/ - Place your auxiliary commands,
+  * conf/ - Place configs for Gorox and your commands,
+  * data/ - Place static shared files of your project,
+  * docs/ - Place docs of your project,
+  * exts/ - Place extended components written for your project,
+  * hemi/ - The Hemi Engine,
+  * idls/ - Place your Interface Description Language files,
+  * jobs/ - Place your Cronjobs written in Go and scheduled by Gorox,
+  * libs/ - Place libs written by you for your project,
+  * misc/ - Place misc resource of your project,
+  * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
+  * svcs/ - Place your RPC services, may be gRPC or HRPC.
+  * test/ - Place tests for your project.
+
+After Gorox is started, 3 extra dirs are created:
+
+  * logs/ - Place running logs,
+  * temp/ - Place temp files which are safe to remove after Gorox is shutdown,
+  * vars/ - Place dynamic data files used by Gorox.
+
+
 Architecture
 ============
 
@@ -195,47 +236,6 @@ Gorox has following dependencies:
   |                         <internal>                          |
   +-------------------------------------------------------------+
 ```
-
-
-Layout
-======
-
-By default, Gorox uses these dirs:
-
-  * apps/ - Place your Web applications,
-  * cmds/ - Place your auxiliary commands,
-  * conf/ - Place configs for Gorox and your commands,
-  * data/ - Place static shared files of your project,
-  * docs/ - Place docs of your project,
-  * exts/ - Place extended components written for your project,
-  * hemi/ - The Hemi Engine,
-  * idls/ - Place your Interface Description Language files,
-  * jobs/ - Place your Cronjobs written in Go and scheduled by Gorox,
-  * libs/ - Place libs written by you for your project,
-  * misc/ - Place misc resource of your project,
-  * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
-  * svcs/ - Place your RPC services, may be gRPC or HRPC.
-  * test/ - Place tests for your project.
-
-After Gorox is started, 3 extra dirs are created:
-
-  * logs/ - Place running logs,
-  * temp/ - Place temp files which are safe to remove after Gorox is shutdown,
-  * vars/ - Place dynamic data files used by Gorox.
-
-
-Documentation
-=============
-
-View Gorox documentation online:
-
-  * English version: https://gorox.io/docs
-  * Chinese version: https://www.gorox.io/docs
-
-Or view locally (ensure your local server under hemi/gosites is started):
-
-  * English version: http://gorox.net:5080/docs
-  * Chinese version: http://www.gorox.net:5080/docs
 
 
 Community

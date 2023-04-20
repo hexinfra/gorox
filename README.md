@@ -15,7 +15,7 @@ server. It can be used as:
   * ... and more through its highly extensible compoments design!
 
 There is also a controller program called Goops which is distributed with Gorox
-and can be used to manage your Gorox cluster optionally.
+and can be used to manage your Gorox group optionally.
 
 For more details about Gorox and Goops, please see: https://gorox.io/ .
 
@@ -144,7 +144,7 @@ A typical deployment architecture using Gorox might looks like this:
               v    v   v
             +------------+
 +-----------| edgeProxy1 |------------+
-|           +--+---+--+--+            | gorox cluster
+|           +--+---+--+--+            | gorox group
 |   web        |   |  |       tcp     |
 |     +--------+   |  +-------+       |
 |     |            |          |       |
@@ -175,7 +175,7 @@ A typical deployment architecture using Gorox might looks like this:
 ```
 
 In this typical architecture, with various configurations, Gorox can play ALL of
-the roles in "gorox cluster":
+the roles in "gorox group":
 
   * edgeProxy1: The Edge Proxy, also works as an API Gateway or WAF,
   * app1: A Web application implemented directly on Gorox,
@@ -187,8 +187,8 @@ the roles in "gorox cluster":
   * sidecar2: A Service Mesh sidecar for svc2,
   * job1: A background application in Gorox doing something periodically.
 
-The whole "gorox cluster" can optionally be managed by a Goops instance. In this
-configuration, all Gorox instances in "gorox cluster" are connected to the Goops
+The whole "gorox group" can optionally be managed by a Goops instance. In this
+configuration, all Gorox instances in "gorox group" are connected to the Goops
 instance and under its control.
 
 Process

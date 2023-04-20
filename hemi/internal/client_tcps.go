@@ -94,7 +94,7 @@ func (f *TCPSOutgate) Dial(address string, tlsMode bool) (*TConn, error) {
 // TCPSBackend component.
 type TCPSBackend struct {
 	// Mixins
-	backend_[*tcpsNode]
+	Backend_[*tcpsNode]
 	streamHolder_
 	loadBalancer_
 	// States
@@ -102,17 +102,17 @@ type TCPSBackend struct {
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
+	b.Backend_.onCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
-	b.backend_.onConfigure()
+	b.Backend_.onConfigure()
 	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *TCPSBackend) OnPrepare() {
-	b.backend_.onPrepare()
+	b.Backend_.onPrepare()
 	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
@@ -139,18 +139,18 @@ func (b *TCPSBackend) StoreConn(conn *TConn) {
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Mixins
-	node_
+	Node_
 	// Assocs
 	backend *TCPSBackend
 	// States
 }
 
 func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
-	n.node_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *tcpsNode) maintain() { // goroutine
+func (n *tcpsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

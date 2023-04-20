@@ -117,7 +117,7 @@ func (n *hweb2Node) init(id int32, backend *HWEB2Backend) {
 	n.backend = backend
 }
 
-func (n *hweb2Node) maintain() { // goroutine
+func (n *hweb2Node) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

@@ -116,7 +116,7 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 	n.backend = backend
 }
 
-func (n *http3Node) maintain() { // goroutine
+func (n *http3Node) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

@@ -81,23 +81,23 @@ func (f *UDPSOutgate) StoreConn(conn *UConn) {
 // UDPSBackend component.
 type UDPSBackend struct {
 	// Mixins
-	backend_[*udpsNode]
+	Backend_[*udpsNode]
 	loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
+	b.Backend_.onCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
-	b.backend_.onConfigure()
+	b.Backend_.onConfigure()
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
-	b.backend_.onPrepare()
+	b.Backend_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -122,18 +122,18 @@ func (b *UDPSBackend) StoreConn(conn *UConn) {
 // udpsNode is a node in UDPSBackend.
 type udpsNode struct {
 	// Mixins
-	node_
+	Node_
 	// Assocs
 	backend *UDPSBackend
 	// States
 }
 
 func (n *udpsNode) init(id int32, backend *UDPSBackend) {
-	n.node_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *udpsNode) maintain() { // goroutine
+func (n *udpsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

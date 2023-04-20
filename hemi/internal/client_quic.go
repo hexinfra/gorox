@@ -83,7 +83,7 @@ func (f *QUICOutgate) StoreConn(conn *QConn) {
 // QUICBackend component.
 type QUICBackend struct {
 	// Mixins
-	backend_[*quicNode]
+	Backend_[*quicNode]
 	streamHolder_
 	loadBalancer_
 	// States
@@ -91,17 +91,17 @@ type QUICBackend struct {
 }
 
 func (b *QUICBackend) onCreate(name string, stage *Stage) {
-	b.backend_.onCreate(name, stage, b)
+	b.Backend_.onCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *QUICBackend) OnConfigure() {
-	b.backend_.onConfigure()
+	b.Backend_.onConfigure()
 	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUICBackend) OnPrepare() {
-	b.backend_.onPrepare()
+	b.Backend_.onPrepare()
 	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
@@ -127,18 +127,18 @@ func (b *QUICBackend) StoreConn(conn *QConn) {
 // quicNode is a node in QUICBackend.
 type quicNode struct {
 	// Mixins
-	node_
+	Node_
 	// Assocs
 	backend *QUICBackend
 	// States
 }
 
 func (n *quicNode) init(id int32, backend *QUICBackend) {
-	n.node_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *quicNode) maintain() { // goroutine
+func (n *quicNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

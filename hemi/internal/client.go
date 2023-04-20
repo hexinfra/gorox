@@ -113,8 +113,8 @@ type Backend interface {
 	maintain() // goroutine
 }
 
-// backend_ is the mixin for backends.
-type backend_[N node] struct {
+// Backend_ is the mixin for backends.
+type Backend_[N Node] struct {
 	// Mixins
 	client_
 	// Assocs
@@ -125,12 +125,12 @@ type backend_[N node] struct {
 	// States
 }
 
-func (b *backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
 	b.client_.onCreate(name, stage)
 	b.creator = creator
 }
 
-func (b *backend_[N]) onConfigure() {
+func (b *Backend_[N]) onConfigure() {
 	b.client_.onConfigure()
 	// nodes
 	v, ok := b.Find("nodes")
@@ -180,14 +180,14 @@ func (b *backend_[N]) onConfigure() {
 		b.nodes = append(b.nodes, node)
 	}
 }
-func (b *backend_[N]) onPrepare() {
+func (b *Backend_[N]) onPrepare() {
 	b.client_.onPrepare()
 }
 
-func (b *backend_[N]) maintain() { // goroutine
+func (b *Backend_[N]) maintain() { // goroutine
 	for _, node := range b.nodes {
 		b.IncSub(1) // one more node
-		go node.maintain()
+		go node.Maintain()
 	}
 	<-b.Shut // waiting for backend shutdown signal
 	for _, node := range b.nodes {
@@ -200,17 +200,17 @@ func (b *backend_[N]) maintain() { // goroutine
 	b.stage.SubDone()
 }
 
-// node is a member of backend. node must be stateless.
-type node interface {
+// Node is a member of backend. Node must be stateless.
+type Node interface {
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
-	maintain() // goroutine
+	Maintain() // goroutine
 	shutdown()
 }
 
-// node_ is a mixin for backend nodes.
-type node_ struct {
+// Node_ is a mixin for backend nodes.
+type Node_ struct {
 	// Mixins
 	subsWaiter_
 	shutdownable_
@@ -228,20 +228,20 @@ type node_ struct {
 	}
 }
 
-func (n *node_) init(id int32) {
+func (n *Node_) init(id int32) {
 	n.shutdownable_.init()
 	n.id = id
 }
 
-func (n *node_) setAddress(address string)    { n.address = address }
-func (n *node_) setWeight(weight int32)       { n.weight = weight }
-func (n *node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
+func (n *Node_) setAddress(address string)    { n.address = address }
+func (n *Node_) setWeight(weight int32)       { n.weight = weight }
+func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
 
-func (n *node_) markDown()    { n.down.Store(true) }
-func (n *node_) markUp()      { n.down.Store(false) }
-func (n *node_) isDown() bool { return n.down.Load() }
+func (n *Node_) markDown()    { n.down.Store(true) }
+func (n *Node_) markUp()      { n.down.Store(false) }
+func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *node_) pullConn() conn {
+func (n *Node_) pullConn() conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -255,7 +255,7 @@ func (n *node_) pullConn() conn {
 	list.qnty--
 	return conn
 }
-func (n *node_) pushConn(conn conn) {
+func (n *Node_) pushConn(conn conn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -270,7 +270,7 @@ func (n *node_) pushConn(conn conn) {
 	list.qnty++
 }
 
-func (n *node_) closeFree() int {
+func (n *Node_) closeFree() int {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -284,7 +284,7 @@ func (n *node_) closeFree() int {
 	return qnty
 }
 
-func (n *node_) shutdown() {
+func (n *Node_) shutdown() {
 	close(n.Shut)
 }
 

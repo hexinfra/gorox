@@ -8,6 +8,7 @@
 package redis
 
 import (
+	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
 )

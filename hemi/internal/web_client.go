@@ -51,9 +51,9 @@ func (f *webOutgate_) onPrepare(shell Component) {
 }
 
 // webBackend_ is the mixin for HTTP[1-3]Backend and HWEB2Backend.
-type webBackend_[N node] struct {
+type webBackend_[N Node] struct {
 	// Mixins
-	backend_[N]
+	Backend_[N]
 	webKeeper_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
@@ -63,19 +63,19 @@ type webBackend_[N node] struct {
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b.backend_.onCreate(name, stage, creator)
+	b.Backend_.onCreate(name, stage, creator)
 	b.loadBalancer_.init()
 }
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
-	b.backend_.onConfigure()
+	b.Backend_.onConfigure()
 	b.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
 	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
-	b.backend_.onPrepare()
+	b.Backend_.onPrepare()
 	b.streamHolder_.onPrepare(shell)
 	b.contentSaver_.onPrepare(shell, 0755)
 	b.loadBalancer_.onPrepare(numNodes)
@@ -84,12 +84,12 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 // webNode_ is the mixin for http[1-3]Node and hweb2Node.
 type webNode_ struct {
 	// Mixins
-	node_
+	Node_
 	// States
 }
 
 func (n *webNode_) init(id int32) {
-	n.node_.init(id)
+	n.Node_.init(id)
 }
 
 // wConn is the interface for *H[1-3]Conn and *B2Conn.

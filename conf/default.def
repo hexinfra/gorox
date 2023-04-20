@@ -11,21 +11,15 @@ stage {
 	// fixtures
 	clock {
 	}
-
-	// singleton, only one is allowed in stage.
-	fcache { 
+	fcache { // singleton, only one is allowed in stage.
 		.smallFileSize = 65535
 		.maxSmallFiles = 1000
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
-
-	// singleton, only one is allowed in stage.
-	resolver {
+	resolver { // singleton, only one is allowed in stage.
 	}
-
-	// singleton, only one is allowed in stage.
-	http1Outgate {
+	http1Outgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -37,9 +31,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-
-	// singleton, only one is allowed in stage.
-	http2Outgate {
+	http2Outgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -51,9 +43,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-
-	// singleton, only one is allowed in stage.
-	http3Outgate {
+	http3Outgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -65,9 +55,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-
-	// singleton, only one is allowed in stage.
-	hweb2Outgate {
+	hweb2Outgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -79,9 +67,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-
-	// singleton, only one is allowed in stage.
-	quicOutgate {
+	quicOutgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -89,9 +75,7 @@ stage {
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
 	}
-
-	// singleton, only one is allowed in stage.
-	tcpsOutgate {
+	tcpsOutgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -99,9 +83,7 @@ stage {
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
 	}
-
-	// singleton, only one is allowed in stage.
-	udpsOutgate {
+	udpsOutgate { // singleton, only one is allowed in stage.
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -109,8 +91,8 @@ stage {
 		.idleTimeout = 4s
 	}
 
-	// unitures, singleton, only one is allowed in stage.
-	demoUniture {
+	// unitures
+	demoUniture { // singleton, only one is allowed in stage.
 	}
 
 	// backends
@@ -131,7 +113,6 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
 	}
-
 	http2Backend "h2b" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -149,7 +130,6 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
 	}
-
 	http3Backend "h3b" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -167,10 +147,8 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "ipHash"
 	}
-
 	hweb2Backend "b2b" {
 	}
-
 	quicBackend "qb" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -198,7 +176,6 @@ stage {
 		.maxStreamsPerConn = 1000
 		.balancer = "random"
 	}
-
 	udpsBackend "ub" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -222,7 +199,6 @@ stage {
 		.maxConnsPerGate = 100000
 		// cases
 	}
-
 	tcpsMesher "tm" {
 		.address         = string,required
 		.tlsMode         = false
@@ -232,7 +208,6 @@ stage {
 		.maxConnsPerGate = 100000
 		// cases
 	}
-
 	udpsMesher "um" {
 		.address         = string,required
 		.tlsMode         = false
@@ -247,19 +222,15 @@ stage {
 	localStater "ls" {
 		.stateDir = %VarsDir + "/staters/ls"
 	}
-
 	redisStater "rs" {
-		
 	}
 
 	// cachers
 	localCacher "lc" {
 		.cacheDir = %VarsDir + "/cacheDir/lc"
 	}
-
 	memCacher "mc" {
 	}
-
 	redisCacher "rc" {
 	}
 
@@ -282,12 +253,10 @@ stage {
 		// handlets
 		accessChecker "ah" {
 		}
-
 		hostnameChecker "hh" {
 			.hostname = "www.example.cpm"
 			.permanent = true
 		}
-
 		httpsChecker "hh" {
 			.authority = "www.example.cpm"
 			.permanent = true
@@ -302,7 +271,6 @@ stage {
 		}
 		favicon "fh" {
 		}
-	
 		fcgiAgent "fh" {
 			.saveContentFilesDir = %tempDir + "/fcgi/fh"
 			.toBackend = "php-fpm"
@@ -314,6 +282,10 @@ stage {
 			.bufferServerContent = true
 			.preferUnderscore = true
 			.withCacher = "cacher name"
+		}
+		uwsgiAgent "uh" {
+		}
+		webdavHandlet "wh" {
 		}
 
 		http1Proxy "hh" {
@@ -332,7 +304,6 @@ stage {
 				["cache-control" : "max-age=86400"],
 			)
 		}
-
 		http2Proxy "hh" {
 			.proxyMode = "reverse"
 			.toBackend = "proxy_name"
@@ -349,10 +320,8 @@ stage {
 				["cache-control" : "max-age=86400"],
 			)
 		}
-
 		http3Proxy "hh" {
 		}
-
 		hweb2Proxy "bh" {
 		}
 
@@ -381,25 +350,18 @@ stage {
 			.defaultType = "application/octet-stream"
 		}
 
-		uwsgiAgent "uh" {
-		}
-		webdavHandlet "wh" {
-		}
-
 		// revisers
 		gzipReviser "gr" {
 			.compressLevel = 1
 			.minLength = 8k 
 			.onContentTypes = ("text/html") 
 		}
-
 		headReviser "hr" {
 			.addResponse = ["cache-control" : "max-age=86400"]
 			.addRequest = ["env" : "gray"]
 			.delRequest = ("cookie", "date")
 			.delResponse = ("cookie", "date")
 		}
-
 		replaceReviser "rr" {
 		}
 		ssiReviser "sr" {
@@ -420,68 +382,51 @@ stage {
 		// rules
 		rule "r1" condition {
 		}
-
-		rule $path == /phpstatus { 
+		rule $path == "/phpstatus" { 
 			fcgiAgent {
 				.toBackend = "fpm"
 			}
 		}
-
-		// favicon.ico  doesnot record logAccess
-		rule $path == "/favicon.ico" {
+		rule $path == "/favicon.ico" { // favicon.ico  doesnot record logAccess
 			.logAccess = false
 		}
-
-		//  url = /user/xxxx ---> user center server
-		rule $path ^= "/user" {
+		rule $path ^= "/user/" { // /user/xxxx forward user center server
 			http1Proxy { 
 				.toBackend = "user_center"
 			}
 		}
-
-		//  url = /order/xxxx ---> order server
-		rule $path ^= "/order" {
+		rule $path ^= "/order/" { // /order/xxxx forward order server
 			http1Proxy {
 				.toBackend = "order_server"
 			}
 		}
-
-		// Forbidden
-		rule $path $= (".doc", ".docx", ".pdf") { 
+		rule $path $= (".doc", ".docx", ".pdf") { // Forbidden
 			.returnCode = 403
 		}
-
-		// http cache
-		rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") {
+		rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") { // http cache
 			static {}
 			headReviser {
 				.addResponse = ["cache-control" : "max-age=86400"]
 			}
 		}
-
-		rule $path ~= "\.php$" {
+		rule $path ~= "\.php$" { // forward php requests
 			fcgiAgent {
 				.toBackend = "fpm"
 			}
 		}
-
-		rule $queryString ~= "version=4.11" {
+		rule $queryString ~= "version=4.11" { // match url query
 			.returnCode = 302
 			headReviser {
 				.addResponse = ["Location" : "/upgrade.html"]
 			}
 		}
-
-		// file path change
-		rule $path !-e {
+		rule $path !-e { // file path change
 			.returnCode = 302
 			headReviser {
-				.addResponse = ["Location" : "new_path" + $uri]
+				.addResponse = ["Location" : "new_path"]
 			}
 		}
-
-		// autoIndex
-		rule $path -d {
+		rule $path -d { // autoIndex
 			static {
 				.autoIndex = true
 			}
@@ -497,7 +442,6 @@ stage {
 	// servers
 	echoServer "es" {
 	}
-
 	http3Server "h3s" {
 	}
 
@@ -524,15 +468,12 @@ stage {
 
 	hweb2Server "b2s" {
 	}
-
 	socksServer "ss" {
 	}
 
-	// cronjobs, singleton, only one is allowed in stage.
-	cleanCronjob {
+	// cronjobs
+	cleanCronjob { // singleton, only one is allowed in stage.
 	}
-
-	// singleton, only one is allowed in stage.
-	statCronjob {
+	statCronjob { // singleton, only one is allowed in stage.
 	}
 }

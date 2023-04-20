@@ -19,11 +19,11 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSFilter, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
+	m.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsFilterCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -35,12 +35,12 @@ func (m *TCPSMesher) OnShutdown() {
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealers, editors, cases
+	m.configureSubs() // dealers, filters, cases
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealers, editors, cases
+	m.prepareSubs() // dealers, filters, cases
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {
@@ -70,9 +70,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.filters) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // dealers, filters, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("tcpsMesher=%s done\n", m.Name())
@@ -200,8 +200,8 @@ type TCPSDealer_ struct {
 	// States
 }
 
-// TCPSEditor
-type TCPSEditor interface {
+// TCPSFilter
+type TCPSFilter interface {
 	Component
 	identifiable
 
@@ -209,8 +209,8 @@ type TCPSEditor interface {
 	OnOutput(conn *TCPSConn, kind int8)
 }
 
-// TCPSEditor_
-type TCPSEditor_ struct {
+// TCPSFilter_
+type TCPSFilter_ struct {
 	Component_
 	identifiable_
 }
@@ -218,7 +218,7 @@ type TCPSEditor_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSDealer, TCPSEditor]
+	case_[*TCPSMesher, TCPSDealer, TCPSFilter]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -282,8 +282,8 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value 
 }
 
 func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, editor := range c.editors {
-		conn.hookEditor(editor)
+	for _, filter := range c.filters {
+		conn.hookFilter(filter)
 	}
 	for _, dealer := range c.dealers {
 		if next := dealer.Deal(conn); !next {
@@ -329,8 +329,8 @@ type TCPSConn struct {
 	tcpsConn0
 }
 type tcpsConn0 struct {
-	editors  [32]uint8
-	nEditors int8
+	filters  [32]uint8
+	nFilters int8
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -370,12 +370,12 @@ func (c *TCPSConn) serve() { // goroutine
 	putTCPSConn(c)
 }
 
-func (c *TCPSConn) hookEditor(editor TCPSEditor) {
-	if c.nEditors == int8(len(c.editors)) {
-		BugExitln("hook too many editors")
+func (c *TCPSConn) hookFilter(filter TCPSFilter) {
+	if c.nFilters == int8(len(c.filters)) {
+		BugExitln("hook too many filters")
 	}
-	c.editors[c.nEditors] = editor.ID()
-	c.nEditors++
+	c.filters[c.nFilters] = filter.ID()
+	c.nFilters++
 }
 
 func (c *TCPSConn) Recv() (p []byte, err error) {
@@ -384,14 +384,14 @@ func (c *TCPSConn) Recv() (p []byte, err error) {
 		return nil, err
 	}
 	// TODO
-	if c.nEditors > 0 {
+	if c.nFilters > 0 {
 	} else {
 	}
 	return c.input[:n], nil
 }
 func (c *TCPSConn) Send(p []byte) (err error) {
 	// TODO
-	if c.nEditors > 0 {
+	if c.nFilters > 0 {
 	} else {
 	}
 	_, err = c.netConn.Write(p)

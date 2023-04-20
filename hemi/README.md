@@ -17,7 +17,7 @@ The logical architecture of a Stage in Hemi Engine looks like this:
    |     |        | s |     server   |     server     |     |
    |     | mesher | e | [gate][conn] |  [gate][conn]  |     |
    |     | dealer | r +--------------+----------------+     |
-   |     | editor | v |              | app(*) reviser |     |
+   |     | filter | v |              | app(*) reviser |     |
    |     |  case  | e |   svc(*)     | socklet handlet|     |
    |     |        | r |          +---+--+ rule +------+     |
    |     |        |(*)|          |stater|      |cacher|     |

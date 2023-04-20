@@ -16,11 +16,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICFilter, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
+	m.mesher_.onCreate(name, stage, quicDealerCreators, quicFilterCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -32,12 +32,12 @@ func (m *QUICMesher) OnShutdown() {
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealers, editors, cases
+	m.configureSubs() // dealers, filters, cases
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealers, editors, cases
+	m.prepareSubs() // dealers, filters, cases
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -63,9 +63,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.filters) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // dealers, filters, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("quicMesher=%s done\n", m.Name())
@@ -124,15 +124,15 @@ type QUICDealer_ struct {
 	Component_
 }
 
-// QUICEditor
-type QUICEditor interface {
+// QUICFilter
+type QUICFilter interface {
 	Component
 	identifiable
 	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 
-// QUICEditor_
-type QUICEditor_ struct {
+// QUICFilter_
+type QUICFilter_ struct {
 	Component_
 	identifiable_
 }
@@ -140,7 +140,7 @@ type QUICEditor_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICDealer, QUICEditor]
+	case_[*QUICMesher, QUICDealer, QUICFilter]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }
@@ -237,7 +237,7 @@ type QUICConn struct {
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
-	editors [32]uint8
+	filters [32]uint8
 }
 
 func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
@@ -252,7 +252,7 @@ func (c *QUICConn) onPut() {
 	c.mesher = nil
 	c.gate = nil
 	c.quicConn = nil
-	c.editors = [32]uint8{}
+	c.filters = [32]uint8{}
 }
 
 func (c *QUICConn) serve() { // goroutine

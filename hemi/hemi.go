@@ -20,11 +20,11 @@ var ( // registers
 	RegisterBackend = internal.RegisterBackend
 
 	RegisterQUICDealer = internal.RegisterQUICDealer
-	RegisterQUICEditor = internal.RegisterQUICEditor
+	RegisterQUICFilter = internal.RegisterQUICFilter
 	RegisterTCPSDealer = internal.RegisterTCPSDealer
-	RegisterTCPSEditor = internal.RegisterTCPSEditor
+	RegisterTCPSFilter = internal.RegisterTCPSFilter
 	RegisterUDPSDealer = internal.RegisterUDPSDealer
-	RegisterUDPSEditor = internal.RegisterUDPSEditor
+	RegisterUDPSFilter = internal.RegisterUDPSFilter
 
 	RegisterStater = internal.RegisterStater
 	RegisterCacher = internal.RegisterCacher
@@ -123,17 +123,17 @@ type ( // core types
 
 	QUICMesher = internal.QUICMesher
 	QUICDealer = internal.QUICDealer
-	QUICEditor = internal.QUICEditor
+	QUICFilter = internal.QUICFilter
 	QUICConn   = internal.QUICConn
 
 	TCPSMesher = internal.TCPSMesher
 	TCPSDealer = internal.TCPSDealer
-	TCPSEditor = internal.TCPSEditor
+	TCPSFilter = internal.TCPSFilter
 	TCPSConn   = internal.TCPSConn
 
 	UDPSMesher = internal.UDPSMesher
 	UDPSDealer = internal.UDPSDealer
-	UDPSEditor = internal.UDPSEditor
+	UDPSFilter = internal.UDPSFilter
 	UDPSConn   = internal.UDPSConn
 
 	Stater  = internal.Stater
@@ -167,11 +167,11 @@ type ( // core mixins
 	Component_ = internal.Component_
 
 	QUICDealer_ = internal.QUICDealer_
-	QUICEditor_ = internal.QUICEditor_
+	QUICFilter_ = internal.QUICFilter_
 	TCPSDealer_ = internal.TCPSDealer_
-	TCPSEditor_ = internal.TCPSEditor_
+	TCPSFilter_ = internal.TCPSFilter_
 	UDPSDealer_ = internal.UDPSDealer_
-	UDPSEditor_ = internal.UDPSEditor_
+	UDPSFilter_ = internal.UDPSFilter_
 
 	Stater_ = internal.Stater_
 	Cacher_ = internal.Cacher_

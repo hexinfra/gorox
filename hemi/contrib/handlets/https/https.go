@@ -54,6 +54,7 @@ func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {
 	if req.IsHTTPS() {
 		return true
 	}
+	// Not https, redirect it.
 	if h.permanent {
 		resp.SetStatus(StatusMovedPermanently)
 	} else {
@@ -61,5 +62,5 @@ func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {
 	}
 	resp.AddHTTPSRedirection(h.authority)
 	resp.SendBytes(nil)
-	return
+	return false
 }

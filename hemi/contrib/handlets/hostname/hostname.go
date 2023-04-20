@@ -62,6 +62,7 @@ func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {
 	if req.Hostname() == h.hostname {
 		return true
 	}
+	// Not hostname, redirect it.
 	if h.permanent {
 		resp.SetStatus(StatusMovedPermanently)
 	} else {
@@ -69,5 +70,5 @@ func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {
 	}
 	resp.AddHostnameRedirection(h.hostname)
 	resp.SendBytes(nil)
-	return
+	return false
 }

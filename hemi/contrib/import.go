@@ -8,6 +8,7 @@
 package contrib
 
 import (
+	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"

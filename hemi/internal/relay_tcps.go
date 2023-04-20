@@ -20,9 +20,9 @@ type tcpsRelay struct {
 	// Mixins
 	TCPSFilter_
 	// Assocs
-	stage   *Stage
-	mesher  *TCPSMesher
-	backend *TCPSBackend
+	stage   *Stage       // current stage
+	mesher  *TCPSMesher  // the mesher to which the filter belongs
+	backend *TCPSBackend // if works as forward proxy, this is nil
 	// States
 	process func(*TCPSConn)
 }
@@ -43,10 +43,10 @@ func (f *tcpsRelay) OnConfigure() {
 	if v, ok := f.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok {
 			switch mode {
-			case "socks":
+			case "socks": // SOCKS
 				f.process = f.socks
 				isReverse = false
-			case "https":
+			case "https": // HTTP CONNECT
 				f.process = f.https
 				isReverse = false
 			}
@@ -72,6 +72,7 @@ func (f *tcpsRelay) OnConfigure() {
 	}
 }
 func (f *tcpsRelay) OnPrepare() {
+	// Currently nothing.
 }
 
 func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
@@ -82,7 +83,7 @@ func (f *tcpsRelay) Process(conn *TCPSConn) (next bool) {
 func (f *tcpsRelay) relay(conn *TCPSConn) { // reverse proxy
 	// TODO
 }
-func (f *tcpsRelay) socks(conn *TCPSConn) { // SOCKS 5
+func (f *tcpsRelay) socks(conn *TCPSConn) { // SOCKS
 	// TODO
 }
 func (f *tcpsRelay) https(conn *TCPSConn) { // HTTP CONNECT

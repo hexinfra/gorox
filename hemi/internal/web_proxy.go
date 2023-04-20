@@ -89,6 +89,7 @@ func (h *normalProxy_) onConfigure() {
 	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }
 func (h *normalProxy_) onPrepare() {
+	// Currently nothing.
 }
 
 func (h *normalProxy_) IsProxy() bool { return true }

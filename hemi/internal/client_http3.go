@@ -18,7 +18,7 @@ import (
 
 func init() {
 	registerFixture(signHTTP3Outgate)
-	registerBackend("http3Backend", func(name string, stage *Stage) backend {
+	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
 		b := new(HTTP3Backend)
 		b.onCreate(name, stage)
 		return b

@@ -47,7 +47,7 @@ type Stage struct {
 	udpsOutgate  *UDPSOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
 	unitures     compDict[Uniture]     // indexed by sign
-	backends     compDict[backend]     // indexed by backendName
+	backends     compDict[Backend]     // indexed by backendName
 	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
 	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
 	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
@@ -96,7 +96,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
 
 	s.unitures = make(compDict[Uniture])
-	s.backends = make(compDict[backend])
+	s.backends = make(compDict[Backend])
 	s.quicMeshers = make(compDict[*QUICMesher])
 	s.tcpsMeshers = make(compDict[*TCPSMesher])
 	s.udpsMeshers = make(compDict[*UDPSMesher])
@@ -143,7 +143,7 @@ func (s *Stage) OnShutdown() {
 
 	// backends
 	s.IncSub(len(s.backends))
-	s.backends.goWalk(backend.OnShutdown)
+	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
 	// unitures
@@ -199,7 +199,7 @@ func (s *Stage) OnConfigure() {
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
 	s.unitures.walk(Uniture.OnConfigure)
-	s.backends.walk(backend.OnConfigure)
+	s.backends.walk(Backend.OnConfigure)
 	s.quicMeshers.walk((*QUICMesher).OnConfigure)
 	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
 	s.udpsMeshers.walk((*UDPSMesher).OnConfigure)
@@ -225,7 +225,7 @@ func (s *Stage) OnPrepare() {
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
 	s.unitures.walk(Uniture.OnPrepare)
-	s.backends.walk(backend.OnPrepare)
+	s.backends.walk(Backend.OnPrepare)
 	s.quicMeshers.walk((*QUICMesher).OnPrepare)
 	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
 	s.udpsMeshers.walk((*UDPSMesher).OnPrepare)
@@ -250,7 +250,7 @@ func (s *Stage) createUniture(sign string) Uniture {
 	s.unitures[sign] = uniture
 	return uniture
 }
-func (s *Stage) createBackend(sign string, name string) backend {
+func (s *Stage) createBackend(sign string, name string) Backend {
 	create, ok := backendCreators[sign]
 	if !ok {
 		UseExitln("unknown backend type: " + sign)
@@ -379,7 +379,7 @@ func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }
-func (s *Stage) Backend(name string) backend        { return s.backends[name] }
+func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
 func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }

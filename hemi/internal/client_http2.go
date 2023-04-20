@@ -19,7 +19,7 @@ import (
 
 func init() {
 	registerFixture(signHTTP2Outgate)
-	registerBackend("http2Backend", func(name string, stage *Stage) backend {
+	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
 		b := new(HTTP2Backend)
 		b.onCreate(name, stage)
 		return b

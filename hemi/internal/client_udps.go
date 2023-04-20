@@ -17,7 +17,7 @@ import (
 
 func init() {
 	registerFixture(signUDPSOutgate)
-	registerBackend("udpsBackend", func(name string, stage *Stage) backend {
+	RegisterBackend("udpsBackend", func(name string, stage *Stage) Backend {
 		b := new(UDPSBackend)
 		b.onCreate(name, stage)
 		return b

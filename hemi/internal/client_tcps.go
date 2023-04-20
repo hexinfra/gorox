@@ -19,7 +19,7 @@ import (
 
 func init() {
 	registerFixture(signTCPSOutgate)
-	registerBackend("tcpsBackend", func(name string, stage *Stage) backend {
+	RegisterBackend("tcpsBackend", func(name string, stage *Stage) Backend {
 		b := new(TCPSBackend)
 		b.onCreate(name, stage)
 		return b

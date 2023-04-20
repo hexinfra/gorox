@@ -14,7 +14,7 @@ type normalProxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage
 	app     *App    // the app to which the proxy belongs
-	backend backend // if works as forward proxy, this is nil
+	backend Backend // if works as forward proxy, this is nil
 	cacher  Cacher  // the cacher which is used by this proxy
 	// States
 	hostname            []byte      // ...
@@ -102,7 +102,7 @@ type socketProxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage
 	app     *App    // the app to which the proxy belongs
-	backend backend // if works as forward proxy, this is nil
+	backend Backend // if works as forward proxy, this is nil
 	// States
 	isForward bool // reverse if false
 }

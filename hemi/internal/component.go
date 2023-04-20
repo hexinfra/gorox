@@ -61,7 +61,7 @@ var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
 	unitureCreators    = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
-	backendCreators    = make(map[string]func(name string, stage *Stage) backend)
+	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
 	quicDealerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealer)
 	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
 	tcpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer)
@@ -91,7 +91,7 @@ func registerFixture(sign string) {
 func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture) {
 	_registerComponent0(sign, compUniture, unitureCreators, create)
 }
-func registerBackend(sign string, create func(name string, stage *Stage) backend) {
+func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
 func RegisterQUICDealer(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealer) {

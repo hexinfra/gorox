@@ -106,8 +106,8 @@ func (o *outgate_) onPrepare() {
 func (o *outgate_) served() int64 { return o.nServed.Load() }
 func (o *outgate_) incServed()    { o.nServed.Add(1) }
 
-// backend is a group of stateless nodes.
-type backend interface {
+// Backend is a group of stateless nodes.
+type Backend interface {
 	Component
 	client
 	maintain() // goroutine

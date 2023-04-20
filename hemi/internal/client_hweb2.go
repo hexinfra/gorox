@@ -19,7 +19,7 @@ import (
 
 func init() {
 	registerFixture(signHWEB2Outgate)
-	registerBackend("HWEB2Backend", func(name string, stage *Stage) backend {
+	RegisterBackend("hweb2Backend", func(name string, stage *Stage) Backend {
 		b := new(HWEB2Backend)
 		b.onCreate(name, stage)
 		return b

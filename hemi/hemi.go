@@ -17,6 +17,8 @@ const Version = "0.1.0-dev"
 var ( // registers
 	RegisterUniture = internal.RegisterUniture
 
+	RegisterBackend = internal.RegisterBackend
+
 	RegisterQUICDealer = internal.RegisterQUICDealer
 	RegisterQUICEditor = internal.RegisterQUICEditor
 	RegisterTCPSDealer = internal.RegisterTCPSDealer
@@ -80,6 +82,8 @@ type ( // core types
 	UDPSOutgate  = internal.UDPSOutgate
 
 	Uniture = internal.Uniture
+
+	Backend = internal.Backend
 
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn

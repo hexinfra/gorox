@@ -16,7 +16,7 @@ import (
 
 func init() {
 	registerFixture(signQUICOutgate)
-	registerBackend("quicBackend", func(name string, stage *Stage) backend {
+	RegisterBackend("quicBackend", func(name string, stage *Stage) Backend {
 		b := new(QUICBackend)
 		b.onCreate(name, stage)
 		return b

@@ -95,7 +95,7 @@ func (h *normalProxy_) onPrepare() {
 func (h *normalProxy_) IsProxy() bool { return true }
 func (h *normalProxy_) IsCache() bool { return h.cacher != nil }
 
-// socketProxy_ is the mixin for sock[1-3]Proxy and hsockProxy.
+// socketProxy_ is the mixin for sock[1-3]Proxy.
 type socketProxy_ struct {
 	// Mixins
 	Socklet_

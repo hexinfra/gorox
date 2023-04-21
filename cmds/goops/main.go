@@ -7,9 +7,9 @@
 
 package main
 
-import "github.com/hexinfra/gorox/hemi/process"
-
 import (
+	"github.com/hexinfra/gorox/hemi/process"
+
 	_ "github.com/hexinfra/gorox/cmds/goops/apps"
 	_ "github.com/hexinfra/gorox/cmds/goops/jobs"
 	_ "github.com/hexinfra/gorox/cmds/goops/srvs"

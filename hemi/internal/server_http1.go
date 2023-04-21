@@ -13,13 +13,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/common/risky"
-	"github.com/hexinfra/gorox/hemi/common/system"
 	"io"
 	"net"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
+	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 func init() {

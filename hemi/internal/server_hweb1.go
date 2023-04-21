@@ -12,11 +12,12 @@ package internal
 import (
 	"bytes"
 	"context"
-	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 // hweb1Server is the HWEB/1 server.

@@ -10,10 +10,11 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/common/quix"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
 func init() {

@@ -8,9 +8,10 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/common/quix"
 	"sync"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
 // QUICMesher

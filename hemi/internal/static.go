@@ -8,10 +8,11 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {

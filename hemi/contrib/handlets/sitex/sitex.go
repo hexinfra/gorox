@@ -9,10 +9,11 @@ package sitex
 
 import (
 	"bytes"
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"reflect"
 	"strings"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func init() {

@@ -8,10 +8,11 @@
 package internal
 
 import (
-	"github.com/hexinfra/gorox/hemi/common/quix"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
 func init() {

@@ -11,11 +11,12 @@ package internal
 
 import (
 	"context"
-	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 func init() {

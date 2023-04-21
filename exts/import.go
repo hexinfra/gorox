@@ -7,11 +7,5 @@
 
 package exts
 
-import ( // import contrib components here.
-)
-
-import ( // import vendor exts here.
-)
-
-import ( // import your exts here.
+import ( // import contrib components, vendor exts, and your exts
 )

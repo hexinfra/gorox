@@ -5,9 +5,9 @@
 
 package main
 
-import "github.com/hexinfra/gorox/hemi/process"
-
 import (
+	"github.com/hexinfra/gorox/hemi/process"
+
 	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
 )
 

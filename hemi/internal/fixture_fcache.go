@@ -9,12 +9,13 @@ package internal
 
 import (
 	"errors"
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {

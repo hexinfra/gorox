@@ -11,13 +11,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"math/rand"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // poolPairs

@@ -7,7 +7,7 @@
 
 package exts
 
-import ( // import contrib components here.
+import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
@@ -39,10 +39,4 @@ import ( // import contrib components here.
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/unitures/demo"
-)
-
-import ( // import vendor exts here.
-)
-
-import ( // import your exts here.
 )

@@ -9,9 +9,11 @@ package zh_cn
 
 import (
 	"errors"
+
+	"github.com/hexinfra/gorox/hemi/gosites/apps/zh_cn/pack"
+
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
-	"github.com/hexinfra/gorox/hemi/gosites/apps/zh_cn/pack"
 )
 
 func init() {

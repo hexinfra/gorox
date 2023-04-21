@@ -9,12 +9,14 @@ package echo
 
 import (
 	"context"
-	"github.com/hexinfra/gorox/hemi/common/system"
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"io"
 	"net"
 	"sync"
 	"syscall"
+
+	"github.com/hexinfra/gorox/hemi/common/system"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func init() {

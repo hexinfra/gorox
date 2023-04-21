@@ -10,10 +10,11 @@ package internal
 import (
 	"context"
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/common/system"
 	"net"
 	"sync"
 	"syscall"
+
+	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 // TCPSMesher

@@ -9,9 +9,10 @@ package internal
 
 import (
 	"bytes"
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"sync/atomic"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // webClient is the interface for web outgates and web backends.

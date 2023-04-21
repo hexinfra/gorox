@@ -9,8 +9,9 @@ package process
 
 import (
 	"fmt"
-	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"net"
+
+	"github.com/hexinfra/gorox/hemi/common/msgx"
 )
 
 // agentMain is main() for control agent.

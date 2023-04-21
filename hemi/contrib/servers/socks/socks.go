@@ -11,11 +11,13 @@ package socks
 
 import (
 	"context"
-	"github.com/hexinfra/gorox/hemi/common/system"
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"net"
 	"sync"
 	"syscall"
+
+	"github.com/hexinfra/gorox/hemi/common/system"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func init() {

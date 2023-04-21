@@ -11,10 +11,11 @@ package internal
 
 import (
 	"crypto/tls"
-	"github.com/hexinfra/gorox/hemi/common/quix"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
 func init() {

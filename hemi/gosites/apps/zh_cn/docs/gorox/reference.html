@@ -373,7 +373,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.dialTimeout tcp 连接超时时间，包含DNS解析的时间。</p>
+					<p>.dialTimeout tcp 连接超时时间，包含 DNS 解析的时间。</p>
 					<code>语法：.dialTimeout = Durations
 						默认值：10s
 						取值范围： (1s, 10m]
@@ -403,35 +403,35 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
+					<p>.maxStreamsPerConn 同一个连接最大使用次数，0 表示不受限制。</p>
 					<code>语法：.maxStreamsPerConn = Integers
 						默认值：1000
 						取值范围：[0, maxInt32)
 					</code>
 				</li>
 				<li>
-					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
 						默认值：%tempDir + "/web/outgate/http1Outgate"
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize http数据包最大限制。</p>
+					<p>.maxContentSize 整个 http 数据包最大限制。</p>
 					<code>语法：.maxContentSize = Sizes
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个http数据超时时间。</p>
+					<p>.sendTimeout 发送整个 http 数据超时时间。</p>
 					<code>语法：.sendTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个http数据超时时间。</p>
+					<p>.recvTimeout 接收整个 http 数据超时时间。</p>
 					<code>语法：.recvTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
@@ -467,7 +467,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.dialTimeout tcp 连接超时时间，包含DNS解析的时间。</p>
+					<p>.dialTimeout tcp 连接超时时间，包含 DNS 解析的时间。</p>
 					<code>语法：.dialTimeout = Durations
 						默认值：10s
 						取值范围： (1s, 10m]
@@ -495,35 +495,35 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
+					<p>.maxStreamsPerConn 同一个连接最大使用次数，0 表示不受限制。</p>
 					<code>语法：.maxStreamsPerConn = Integers
 						默认值：1000
 						取值范围：[0, maxInt32)
 					</code>
 				</li>
 				<li>
-					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
 						默认值：%tempDir + "/web/outgate/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize http数据包最大限制。</p>
+					<p>.maxContentSize 整个 http 数据包最大限制。</p>
 					<code>语法：.maxContentSize = Sizes
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个http数据超时时间。</p>
+					<p>.sendTimeout 发送整个 http 数据超时时间。</p>
 					<code>语法：.sendTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个http数据超时时间。</p>
+					<p>.recvTimeout 接收整个 http 数据超时时间。</p>
 					<code>语法：.recvTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
@@ -614,7 +614,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.dialTimeout tcp 连接超时时间，包含DNS解析的时间。</p>
+					<p>.dialTimeout tcp 连接超时时间，包含 DNS 解析的时间。</p>
 					<code>语法：.dialTimeout = Durations
 						默认值：10s
 						取值范围： (1s, 10m]
@@ -663,28 +663,28 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 				<li>
-					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
 						默认值：%tempDir + "/web/outgate/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize http数据包最大限制。</p>
+					<p>.maxContentSize 整个 http 数据包最大限制。</p>
 					<code>语法：.maxContentSize = Sizes
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个http数据超时时间。</p>
+					<p>.sendTimeout 发送整个 http 数据超时时间。</p>
 					<code>语法：.sendTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个http数据超时时间。</p>
+					<p>.recvTimeout 接收整个 http 数据超时时间。</p>
 					<code>语法：.recvTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
@@ -743,7 +743,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 
 		<li id="stage-localCacher">
 			<h3>stage &gt; localCacher</h3>
-			<p>localCacher：本地文件cache，根据http的header信息把远端的数据缓存在本地。</p>
+			<p>localCacher：本地文件 cache，根据 http 的 header 信息把远端的数据缓存在本地。</p>
 			<ul>
 				<li>
 					<p>.cacheDir 缓存目录</p>
@@ -757,10 +757,10 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 
 		<li id="stage-redisCacher">
 			<h3>stage &gt; redisCacher</h3>
-			<p>redisCacher：根据http的header信息把远端的数据缓存在redis中。</p>
+			<p>redisCacher：根据 http 的 header 信息把远端的数据缓存在 redis 中。</p>
 			<ul>
 				<li>
-					<p>.node redis的服务列表。</p>
+					<p>.node redis 的服务列表。</p>
 					<code>语法：.nodes = (
 								["address": "127.0.0.1:3080", "weight": 9, "keepConns": 20],
 								["address": "127.0.0.1:3080", "weight": 8, "keepConns": 30],
@@ -828,21 +828,21 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 }</code>
 				</li>
 				<li>
-					<p>.hostnames 当前app的hostname可以配置多个。</p>
+					<p>.hostnames 当前 app 的 hostname 可以配置多个。</p>
 					<code>语法： .hostnames = ("example.com", "*.example.com")
 					默认值： -  //必须配置
 					取值范围：-
 				</code>
 				</li>
 				<li>
-					<p>.saveContentFilesDir 上传文件的临时目录。</p>
+					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
 						默认值：%tempDir + "/apps/name"
 						取值范围：-
 				</code>
 				</li>
 				<li>
-					<p>.webRoot web资源的根路径，存放图片、代码等文件。</p>
+					<p>.webRoot web 资源的根路径，存放图片、代码等文件。</p>
 					<code>语法： .webRoot = "path"
 					默认值： -  // 必须配置
 					取值范围：-
@@ -877,14 +877,14 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				</code>
 				</li>
 				<li>
-					<p>.proxyOnly 当前app仅仅用于代理使用？</p>
+					<p>.proxyOnly 当前 app 仅仅用于代理使用？</p>
 					<code>语法： .proxyOnly = false
 					默认值： false
 					取值范围：false | true
 					</code>
 				</li>
 				<li>
-					<p>.withStater 使用那个stater。</p>
+					<p>.withStater 使用那个 stater。</p>
 					<code>语法： .withStater = "Stater-name"
 						默认值： -  
 						取值范围：-
@@ -892,7 +892,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				</li>
 
 				<li>
-					<p>.logFormat 当前app的访问日志格式化。</p>
+					<p>.logFormat 当前 app 的访问日志格式化。</p>
 					<code>语法： .logFormat = ""
 					默认值： -  
 					取值范围：-
@@ -909,7 +909,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				</li>
 
 				<li>
-					<p>.tlsCertificate SSL/TLS证书路径，格式为crt、pem、der等。如果要开启https则必须配置。</p>
+					<p>.tlsCertificate SSL/TLS 证书路径，格式为 crt、pem、der 等。如果要开启 https 则必须配置。</p>
 					<code>语法： .tlsCertificate = "file path"
 						默认值： -  
 						取值范围：-
@@ -917,7 +917,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				</li>
 
 				<li>
-					<p>.tlsPrivateKey SSL/TLS的私钥路径，格式为key、pem、der等。如果要开启https则必须配置。</p>
+					<p>.tlsPrivateKey SSL/TLS 的私钥路径，格式为 key、pem、der 等。如果要开启 https 则必须配置。</p>
 					<code>语法： .tlsPrivateKey = "file path"
 						默认值： - 
 						取值范围：-
@@ -928,16 +928,16 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 
 		<li id="stage-app-rule">
 			<h3>stage &gt; app &gt; rule </h3>
-			<p>rule：在请求中根据某些特定的URL对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
+			<p>rule：在请求中根据某些特定的 url 对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
 			<ul>
 				<li>
-					<p>rule 匹配规则</p>
+					<p>rule 匹配规则。</p>
 					<code>语法： rule &lt;name&gt; &lt;cond&gt; { .. }
 						默认值： rule {}  匹配所有
 						取值范围：-
 					</code>
 
-					<p>rule 属性说明</p>
+					<p>rule 属性说明。</p>
 					<p>.logAccess 是否开启日志。</p>
 					<code>语法：.logAccess = false
 						默认值： false
@@ -956,26 +956,26 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 						取值范围：任意值
 					</code>
 
-					<p>.handlets 使用自定义的handlets进行处理。</p>
+					<p>.handlets 使用自定义的 handlets 进行处理。</p>
 					<code>语法：.handlets = ("handlets_bar", "handlets_foo")
 						默认值： -
 						取值范围：任意值
 					</code>
 
-					<p>.socklets 使用自定义的socklets进行处理。</p>
+					<p>.socklets 使用自定义的 socklets 进行处理。</p>
 					<code>语法：.socklets = ("socklets_bar", "socklets_foo")
 						默认值： -
 						取值范围：-
 					</code>
 
-					<p>.revisers 使用自定义的revisers进行处理。</p>
+					<p>.revisers 使用自定义的 revisers 进行处理。</p>
 					<code>语法：.revisers = ("revisers_bar", "revisers_foo")
 						默认值： -
 						取值范围：-
 					</code>
 
 					</code>
-					<p>rule 变量 说明</p>
+					<p>rule 变量说明。</p>
 					<code>
 					<table class="none">
 						<tr>
@@ -984,7 +984,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 						</tr>
 						<tr>
 							<td>$scheme</td>
-							<td>请求协议HTTP、HTTPS等。</td>
+							<td>请求协议，如HTTP、HTTPS等。</td>
 						</tr>
 						<tr>
 							<td>$authority</td>
@@ -992,31 +992,31 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 						</tr>
 						<tr>
 							<td>$hostname</td>
-							<td>url中域名的部分，如：www.example.com。</td>
+							<td>url 中域名的部分，如：www.example.com。</td>
 						</tr>
 						<tr>
 							<td>$colonPort</td>
-							<td>带冒号的端口，如果uri没有端口则使用默认，HTTP默认是:80, HTTPS默认是:443。</td>
+							<td>带冒号的端口，如果 url 没有端口则使用默认，HTTP 默认是:80, HTTPS 默认是:443。</td>
 						</tr>
 						<tr>
 							<td>$path</td>
-							<td>url中path的部分，如/a/b/c。</td>
+							<td>url 中 path 的部分，如：/a/b/c。</td>
 						</tr>
 						<tr>
 							<td>$encodedPath</td>
-							<td>url中path的部分，如果path部分包含urlencode，则保留。</td>
+							<td>url 中 path 的部分，如果 path 部分包含 urlencode，则保留。</td>
 						</tr>
 						<tr>
 							<td>$queryString</td>
-							<td>url中参数的部分，如?a=1&b=2。</td>
+							<td>url 中参数的部分，如：?a=1&b=2。</td>
 						</tr>
 						<tr>
 							<td>$uri</td>
-							<td>url中path和queryString，如：/a/b/c?a=1&b=2。</td>
+							<td>url 中 path 和 queryString，如：/a/b/c?a=1&b=2。</td>
 						</tr>
 						<tr>
 							<td>$contentType</td>
-							<td>HTTP的请求头里面content-Type的值。</td>
+							<td>HTTP 的请求头里面 content-Type 的值。</td>
 						</tr>
 					</table>
 		</code>
@@ -1055,8 +1055,7 @@ app "main" {
 		}
 	}
 
-	// favicon.ico 不记录日志
-	rule $path == "/favicon.ico" {
+	rule $path == "/favicon.ico" { // favicon.ico 不记录日志
 		.logAccess = false
 	}
 
@@ -1073,43 +1072,38 @@ app "main" {
 		}
 	}
 
-	// 禁止对外访问
-	rule $path $= (".doc", ".docx", ".pdf") { 
+	rule $path $= (".doc", ".docx", ".pdf") { // 禁止对外访问
 		.returnCode = 403
 	}
 
-	// 静态资源添加cache
-	rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") {
+	rule $path ^= ("/robots.txt", "/static/") { // 静态资源添加cache
 		static {}
 		headReviser {
 			.addResponse = ["cache-control" : "max-age=86400"]
 		}
 	}
 
-	rule $path ~= "\.php$" {
+	rule $path ~= "\.php$" { // 后缀是 php 都转到 fpm 上。
 		fcgiAgent {
 			.toBackend = "fpm"
 		}
 	}
 
-	//升级版本
-	rule $queryString ~= "version=4.11" {
+	rule $queryString ~= "version=4.11" { // 根据 query 判断版本
 		.returnCode = 302
 		headReviser {
 			.addResponse = ["Location" : "/upgrade.html"]
 		}
 	}
 
-	// 文件路径变更
-	rule $path !-e {
+	rule $path !-e { // 文件路径变更
 		.returnCode = 302
 		headReviser {
 			.addResponse = ["Location" : "new_path" + $uri]
 		}
 	}
 
-	// 允许浏览目录
-	rule $path -d {
+	rule $path -d { // 允许浏览目录
 		static {
 			.autoIndex = true
 		}
@@ -1135,7 +1129,7 @@ app "main" {
 					</code>
 				</li>
 				<li>
-					<p>.permanent 如果为true，并且url的hostname和配置的不一致，则跳转到配置的域名上。</p>
+					<p>.permanent 如果为 true，并且 url 的 hostname 和配置的不一致，则跳转到配置的域名上。</p>
 					<code>语法： .permanent = false
 						默认值： false
 						取值范围：false | true
@@ -1147,22 +1141,23 @@ app "main" {
 
 		<li id="stage-app-httpsChecker">
 			<h3>stage &gt; app &gt; httpsChecker </h3>
-			<p> httpsChecker 对请求是否是https做检测。如果开启检测并且.authority不为空，则使用https跳转到authority上。</p>
+			<p> httpsChecker 对请求是否是 https 做检测。如果开启检测并且.authority 不为空，则使用https跳转到authority上。</p>
 			<ul>
 				<li>
-					<p>.authority 301跳转url的authority</p>
-					<code>语法 .authority = hostname:port
-						默认值： -
-						取值范围：-
-					</code>
-				</li>
-				<li>
-					<p>.permanent 如果为true，并且url的不是https，则使用https跳转到authority上。</p>
+					<p>.permanent 如果为 true，并且 url 的不是 https，则使用 https 跳转到.authority 上。</p>
 					<code>语法： .permanent = false
 						默认值： false
 						取值范围：false | true
 					</code>
 				</li>
+				<li>
+					<p>.authority 使用当前配置的.authority 替换请求url中的 authority，然后发起 301 跳转。</p>
+					<code>语法 .authority = hostname:port
+						默认值： -
+						取值范围：-
+					</code>
+				</li>
+
 			</ul>
 
 		</li>
@@ -1192,7 +1187,7 @@ app "main" {
 
 		<li id="stage-app-fcgiAgent">
 			<h3>stage &gt; app &gt; fcgiAgent </h3>
-			<p>fcgiAgent 用于fastcgi协议的后端代理，比如代理php-fpm。 </p>
+			<p>fcgiAgent 用于 fastcgi 协议的后端代理，比如代理 php-fpm。 </p>
 			<code class="pre">语法：fcgiAgent [name] { ... }
 
 // 例子
@@ -1228,26 +1223,26 @@ stage {
 				<li>
 					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法： .saveContentFilesDir = "path"  
-						默认值：%tempDir+"/fcgi/"+name
+						默认值：%tempDir + "/fcgi/fpm"
 					</code>
 				</li>
 
 				<li>
-					<p>.toBackend 配置反向代理的名称</p>
-					<code>语法：  .toBackend = "proxy_name"
+					<p>.toBackend 配置反向代理的名称。</p>
+					<code>语法：  .toBackend = "proxy-name"
 						默认值：- ; 必填项
 					</code>
 				</li>
 
 				<li>
-					<p>.withCacher 选择使用cache的名字。</p>
+					<p>.withCacher 选择使用 cache 的名字。</p>
 					<code>语法： .withCacher = "cacher-name"
 						默认值： -  
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.scriptFilename 执行脚本的名称，使用绝对路径，一旦设置无论什么路径将总是这个脚本，可以作为PHP框架的入口文件。如果为空则使用url中的脚本名称。</p>
+					<p>.scriptFilename 执行脚本的名称，使用绝对路径，一旦设置无论什么路径将总是执行这个脚本，可以作为 PHP 框架的入口文件。如果为空则使用请求 url 中的脚本名称。</p>
 					<code>语法：.scriptFilename = "/data/www/xxx/index.php"
 						默认值： ""
 						取值范围：-
@@ -1261,7 +1256,7 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.keepConn gorox和fastcgi服务之间是否保存长连接？</p>
+					<p>.keepConn gorox 和 fastcgi 服务之间是否保存长连接？</p>
 					<code>语法：.keepConn = false
 						默认值： false
 						取值范围：false | true
@@ -1282,15 +1277,15 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个cgi数据包超时时间。0意味着不设置超时时间。</p>
+					<p>.sendTimeout 发送整个 cgi 数据包超时时间。0 意味着不设置超时时间。</p>
 					<code>语法：.sendTimeout = 60s
 						默认值：60s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 读取整个cgi数据包超时时间。0意味着不设置超时时间。</p>
-					<code>语法：.recvTimeout = duration
+					<p>.recvTimeout 读取整个 cgi 数据包超时时间。0意味着不设置超时时间。</p>
+					<code>语法：.recvTimeout = Durations
 						默认值：60s
 						取值范围： [0s, 10m]
 					</code>
@@ -1303,7 +1298,7 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.preferUnderscore 当header同时存在"foo-bar"与"foo_bar", 优先选择"foo_bar"</p>
+					<p>.preferUnderscore 当 header 同时存在"foo-bar"与"foo_bar", 优先选择"foo_bar"</p>
 					<code>语法：.preferUnderscore = false
 						默认值：false
 						取值范围： false | true
@@ -1344,7 +1339,7 @@ stage {
 		</li>
 		<li id="stage-app-http1Proxy">
 			<h3>stage &gt; app &gt; http1Proxy </h3>
-			<p>http1Proxy 用于http1.x协议的后端代理。</p>
+			<p>http1Proxy 用于 http1.x 协议的后端代理。</p>
 			<code class="pre">语法：http1Proxy [name] { ... }
 
 http1Proxy  {
@@ -1374,21 +1369,21 @@ http1Proxy  {
 					</code>
 				</li>
 				<li>
-					<p>.withCacher 选择使用cache的名字。</p>
+					<p>.withCacher 选择使用 cache 的名字。</p>
 					<code>语法： .withCacher = "cacher-name"
 						默认值： -  
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.hostname 如果配置了，向后端转发时，就采用这个hostname。</p>
+					<p>.hostname 如果配置了，向后端转发时，就采用这个 hostname。</p>
 					<code>语法： .hostname = ""
 						默认值： ""
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p>.colonPort 如果配置了，向后端转发时，就采用这个hostname。</p>
+					<p>.colonPort 如果配置了，向后端转发时，就采用这个 hostname。</p>
 					<code>语法： .colonPort = ":8080" 
 						默认值： ""
 						取值范围：-
@@ -1416,14 +1411,14 @@ http1Proxy  {
 					</code>
 				</li>
 				<li>
-					<p> .delRequestHeaders 向后转发请求时候需要去除的header信息。</p>
+					<p> .delRequestHeaders 向后转发请求时候需要去除的 header 信息。</p>
 					<code>语法：.delRequestHeaders = ("header1", "header2")
 						默认值： nil
 						取值范围：-
 					</code>
 				</li>
 				<li>
-					<p> .addRequestHeaders 向后转发请求时候需要添加的header信息。</p>
+					<p> .addRequestHeaders 向后转发请求时候需要添加的 header 信息。</p>
 					<code class="pre">语法：.addRequestHeaders = (
 	   ("viaName", "goprox"),
 	   ("X-Real-IP", "xxxx"),
@@ -1463,7 +1458,7 @@ http1Proxy  {
 </code>
 			<ul>
 				<li>
-					<p>.webRoot 设置请求的根目录。会把.webRoot的值和url中的path结合起来读取文件。</p>
+					<p>.webRoot 设置请求的根目录，会把 .webRoot 的值和 url 中的 path 结合起来读取文件。</p>
 					<code>语法： .webRoot = "path" 
 						默认值：-; 不能为空
 						取值范围：-
@@ -1476,7 +1471,7 @@ http1Proxy  {
 					</code>
 				</li>
 				<li>
-					<p>.indexFile 定义索引文件的名称，如果请求以斜杠结尾，gorox会将其视为对目录的请求，并尝试在该目录中查找索引文件。</p>
+					<p>.indexFile 定义索引文件的名称，如果请求以斜杠结尾，gorox 会将其视为对目录的请求，并尝试在该目录中查找索引文件。</p>
 					<code>语法： .indexFile = "index.html"
 						默认值：index.html
 						取值范围：-
@@ -1585,13 +1580,13 @@ http1Proxy  {
 		</li>
 		<li id="stage-app-headReviser">
 			<h3>stage &gt; app &gt; headReviser </h3>
-			<p>headReviser 对header做添加和删除。</p>
+			<p>headReviser 对 header 做添加和删除。</p>
 			<ul>
 				<li>
 					<p>.addResponse 添加响应头信息。</p>
 					<code class="pre">语法：.addResponse = [
-  "cache-control" : "max-age=86400",
-  "date": "Mon, 14 Sep 2015 03:19:14 GMT",
+	"cache-control" : "max-age=86400",
+	"date": "Mon, 14 Sep 2015 03:19:14 GMT",
 ]
 默认值：-
 </code>
@@ -1600,8 +1595,8 @@ http1Proxy  {
 				<li>
 					<p>.addRequest 添加请求头信息用于转发请求。</p>
 					<code class="pre">语法：.addRequest = [
-  "env" : "gray",
-  "x-root-id": "xxx-xxx-xxx-xxx",
+	"env" : "gray",
+	"x-root-id": "xxx-xxx-xxx-xxx",
 ]
 默认值：-
 </code>
@@ -1610,14 +1605,14 @@ http1Proxy  {
 				<li>
 					<p>.delRequest 删除请求头信息，一般用于转发请求。</p>
 					<code> 语法：.delRequest = ("cookie", "date")
-					默认值：-
+						默认值：-
 					</code>
 				</li>
 
 				<li>
 					<p>.delResponse 删除响应头信息</p>
 					<code> 语法：.delResponse = ("cookie", "date")
-					默认值：-
+						默认值：-
 					</code>
 				</li>
 
@@ -1656,9 +1651,6 @@ http1Proxy  {
 
 		<li id="stage-app-sock1Proxy">
 			<h3>stage &gt; app &gt; sock1Proxy </h3>
-			<code>
-
-	</code>
 		</li>
 
 		<li id="stage-app-sock2Proxy">
@@ -1675,7 +1667,7 @@ http1Proxy  {
 
 		<li id="stage-httpxServer">
 			<h3>stage &gt; httpxServer </h3>
-			<p>httpxServer goroxy中对http1.1和http2服务端配置。</p>
+			<p>httpxServer goroxy 中对 http1.1 和 http2 服务端配置。</p>
 			<code class="pre">stage{
 	app "example_com" {
 		.hostnames = ("example.com" "*.example.com")
@@ -1708,73 +1700,73 @@ http1Proxy  {
 </code>
 			<ul>
 				<li>
-					<p>.address 服务要监听的IP和PORT，省略IP代表监听所有网卡的IP。</p>
+					<p>.address 服务要监听的 IP:PORT，省略 IP 代表监听所有网卡的 IP。</p>
 					<code>语法：.address = "127.0.0.1:8080"
 						默认值：-; 必填项 
 					</code>
 				</li>
-				<p>.tlsMode 是否开启tls协议（支持https）</p>
-				<code>语法：.tlsMode bool
+				<p>.tlsMode 是否开启 tls 协议（支持 https）</p>
+				<code>语法：.tlsMode = bool
 					默认值：false
 					取值范围： false | true
 				</code>
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.readTimeout duration
+					<code>语法：.readTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.writeTimeout duration
+					<code>语法：.writeTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 
 				<li>
-					<p>.numGates 同时监听连接的线程数据量，默认CPU的核心数，目前不可配置</p>
+					<p>.numGates 同时监听连接的线程数据量，默认 CPU 的核心数，目前不可配置</p>
 					<code>语法：.numGates = runtime.NumCPU()
 						默认值：runtime.NumCPU() // 目前不可配置
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.maxConnsPerGate 每个Gate允许的最大并发连接数。</p>
+					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
 					<code>语法：.maxConnsPerGate = 100000
 						默认值：100000
 						取值范围： (0, MaxInt32]
 					</code>
 				</li>
 				<li>
-					<p>.forApps 当前httpxServer应用于那些App。</p>
+					<p>.forApps 当前 httpxServer 应用于那些 App。</p>
 					<code>语法：.forApps = ("test" "test2")
 						默认值：nil
 					</code>
 				</li>
 				<li>
-					<p>.forSvcs 当前httpxServer应用于那些Svcs。</p>
+					<p>.forSvcs 当前 httpxServer 应用于那些 Svcs。</p>
 					<code>语法：.forSvcs = ("test" "test2")
 						默认值：nil
 					</code>
 				</li>
 				<li>
-					<p>.hrpcMode 是否作为HRPC服务？</p>
+					<p>.hrpcMode 是否作为 HRPC 服务？</p>
 					<code>语法 .hrpcMode = false
 						默认值：false
 						取值范围：false | true
 					</code>
 				</li>
 				<li>
-					<p>.enableTCPTun 是否开启tcp tunnel？这样http 代理就可以转发https请求了。</p>
+					<p>.enableTCPTun 是否开启 tcp tunnel？这样 http 代理就可以转发 https 请求了。</p>
 					<code>语法 .enableTCPTun = false
 						默认值：false
 						取值范围：false | true
 					</code>
 				</li>
 				<li>
-					<p>.enableUDPTun 是否开启udp tunnel？</p>
+					<p>.enableUDPTun 是否开启 udp tunnel？</p>
 					<code>语法 .enableUDPTun = false
 						默认值：false
 						取值范围：false | true
@@ -1782,7 +1774,7 @@ http1Proxy  {
 				</li>
 				<li>
 					<p>.maxContentSize 数据包最大限制。</p>
-					<code>语法：.maxContentSize size
+					<code>语法：.maxContentSize = Sizes
 						默认值：1T
 						取值范围： (0s, 内存最大值)
 					</code>
@@ -1804,7 +1796,7 @@ http1Proxy  {
 				</li>
 
 				<li>
-					<p>.adjustScheme 是否矫正协议？如果在http请求行里面使用了绝对URL，并且绝对URL协议与当前的请求不一致。</p>
+					<p>.adjustScheme 是否矫正协议？如果在 http 请求行里面使用了绝对 url，并且绝对 url 协议与当前的请求不一致。</p>
 					<code>语法：.adjustScheme = false
 						默认值：false
 						取值范围：false | true
@@ -1812,13 +1804,13 @@ http1Proxy  {
 
 					<p>例子</p>
 					<code>
-						如果在https请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到http协议上。
+						如果在 https 请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到 http协议上。
 						GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1
 					</code>
 				</li>
 
 				<li>
-					<p>.forceScheme 强制使用http或者https协议，如果请求和配置不一样则301跳转到指定协议上。</p>
+					<p>.forceScheme 强制使用 http 或者 https 协议，如果请求和配置不一样则301跳转到指定协议上。</p>
 					<code>语法：.forceScheme = "https"
 						默认值：- 
 						取值范围：http | https
@@ -1826,7 +1818,7 @@ http1Proxy  {
 				</li>
 
 				<li>
-					<p>.enableHTTP2 是否开启http2协议。</p>
+					<p>.enableHTTP2 是否开启 http2 协议。</p>
 					<code>语法： .enableHTTP2 = false
 						默认值：false
 						取值范围：false | true
@@ -1834,7 +1826,7 @@ http1Proxy  {
 				</li>
 
 				<li>
-					<p>.h2cMode 是否仅支持http2协议？</p>
+					<p>.h2cMode 是否仅支持 http2 协议？</p>
 					<code>语法：.h2cMode = false
 						默认值：false
 						取值范围：false | true
@@ -1866,34 +1858,34 @@ stage {
 
 			<ul>
 				<li>
-					<p>.address 服务要监听的IP和PORT，省略IP代表监听所有网卡的IP。</p>
+					<p>.address 服务要监听的 IP:PORT，省略 IP 代表监听所有网卡的 IP。</p>
 					<code>语法：.address = "127.0.0.1:8080"
 						默认值：-; 必填项 
 					</code>
 				</li>
 				<li>
-					<p>.tlsMode 是否开启tls协议（支持https）</p>
-					<code>语法：.tlsMode bool
+					<p>.tlsMode 是否开启 tls 协议（支持 https）</p>
+					<code>语法：.tlsMode = bool
 						默认值：false
 						取值范围： false | true
 					</code>
 				</li>
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.readTimeout duration
+					<code>语法：.readTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.writeTimeout duration
+					<code>语法：.writeTimeout = Durations
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.maxConnsPerGate 每个Gate允许的最大并发连接数。</p>
+					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
 					<code>语法：.maxConnsPerGate = 100000
 						默认值：100000
 						取值范围： (0, MaxInt32]

@@ -1247,9 +1247,16 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.scriptFilename 执行脚本的名称，如果为空则使用url中的脚本名称。</p>
-					<code>语法：.scriptFilename = ""
+					<p>.scriptFilename 执行脚本的名称，使用绝对路径，一旦设置无论什么路径将总是这个脚本，可以作为PHP框架的入口文件。如果为空则使用url中的脚本名称。</p>
+					<code>语法：.scriptFilename = "/data/www/xxx/index.php"
 						默认值： ""
+						取值范围：-
+					</code>
+				</li>
+				<li>
+					<p>.indexFile 如当前请求的是路径，则执行此路径下的 index.php 文件。</p>
+					<code>语法：.indexFile = "index.php"
+						默认值： "index.php"
 						取值范围：-
 					</code>
 				</li>
@@ -1320,7 +1327,8 @@ stage {
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s
-			.scriptFilename = "index.php" //永远执行index.php
+			.scriptFilename = ""
+			.indexFile = "index.php"
 			.keepConn = true
 			.preferUnderscore = true
 		}

@@ -276,7 +276,8 @@ stage {
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s
-			.scriptFilename = "index.php" // Notice: always use "index.php"
+			.scriptFilename = "action.php" // Notice: always use "action.php"
+			.indexFile = "index.php"
 			.keepConn = true
 			.bufferClientContent = true
 			.bufferServerContent = true

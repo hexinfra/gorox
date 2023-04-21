@@ -19,12 +19,13 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"io"
 	"net"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {
@@ -50,6 +51,7 @@ type fcgiAgent struct {
 	bufferServerContent bool          // server content is buffered anyway?
 	keepConn            bool          // instructs FCGI server to keep conn?
 	scriptFilename      []byte        // for SCRIPT_FILENAME
+	indexFile           []byte        // for indexFile
 	addRequestHeaders   [][2][]byte   // headers appended to client request
 	delRequestHeaders   [][]byte      // client request headers to delete
 	addResponseHeaders  [][2][]byte   // headers appended to server response
@@ -107,6 +109,10 @@ func (h *fcgiAgent) OnConfigure() {
 	h.ConfigureBool("keepConn", &h.keepConn, false)
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
+	// indexFile
+	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) bool {
+		return len(value) < 232
+	}, []byte("index.php"))
 	// sendTimeout
 	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 	// recvTimeout
@@ -159,8 +165,20 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) { // reverse 
 	fStream := getFCGIStream(h, fConn)
 	defer putFCGIStream(fStream)
 
+	scriptFilename := h.scriptFilename
+	if len(scriptFilename) == 0 {
+		absPath := req.unsafeAbsPath()
+		if absPath[len(absPath)-1] == '/' && h.indexFile != nil {
+			scriptFilename = req.UnsafeMake(len(absPath) + len(h.indexFile))
+			copy(scriptFilename, absPath)
+			copy(scriptFilename[len(absPath):], h.indexFile)
+		} else {
+			scriptFilename = absPath
+		}
+	}
+
 	fReq := &fStream.request
-	if !fReq.copyHeadFrom(req, h.scriptFilename) {
+	if !fReq.copyHeadFrom(req, scriptFilename) {
 		fStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -385,12 +403,7 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
 		return false
 	}
-	if len(scriptFilename) == 0 {
-		value = req.unsafeAbsPath()
-	} else {
-		value = scriptFilename
-	}
-	if !r._addMetaParam(fcgiBytesScriptFilename, value) { // SCRIPT_FILENAME
+	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
 		return false
 	}
 	if !r._addMetaParam(fcgiBytesScriptName, req.UnsafePath()) { // SCRIPT_NAME

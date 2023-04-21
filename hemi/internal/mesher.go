@@ -14,6 +14,20 @@ import (
 type _mesher interface {
 	Component
 }
+type _gate interface {
+	open() error
+	shutdown() error
+}
+type _dealer interface {
+	Component
+}
+type _filter interface {
+	Component
+	identifiable
+}
+type _case interface {
+	Component
+}
 
 // mesher_ is the mixin for all meshers.
 type mesher_[M _mesher, G _gate, D _dealer, F _filter, C _case] struct {
@@ -42,7 +56,7 @@ func (m *mesher_[M, G, D, F, C]) onCreate(name string, stage *Stage, dealerCreat
 	m.nFilters = 1 // position 0 is not used
 }
 
-func (m *mesher_[M, G, D, F, C]) shutdownSubs() {
+func (m *mesher_[M, G, D, F, C]) shutdownSubs() { // cases, filters, dealers
 	m.cases.walk(C.OnShutdown)
 	m.filters.walk(F.OnShutdown)
 	m.dealers.walk(D.OnShutdown)
@@ -61,7 +75,7 @@ func (m *mesher_[M, G, D, F, C]) onConfigure() {
 		m.accessLog = nil
 	}
 }
-func (m *mesher_[M, G, D, F, C]) configureSubs() {
+func (m *mesher_[M, G, D, F, C]) configureSubs() { // dealers, filters, cases
 	m.dealers.walk(D.OnConfigure)
 	m.filters.walk(F.OnConfigure)
 	m.cases.walk(C.OnConfigure)
@@ -73,7 +87,7 @@ func (m *mesher_[M, G, D, F, C]) onPrepare() {
 		//m.booker = newBooker(m.accessLog[0], m.accessLog[1])
 	}
 }
-func (m *mesher_[M, G, D, F, C]) prepareSubs() {
+func (m *mesher_[M, G, D, F, C]) prepareSubs() { // dealers, filters, cases
 	m.dealers.walk(D.OnPrepare)
 	m.filters.walk(F.OnPrepare)
 	m.cases.walk(C.OnPrepare)
@@ -229,20 +243,4 @@ func (c *case_[M, D, F]) notSuffixMatch(value []byte) bool {
 func (c *case_[M, D, F]) notRegexpMatch(value []byte) bool {
 	// TODO
 	return false
-}
-
-type _dealer interface {
-	Component
-}
-type _filter interface {
-	Component
-	identifiable
-}
-type _case interface {
-	Component
-}
-
-type _gate interface {
-	open() error
-	shutdown() error
 }

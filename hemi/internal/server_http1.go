@@ -168,8 +168,8 @@ func (g *httpxGate) serveTCP() { // goroutine
 				g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			webConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
-			go webConn.serve() // webConn is put to pool in serve()
+			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
+			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -206,8 +206,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 			if connState.NegotiatedProtocol == "h2" {
 				getHTTPConn = getHTTP2Conn
 			}
-			webConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
-			go webConn.serve() // webConn is put to pool in serve()
+			httpConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
+			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -226,7 +226,7 @@ func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webConn {
+func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) serverConn {
 	var conn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		conn = new(http1Conn)
@@ -251,7 +251,7 @@ func putHTTP1Conn(conn *http1Conn) {
 // http1Conn is the server-side HTTP/1 connection.
 type http1Conn struct {
 	// Mixins
-	webConn_
+	serverConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -265,7 +265,7 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webConn_.onGet(id, server, gate)
+	c.serverConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -283,7 +283,7 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
-	c.webConn_.onPut()
+	c.serverConn_.onPut()
 }
 
 func (c *http1Conn) serve() { // goroutine

@@ -110,7 +110,7 @@ func (o *outgate_) incServed()    { o.nServed.Add(1) }
 type Backend interface {
 	Component
 	client
-	maintain() // goroutine
+	Maintain() // goroutine
 }
 
 // Backend_ is the mixin for backends.
@@ -184,7 +184,7 @@ func (b *Backend_[N]) onPrepare() {
 	b.client_.onPrepare()
 }
 
-func (b *Backend_[N]) maintain() { // goroutine
+func (b *Backend_[N]) Maintain() { // goroutine
 	for _, node := range b.nodes {
 		b.IncSub(1) // one more node
 		go node.Maintain()

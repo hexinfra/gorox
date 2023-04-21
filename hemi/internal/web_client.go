@@ -92,16 +92,16 @@ func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
 }
 
-// wConn is the interface for *H[1-3]Conn and *B2Conn.
-type wConn interface {
+// clientConn is the interface for *H[1-3]Conn and *B2Conn.
+type clientConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 	isBroken() bool
 	markBroken()
 }
 
-// wConn_ is the mixin for H[1-3]Conn and B2Conn.
-type wConn_ struct {
+// clientConn_ is the mixin for H[1-3]Conn and B2Conn.
+type clientConn_ struct {
 	// Mixins
 	conn_
 	// Conn states (stocks)
@@ -113,28 +113,28 @@ type wConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *wConn_) onGet(id int64, client webClient) {
+func (c *clientConn_) onGet(id int64, client webClient) {
 	c.conn_.onGet(id, client)
 }
-func (c *wConn_) onPut() {
+func (c *clientConn_) onPut() {
 	c.conn_.onPut()
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
 
-func (c *wConn_) getClient() webClient { return c.client.(webClient) }
+func (c *clientConn_) getClient() webClient { return c.client.(webClient) }
 
-func (c *wConn_) reachLimit() bool {
+func (c *clientConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
 }
 
-func (c *wConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *wConn_) isBroken() bool { return c.broken.Load() }
-func (c *wConn_) markBroken()    { c.broken.Store(true) }
+func (c *clientConn_) isBroken() bool { return c.broken.Load() }
+func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 
 // request is the interface for *H[1-3]Request and *B2Request.
 type request interface {

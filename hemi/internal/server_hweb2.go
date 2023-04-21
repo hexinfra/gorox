@@ -124,8 +124,8 @@ func (g *hweb2Gate) serve() { // goroutine
 				g.stage.Logf("hweb2Server[%s] hweb2Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			webConn := getHWEB2Conn(connID, g.server, g, tcpConn, rawConn)
-			go webConn.serve() // webConn is put to pool in serve()
+			hweb2Conn := getHWEB2Conn(connID, g.server, g, tcpConn, rawConn)
+			go hweb2Conn.serve() // hweb2Conn is put to pool in serve()
 			connID++
 		}
 	}
@@ -144,7 +144,7 @@ func (g *hweb2Gate) justClose(tcpConn *net.TCPConn) {
 // poolHWEB2Conn is the server-side HWEB/2 connection pool.
 var poolHWEB2Conn sync.Pool
 
-func getHWEB2Conn(id int64, server *hweb2Server, gate *hweb2Gate, netConn net.Conn, rawConn syscall.RawConn) webConn {
+func getHWEB2Conn(id int64, server *hweb2Server, gate *hweb2Gate, netConn net.Conn, rawConn syscall.RawConn) serverConn {
 	var conn *hweb2Conn
 	if x := poolHWEB2Conn.Get(); x == nil {
 		conn = new(hweb2Conn)
@@ -162,7 +162,7 @@ func putHWEB2Conn(conn *hweb2Conn) {
 // hweb2Conn is the server-side HWEB/2 connection.
 type hweb2Conn struct {
 	// Mixins
-	webConn_
+	serverConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -172,11 +172,11 @@ type hweb2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *hweb2Conn) onGet(id int64, server *hweb2Server, gate *hweb2Gate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webConn_.onGet(id, server, gate)
+	c.serverConn_.onGet(id, server, gate)
 	// TODO
 }
 func (c *hweb2Conn) onPut() {
-	c.webConn_.onPut()
+	c.serverConn_.onPut()
 	// TODO
 }
 

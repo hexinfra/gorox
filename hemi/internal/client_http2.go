@@ -136,7 +136,7 @@ func (n *http2Node) fetchConn() (*H2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n.backend, n, netConn, rawConn), nil
 }
-func (n *http2Node) storeConn(wConn *H2Conn) {
+func (n *http2Node) storeConn(h2Conn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -162,7 +162,7 @@ func putH2Conn(conn *H2Conn) {
 // H2Conn
 type H2Conn struct {
 	// Mixins
-	wConn_
+	clientConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -174,13 +174,13 @@ type H2Conn struct {
 }
 
 func (c *H2Conn) onGet(id int64, client webClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.wConn_.onGet(id, client)
+	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *H2Conn) onPut() {
-	c.wConn_.onPut()
+	c.clientConn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil

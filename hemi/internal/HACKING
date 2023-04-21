@@ -17,8 +17,7 @@ THE WEB PICTURE
   | - shell ------+                           | - shell ------+
   |               | webIn                     |               | webOut
   +-serverRequest_|                           +-clientRequest_|
-    ^ - webConn --+---> http[1-3]Conn           ^ - wConn ----+---> H[1-3]Conn
-    |             |                             |             |
+    ^             |                             ^             |
     |             v                             |             v
     +-http[1-3]Request                          +-H[1-3]Request
                             \           /
@@ -36,9 +35,8 @@ THE WEB PICTURE
   | - shell -------+                          | - shell -------+
   |                | webOut                   |                | webIn
   +-serverResponse_|                          +-clientResponse_|
-    ^ - webConn ---+---> http[1-3]Conn          ^ - wConn ---+---> H[1-3]Conn
-    |              |                            |            |
-    |              v                            |            v
+    ^              |                            ^              |
+    |              v                            |              v
     +-http[1-3]Response                         +-H[1-3]Response
 
 

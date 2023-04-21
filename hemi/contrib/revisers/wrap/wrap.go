@@ -53,14 +53,14 @@ func (r *wrapReviser) Rank() int8 { return r.rank }
 func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *wrapReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) { // sized
 	return chain, true
 }
 
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) {
+func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) { // sized
 	if IsDebug(2) {
 		block := GetBlock()
 		block.SetText([]byte("d"))
@@ -71,7 +71,7 @@ func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) {
 func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *wrapReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *wrapReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) { // unsized
 	return chain, true
 }
 func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
@@ -84,7 +84,7 @@ func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 		Debugln("BeforeEcho")
 	}
 }
-func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) {
+func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
 	if IsDebug(2) {
 		block := GetBlock()
 		block.SetText([]byte("c"))

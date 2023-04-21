@@ -150,11 +150,11 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		wConn := conn.(*H1Conn)
-		if wConn.isAlive() && !wConn.reachLimit() && !down {
-			return wConn, nil
+		h1Conn := conn.(*H1Conn)
+		if h1Conn.isAlive() && !h1Conn.reachLimit() && !down {
+			return h1Conn, nil
 		}
-		n.closeConn(wConn)
+		n.closeConn(h1Conn)
 	}
 	if down {
 		return nil, errNodeDown
@@ -188,23 +188,23 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
 	}
 }
-func (n *http1Node) storeConn(wConn *H1Conn) {
-	if wConn.isBroken() || n.isDown() || !wConn.isAlive() || !wConn.keepConn {
+func (n *http1Node) storeConn(h1Conn *H1Conn) {
+	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] closed\n", wConn.node.id, wConn.id)
+			Debugf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
 		}
-		n.closeConn(wConn)
+		n.closeConn(h1Conn)
 	} else {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] pushed\n", wConn.node.id, wConn.id)
+			Debugf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.id, h1Conn.id)
 		}
-		n.pushConn(wConn)
+		n.pushConn(h1Conn)
 	}
 }
 
-func (n *http1Node) closeConn(wConn *H1Conn) {
-	wConn.closeConn()
-	putH1Conn(wConn)
+func (n *http1Node) closeConn(h1Conn *H1Conn) {
+	h1Conn.closeConn()
+	putH1Conn(h1Conn)
 	n.SubDone()
 }
 
@@ -236,7 +236,7 @@ func putH1Conn(conn *H1Conn) {
 // H1Conn is the client-side HTTP/1 connection.
 type H1Conn struct {
 	// Mixins
-	wConn_
+	clientConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -250,7 +250,7 @@ type H1Conn struct {
 }
 
 func (c *H1Conn) onGet(id int64, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.wConn_.onGet(id, client)
+	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -260,7 +260,7 @@ func (c *H1Conn) onPut() {
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.wConn_.onPut()
+	c.clientConn_.onPut()
 }
 
 func (c *H1Conn) UseStream() *H1Stream {

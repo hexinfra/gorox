@@ -502,7 +502,7 @@ func (s *Stage) startBackends() {
 		if IsDebug(1) {
 			Debugf("backend=%s go maintain()\n", backend.Name())
 		}
-		go backend.maintain()
+		go backend.Maintain()
 	}
 }
 func (s *Stage) startMeshers() {

@@ -137,7 +137,7 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, n.backend, n, conn), nil
 }
-func (n *http3Node) storeConn(wConn *H3Conn) {
+func (n *http3Node) storeConn(h3Conn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -163,7 +163,7 @@ func putH3Conn(conn *H3Conn) {
 // H3Conn
 type H3Conn struct {
 	// Mixins
-	wConn_
+	clientConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -174,12 +174,12 @@ type H3Conn struct {
 }
 
 func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quicConn *quix.Conn) {
-	c.wConn_.onGet(id, client)
+	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
 }
 func (c *H3Conn) onPut() {
-	c.wConn_.onPut()
+	c.clientConn_.onPut()
 	c.node = nil
 	c.quicConn = nil
 	c.activeStreams = 0

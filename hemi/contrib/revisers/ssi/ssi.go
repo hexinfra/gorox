@@ -53,20 +53,20 @@ func (r *ssiReviser) Rank() int8 { return r.rank }
 func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *ssiReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *ssiReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) { // sized
 	return chain, true
 }
 
 func (r *ssiReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *ssiReviser) OnSend(req Request, resp Response, content *Chain) {
+func (r *ssiReviser) OnSend(req Request, resp Response, content *Chain) { // sized
 }
 
 func (r *ssiReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *ssiReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *ssiReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) { // unsized
 	return chain, true
 }
 func (r *ssiReviser) FinishDraw(req Request, resp Response) { // unsized
@@ -76,7 +76,7 @@ func (r *ssiReviser) FinishDraw(req Request, resp Response) { // unsized
 func (r *ssiReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *ssiReviser) OnEcho(req Request, resp Response, chunks *Chain) {
+func (r *ssiReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
 }
 func (r *ssiReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO

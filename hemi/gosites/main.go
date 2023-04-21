@@ -23,7 +23,6 @@ ACTION
   help         # show this message
   version      # show version info
   advise       # show how to optimize current platform
-  test         # run as tester
   serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully

@@ -2436,6 +2436,9 @@ type Handlet_ struct {
 	rShell reflect.Value // the shell handlet
 }
 
+func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
+func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
+
 func (h *Handlet_) SetRouter(handlet any, router Router) {
 	h.router = router
 	h.rShell = reflect.ValueOf(handlet)
@@ -2459,9 +2462,6 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 		notFound(req, resp)
 	}
 }
-
-func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
-func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
 
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
@@ -2637,15 +2637,9 @@ func (r *Rule) OnConfigure() {
 func (r *Rule) OnPrepare() {
 }
 
-func (r *Rule) addHandlet(handlet Handlet) {
-	r.handlets = append(r.handlets, handlet)
-}
-func (r *Rule) addReviser(reviser Reviser) {
-	r.revisers = append(r.revisers, reviser)
-}
-func (r *Rule) addSocklet(socklet Socklet) {
-	r.socklets = append(r.socklets, socklet)
-}
+func (r *Rule) addHandlet(handlet Handlet) { r.handlets = append(r.handlets, handlet) }
+func (r *Rule) addReviser(reviser Reviser) { r.revisers = append(r.revisers, reviser) }
+func (r *Rule) addSocklet(socklet Socklet) { r.socklets = append(r.socklets, socklet) }
 
 func (r *Rule) isMatch(req Request) bool {
 	if r.general {

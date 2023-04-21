@@ -203,8 +203,8 @@ func (g *webGate_) onConnectionClosed() {
 	g.SubDone()
 }
 
-// webConn is the interface for *http[1-3]Conn and *hweb2Conn.
-type webConn interface {
+// serverConn is the interface for *http[1-3]Conn and *hweb2Conn.
+type serverConn interface {
 	serve() // goroutine
 	getServer() webServer
 	isBroken() bool
@@ -212,8 +212,8 @@ type webConn interface {
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
-// webConn_ is the mixin for http[1-3]Conn and hweb2Conn.
-type webConn_ struct {
+// serverConn_ is the mixin for http[1-3]Conn and hweb2Conn.
+type serverConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -228,12 +228,12 @@ type webConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *webConn_) onGet(id int64, server webServer, gate webGate) {
+func (c *serverConn_) onGet(id int64, server webServer, gate webGate) {
 	c.id = id
 	c.server = server
 	c.gate = gate
 }
-func (c *webConn_) onPut() {
+func (c *serverConn_) onPut() {
 	c.server = nil
 	c.gate = nil
 	c.lastRead = time.Time{}
@@ -243,15 +243,15 @@ func (c *webConn_) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *webConn_) getServer() webServer { return c.server }
-func (c *webConn_) getGate() webGate     { return c.gate }
+func (c *serverConn_) getServer() webServer { return c.server }
+func (c *serverConn_) getGate() webGate     { return c.gate }
 
-func (c *webConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *serverConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *webConn_) isBroken() bool { return c.broken.Load() }
-func (c *webConn_) markBroken()    { c.broken.Store(true) }
+func (c *serverConn_) isBroken() bool { return c.broken.Load() }
+func (c *serverConn_) markBroken()    { c.broken.Store(true) }
 
 // Request is the interface for *http[1-3]Request and *hweb2Request.
 type Request interface {

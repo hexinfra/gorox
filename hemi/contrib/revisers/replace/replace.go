@@ -53,20 +53,20 @@ func (r *replaceReviser) Rank() int8 { return r.rank }
 func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *replaceReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *replaceReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) { // sized
 	return chain, true
 }
 
 func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *replaceReviser) OnSend(req Request, resp Response, content *Chain) {
+func (r *replaceReviser) OnSend(req Request, resp Response, content *Chain) { // sized
 }
 
 func (r *replaceReviser) BeforeDraw(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) {
+func (r *replaceReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) { // unsized
 	return chain, true
 }
 func (r *replaceReviser) FinishDraw(req Request, resp Response) { // unsized
@@ -76,7 +76,7 @@ func (r *replaceReviser) FinishDraw(req Request, resp Response) { // unsized
 func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *replaceReviser) OnEcho(req Request, resp Response, chunks *Chain) {
+func (r *replaceReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
 }
 func (r *replaceReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO

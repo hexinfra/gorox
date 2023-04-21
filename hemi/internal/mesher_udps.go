@@ -34,12 +34,12 @@ func (m *UDPSMesher) OnShutdown() {
 func (m *UDPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealers, filters, cases
+	m.configureSubs()
 }
 func (m *UDPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealers, filters, cases
+	m.prepareSubs()
 }
 
 func (m *UDPSMesher) createCase(name string) *udpsCase {
@@ -270,7 +270,7 @@ func (c *UDPSConn) onPut() {
 	c.rawConn = nil
 }
 
-func (c *UDPSConn) serve() { // goroutine
+func (c *UDPSConn) execute() { // goroutine
 	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue

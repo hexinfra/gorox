@@ -136,7 +136,7 @@ func (n *hweb2Node) fetchConn() (*B2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getB2Conn(connID, n.backend, n, tcpConn, rawConn), nil
 }
-func (n *hweb2Node) storeConn(wConn *B2Conn) {
+func (n *hweb2Node) storeConn(b2Conn *B2Conn) {
 	// Note: An B2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -162,7 +162,7 @@ func putB2Conn(conn *B2Conn) {
 // B2Conn
 type B2Conn struct {
 	// Mixins
-	wConn_
+	clientConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -174,13 +174,13 @@ type B2Conn struct {
 }
 
 func (c *B2Conn) onGet(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
-	c.wConn_.onGet(id, client)
+	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.tcpConn = tcpConn
 	c.rawConn = rawConn
 }
 func (c *B2Conn) onPut() {
-	c.wConn_.onPut()
+	c.clientConn_.onPut()
 	c.node = nil
 	c.tcpConn = nil
 	c.rawConn = nil

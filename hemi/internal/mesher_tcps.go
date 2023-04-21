@@ -35,12 +35,12 @@ func (m *TCPSMesher) OnShutdown() {
 func (m *TCPSMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealers, filters, cases
+	m.configureSubs()
 }
 func (m *TCPSMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealers, filters, cases
+	m.prepareSubs()
 }
 
 func (m *TCPSMesher) createCase(name string) *tcpsCase {
@@ -135,7 +135,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 			if IsDebug(1) {
 				Debugf("%+v\n", tcpsConn)
 			}
-			go tcpsConn.serve() // tcpsConn is put to pool in serve()
+			go tcpsConn.execute() // tcpsConn is put to pool in execute()
 			connID++
 		}
 	}
@@ -167,7 +167,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
-			go tcpsConn.serve() // tcpsConn is put to pool in serve()
+			go tcpsConn.execute() // tcpsConn is put to pool in execute()
 			connID++
 		}
 	}
@@ -357,7 +357,7 @@ func (c *TCPSConn) onPut() {
 	c.tcpsConn0 = tcpsConn0{}
 }
 
-func (c *TCPSConn) serve() { // goroutine
+func (c *TCPSConn) execute() { // goroutine
 	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue

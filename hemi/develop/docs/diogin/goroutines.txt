@@ -6,8 +6,8 @@ worker 进程
 
   多个 fixture.run() 并发
   多个 uniture.Run() 并发
-  多个 backend.maintain() 并发，每个 backend 有多个 node.maintain() 并发
-  多个 mesher.serve() 并发，每个 mesher 有多个 gate.serve() 并发，每个 gate 有多个 conn.serve() 并发
+  多个 backend.Maintain() 并发，每个 backend 有多个 node.Maintain() 并发
+  多个 mesher.serve() 并发，每个 mesher 有多个 gate.serve() 并发，每个 gate 有多个 conn.execute() 并发
   多个 stater.Maintain() 并发
   多个 cacher.Maintain() 并发
   多个 app.maintain() 并发

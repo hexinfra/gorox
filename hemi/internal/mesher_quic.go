@@ -32,12 +32,12 @@ func (m *QUICMesher) OnShutdown() {
 func (m *QUICMesher) OnConfigure() {
 	m.mesher_.onConfigure()
 	// TODO: configure m
-	m.configureSubs() // dealers, filters, cases
+	m.configureSubs()
 }
 func (m *QUICMesher) OnPrepare() {
 	m.mesher_.onPrepare()
 	// TODO: prepare m
-	m.prepareSubs() // dealers, filters, cases
+	m.prepareSubs()
 }
 
 func (m *QUICMesher) createCase(name string) *quicCase {
@@ -255,7 +255,7 @@ func (c *QUICConn) onPut() {
 	c.filters = [32]uint8{}
 }
 
-func (c *QUICConn) serve() { // goroutine
+func (c *QUICConn) execute() { // goroutine
 	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue

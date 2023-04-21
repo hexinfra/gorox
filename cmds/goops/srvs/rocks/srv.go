@@ -7,12 +7,13 @@ package rocks
 
 import (
 	"fmt"
-	. "github.com/hexinfra/gorox/hemi"
 	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {

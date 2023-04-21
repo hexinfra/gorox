@@ -8,8 +8,9 @@
 package redis
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/common/drivers/redis"
 	. "github.com/hexinfra/gorox/hemi/internal"
+
+	_ "github.com/hexinfra/gorox/hemi/common/drivers/redis"
 )
 
 // RedisBackend is a group of redis nodes.

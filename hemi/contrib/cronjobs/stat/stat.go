@@ -8,8 +8,9 @@
 package stat
 
 import (
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"time"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func init() {

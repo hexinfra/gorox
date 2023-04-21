@@ -8,9 +8,10 @@
 package local
 
 import (
-	. "github.com/hexinfra/gorox/hemi/internal"
 	"os"
 	"time"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func init() {

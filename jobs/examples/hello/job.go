@@ -9,8 +9,9 @@ package hello
 
 import (
 	"fmt"
-	. "github.com/hexinfra/gorox/hemi"
 	"time"
+
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {

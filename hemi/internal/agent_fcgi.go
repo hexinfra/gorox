@@ -110,9 +110,7 @@ func (h *fcgiAgent) OnConfigure() {
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 	// indexFile
-	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) bool {
-		return len(value) < 232
-	}, []byte("index.php"))
+	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) bool { return len(value) < 255 }, []byte("index.php"))
 	// sendTimeout
 	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
 	// recvTimeout
@@ -165,20 +163,8 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) { // reverse 
 	fStream := getFCGIStream(h, fConn)
 	defer putFCGIStream(fStream)
 
-	scriptFilename := h.scriptFilename
-	if len(scriptFilename) == 0 {
-		absPath := req.unsafeAbsPath()
-		if absPath[len(absPath)-1] == '/' && h.indexFile != nil {
-			scriptFilename = req.UnsafeMake(len(absPath) + len(h.indexFile))
-			copy(scriptFilename, absPath)
-			copy(scriptFilename[len(absPath):], h.indexFile)
-		} else {
-			scriptFilename = absPath
-		}
-	}
-
 	fReq := &fStream.request
-	if !fReq.copyHeadFrom(req, scriptFilename) {
+	if !fReq.copyHeadFrom(req, h.scriptFilename, h.indexFile) {
 		fStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -387,7 +373,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
+func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte) bool {
 	var value []byte
 
 	// Add meta params
@@ -402,6 +388,17 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename []byte) bool {
 	}
 	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
 		return false
+	}
+
+	if len(scriptFilename) == 0 {
+		absPath := req.unsafeAbsPath()
+		if absPath[len(absPath)-1] == '/' && indexFile != nil {
+			scriptFilename = req.UnsafeMake(len(absPath) + len(indexFile))
+			copy(scriptFilename, absPath)
+			copy(scriptFilename[len(absPath):], indexFile)
+		} else {
+			scriptFilename = absPath
+		}
 	}
 	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
 		return false

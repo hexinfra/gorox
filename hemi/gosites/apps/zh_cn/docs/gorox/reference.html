@@ -928,7 +928,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 
 		<li id="stage-app-rule">
 			<h3>stage &gt; app &gt; rule </h3>
-			<p>rule：在请求中根据某些特定的 url 对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
+			<p>rule：在请求中根据某些特定的 URL 对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
 			<ul>
 				<li>
 					<p>rule 匹配规则。</p>
@@ -992,27 +992,27 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 						</tr>
 						<tr>
 							<td>$hostname</td>
-							<td>url 中域名的部分，如：www.example.com。</td>
+							<td>URL 中域名的部分，如：www.example.com。</td>
 						</tr>
 						<tr>
 							<td>$colonPort</td>
-							<td>带冒号的端口，如果 url 没有端口则使用默认，HTTP 默认是:80, HTTPS 默认是:443。</td>
+							<td>带冒号的端口，如果 URL 没有端口则使用默认，HTTP 默认是:80, HTTPS 默认是:443。</td>
 						</tr>
 						<tr>
 							<td>$path</td>
-							<td>url 中 path 的部分，如：/a/b/c。</td>
+							<td>URL 中 path 的部分，如：/a/b/c。</td>
 						</tr>
 						<tr>
 							<td>$encodedPath</td>
-							<td>url 中 path 的部分，如果 path 部分包含 urlencode，则保留。</td>
+							<td>URL 中 path 的部分，如果 path 部分包含 urlencode，则保留。</td>
 						</tr>
 						<tr>
 							<td>$queryString</td>
-							<td>url 中参数的部分，如：?a=1&b=2。</td>
+							<td>URL 中参数的部分，如：?a=1&b=2。</td>
 						</tr>
 						<tr>
 							<td>$uri</td>
-							<td>url 中 path 和 queryString，如：/a/b/c?a=1&b=2。</td>
+							<td>URL 中 path 和 queryString，如：/a/b/c?a=1&b=2。</td>
 						</tr>
 						<tr>
 							<td>$contentType</td>
@@ -1129,7 +1129,7 @@ app "main" {
 					</code>
 				</li>
 				<li>
-					<p>.permanent 如果为 true，并且 url 的 hostname 和配置的不一致，则跳转到配置的域名上。</p>
+					<p>.permanent 如果为 true，并且 URL 的 hostname 和配置的不一致，则跳转到配置的域名上。</p>
 					<code>语法： .permanent = false
 						默认值： false
 						取值范围：false | true
@@ -1144,14 +1144,14 @@ app "main" {
 			<p> httpsChecker 对请求是否是 https 做检测。如果开启检测并且.authority 不为空，则使用https跳转到authority上。</p>
 			<ul>
 				<li>
-					<p>.permanent 如果为 true，并且 url 的不是 https，则使用 https 跳转到.authority 上。</p>
+					<p>.permanent 如果为 true，并且 URL 的不是 https，则使用 https 跳转到.authority 上。</p>
 					<code>语法： .permanent = false
 						默认值： false
 						取值范围：false | true
 					</code>
 				</li>
 				<li>
-					<p>.authority 使用当前配置的.authority 替换请求url中的 authority，然后发起 301 跳转。</p>
+					<p>.authority 使用当前配置的.authority 替换请求 url 中的 authority，然后发起 301 跳转。</p>
 					<code>语法 .authority = hostname:port
 						默认值： -
 						取值范围：-
@@ -1242,7 +1242,7 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.scriptFilename 执行脚本的名称，使用绝对路径，一旦设置无论什么路径将总是执行这个脚本，可以作为 PHP 框架的入口文件。如果为空则使用请求 url 中的脚本名称。</p>
+					<p>.scriptFilename 执行脚本的名称，使用绝对路径，一旦设置无论什么路径将总是执行这个脚本，可以作为 PHP 框架的入口文件。如果为空则使用请求 URL 中的脚本名称。</p>
 					<code>语法：.scriptFilename = "/data/www/xxx/index.php"
 						默认值： ""
 						取值范围：-
@@ -1458,7 +1458,7 @@ http1Proxy  {
 </code>
 			<ul>
 				<li>
-					<p>.webRoot 设置请求的根目录，会把 .webRoot 的值和 url 中的 path 结合起来读取文件。</p>
+					<p>.webRoot 设置请求的根目录，会把 .webRoot 的值和 URL 中的 path 结合起来读取文件。</p>
 					<code>语法： .webRoot = "path" 
 						默认值：-; 不能为空
 						取值范围：-
@@ -1796,7 +1796,7 @@ http1Proxy  {
 				</li>
 
 				<li>
-					<p>.adjustScheme 是否矫正协议？如果在 http 请求行里面使用了绝对 url，并且绝对 url 协议与当前的请求不一致。</p>
+					<p>.adjustScheme 是否矫正协议？如果在 http 请求行里面使用了绝对 URL，并且绝对 URL 协议与当前的请求不一致。</p>
 					<code>语法：.adjustScheme = false
 						默认值：false
 						取值范围：false | true

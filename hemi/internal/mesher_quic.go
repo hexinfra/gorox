@@ -17,11 +17,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICFilter, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICEditor, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicDealerCreators, quicFilterCreators)
+	m.mesher_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -64,9 +64,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.filters) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, filters, cases
+	m.WaitSubs() // dealers, editors, cases
 	// TODO: close access log file
 	if IsDebug(2) {
 		Debugf("quicMesher=%s done\n", m.Name())
@@ -125,15 +125,15 @@ type QUICDealer_ struct {
 	Component_
 }
 
-// QUICFilter
-type QUICFilter interface {
+// QUICEditor
+type QUICEditor interface {
 	Component
 	identifiable
 	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 
-// QUICFilter_
-type QUICFilter_ struct {
+// QUICEditor_
+type QUICEditor_ struct {
 	Component_
 	identifiable_
 }
@@ -141,7 +141,7 @@ type QUICFilter_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICDealer, QUICFilter]
+	case_[*QUICMesher, QUICDealer, QUICEditor]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }
@@ -238,7 +238,7 @@ type QUICConn struct {
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
-	filters [32]uint8
+	editors [32]uint8
 }
 
 func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
@@ -253,7 +253,7 @@ func (c *QUICConn) onPut() {
 	c.mesher = nil
 	c.gate = nil
 	c.quicConn = nil
-	c.filters = [32]uint8{}
+	c.editors = [32]uint8{}
 }
 
 func (c *QUICConn) execute() { // goroutine

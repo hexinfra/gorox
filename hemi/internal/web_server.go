@@ -1826,7 +1826,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 		r.bodyResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
 	}
 }
-func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://www.rfc-editor.org/rfc/rfc7578.html
+func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://datatracker.ietf.org/doc/html/rfc7578
 	r.pBack, r.pFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)

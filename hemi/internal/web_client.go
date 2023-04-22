@@ -25,7 +25,7 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB2Outgate.
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB[1-2]Outgate.
 type webOutgate_ struct {
 	// Mixins
 	outgate_
@@ -51,7 +51,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 	f.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and HWEB2Backend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and HWEB[1-2]Backend.
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
@@ -82,7 +82,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// webNode_ is the mixin for http[1-3]Node and hweb2Node.
+// webNode_ is the mixin for http[1-3]Node and hweb[1-2]Node.
 type webNode_ struct {
 	// Mixins
 	Node_
@@ -93,7 +93,7 @@ func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
 }
 
-// clientConn is the interface for *H[1-3]Conn and *B2Conn.
+// clientConn is the interface for *H[1-3]Conn and *B[1-2]Conn.
 type clientConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -101,7 +101,7 @@ type clientConn interface {
 	markBroken()
 }
 
-// clientConn_ is the mixin for H[1-3]Conn and B2Conn.
+// clientConn_ is the mixin for H[1-3]Conn and B[1-2]Conn.
 type clientConn_ struct {
 	// Mixins
 	conn_
@@ -137,14 +137,14 @@ func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 func (c *clientConn_) isBroken() bool { return c.broken.Load() }
 func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 
-// request is the interface for *H[1-3]Request and *B2Request.
+// request is the interface for *H[1-3]Request and *B[1-2]Request.
 type request interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// clientRequest_ is the mixin for H[1-3]Request and B2Request.
+// clientRequest_ is the mixin for H[1-3]Request and B[1-2]Request.
 type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
@@ -362,7 +362,7 @@ type upload struct {
 	// TODO
 }
 
-// response is the interface for *H[1-3]Response and *B2Response.
+// response is the interface for *H[1-3]Response and *B[1-2]Response.
 type response interface {
 	Status() int16
 	delHopHeaders()
@@ -371,7 +371,7 @@ type response interface {
 	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
 }
 
-// clientResponse_ is the mixin for H[1-3]Response and B2Response.
+// clientResponse_ is the mixin for H[1-3]Response and B[1-2]Response.
 type clientResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message

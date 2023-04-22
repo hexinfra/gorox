@@ -20,6 +20,14 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
+func init() {
+	RegisterServer("hweb1Server", func(name string, stage *Stage) Server {
+		s := new(hweb1Server)
+		s.onCreate(name, stage)
+		return s
+	})
+}
+
 // hweb1Server is the HWEB/1 server.
 type hweb1Server struct {
 	// Mixins

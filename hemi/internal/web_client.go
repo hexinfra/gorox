@@ -206,7 +206,7 @@ func (r *clientRequest_) echo() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	r.chain.PushTail(&r.block)
+	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	return r.shell.echoChain()
 }

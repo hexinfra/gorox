@@ -78,7 +78,7 @@ func (r *hweb2Out_) finalizeUnsizedB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) writeBlockB2(block *Block, unsized bool) error {
+func (r *hweb2Out_) writePieceB2(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }

@@ -634,10 +634,10 @@ func (r *http1Out_) sendChainH1() error { // TODO: if conn is TLS, don't use wri
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
 		r.chain.free()
-	} else if nBlocks := r.chain.NumBlocks(); nBlocks == 1 { // content chain has exactly one block
+	} else if nPieces := r.chain.NumPieces(); nPieces == 1 { // content chain has exactly one piece
 		vector = r.fixedVector[0:4]
-	} else { // nBlocks >= 2
-		vector = make([][]byte, 3+nBlocks) // TODO(diogin): get from pool? defer pool.put()
+	} else { // nPieces >= 2
+		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
 	vector[0] = r.shell.control()
 	vector[1] = r.shell.addedHeaders()
@@ -651,21 +651,21 @@ func (r *http1Out_) sendChainH1() error { // TODO: if conn is TLS, don't use wri
 		Debugf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
-	for block := r.chain.head; block != nil; block = block.next {
-		if block.size == 0 {
+	for piece := r.chain.head; piece != nil; piece = piece.next {
+		if piece.size == 0 {
 			continue
 		}
-		if block.IsText() {
-			vector[vEdge] = block.Text()
+		if piece.IsText() {
+			vector[vEdge] = piece.Text()
 			vEdge++
-		} else if block.size <= _16K { // small file, <= 16K
-			buffer := GetNK(block.size) // 4K/16K
-			if err := block.copyTo(buffer); err != nil {
+		} else if piece.size <= _16K { // small file, <= 16K
+			buffer := GetNK(piece.size) // 4K/16K
+			if err := piece.copyTo(buffer); err != nil {
 				r.stream.markBroken()
 				PutNK(buffer)
 				return err
 			}
-			vector[vEdge] = buffer[0:block.size]
+			vector[vEdge] = buffer[0:piece.size]
 			vEdge++
 			r.vector = vector[vFrom:vEdge]
 			if err := r.writeVectorH1(); err != nil {
@@ -682,7 +682,7 @@ func (r *http1Out_) sendChainH1() error { // TODO: if conn is TLS, don't use wri
 				}
 				vFrom, vEdge = 0, 0
 			}
-			if err := r.writeBlockH1(block, false); err != nil { // the file
+			if err := r.writePieceH1(piece, false); err != nil { // the file
 				return err
 			}
 		}
@@ -695,8 +695,8 @@ func (r *http1Out_) sendChainH1() error { // TODO: if conn is TLS, don't use wri
 }
 
 func (r *http1Out_) echoChainH1(chunked bool) error { // TODO: coalesce?
-	for block := r.chain.head; block != nil; block = block.next {
-		if err := r.writeBlockH1(block, chunked); err != nil {
+	for piece := r.chain.head; piece != nil; piece = piece.next {
+		if err := r.writePieceH1(piece, chunked); err != nil {
 			return err
 		}
 	}
@@ -774,49 +774,49 @@ func (r *http1Out_) writeHeadersH1() error { // used by echo and post
 	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
 	return nil
 }
-func (r *http1Out_) writeBlockH1(block *Block, chunked bool) error {
+func (r *http1Out_) writePieceH1(piece *Piece, chunked bool) error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if block.IsText() {
-		return r._writeTextH1(block, chunked)
+	if piece.IsText() {
+		return r._writeTextH1(piece, chunked)
 	} else {
-		return r._writeFileH1(block, chunked)
+		return r._writeFileH1(piece, chunked)
 	}
 }
-func (r *http1Out_) _writeTextH1(block *Block, chunked bool) error { // text
+func (r *http1Out_) _writeTextH1(piece *Piece, chunked bool) error { // text
 	if chunked { // HTTP/1.1 chunked data
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
-		n := i64ToHex(block.size, sizeBuffer)
+		n := i64ToHex(piece.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
 		sizeBuffer[n+1] = '\n'
 		n += 2
 		r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
 		r.vector[0] = sizeBuffer[0:n]
-		r.vector[1] = block.Text()
+		r.vector[1] = piece.Text()
 		r.vector[2] = sizeBuffer[n-2 : n]
 	} else { // HTTP/1.0, or raw data
 		r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
-		r.vector[0] = block.Text()
+		r.vector[0] = piece.Text()
 	}
 	return r.writeVectorH1()
 }
-func (r *http1Out_) _writeFileH1(block *Block, chunked bool) error { // file
+func (r *http1Out_) _writeFileH1(piece *Piece, chunked bool) error { // file
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
 
 	nRead := int64(0)
 	for { // we don't use sendfile(2).
-		if nRead == block.size {
+		if nRead == piece.size {
 			return nil
 		}
 		readSize := int64(cap(buffer))
-		if sizeLeft := block.size - nRead; sizeLeft < readSize {
+		if sizeLeft := piece.size - nRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
-		n, err := block.file.ReadAt(buffer[:readSize], nRead)
+		n, err := piece.file.ReadAt(buffer[:readSize], nRead)
 		nRead += int64(n)
-		if err != nil && nRead != block.size {
+		if err != nil && nRead != piece.size {
 			r.stream.markBroken()
 			return err
 		}

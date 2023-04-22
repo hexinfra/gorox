@@ -62,9 +62,9 @@ func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 }
 func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) { // sized
 	if IsDebug(2) {
-		block := GetBlock()
-		block.SetText([]byte("d"))
-		content.PushTail(block)
+		piece := GetPiece()
+		piece.SetText([]byte("d"))
+		content.PushTail(piece)
 	}
 }
 
@@ -86,9 +86,9 @@ func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 }
 func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
 	if IsDebug(2) {
-		block := GetBlock()
-		block.SetText([]byte("c"))
-		chunks.PushTail(block)
+		piece := GetPiece()
+		piece.SetText([]byte("c"))
+		chunks.PushTail(piece)
 	}
 }
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized

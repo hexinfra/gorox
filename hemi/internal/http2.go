@@ -100,7 +100,7 @@ func (r *http2Out_) finalizeUnsizedH2() error {
 	return nil
 }
 
-func (r *http2Out_) writeBlockH2(block *Block, unsized bool) error {
+func (r *http2Out_) writePieceH2(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }

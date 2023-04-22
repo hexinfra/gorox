@@ -148,7 +148,7 @@ type ( // core types
 	Handle   = internal.Handle
 	Router   = internal.Router
 	Reviser  = internal.Reviser
-	Block    = internal.Block
+	Piece    = internal.Piece
 	Socklet  = internal.Socklet
 	Rule     = internal.Rule
 	Request  = internal.Request

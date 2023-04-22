@@ -2763,8 +2763,8 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	if content == nil {
 		content = webErrorPages[status]
 	}
-	r.block.SetText(content)
-	r.chain.PushTail(&r.block)
+	r.piece.SetText(content)
+	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain()
 }
@@ -2810,7 +2810,7 @@ func (r *serverResponse_) echo() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	r.chain.PushTail(&r.block)
+	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
 		resp := r.shell.(Response)

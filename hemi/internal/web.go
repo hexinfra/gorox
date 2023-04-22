@@ -1538,8 +1538,8 @@ type webOut_ struct { // outgoing. needs building
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
 	edges [128]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
-	block Block       // for r.chain. used when sending content or echoing chunks
-	chain Chain       // outgoing block chain. used when sending content or echoing chunks
+	piece Piece       // for r.chain. used when sending content or echoing chunks
+	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message
@@ -1578,7 +1578,7 @@ func (r *webOut_) onEnd() { // for zeros
 		PutNK(r.fields)
 		r.fields = nil
 	}
-	// r.block is reset in echo(), and will be reset below if send() is used.
+	// r.piece is reset in echo(), and will be reset below if send() is used.
 	r.chain.free() // double free doesn't matter
 
 	r.sendTime = time.Time{}
@@ -1845,8 +1845,8 @@ func (r *webOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	r.block.SetText(content)
-	r.chain.PushTail(&r.block)
+	r.piece.SetText(content)
+	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content)) // original size, may be revised
 	return r.shell.send()
 }
@@ -1854,8 +1854,8 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
-	r.block.SetFile(content, info, shut)
-	r.chain.PushTail(&r.block)
+	r.piece.SetFile(content, info, shut)
+	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // original size, may be revised
 	return r.shell.send()
 }
@@ -1874,8 +1874,8 @@ func (r *webOut_) echoText(chunk []byte) error {
 	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
 		return nil
 	}
-	r.block.SetText(chunk)
-	defer r.block.zero()
+	r.piece.SetText(chunk)
+	defer r.piece.zero()
 	return r.shell.echo()
 }
 func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
@@ -1888,8 +1888,8 @@ func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 		}
 		return nil
 	}
-	r.block.SetFile(chunk, info, shut)
-	defer r.block.zero()
+	r.piece.SetFile(chunk, info, shut)
+	defer r.piece.zero()
 	return r.shell.echo()
 }
 func (r *webOut_) _beforeEcho() error {

@@ -81,13 +81,13 @@ func (r *hweb1Out_) finalizeUnsizedB1() error {
 func (r *hweb1Out_) writeHeadersB1() error { // used by echo and post
 	return nil
 }
-func (r *hweb1Out_) writeBlockB1(block *Block, chunked bool) error {
+func (r *hweb1Out_) writePieceB1(piece *Piece, chunked bool) error {
 	return nil
 }
-func (r *hweb1Out_) _writeTextB1(block *Block, chunked bool) error { // text
+func (r *hweb1Out_) _writeTextB1(piece *Piece, chunked bool) error { // text
 	return nil
 }
-func (r *hweb1Out_) _writeFileB1(block *Block, chunked bool) error { // file
+func (r *hweb1Out_) _writeFileB1(piece *Piece, chunked bool) error { // file
 	return nil
 }
 func (r *hweb1Out_) writeBytesB1(p []byte) error {

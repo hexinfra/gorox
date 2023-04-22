@@ -235,136 +235,137 @@ func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
 func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
 func (f _fakeFile) Close() error                           { return nil }
 
-// poolBlock
-var poolBlock sync.Pool
+// poolPiece
+var poolPiece sync.Pool
 
-func GetBlock() *Block { // only exported to hemi, to be used by revisers.
-	if x := poolBlock.Get(); x == nil {
-		block := new(Block)
-		block.pool = true // other blocks are not pooled.
-		return block
+func GetPiece() *Piece { // only exported to hemi, to be used by revisers.
+	if x := poolPiece.Get(); x == nil {
+		piece := new(Piece)
+		piece.pool = true // other pieces are not pooled.
+		return piece
 	} else {
-		return x.(*Block)
+		return x.(*Piece)
 	}
 }
-func putBlock(block *Block) {
-	poolBlock.Put(block)
+func putPiece(piece *Piece) {
+	poolPiece.Put(piece)
 }
 
-// Block is an item of http message content linked list.
-type Block struct { // 64 bytes
-	next *Block   // next block
-	pool bool     // true if this block is got from poolBlock. don't change this after set
+// Piece is a member of http message content linked list.
+type Piece struct { // 64 bytes
+	next *Piece   // next piece
+	pool bool     // true if this piece is got from poolPiece. don't change this after set
 	shut bool     // close file on free()?
 	kind int8     // 0:text 1:*os.File
+	_    [5]byte  // padding
 	text []byte   // text
 	file *os.File // file
 	size int64    // size of text or file
 	time int64    // file mod time
 }
 
-func (b *Block) zero() {
-	b.closeFile()
-	b.next = nil
-	b.shut = false
-	b.kind = 0
-	b.text = nil
-	b.size = 0
-	b.time = 0
+func (p *Piece) zero() {
+	p.closeFile()
+	p.next = nil
+	p.shut = false
+	p.kind = 0
+	p.text = nil
+	p.size = 0
+	p.time = 0
 }
-func (b *Block) closeFile() {
-	if b.IsText() {
+func (p *Piece) closeFile() {
+	if p.IsText() {
 		return
 	}
-	if b.shut {
-		b.file.Close()
+	if p.shut {
+		p.file.Close()
 	}
-	b.file = nil
+	p.file = nil
 	if IsDebug(2) {
-		if b.shut {
-			Debugln("file closed in Block.closeFile()")
+		if p.shut {
+			Debugln("file closed in Piece.closeFile()")
 		} else {
-			Debugln("file NOT closed in Block.closeFile()")
+			Debugln("file NOT closed in Piece.closeFile()")
 		}
 	}
 }
 
-func (b *Block) copyTo(buffer []byte) error { // buffer is large enough, and b is a file.
-	if b.IsText() {
-		BugExitln("copyTo when block is text")
+func (p *Piece) copyTo(buffer []byte) error { // buffer is large enough, and p is a file.
+	if p.IsText() {
+		BugExitln("copyTo when piece is text")
 	}
 	nRead := int64(0)
 	for {
-		if nRead == b.size {
+		if nRead == p.size {
 			return nil
 		}
 		readSize := int64(cap(buffer))
-		if sizeLeft := b.size - nRead; sizeLeft < readSize {
+		if sizeLeft := p.size - nRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
-		num, err := b.file.ReadAt(buffer[:readSize], nRead)
+		num, err := p.file.ReadAt(buffer[:readSize], nRead)
 		nRead += int64(num)
-		if err != nil && nRead != b.size {
+		if err != nil && nRead != p.size {
 			return err
 		}
 	}
 }
 
-func (b *Block) Next() *Block { return b.next }
+func (p *Piece) Next() *Piece { return p.next }
 
-func (b *Block) IsText() bool { return b.kind == 0 }
-func (b *Block) IsFile() bool { return b.kind == 1 }
+func (p *Piece) IsText() bool { return p.kind == 0 }
+func (p *Piece) IsFile() bool { return p.kind == 1 }
 
-func (b *Block) SetText(text []byte) {
-	b.closeFile()
-	b.shut = false
-	b.kind = 0
-	b.text = text
-	b.size = int64(len(text))
-	b.time = 0
+func (p *Piece) SetText(text []byte) {
+	p.closeFile()
+	p.shut = false
+	p.kind = 0
+	p.text = text
+	p.size = int64(len(text))
+	p.time = 0
 }
-func (b *Block) SetFile(file *os.File, info os.FileInfo, shut bool) {
-	b.closeFile()
-	b.shut = shut
-	b.kind = 1
-	b.text = nil
-	b.file = file
-	b.size = info.Size()
-	b.time = info.ModTime().Unix()
+func (p *Piece) SetFile(file *os.File, info os.FileInfo, shut bool) {
+	p.closeFile()
+	p.shut = shut
+	p.kind = 1
+	p.text = nil
+	p.file = file
+	p.size = info.Size()
+	p.time = info.ModTime().Unix()
 }
 
-func (b *Block) Text() []byte {
-	if !b.IsText() {
-		BugExitln("block is not text")
+func (p *Piece) Text() []byte {
+	if !p.IsText() {
+		BugExitln("piece is not text")
 	}
-	if b.size == 0 {
+	if p.size == 0 {
 		return nil
 	}
-	return b.text
+	return p.text
 }
-func (b *Block) File() *os.File {
-	if !b.IsFile() {
-		BugExitln("block is not file")
+func (p *Piece) File() *os.File {
+	if !p.IsFile() {
+		BugExitln("piece is not file")
 	}
-	return b.file
+	return p.file
 }
 
 /*
-func (b *Block) ToText() error { // used by revisers
-	if b.IsText() {
+func (p *Piece) ToText() error { // used by revisers
+	if p.IsText() {
 		return nil
 	}
-	text := make([]byte, b.size)
-	num, err := io.ReadFull(b.file, text) // TODO: convT()?
-	b.SetText(text[:num])
+	text := make([]byte, p.size)
+	num, err := io.ReadFull(p.file, text) // TODO: convT()?
+	p.SetText(text[:num])
 	return err
 }
 */
 
-// Chain is a linked-list of blocks.
+// Chain is a linked-list of pieces.
 type Chain struct { // 24 bytes
-	head *Block
-	tail *Block
+	head *Piece
+	tail *Piece
 	qnty int
 }
 
@@ -375,17 +376,17 @@ func (c *Chain) free() {
 	if c.qnty == 0 {
 		return
 	}
-	block := c.head
+	piece := c.head
 	c.head, c.tail = nil, nil
 	qnty := 0
-	for block != nil {
-		next := block.next
-		block.zero()
-		if block.pool { // only put those got from poolBlock because they are not fixed
-			putBlock(block)
+	for piece != nil {
+		next := piece.next
+		piece.zero()
+		if piece.pool { // only put those got from poolPiece because they are not fixed
+			putPiece(piece)
 		}
 		qnty++
-		block = next
+		piece = next
 	}
 	if qnty != c.qnty {
 		BugExitf("bad chain: qnty=%d c.qnty=%d\n", qnty, c.qnty)
@@ -393,11 +394,11 @@ func (c *Chain) free() {
 	c.qnty = 0
 }
 
-func (c *Chain) NumBlocks() int { return c.qnty }
+func (c *Chain) NumPieces() int { return c.qnty }
 func (c *Chain) Size() (int64, bool) {
 	size := int64(0)
-	for block := c.head; block != nil; block = block.next {
-		size += block.size
+	for piece := c.head; piece != nil; piece = piece.next {
+		size += piece.size
 		if size < 0 {
 			return 0, false
 		}
@@ -405,27 +406,27 @@ func (c *Chain) Size() (int64, bool) {
 	return size, true
 }
 
-func (c *Chain) PushHead(block *Block) {
-	if block == nil {
+func (c *Chain) PushHead(piece *Piece) {
+	if piece == nil {
 		return
 	}
 	if c.qnty == 0 {
-		c.head, c.tail = block, block
+		c.head, c.tail = piece, piece
 	} else {
-		block.next = c.head
-		c.head = block
+		piece.next = c.head
+		c.head = piece
 	}
 	c.qnty++
 }
-func (c *Chain) PushTail(block *Block) {
-	if block == nil {
+func (c *Chain) PushTail(piece *Piece) {
+	if piece == nil {
 		return
 	}
 	if c.qnty == 0 {
-		c.head, c.tail = block, block
+		c.head, c.tail = piece, piece
 	} else {
-		c.tail.next = block
-		c.tail = block
+		c.tail.next = piece
+		c.tail = piece
 	}
 	c.qnty++
 }

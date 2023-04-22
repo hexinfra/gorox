@@ -104,7 +104,7 @@ func (r *hweb2Out_) writeVectorB2() error {
 //       value = *OCTET
 
 //   dataRecord = recordHead *OCTET
-//   sizeRecord = recordHead bufferSize(3)
+//   sizeRecord = recordHead windowSize(3)
 
 // On TCP connection established, client sends an init record, then server sends one, too.
 // Whenever a client kicks a new request, it must use the least unused streamID starting from 1.
@@ -115,7 +115,7 @@ const ( // record types
 	hweb2TypeINIT = 0 // contains connection settings
 	hweb2TypeHEAD = 1 // contains name-value pairs for headers
 	hweb2TypeDATA = 2 // contains content data
-	hweb2TypeSIZE = 3 // available buffer size for receiving content
+	hweb2TypeSIZE = 3 // available window size for receiving content
 	hweb2TypeTAIL = 4 // contains name-value pairs for trailers
 )
 
@@ -125,14 +125,14 @@ const ( // record flags
 
 const ( // setting codes
 	hweb2SettingMaxRecordBodySize    = 0
-	hweb2SettingInitialBufferSize    = 1
+	hweb2SettingInitialWindowSize    = 1
 	hweb2SettingMaxStreams           = 2
 	hweb2SettingMaxConcurrentStreams = 3
 )
 
 var hweb2SettingDefaults = [...]int32{
 	hweb2SettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	hweb2SettingInitialBufferSize:    16376, // allow: [16376-16777215]
+	hweb2SettingInitialWindowSize:    16376, // allow: [16376-16777215]
 	hweb2SettingMaxStreams:           1000,  // allow: [100-16777215]
 	hweb2SettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
 }
@@ -141,8 +141,8 @@ var hweb2SettingDefaults = [...]int32{
 
 on connection established:
 
-    ==> type=INIT streamID=0 bodySize=8     body=[maxRecordBodySize=16376 initialBufferSize=16376]
-    <== type=INIT streamID=0 bodySize=16    body=[maxRecordBodySize=16376 initialBufferSize=16376 maxStreams=1000 maxConcurrentStreams=10]
+    ==> type=INIT streamID=0 bodySize=8     body=[maxRecordBodySize=16376 initialWindowSize=16376]
+    <== type=INIT streamID=0 bodySize=16    body=[maxRecordBodySize=16376 initialWindowSize=16376 maxStreams=1000 maxConcurrentStreams=10]
 
 stream=1 (sized output):
 

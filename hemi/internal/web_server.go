@@ -2647,11 +2647,11 @@ type serverResponse_ struct { // outgoing. needs building
 	serverResponse0        // all values must be zero by default in this struct!
 }
 type serverResponse0 struct { // for fast reset, entirely
-	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
-	indexes  struct {
+	indexes struct {
 		expires      uint8
 		lastModified uint8
 	}
+	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 }
 
 func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros

@@ -321,7 +321,7 @@ func (s *H1Stream) ExecuteNormal() error { // request & response
 }
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO
-	// use s.startSocket()
+	// use s.socketServer()
 	return s.socket
 }
 func (s *H1Stream) ExecuteTCPTun() { // CONNECT method

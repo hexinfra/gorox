@@ -273,14 +273,14 @@ func (s *H3Stream) ExecuteNormal() error { // request & response
 	return nil
 }
 func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
-	// TODO
+	// TODO, use s.socketClient()
 	return s.socket
 }
 func (s *H3Stream) ExecuteTCPTun() { // CONNECT method
-	// TODO
+	// TODO, use s.tcpTunClient()
 }
 func (s *H3Stream) ExecuteUDPTun() { // see RFC 9298
-	// TODO
+	// TODO, use s.udpTunClient()
 }
 
 func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {

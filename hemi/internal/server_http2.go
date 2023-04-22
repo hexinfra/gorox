@@ -884,13 +884,13 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 	// TODO
 }
 func (s *http2Stream) executeSocket() { // see RFC 8441: https://www.rfc-editor.org/rfc/rfc8441.html
-	// TODO
+	// TODO, use s.socketServer()
 }
 func (s *http2Stream) executeTCPTun() { // CONNECT method
-	// TODO
+	// TODO, use s.tcpTunServer()
 }
 func (s *http2Stream) executeUDPTun() { // see RFC 9298: https://www.rfc-editor.org/rfc/rfc9298.html
-	// TODO
+	// TODO, use s.udpTunServer()
 }
 
 func (s *http2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {

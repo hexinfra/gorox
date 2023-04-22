@@ -88,7 +88,7 @@ type tcpsGate struct {
 	// Assocs
 	mesher *TCPSMesher
 	// States
-	gate *net.TCPListener
+	gate *net.TCPListener // the real gate. set after open
 }
 
 func (g *tcpsGate) init(mesher *TCPSMesher, id int32) {

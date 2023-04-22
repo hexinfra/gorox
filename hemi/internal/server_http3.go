@@ -76,7 +76,7 @@ type http3Gate struct {
 	// Assocs
 	server *http3Server
 	// States
-	gate *quix.Gate
+	gate *quix.Gate // the real gate. set after open
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
@@ -291,13 +291,13 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 	// TODO
 }
 func (s *http3Stream) executeSocket() { // see RFC 9220
-	// TODO
+	// TODO, use s.socketServer()
 }
 func (s *http3Stream) executeTCPTun() { // CONNECT method
-	// TODO
+	// TODO, use s.tcpTunServer()
 }
 func (s *http3Stream) executeUDPTun() { // see RFC 9298
-	// TODO
+	// TODO, use s.udpTunServer()
 }
 
 func (s *http3Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {

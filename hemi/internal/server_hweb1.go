@@ -77,7 +77,7 @@ type hweb1Gate struct {
 	// Assocs
 	server *hweb1Server
 	// States
-	gate *net.TCPListener
+	gate *net.TCPListener // the real gate. set after open
 }
 
 func (g *hweb1Gate) init(server *hweb1Server, id int32) {

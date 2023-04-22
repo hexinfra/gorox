@@ -76,7 +76,7 @@ type hweb2Gate struct {
 	// Assocs
 	server *hweb2Server
 	// States
-	gate *net.TCPListener
+	gate *net.TCPListener // the real gate. set after open
 }
 
 func (g *hweb2Gate) init(server *hweb2Server, id int32) {
@@ -145,14 +145,14 @@ func (g *hweb2Gate) justClose(tcpConn *net.TCPConn) {
 // poolHWEB2Conn is the server-side HWEB/2 connection pool.
 var poolHWEB2Conn sync.Pool
 
-func getHWEB2Conn(id int64, server *hweb2Server, gate *hweb2Gate, netConn net.Conn, rawConn syscall.RawConn) serverConn {
+func getHWEB2Conn(id int64, server *hweb2Server, gate *hweb2Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) serverConn {
 	var conn *hweb2Conn
 	if x := poolHWEB2Conn.Get(); x == nil {
 		conn = new(hweb2Conn)
 	} else {
 		conn = x.(*hweb2Conn)
 	}
-	conn.onGet(id, server, gate, netConn, rawConn)
+	conn.onGet(id, server, gate, tcpConn, rawConn)
 	return conn
 }
 func putHWEB2Conn(conn *hweb2Conn) {
@@ -172,7 +172,7 @@ type hweb2Conn struct {
 type hweb2Conn0 struct { // for fast reset, entirely
 }
 
-func (c *hweb2Conn) onGet(id int64, server *hweb2Server, gate *hweb2Gate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *hweb2Conn) onGet(id int64, server *hweb2Server, gate *hweb2Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.serverConn_.onGet(id, server, gate)
 	// TODO
 }

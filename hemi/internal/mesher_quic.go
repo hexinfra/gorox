@@ -81,7 +81,7 @@ type quicGate struct {
 	// Assocs
 	mesher *QUICMesher
 	// States
-	gate *quix.Gate
+	gate *quix.Gate // the real gate. set after open
 }
 
 func (g *quicGate) init(mesher *QUICMesher, id int32) {

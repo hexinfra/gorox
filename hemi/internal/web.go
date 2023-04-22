@@ -107,6 +107,9 @@ func (s *webStream_) onEnd() { // for zeros
 func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
+func (s *webStream_) socketClient() {
+	// TODO
+}
 func (s *webStream_) tcpTunClient() {
 	// TODO: CONNECT method
 }
@@ -114,6 +117,9 @@ func (s *webStream_) udpTunClient() {
 	// TODO: upgrade connect-udp
 }
 
+func (s *webStream_) socketServer() {
+	// TODO
+}
 func (s *webStream_) tcpTunServer() {
 	// TODO: CONNECT method
 }

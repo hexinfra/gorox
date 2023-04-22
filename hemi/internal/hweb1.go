@@ -99,17 +99,23 @@ func (r *hweb1Out_) writeVectorB1() error {
 
 //////////////////////////////////////// HWEB/1 protocol elements.
 
-// request  = headRecord *dataRecord [ tailRecord ]
-// response = headRecord *dataRecord [ tailRecord ]
+// nameValue = nameSize(8) valueSize(24) name value
+// name      = 1*OCTET
+// value     = *OCTET
 
-//   headRecord = reserved(1) bodySize(63) 1*nameValue
-//   tailRecord = reserved(1) bodySize(63) 1*nameValue
+// fields = zero(1) bodySize(63) 1*nameValue
 
-//     nameValue = nameSize(8) valueSize(24) name value
-//       name  = 1*OCTET
-//       value = *OCTET
+// request  = head [ body ]
+// response = head [ body ]
 
-//   dataRecord = reserved(1) bodySize(63) *OCTET
+// head = fields
+// body = sized | unsized
+
+// sized   = zero(1) bodySize(63) *OCTET
+// unsized = *sized last tail
+
+// last = 0x0000000000000000
+// tail = 0x0000000000000000 | fields
 
 /*
 

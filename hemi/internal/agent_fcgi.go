@@ -374,8 +374,6 @@ func (r *fcgiRequest) onEnd() {
 }
 
 func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte) bool {
-	var value []byte
-
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -389,7 +387,9 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte
 	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
 		return false
 	}
-
+	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
+		return false
+	}
 	if len(scriptFilename) == 0 {
 		absPath := req.unsafeAbsPath()
 		if absPath[len(absPath)-1] == '/' && len(indexFile) != 0 {
@@ -406,6 +406,7 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte
 	if !r._addMetaParam(fcgiBytesScriptName, req.UnsafePath()) { // SCRIPT_NAME
 		return false
 	}
+	var value []byte
 	if value = req.UnsafeQueryString(); len(value) > 1 {
 		value = value[1:] // excluding '?'
 	} else {
@@ -418,9 +419,6 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte
 		return false
 	}
 	if value = req.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
-		return false
-	}
-	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
 

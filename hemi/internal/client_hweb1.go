@@ -5,7 +5,7 @@
 
 // HWEB/1 client implementation.
 
-// HWEB/1 is a binary HWEB/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HWEB/1 is a binary HTTP/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
 
 package internal
 

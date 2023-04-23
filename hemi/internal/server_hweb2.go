@@ -380,10 +380,7 @@ func (r *hweb2Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse(Version2)
 	return false
 }
-func (r *hweb2Response) passHeaders() error {
-	// TODO
-	return nil
-}
+func (r *hweb2Response) passHeaders() error       { return r.writeHeadersB2() }
 func (r *hweb2Response) passBytes(p []byte) error { return r.passBytesB2(p) }
 
 func (r *hweb2Response) finalizeHeaders() { // add at most 256 bytes

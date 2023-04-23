@@ -1008,10 +1008,7 @@ func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse(Version2)
 	return false
 }
-func (r *http2Response) passHeaders() error {
-	// TODO
-	return nil
-}
+func (r *http2Response) passHeaders() error       { return r.writeHeadersH2() }
 func (r *http2Response) passBytes(p []byte) error { return r.passBytesH2(p) }
 
 func (r *http2Response) finalizeHeaders() { // add at most 256 bytes

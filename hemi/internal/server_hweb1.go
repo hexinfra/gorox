@@ -435,8 +435,8 @@ func (r *hweb1Response) addTrailer(name []byte, value []byte) bool {
 func (r *hweb1Response) pass1xx(resp response) bool { // used by proxies
 	return true
 }
-func (r *hweb1Response) passHeaders() error       { return nil }
-func (r *hweb1Response) passBytes(p []byte) error { return nil }
+func (r *hweb1Response) passHeaders() error       { return r.writeHeadersB1() }
+func (r *hweb1Response) passBytes(p []byte) error { return r.passBytesB1(p) }
 
 func (r *hweb1Response) finalizeHeaders() { // add at most 256 bytes
 }

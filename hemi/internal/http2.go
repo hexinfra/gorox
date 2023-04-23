@@ -87,10 +87,7 @@ func (r *http2Out_) trailersH2() []byte {
 	return nil
 }
 
-func (r *http2Out_) passBytesH2(p []byte) error {
-	// TODO
-	return nil
-}
+func (r *http2Out_) passBytesH2(p []byte) error { return r.writeBytesH2(p) }
 
 func (r *http2Out_) finalizeUnsizedH2() error {
 	// TODO
@@ -100,11 +97,15 @@ func (r *http2Out_) finalizeUnsizedH2() error {
 	return nil
 }
 
-func (r *http2Out_) writeHeadersH2() error { // used by echo and post
+func (r *http2Out_) writeHeadersH2() error { // used by echo and pass
 	// TODO
 	return nil
 }
 func (r *http2Out_) writePieceH2(piece *Piece, unsized bool) error {
+	// TODO
+	return nil
+}
+func (r *http2Out_) writeBytesH2(p []byte) error {
 	// TODO
 	return nil
 }

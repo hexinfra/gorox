@@ -72,22 +72,16 @@ func (r *hweb1Out_) addTrailerB1(name []byte, value []byte) bool {
 }
 func (r *hweb1Out_) trailersB1() []byte { return nil }
 
-func (r *hweb1Out_) passBytesB1(p []byte) error { return nil }
+func (r *hweb1Out_) passBytesB1(p []byte) error { return r.writeBytesB1(p) }
 
 func (r *hweb1Out_) finalizeUnsizedB1() error {
 	return nil
 }
 
-func (r *hweb1Out_) writeHeadersB1() error { // used by echo and post
+func (r *hweb1Out_) writeHeadersB1() error { // used by echo and pass
 	return nil
 }
 func (r *hweb1Out_) writePieceB1(piece *Piece) error {
-	return nil
-}
-func (r *hweb1Out_) _writeTextB1(piece *Piece) error { // text
-	return nil
-}
-func (r *hweb1Out_) _writeFileB1(piece *Piece) error { // file
 	return nil
 }
 func (r *hweb1Out_) writeBytesB1(p []byte) error {

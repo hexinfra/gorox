@@ -754,7 +754,7 @@ func (r *http1Out_) finalizeUnsizedH1() error {
 	return r.writeVectorH1()
 }
 
-func (r *http1Out_) writeHeadersH1() error { // used by echo and post
+func (r *http1Out_) writeHeadersH1() error { // used by echo and pass
 	r.shell.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.shell.control()
@@ -778,68 +778,61 @@ func (r *http1Out_) writePieceH1(piece *Piece, chunked bool) error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if piece.IsText() {
-		return r._writeTextH1(piece, chunked)
-	} else {
-		return r._writeFileH1(piece, chunked)
-	}
-}
-func (r *http1Out_) _writeTextH1(piece *Piece, chunked bool) error { // text
-	if chunked { // HTTP/1.1 chunked data
-		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
-		n := i64ToHex(piece.size, sizeBuffer)
-		sizeBuffer[n] = '\r'
-		sizeBuffer[n+1] = '\n'
-		n += 2
-		r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
-		r.vector[0] = sizeBuffer[0:n]
-		r.vector[1] = piece.Text()
-		r.vector[2] = sizeBuffer[n-2 : n]
-	} else { // HTTP/1.0, or raw data
-		r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
-		r.vector[0] = piece.Text()
-	}
-	return r.writeVectorH1()
-}
-func (r *http1Out_) _writeFileH1(piece *Piece, chunked bool) error { // file
-	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
-	defer PutNK(buffer)
-
-	nRead := int64(0)
-	for { // we don't use sendfile(2).
-		if nRead == piece.size {
-			return nil
+	if piece.IsText() { // text piece
+		if chunked { // HTTP/1.1 chunked data
+			sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
+			n := i64ToHex(piece.size, sizeBuffer)
+			sizeBuffer[n] = '\r'
+			sizeBuffer[n+1] = '\n'
+			n += 2
+			r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
+			r.vector[0] = sizeBuffer[0:n]
+			r.vector[1] = piece.Text()
+			r.vector[2] = sizeBuffer[n-2 : n]
+		} else { // HTTP/1.0, or raw data
+			r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
+			r.vector[0] = piece.Text()
 		}
-		readSize := int64(cap(buffer))
-		if sizeLeft := piece.size - nRead; sizeLeft < readSize {
-			readSize = sizeLeft
-		}
-		n, err := piece.file.ReadAt(buffer[:readSize], nRead)
-		nRead += int64(n)
-		if err != nil && nRead != piece.size {
-			r.stream.markBroken()
-			return err
-		}
-		if err = r._beforeWrite(); err != nil {
-			r.stream.markBroken()
-			return err
-		}
-		if chunked { // use HTTP/1.1 chunked mode
-			sizeBuffer := r.stream.buffer256()
-			k := i64ToHex(int64(n), sizeBuffer)
-			sizeBuffer[k] = '\r'
-			sizeBuffer[k+1] = '\n'
-			k += 2
-			r.vector = r.fixedVector[0:3]
-			r.vector[0] = sizeBuffer[:k]
-			r.vector[1] = buffer[:n]
-			r.vector[2] = sizeBuffer[k-2 : k]
-			_, err = r.stream.writev(&r.vector)
-		} else { // HTTP/1.0, or identity content
-			_, err = r.stream.write(buffer[0:n])
-		}
-		if err = r._slowCheck(err); err != nil {
-			return err
+		return r.writeVectorH1()
+	} else { // file piece
+		buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
+		defer PutNK(buffer)
+		nRead := int64(0)
+		for { // we don't use sendfile(2).
+			if nRead == piece.size {
+				return nil
+			}
+			readSize := int64(cap(buffer))
+			if sizeLeft := piece.size - nRead; sizeLeft < readSize {
+				readSize = sizeLeft
+			}
+			n, err := piece.file.ReadAt(buffer[:readSize], nRead)
+			nRead += int64(n)
+			if err != nil && nRead != piece.size {
+				r.stream.markBroken()
+				return err
+			}
+			if err = r._beforeWrite(); err != nil {
+				r.stream.markBroken()
+				return err
+			}
+			if chunked { // use HTTP/1.1 chunked mode
+				sizeBuffer := r.stream.buffer256()
+				k := i64ToHex(int64(n), sizeBuffer)
+				sizeBuffer[k] = '\r'
+				sizeBuffer[k+1] = '\n'
+				k += 2
+				r.vector = r.fixedVector[0:3]
+				r.vector[0] = sizeBuffer[:k]
+				r.vector[1] = buffer[:n]
+				r.vector[2] = sizeBuffer[k-2 : k]
+				_, err = r.stream.writev(&r.vector)
+			} else { // HTTP/1.0, or identity content
+				_, err = r.stream.write(buffer[0:n])
+			}
+			if err = r._slowCheck(err); err != nil {
+				return err
+			}
 		}
 	}
 }

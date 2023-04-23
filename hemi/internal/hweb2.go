@@ -65,10 +65,7 @@ func (r *hweb2Out_) trailersB2() []byte {
 	return nil
 }
 
-func (r *hweb2Out_) passBytesB2(p []byte) error {
-	// TODO
-	return nil
-}
+func (r *hweb2Out_) passBytesB2(p []byte) error { return r.writeBytesB2(p) }
 
 func (r *hweb2Out_) finalizeUnsizedB2() error {
 	// TODO
@@ -78,11 +75,15 @@ func (r *hweb2Out_) finalizeUnsizedB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) writeHeadersB2() error { // used by echo and post
+func (r *hweb2Out_) writeHeadersB2() error { // used by echo and pass
 	// TODO
 	return nil
 }
 func (r *hweb2Out_) writePieceB2(piece *Piece, unsized bool) error {
+	// TODO
+	return nil
+}
+func (r *hweb2Out_) writeBytesB2(p []byte) error {
 	// TODO
 	return nil
 }

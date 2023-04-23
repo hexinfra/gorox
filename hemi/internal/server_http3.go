@@ -400,10 +400,7 @@ func (r *http3Response) pass1xx(resp response) bool { // used by proxies
 	r.onUse(Version3)
 	return false
 }
-func (r *http3Response) passHeaders() error {
-	// TODO
-	return nil
-}
+func (r *http3Response) passHeaders() error       { return r.writeHeadersH3() }
 func (r *http3Response) passBytes(p []byte) error { return r.passBytesH3(p) }
 
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes

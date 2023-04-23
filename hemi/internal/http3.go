@@ -76,10 +76,7 @@ func (r *http3Out_) trailersH3() []byte {
 	return nil
 }
 
-func (r *http3Out_) passBytesH3(p []byte) error {
-	// TODO
-	return nil
-}
+func (r *http3Out_) passBytesH3(p []byte) error { return r.writeBytesH3(p) }
 
 func (r *http3Out_) finalizeUnsizedH3() error {
 	// TODO
@@ -89,11 +86,15 @@ func (r *http3Out_) finalizeUnsizedH3() error {
 	return nil
 }
 
-func (r *http3Out_) writeHeadersH3() error { // used by echo and post
+func (r *http3Out_) writeHeadersH3() error { // used by echo and pass
 	// TODO
 	return nil
 }
 func (r *http3Out_) writePieceH3(piece *Piece, unsized bool) error {
+	// TODO
+	return nil
+}
+func (r *http3Out_) writeBytesH3(p []byte) error {
 	// TODO
 	return nil
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webServer is the interface for *httpxServer, *http3Server, and *hweb[1-2]Server.
+// webServer is the interface for *http[x3]Server and *hweb[1-2]Server.
 type webServer interface {
 	Server
 	streamHolder
@@ -35,7 +35,7 @@ type webServer interface {
 	findApp(hostname []byte) *App
 }
 
-// webServer_ is a mixin for httpxServer, http3Server, and hweb[1-2]Server.
+// webServer_ is a mixin for http[x3]Server and hweb[1-2]Server.
 type webServer_ struct {
 	// Mixins
 	Server_
@@ -187,13 +187,13 @@ func (s *webServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
-// webGate is the interface for *httpxGate, *http3Gate, and *hweb[1-2]Gate.
+// webGate is the interface for *http[x3]Gate and *hweb[1-2]Gate.
 type webGate interface {
 	Gate
 	onConnectionClosed()
 }
 
-// webGate_ is the mixin for httpxGate, http3Gate, and hweb[1-2]Gate.
+// webGate_ is the mixin for http[x3]Gate and hweb[1-2]Gate.
 type webGate_ struct {
 	// Mixins
 	Gate_

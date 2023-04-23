@@ -703,20 +703,6 @@ func (r *http1Out_) echoChainH1(chunked bool) error { // TODO: coalesce?
 	return nil
 }
 
-func (r *http1Out_) trailerH1(name []byte) (value []byte, ok bool) {
-	if r.nTrailers > 1 && len(name) > 0 {
-		from := uint16(0)
-		for i := uint8(1); i < r.nTrailers; i++ {
-			edge := r.edges[i]
-			trailer := r.fields[from:edge]
-			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
-				return trailer[p+len(bytesColonSpace) : len(trailer)-len(bytesCRLF)], true
-			}
-			from = edge
-		}
-	}
-	return
-}
 func (r *http1Out_) addTrailerH1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
@@ -736,6 +722,20 @@ func (r *http1Out_) addTrailerH1(name []byte, value []byte) bool {
 	} else {
 		return false
 	}
+}
+func (r *http1Out_) trailerH1(name []byte) (value []byte, ok bool) {
+	if r.nTrailers > 1 && len(name) > 0 {
+		from := uint16(0)
+		for i := uint8(1); i < r.nTrailers; i++ {
+			edge := r.edges[i]
+			trailer := r.fields[from:edge]
+			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
+				return trailer[p+len(bytesColonSpace) : len(trailer)-len(bytesCRLF)], true
+			}
+			from = edge
+		}
+	}
+	return
 }
 func (r *http1Out_) trailersH1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not present at the same time, so after headers is sent, r.fields is used by trailers.
 

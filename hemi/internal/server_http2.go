@@ -987,11 +987,11 @@ func (r *http2Response) sendChain() error { return r.sendChainH2() }
 func (r *http2Response) echoHeaders() error { return r.writeHeadersH2() }
 func (r *http2Response) echoChain() error   { return r.echoChainH2() }
 
-func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH2(name)
-}
 func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerH2(name, value)
+}
+func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerH2(name)
 }
 
 func (r *http2Response) pass1xx(resp response) bool { // used by proxies

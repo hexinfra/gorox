@@ -380,8 +380,8 @@ func (r *B1Request) sendChain() error { return r.sendChainB1() }
 func (r *B1Request) echoHeaders() error { return r.writeHeadersB1() }
 func (r *B1Request) echoChain() error   { return r.echoChainB1() }
 
-func (r *B1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailerB1(name) }
 func (r *B1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailerB1(name, value) }
+func (r *B1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailerB1(name) }
 
 func (r *B1Request) passHeaders() error       { return r.writeHeadersB1() }
 func (r *B1Request) passBytes(p []byte) error { return r.passBytesB1(p) }

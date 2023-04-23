@@ -1178,13 +1178,13 @@ func (r *http1Response) sendChain() error { return r.sendChainH1() }
 func (r *http1Response) echoHeaders() error { return r.writeHeadersH1() }
 func (r *http1Response) echoChain() error   { return r.echoChainH1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
 
-func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
 		return r.addTrailerH1(name, value)
 	}
 	return true // HTTP/1.0 doesn't support trailer.
 }
+func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
 
 func (r *http1Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()

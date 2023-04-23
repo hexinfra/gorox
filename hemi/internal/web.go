@@ -1506,11 +1506,11 @@ var ( // web incoming message errors
 // webOut is a *http[1-3]Response or *H[1-3]Request, used as shell by webOut_.
 type webOut interface {
 	control() []byte
+	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	delHeader(name []byte) (deleted bool)
 	delHeaderAt(o uint8)
-	addHeader(name []byte, value []byte) bool
 	insertHeader(hash uint16, name []byte, value []byte) bool
 	removeHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
@@ -1522,8 +1522,8 @@ type webOut interface {
 	echoHeaders() error
 	echo() error
 	echoChain() error // chunks
-	trailer(name []byte) (value []byte, ok bool)
 	addTrailer(name []byte, value []byte) bool
+	trailer(name []byte) (value []byte, ok bool)
 	finalizeUnsized() error
 	passHeaders() error       // used by proxies
 	passBytes(p []byte) error // used by proxies
@@ -1765,10 +1765,6 @@ func (r *webOut_) EchoFile(chunkPath string) error {
 	return r.echoFile(file, info, true) // true to close on end
 }
 
-func (r *webOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.shell.trailer(risky.ConstBytes(name))
-	return string(v), ok
-}
 func (r *webOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
 }
@@ -1777,6 +1773,10 @@ func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	}
 	return false
+}
+func (r *webOut_) Trailer(name string) (value string, ok bool) {
+	v, ok := r.shell.trailer(risky.ConstBytes(name))
+	return string(v), ok
 }
 
 func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content directly

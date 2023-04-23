@@ -52,13 +52,13 @@ func (r *hweb2Out_) echoChainB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) trailerB2(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
 func (r *hweb2Out_) addTrailerB2(name []byte, value []byte) bool {
 	// TODO
 	return false
+}
+func (r *hweb2Out_) trailerB2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
 }
 func (r *hweb2Out_) trailersB2() []byte {
 	// TODO

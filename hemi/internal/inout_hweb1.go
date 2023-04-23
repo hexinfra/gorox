@@ -64,11 +64,11 @@ func (r *hweb1Out_) echoChainB1() error { // TODO: coalesce?
 	return nil
 }
 
-func (r *hweb1Out_) trailerB1(name []byte) (value []byte, ok bool) {
-	return nil, false
-}
 func (r *hweb1Out_) addTrailerB1(name []byte, value []byte) bool {
 	return false
+}
+func (r *hweb1Out_) trailerB1(name []byte) (value []byte, ok bool) {
+	return nil, false
 }
 func (r *hweb1Out_) trailersB1() []byte { return nil }
 

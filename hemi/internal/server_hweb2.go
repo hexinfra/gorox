@@ -359,11 +359,11 @@ func (r *hweb2Response) sendChain() error { return r.sendChainB2() }
 func (r *hweb2Response) echoHeaders() error { return r.writeHeadersB2() }
 func (r *hweb2Response) echoChain() error   { return r.echoChainB2() }
 
-func (r *hweb2Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerB2(name)
-}
 func (r *hweb2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerB2(name, value)
+}
+func (r *hweb2Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerB2(name)
 }
 
 func (r *hweb2Response) pass1xx(resp response) bool { // used by proxies

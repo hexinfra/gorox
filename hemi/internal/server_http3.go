@@ -379,11 +379,11 @@ func (r *http3Response) sendChain() error { return r.sendChainH3() }
 func (r *http3Response) echoHeaders() error { return r.writeHeadersH3() }
 func (r *http3Response) echoChain() error   { return r.echoChainH3() }
 
-func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH3(name)
-}
 func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerH3(name, value)
+}
+func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerH3(name)
 }
 
 func (r *http3Response) pass1xx(resp response) bool { // used by proxies

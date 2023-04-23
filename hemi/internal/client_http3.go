@@ -356,11 +356,11 @@ func (r *H3Request) sendChain() error { return r.sendChainH3() }
 func (r *H3Request) echoHeaders() error { return r.writeHeadersH3() }
 func (r *H3Request) echoChain() error   { return r.echoChainH3() }
 
-func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH3(name)
-}
 func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerH3(name, value)
+}
+func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerH3(name)
 }
 
 func (r *H3Request) passHeaders() error       { return r.writeHeadersH3() }

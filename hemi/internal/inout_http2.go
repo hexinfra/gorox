@@ -74,13 +74,13 @@ func (r *http2Out_) echoChainH2() error {
 	return nil
 }
 
-func (r *http2Out_) trailerH2(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
 func (r *http2Out_) addTrailerH2(name []byte, value []byte) bool {
 	// TODO
 	return false
+}
+func (r *http2Out_) trailerH2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
 }
 func (r *http2Out_) trailersH2() []byte {
 	// TODO

@@ -63,13 +63,13 @@ func (r *http3Out_) echoChainH3() error {
 	return nil
 }
 
-func (r *http3Out_) trailerH3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
 func (r *http3Out_) addTrailerH3(name []byte, value []byte) bool {
 	// TODO
 	return false
+}
+func (r *http3Out_) trailerH3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
 }
 func (r *http3Out_) trailersH3() []byte {
 	// TODO

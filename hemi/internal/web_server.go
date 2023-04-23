@@ -2570,10 +2570,10 @@ type Response interface {
 
 	SetCookie(cookie *Cookie) bool
 
-	Header(name string) (value string, ok bool)
-	HasHeader(name string) bool
 	AddHeader(name string, value string) bool
 	AddHeaderBytes(name []byte, value []byte) bool
+	Header(name string) (value string, ok bool)
+	HasHeader(name string) bool
 	DelHeader(name string) bool
 	DelHeaderBytes(name []byte) bool
 
@@ -2601,9 +2601,9 @@ type Response interface {
 	AddTrailerBytes(name []byte, value []byte) bool
 
 	// Internal only
+	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
-	addHeader(name []byte, value []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
 	copyHeadFrom(resp response, viaName []byte) bool // used by proxies

@@ -384,11 +384,11 @@ func (r *H2Request) sendChain() error { return r.sendChainH2() }
 func (r *H2Request) echoHeaders() error { return r.writeHeadersH2() }
 func (r *H2Request) echoChain() error   { return r.echoChainH2() }
 
-func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH2(name)
-}
 func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerH2(name, value)
+}
+func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerH2(name)
 }
 
 func (r *H2Request) passHeaders() error       { return r.writeHeadersH2() }

@@ -372,11 +372,11 @@ func (r *B2Request) sendChain() error { return r.sendChainB2() }
 func (r *B2Request) echoHeaders() error { return r.writeHeadersB2() }
 func (r *B2Request) echoChain() error   { return r.echoChainB2() }
 
-func (r *B2Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerB2(name)
-}
 func (r *B2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerB2(name, value)
+}
+func (r *B2Request) trailer(name []byte) (value []byte, ok bool) {
+	return r.trailerB2(name)
 }
 
 func (r *B2Request) passHeaders() error       { return r.writeHeadersB2() }

@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.
+// Copyright (c) 2020-2023 FengWei <feng19910104@gmail.com>.
 // Copyright (c) 2022-2023 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
@@ -76,7 +76,7 @@ func (h *accessChecker) OnPrepare() {
 	h.allowRules = h.parseRule(h.allow)
 	h.denyRules = h.parseRule(h.deny)
 
-	//	sort by priority
+	// sort by priority
 	sort.Sort(ipRuleSlice(h.allowRules))
 	sort.Sort(ipRuleSlice(h.denyRules))
 }
@@ -137,6 +137,22 @@ forbidden:
 	return false
 }
 
+func (h *accessChecker) parseRule(rules []string) []*ipRule {
+	p := make([]*ipRule, 0, len(rules))
+	for _, rule := range rules {
+		if rule == "all" {
+			p = append(p, &ipRule{all: true, rank: rankAll})
+		} else if ip := net.ParseIP(rule); ip != nil {
+			p = append(p, &ipRule{ip: ip, rank: rankIP})
+		} else if _, ipnet, err := net.ParseCIDR(rule); err == nil {
+			p = append(p, &ipRule{cidr: ipnet, rank: rankCIDR})
+		} else {
+			h.stage.Logf("accessChecker illegal ip rule: %v", rule)
+		}
+	}
+	return p
+}
+
 type ipRule struct {
 	ip   net.IP
 	cidr *net.IPNet
@@ -158,18 +174,14 @@ func (r *ipRule) String() string {
 
 type ipRuleSlice []*ipRule
 
-func (r ipRuleSlice) Len() int {
-	return len(r)
-}
-func (r ipRuleSlice) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
-}
-func (r ipRuleSlice) Less(i, j int) bool {
-	if r[i].rank > r[j].rank {
+func (s ipRuleSlice) Len() int      { return len(s) }
+func (s ipRuleSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s ipRuleSlice) Less(i, j int) bool {
+	if s[i].rank > s[j].rank {
 		return true
 	}
-	if r[i].rank == r[j].rank && r[i].rank == rankCIDR &&
-		bytes.Compare(r[i].cidr.Mask, r[j].cidr.Mask) == 1 {
+	if s[i].rank == s[j].rank && s[i].rank == rankCIDR &&
+		bytes.Compare(s[i].cidr.Mask, s[j].cidr.Mask) == 1 {
 		return true
 	}
 	return false
@@ -191,26 +203,10 @@ func checkRule(rules []string) bool {
 	return true
 }
 
-func (h *accessChecker) parseRule(rules []string) []*ipRule {
-	p := make([]*ipRule, 0, len(rules))
-	for _, rule := range rules {
-		if rule == "all" {
-			p = append(p, &ipRule{all: true, rank: rankAll})
-		} else if ip := net.ParseIP(rule); ip != nil {
-			p = append(p, &ipRule{ip: ip, rank: rankIP})
-		} else if _, ipnet, err := net.ParseCIDR(rule); err == nil {
-			p = append(p, &ipRule{cidr: ipnet, rank: rankCIDR})
-		} else {
-			h.stage.Logf("accessChecker illegal ip rule: %v", rule)
-		}
-	}
-	return p
-}
-
-func checkRuleConflict(r1s, r2s []string) bool {
-	for _, r1 := range r1s {
-		for _, r2 := range r2s {
-			if r1 == r2 {
+func checkRuleConflict(rules1, rules2 []string) bool {
+	for _, rule1 := range rules1 {
+		for _, rule2 := range rules2 {
+			if rule1 == rule2 {
 				return true
 			}
 		}

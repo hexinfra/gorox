@@ -60,7 +60,7 @@ func (r *hweb1Out_) sendChainB1() error {
 	return nil
 }
 
-func (r *hweb1Out_) echoChainB1(chunked bool) error { // TODO: coalesce?
+func (r *hweb1Out_) echoChainB1() error { // TODO: coalesce?
 	return nil
 }
 
@@ -81,13 +81,13 @@ func (r *hweb1Out_) finalizeUnsizedB1() error {
 func (r *hweb1Out_) writeHeadersB1() error { // used by echo and post
 	return nil
 }
-func (r *hweb1Out_) writePieceB1(piece *Piece, chunked bool) error {
+func (r *hweb1Out_) writePieceB1(piece *Piece) error {
 	return nil
 }
-func (r *hweb1Out_) _writeTextB1(piece *Piece, chunked bool) error { // text
+func (r *hweb1Out_) _writeTextB1(piece *Piece) error { // text
 	return nil
 }
-func (r *hweb1Out_) _writeFileB1(piece *Piece, chunked bool) error { // file
+func (r *hweb1Out_) _writeFileB1(piece *Piece) error { // file
 	return nil
 }
 func (r *hweb1Out_) writeBytesB1(p []byte) error {

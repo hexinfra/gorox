@@ -100,6 +100,10 @@ func (r *http2Out_) finalizeUnsizedH2() error {
 	return nil
 }
 
+func (r *http2Out_) writeHeadersH2() error { // used by echo and post
+	// TODO
+	return nil
+}
 func (r *http2Out_) writePieceH2(piece *Piece, unsized bool) error {
 	// TODO
 	return nil

@@ -78,6 +78,10 @@ func (r *hweb2Out_) finalizeUnsizedB2() error {
 	return nil
 }
 
+func (r *hweb2Out_) writeHeadersB2() error { // used by echo and post
+	// TODO
+	return nil
+}
 func (r *hweb2Out_) writePieceB2(piece *Piece, unsized bool) error {
 	// TODO
 	return nil

@@ -369,11 +369,8 @@ func (r *B2Request) copyCookies(req Request) bool { // used by proxies. merge in
 
 func (r *B2Request) sendChain() error { return r.sendChainB2() }
 
-func (r *B2Request) echoHeaders() error {
-	// TODO
-	return nil
-}
-func (r *B2Request) echoChain() error { return r.echoChainB2() }
+func (r *B2Request) echoHeaders() error { return r.writeHeadersB2() }
+func (r *B2Request) echoChain() error   { return r.echoChainB2() }
 
 func (r *B2Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerB2(name)

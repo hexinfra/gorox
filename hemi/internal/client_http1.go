@@ -472,9 +472,7 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge in
 func (r *H1Request) sendChain() error { return r.sendChainH1() }
 
 func (r *H1Request) echoHeaders() error { return r.writeHeadersH1() }
-func (r *H1Request) echoChain() error {
-	return r.echoChainH1(true) // chunked = true
-}
+func (r *H1Request) echoChain() error   { return r.echoChainH1(true) } // we always use HTTP/1.1 chunked
 
 func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
 func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailerH1(name, value) }

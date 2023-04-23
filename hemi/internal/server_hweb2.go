@@ -356,11 +356,8 @@ func (r *hweb2Response) SetCookie(cookie *Cookie) bool {
 
 func (r *hweb2Response) sendChain() error { return r.sendChainB2() }
 
-func (r *hweb2Response) echoHeaders() error { // headers are sent immediately upon echoing.
-	// TODO
-	return nil
-}
-func (r *hweb2Response) echoChain() error { return r.echoChainB2() }
+func (r *hweb2Response) echoHeaders() error { return r.writeHeadersB2() }
+func (r *hweb2Response) echoChain() error   { return r.echoChainB2() }
 
 func (r *hweb2Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerB2(name)

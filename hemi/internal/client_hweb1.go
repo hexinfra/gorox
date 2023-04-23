@@ -378,9 +378,7 @@ func (r *B1Request) copyCookies(req Request) bool {
 func (r *B1Request) sendChain() error { return r.sendChainB1() }
 
 func (r *B1Request) echoHeaders() error { return r.writeHeadersB1() }
-func (r *B1Request) echoChain() error {
-	return r.echoChainB1(true) // chunked = true
-}
+func (r *B1Request) echoChain() error   { return r.echoChainB1() }
 
 func (r *B1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailerB1(name) }
 func (r *B1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailerB1(name, value) }

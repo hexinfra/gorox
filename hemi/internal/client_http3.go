@@ -353,11 +353,8 @@ func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT m
 
 func (r *H3Request) sendChain() error { return r.sendChainH3() }
 
-func (r *H3Request) echoHeaders() error {
-	// TODO
-	return nil
-}
-func (r *H3Request) echoChain() error { return r.echoChainH3() }
+func (r *H3Request) echoHeaders() error { return r.writeHeadersH3() }
+func (r *H3Request) echoChain() error   { return r.echoChainH3() }
 
 func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerH3(name)

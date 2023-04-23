@@ -248,7 +248,7 @@ func putPiece(piece *Piece) {
 	poolPiece.Put(piece)
 }
 
-// Piece is a member of http message content linked list.
+// Piece is a member of content chain.
 type Piece struct { // 64 bytes
 	next *Piece   // next piece
 	pool bool     // true if this piece is got from poolPiece. don't change this after set

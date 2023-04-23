@@ -376,11 +376,8 @@ func (r *http3Response) SetCookie(cookie *Cookie) bool {
 
 func (r *http3Response) sendChain() error { return r.sendChainH3() }
 
-func (r *http3Response) echoHeaders() error { // headers are sent immediately upon echoing.
-	// TODO
-	return nil
-}
-func (r *http3Response) echoChain() error { return r.echoChainH3() }
+func (r *http3Response) echoHeaders() error { return r.writeHeadersH3() }
+func (r *http3Response) echoChain() error   { return r.echoChainH3() }
 
 func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerH3(name)

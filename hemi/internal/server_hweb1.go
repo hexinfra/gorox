@@ -425,9 +425,7 @@ func (r *hweb1Response) SetCookie(cookie *Cookie) bool {
 func (r *hweb1Response) sendChain() error { return nil }
 
 func (r *hweb1Response) echoHeaders() error { return nil }
-func (r *hweb1Response) echoChain() error {
-	return nil
-}
+func (r *hweb1Response) echoChain() error   { return r.echoChainB1() }
 
 func (r *hweb1Response) trailer(name []byte) (value []byte, ok bool) { return nil, false }
 func (r *hweb1Response) addTrailer(name []byte, value []byte) bool {

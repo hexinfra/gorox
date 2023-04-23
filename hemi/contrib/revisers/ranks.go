@@ -3,17 +3,21 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Define reviser ranks.
+// Define default reviser ranks.
 
 package revisers
 
-const ( // tunable
+const ( // fixed: 0-5
+	RankGunzip = 0
+)
+
+const ( // tunable: 6-25
 	RankSSI     = 3
 	RankWrap    = 5
 	RankReplace = 7
 )
 
-const ( // fixed
-	RankGzip = 18
-	RankHead = 19
+const ( // fixed: 26-31
+	RankHead = 29
+	RankGzip = 31
 )

@@ -42,7 +42,7 @@ func (r *replaceReviser) OnShutdown() {
 
 func (r *replaceReviser) OnConfigure() {
 	// rank
-	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankReplace)
+	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 6 && value < 26 }, RankReplace)
 }
 func (r *replaceReviser) OnPrepare() {
 	// TODO

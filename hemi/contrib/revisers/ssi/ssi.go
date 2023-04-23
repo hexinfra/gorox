@@ -42,7 +42,7 @@ func (r *ssiReviser) OnShutdown() {
 
 func (r *ssiReviser) OnConfigure() {
 	// rank
-	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 0 && value < 16 }, RankSSI)
+	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 6 && value < 26 }, RankSSI)
 }
 func (r *ssiReviser) OnPrepare() {
 	// TODO

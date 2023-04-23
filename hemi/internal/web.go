@@ -189,7 +189,7 @@ type webIn0 struct { // for fast reset, entirely
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
 	receiving        int8    // currently receiving. see httpSectionXXX
 	headers          zone    // headers ->r.primes
-	hasRevisers      bool    // are there any revisers hooked on this incoming message?
+	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
 	upgradeUDPTun    bool    // upgrade: connect-udp?
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
@@ -1557,7 +1557,7 @@ type webOut_ struct { // outgoing. needs building
 type webOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not present at the same time
-	hasRevisers   bool   // are there any revisers hooked on this outgoing message?
+	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
@@ -2385,9 +2385,7 @@ func (a *App) maintain() { // goroutine
 	a.stage.SubDone()
 }
 
-func (a *App) reviserByID(id uint8) Reviser { // for fast searching
-	return a.revisersByID[id]
-}
+func (a *App) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
 
 func (a *App) dispatchHandlet(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {

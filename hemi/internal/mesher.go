@@ -138,9 +138,7 @@ func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
 	return false
 }
 
-func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { // for fast searching
-	return m.editorsByID[id]
-}
+func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return m.editorsByID[id] }
 
 // case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
 type case_[M _mesher, D _dealer, E _editor] struct {

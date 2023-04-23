@@ -7,6 +7,12 @@
 
 package internal
 
+import (
+	"bytes"
+	"strings"
+	"sync"
+)
+
 const ( // version codes. keep sync with ../hemi.go
 	Version1_0 = 0 // must be 0
 	Version1_1 = 1
@@ -2017,4 +2023,199 @@ var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for
 		{0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0},
 		{0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0}, {0xff, 0x00, 0, 0},
 	},
+}
+
+// poolPairs
+var poolPairs sync.Pool
+
+const maxPairs = 250 // 24B*250=6000B
+
+func getPairs() []pair {
+	if x := poolPairs.Get(); x == nil {
+		return make([]pair, 0, maxPairs)
+	} else {
+		return x.([]pair)
+	}
+}
+func putPairs(pairs []pair) {
+	if cap(pairs) != maxPairs {
+		BugExitln("bad pairs")
+	}
+	pairs = pairs[0:0:maxPairs] // reset
+	poolPairs.Put(pairs)
+}
+
+// pair is used to hold queries, headers, cookies, forms, trailers, and params.
+type pair struct { // 24 bytes
+	hash     uint16 // name hash, to support fast search. 0 means empty
+	kind     int8   // see pair kinds
+	nameSize uint8  // name ends at nameFrom+nameSize
+	nameFrom int32  // name begins from
+	value    span   // the value
+	place    int8   // see pair places
+	flags    byte   // fields only. see field flags
+	params   zone   // fields only. refers to a zone of pairs
+	dataEdge int32  // fields only. data ends at
+}
+
+func (p *pair) zero() { *p = pair{} }
+
+const ( // pair kinds
+	kindUnknown = iota
+	kindQuery   // general
+	kindHeader  // field
+	kindCookie  // general
+	kindForm    // general
+	kindTrailer // field
+	kindParam   // general. parameter of fields
+)
+
+const ( // pair places
+	placeInput = iota
+	placeArray
+	placeStatic2
+	placeStatic3
+)
+
+const ( // field flags
+	flagParsed     = 0b10000000 // data and params are parsed or not
+	flagSingleton  = 0b01000000 // singleton or not. mainly used by proxies
+	flagSubField   = 0b00100000 // sub field or not. mainly used by apps
+	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
+	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
+	flagUnderscore = 0b00000100 // name contains '_' or not. some agents (like fcgi) need this information
+	flagCommaValue = 0b00000010 // value has comma or not
+	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
+)
+
+// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
+//
+//                     [             value                  )
+//        [   name   )  [  data   )[         params         )
+//       +--------------------------------------------------+
+//       |accept-type: "text/plain"; charset="utf-8";lang=en|
+//       +--------------------------------------------------+
+//        ^          ^ ^^         ^                         ^
+//        |          | ||         |                         |
+// nameFrom          | ||  dataEdge                value.edge
+//   nameFrom+nameSize ||
+//            value.from|
+//                      value.from+(flags&flagQuoted)
+//
+// If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
+//
+// A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
+//
+// +-----------------------------------------------------------------------------------------------------------------+
+// |accept-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
+// +-----------------------------------------------------------------------------------------------------------------+
+
+func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
+func (p *pair) nameEqualString(t []byte, x string) bool {
+	return int(p.nameSize) == len(x) && string(t[p.nameFrom:p.nameFrom+int32(p.nameSize)]) == x
+}
+func (p *pair) nameEqualBytes(t []byte, x []byte) bool {
+	return int(p.nameSize) == len(x) && bytes.Equal(t[p.nameFrom:p.nameFrom+int32(p.nameSize)], x)
+}
+func (p *pair) valueAt(t []byte) []byte { return t[p.value.from:p.value.edge] }
+
+func (p *pair) setParsed()         { p.flags |= flagParsed }
+func (p *pair) setSingleton()      { p.flags |= flagSingleton }
+func (p *pair) setSubField()       { p.flags |= flagSubField }
+func (p *pair) setLiteral()        { p.flags |= flagLiteral }
+func (p *pair) setPseudo()         { p.flags |= flagPseudo }
+func (p *pair) setUnderscore()     { p.flags |= flagUnderscore }
+func (p *pair) setCommaValue()     { p.flags |= flagCommaValue }
+func (p *pair) setQuoted()         { p.flags |= flagQuoted }
+func (p *pair) isParsed() bool     { return p.flags&flagParsed > 0 }
+func (p *pair) isSingleton() bool  { return p.flags&flagSingleton > 0 }
+func (p *pair) isSubField() bool   { return p.flags&flagSubField > 0 }
+func (p *pair) isLiteral() bool    { return p.flags&flagLiteral > 0 }
+func (p *pair) isPseudo() bool     { return p.flags&flagPseudo > 0 }
+func (p *pair) isUnderscore() bool { return p.flags&flagUnderscore > 0 }
+func (p *pair) isCommaValue() bool { return p.flags&flagCommaValue > 0 }
+func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
+
+func (p *pair) dataAt(t []byte) []byte { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
+func (p *pair) dataEmpty() bool        { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
+
+func (p *pair) show(place []byte) {
+	var kind string
+	switch p.kind {
+	case kindQuery:
+		kind = "query"
+	case kindHeader:
+		kind = "header"
+	case kindCookie:
+		kind = "cookie"
+	case kindForm:
+		kind = "form"
+	case kindTrailer:
+		kind = "trailer"
+	case kindParam:
+		kind = "param"
+	default:
+		kind = "unknown"
+	}
+	var plase string
+	switch p.place {
+	case placeInput:
+		plase = "input"
+	case placeArray:
+		plase = "array"
+	case placeStatic2:
+		plase = "static2"
+	case placeStatic3:
+		plase = "static3"
+	default:
+		plase = "unknown"
+	}
+	var flags []string
+	if p.isParsed() {
+		flags = append(flags, "parsed")
+	}
+	if p.isSingleton() {
+		flags = append(flags, "singleton")
+	}
+	if p.isSubField() {
+		flags = append(flags, "subField")
+	}
+	if p.isCommaValue() {
+		flags = append(flags, "commaValue")
+	}
+	if p.isQuoted() {
+		flags = append(flags, "quoted")
+	}
+	if len(flags) == 0 {
+		flags = append(flags, "nothing")
+	}
+	Debugf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
+}
+
+// defaultDesc
+var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
+	allowQuote: true,
+	allowEmpty: false,
+	allowParam: true,
+	hasComment: false,
+}
+
+// desc describes an HTTP field.
+type desc struct {
+	hash       uint16 // name hash
+	allowQuote bool   // allow data quote or not
+	allowEmpty bool   // allow empty data or not
+	allowParam bool   // allow parameters or not
+	hasComment bool   // has comment or not
+	name       []byte // field name
+}
+
+// para is a name-value parameter in multipart/form-data.
+type para struct { // 16 bytes
+	name, value span
+}
+
+// rang defines a range.
+type rang struct { // 16 bytes
+	from, last int64 // [from-last], inclusive
 }

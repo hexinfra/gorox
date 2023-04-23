@@ -130,6 +130,6 @@ stream=2 (unsized output):
     <-- bodySize=123   body=[...123...] // chunk
     <-- bodySize=4567  body=[...4567...] // chunk
     <-- bodySize=0     body=[] // last chunk, MUST exist in chunked mode, MUST be empty
-    <-- bodySize=?     body=[] // trailers, MUST exist in chunked mode, MAY be empty
+    <-- bodySize=?     body=[md5-digest=12345678901234567890123456789012] // trailers, MUST exist in chunked mode, MAY be empty
 
 */

@@ -1578,8 +1578,8 @@ func (r *webOut_) onEnd() { // for zeros
 		PutNK(r.fields)
 		r.fields = nil
 	}
-	// r.piece is reset in echo(), and will be reset below if send() is used.
-	r.chain.free() // double free doesn't matter
+	// r.piece is reset in echo(), and will be reset below if send() is used. double free doesn't matter
+	r.chain.free()
 
 	r.sendTime = time.Time{}
 	r.vector = nil

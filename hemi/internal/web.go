@@ -2098,7 +2098,7 @@ type App struct {
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            []string          // (file, rotate)
 	logFormat            string            // log format
-	booker               *booker           // app access booker
+	logger               *logger           // app access logger
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
 	settings             map[string]string // app settings defined and used by users
@@ -2233,7 +2233,7 @@ func (a *App) OnPrepare() {
 	a.contentSaver_.onPrepare(a, 0755)
 
 	if a.accessLog != nil {
-		//a.booker = newBooker(a.accessLog[0], a.accessLog[1])
+		//a.logger = newLogger(a.accessLog[0], a.accessLog[1])
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
@@ -2345,20 +2345,20 @@ func (a *App) Setting(name string) (value string, ok bool) {
 
 func (a *App) Log(s string) {
 	// TODO
-	if a.booker != nil {
-		//a.booker.log(s)
+	if a.logger != nil {
+		//a.logger.log(s)
 	}
 }
 func (a *App) Logln(s string) {
 	// TODO
-	if a.booker != nil {
-		//a.booker.logln(s)
+	if a.logger != nil {
+		//a.logger.logln(s)
 	}
 }
 func (a *App) Logf(format string, args ...any) {
 	// TODO
-	if a.booker != nil {
-		//a.booker.logf(format, args...)
+	if a.logger != nil {
+		//a.logger.logf(format, args...)
 	}
 }
 
@@ -2376,7 +2376,7 @@ func (a *App) maintain() { // goroutine
 	a.handlets.goWalk(Handlet.OnShutdown)
 	a.WaitSubs() // handlets, revisers, socklets, rules
 
-	if a.booker != nil {
+	if a.logger != nil {
 		// TODO: close access log file
 	}
 	if IsDebug(2) {
@@ -2399,8 +2399,8 @@ func (a *App) dispatchHandlet(req Request, resp Response) {
 			continue
 		}
 		if processed := rule.executeNormal(req, resp); processed {
-			if rule.logAccess && a.booker != nil {
-				//a.booker.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
+			if rule.logAccess && a.logger != nil {
+				//a.logger.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
 		}
@@ -2415,7 +2415,7 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 			continue
 		}
 		if processed := rule.executeSocket(req, sock); processed {
-			if rule.logAccess && a.booker != nil {
+			if rule.logAccess && a.logger != nil {
 				// TODO: log?
 			}
 			return

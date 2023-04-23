@@ -11,25 +11,25 @@ import (
 	"bytes"
 )
 
-type _mesher interface {
+type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
 	Component
 }
-type _gate interface {
+type _gate interface { // *quicGate, *tcpsGate, *udpsGate
 	open() error
 	shutdown() error
 }
-type _dealer interface {
+type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
 	Component
 }
-type _editor interface {
+type _editor interface { // QUICEditor, TCPSEditor, UDPSEditor
 	Component
 	identifiable
 }
-type _case interface {
+type _case interface { // *quicCase, *tcpsCase, *udpsCase
 	Component
 }
 
-// mesher_ is the mixin for all meshers.
+// mesher_ is the mixin for *QUICMesher, *TCPSMesher, *UDPSMesher.
 type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
 	// Mixins
 	Server_
@@ -42,7 +42,7 @@ type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
 	dealerCreators map[string]func(name string, stage *Stage, mesher M) D
 	editorCreators map[string]func(name string, stage *Stage, mesher M) E
 	accessLog      []string // (file, rotate)
-	booker         *booker  // mesher access booker
+	logger         *logger  // mesher access logger
 	editorsByID    [256]E   // for fast searching. position 0 is not used
 	nEditors       uint8    // used number of editorsByID in this mesher
 }
@@ -84,7 +84,7 @@ func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
 func (m *mesher_[M, G, D, E, C]) onPrepare() {
 	m.Server_.OnPrepare()
 	if m.accessLog != nil {
-		//m.booker = newBooker(m.accessLog[0], m.accessLog[1])
+		//m.logger = newLogger(m.accessLog[0], m.accessLog[1])
 	}
 }
 func (m *mesher_[M, G, D, E, C]) prepareSubs() { // dealers, editors, cases
@@ -142,7 +142,7 @@ func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { // for fast searching
 	return m.editorsByID[id]
 }
 
-// case_ is a mixin.
+// case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
 type case_[M _mesher, D _dealer, E _editor] struct {
 	// Mixins
 	Component_

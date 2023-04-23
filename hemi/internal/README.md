@@ -9,6 +9,7 @@ THE BIG PICTURE
 THE WEB PICTURE
 ===============
 
+```
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
   --hweb[1-2]Stream-->                        ----B[1-2]Stream--->
                   ^                                           ^
@@ -46,6 +47,7 @@ THE WEB PICTURE
     |              v                            |              v
     +-http[1-3]Response                         +-H[1-3]Response
     +-hweb[1-2]Response                         +-B[1-2]Response
+```
 
 
 NOTES

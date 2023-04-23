@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB/1 protocol elements.
+// HWEB/1 protocol elements, incoming message and outgoing message implementation.
 
 // HWEB/1 is a binary HTTP/1.1. Its design makes it easy to implement a server or client.
 

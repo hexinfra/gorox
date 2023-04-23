@@ -16,12 +16,63 @@ import (
 )
 
 func init() {
+	RegisterUDPSDealer("udpsRelay", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer {
+		f := new(udpsRelay)
+		f.onCreate(name, stage, mesher)
+		return f
+	})
 	registerFixture(signUDPSOutgate)
 	RegisterBackend("udpsBackend", func(name string, stage *Stage) Backend {
 		b := new(UDPSBackend)
 		b.onCreate(name, stage)
 		return b
 	})
+}
+
+// udpsRelay relays UDP/DTLS connections to backend UDP/DTLS server.
+type udpsRelay struct {
+	// Mixins
+	UDPSDealer_
+	// Assocs
+	stage   *Stage
+	mesher  *UDPSMesher
+	backend *UDPSBackend
+	// States
+}
+
+func (f *udpsRelay) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+	f.MakeComp(name)
+	f.stage = stage
+	f.mesher = mesher
+}
+func (f *udpsRelay) OnShutdown() {
+	f.mesher.SubDone()
+}
+
+func (f *udpsRelay) OnConfigure() {
+	// toBackend
+	if v, ok := f.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := f.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if udpsBackend, ok := backend.(*UDPSBackend); ok {
+				f.backend = udpsBackend
+			} else {
+				UseExitf("incorrect backend '%s' for udpsRelay\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for udpsRelay")
+	}
+}
+func (f *udpsRelay) OnPrepare() {
+}
+
+func (f *udpsRelay) Deal(conn *UDPSConn) (next bool) {
+	// TODO
+	return
 }
 
 // udpsClient is the interface for UDPSOutgate and UDPSBackend.

@@ -12,9 +12,9 @@ const ( // fixed: 0-5
 )
 
 const ( // tunable: 6-25
-	RankSSI     = 3
-	RankWrap    = 5
-	RankReplace = 7
+	RankSSI     = 8
+	RankWrap    = 10
+	RankReplace = 14
 )
 
 const ( // fixed: 26-31

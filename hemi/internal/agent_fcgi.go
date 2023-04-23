@@ -392,7 +392,7 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte
 	}
 	if len(scriptFilename) == 0 {
 		absPath := req.unsafeAbsPath()
-		if absPath[len(absPath)-1] == '/' && len(indexFile) != 0 {
+		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
 			scriptFilename = req.UnsafeMake(len(absPath) + len(indexFile))
 			copy(scriptFilename, absPath)
 			copy(scriptFilename[len(absPath):], indexFile)

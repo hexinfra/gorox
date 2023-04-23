@@ -29,12 +29,12 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
-// logger is leader's logger.
-var logger *log.Logger
+// booker is used by leader only.
+var booker *log.Logger
 
 // leaderMain is main() for leader process.
 func leaderMain() {
-	// Prepare leader's logger
+	// Prepare leader's booker
 	logFile := *logFile
 	if logFile == "" {
 		logFile = *logsDir + "/" + progName + "-leader.log"
@@ -48,7 +48,7 @@ func leaderMain() {
 	if err != nil {
 		crash(err.Error())
 	}
-	logger = log.New(osFile, "", log.Ldate|log.Ltime)
+	booker = log.New(osFile, "", log.Ldate|log.Ltime)
 
 	if *goopsAddr == "" {
 		adminServer()
@@ -60,7 +60,7 @@ func leaderMain() {
 func adminServer() {
 	// Load worker's config
 	base, file := getConfig()
-	logger.Printf("parse worker config: base=%s file=%s\n", base, file)
+	booker.Printf("parse worker config: base=%s file=%s\n", base, file)
 	if _, err := hemi.ApplyFile(base, file); err != nil {
 		crash("leader: " + err.Error())
 	}
@@ -69,9 +69,9 @@ func adminServer() {
 	msgChan := make(chan *msgx.Message) // msgChan is the channel between leaderMain() and keepWorker()
 	go keepWorker(base, file, msgChan)
 	<-msgChan // wait for keepWorker() to ensure worker is started.
-	logger.Println("worker process started")
+	booker.Println("worker process started")
 
-	logger.Printf("open admin interface: %s\n", adminAddr)
+	booker.Printf("open admin interface: %s\n", adminAddr)
 	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control agent
 	if err != nil {
 		crash(err.Error())
@@ -83,22 +83,22 @@ func adminServer() {
 	for { // each admConn from control agent
 		admConn, err := admGate.Accept() // admConn is connection between leader and control agent
 		if err != nil {
-			logger.Println(err.Error())
+			booker.Println(err.Error())
 			continue
 		}
 		if err := admConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			logger.Println(err.Error())
+			booker.Println(err.Error())
 			goto closeNext
 		}
 		req, ok = msgx.Recv(admConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
-		logger.Printf("received from agent: %v\n", req)
+		booker.Printf("received from agent: %v\n", req)
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case comdStop:
-				logger.Println("received stop")
+				booker.Println("received stop")
 				stop() // worker will stop immediately after the pipe is closed
 			case comdReopen:
 				newAddr := req.Get("newAddr") // succeeding adminAddr
@@ -108,10 +108,10 @@ func adminServer() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					admGate.Close()
 					admGate = newGate
-					logger.Printf("reopen to %s\n", newAddr)
+					booker.Printf("reopen to %s\n", newAddr)
 					goto closeNext
 				} else {
-					logger.Printf("reopen failed: %s\n", err.Error())
+					booker.Printf("reopen failed: %s\n", err.Error())
 				}
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
@@ -130,7 +130,7 @@ func adminServer() {
 				msgChan <- req
 				resp = <-msgChan
 			}
-			logger.Printf("send response: %v\n", resp)
+			booker.Printf("send response: %v\n", resp)
 			msgx.Send(admConn, resp)
 		}
 	closeNext:
@@ -187,14 +187,14 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 		case exitCode := <-deadWay: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == codeCrash || exitCode == codeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				logger.Println("worker critical error")
+				booker.Println("worker critical error")
 				stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()
 				worker.lastDie = now
 				worker.start(base, file, deadWay) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				logger.Println("worker is broken!")
+				booker.Println("worker is broken!")
 				stop()
 			}
 		}

@@ -59,7 +59,7 @@ type Stage struct {
 	cronjobs     compDict[Cronjob]     // indexed by sign
 	// States
 	logFile string // stage's log file
-	logger  *log.Logger
+	booker  *log.Logger
 	cpuFile string
 	hepFile string
 	thrFile string
@@ -178,7 +178,7 @@ func (s *Stage) OnShutdown() {
 	if IsDebug(2) {
 		Debugln("stage close log file")
 	}
-	s.logger.Writer().(*os.File).Close()
+	s.booker.Writer().(*os.File).Close()
 }
 
 func (s *Stage) OnConfigure() {
@@ -220,7 +220,7 @@ func (s *Stage) OnPrepare() {
 	if err != nil {
 		EnvExitln(err.Error())
 	}
-	s.logger = log.New(logFile, "stage", log.Ldate|log.Ltime)
+	s.booker = log.New(logFile, "stage", log.Ldate|log.Ltime)
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
@@ -609,13 +609,13 @@ func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
 
 func (s *Stage) Log(str string) {
-	s.logger.Print(str)
+	s.booker.Print(str)
 }
 func (s *Stage) Logln(str string) {
-	s.logger.Println(str)
+	s.booker.Println(str)
 }
 func (s *Stage) Logf(format string, args ...any) {
-	s.logger.Printf(format, args...)
+	s.booker.Printf(format, args...)
 }
 
 func (s *Stage) ProfCPU() {

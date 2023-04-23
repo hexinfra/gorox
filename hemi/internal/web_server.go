@@ -2769,30 +2769,32 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	return r.shell.sendChain()
 }
 func (r *serverResponse_) send() error {
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		// Travel through revisers
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
+	/*
+		if r.hasRevisers {
+			resp := r.shell.(Response)
+			// Travel through revisers
+			for _, id := range r.revisers { // revise headers
+				if id == 0 { // id of effective reviser is ensured to be > 0
+					continue
+				}
+				reviser := r.app.reviserByID(id)
+				reviser.BeforeSend(resp.Request(), resp)
 			}
-			reviser := r.app.reviserByID(id)
-			reviser.BeforeSend(resp.Request(), resp)
-		}
-		for _, id := range r.revisers { // revise sized content
-			if id == 0 {
-				continue
+			for _, id := range r.revisers { // revise sized content
+				if id == 0 {
+					continue
+				}
+				reviser := r.app.reviserByID(id)
+				reviser.OnSend(resp.Request(), resp, &r.chain)
 			}
-			reviser := r.app.reviserByID(id)
-			reviser.OnSend(resp.Request(), resp, &r.chain)
+			// Because r.chain may be altered/replaced by revisers, content size must be recalculated
+			if contentSize, ok := r.chain.Size(); ok {
+				r.contentSize = contentSize
+			} else {
+				return webOutTooLarge
+			}
 		}
-		// Because r.chain may be altered/replaced by revisers, content size must be recalculated
-		if contentSize, ok := r.chain.Size(); ok {
-			r.contentSize = contentSize
-		} else {
-			return webOutTooLarge
-		}
-	}
+	*/
 	return r.shell.sendChain()
 }
 
@@ -2812,32 +2814,36 @@ func (r *serverResponse_) echo() error {
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // revise unsized content
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
+	/*
+		if r.hasRevisers {
+			resp := r.shell.(Response)
+			for _, id := range r.revisers { // revise unsized content
+				if id == 0 { // id of effective reviser is ensured to be > 0
+					continue
+				}
+				reviser := r.app.reviserByID(id)
+				reviser.OnEcho(resp.Request(), resp, &r.chain)
 			}
-			reviser := r.app.reviserByID(id)
-			reviser.OnEcho(resp.Request(), resp, &r.chain)
 		}
-	}
+	*/
 	return r.shell.echoChain()
 }
 func (r *serverResponse_) endUnsized() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if r.hasRevisers {
-		resp := r.shell.(Response)
-		for _, id := range r.revisers { // finish content
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
+	/*
+		if r.hasRevisers {
+			resp := r.shell.(Response)
+			for _, id := range r.revisers { // finish content
+				if id == 0 { // id of effective reviser is ensured to be > 0
+					continue
+				}
+				reviser := r.app.reviserByID(id)
+				reviser.FinishEcho(resp.Request(), resp)
 			}
-			reviser := r.app.reviserByID(id)
-			reviser.FinishEcho(resp.Request(), resp)
 		}
-	}
+	*/
 	return r.shell.finalizeUnsized()
 }
 

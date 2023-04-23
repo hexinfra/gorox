@@ -1904,9 +1904,11 @@ func (r *webOut_) _beforeEcho() error {
 	}
 	r.markSent()
 	r.markUnsized()
-	if r.hasRevisers {
-		r.shell.beforeRevise()
-	}
+	/*
+		if r.hasRevisers {
+			r.shell.beforeRevise()
+		}
+	*/
 	return r.shell.echoHeaders()
 }
 

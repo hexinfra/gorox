@@ -31,7 +31,7 @@ COMPONENTS
     cacher (localCacher, redisCacher, ...)
     app [*]
       handlet (hello, static, ...)
-      reviser (gzip, header, ...)
+      reviser (gzip, head, ...)
       socklet (hello, ...)
       rule [*]
     svc [*]

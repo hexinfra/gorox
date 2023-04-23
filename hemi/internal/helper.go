@@ -348,7 +348,7 @@ func (p *Piece) File() *os.File {
 }
 
 /*
-func (p *Piece) ToText() error { // used by revisers
+func (p *Piece) ToText() error {
 	if p.IsText() {
 		return nil
 	}

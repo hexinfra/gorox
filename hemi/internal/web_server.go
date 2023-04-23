@@ -2600,8 +2600,6 @@ type Response interface {
 	AddTrailer(name string, value string) bool
 	AddTrailerBytes(name []byte, value []byte) bool
 
-	OutBuffer() []byte // mainly used by revisers
-
 	// Internal only
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
@@ -2641,10 +2639,9 @@ type serverResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	app             *App   // associated app
-	svc             *Svc   // associated svc
-	outBuffer       []byte // used by revisers
-	serverResponse0        // all values must be zero by default in this struct!
+	app             *App // associated app
+	svc             *Svc // associated svc
+	serverResponse0      // all values must be zero by default in this struct!
 }
 type serverResponse0 struct { // for fast reset, entirely
 	indexes struct {
@@ -2663,9 +2660,6 @@ func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
 func (r *serverResponse_) onEnd() { // for zeros
 	r.app = nil
 	r.svc = nil
-	if r.outBuffer != nil {
-		PutNK(r.outBuffer)
-	}
 	r.serverResponse0 = serverResponse0{}
 	r.webOut_.onEnd()
 }
@@ -2932,13 +2926,6 @@ func (r *serverResponse_) copyTailFrom(resp response) bool { // used by proxies
 func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
-}
-
-func (r *serverResponse_) OutBuffer() []byte {
-	if r.outBuffer == nil {
-		r.outBuffer = Get16K()
-	}
-	return r.outBuffer
 }
 
 // Cookie is a "set-cookie" sent to client.

@@ -384,7 +384,7 @@ func (r *hweb1Request) recvControl() bool {
 func (r *hweb1Request) cleanInput() {
 }
 
-func (r *hweb1Request) readContent() (p []byte, err error) { return nil, nil }
+func (r *hweb1Request) readContent() (p []byte, err error) { return r.readContentB1() }
 
 // hweb1Response is the server-side HWEB/1 response.
 type hweb1Response struct { // outgoing. needs building

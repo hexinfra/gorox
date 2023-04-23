@@ -28,6 +28,7 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/webdav"
+	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gunzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/head"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/replace"

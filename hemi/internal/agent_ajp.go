@@ -7,10 +7,10 @@
 
 // See: https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
-// I'm not sure whether AJP supports HTTP chunked transfer.
+// I'm not sure whether AJP supports HTTP unsized content.
 // If it doesn't, we have to buffer the request content.
 
-// It seems AJP does support chunked request content, see below:
+// It seems AJP does support unsized request content, see below:
 
 // Get Body Chunk
 

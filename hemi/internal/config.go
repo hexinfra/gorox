@@ -943,7 +943,7 @@ func (l *lexer) scan() []token {
 		case '"', '`': // "string" or `string`
 			s := l.text[l.index] // " or `
 			l.index++
-			l.nextUntil(s)
+			l.nextUntil(s) // " or `
 			l.checkEOF()
 			tokens = append(tokens, token{tokenString, 0, line, l.file, l.text[from+1 : l.index]})
 			l.index++

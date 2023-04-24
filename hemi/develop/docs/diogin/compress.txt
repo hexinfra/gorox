@@ -1,0 +1,33 @@
+zip, gzip, zlib: 文件格式，支持多种压缩算法。几乎主要使用：DEFLATE 算法。
+
+DEFLATE 将输入数据做为一串一串的“数据块”，然后对每个“数据块”使用 LZ77 算法和哈夫曼编码。
+
+zip 是一个 archive 格式，可以包含整个目录结构及其文件。可以单独访问某个目录或文件。
+
+gzip 不是 archive 格式，只是一个文件格式。这意味着它不能压缩多个目录或文件，它只能压缩一个文件，或一串数据流。
+这也是它经常跟 tar 连起来使用的原因。不能单独访问某个目录或文件，必须整个解压后才行。
+gzip 头包含文件名和其他信息信息，并且包含一个 CRC32 校验和。
+
+gzip 的作者将其 DEFLATE 实现抽取成一个库，这个库就叫做 zlib。但是，zlib 也可以被弄成一个格式，
+而这种格式跟 gzip 并不相同，它也不包含 CRC32 校验和。
+
+
+
+In Summary
+==========
+
+             zlib              gzip         zip
+
+Headers      0x78(01/9C/DA)    1F8B         504B0304
+
+Compressor   DEFLATE           DEFLATE      DEFLATE
+
+Checksum     None              CRC32        CRC32
+
+Data         Stream/           Stream/      Archive files
+             Single File       Single File  and directories
+
+
+DEFLATE RFC: 1951
+ZLIB FORMAT RFC: 1950
+GZIP FORMAT RFC: 1952

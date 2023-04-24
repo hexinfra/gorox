@@ -21,6 +21,109 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
+// webKeeper is a webServer or webClient which keeps their connections and streams.
+type webKeeper interface {
+	Stage() *Stage
+	TLSMode() bool
+	ReadTimeout() time.Duration  // timeout of a read operation
+	WriteTimeout() time.Duration // timeout of a write operation
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	SendTimeout() time.Duration  // timeout to send the whole message
+	MaxContentSize() int64
+	SaveContentFilesDir() string
+}
+
+// webKeeper_ is the mixin for webServer_ and webClient_.
+type webKeeper_ struct {
+	// States
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	sendTimeout    time.Duration // timeout to send the whole message
+	maxContentSize int64         // max content size allowed
+}
+
+func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) bool { return value > 0 }, sendTimeout)
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) bool { return value > 0 }, recvTimeout)
+	// maxContentSize
+	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+}
+
+func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
+func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
+func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }
+
+// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
+type webStream interface {
+	keeper() webKeeper
+	peerAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) (from int, edge int)
+
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+
+	isBroken() bool // if either side is broken, then the stream is broken
+	markBroken()
+}
+
+// webStream is the mixin for http[1-3]Stream and H[1-3]Stream.
+type webStream_ struct {
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
+	mode int8 // working mode of current stream. see streamModeXXX
+}
+
+const ( // stream modes
+	streamModeNormal = 0 // request & response, must be 0
+	streamModeSocket = 1 // upgrade: websocket
+	streamModeTCPTun = 2 // CONNECT method
+	streamModeUDPTun = 3 // upgrade: connect-udp
+)
+
+func (s *webStream_) onUse() { // for non-zeros
+	s.region.Init()
+	s.mode = streamModeNormal
+}
+func (s *webStream_) onEnd() { // for zeros
+	s.region.Free()
+}
+
+func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (s *webStream_) socketClient() {
+	// TODO
+}
+func (s *webStream_) tcpTunClient() {
+	// TODO: CONNECT method
+}
+func (s *webStream_) udpTunClient() {
+	// TODO: upgrade connect-udp
+}
+
+func (s *webStream_) socketServer() {
+	// TODO
+}
+func (s *webStream_) tcpTunServer() {
+	// TODO: CONNECT method
+}
+func (s *webStream_) udpTunServer() {
+	// TODO: upgrade connect-udp
+}
+
 // webIn is a *http[1-3]Request or *H[1-3]Response, used as shell by webIn_.
 type webIn interface {
 	ContentSize() int64

@@ -184,7 +184,7 @@ func (r *http1In_) recvHeadersH1() bool { // *( field-name ":" OWS field-value O
 func (r *http1In_) readContentH1() (p []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContentH1()
-	} else { // must be -2 (unsized). -1 (no content) is excluded priorly
+	} else { // unsized. must be -2. -1 (no content) is excluded priorly
 		return r._readUnsizedContentH1()
 	}
 }

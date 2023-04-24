@@ -176,7 +176,7 @@ const ( // misc http types
 
 	httpCodingIdentity = 0 // must be 0
 	httpCodingCompress = 1
-	httpCodingDeflate  = 2
+	httpCodingDeflate  = 2 // this is in fact zlib format
 	httpCodingGzip     = 3
 	httpCodingBrotli   = 4
 

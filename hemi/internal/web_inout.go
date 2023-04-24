@@ -793,8 +793,8 @@ func (r *webIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool
 			coding = httpCodingGzip
 		} else if bytes.Equal(data, bytesBrotli) {
 			coding = httpCodingBrotli
-		} else if bytes.Equal(data, bytesDeflate) {
-			coding = httpCodingDeflate
+		} else if bytes.Equal(data, bytesDeflate) { // this is in fact zlib format
+			coding = httpCodingDeflate // some non-conformant implementations send the "deflate" compressed data without the zlib wrapper :(
 		} else if bytes.Equal(data, bytesCompress) {
 			coding = httpCodingCompress
 		} else {
@@ -910,7 +910,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		return
 	}
 	r.contentReceived = true
-	switch content := r._recvContent(true).(type) { // retain
+	switch content := r.recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = webContentTextPool
@@ -950,7 +950,7 @@ func (r *webIn_) takeContent() any { // used by proxies
 		return r.contentFile
 	}
 	r.contentReceived = true
-	switch content := r._recvContent(true).(type) { // retain
+	switch content := r.recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content
 		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
@@ -965,7 +965,7 @@ func (r *webIn_) takeContent() any { // used by proxies
 	return nil
 }
 func (r *webIn_) dropContent() { // if message content is not received, this will be called at last
-	switch content := r._recvContent(false).(type) { // don't retain
+	switch content := r.recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
 	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
@@ -977,7 +977,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
+func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
 			return err
@@ -1513,11 +1513,11 @@ type webOut interface {
 	addedHeaders() []byte
 	fixedHeaders() []byte
 	finalizeHeaders()
-	send() error
+	doSend() error
 	sendChain() error // content
 	beforeRevise()
 	echoHeaders() error
-	echo() error
+	doEcho() error
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	trailer(name []byte) (value []byte, ok bool)
@@ -1834,7 +1834,7 @@ func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies
 			return err
 		}
 		r.forbidContent = true
-		return r.shell.send()
+		return r.shell.doSend()
 	}
 }
 
@@ -1845,7 +1845,7 @@ func (r *webOut_) sendText(content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content)) // original size, may be revised
-	return r.shell.send()
+	return r.shell.doSend()
 }
 func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
@@ -1854,7 +1854,7 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 	r.piece.SetFile(content, info, shut)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // original size, may be revised
-	return r.shell.send()
+	return r.shell.doSend()
 }
 func (r *webOut_) _beforeSend() error {
 	if r.isSent {
@@ -1873,7 +1873,7 @@ func (r *webOut_) echoText(chunk []byte) error {
 	}
 	r.piece.SetText(chunk)
 	defer r.piece.zero()
-	return r.shell.echo()
+	return r.shell.doEcho()
 }
 func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
@@ -1887,7 +1887,7 @@ func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	}
 	r.piece.SetFile(chunk, info, shut)
 	defer r.piece.zero()
-	return r.shell.echo()
+	return r.shell.doEcho()
 }
 func (r *webOut_) _beforeEcho() error {
 	if r.stream.isBroken() {

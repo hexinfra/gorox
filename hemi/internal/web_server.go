@@ -1835,7 +1835,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		r.formEdge = int32(len(r.formWindow))
 	} else { // content is not received
 		r.contentReceived = true
-		switch content := r._recvContent(true).(type) { // retain
+		switch content := r.recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentText = content
 			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
@@ -2762,7 +2762,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain()
 }
-func (r *serverResponse_) send() error {
+func (r *serverResponse_) doSend() error {
 	/*
 		if r.hasRevisers {
 			resp := r.shell.(Response)
@@ -2802,7 +2802,7 @@ func (r *serverResponse_) beforeRevise() {
 		reviser.BeforeEcho(resp.Request(), resp)
 	}
 }
-func (r *serverResponse_) echo() error {
+func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}

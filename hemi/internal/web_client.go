@@ -335,12 +335,12 @@ func (r *clientRequest_) SetIfUnmodifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
-func (r *clientRequest_) send() error { return r.shell.sendChain() }
+func (r *clientRequest_) doSend() error { return r.shell.sendChain() }
 
 func (r *clientRequest_) beforeRevise() {
 	// Revising is not supported in client side.
 }
-func (r *clientRequest_) echo() error {
+func (r *clientRequest_) doEcho() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}

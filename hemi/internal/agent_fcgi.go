@@ -1167,7 +1167,7 @@ func (r *fcgiResponse) hasContent() bool {
 	return true
 }
 func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of unsized content
-	switch content := r._recvContent().(type) {
+	switch content := r.recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
@@ -1180,7 +1180,7 @@ func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know th
 	r.stream.markBroken()
 	return nil
 }
-func (r *fcgiResponse) _recvContent() any { // to tempFile
+func (r *fcgiResponse) recvContent() any { // to tempFile
 	contentFile, err := r._newTempFile()
 	if err != nil {
 		return err

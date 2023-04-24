@@ -186,10 +186,11 @@ func (b *Backend_[N]) onPrepare() {
 
 func (b *Backend_[N]) Maintain() { // goroutine
 	for _, node := range b.nodes {
-		b.IncSub(1) // one more node
+		b.IncSub(1)
 		go node.Maintain()
 	}
-	<-b.Shut // waiting for backend shutdown signal
+	<-b.Shut
+	// Backend is shutdown. Tell its nodes to shutdown
 	for _, node := range b.nodes {
 		node.shutdown()
 	}

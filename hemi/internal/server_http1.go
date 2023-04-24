@@ -741,7 +741,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 				return false
 			}
-			if !r.parseAuthority(r.pBack, r.pFore, true) {
+			if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
 				r.headResult, r.failReason = StatusBadRequest, "bad authority"
 				return false
 			}
@@ -954,7 +954,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 			return false
 		}
-		if !r.parseAuthority(r.pBack, r.pFore, true) {
+		if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
 			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
 			return false
 		}

@@ -895,11 +895,11 @@ func (r *serverRequest_) examineHead() bool {
 					if param.hash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
 						continue
 					}
-					if value := param.value; value.notEmpty() && value.size() <= 70 && r.input[value.edge-1] != ' ' {
+					if boundary := param.value; boundary.notEmpty() && boundary.size() <= 70 && r.input[boundary.edge-1] != ' ' {
 						// boundary := 0*69<bchars> bcharsnospace
 						// bchars := bcharsnospace / " "
 						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
-						r.boundary = value
+						r.boundary = boundary
 						r.formKind = httpFormMultipart
 						break
 					}
@@ -1015,13 +1015,13 @@ func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = h
 		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
 		return false
 	}
-	value := header.value
-	if value.notEmpty() {
+	host := header.value
+	if host.notEmpty() {
 		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
 		// all other components are compared in a case-sensitive manner.
-		bytesToLower(r.input[value.from:value.edge])
-		if !r.parseAuthority(value.from, value.edge, r.authority.isEmpty()) {
+		bytesToLower(r.input[host.from:host.edge])
+		if !r.parseAuthority(host.from, host.edge, r.authority.isEmpty()) {
 			r.headResult, r.failReason = StatusBadRequest, "bad host value"
 			return false
 		}

@@ -4,18 +4,17 @@
 	padding:0;
 }
 html{
-	background:#f0f0f0;
+	background:#333;
 }
 body{
-	background:#e0e0e0;
+	max-width:960px;
+	margin:auto;
+	font-family:Sans-Serif;
+	background:#f0f0f0;
 }
 ul{
 	list-style-type:none;
 }
 a{
 	text-decoration:none;
-}
-main{
-	max-width:1200px;
-	margin:auto;
 }

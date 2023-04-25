@@ -4,15 +4,13 @@
 	padding:0;
 }
 html{
-	background:#a0a0a0;
+	background:#333;
 }
 body{
+	max-width:960px;
+	margin:auto;
 	font-family:Sans-Serif;
 	background:#f0f0f0;
-}
-main{
-	max-width:1200px;
-	margin:auto;
 }
 ul{
 	list-style-type:none;

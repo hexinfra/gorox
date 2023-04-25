@@ -38,6 +38,7 @@ type staticHandlet struct {
 	mimeTypes   map[string]string // ...
 	defaultType string            // ...
 	useAppRoot  bool              // true if webRoot is same with app.webRoot
+	developerMode bool            // no cache, no etag and so on if true
 }
 
 func (h *staticHandlet) onCreate(name string, stage *Stage, app *App) {
@@ -101,6 +102,8 @@ func (h *staticHandlet) OnConfigure() {
 	}
 	// defaultType
 	h.ConfigureString("defaultType", &h.defaultType, func(value string) bool { return value != "" }, "application/octet-stream")
+	// developerMode
+	h.ConfigureBool("developerMode", &h.developerMode, false)
 }
 func (h *staticHandlet) OnPrepare() {
 	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
@@ -186,8 +189,12 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	modTime := entry.info.ModTime().Unix()
 	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
 	if status, pass := req.TestConditions(modTime, etag, true); pass {
-		resp.SetLastModified(modTime)
-		resp.AddHeaderBytes(bytesETag, etag)
+		if h.developerMode {
+			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
+		} else {
+			resp.SetLastModified(modTime)
+			resp.AddHeaderBytes(bytesETag, etag)
+		}
 		//resp.AddHeader(bytesAcceptRange, bytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)

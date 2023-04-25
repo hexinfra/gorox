@@ -383,7 +383,7 @@ type Handlet_ struct {
 func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
 func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
 
-func (h *Handlet_) UseRouter(handlet any, router Router) {
+func (h *Handlet_) UseRouter(handlet Handlet, router Router) {
 	h.router = router
 	h.rShell = reflect.ValueOf(handlet)
 }

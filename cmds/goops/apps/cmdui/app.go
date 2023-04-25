@@ -43,9 +43,6 @@ func (h *apiv1Handlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New()
-	h.SetRouter(h, r)
 }
 func (h *apiv1Handlet) OnShutdown() {
 	h.app.SubDone()
@@ -55,6 +52,9 @@ func (h *apiv1Handlet) OnConfigure() {
 }
 func (h *apiv1Handlet) OnPrepare() {
 	h.rocks = h.stage.Server("rocks").(*RocksServer)
+	r := simple.New()
+
+	h.UseRouter(h, r)
 }
 
 func (h *apiv1Handlet) Handle(req Request, resp Response) (next bool) {

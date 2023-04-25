@@ -45,13 +45,6 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New() // you can write your own router as long as it implements the Router interface
-
-	r.GET("/", h.index)
-	r.Link("/foo", h.handleFoo)
-
-	h.SetRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
 func (h *helloHandlet) OnShutdown() {
 	h.app.SubDone()
@@ -62,6 +55,12 @@ func (h *helloHandlet) OnConfigure() {
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *helloHandlet) OnPrepare() {
+	r := simple.New() // you can write your own router as long as it implements the Router interface
+
+	r.GET("/", h.index)
+	r.Link("/foo", h.handleFoo)
+
+	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
 
 func (h *helloHandlet) Handle(req Request, resp Response) (next bool) {

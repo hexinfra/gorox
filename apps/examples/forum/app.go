@@ -40,12 +40,6 @@ func (h *forumHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New()
-
-	r.GET("/", h.index)
-
-	h.SetRouter(h, r)
 }
 func (h *forumHandlet) OnShutdown() {
 	h.app.SubDone()
@@ -54,6 +48,11 @@ func (h *forumHandlet) OnShutdown() {
 func (h *forumHandlet) OnConfigure() {
 }
 func (h *forumHandlet) OnPrepare() {
+	r := simple.New()
+
+	r.GET("/", h.index)
+
+	h.UseRouter(h, r)
 }
 
 func (h *forumHandlet) Handle(req Request, resp Response) (next bool) {

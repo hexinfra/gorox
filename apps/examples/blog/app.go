@@ -42,13 +42,6 @@ func (h *blogHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New()
-
-	r.GET("/", h.index)
-	r.Link("/foo", h.foo)
-
-	h.SetRouter(h, r)
 }
 func (h *blogHandlet) OnShutdown() {
 	h.app.SubDone()
@@ -57,6 +50,12 @@ func (h *blogHandlet) OnShutdown() {
 func (h *blogHandlet) OnConfigure() {
 }
 func (h *blogHandlet) OnPrepare() {
+	r := simple.New()
+
+	r.GET("/", h.index)
+	r.Link("/foo", h.foo)
+
+	h.UseRouter(h, r)
 }
 
 func (h *blogHandlet) Handle(req Request, resp Response) (next bool) {

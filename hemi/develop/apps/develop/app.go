@@ -39,17 +39,17 @@ func (h *developHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New()
-
-	h.SetRouter(h, r)
 }
 func (h *developHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *developHandlet) OnConfigure() {}
-func (h *developHandlet) OnPrepare()   {}
+func (h *developHandlet) OnPrepare() {
+	r := simple.New()
+
+	h.UseRouter(h, r)
+}
 
 func (h *developHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)

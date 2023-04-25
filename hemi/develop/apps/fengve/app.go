@@ -39,18 +39,18 @@ func (h *fengveHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
-
-	r := simple.New()
-	r.GET("/abc", h.abc)
-
-	h.SetRouter(h, r)
 }
 func (h *fengveHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *fengveHandlet) OnConfigure() {}
-func (h *fengveHandlet) OnPrepare()   {}
+func (h *fengveHandlet) OnPrepare() {
+	r := simple.New()
+	r.GET("/abc", h.abc)
+
+	h.UseRouter(h, r)
+}
 
 func (h *fengveHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)

@@ -9,6 +9,7 @@ package referer
 
 import (
 	"bytes"
+	"regexp"
 
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
@@ -59,10 +60,22 @@ func (h *refererChecker) OnConfigure() {
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
 
 }
+
 func (h *refererChecker) OnPrepare() {
 	h.serverNameRules = make([]*refererRule, 0, len(h.serverNames))
 	for _, serverName := range h.serverNames {
+		if len(serverName) == 0 {
+			continue
+		}
+
 		r := &refererRule{}
+		if serverName[0] == '~' {
+			r.matchType = regexpMatch
+			r.pcre = regexp.MustCompile(string(serverName[1:]))
+			h.serverNameRules = append(h.serverNameRules, r)
+			continue
+		}
+
 		pathIndex := bytes.IndexByte(serverName, '/')
 		if pathIndex == -1 {
 			r.path = nil
@@ -75,13 +88,9 @@ func (h *refererChecker) OnPrepare() {
 		if r.hostname[0] == '*' {
 			r.matchType = suffixMatch
 		} else if r.hostname[len(r.hostname)-1] == '*' {
-			if bytes.Count(r.hostname, []byte(".")) == 1 {
-				r.matchType = prefixMatch2
-			} else {
-				r.matchType = prefixMatch
-			}
+			r.matchType = prefixMatch
 		} else {
-			r.matchType = suffixMatch
+			r.matchType = fullMatch
 		}
 		h.serverNameRules = append(h.serverNameRules, r)
 	}
@@ -94,6 +103,7 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 	var (
 		hostname, path []byte
 		lastIndex      = -1
+		schemeLen      = 0
 	)
 	refererURL, ok := req.UnsafeHeader("referer")
 	if !ok {
@@ -106,7 +116,7 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 		return true
 	}
 
-	hostname, path = getHostNameAndPath(refererURL)
+	hostname, path, schemeLen = getHostNameAndPath(refererURL)
 	if hostname == nil {
 		goto forbidden
 	}
@@ -116,8 +126,13 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 		if lastIndex == -1 && rule.matchType != fullMatch {
 			continue
 		}
-		if rule.match(hostname) {
-			if len(rule.path) > 0 && bytes.Equal(rule.path, path) {
+
+		if rule.matchType == regexpMatch {
+			if rule.match(refererURL[schemeLen:]) {
+				return true
+			}
+		} else if rule.match(hostname) {
+			if len(rule.path) > 0 && bytes.HasPrefix(path, rule.path) {
 				return true
 			}
 		}
@@ -131,14 +146,31 @@ forbidden:
 
 func checkRule(rules [][]byte) bool {
 	for _, rule := range rules {
+		if rule[0] == '~' { // regular expression
+			if _, err := regexp.Compile(string(rule[1:])); err != nil {
+				return false
+			}
+			continue
+		}
+
+		// start with http[s]:// is not allowed
+		if bytes.HasPrefix(rule, httpScheme) || bytes.HasPrefix(rule, httpsScheme) {
+			return false
+		}
+		// not allow multiple '*', except for regular expressions.
+		if bytes.Count(rule, []byte("*")) > 1 {
+			return false
+		}
+
 		pathIndex := bytes.IndexByte(rule, '/')
 		if pathIndex == -1 {
 			pathIndex = len(rules)
 		}
 
+		// '*' not allowed in the middle
 		idx := bytes.IndexByte(rule[:pathIndex], '*')
 		if idx != -1 && (idx > 0 && idx < len(rule[:pathIndex-1])) {
-			return false // '*' not allowed in the middle
+			return false
 		}
 		if bytes.HasPrefix(rule, httpScheme) || bytes.HasPrefix(rule, httpsScheme) {
 			return false
@@ -150,7 +182,7 @@ func checkRule(rules [][]byte) bool {
 	return true
 }
 
-func getHostNameAndPath(refererURL []byte) (hostname, path []byte) {
+func getHostNameAndPath(refererURL []byte) (hostname, path []byte, schemeLen int) {
 	cb := func(scheme, url []byte) bool {
 		if len(url) < len(scheme) {
 			return false
@@ -159,7 +191,8 @@ func getHostNameAndPath(refererURL []byte) (hostname, path []byte) {
 			return false
 		}
 
-		url = url[len(scheme):]
+		schemeLen = len(scheme)
+		url = url[schemeLen:]
 		queryIndex := bytes.IndexByte(url, '?')
 		if queryIndex == -1 {
 			queryIndex = len(url)
@@ -190,13 +223,14 @@ const (
 	fullMatch = iota
 	suffixMatch
 	prefixMatch
-	prefixMatch2
+	regexpMatch
 )
 
 type refererRule struct {
 	matchType int
 	hostname  []byte
 	path      []byte
+	pcre      *regexp.Regexp
 }
 
 func (r *refererRule) match(hostname []byte) bool {
@@ -207,8 +241,8 @@ func (r *refererRule) match(hostname []byte) bool {
 		return r.suffixMatch(hostname)
 	case prefixMatch:
 		return r.prefixMatch(hostname)
-	case prefixMatch2:
-		return r.prefixMatch2(hostname)
+	case regexpMatch:
+		return r.regexpMatch(hostname)
 	}
 
 	return false
@@ -229,11 +263,7 @@ func (r *refererRule) prefixMatch(hostname []byte) bool {
 	return bytes.HasPrefix(hostname, r.hostname[:len(r.hostname)-1])
 }
 
-// for example:  bar.*
-func (r *refererRule) prefixMatch2(hostname []byte) bool {
-	lastIndex := bytes.LastIndexByte(hostname, '.')
-	if lastIndex == -1 {
-		return false
-	}
-	return bytes.HasPrefix(hostname[:lastIndex], r.hostname[:len(r.hostname)-1])
+// for example:  ~\.bar\.
+func (r *refererRule) regexpMatch(hostname []byte) bool {
+	return r.pcre.Match(hostname)
 }

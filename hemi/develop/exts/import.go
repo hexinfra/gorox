@@ -8,6 +8,8 @@
 package exts
 
 import ( // import contrib components, vendor exts, and your exts
+	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mysql"
+	_ "github.com/hexinfra/gorox/hemi/contrib/backends/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
@@ -17,9 +19,11 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/mysql"
+	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/udps/dns"
 	_ "github.com/hexinfra/gorox/hemi/contrib/editors/tcps/mysql"
+	_ "github.com/hexinfra/gorox/hemi/contrib/editors/tcps/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/editors/tcps/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/access"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/favicon"

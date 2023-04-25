@@ -72,7 +72,10 @@ func (m *UDPSMesher) serve() { // goroutine
 	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
 	m.WaitSubs() // dealers, editors, cases
-	// TODO: close access log file
+
+	if m.logger != nil {
+		m.logger.Close()
+	}
 	if IsDebug(2) {
 		Debugf("udpsMesher=%s done\n", m.Name())
 	}

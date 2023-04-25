@@ -8,6 +8,7 @@
 package exts
 
 import ( // import contrib components, vendor exts, and your exts
+	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
@@ -34,6 +35,7 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/replace"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/wrap"
+	_ "github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"

@@ -140,6 +140,25 @@ func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
 
 func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return m.editorsByID[id] }
 
+func (m *mesher_[M, G, D, E, C]) Log(s string) {
+	// TODO
+	if m.logger != nil {
+		//m.logger.log(s)
+	}
+}
+func (m *mesher_[M, G, D, E, C]) Logln(s string) {
+	// TODO
+	if m.logger != nil {
+		//m.logger.logln(s)
+	}
+}
+func (m *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {
+	// TODO
+	if m.logger != nil {
+		//m.logger.logf(format, args...)
+	}
+}
+
 // case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
 type case_[M _mesher, D _dealer, E _editor] struct {
 	// Mixins

@@ -316,7 +316,7 @@ func (a *App) maintain() { // goroutine
 	a.WaitSubs() // handlets, revisers, socklets, rules
 
 	if a.logger != nil {
-		// TODO: close access log file
+		a.logger.Close()
 	}
 	if IsDebug(2) {
 		Debugf("app=%s done\n", a.Name())

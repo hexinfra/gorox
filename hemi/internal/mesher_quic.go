@@ -67,7 +67,10 @@ func (m *QUICMesher) serve() { // goroutine
 	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
 	m.shutdownSubs()
 	m.WaitSubs() // dealers, editors, cases
-	// TODO: close access log file
+
+	if m.logger != nil {
+		m.logger.Close()
+	}
 	if IsDebug(2) {
 		Debugf("quicMesher=%s done\n", m.Name())
 	}

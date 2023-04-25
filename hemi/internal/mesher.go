@@ -42,6 +42,7 @@ type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
 	dealerCreators map[string]func(name string, stage *Stage, mesher M) D
 	editorCreators map[string]func(name string, stage *Stage, mesher M) E
 	accessLog      []string // (file, rotate)
+	logFormat      string   // log format
 	logger         *logger  // mesher access logger
 	editorsByID    [256]E   // for fast searching. position 0 is not used
 	nEditors       uint8    // used number of editorsByID in this mesher
@@ -74,6 +75,8 @@ func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	} else {
 		m.accessLog = nil
 	}
+	// logFormat
+	m.ConfigureString("logFormat", &m.logFormat, func(value string) bool { return value != "" }, "%T... todo")
 }
 func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
 	m.dealers.walk(D.OnConfigure)

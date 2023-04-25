@@ -955,7 +955,7 @@ func (r *serverRequest_) applyHeader(index uint8) bool {
 	return true
 }
 
-var ( // perfect hash table for request singleton headers
+var ( // perfect hash table for singleton request headers
 	serverRequestSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
 		desc       // allowQuote, allowEmpty, allowParam, hasComment
@@ -1202,7 +1202,7 @@ func (r *serverRequest_) _addRange(from int64, last int64) bool {
 	return true
 }
 
-var ( // perfect hash table for request important headers
+var ( // perfect hash table for important request headers
 	serverRequestImportantHeaderTable = [16]struct {
 		desc  // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool

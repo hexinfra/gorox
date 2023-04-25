@@ -29,13 +29,13 @@ type logger struct {
 	used   int
 }
 
-func newLogger(file string) (*logger, error) {
-	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0700)
+func newLogger(logFile string) (*logger, error) {
+	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		return nil, err
 	}
 	l := new(logger)
-	l.file = f
+	l.file = file
 	l.queue = make(chan string)
 	l.buffer = make([]byte, 1048576)
 	l.size = len(l.buffer)

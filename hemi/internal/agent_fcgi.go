@@ -1080,7 +1080,7 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for response singleton headers
+var ( // perfect hash table for singleton response headers
 	fcgiResponseSingletonHeaderTable = [4]struct {
 		parse bool // need general parse or not
 		desc       // allowQuote, allowEmpty, allowParam, hasComment
@@ -1121,7 +1121,7 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 	return true
 }
 
-var ( // perfect hash table for response important headers
+var ( // perfect hash table for important response headers
 	fcgiResponseImportantHeaderTable = [3]struct {
 		desc  // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, []pair, int, int) bool

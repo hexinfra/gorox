@@ -658,7 +658,7 @@ func (r *clientResponse_) applyHeader(index uint8) bool {
 	return true
 }
 
-var ( // perfect hash table for response singleton headers
+var ( // perfect hash table for singleton response headers
 	clientResponseSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
 		desc       // allowQuote, allowEmpty, allowParam, hasComment
@@ -731,7 +731,7 @@ func (r *clientResponse_) checkSetCookie(header *pair, index uint8) bool { // Se
 	return true
 }
 
-var ( // perfect hash table for response important headers
+var ( // perfect hash table for important response headers
 	clientResponseImportantHeaderTable = [17]struct {
 		desc  // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*clientResponse_, []pair, uint8, uint8) bool

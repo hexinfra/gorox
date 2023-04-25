@@ -31,7 +31,7 @@ func init() {
 	})
 }
 
-// hweb2Proxy handlet passes requests to another HWEB/2 servers and cache responses.
+// hweb2Proxy handlet passes requests to another/backend HWEB/2 servers and cache responses.
 type hweb2Proxy struct {
 	// Mixins
 	normalProxy_

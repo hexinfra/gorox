@@ -38,7 +38,7 @@ func init() {
 	})
 }
 
-// http1Proxy handlet passes requests to another HTTP/1 servers and cache responses.
+// http1Proxy handlet passes requests to another/backend HTTP/1 servers and cache responses.
 type http1Proxy struct {
 	// Mixins
 	normalProxy_
@@ -207,7 +207,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	return
 }
 
-// sock1Proxy socklet passes websockets to another WebSocket/1 servers.
+// sock1Proxy socklet passes websockets to another/backend WebSocket/1 servers.
 type sock1Proxy struct {
 	// Mixins
 	socketProxy_

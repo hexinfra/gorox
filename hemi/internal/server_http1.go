@@ -145,7 +145,7 @@ func (g *httpxGate) shutdown() error {
 
 func (g *httpxGate) serveTCP() { // goroutine
 	getHTTPConn := getHTTP1Conn
-	if g.server.h2cMode {
+	if g.server.h2cMode { // use HTTP/2 explicitly
 		getHTTPConn = getHTTP2Conn
 	}
 	connID := int64(0)

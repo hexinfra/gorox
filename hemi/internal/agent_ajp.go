@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// AJP agent handlet relays requests to backend AJP servers and cache responses.
+// AJP agent handlet passes requests to backend AJP servers and cache responses.
 
 // See: https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
@@ -35,7 +35,7 @@ type ajpAgent struct {
 	// Assocs
 	stage   *Stage       // current stage
 	app     *App         // the app to which the agent belongs
-	backend *TCPSBackend // ...
+	backend *TCPSBackend // the ajp backend to relay to
 	cacher  Cacher       // the cacher which is used by this agent
 	// States
 	bufferClientContent bool // client content is buffered anyway?
@@ -61,7 +61,7 @@ func (h *ajpAgent) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for ajpAgent\n", name)
+				UseExitf("incorrect backend '%s' for ajpAgent, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

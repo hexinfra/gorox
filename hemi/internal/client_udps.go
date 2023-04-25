@@ -29,7 +29,7 @@ func init() {
 	})
 }
 
-// udpsRelay relays UDP/DTLS connections to backend UDP/DTLS server.
+// udpsRelay passes UDP/DTLS connections to backend UDP/DTLS server.
 type udpsRelay struct {
 	// Mixins
 	UDPSDealer_

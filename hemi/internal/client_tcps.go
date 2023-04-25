@@ -31,7 +31,7 @@ func init() {
 	})
 }
 
-// tcpsRelay passes TCP/TLS connections to another TCP/TLS server.
+// tcpsRelay passes TCP/TLS connections to another/backend TCP/TLS server.
 type tcpsRelay struct {
 	// Mixins
 	TCPSDealer_

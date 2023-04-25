@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI agent handlet relays requests to backend FCGI servers and cache responses.
+// FCGI agent handlet passes requests to backend FCGI servers and cache responses.
 
 // FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
 // And we don't use request-side chunking due to the limitation of CGI/1.1 even
@@ -44,7 +44,7 @@ type fcgiAgent struct {
 	// Assocs
 	stage   *Stage       // current stage
 	app     *App         // the app to which the agent belongs
-	backend *TCPSBackend // ...
+	backend *TCPSBackend // the fcgi backend to relay to
 	cacher  Cacher       // the cacher which is used by this agent
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
@@ -81,7 +81,7 @@ func (h *fcgiAgent) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for fcgiAgent\n", name)
+				UseExitf("incorrect backend '%s' for fcgiAgent, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

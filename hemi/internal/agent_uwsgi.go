@@ -3,15 +3,10 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI agent handlet relays requests to backend uWSGI servers and cache responses.
+// UWSGI agent handlet passes requests to backend uWSGI servers and cache responses.
 
-// UWSGI is mainly for Python applications.
-
-// UWSGI doesn't allow unsized content in HTTP, so we must buffer content.
-// Until the whole content is buffered, we treat it as sized instead of unsized.
-
-// UWSGI 1.9.13 seems to have solved this problem:
-// https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+// UWSGI is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
+// UWSGI 1.9.13 seems to have unsized content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
 
 package internal
 
@@ -31,7 +26,7 @@ type uwsgiAgent struct {
 	// Assocs
 	stage   *Stage       // current stage
 	app     *App         // the app to which the agent belongs
-	backend *TCPSBackend // ...
+	backend *TCPSBackend // the uwsgi backend to relay to
 	cacher  Cacher       // the cacher which is used by this agent
 	// States
 	bufferClientContent bool // client content is buffered anyway?
@@ -57,7 +52,7 @@ func (h *uwsgiAgent) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiAgent\n", name)
+				UseExitf("incorrect backend '%s' for uwsgiAgent, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

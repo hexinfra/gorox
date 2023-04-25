@@ -31,7 +31,7 @@ func init() {
 	})
 }
 
-// hweb1Proxy handlet passes requests to another HWEB/1 servers and cache responses.
+// hweb1Proxy handlet passes requests to another/backend HWEB/1 servers and cache responses.
 type hweb1Proxy struct {
 	// Mixins
 	normalProxy_

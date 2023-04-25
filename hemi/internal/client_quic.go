@@ -29,7 +29,7 @@ func init() {
 	})
 }
 
-// quicRelay relays QUIC connections to backend QUIC server.
+// quicRelay passes QUIC connections to backend QUIC server.
 type quicRelay struct {
 	// Mixins
 	QUICDealer_

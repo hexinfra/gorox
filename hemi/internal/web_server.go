@@ -335,8 +335,8 @@ type Request interface {
 
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 
-	HasContent() bool
-	IsUnsized() bool
+	HasContent() bool // true if content exists
+	IsUnsized() bool  // true if content exists and is not sized
 	Content() string
 
 	AddForm(name string, value string) bool
@@ -394,15 +394,15 @@ type Request interface {
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	delHopHeaders()
-	forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool
-	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
+	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	getRanges() []rang
 	unsetHost()
 	takeContent() any
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
 	delHopTrailers()
-	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
@@ -1605,10 +1605,10 @@ func (r *serverRequest_) HasCookie(name string) bool {
 func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
-func (r *serverRequest_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.hash != 0 {
-			if !fn(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
+			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
 				return false
 			}
 		}
@@ -1616,7 +1616,7 @@ func (r *serverRequest_) forCookies(fn func(cookie *pair, name []byte, value []b
 	if r.hasExtra[kindCookie] {
 		for i := 0; i < len(r.extras); i++ {
 			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
-				if !fn(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
+				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
 			}

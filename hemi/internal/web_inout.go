@@ -131,7 +131,7 @@ type webIn interface {
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
 	HasTrailers() bool
-	forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 }
@@ -1392,15 +1392,15 @@ func (r *webIn_) _placeOf(pair *pair) []byte {
 func (r *webIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
-func (r *webIn_) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
-	return r._forMainFields(r.headers, kindHeader, fn)
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
+	return r._forMainFields(r.headers, kindHeader, callback)
 }
 
 func (r *webIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
-func (r *webIn_) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTrailersFrom(). excluding sub trailers
-	return r._forMainFields(r.trailers, kindTrailer, fn)
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTrailersFrom(). excluding sub trailers
+	return r._forMainFields(r.trailers, kindTrailer, callback)
 }
 
 func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
@@ -1444,11 +1444,11 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 		}
 	}
 }
-func (r *webIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair, name []byte, value []byte) bool) bool {
+func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 {
 			p := r._placeOf(field)
-			if !fn(field, field.nameAt(p), field.valueAt(p)) {
+			if !callback(field, field.nameAt(p), field.valueAt(p)) {
 				return false
 			}
 		}
@@ -1456,7 +1456,7 @@ func (r *webIn_) _forMainFields(fields zone, extraKind int8, fn func(field *pair
 	if r.hasExtra[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
-				if !fn(field, field.nameAt(r.array), field.valueAt(r.array)) {
+				if !callback(field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
 				}
 			}

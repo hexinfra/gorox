@@ -1231,10 +1231,10 @@ func (r *fcgiResponse) examineTail() bool { return true } // fcgi doesn't suppor
 func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by webIn interface
 
 func (r *fcgiResponse) delHopHeaders() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
+func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
-			if !fn(header, header.nameAt(r.input), header.valueAt(r.input)) {
+			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}
 		}
@@ -1243,7 +1243,7 @@ func (r *fcgiResponse) forHeaders(fn func(header *pair, name []byte, value []byt
 }
 
 func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
-func (r *fcgiResponse) forTrailers(fn func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
 

@@ -486,7 +486,7 @@ func (s *shutdownable_) init() {
 	s.Shut = make(chan struct{})
 }
 
-func (s *shutdownable_) Loop(interval time.Duration, fn func(now time.Time)) {
+func (s *shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -494,7 +494,7 @@ func (s *shutdownable_) Loop(interval time.Duration, fn func(now time.Time)) {
 		case <-s.Shut:
 			return
 		case now := <-ticker.C:
-			fn(now)
+			callback(now)
 		}
 	}
 }

@@ -504,9 +504,9 @@ type upload struct {
 type clientResponse interface {
 	Status() int16
 	delHopHeaders()
-	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	delHopTrailers()
-	forTrailers(fn func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 }
 
 // clientResponse_ is the mixin for H[1-3]Response and B[1-2]Response.
@@ -894,7 +894,7 @@ func (r *clientResponse_) HasCookie(name string) bool {
 	// TODO
 	return false
 }
-func (r *clientResponse_) forCookies(fn func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *clientResponse_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	// TODO
 	return false
 }

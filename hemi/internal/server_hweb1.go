@@ -432,7 +432,7 @@ func (r *hweb1Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *hweb1Response) trailer(name []byte) (value []byte, ok bool) { return nil, false }
 
-func (r *hweb1Response) pass1xx(resp response) bool { // used by proxies
+func (r *hweb1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	return true
 }
 func (r *hweb1Response) passHeaders() error       { return r.writeHeadersB1() }

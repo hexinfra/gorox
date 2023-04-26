@@ -275,8 +275,8 @@ func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 func (c *clientConn_) isBroken() bool { return c.broken.Load() }
 func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 
-// request is the interface for *H[1-3]Request and *B[1-2]Request.
-type request interface {
+// clientRequest is the interface for *H[1-3]Request and *B[1-2]Request.
+type clientRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
@@ -287,7 +287,7 @@ type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
-	response response // the corresponding response
+	response clientResponse // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -317,10 +317,10 @@ func (r *clientRequest_) onEnd() { // for zeros
 	r.webOut_.onEnd()
 }
 
-func (r *clientRequest_) Response() response { return r.response }
+func (r *clientRequest_) Response() clientResponse { return r.response }
 
 func (r *clientRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(request).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
+	return r.shell.(clientRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
 }
 func (r *clientRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -368,7 +368,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	} else {
 		uri = req.UnsafeURI()
 	}
-	if !r.shell.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(clientRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -384,7 +384,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 			if len(colonPort) == 0 {
 				colonPort = req.UnsafeColonPort()
 			}
-			if !r.shell.(request).setAuthority(hostname, colonPort) {
+			if !r.shell.(clientRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -404,7 +404,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(clientRequest).copyCookies(req) {
 		return false
 	}
 	// TODO: An HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message and MAY send a Via header field in forwarded response messages.
@@ -500,8 +500,8 @@ type upload struct {
 	// TODO
 }
 
-// response is the interface for *H[1-3]Response and *B[1-2]Response.
-type response interface {
+// clientResponse is the interface for *H[1-3]Response and *B[1-2]Response.
+type clientResponse interface {
 	Status() int16
 	delHopHeaders()
 	forHeaders(fn func(header *pair, name []byte, value []byte) bool) bool

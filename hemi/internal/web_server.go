@@ -2606,7 +2606,7 @@ type Response interface {
 	hasHeader(name []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
+	copyHeadFrom(resp clientResponse, viaName []byte) bool // used by proxies
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content
@@ -2615,10 +2615,10 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endUnsized() error
 	finalizeUnsized() error
-	pass1xx(resp response) bool               // used by proxies
+	pass1xx(resp clientResponse) bool         // used by proxies
 	pass(resp webIn) error                    // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
-	copyTailFrom(resp response) bool          // used by proxies
+	copyTailFrom(resp clientResponse) bool    // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2841,7 +2841,7 @@ func (r *serverResponse_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *serverResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
+func (r *serverResponse_) copyHeadFrom(resp clientResponse, viaName []byte) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2917,7 +2917,7 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) copyTailFrom(resp response) bool { // used by proxies
+func (r *serverResponse_) copyTailFrom(resp clientResponse) bool { // used by proxies
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

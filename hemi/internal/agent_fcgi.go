@@ -677,7 +677,7 @@ func putFCGIRecords(records []byte) {
 	poolFCGIRecords.Put(records)
 }
 
-// fcgiResponse must implements webIn and response interface.
+// fcgiResponse must implements webIn and clientResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	stream *fcgiStream

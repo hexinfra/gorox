@@ -1188,7 +1188,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
 
-func (r *http1Response) pass1xx(resp response) bool { // used by proxies
+func (r *http1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

@@ -39,7 +39,6 @@ func (m *mockNetIO) RemoteAddr() net.Addr               { return nil }
 // TODO: temporary function, which will be refactored later.
 // rb is the http raw data.
 func MockHttp1(rb []byte) (Request, Response) {
-	SetDebug(2)
 	s := new(httpxServer)
 	s.onCreate("", createStage())
 	gate := new(httpxGate)

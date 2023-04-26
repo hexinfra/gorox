@@ -33,6 +33,7 @@
 	article p {
 		padding: 5px;
 		background: #ffffff;
+		margin-right: 10px;
 	}
 
 	article code {
@@ -93,9 +94,6 @@
 	<h2>目录</h2>
 	<ol>
 		<li><a href="#stage">stage</a></li>
-		<li><a href="#stage-constants">stage &gt; constants</a></li>
-		<li><a href="#stage-properties">stage &gt; properties</a></li>
-
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
 		<li><a href="#stage-resolver">stage &gt; resolver</a></li>
@@ -203,8 +201,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 </code>
 		</li>
 
-		<li id="stage-constants">
-			<h3>stage &gt; constants</h3>
+		<li>
+			<h4>stage 中常量，可以用在 stage 配置的任何位置。</h4>
 			<p>gorox 启动之后会定义如下常量，并且在整个运行阶段都不会再次修改。</p>
 			<ul>
 				<li>
@@ -228,8 +226,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			</ul>
 		</li>
 
-		<li id="stage-properties">
-			<h3>stage &gt; properties</h3>
+		<li>
 			<p>stage 属性列表。</p>
 			<code class="pre">stage {
 	.logFile = %logsDir + "/worker.log"
@@ -332,6 +329,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				"forward"，gorox 自动使用 http1Outgate 相关配置作为 http client 的配置。</p>
 			<ul>
 				<li>
+					<p>例子</p>
 					<code class="pre">stage {
 	http1Outgate {
 		.tlsMode = false
@@ -569,7 +567,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 		</li>
 		<li id="stage-http1Backend">
 			<h3>stage &gt; http1Backend</h3>
-			<p></p>
+			<p>例子</p>
 			<code class="pre">stage {
 	http1Backend "h1b" {
 		.tlsMode = false
@@ -1115,6 +1113,50 @@ app "main" {
 
 		<li id="stage-app-accessChecker">
 			<h3>stage &gt; app &gt; accessChecker </h3>
+			<p> accessChecker 对 ip 做检测，可以设置白名单或者黑名单。其中白名单和黑名单不能有同样的配置。拒绝访问 ip 将会返回403。</p>
+			<ul>
+				<li>
+					<p>.allow 设置白名单。</p>
+					<code>语法 .allow = ("all")
+						默认值： "all"
+						取值范围：ip | cidr | "all"
+					</code>
+				</li>
+				<li>
+					<p>.deny 设置黑名单。</p>
+					<code>语法 .deny = ()
+						默认值： -
+						取值范围：ip | cidr | "all"
+					</code>
+				</li>
+				<li>
+					<p>取值字段说明。</p>
+					<code>ip: 一个单独合法 ip，ipv4 或 ipv6。
+						cidr: 无类别域间路由，192.168.6.1/24、10.100.1.1/16
+						all: 针对所有的 ip 生效。
+
+						优先级: ip > cidr > all 
+					</code>
+				</li>
+				<li>
+					<p>例子</p>
+					<code>accessChecker { // 只允许 本机ip、10.100.*.*、192.168.1.* 的ip访问。
+					.allow = ("10.100.1.1/16", "127.0.0.1", "::1", "192.168.1.1/24")
+					.deny = ("all")
+					}
+					
+					accessChecker { // 192.168.1的 ip 段，只允许 192.168.1.1、192.168.1.2 访问。
+					.allow = ("192.168.1.1", "192.168.1.2")
+					.deny = ("192.168.1.1/24")
+					}
+					
+					accessChecker { // 不允许 10.100 开头的 ip 段访问。
+					.allow = ("all")
+					.deny = ("10.100.1.1/16")
+					}
+					</code>
+				</li>
+			</ul>
 		</li>
 
 		<li id="stage-app-hostnameChecker">
@@ -1157,9 +1199,7 @@ app "main" {
 						取值范围：-
 					</code>
 				</li>
-
 			</ul>
-
 		</li>
 		<li id="stage-app-limitChecker">
 			<h3>stage &gt; app &gt; limitChecker </h3>
@@ -1167,6 +1207,47 @@ app "main" {
 
 		<li id="stage-app-refererChecker">
 			<h3>stage &gt; app &gt; refererChecker </h3>
+			<p> refererChecker 验证 http 请求中的 referer 是否符合要求。</p>
+			<ul>
+				<li>
+					<p>.serverNames 配置域名和path部分。</p>
+					<code>语法： .serverNames = ("*.gorox.com", "gorox.*", "h5.exp.cn/app","bar.*/app", "~\.google\.")
+						默认值： nil
+						取值说明：
+						1、全匹配： 如 www.gorox.io、www.gorox.io/app/ 等。
+						2、部分匹配：可以通过 '*' 通配符，如 *.gorox.io、gorox.*、www.gorox.*/app，但是不允许 *.gorox.*。
+						3、正则匹配：必须是以"~"开头，表达式将与"http://"或"https://"之后开始的文本匹配。 如 "~.*"、"~gorox.io$"、"~gorox.io/app"、"~\.gorox\." 。
+					</code>
+				</li>
+				<li>
+					<p>.none 是否允许 'Referer' 不存在。</p>
+					<code>语法 .none = false
+						默认值： false
+						取值范围：false | true
+					</code>
+				</li>
+				<li>
+					<p>.blocked 存在 'Referer' 就算通过。因为请求头中可能存在其值已被防火墙或代理服务器删除。这种值是不以 "http://"或 "https://"开头的字符串。</p>
+					<code>语法 .blocked = false
+						默认值： false
+						取值范围：false | true
+					</code>
+				</li>
+				<li>
+					<p>例子</p>
+					<code>refererChecker { // referer 存在就算通过。
+							.blocked = true
+						}
+
+						refererChecker { // referer 可以不存在，但是如果存在就必须符合 .serverNames 的配置规则。
+							.none = false
+							.serverNames = ("*.gorox.com"）
+						}
+					</code>
+				</li>
+
+			</ul>
+
 		</li>
 
 		<li id="stage-app-rewriter">
@@ -1342,7 +1423,7 @@ stage {
 			<p>http1Proxy 用于 http1.x 协议的后端代理。</p>
 			<code class="pre">语法：http1Proxy [name] { ... }
 
-http1Proxy  {
+http1Proxy {
 	.proxyMode = "reverse"
 	.toBackend = "proxy_name"
 	.viaName = "gorox"
@@ -1445,7 +1526,7 @@ http1Proxy  {
 		<li id="stage-app-static">
 			<h3>stage &gt; app &gt; static </h3>
 			<p>static 处理静态资源，例如（js、css、html）等。</p>
-			<code class="pre">static{
+			<code class="pre">static {
 	.webRoot = "/var/www"
 	.indexFile = "index.html"
 	.autoIndex = true
@@ -1466,9 +1547,7 @@ http1Proxy  {
 				</li>
 				<li>
 					<p>.aliasTo //TODO:</p>
-					<code>
-						.aliasTo = "path" 不能为空
-					</code>
+					<code>.aliasTo = "path" 不能为空</code>
 				</li>
 				<li>
 					<p>.indexFile 定义索引文件的名称，如果请求以斜杠结尾，gorox 会将其视为对目录的请求，并尝试在该目录中查找索引文件。</p>
@@ -1668,7 +1747,8 @@ http1Proxy  {
 		<li id="stage-httpxServer">
 			<h3>stage &gt; httpxServer </h3>
 			<p>httpxServer goroxy 中对 http1.1 和 http2 服务端配置。</p>
-			<code class="pre">stage{
+			<p>例子</p>
+			<code class="pre">stage {
 	app "example_com" {
 		.hostnames = ("example.com" "*.example.com")
 		.webRoot = "/var/www"
@@ -1676,7 +1756,7 @@ http1Proxy  {
 		.tlsPrivateKey = "/etc/tls/example_com.key"
 	}
 
-	httpxServer{
+	httpxServer {
 		.address = ":8080" // required
 		.tlsMode = false
 		.readTimeout = 60s
@@ -1803,8 +1883,7 @@ http1Proxy  {
 					</code>
 
 					<p>例子</p>
-					<code>
-						如果在 https 请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到 http协议上。
+					<code>// 如果在 https 请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到 http协议上。
 						GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1
 					</code>
 				</li>
@@ -1842,9 +1921,8 @@ http1Proxy  {
 
 		<li id="stage-socksServer">
 			<h3>stage &gt; socksServer </h3>
-
-			<code class="pre">
-stage {
+			<p></p>
+			<code class="pre">stage {
 	socksServer "socks" {
 		.address = ":1080"
 		.tlsMode = false
@@ -1855,7 +1933,6 @@ stage {
 	}
 }
 </code>
-
 			<ul>
 				<li>
 					<p>.address 服务要监听的 IP:PORT，省略 IP 代表监听所有网卡的 IP。</p>

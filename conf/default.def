@@ -252,6 +252,13 @@ stage {
 
 		// handlets
 		accessChecker "ah" {
+			.deny = ("all")
+			.allow = ("10.100.1.1/16", "127.0.0.1", "::1", "192.168.1.1/24")
+		}
+		refererChecker "rc" {
+			.serverNames = ("*.gorox.com")
+			.none = false
+			.blocked = false
 		}
 		hostnameChecker "hh" {
 			.hostname = "www.example.cpm"

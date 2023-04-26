@@ -97,9 +97,6 @@ func (h *refererChecker) OnPrepare() {
 }
 
 func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
-	if len(h.serverNameRules) == 0 {
-		return true
-	}
 	var (
 		hostname, path []byte
 		lastIndex      = -1
@@ -112,7 +109,7 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 		}
 		goto forbidden
 	}
-	if h.IsBlocked {
+	if h.IsBlocked || len(h.serverNameRules) == 0 {
 		return true
 	}
 

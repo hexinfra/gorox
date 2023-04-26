@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+
+	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func TestGetHostNameAndPath(t *testing.T) {
@@ -131,51 +133,60 @@ func TestOnPrepare(t *testing.T) {
 }
 
 func TestHandle(t *testing.T) {
-	/*
-	   	tests := []struct {
-	   		referer     string
-	   		serverNames []byte
-	   		noneReferer bool
-	   		isBlocked   bool
-	   		expected    bool
-	   	}{
+	tests := []struct {
+		referer     string
+		serverNames []byte
+		noneReferer bool
+		isBlocked   bool
+		expect      bool
+	}{
+		{"http://www.example.org", []byte("www.example.org"), false, false, true},
+		{"http://www.example.org", nil, true, false, true},
+		{"http://", nil, false, true, true},
+		{"", nil, false, true, false},
+		{"", nil, true, false, true},
+		{"xxxxxx", []byte("*.gorox.org"), false, true, true},
+		{"http://localhost", []byte("localhost"), false, false, true},
+		{"http://www.gorox.org", []byte("*.gorox.org"), false, false, true},
+		{"http://www.gorox.org", []byte("gorox.org"), false, false, false},
+		{"http://www.gorox.org", []byte("gorox.*"), false, false, false},
+		{"http://gorox.org", []byte("gorox.*"), false, false, true},
+		{"http://gorox.com", []byte("gorox.*"), false, false, true},
+		{"http://gorox.com/a/p/p", []byte("gorox.*/a/p/p"), false, false, true},
+		{"http://gorox.com/a/p/p", []byte("gorox.*/a/"), false, false, true},
+		{"http://gorox.com:8080/a/p/p", []byte("gorox.*"), false, false, true},
+		{"http://bar.com:8080/a/p/p", []byte(`~bar.org`), false, false, false},
+		{"http://h5.bar.com:8080/a/p/p", []byte(`~\.bar\.`), false, false, true},
+		{"http://h5.bar.com:8080/a/p/p", []byte(`~(?-i).bar.com`), false, false, true},
+		{"http://www.gorox.org/uri", []byte(`~gorox.org/uri`), false, false, true},
+		{"http://www.gorox.org", []byte(`~gorox.org/uri`), false, false, false},
+		{"http://www.gorox.org/uRI", []byte(`~gorox.org/uri`), false, false, false},
+		{"http://www.gorox.org/uRI", []byte(`~example.org$`), false, false, false},
+		{"http://book.h5.gorox.org", []byte(`~example.org$`), false, false, false},
+	}
 
-	   		{"http://www.example.org", []byte("www.example.org"), false, false, true},
-	   		{"http://www.example.org", nil, true, false, true},
-	   		{"http://", nil, false, true, true},
-	   		{"", nil, false, true, false},
-	   		{"", nil, true, false, true},
-	   		{"xxxxxx", []byte("*.gorox.org"), false, true, true},
-	   		{"http://localhost", []byte("localhost"), false, false, true},
-	   		{"http://www.gorox.org", []byte("*.gorox.org"), false, false, true},
-	   		{"http://www.gorox.org", []byte("gorox.org"), false, false, false},
-	   		{"http://www.gorox.org", []byte("gorox.*"), false, false, false},
-	   		{"http://gorox.org", []byte("gorox.*"), false, false, true},
-	   		{"http://gorox.com", []byte("gorox.*"), false, false, true},
-	   		{"http://gorox.com/a/p/p", []byte("gorox.*\/a/p/p"), false, false, true},
-	   		{"http://gorox.com/a/p/p", []byte("gorox.*\/a/"), false, false, true},
-	   		{"http://gorox.com:8080/a/p/p", []byte("gorox.*"), false, false, true},
-	   		{"http://bar.com:8080/a/p/p", []byte(`~bar.org`), false, false, true},
-	   		{"http://h5.bar.com:8080/a/p/p", []byte(`~\.bar\.`), false, false, true},
-	   		{"http://h5.bar.com:8080/a/p/p", []byte(`(?-i).bar.com`), false, false, true},
-	   		{"http://www.gorox.org/uri", []byte(`~gorox.org/uri`), false, false, true},
-	   		{"http://www.gorox.org", []byte(`~gorox.org/uri`), false, false, true},
-	   		{"http://www.gorox.org/uRI", []byte(`~gorox.org/uri`), false, false, false},
-	   		{"http://www.gorox.org/uRI", []byte(`~example.org$`), false, false, false},
-	   		{"http://book.h5.gorox.org", []byte(`~example.org$`), false, false, false},
-	   	}
+	for idx, test := range tests {
+		checker := &refererChecker{}
+		checker.serverNames = [][]byte{test.serverNames}
+		checker.NoneReferer = test.noneReferer
+		checker.IsBlocked = test.isBlocked
+		checker.OnPrepare()
 
-	   	for idx, test := range tests {
-	   		if 2 < 1 {
-	   			t.Errorf("#%d: recv=%v, expect=%v", idx, "a", test.expected)
-	   		}
+		httpRaw := "GET /app HTTP/1.1\r\n" +
+			"Host: localhost\r\n"
+		if len(test.referer) > 0 {
+			httpRaw += "Referer: " + test.referer
+		}
+		httpRaw += "\r\n\r\n"
+		req, resp := NewMockHttp1([]byte(httpRaw))
 
-	   }
+		recv := checker.Handle(req, resp)
+		if recv != test.expect {
+			t.Errorf("#%d: recv=%v, expect=%v", idx, recv, test.expect)
+		}
 
-	   req := MockHttp1Request{}
-	   referer := "http://www.example.org"
-	   req.WriteHeader([]byte(`GET / HTTP/1.1\r\nhost: teest\r\nreferer: ` + referer + `\r\n\r\n`))
-	   r, _ := req.Header("referer")
-	   t.Errorf("#%d: recv=%v, expect=%v", 1, req.AllHeaders(), r)
-	*/
+		if !recv && resp.Status() != 403 {
+			t.Errorf("#%d: recv=%v, expect=403", idx, resp.Status())
+		}
+	}
 }

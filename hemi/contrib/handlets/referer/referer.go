@@ -99,7 +99,7 @@ func (h *refererChecker) OnPrepare() {
 func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 	var (
 		hostname, path []byte
-		lastIndex      = -1
+		index          = -1
 		schemeLen      = 0
 	)
 	refererURL, ok := req.UnsafeHeader("referer")
@@ -118,9 +118,9 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 		goto forbidden
 	}
 
-	lastIndex = bytes.LastIndexByte(hostname, '.')
+	index = bytes.IndexByte(hostname, '.')
 	for _, rule := range h.serverNameRules {
-		if lastIndex == -1 && rule.matchType != fullMatch {
+		if index == -1 && rule.matchType != fullMatch {
 			continue
 		}
 
@@ -129,9 +129,10 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 				return true
 			}
 		} else if rule.match(hostname) {
-			if len(rule.path) > 0 && bytes.HasPrefix(path, rule.path) {
-				return true
+			if len(rule.path) > 0 && !bytes.HasPrefix(path, rule.path) {
+				return false
 			}
+			return true
 		}
 	}
 

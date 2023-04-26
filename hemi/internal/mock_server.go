@@ -37,29 +37,21 @@ func (m *mockNetIO) LocalAddr() net.Addr                { return nil }
 func (m *mockNetIO) RemoteAddr() net.Addr               { return nil }
 
 // TODO: temporary function, which will be refactored later.
-func NewMockHttp1(rb []byte) (Request, Response) {
+// rb is the http raw data.
+func MockHttp1(rb []byte) (Request, Response) {
+	SetDebug(2)
+	s := new(httpxServer)
+	s.onCreate("", createStage())
 	gate := new(httpxGate)
-	server := new(httpxServer)
-	server.stage = createStage()
-	gate.init(server, 1)
-	conn := new(http1Conn)
+	gate.init(s, 1)
+
 	mockNetIO := &mockNetIO{rb: rb, wb: make([]byte, 0, _4K)}
-	conn.onGet(1, server, gate, mockNetIO, nil)
-	stream := &conn.stream
-	stream.conn = conn
-	req, resp := &stream.request, &stream.response
+	httpConn := getHTTP1Conn(1, s, gate, mockNetIO, nil)
+	conn := httpConn.(*http1Conn)
 
-	// init request
-	req.shell = req
-	req.stream = stream
-	req.onUse(Version1_1)
-
-	// init response
-	resp.shell = resp
-	resp.stream = stream
-	resp.request = req
-	resp.onUse(Version1_1)
-
+	conn.stream.onUse(conn)
+	req, resp := &conn.stream.request, &conn.stream.response
 	req.recvHead()
+
 	return req, resp
 }

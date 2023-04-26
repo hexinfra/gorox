@@ -178,13 +178,12 @@ func TestHandle(t *testing.T) {
 			httpRaw += "Referer: " + test.referer
 		}
 		httpRaw += "\r\n\r\n"
-		req, resp := NewMockHttp1([]byte(httpRaw))
 
+		req, resp := MockHttp1([]byte(httpRaw))
 		recv := checker.Handle(req, resp)
 		if recv != test.expect {
 			t.Errorf("#%d: recv=%v, expect=%v", idx, recv, test.expect)
 		}
-
 		if !recv && resp.Status() != 403 {
 			t.Errorf("#%d: recv=%v, expect=403", idx, resp.Status())
 		}

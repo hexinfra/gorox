@@ -907,7 +907,7 @@ func (r *clientResponse_) HasContent() bool {
 	}
 	// All other responses do include content, although that content might
 	// be of zero length.
-	return r.contentSize >= 0 || r.isUnsized()
+	return r.contentSize >= 0 || r.IsUnsized()
 }
 func (r *clientResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *clientResponse_) UnsafeContent() []byte { return r.unsafeContent() }
@@ -986,8 +986,8 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// socket is the interface for *H[1-3]Socket.
-type socket interface {
+// clientSocket is the interface for *H[1-3]Socket.
+type clientSocket interface {
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
@@ -996,7 +996,7 @@ type socket interface {
 // clientSocket_ is the mixin for H[1-3]Socket.
 type clientSocket_ struct {
 	// Assocs
-	shell socket // the concrete socket
+	shell clientSocket // the concrete socket
 	// Stream states (zeros)
 }
 

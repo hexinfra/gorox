@@ -136,7 +136,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) { // reverse 
 	)
 
 	hasContent := req.HasContent()
-	if hasContent && (h.bufferClientContent || req.isUnsized()) { // including size 0
+	if hasContent && (h.bufferClientContent || req.IsUnsized()) { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
 			// stream is marked as broken
@@ -169,7 +169,7 @@ func (h *fcgiAgent) Handle(req Request, resp Response) (next bool) { // reverse 
 		resp.SendBadGateway(nil)
 		return
 	}
-	if hasContent && !h.bufferClientContent && !req.isUnsized() {
+	if hasContent && !h.bufferClientContent && !req.IsUnsized() {
 		fErr = fReq.pass(req)
 	} else { // nil, []byte, tempFile
 		fErr = fReq.post(content)
@@ -1008,7 +1008,7 @@ func (r *fcgiResponse) addPrime(prime *pair) bool {
 func (r *fcgiResponse) Status() int16 { return r.status }
 
 func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we believe in framing
-func (r *fcgiResponse) isUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
+func (r *fcgiResponse) IsUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used

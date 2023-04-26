@@ -336,7 +336,7 @@ type Request interface {
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 
 	HasContent() bool
-	isUnsized() bool
+	IsUnsized() bool
 	Content() string
 
 	AddForm(name string, value string) bool
@@ -1716,7 +1716,7 @@ func (r *serverRequest_) unsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
 
-func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.isUnsized() }
+func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsUnsized() }
 func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
 func (r *serverRequest_) UnsafeContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!

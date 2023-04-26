@@ -127,7 +127,7 @@ func (s *webStream_) udpTunServer() {
 // webIn is a *http[1-3]Request or *H[1-3]Response, used as shell by webIn_.
 type webIn interface {
 	ContentSize() int64
-	isUnsized() bool
+	IsUnsized() bool
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
 	HasTrailers() bool
@@ -878,7 +878,7 @@ func (r *webIn_) determineContentMode() bool {
 	return true
 }
 func (r *webIn_) markUnsized()    { r.contentSize = -2 }
-func (r *webIn_) isUnsized() bool { return r.contentSize == -2 }
+func (r *webIn_) IsUnsized() bool { return r.contentSize == -2 }
 
 func (r *webIn_) ContentSize() int64 { return r.contentSize }
 func (r *webIn_) UnsafeContentLength() []byte {
@@ -1778,7 +1778,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 
 func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content directly
 	pass := r.shell.passBytes
-	if in.isUnsized() || r.hasRevisers { // if we need to revise, we always use unsized no matter the original content is sized or unsized
+	if in.IsUnsized() || r.hasRevisers { // if we need to revise, we always use unsized no matter the original content is sized or unsized
 		pass = r.EchoBytes
 	} else { // in is sized and there are no revisers, use passBytes
 		r.isSent = true

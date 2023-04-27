@@ -12,8 +12,6 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
-
-	. "github.com/hexinfra/gorox/hemi/internal"
 )
 
 func TestGetHostNameAndPath(t *testing.T) {

@@ -55,7 +55,7 @@ func (s *Svc) OnConfigure() {
 		if value > 0 && value <= _1G {
 			return nil
 		}
-		return errors.New(".maxContentSize is a invalid value")
+		return errors.New(".maxContentSize is an invalid value")
 	}, _16M)
 }
 func (s *Svc) OnPrepare() {

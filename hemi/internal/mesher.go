@@ -81,7 +81,7 @@ func (m *mesher_[M, G, D, E, C]) onConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".logFormat is a invalid value")
+		return errors.New(".logFormat is an invalid value")
 	}, "%T... todo")
 }
 func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases

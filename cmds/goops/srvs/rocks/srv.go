@@ -76,14 +76,14 @@ func (s *RocksServer) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".readTimeout is a invalid value")
+		return errors.New(".readTimeout is an invalid value")
 	}, 60*time.Second)
 	// writeTimeout
 	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".writeTimeout is a invalid value")
+		return errors.New(".writeTimeout is an invalid value")
 	}, 60*time.Second)
 }
 func (s *RocksServer) OnPrepare() {

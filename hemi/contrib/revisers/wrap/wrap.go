@@ -48,7 +48,7 @@ func (r *wrapReviser) OnConfigure() {
 		if value >= 6 && value < 26 {
 			return nil
 		}
-		return errors.New(".rank is a invalid value")
+		return errors.New(".rank is an invalid value")
 	}, RankWrap)
 }
 func (r *wrapReviser) OnPrepare() {

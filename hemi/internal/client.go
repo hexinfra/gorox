@@ -59,28 +59,28 @@ func (c *client_) onConfigure() {
 		if value > time.Second {
 			return nil
 		}
-		return errors.New(".dialTimeout is a invalid value")
+		return errors.New(".dialTimeout is an invalid value")
 	}, 10*time.Second)
 	// writeTimeout
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
 		if value > time.Second {
 			return nil
 		}
-		return errors.New(".writeTimeout is a invalid value")
+		return errors.New(".writeTimeout is an invalid value")
 	}, 30*time.Second)
 	// readTimeout
 	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
 		if value > time.Second {
 			return nil
 		}
-		return errors.New(".readTimeout is a invalid value")
+		return errors.New(".readTimeout is an invalid value")
 	}, 30*time.Second)
 	// aliveTimeout
 	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".readTimeout is a invalid value")
+		return errors.New(".readTimeout is an invalid value")
 	}, 4*time.Second)
 }
 func (c *client_) onPrepare() {

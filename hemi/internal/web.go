@@ -122,21 +122,21 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".file404 is a invalid value")
+		return errors.New(".file404 is an invalid value")
 	}, "")
 	// tlsCertificate
 	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) error {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".tlsCertificate is a invalid value")
+		return errors.New(".tlsCertificate is an invalid value")
 	}, "")
 	// tlsPrivateKey
 	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) error {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".tlsCertificate is a invalid value")
+		return errors.New(".tlsCertificate is an invalid value")
 	}, "")
 	// accessLog
 	if v, ok := a.Find("accessLog"); ok {
@@ -153,21 +153,21 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".logFormat is a invalid value")
+		return errors.New(".logFormat is an invalid value")
 	}, "%T... todo")
 	// maxMemoryContentSize
 	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G {
 			return nil
 		}
-		return errors.New(".maxMemoryContentSize is a invalid value")
+		return errors.New(".maxMemoryContentSize is an invalid value")
 	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 	// maxUploadContentSize
 	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) error {
 		if value > 0 && value <= _1T {
 			return nil
 		}
-		return errors.New(".maxUploadContentSize is a invalid value")
+		return errors.New(".maxUploadContentSize is an invalid value")
 	}, _128M)
 	// settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
@@ -555,7 +555,7 @@ func (r *Rule) OnConfigure() {
 		if value >= 200 && value < 1000 {
 			return nil
 		}
-		return errors.New(".returnCode is a invalid value")
+		return errors.New(".returnCode is an invalid value")
 	}, 0)
 
 	// returnText

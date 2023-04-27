@@ -419,7 +419,7 @@ func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
 		if value != "" && len(value) <= 232 {
 			return nil
 		}
-		return errors.New(".saveContentFilesDir is a invalid value")
+		return errors.New(".saveContentFilesDir is an invalid value")
 	}, defaultDir)
 }
 func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
@@ -452,7 +452,7 @@ func (b *loadBalancer_) onConfigure(shell Component) {
 		if value == "roundRobin" || value == "ipHash" || value == "random" {
 			return nil
 		}
-		return errors.New(".balancer is a invalid value")
+		return errors.New(".balancer is an invalid value")
 	}, "roundRobin")
 }
 func (b *loadBalancer_) onPrepare(numNodes int) {

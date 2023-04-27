@@ -121,21 +121,21 @@ func (h *fcgiAgent) OnConfigure() {
 		if value >= 0 {
 			return nil
 		}
-		return errors.New(".sendTimeout is a invalid value")
+		return errors.New(".sendTimeout is an invalid value")
 	}, 60*time.Second)
 	// recvTimeout
 	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
-		return errors.New(".recvTimeout is a invalid value")
+		return errors.New(".recvTimeout is an invalid value")
 	}, 60*time.Second)
 	// maxContentSize
 	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize is a invalid value")
+		return errors.New(".maxContentSize is an invalid value")
 	}, _1T)
 	// preferUnderscore
 	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)

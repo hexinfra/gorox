@@ -86,7 +86,7 @@ func (h *staticHandlet) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".indexFile is a invalid value")
+		return errors.New(".indexFile is an invalid value")
 	}, "index.html")
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
@@ -111,7 +111,7 @@ func (h *staticHandlet) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".indexFile is a invalid value")
+		return errors.New(".indexFile is an invalid value")
 	}, "application/octet-stream")
 	// developerMode
 	h.ConfigureBool("developerMode", &h.developerMode, false)

@@ -47,7 +47,7 @@ func (c *localCacher) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".cacheDir is a invalid value")
+		return errors.New(".cacheDir is an invalid value")
 	}, VarsDir()+"/cachers/"+c.Name())
 }
 func (c *localCacher) OnPrepare() {

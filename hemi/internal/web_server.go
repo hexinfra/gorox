@@ -68,6 +68,7 @@ func (s *webServer_) onConfigure(shell Component) {
 	s.webKeeper_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
+
 	// hrpcMode
 	s.ConfigureBool("hrpcMode", &s.hrpcMode, false)
 	// forApps

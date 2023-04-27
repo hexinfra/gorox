@@ -109,6 +109,7 @@ func (a *App) OnConfigure() {
 	} else {
 		UseExitln("app.hostnames is required")
 	}
+
 	// webRoot
 	a.ConfigureString("webRoot", &a.webRoot, func(value string) error {
 		if value != "" {
@@ -117,6 +118,7 @@ func (a *App) OnConfigure() {
 		return errors.New("webRoot is required")
 	}, "")
 	a.webRoot = strings.TrimRight(a.webRoot, "/")
+
 	// file404
 	a.ConfigureString("file404", &a.file404, func(value string) error {
 		if value != "" {
@@ -124,6 +126,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".file404 is an invalid value")
 	}, "")
+
 	// tlsCertificate
 	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) error {
 		if value != "" {
@@ -131,6 +134,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".tlsCertificate is an invalid value")
 	}, "")
+
 	// tlsPrivateKey
 	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) error {
 		if value != "" {
@@ -138,6 +142,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".tlsCertificate is an invalid value")
 	}, "")
+
 	// accessLog
 	if v, ok := a.Find("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
@@ -148,6 +153,7 @@ func (a *App) OnConfigure() {
 	} else {
 		a.accessLog = nil
 	}
+
 	// logFormat
 	a.ConfigureString("logFormat", &a.logFormat, func(value string) error {
 		if value != "" {
@@ -155,6 +161,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".logFormat is an invalid value")
 	}, "%T... todo")
+
 	// maxMemoryContentSize
 	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G {
@@ -162,6 +169,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".maxMemoryContentSize is an invalid value")
 	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
+
 	// maxUploadContentSize
 	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) error {
 		if value > 0 && value <= _1T {
@@ -169,6 +177,7 @@ func (a *App) OnConfigure() {
 		}
 		return errors.New(".maxUploadContentSize is an invalid value")
 	}, _128M)
+
 	// settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 	// proxyOnly
@@ -185,6 +194,7 @@ func (a *App) OnConfigure() {
 			}
 		}
 	}
+
 	// withStater
 	if v, ok := a.Find("withStater"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -549,7 +559,6 @@ func (r *Rule) OnConfigure() {
 
 	// logAccess
 	r.ConfigureBool("logAccess", &r.logAccess, true)
-
 	// returnCode
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) error {
 		if value >= 200 && value < 1000 {
@@ -581,6 +590,7 @@ func (r *Rule) OnConfigure() {
 			UseExitln("invalid handlet names")
 		}
 	}
+
 	// revisers
 	if v, ok := r.Find("revisers"); ok {
 		if len(r.revisers) != 0 {
@@ -598,6 +608,7 @@ func (r *Rule) OnConfigure() {
 			UseExitln("invalid reviser names")
 		}
 	}
+
 	// socklets
 	if v, ok := r.Find("socklets"); ok {
 		if len(r.handlets) > 0 {

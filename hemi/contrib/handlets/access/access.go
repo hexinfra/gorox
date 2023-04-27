@@ -59,6 +59,7 @@ func (h *accessChecker) OnShutdown() {
 func (h *accessChecker) OnConfigure() {
 	// allow
 	h.ConfigureStringList("allow", &h.allow, func(rules []string) error { return checkRule(rules) }, []string{"all"})
+
 	// deny
 	h.ConfigureStringList("deny", &h.deny, func(rules []string) error {
 		if err := checkRule(rules); err != nil {

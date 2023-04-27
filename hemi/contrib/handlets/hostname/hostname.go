@@ -51,6 +51,7 @@ func (h *hostnameChecker) OnConfigure() {
 	} else {
 		UseExitln("hostname is required for hostnameChecker")
 	}
+
 	// permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
 }

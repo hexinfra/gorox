@@ -506,6 +506,7 @@ func (s *Stage) OnConfigure() {
 		}
 		return nil
 	}, LogsDir()+"/worker.log")
+
 	tempDir := TempDir()
 	// cpuFile
 	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) error {
@@ -514,6 +515,7 @@ func (s *Stage) OnConfigure() {
 		}
 		return nil
 	}, tempDir+"/cpu.prof")
+
 	// hepFile
 	s.ConfigureString("hepFile", &s.hepFile, func(value string) error {
 		if value == "" {
@@ -521,6 +523,7 @@ func (s *Stage) OnConfigure() {
 		}
 		return nil
 	}, tempDir+"/hep.prof")
+
 	// thrFile
 	s.ConfigureString("thrFile", &s.thrFile, func(value string) error {
 		if value == "" {
@@ -528,6 +531,7 @@ func (s *Stage) OnConfigure() {
 		}
 		return nil
 	}, tempDir+"/thr.prof")
+
 	// grtFile
 	s.ConfigureString("grtFile", &s.grtFile, func(value string) error {
 		if value == "" {
@@ -535,6 +539,7 @@ func (s *Stage) OnConfigure() {
 		}
 		return nil
 	}, tempDir+"/grt.prof")
+
 	// blkFile
 	s.ConfigureString("blkFile", &s.blkFile, func(value string) error {
 		if value == "" {

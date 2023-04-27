@@ -52,6 +52,7 @@ func (h *normalProxy_) onConfigure() {
 			UseExitln("invalid proxyMode")
 		}
 	}
+
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -69,6 +70,7 @@ func (h *normalProxy_) onConfigure() {
 	if h.isForward && !h.app.isDefault {
 		UseExitln("forward proxy can be bound to default app only")
 	}
+
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -81,6 +83,7 @@ func (h *normalProxy_) onConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
+
 	// hostname
 	h.ConfigureBytes("hostname", &h.hostname, nil, nil)
 	// colonPort

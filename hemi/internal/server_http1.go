@@ -56,6 +56,7 @@ func (s *httpxServer) OnShutdown() {
 
 func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure(s)
+
 	var scheme string
 	// forceScheme
 	s.ConfigureString("forceScheme", &scheme, func(value string) error {
@@ -69,6 +70,7 @@ func (s *httpxServer) OnConfigure() {
 	} else if scheme == "https" {
 		s.forceScheme = SchemeHTTPS
 	}
+
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 	if IsDebug(2) { // remove this condition after HTTP/2 server is fully implemented

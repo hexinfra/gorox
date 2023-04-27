@@ -66,6 +66,7 @@ func (m *mesher_[M, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
 
 func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	m.Server_.OnConfigure()
+
 	// accessLog
 	if v, ok := m.Find("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
@@ -76,6 +77,7 @@ func (m *mesher_[M, G, D, E, C]) onConfigure() {
 	} else {
 		m.accessLog = nil
 	}
+
 	// logFormat
 	m.ConfigureString("logFormat", &m.logFormat, func(value string) error {
 		if value != "" {

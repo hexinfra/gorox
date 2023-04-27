@@ -54,6 +54,7 @@ func (c *client_) onConfigure() {
 			InsecureSkipVerify: true,
 		}
 	}
+
 	// dialTimeout
 	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
 		if value > time.Second {
@@ -61,6 +62,7 @@ func (c *client_) onConfigure() {
 		}
 		return errors.New(".dialTimeout is an invalid value")
 	}, 10*time.Second)
+
 	// writeTimeout
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
 		if value > time.Second {
@@ -68,6 +70,7 @@ func (c *client_) onConfigure() {
 		}
 		return errors.New(".writeTimeout is an invalid value")
 	}, 30*time.Second)
+
 	// readTimeout
 	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
 		if value > time.Second {
@@ -75,6 +78,7 @@ func (c *client_) onConfigure() {
 		}
 		return errors.New(".readTimeout is an invalid value")
 	}, 30*time.Second)
+
 	// aliveTimeout
 	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) error {
 		if value > 0 {

@@ -50,6 +50,7 @@ func (s *Svc) OnConfigure() {
 			UseExitln("invalid withStater")
 		}
 	}
+
 	// maxContentSize
 	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 && value <= _1G {

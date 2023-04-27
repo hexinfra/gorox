@@ -71,6 +71,7 @@ func (h *staticHandlet) OnConfigure() {
 			Debugf("static=%s NOT use app web root\n", h.Name())
 		}
 	}
+
 	// aliasTo
 	if v, ok := h.Find("aliasTo"); ok {
 		if fromTo, ok := v.StringListN(2); ok {
@@ -81,6 +82,7 @@ func (h *staticHandlet) OnConfigure() {
 	} else {
 		h.aliasTo = nil
 	}
+
 	// indexFile
 	h.ConfigureString("indexFile", &h.indexFile, func(value string) error {
 		if value != "" {
@@ -88,8 +90,7 @@ func (h *staticHandlet) OnConfigure() {
 		}
 		return errors.New(".indexFile is an invalid value")
 	}, "index.html")
-	// autoIndex
-	h.ConfigureBool("autoIndex", &h.autoIndex, false)
+
 	// mimeTypes
 	if v, ok := h.Find("mimeTypes"); ok {
 		if mimeTypes, ok := v.StringDict(); ok {
@@ -106,6 +107,7 @@ func (h *staticHandlet) OnConfigure() {
 	} else {
 		h.mimeTypes = staticDefaultMimeTypes
 	}
+
 	// defaultType
 	h.ConfigureString("defaultType", &h.defaultType, func(value string) error {
 		if value != "" {
@@ -113,6 +115,9 @@ func (h *staticHandlet) OnConfigure() {
 		}
 		return errors.New(".indexFile is an invalid value")
 	}, "application/octet-stream")
+
+	// autoIndex
+	h.ConfigureBool("autoIndex", &h.autoIndex, false)
 	// developerMode
 	h.ConfigureBool("developerMode", &h.developerMode, false)
 }

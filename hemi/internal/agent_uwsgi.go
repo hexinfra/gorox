@@ -60,6 +60,7 @@ func (h *uwsgiAgent) OnConfigure() {
 	} else {
 		UseExitln("toBackend is required for uwsgiAgent")
 	}
+
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -72,6 +73,7 @@ func (h *uwsgiAgent) OnConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
+
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

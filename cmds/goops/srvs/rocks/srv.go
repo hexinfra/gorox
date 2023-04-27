@@ -68,9 +68,11 @@ func (s *RocksServer) OnConfigure() {
 	} else {
 		UseExitln("address is required for server")
 	}
+
 	p := strings.IndexByte(s.address, ':')
 	s.colonPort = s.address[:p]
 	s.colonPortBytes = []byte(s.colonPort)
+
 	// readTimeout
 	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -78,6 +80,7 @@ func (s *RocksServer) OnConfigure() {
 		}
 		return errors.New(".readTimeout is an invalid value")
 	}, 60*time.Second)
+
 	// writeTimeout
 	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
 		if value > 0 {

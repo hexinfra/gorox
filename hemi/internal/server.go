@@ -68,11 +68,13 @@ func (s *Server_) OnConfigure() {
 	} else {
 		UseExitln("address is required for servers")
 	}
+
 	// tlsMode
 	s.ConfigureBool("tlsMode", &s.tlsMode, false)
 	if s.tlsMode {
 		s.tlsConfig = new(tls.Config)
 	}
+
 	// readTimeout
 	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -80,6 +82,7 @@ func (s *Server_) OnConfigure() {
 		}
 		return errors.New(".readTimeout is an invalid value")
 	}, 60*time.Second)
+
 	// writeTimeout
 	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -87,6 +90,7 @@ func (s *Server_) OnConfigure() {
 		}
 		return errors.New(".writeTimeout is an invalid value")
 	}, 60*time.Second)
+
 	// numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
 		if value > 0 {
@@ -94,6 +98,7 @@ func (s *Server_) OnConfigure() {
 		}
 		return errors.New(".numGates is an invalid value")
 	}, s.stage.NumCPU())
+
 	// maxConnsPerGate
 	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
 		if value > 0 {

@@ -94,6 +94,7 @@ func (h *Sitex) OnConfigure() {
 			}
 		}
 	}
+
 	// rdbms
 	h.ConfigureString("rdbms", &h.rdbms, nil, "")
 }

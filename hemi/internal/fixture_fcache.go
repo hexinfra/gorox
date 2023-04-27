@@ -63,6 +63,7 @@ func (f *fcacheFixture) OnConfigure() {
 		}
 		return errors.New(".smallFileSize is an invalid value")
 	}, _64K1)
+
 	// maxSmallFiles
 	f.ConfigureInt32("maxSmallFiles", &f.maxSmallFiles, func(value int32) error {
 		if value > 0 {
@@ -70,6 +71,7 @@ func (f *fcacheFixture) OnConfigure() {
 		}
 		return errors.New(".maxSmallFiles is an invalid value")
 	}, 1000)
+
 	// maxLargeFiles
 	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) error {
 		if value > 0 {
@@ -77,6 +79,7 @@ func (f *fcacheFixture) OnConfigure() {
 		}
 		return errors.New(".maxLargeFiles is an invalid value")
 	}, 500)
+
 	// cacheTimeout
 	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) error {
 		if value > 0 {

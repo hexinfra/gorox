@@ -49,6 +49,7 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 		}
 		return errors.New(".sendTimeout is a ivalid value")
 	}, sendTimeout)
+
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -56,6 +57,7 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 		}
 		return errors.New(".recvTimeout is a ivalid value")
 	}, recvTimeout)
+
 	// maxContentSize
 	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
 		if value > 0 {

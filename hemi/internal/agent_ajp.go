@@ -69,6 +69,7 @@ func (h *ajpAgent) OnConfigure() {
 	} else {
 		UseExitln("toBackend is required for ajpAgent")
 	}
+
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -81,6 +82,7 @@ func (h *ajpAgent) OnConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
+
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

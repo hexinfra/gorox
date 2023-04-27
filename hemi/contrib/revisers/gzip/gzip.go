@@ -47,6 +47,7 @@ func (r *gzipReviser) OnShutdown() {
 func (r *gzipReviser) OnConfigure() {
 	// compressLevel
 	r.ConfigureInt("compressLevel", &r.compressLevel, nil, 1)
+
 	// minLength
 	r.ConfigureInt64("minLength", &r.minLength, func(value int64) error {
 		if value > 0 {
@@ -54,6 +55,7 @@ func (r *gzipReviser) OnConfigure() {
 		}
 		return errors.New(".minLength is an invalid value")
 	}, 0)
+
 	// onContentTypes
 	r.ConfigureStringList("onContentTypes", &r.onContentTypes, nil, []string{"text/html"})
 }

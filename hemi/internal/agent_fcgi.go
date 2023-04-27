@@ -73,6 +73,7 @@ func (h *fcgiAgent) OnShutdown() {
 
 func (h *fcgiAgent) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/fcgi/"+h.name)
+
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -89,6 +90,7 @@ func (h *fcgiAgent) OnConfigure() {
 	} else {
 		UseExitln("toBackend is required for fcgiAgent")
 	}
+
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -101,6 +103,7 @@ func (h *fcgiAgent) OnConfigure() {
 			UseExitln("invalid withCacher")
 		}
 	}
+
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
@@ -109,6 +112,7 @@ func (h *fcgiAgent) OnConfigure() {
 	h.ConfigureBool("keepConn", &h.keepConn, false)
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
+
 	// indexFile
 	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) error {
 		if len(value) < 255 {
@@ -116,6 +120,7 @@ func (h *fcgiAgent) OnConfigure() {
 		}
 		return errors.New(".indexFile value must be at least 255")
 	}, []byte("index.php"))
+
 	// sendTimeout
 	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
@@ -123,6 +128,7 @@ func (h *fcgiAgent) OnConfigure() {
 		}
 		return errors.New(".sendTimeout is an invalid value")
 	}, 60*time.Second)
+
 	// recvTimeout
 	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
@@ -130,6 +136,7 @@ func (h *fcgiAgent) OnConfigure() {
 		}
 		return errors.New(".recvTimeout is an invalid value")
 	}, 60*time.Second)
+
 	// maxContentSize
 	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
 		if value > 0 {
@@ -137,6 +144,7 @@ func (h *fcgiAgent) OnConfigure() {
 		}
 		return errors.New(".maxContentSize is an invalid value")
 	}, _1T)
+
 	// preferUnderscore
 	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 }

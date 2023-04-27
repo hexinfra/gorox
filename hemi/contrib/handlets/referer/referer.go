@@ -56,8 +56,9 @@ func (h *refererChecker) OnShutdown() {
 func (h *refererChecker) OnConfigure() {
 	// allow
 	h.ConfigureBytesList("serverNames", &h.serverNames, func(rules [][]byte) error { return checkRule(rules) }, nil)
-	// deny
+	// none
 	h.ConfigureBool("none", &h.NoneReferer, false)
+	// blocked
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
 
 }

@@ -8,6 +8,8 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -185,17 +187,17 @@ type Component interface {
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
 	ConfigureBool(name string, prop *bool, defaultValue bool)
-	ConfigureInt64(name string, prop *int64, check func(value int64) bool, defaultValue int64)
-	ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32)
-	ConfigureInt16(name string, prop *int16, check func(value int16) bool, defaultValue int16)
-	ConfigureInt8(name string, prop *int8, check func(value int8) bool, defaultValue int8)
-	ConfigureInt(name string, prop *int, check func(value int) bool, defaultValue int)
-	ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string)
-	ConfigureBytes(name string, prop *[]byte, check func(value []byte) bool, defaultValue []byte)
-	ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration)
-	ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string)
-	ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) bool, defaultValue [][]byte)
-	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string)
+	ConfigureInt64(name string, prop *int64, check func(value int64) error, defaultValue int64)
+	ConfigureInt32(name string, prop *int32, check func(value int32) error, defaultValue int32)
+	ConfigureInt16(name string, prop *int16, check func(value int16) error, defaultValue int16)
+	ConfigureInt8(name string, prop *int8, check func(value int8) error, defaultValue int8)
+	ConfigureInt(name string, prop *int, check func(value int) error, defaultValue int)
+	ConfigureString(name string, prop *string, check func(value string) error, defaultValue string)
+	ConfigureBytes(name string, prop *[]byte, check func(value []byte) error, defaultValue []byte)
+	ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration)
+	ConfigureStringList(name string, prop *[]string, check func(value []string) error, defaultValue []string)
+	ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte)
+	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string)
 
 	OnPrepare()
 
@@ -245,46 +247,53 @@ func (c *Component_) Prop(name string) (value Value, ok bool) {
 func (c *Component_) ConfigureBool(name string, prop *bool, defaultValue bool) {
 	_configureProp(c, name, prop, (*Value).Bool, nil, defaultValue)
 }
-func (c *Component_) ConfigureInt64(name string, prop *int64, check func(value int64) bool, defaultValue int64) {
+func (c *Component_) ConfigureInt64(name string, prop *int64, check func(value int64) error, defaultValue int64) {
 	_configureProp(c, name, prop, (*Value).Int64, check, defaultValue)
 }
-func (c *Component_) ConfigureInt32(name string, prop *int32, check func(value int32) bool, defaultValue int32) {
+func (c *Component_) ConfigureInt32(name string, prop *int32, check func(value int32) error, defaultValue int32) {
 	_configureProp(c, name, prop, (*Value).Int32, check, defaultValue)
 }
-func (c *Component_) ConfigureInt16(name string, prop *int16, check func(value int16) bool, defaultValue int16) {
+func (c *Component_) ConfigureInt16(name string, prop *int16, check func(value int16) error, defaultValue int16) {
 	_configureProp(c, name, prop, (*Value).Int16, check, defaultValue)
 }
-func (c *Component_) ConfigureInt8(name string, prop *int8, check func(value int8) bool, defaultValue int8) {
+func (c *Component_) ConfigureInt8(name string, prop *int8, check func(value int8) error, defaultValue int8) {
 	_configureProp(c, name, prop, (*Value).Int8, check, defaultValue)
 }
-func (c *Component_) ConfigureInt(name string, prop *int, check func(value int) bool, defaultValue int) {
+func (c *Component_) ConfigureInt(name string, prop *int, check func(value int) error, defaultValue int) {
 	_configureProp(c, name, prop, (*Value).Int, check, defaultValue)
 }
-func (c *Component_) ConfigureString(name string, prop *string, check func(value string) bool, defaultValue string) {
+func (c *Component_) ConfigureString(name string, prop *string, check func(value string) error, defaultValue string) {
 	_configureProp(c, name, prop, (*Value).String, check, defaultValue)
 }
-func (c *Component_) ConfigureBytes(name string, prop *[]byte, check func(value []byte) bool, defaultValue []byte) {
+func (c *Component_) ConfigureBytes(name string, prop *[]byte, check func(value []byte) error, defaultValue []byte) {
 	_configureProp(c, name, prop, (*Value).Bytes, check, defaultValue)
 }
-func (c *Component_) ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) bool, defaultValue time.Duration) {
+func (c *Component_) ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration) {
 	_configureProp(c, name, prop, (*Value).Duration, check, defaultValue)
 }
-func (c *Component_) ConfigureStringList(name string, prop *[]string, check func(value []string) bool, defaultValue []string) {
+func (c *Component_) ConfigureStringList(name string, prop *[]string, check func(value []string) error, defaultValue []string) {
 	_configureProp(c, name, prop, (*Value).StringList, check, defaultValue)
 }
-func (c *Component_) ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) bool, defaultValue [][]byte) {
+func (c *Component_) ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte) {
 	_configureProp(c, name, prop, (*Value).BytesList, check, defaultValue)
 }
-func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) bool, defaultValue map[string]string) {
+func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string) {
 	_configureProp(c, name, prop, (*Value).StringDict, check, defaultValue)
 }
 
-func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) bool, defaultValue T) {
+func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) error, defaultValue T) {
 	if v, ok := c.Find(name); ok {
-		if value, ok := conv(&v); ok && (check == nil || check(value)) {
+		if value, ok := conv(&v); ok && check == nil {
 			*prop = value
+		} else if ok && check != nil {
+			if err := check(value); err == nil {
+				*prop = value
+			} else {
+				// TODO: line number
+				UseExitln(fmt.Sprintf("%s is error in %s: %s", name, c.name), err.Error())
+			}
 		} else {
-			UseExitln("invalid " + name)
+			UseExitln(fmt.Sprintf("invalid %s in %s", name, c.name))
 		}
 	} else {
 		*prop = defaultValue
@@ -491,18 +500,48 @@ func (s *Stage) OnShutdown() {
 
 func (s *Stage) OnConfigure() {
 	// logFile
-	s.ConfigureString("logFile", &s.logFile, func(value string) bool { return value != "" }, LogsDir()+"/worker.log")
+	s.ConfigureString("logFile", &s.logFile, func(value string) error {
+		if value == "" {
+			return errors.New(".logFile is a invalid value")
+		}
+		return nil
+	}, LogsDir()+"/worker.log")
 	tempDir := TempDir()
 	// cpuFile
-	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) bool { return value != "" }, tempDir+"/cpu.prof")
+	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) error {
+		if value == "" {
+			return errors.New(".cpuFile is a invalid value")
+		}
+		return nil
+	}, tempDir+"/cpu.prof")
 	// hepFile
-	s.ConfigureString("hepFile", &s.hepFile, func(value string) bool { return value != "" }, tempDir+"/hep.prof")
+	s.ConfigureString("hepFile", &s.hepFile, func(value string) error {
+		if value == "" {
+			return errors.New(".hepFile is a invalid value")
+		}
+		return nil
+	}, tempDir+"/hep.prof")
 	// thrFile
-	s.ConfigureString("thrFile", &s.thrFile, func(value string) bool { return value != "" }, tempDir+"/thr.prof")
+	s.ConfigureString("thrFile", &s.thrFile, func(value string) error {
+		if value == "" {
+			return errors.New(".thrFile is a invalid value")
+		}
+		return nil
+	}, tempDir+"/thr.prof")
 	// grtFile
-	s.ConfigureString("grtFile", &s.grtFile, func(value string) bool { return value != "" }, tempDir+"/grt.prof")
+	s.ConfigureString("grtFile", &s.grtFile, func(value string) error {
+		if value == "" {
+			return errors.New(".grtFile is a invalid value")
+		}
+		return nil
+	}, tempDir+"/grt.prof")
 	// blkFile
-	s.ConfigureString("blkFile", &s.blkFile, func(value string) bool { return value != "" }, tempDir+"/blk.prof")
+	s.ConfigureString("blkFile", &s.blkFile, func(value string) error {
+		if value == "" {
+			return errors.New(".blkFile is a invalid value")
+		}
+		return nil
+	}, tempDir+"/blk.prof")
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)

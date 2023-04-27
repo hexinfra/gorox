@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"reflect"
 	"strings"
@@ -109,14 +110,34 @@ func (a *App) OnConfigure() {
 		UseExitln("app.hostnames is required")
 	}
 	// webRoot
-	a.ConfigureString("webRoot", &a.webRoot, func(value string) bool { return value != "" }, "")
+	a.ConfigureString("webRoot", &a.webRoot, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New("webRoot is required")
+	}, "")
 	a.webRoot = strings.TrimRight(a.webRoot, "/")
 	// file404
-	a.ConfigureString("file404", &a.file404, func(value string) bool { return value != "" }, "")
+	a.ConfigureString("file404", &a.file404, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".file404 is a invalid value")
+	}, "")
 	// tlsCertificate
-	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) bool { return value != "" }, "")
+	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".tlsCertificate is a invalid value")
+	}, "")
 	// tlsPrivateKey
-	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) bool { return value != "" }, "")
+	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".tlsCertificate is a invalid value")
+	}, "")
 	// accessLog
 	if v, ok := a.Find("accessLog"); ok {
 		if log, ok := v.StringListN(2); ok {
@@ -128,11 +149,26 @@ func (a *App) OnConfigure() {
 		a.accessLog = nil
 	}
 	// logFormat
-	a.ConfigureString("logFormat", &a.logFormat, func(value string) bool { return value != "" }, "%T... todo")
+	a.ConfigureString("logFormat", &a.logFormat, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".logFormat is a invalid value")
+	}, "%T... todo")
 	// maxMemoryContentSize
-	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) bool { return value > 0 && value <= _1G }, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
+	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G {
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize is a invalid value")
+	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 	// maxUploadContentSize
-	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) bool { return value > 0 && value <= _1T }, _128M)
+	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) error {
+		if value > 0 && value <= _1T {
+			return nil
+		}
+		return errors.New(".maxUploadContentSize is a invalid value")
+	}, _128M)
 	// settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 	// proxyOnly
@@ -515,7 +551,12 @@ func (r *Rule) OnConfigure() {
 	r.ConfigureBool("logAccess", &r.logAccess, true)
 
 	// returnCode
-	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) bool { return value >= 200 && value < 1000 }, 0)
+	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) error {
+		if value >= 200 && value < 1000 {
+			return nil
+		}
+		return errors.New(".returnCode is a invalid value")
+	}, 0)
 
 	// returnText
 	r.ConfigureBytes("returnText", &r.returnText, nil, nil)

@@ -9,6 +9,7 @@ package referer
 
 import (
 	"bytes"
+	"errors"
 	"regexp"
 
 	. "github.com/hexinfra/gorox/hemi/internal"
@@ -54,7 +55,7 @@ func (h *refererChecker) OnShutdown() {
 
 func (h *refererChecker) OnConfigure() {
 	// allow
-	h.ConfigureBytesList("serverNames", &h.serverNames, func(rules [][]byte) bool { return checkRule(rules) }, nil)
+	h.ConfigureBytesList("serverNames", &h.serverNames, func(rules [][]byte) error { return checkRule(rules) }, nil)
 	// deny
 	h.ConfigureBool("none", &h.NoneReferer, false)
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
@@ -142,22 +143,22 @@ forbidden:
 	return false
 }
 
-func checkRule(rules [][]byte) bool {
+func checkRule(rules [][]byte) error {
 	for _, rule := range rules {
 		if rule[0] == '~' { // regular expression
 			if _, err := regexp.Compile(string(rule[1:])); err != nil {
-				return false
+				return err
 			}
 			continue
 		}
 
 		// start with http[s]:// is not allowed
 		if bytes.HasPrefix(rule, httpScheme) || bytes.HasPrefix(rule, httpsScheme) {
-			return false
+			return errors.New(string(rule))
 		}
 		// not allow multiple '*', except for regular expressions.
 		if bytes.Count(rule, []byte("*")) > 1 {
-			return false
+			return errors.New(string(rule))
 		}
 
 		pathIndex := bytes.IndexByte(rule, '/')
@@ -168,16 +169,16 @@ func checkRule(rules [][]byte) bool {
 		// '*' not allowed in the middle
 		idx := bytes.IndexByte(rule[:pathIndex], '*')
 		if idx != -1 && (idx > 0 && idx < len(rule[:pathIndex-1])) {
-			return false
+			return errors.New(string(rule))
 		}
 		if bytes.HasPrefix(rule, httpScheme) || bytes.HasPrefix(rule, httpsScheme) {
-			return false
+			return errors.New(string(rule))
 		}
 		if bytes.IndexByte(rule, '.') == -1 {
-			return false
+			return errors.New(string(rule))
 		}
 	}
-	return true
+	return nil
 }
 
 func getHostNameAndPath(refererURL []byte) (hostname, path []byte, schemeLen int) {

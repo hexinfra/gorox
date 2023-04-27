@@ -55,13 +55,33 @@ func (c *client_) onConfigure() {
 		}
 	}
 	// dialTimeout
-	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) bool { return value > time.Second }, 10*time.Second)
+	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".dialTimeout is a invalid value")
+	}, 10*time.Second)
 	// writeTimeout
-	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".writeTimeout is a invalid value")
+	}, 30*time.Second)
 	// readTimeout
-	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) bool { return value > time.Second }, 30*time.Second)
+	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".readTimeout is a invalid value")
+	}, 30*time.Second)
 	// aliveTimeout
-	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) bool { return value > 0 }, 4*time.Second)
+	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout is a invalid value")
+	}, 4*time.Second)
 }
 func (c *client_) onPrepare() {
 	// Currently nothing.

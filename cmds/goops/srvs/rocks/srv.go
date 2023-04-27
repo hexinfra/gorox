@@ -6,6 +6,7 @@
 package rocks
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -71,9 +72,19 @@ func (s *RocksServer) OnConfigure() {
 	s.colonPort = s.address[:p]
 	s.colonPortBytes = []byte(s.colonPort)
 	// readTimeout
-	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout is a invalid value")
+	}, 60*time.Second)
 	// writeTimeout
-	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout is a invalid value")
+	}, 60*time.Second)
 }
 func (s *RocksServer) OnPrepare() {
 }

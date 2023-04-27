@@ -9,6 +9,7 @@ package access
 
 import (
 	"bytes"
+	"fmt"
 	"net"
 	"sort"
 	"strings"
@@ -57,18 +58,13 @@ func (h *accessChecker) OnShutdown() {
 
 func (h *accessChecker) OnConfigure() {
 	// allow
-	h.ConfigureStringList("allow", &h.allow, func(rules []string) bool { return checkRule(rules) }, []string{"all"})
+	h.ConfigureStringList("allow", &h.allow, func(rules []string) error { return checkRule(rules) }, []string{"all"})
 	// deny
-	h.ConfigureStringList("deny", &h.deny, func(rules []string) bool {
-		if !checkRule(rules) {
-			return false
+	h.ConfigureStringList("deny", &h.deny, func(rules []string) error {
+		if err := checkRule(rules); err != nil {
+			return err
 		}
-		if checkRuleConflict(h.allow, rules) {
-			// TODO: h.stage.logger hasn't been initialized.
-			// h.stage.Logln("accessChecker: .allow and .deny conflicting rules")
-			return false
-		}
-		return true
+		return checkRuleConflict(h.allow, rules)
 	}, nil)
 }
 
@@ -187,7 +183,7 @@ func (s ipRuleSlice) Less(i, j int) bool {
 	return false
 }
 
-func checkRule(rules []string) bool {
+func checkRule(rules []string) error {
 	for _, rule := range rules {
 		if rule == "all" {
 			continue
@@ -195,23 +191,22 @@ func checkRule(rules []string) bool {
 		if ip := net.ParseIP(rule); ip != nil {
 			continue
 		}
-		if _, _, err := net.ParseCIDR(rule); err == nil {
-			continue
+		if _, _, err := net.ParseCIDR(rule); err != nil {
+			return err
 		}
-		return false
 	}
-	return true
+	return nil
 }
 
-func checkRuleConflict(rules1, rules2 []string) bool {
+func checkRuleConflict(rules1, rules2 []string) error {
 	for _, rule1 := range rules1 {
 		for _, rule2 := range rules2 {
 			if rule1 == rule2 {
-				return true
+				return fmt.Errorf("%s in both .allow and .deny", rule1)
 			}
 		}
 	}
-	return false
+	return nil
 }
 
 func addressToIP(address string) net.IP {

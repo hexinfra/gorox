@@ -8,6 +8,8 @@
 package gzip
 
 import (
+	"errors"
+
 	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
@@ -46,7 +48,12 @@ func (r *gzipReviser) OnConfigure() {
 	// compressLevel
 	r.ConfigureInt("compressLevel", &r.compressLevel, nil, 1)
 	// minLength
-	r.ConfigureInt64("minLength", &r.minLength, func(value int64) bool { return value > 0 }, 0)
+	r.ConfigureInt64("minLength", &r.minLength, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".minLength is a invalid value")
+	}, 0)
 	// onContentTypes
 	r.ConfigureStringList("onContentTypes", &r.onContentTypes, nil, []string{"text/html"})
 }

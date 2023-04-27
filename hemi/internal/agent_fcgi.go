@@ -110,13 +110,33 @@ func (h *fcgiAgent) OnConfigure() {
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 	// indexFile
-	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) bool { return len(value) < 255 }, []byte("index.php"))
+	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) error {
+		if len(value) < 255 {
+			return nil
+		}
+		return errors.New(".indexFile value must be at least 255")
+	}, []byte("index.php"))
 	// sendTimeout
-	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
+	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout is a invalid value")
+	}, 60*time.Second)
 	// recvTimeout
-	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) bool { return value >= 0 }, 60*time.Second)
+	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout is a invalid value")
+	}, 60*time.Second)
 	// maxContentSize
-	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize is a invalid value")
+	}, _1T)
 	// preferUnderscore
 	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 }

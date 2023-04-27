@@ -57,13 +57,33 @@ func (f *fcacheFixture) OnShutdown() {
 
 func (f *fcacheFixture) OnConfigure() {
 	// smallFileSize
-	f.ConfigureInt64("smallFileSize", &f.smallFileSize, func(value int64) bool { return value > 0 }, _64K1)
+	f.ConfigureInt64("smallFileSize", &f.smallFileSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".smallFileSize is a invalid value")
+	}, _64K1)
 	// maxSmallFiles
-	f.ConfigureInt32("maxSmallFiles", &f.maxSmallFiles, func(value int32) bool { return value > 0 }, 1000)
+	f.ConfigureInt32("maxSmallFiles", &f.maxSmallFiles, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxSmallFiles is a invalid value")
+	}, 1000)
 	// maxLargeFiles
-	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) bool { return value > 0 }, 500)
+	f.ConfigureInt32("maxLargeFiles", &f.maxLargeFiles, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxLargeFiles is a invalid value")
+	}, 500)
 	// cacheTimeout
-	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) bool { return value > 0 }, 1*time.Second)
+	f.ConfigureDuration("cacheTimeout", &f.cacheTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".cacheTimeout is a invalid value")
+	}, 1*time.Second)
 }
 func (f *fcacheFixture) OnPrepare() {
 }

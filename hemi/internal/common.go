@@ -10,6 +10,7 @@ package internal
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -388,7 +389,13 @@ type streamHolder_ struct {
 
 func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
 	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) bool { return value >= 0 }, defaultMaxStreams)
+	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		} else {
+			return errors.New(".maxStreamsPerConn is a valid value")
+		}
+	}, defaultMaxStreams)
 }
 func (s *streamHolder_) onPrepare(shell Component) {
 }
@@ -408,7 +415,12 @@ type contentSaver_ struct {
 
 func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
 	// saveContentFilesDir
-	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) bool { return value != "" && len(value) <= 232 }, defaultDir)
+	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
+		if value != "" && len(value) <= 232 {
+			return nil
+		}
+		return errors.New(".saveContentFilesDir is a invalid value")
+	}, defaultDir)
 }
 func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
@@ -436,8 +448,11 @@ func (b *loadBalancer_) init() {
 
 func (b *loadBalancer_) onConfigure(shell Component) {
 	// balancer
-	shell.ConfigureString("balancer", &b.balancer, func(value string) bool {
-		return value == "roundRobin" || value == "ipHash" || value == "random"
+	shell.ConfigureString("balancer", &b.balancer, func(value string) error {
+		if value == "roundRobin" || value == "ipHash" || value == "random" {
+			return nil
+		}
+		return errors.New(".balancer is a invalid value")
 	}, "roundRobin")
 }
 func (b *loadBalancer_) onPrepare(numNodes int) {

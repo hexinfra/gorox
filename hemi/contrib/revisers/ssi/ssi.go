@@ -8,6 +8,8 @@
 package ssi
 
 import (
+	"errors"
+
 	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
@@ -42,7 +44,12 @@ func (r *ssiReviser) OnShutdown() {
 
 func (r *ssiReviser) OnConfigure() {
 	// rank
-	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 6 && value < 26 }, RankSSI)
+	r.ConfigureInt8("rank", &r.rank, func(value int8) error {
+		if value >= 6 && value < 26 {
+			return nil
+		}
+		return errors.New(".rank is a invalid value")
+	}, RankSSI)
 }
 func (r *ssiReviser) OnPrepare() {
 	// TODO

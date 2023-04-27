@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -81,7 +82,12 @@ func (h *staticHandlet) OnConfigure() {
 		h.aliasTo = nil
 	}
 	// indexFile
-	h.ConfigureString("indexFile", &h.indexFile, func(value string) bool { return value != "" }, "index.html")
+	h.ConfigureString("indexFile", &h.indexFile, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile is a invalid value")
+	}, "index.html")
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
 	// mimeTypes
@@ -101,7 +107,12 @@ func (h *staticHandlet) OnConfigure() {
 		h.mimeTypes = staticDefaultMimeTypes
 	}
 	// defaultType
-	h.ConfigureString("defaultType", &h.defaultType, func(value string) bool { return value != "" }, "application/octet-stream")
+	h.ConfigureString("defaultType", &h.defaultType, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile is a invalid value")
+	}, "application/octet-stream")
 	// developerMode
 	h.ConfigureBool("developerMode", &h.developerMode, false)
 }

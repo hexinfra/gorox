@@ -9,6 +9,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"errors"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -73,13 +74,33 @@ func (s *Server_) OnConfigure() {
 		s.tlsConfig = new(tls.Config)
 	}
 	// readTimeout
-	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout is a invalid value")
+	}, 60*time.Second)
 	// writeTimeout
-	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) bool { return value > 0 }, 60*time.Second)
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout is a invalid value")
+	}, 60*time.Second)
 	// numGates
-	s.ConfigureInt32("numGates", &s.numGates, func(value int32) bool { return value > 0 }, s.stage.NumCPU())
+	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".numGates is a invalid value")
+	}, s.stage.NumCPU())
 	// maxConnsPerGate
-	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) bool { return value > 0 }, 100000)
+	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxConnsPerGate is a invalid value")
+	}, 100000)
 }
 func (s *Server_) OnPrepare() {
 	// Currently nothing.

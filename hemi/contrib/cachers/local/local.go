@@ -8,6 +8,7 @@
 package local
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -42,7 +43,12 @@ func (c *localCacher) OnShutdown() {
 
 func (c *localCacher) OnConfigure() {
 	// cacheDir
-	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) bool { return value != "" }, VarsDir()+"/cachers/"+c.Name())
+	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".cacheDir is a invalid value")
+	}, VarsDir()+"/cachers/"+c.Name())
 }
 func (c *localCacher) OnPrepare() {
 	// mkdirs

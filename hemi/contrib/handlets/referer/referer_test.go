@@ -9,6 +9,7 @@ package referer
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 	"regexp"
 	"testing"
@@ -59,27 +60,29 @@ func TestGetHostNameAndPath(t *testing.T) {
 func TestCheckRule(t *testing.T) {
 	tests := []struct {
 		input  string
-		expect bool
+		expect error
 	}{
-		{"*.gorox.com", true},
-		{"*.gorox.*", false},
-		{"gorox.com", true},
-		{"www.gorox.*", true},
-		{"gorox.*", true},
-		{"gorox.*/app", true},
-		{"www.gorox.com/app", true},
-		{"www.gorox.com:8080/app", true},
-		{"http://www.gorox.com:8080/app", false},
-		{`~\.gorox\.`, true},
-		{`~.*`, true},
-		{`~.*/app`, true},
-		{`~(?-i)gorox.net`, true},
-		{`~]\`, false},
+		{"*.gorox.com", nil},
+		{"*.gorox.*", errors.New("false")},
+		{"gorox.com", nil},
+		{"www.gorox.*", nil},
+		{"gorox.*", nil},
+		{"gorox.*/app", nil},
+		{"www.gorox.com/app", nil},
+		{"www.gorox.com:8080/app", nil},
+		{"http://www.gorox.com:8080/app", errors.New("false")},
+		{`~\.gorox\.`, nil},
+		{`~.*`, nil},
+		{`~.*/app`, nil},
+		{`~(?-i)gorox.net`, nil},
+		{`~]\`, errors.New("false")},
 	}
 
 	for idx, test := range tests {
 		recv := checkRule([][]byte{[]byte(test.input)})
-		if recv != test.expect {
+		if test.expect == nil && recv != nil {
+			t.Errorf("#%d: recv=%v, expect=%v", idx, recv, test.expect)
+		} else if test.expect != nil && recv == nil {
 			t.Errorf("#%d: recv=%v, expect=%v", idx, recv, test.expect)
 		}
 	}

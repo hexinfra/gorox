@@ -43,11 +43,26 @@ type webKeeper_ struct {
 
 func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) bool { return value > 0 }, sendTimeout)
+	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout is a ivalid value")
+	}, sendTimeout)
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) bool { return value > 0 }, recvTimeout)
+	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout is a ivalid value")
+	}, recvTimeout)
 	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) bool { return value > 0 }, _1T)
+	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize is a ivalid value")
+	}, _1T)
 }
 
 func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }

@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -57,8 +58,11 @@ func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure(s)
 	var scheme string
 	// forceScheme
-	s.ConfigureString("forceScheme", &scheme, func(value string) bool {
-		return value == "http" || value == "https"
+	s.ConfigureString("forceScheme", &scheme, func(value string) error {
+		if value == "http" || value == "https" {
+			return nil
+		}
+		return errors.New(".forceScheme is a invalid value")
 	}, "")
 	if scheme == "http" {
 		s.forceScheme = SchemeHTTP

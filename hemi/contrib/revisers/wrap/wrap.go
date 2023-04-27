@@ -8,6 +8,8 @@
 package wrap
 
 import (
+	"errors"
+
 	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 	. "github.com/hexinfra/gorox/hemi/internal"
 )
@@ -42,7 +44,12 @@ func (r *wrapReviser) OnShutdown() {
 
 func (r *wrapReviser) OnConfigure() {
 	// rank
-	r.ConfigureInt8("rank", &r.rank, func(value int8) bool { return value >= 6 && value < 26 }, RankWrap)
+	r.ConfigureInt8("rank", &r.rank, func(value int8) error {
+		if value >= 6 && value < 26 {
+			return nil
+		}
+		return errors.New(".rank is a invalid value")
+	}, RankWrap)
 }
 func (r *wrapReviser) OnPrepare() {
 	// TODO

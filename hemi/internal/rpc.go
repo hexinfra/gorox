@@ -8,6 +8,7 @@
 package internal
 
 import (
+	"errors"
 	"time"
 )
 
@@ -50,7 +51,12 @@ func (s *Svc) OnConfigure() {
 		}
 	}
 	// maxContentSize
-	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) bool { return value > 0 && value <= _1G }, _16M)
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+		if value > 0 && value <= _1G {
+			return nil
+		}
+		return errors.New(".maxContentSize is a invalid value")
+	}, _16M)
 }
 func (s *Svc) OnPrepare() {
 	initsLock.RLock()

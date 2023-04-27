@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"errors"
 )
 
 type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
@@ -76,7 +77,12 @@ func (m *mesher_[M, G, D, E, C]) onConfigure() {
 		m.accessLog = nil
 	}
 	// logFormat
-	m.ConfigureString("logFormat", &m.logFormat, func(value string) bool { return value != "" }, "%T... todo")
+	m.ConfigureString("logFormat", &m.logFormat, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".logFormat is a invalid value")
+	}, "%T... todo")
 }
 func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
 	m.dealers.walk(D.OnConfigure)

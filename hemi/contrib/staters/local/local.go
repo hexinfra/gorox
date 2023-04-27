@@ -8,6 +8,7 @@
 package local
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -42,7 +43,12 @@ func (s *localStater) OnShutdown() {
 
 func (s *localStater) OnConfigure() {
 	// stateDir
-	s.ConfigureString("stateDir", &s.stateDir, func(value string) bool { return value != "" }, VarsDir()+"/staters/"+s.Name())
+	s.ConfigureString("stateDir", &s.stateDir, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".stateDir is a invalid value")
+	}, VarsDir()+"/staters/"+s.Name())
 }
 func (s *localStater) OnPrepare() {
 	// mkdirs

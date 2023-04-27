@@ -112,7 +112,8 @@ func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 }
 
 func (c *config) show() {
-	for _, token := range c.tokens {
+	for i := 0; i < len(c.tokens); i++ {
+		token := &c.tokens[i]
 		fmt.Printf("kind=%16s info=%2d line=%4d file=%s    %s", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
@@ -137,7 +138,7 @@ func (c *config) evaluate() {
 	}
 }
 
-func (c *config) current() token            { return c.tokens[c.index] }
+func (c *config) current() *token           { return &c.tokens[c.index] }
 func (c *config) currentIs(kind int16) bool { return c.tokens[c.index].kind == kind }
 func (c *config) nextIs(kind int16) bool {
 	if c.index == c.limit {
@@ -145,24 +146,24 @@ func (c *config) nextIs(kind int16) bool {
 	}
 	return c.tokens[c.index+1].kind == kind
 }
-func (c *config) expect(kind int16) token {
-	current := c.tokens[c.index]
+func (c *config) expect(kind int16) *token {
+	current := &c.tokens[c.index]
 	if current.kind != kind {
 		panic(fmt.Errorf("config: expect %s, but get %s=%s (in line %d)\n", tokenNames[kind], tokenNames[current.kind], current.text, current.line))
 	}
 	return current
 }
-func (c *config) forwardExpect(kind int16) token {
+func (c *config) forwardExpect(kind int16) *token {
 	if c.index++; c.index == c.limit {
 		panic(errors.New("config: unexpected EOF"))
 	}
 	return c.expect(kind)
 }
-func (c *config) forward() token {
+func (c *config) forward() *token {
 	if c.index++; c.index == c.limit {
 		panic(errors.New("config: unexpected EOF"))
 	}
-	return c.tokens[c.index]
+	return &c.tokens[c.index]
 }
 func (c *config) newName() string {
 	c.counter++
@@ -223,7 +224,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-func (c *config) parseFixture(sign token, stage *Stage) { // xxxFixture {}
+func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	fixtureSign := sign.text
 	fixture := stage.fixture(fixtureSign)
 	if fixture == nil {
@@ -233,13 +234,13 @@ func (c *config) parseFixture(sign token, stage *Stage) { // xxxFixture {}
 	c.forward()
 	c.parseLeaf(fixture)
 }
-func (c *config) parseUniture(sign token, stage *Stage) { // xxxUniture {}
+func (c *config) parseUniture(sign *token, stage *Stage) { // xxxUniture {}
 	uniture := stage.createUniture(sign.text)
 	uniture.setParent(stage)
 	c.forward()
 	c.parseLeaf(uniture)
 }
-func (c *config) parseBackend(sign token, stage *Stage) { // xxxBackend <name> {}
+func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
 func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
@@ -271,10 +272,10 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		}
 	}
 }
-func (c *config) parseQUICDealer(sign token, mesher *QUICMesher, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
+func (c *config) parseQUICDealer(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseQUICEditor(sign token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
+func (c *config) parseQUICEditor(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
@@ -344,10 +345,10 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseTCPSDealer(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
+func (c *config) parseTCPSDealer(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseTCPSEditor(sign token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
+func (c *config) parseTCPSEditor(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
@@ -417,10 +418,10 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseUDPSDealer(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
+func (c *config) parseUDPSDealer(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseUDPSEditor(sign token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
+func (c *config) parseUDPSEditor(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
 	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
@@ -464,12 +465,11 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	variable := c.expect(tokenVariable)
 	c.forward()
-	cond := caseCond{varCode: variable.info}
-	var compare token
 	if c.currentIs(tokenFSCheck) {
 		panic(errors.New("config error: fs check is not allowed in case"))
 	}
-	compare = c.expect(tokenCompare)
+	cond := caseCond{varCode: variable.info}
+	compare := c.expect(tokenCompare)
 	patterns := []string{}
 	if current := c.forward(); current.kind == tokenString {
 		patterns = append(patterns, current.text)
@@ -497,13 +497,13 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	cond.compare = compare.text
 	kase.setInfo(cond)
 }
-func (c *config) parseStater(sign token, stage *Stage) { // xxxStater <name> {}
+func (c *config) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
-func (c *config) parseCacher(sign token, stage *Stage) { // xxxCacher <name> {}
+func (c *config) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
-func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
+func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 	appName := c.forwardExpect(tokenString)
 	app := stage.createApp(appName.text)
 	app.setParent(stage)
@@ -534,13 +534,13 @@ func (c *config) parseApp(sign token, stage *Stage) { // app <name> {}
 		}
 	}
 }
-func (c *config) parseHandlet(sign token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+func (c *config) parseHandlet(sign *token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
 	parseComponent2(c, sign, app, app.createHandlet, rule, rule.addHandlet)
 }
-func (c *config) parseReviser(sign token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
+func (c *config) parseReviser(sign *token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
 	parseComponent2(c, sign, app, app.createReviser, rule, rule.addReviser)
 }
-func (c *config) parseSocklet(sign token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
+func (c *config) parseSocklet(sign *token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
 }
 func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
@@ -587,7 +587,7 @@ func (c *config) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
 	cond := ruleCond{varCode: variable.info}
-	var compare token
+	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
 			panic(fmt.Errorf("config error: only path is allowed to test against file system, but got %s\n", variable.text))
@@ -623,17 +623,17 @@ func (c *config) parseRuleCond(rule *Rule) {
 	cond.compare = compare.text
 	rule.setInfo(cond)
 }
-func (c *config) parseSvc(sign token, stage *Stage) { // svc <name> {}
+func (c *config) parseSvc(sign *token, stage *Stage) { // svc <name> {}
 	svcName := c.forwardExpect(tokenString)
 	svc := stage.createSvc(svcName.text)
 	svc.setParent(stage)
 	c.forward()
 	c.parseLeaf(svc)
 }
-func (c *config) parseServer(sign token, stage *Stage) { // xxxServer <name> {}
+func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
-func (c *config) parseCronjob(sign token, stage *Stage) { // xxxCronjob {}
+func (c *config) parseCronjob(sign *token, stage *Stage) { // xxxCronjob {}
 	cronjob := stage.createCronjob(sign.text)
 	cronjob.setParent(stage)
 	c.forward()
@@ -654,7 +654,7 @@ func (c *config) parseLeaf(component Component) {
 		panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
 	}
 }
-func (c *config) parseAssign(prop token, component Component) {
+func (c *config) parseAssign(prop *token, component Component) {
 	if c.nextIs(tokenLeftBrace) { // {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
@@ -824,14 +824,14 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 	value.data = dict
 }
 
-func parseComponent0[T Component](c *config, sign token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
+func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
+func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text
@@ -846,7 +846,7 @@ func parseComponent1[M Component, T Component, C any](c *config, sign token, mes
 	}
 	c.parseLeaf(component)
 }
-func parseComponent2[T Component](c *config, sign token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+func parseComponent2[T Component](c *config, sign *token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text

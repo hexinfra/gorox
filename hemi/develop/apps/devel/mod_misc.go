@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package develop
+package devel
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *developHandlet) GET_(req Request, resp Response) { // GET empty through absolute-form, or GET /
+func (h *develHandlet) GET_(req Request, resp Response) { // GET empty through absolute-form, or GET /
 	if req.IsAbsoluteForm() {
 		resp.Send("absolute-form GET /")
 	} else {
 		resp.Send("origin-form GET /")
 	}
 }
-func (h *developHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPTIONS /
+func (h *develHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPTIONS /
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
 			resp.Send("absolute-form OPTIONS *")
@@ -31,14 +31,14 @@ func (h *developHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or 
 		}
 	}
 }
-func (h *developHandlet) GET_json(req Request, resp Response) {
+func (h *develHandlet) GET_json(req Request, resp Response) {
 	user := struct {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}{"jack", 25}
 	resp.SendJSON(user)
 }
-func (h *developHandlet) PUT_file(req Request, resp Response) {
+func (h *develHandlet) PUT_file(req Request, resp Response) {
 	content := req.Content()
 	resp.Send(content)
 }

@@ -22,6 +22,8 @@
 desktop.ini
 Thumbs.db
 
+mock_*
+
 dist/
 logs/
 temp/

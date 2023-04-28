@@ -114,7 +114,7 @@ func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
 func (c *config) show() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
-		fmt.Printf("kind=%16s info=%2d line=%4d file=%s    %s", token.name(), token.info, token.line, token.file, token.text)
+		fmt.Printf("kind=%16s info=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
 func (c *config) evaluate() {
@@ -659,8 +659,8 @@ func (c *config) parseAssign(prop *token, component Component) {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
 	c.forwardExpect(tokenEqual) // =
-	c.forward()
-	var value Value
+	current := c.forward()
+	value := Value{line: current.line, file: current.file}
 	c.parseValue(component, prop.text, &value)
 	component.setProp(prop.text, value)
 }
@@ -669,7 +669,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 	current := c.current()
 	switch current.kind {
 	case tokenBool:
-		*value = Value{tokenBool, current.text == "true"}
+		value.kind, value.data = tokenBool, current.text == "true"
 	case tokenInteger:
 		last := current.text[len(current.text)-1]
 		if byteIsDigit(last) {
@@ -680,7 +680,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			if n64 < 0 {
 				panic(errors.New("config error: negative integers are not allowed"))
 			}
-			*value = Value{tokenInteger, n64}
+			value.data = n64
 		} else {
 			size, err := strconv.ParseInt(current.text[:len(current.text)-1], 10, 64)
 			if err != nil {
@@ -699,10 +699,11 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			case 'T':
 				size *= T
 			}
-			*value = Value{tokenInteger, size}
+			value.data = size
 		}
+		value.kind = tokenInteger
 	case tokenString:
-		*value = Value{tokenString, current.text}
+		value.kind, value.data = tokenString, current.text
 	case tokenDuration:
 		last := len(current.text) - 1
 		n, err := strconv.ParseInt(current.text[:last], 10, 64)
@@ -723,7 +724,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		case 'd':
 			d = time.Duration(n) * 24 * time.Hour
 		}
-		*value = Value{tokenDuration, d}
+		value.kind, value.data = tokenDuration, d
 	case tokenLeftParen: // (...)
 		c.parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
@@ -734,7 +735,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		} else if valueRef, ok := component.Find(propRef); !ok {
 			panic(fmt.Errorf("config error: refer to a prop that doesn't exist in line %d\n", current.line))
 		} else {
-			*value = valueRef
+			value.kind, value.data = valueRef.kind, valueRef.data
 		}
 	default:
 		panic(fmt.Errorf("config error: expect a value, but get token %s=%s (in line %d)\n", current.name(), current.text, current.line))
@@ -746,15 +747,13 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 	}
 
 	for {
-		// Any concatenations?
-		if !c.nextIs(tokenPlus) {
-			// No
+		if !c.nextIs(tokenPlus) { // any concatenations?
 			break
 		}
 		// Yes.
 		c.forward() // +
 		current = c.forward()
-		var str Value
+		str := Value{line: current.line, file: current.file}
 		isString := false
 		if c.currentIs(tokenString) {
 			isString = true
@@ -765,7 +764,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			} else if valueRef, ok := component.Find(propRef); !ok {
 				panic(errors.New("config error: refere to a prop that doesn't exist"))
 			} else {
-				str = valueRef
+				str.kind, str.data = valueRef.kind, valueRef.data
 				if str.kind == tokenString {
 					isString = true
 				}
@@ -786,9 +785,9 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 		if current.kind == tokenRightParen { // )
 			break
 		}
-		var v Value
-		c.parseValue(component, prop, &v)
-		list = append(list, v)
+		elem := Value{line: current.line, file: current.file}
+		c.parseValue(component, prop, &elem)
+		list = append(list, elem)
 		current = c.forward()
 		if current.kind == tokenRightParen { // )
 			break
@@ -796,8 +795,7 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 			panic(fmt.Errorf("config error: bad list in line %d\n", current.line))
 		}
 	}
-	value.kind = tokenList
-	value.data = list
+	value.kind, value.data = tokenList, list
 }
 func (c *config) parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
@@ -807,10 +805,10 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 		if current.kind == tokenRightBracket { // ]
 			break
 		}
-		k := c.expect(tokenString)
+		k := c.expect(tokenString)  // k
 		c.forwardExpect(tokenColon) // :
-		c.forward()
-		var v Value
+		current = c.forward()       // v
+		v := Value{line: current.line, file: current.file}
 		c.parseValue(component, prop, &v)
 		dict[k.text] = v
 		current = c.forward()
@@ -820,8 +818,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 			panic(fmt.Errorf("config error: bad dict in line %d\n", current.line))
 		}
 	}
-	value.kind = tokenDict
-	value.data = dict
+	value.kind, value.data = tokenDict, dict
 }
 
 func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
@@ -1101,7 +1098,7 @@ func (l *lexer) _loadURL(base string, file string) string {
 	return ""
 }
 
-// token
+// token is a token in config file.
 type token struct { // 40 bytes
 	kind int16  // tokenXXX
 	info int16  // comp for identifiers, or code for variables
@@ -1204,9 +1201,11 @@ var ( // solos
 )
 
 // Value is a value in config file.
-type Value struct {
-	kind int16 // tokenXXX in values
-	data any   // bools, integers, strings, durations, lists, and dicts
+type Value struct { // 40 bytes
+	kind int16  // tokenXXX in values
+	line int32  // at line number
+	file string // in file
+	data any    // bools, integers, strings, durations, lists, and dicts
 }
 
 func (v *Value) IsBool() bool     { return v.kind == tokenBool }

@@ -18,10 +18,10 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealer("tcpsRelay", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
-		f := new(tcpsRelay)
-		f.onCreate(name, stage, mesher)
-		return f
+	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
+		d := new(tcpsProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 	registerFixture(signTCPSOutgate)
 	RegisterBackend("tcpsBackend", func(name string, stage *Stage) Backend {
@@ -31,8 +31,8 @@ func init() {
 	})
 }
 
-// tcpsRelay passes TCP/TLS connections to another/backend TCP/TLS server.
-type tcpsRelay struct {
+// tcpsProxy passes TCP/TLS connections to another/backend TCP/TLS server.
+type tcpsProxy struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
@@ -43,27 +43,27 @@ type tcpsRelay struct {
 	process func(*TCPSConn)
 }
 
-func (f *tcpsRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *tcpsRelay) OnShutdown() {
-	f.mesher.SubDone()
+func (d *tcpsProxy) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *tcpsRelay) OnConfigure() {
-	f.process = f.relay
+func (d *tcpsProxy) OnConfigure() {
+	d.process = d.relay
 	isReverse := true
 	// proxyMode
-	if v, ok := f.Find("proxyMode"); ok {
+	if v, ok := d.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok {
 			switch mode {
 			case "socks": // SOCKS
-				f.process = f.socks
+				d.process = d.socks
 				isReverse = false
 			case "https": // HTTP CONNECT
-				f.process = f.https
+				d.process = d.https
 				isReverse = false
 			}
 		} else {
@@ -71,14 +71,14 @@ func (f *tcpsRelay) OnConfigure() {
 		}
 	}
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := f.stage.Backend(name); backend == nil {
+			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
-				f.backend = tcpsBackend
+				d.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for tcpsRelay\n", name)
+				UseExitf("incorrect backend '%s' for tcpsProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -87,27 +87,27 @@ func (f *tcpsRelay) OnConfigure() {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (f *tcpsRelay) OnPrepare() {
+func (d *tcpsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (f *tcpsRelay) Deal(conn *TCPSConn) (next bool) {
-	f.process(conn)
+func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) {
+	d.process(conn)
 	return false
 }
 
-func (f *tcpsRelay) relay(conn *TCPSConn) { // reverse proxy
-	tConn, err := f.backend.Dial()
+func (d *tcpsProxy) relay(conn *TCPSConn) { // reverse proxy
+	tConn, err := d.backend.Dial()
 	if err != nil {
 		return
 	}
 	defer tConn.Close()
 }
 
-func (f *tcpsRelay) socks(conn *TCPSConn) { // SOCKS
+func (d *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
 	// TODO
 }
-func (f *tcpsRelay) https(conn *TCPSConn) { // HTTP CONNECT
+func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
 	// TODO
 }
 

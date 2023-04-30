@@ -274,11 +274,11 @@ stage {
 		}
 		rewriter "rh" {
 		}
-		ajpAgent "ah" {
+		ajpProxy "ah" {
 		}
 		favicon "fh" {
 		}
-		fcgiAgent "fh" {
+		fcgiProxy "fh" {
 			.saveContentFilesDir = %tempDir + "/fcgi/fh"
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
@@ -291,7 +291,7 @@ stage {
 			.preferUnderscore = true
 			.withCacher = "cacher name"
 		}
-		uwsgiAgent "uh" {
+		uwsgiProxy "uh" {
 		}
 		webdavHandlet "wh" {
 		}
@@ -391,7 +391,7 @@ stage {
 		rule "r1" condition {
 		}
 		rule $path == "/phpstatus" { 
-			fcgiAgent {
+			fcgiProxy {
 				.toBackend = "fpm"
 			}
 		}
@@ -418,7 +418,7 @@ stage {
 			}
 		}
 		rule $path ~= "\.php$" { // forward php requests
-			fcgiAgent {
+			fcgiProxy {
 				.toBackend = "fpm"
 			}
 		}

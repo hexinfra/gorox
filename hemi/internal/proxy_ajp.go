@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// AJP agent handlet passes requests to backend AJP servers and cache responses.
+// AJP proxy handlet passes requests to backend AJP servers and cache responses.
 
 // See: https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
@@ -20,38 +20,38 @@
 package internal
 
 func init() {
-	RegisterHandlet("ajpAgent", func(name string, stage *Stage, app *App) Handlet {
-		h := new(ajpAgent)
+	RegisterHandlet("ajpProxy", func(name string, stage *Stage, app *App) Handlet {
+		h := new(ajpProxy)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// ajpAgent handlet
-type ajpAgent struct {
+// ajpProxy handlet
+type ajpProxy struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
-	app     *App         // the app to which the agent belongs
-	backend *TCPSBackend // the ajp backend to relay to
-	cacher  Cacher       // the cacher which is used by this agent
+	app     *App         // the app to which the proxy belongs
+	backend *TCPSBackend // the ajp backend to pass to
+	cacher  Cacher       // the cacher which is used by this proxy
 	// States
 	bufferClientContent bool // client content is buffered anyway?
 	bufferServerContent bool // server content is buffered anyway?
 }
 
-func (h *ajpAgent) onCreate(name string, stage *Stage, app *App) {
+func (h *ajpProxy) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *ajpAgent) OnShutdown() {
+func (h *ajpProxy) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *ajpAgent) OnConfigure() {
+func (h *ajpProxy) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TempDir()+"/ajp/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -61,13 +61,13 @@ func (h *ajpAgent) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for ajpAgent, must be TCPSBackend\n", name)
+				UseExitf("incorrect backend '%s' for ajpProxy, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for ajpAgent")
+		UseExitln("toBackend is required for ajpProxy")
 	}
 
 	// withCacher
@@ -88,14 +88,14 @@ func (h *ajpAgent) OnConfigure() {
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 }
-func (h *ajpAgent) OnPrepare() {
+func (h *ajpProxy) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *ajpAgent) IsProxy() bool { return true }
-func (h *ajpAgent) IsCache() bool { return h.cacher != nil }
+func (h *ajpProxy) IsProxy() bool { return true }
+func (h *ajpProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *ajpAgent) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *ajpProxy) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation
 	resp.Send("ajp")
 	return

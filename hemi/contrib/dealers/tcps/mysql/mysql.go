@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// MySQL relay dealer passes conns to backend MySQL servers.
+// MySQL proxy dealer passes conns to backend MySQL servers.
 
 package mysql
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealer("mysqlRelay", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
-		d := new(mysqlRelay)
+	RegisterTCPSDealer("mysqlProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
+		d := new(mysqlProxy)
 		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
 
-// mysqlRelay
-type mysqlRelay struct {
+// mysqlProxy
+type mysqlProxy struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
@@ -29,23 +29,23 @@ type mysqlRelay struct {
 	// States
 }
 
-func (d *mysqlRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (d *mysqlProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.mesher = mesher
 }
-func (d *mysqlRelay) OnShutdown() {
+func (d *mysqlProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *mysqlRelay) OnConfigure() {
+func (d *mysqlProxy) OnConfigure() {
 	// TODO
 }
-func (d *mysqlRelay) OnPrepare() {
+func (d *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *mysqlRelay) Deal(conn *TCPSConn) (next bool) {
+func (d *mysqlProxy) Deal(conn *TCPSConn) (next bool) {
 	// TODO
 	return false
 }

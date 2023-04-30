@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// PgSQL relay dealer passes conns to backend PgSQL servers.
+// PgSQL proxy dealer passes conns to backend PgSQL servers.
 
 package pgsql
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealer("pgsqlRelay", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
-		d := new(pgsqlRelay)
+	RegisterTCPSDealer("pgsqlProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
+		d := new(pgsqlProxy)
 		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
 
-// pgsqlRelay
-type pgsqlRelay struct {
+// pgsqlProxy
+type pgsqlProxy struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
@@ -29,23 +29,23 @@ type pgsqlRelay struct {
 	// States
 }
 
-func (d *pgsqlRelay) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (d *pgsqlProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.mesher = mesher
 }
-func (d *pgsqlRelay) OnShutdown() {
+func (d *pgsqlProxy) OnShutdown() {
 	d.mesher.SubDone()
 }
 
-func (d *pgsqlRelay) OnConfigure() {
+func (d *pgsqlProxy) OnConfigure() {
 	// TODO
 }
-func (d *pgsqlRelay) OnPrepare() {
+func (d *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *pgsqlRelay) Deal(conn *TCPSConn) (next bool) {
+func (d *pgsqlProxy) Deal(conn *TCPSConn) (next bool) {
 	// TODO
 	return false
 }

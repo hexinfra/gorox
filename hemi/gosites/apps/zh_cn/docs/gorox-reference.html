@@ -138,15 +138,15 @@
 		<li> <a href="#stage-app-limitChecker">stage &gt; app &gt; [rule &gt;] limitChecker</a></li>
 		<li> <a href="#stage-app-refererChecker">stage &gt; app &gt; [rule &gt;] refererChecker</a></li>
 		<li> <a href="#stage-app-rewriter">stage &gt; app &gt; [rule &gt;] rewriter</a></li>
-		<li> <a href="#stage-app-ajpAgent">stage &gt; app &gt; [rule &gt;] ajpAgent</a></li>
+		<li> <a href="#stage-app-ajpProxy">stage &gt; app &gt; [rule &gt;] ajpProxy</a></li>
 		<li> <a href="#stage-app-favicon">stage &gt; app &gt; [rule &gt;] favicon</a></li>
-		<li> <a href="#stage-app-fcgiAgent">stage &gt; app &gt; [rule &gt;] fcgiAgent</a></li>
+		<li> <a href="#stage-app-fcgiProxy">stage &gt; app &gt; [rule &gt;] fcgiProxy</a></li>
 		<li> <a href="#stage-app-http1Proxy">stage &gt; app &gt; [rule &gt;] http1Proxy</a></li>
 		<li> <a href="#stage-app-http2Proxy">stage &gt; app &gt; [rule &gt;] http2Proxy</a></li>
 		<li> <a href="#stage-app-http3Proxy">stage &gt; app &gt; [rule &gt;] http3Proxy</a></li>
 		<li> <a href="#stage-app-sitex">stage &gt; app &gt; [rule &gt;] sitex</a></li>
 		<li> <a href="#stage-app-static">stage &gt; app &gt; [rule &gt;] static</a></li>
-		<li> <a href="#stage-app-uwsgiAgent">stage &gt; app &gt; [rule &gt;] uwsgiAgent</a></li>
+		<li> <a href="#stage-app-uwsgiProxy">stage &gt; app &gt; [rule &gt;] uwsgiProxy</a></li>
 		<li> <a href="#stage-app-webdavHandlet">stage &gt; app &gt; [rule &gt;] webdavHandlet</a></li>
 		<li> <a href="#stage-app-gzipReviser">stage &gt; app &gt; [rule &gt;] gzipReviser</a></li>
 		<li> <a href="#stage-app-headReviser">stage &gt; app &gt; [rule &gt;] headReviser</a></li>
@@ -1048,7 +1048,7 @@ $=	变量和给定值，是否后缀匹配。
 app "main" {
 		
 	rule $path == /phpstatus { // 全匹配
-		fcgiAgent {
+		fcgiProxy {
 			.toBackend = "fpm"
 		}
 	}
@@ -1082,7 +1082,7 @@ app "main" {
 	}
 
 	rule $path ~= "\.php$" { // 后缀是 php 都转到 fpm 上。
-		fcgiAgent {
+		fcgiProxy {
 			.toBackend = "fpm"
 		}
 	}
@@ -1258,18 +1258,18 @@ app "main" {
 			<h3>stage &gt; app &gt; favicon </h3>
 		</li>
 
-		<li id="stage-app-ajpAgent">
-			<h3>stage &gt; app &gt; ajpAgent </h3>
+		<li id="stage-app-ajpProxy">
+			<h3>stage &gt; app &gt; ajpProxy </h3>
 		</li>
 
-		<li id="stage-app-uwsgiAgent">
-			<h3>stage &gt; app &gt; uwsgiAgent </h3>
+		<li id="stage-app-uwsgiProxy">
+			<h3>stage &gt; app &gt; uwsgiProxy </h3>
 		</li>
 
-		<li id="stage-app-fcgiAgent">
-			<h3>stage &gt; app &gt; fcgiAgent </h3>
-			<p>fcgiAgent 用于 fastcgi 协议的后端代理，比如代理 php-fpm。 </p>
-			<code class="pre">语法：fcgiAgent [name] { ... }
+		<li id="stage-app-fcgiProxy">
+			<h3>stage &gt; app &gt; fcgiProxy </h3>
+			<p>fcgiProxy 用于 fastcgi 协议的后端代理，比如代理 php-fpm。 </p>
+			<code class="pre">语法：fcgiProxy [name] { ... }
 
 // 例子
 stage {
@@ -1284,7 +1284,7 @@ stage {
 	app "main" {
 		.webRoot = %baseDir + "/apps/diogin/root"
 
-		fcgiAgent "fpm" {
+		fcgiProxy "fpm" {
 			.toBackend = "php-fpm"
 		}
 
@@ -1293,7 +1293,7 @@ stage {
 		}
 
 		rule $path ~= "\.php$" {
-			fcgiAgent {
+			fcgiProxy {
 				.toBackend = "php-fpm"
 			}
 		}
@@ -1399,7 +1399,7 @@ stage {
 	app "main" {
 		.webRoot = %baseDir + "/apps/diogin/root"
 
-		fcgiAgent "php-fpm" {
+		fcgiProxy "php-fpm" {
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s

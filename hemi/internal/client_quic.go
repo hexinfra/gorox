@@ -16,10 +16,10 @@ import (
 )
 
 func init() {
-	RegisterQUICDealer("quicRelay", func(name string, stage *Stage, mesher *QUICMesher) QUICDealer {
-		f := new(quicRelay)
-		f.onCreate(name, stage, mesher)
-		return f
+	RegisterQUICDealer("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealer {
+		d := new(quicProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 	registerFixture(signQUICOutgate)
 	RegisterBackend("quicBackend", func(name string, stage *Stage) Backend {
@@ -29,8 +29,8 @@ func init() {
 	})
 }
 
-// quicRelay passes QUIC connections to backend QUIC server.
-type quicRelay struct {
+// quicProxy passes QUIC connections to backend QUIC server.
+type quicProxy struct {
 	// Mixins
 	QUICDealer_
 	// Assocs
@@ -40,37 +40,37 @@ type quicRelay struct {
 	// States
 }
 
-func (f *quicRelay) onCreate(name string, stage *Stage, mesher *QUICMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *quicRelay) OnShutdown() {
-	f.mesher.SubDone()
+func (d *quicProxy) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *quicRelay) OnConfigure() {
+func (d *quicProxy) OnConfigure() {
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := f.stage.Backend(name); backend == nil {
+			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if quicBackend, ok := backend.(*QUICBackend); ok {
-				f.backend = quicBackend
+				d.backend = quicBackend
 			} else {
-				UseExitf("incorrect backend '%s' for quicRelay\n", name)
+				UseExitf("incorrect backend '%s' for quicProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for quicRelay")
+		UseExitln("toBackend is required for quicProxy")
 	}
 }
-func (f *quicRelay) OnPrepare() {
+func (d *quicProxy) OnPrepare() {
 }
 
-func (f *quicRelay) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
+func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) {
 	// TODO
 	return
 }

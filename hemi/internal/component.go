@@ -27,13 +27,13 @@ const ( // component list
 	compUniture               // ...
 	compBackend               // HTTP1Backend, HTTP2Backend, HTTP3Backend, QUICBackend, TCPSBackend, UDPSBackend
 	compQUICMesher            // quicMesher
-	compQUICDealer            // quicRelay, ...
+	compQUICDealer            // quicProxy, ...
 	compQUICEditor            // ...
 	compTCPSMesher            // tcpsMesher
-	compTCPSDealer            // tcpsRelay, ...
+	compTCPSDealer            // tcpsProxy, ...
 	compTCPSEditor            // ...
 	compUDPSMesher            // udpsMesher
-	compUDPSDealer            // udpsRelay, ...
+	compUDPSDealer            // udpsProxy, ...
 	compUDPSEditor            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
@@ -1032,6 +1032,43 @@ type Uniture interface {
 	Component
 	Run() // goroutine
 }
+
+// Stater component is the interface to storages of HTTP states. See RFC 6265.
+type Stater interface {
+	Component
+	Maintain() // goroutine
+	Set(sid []byte, session *Session)
+	Get(sid []byte) (session *Session)
+	Del(sid []byte) bool
+}
+
+// Stater_
+type Stater_ struct {
+	// Mixins
+	Component_
+}
+
+// Session is an HTTP session in stater
+type Session struct {
+	// TODO
+	ID     [40]byte // session id
+	Secret [40]byte // secret
+	Role   int8     // 0: default, >0: app defined values
+	Device int8     // terminal device type
+	state1 int8     // app defined state1
+	state2 int8     // app defined state2
+	state3 int32    // app defined state3
+	expire int64    // unix time
+	states map[string]string
+}
+
+func (s *Session) init() {
+	s.states = make(map[string]string)
+}
+
+func (s *Session) Get(name string) string        { return s.states[name] }
+func (s *Session) Set(name string, value string) { s.states[name] = value }
+func (s *Session) Del(name string)               { delete(s.states, name) }
 
 // Cronjob component
 type Cronjob interface {

@@ -45,7 +45,7 @@ func (d *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *mysqlProxy) Deal(conn *TCPSConn) (next bool) {
+func (d *mysqlProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
 	return false
 }

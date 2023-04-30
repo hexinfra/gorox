@@ -45,7 +45,7 @@ func (d *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *pgsqlProxy) Deal(conn *TCPSConn) (next bool) {
+func (d *pgsqlProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
 	return false
 }

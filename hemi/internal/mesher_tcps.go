@@ -12,10 +12,19 @@ import (
 	"crypto/tls"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
+
+func init() {
+	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
+		d := new(tcpsProxy)
+		d.onCreate(name, stage, mesher)
+		return d
+	})
+}
 
 // TCPSMesher
 type TCPSMesher struct {
@@ -315,20 +324,21 @@ func putTCPSConn(conn *TCPSConn) {
 	poolTCPSConn.Put(conn)
 }
 
-// TCPSConn
+// TCPSConn is the TCP/TLS connection coming from TCPSMesher.
 type TCPSConn struct {
 	// Conn states (stocks)
 	stockInput [8192]byte // for c.input
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	mesher  *TCPSMesher
-	gate    *tcpsGate
-	netConn net.Conn
-	rawConn syscall.RawConn
-	region  Region
-	input   []byte // input buffer
+	id        int64           // connection id
+	stage     *Stage          // current stage
+	mesher    *TCPSMesher     // from mesher
+	gate      *tcpsGate       // from gate
+	netConn   net.Conn        // the connection (TCP/TLS)
+	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
+	region    Region
+	input     []byte // input buffer
+	closeSema atomic.Int32
 	// Conn states (zeros)
 	tcpsConn0
 }
@@ -346,6 +356,7 @@ func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsG
 	c.rawConn = rawConn
 	c.region.Init()
 	c.input = c.stockInput[:]
+	c.closeSema.Store(2)
 }
 func (c *TCPSConn) onPut() {
 	c.stage = nil
@@ -384,22 +395,34 @@ func (c *TCPSConn) hookEditor(editor TCPSEditor) {
 
 func (c *TCPSConn) Recv() (p []byte, err error) {
 	n, err := c.netConn.Read(c.input)
+	if n > 0 {
+		p = c.input[:n]
+		if c.nEditors > 0 { // TODO
+		} else {
+		}
+	}
 	if err != nil {
-		return nil, err
+		c.checkClose()
 	}
-	// TODO
-	if c.nEditors > 0 {
-	} else {
-	}
-	return c.input[:n], nil
-}
-func (c *TCPSConn) Send(p []byte) (err error) {
-	// TODO
-	if c.nEditors > 0 {
-	} else {
-	}
-	_, err = c.netConn.Write(p)
 	return
+}
+func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
+	if p == nil {
+		c.closeWrite()
+		c.checkClose()
+	} else {
+		if c.nEditors > 0 { // TODO
+		} else {
+		}
+		_, err = c.netConn.Write(p)
+	}
+	return
+}
+
+func (c *TCPSConn) checkClose() {
+	if c.closeSema.Add(-1) == 0 {
+		c.closeConn()
+	}
 }
 
 func (c *TCPSConn) closeWrite() {
@@ -426,4 +449,85 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	nil, // transport
 	nil, // serverName
 	nil, // nextProto
+}
+
+// tcpsProxy passes TCP/TLS connections to another/backend TCP/TLS server.
+type tcpsProxy struct {
+	// Mixins
+	TCPSDealer_
+	// Assocs
+	stage   *Stage       // current stage
+	mesher  *TCPSMesher  // the mesher to which the dealer belongs
+	backend *TCPSBackend // if works as forward proxy, this is nil
+	// States
+	process func(*TCPSConn)
+}
+
+func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
+}
+func (d *tcpsProxy) OnShutdown() {
+	d.mesher.SubDone()
+}
+
+func (d *tcpsProxy) OnConfigure() {
+	d.process = d.relay
+	isReverse := true
+	// proxyMode
+	if v, ok := d.Find("proxyMode"); ok {
+		if mode, ok := v.String(); ok {
+			switch mode {
+			case "socks": // SOCKS
+				d.process = d.socks
+				isReverse = false
+			case "https": // HTTP CONNECT
+				d.process = d.https
+				isReverse = false
+			}
+		} else {
+			UseExitln("invalid proxyMode")
+		}
+	}
+	// toBackend
+	if v, ok := d.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := d.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
+				d.backend = tcpsBackend
+			} else {
+				UseExitf("incorrect backend '%s' for tcpsProxy\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else if isReverse {
+		UseExitln("toBackend is required for reverse proxy")
+	}
+}
+func (d *tcpsProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
+	d.process(conn)
+	return false
+}
+
+func (d *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
+	// TODO
+}
+func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
+	// TODO
+}
+
+func (d *tcpsProxy) relay(conn *TCPSConn) { // reverse proxy
+	// TODO
+	tConn, err := d.backend.Dial()
+	if err != nil {
+		return
+	}
+	defer tConn.Close()
 }

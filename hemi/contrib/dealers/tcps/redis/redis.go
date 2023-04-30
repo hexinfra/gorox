@@ -45,7 +45,7 @@ func (d *redisProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *redisProxy) Deal(conn *TCPSConn) (next bool) {
+func (d *redisProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
 	return false
 }

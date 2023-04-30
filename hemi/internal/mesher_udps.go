@@ -301,6 +301,6 @@ func (c *UDPSConn) unsafeVariable(index int16) []byte {
 }
 
 // udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in engine.go
 	// TODO
 }

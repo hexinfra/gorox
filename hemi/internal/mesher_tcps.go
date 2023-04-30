@@ -420,7 +420,7 @@ func (c *TCPSConn) unsafeVariable(index int16) []byte {
 }
 
 // tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in engine.go
 	nil, // srcHost
 	nil, // srcPort
 	nil, // transport

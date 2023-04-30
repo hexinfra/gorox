@@ -394,6 +394,7 @@ func (c *TCPSConn) hookEditor(editor TCPSEditor) {
 }
 
 func (c *TCPSConn) Recv() (p []byte, err error) {
+	// TODO: deadline
 	n, err := c.netConn.Read(c.input)
 	if n > 0 {
 		p = c.input[:n]
@@ -402,14 +403,15 @@ func (c *TCPSConn) Recv() (p []byte, err error) {
 		}
 	}
 	if err != nil {
-		c.checkClose()
+		c._checkClose()
 	}
 	return
 }
 func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
+	// TODO: deadline
 	if p == nil {
 		c.closeWrite()
-		c.checkClose()
+		c._checkClose()
 	} else {
 		if c.nEditors > 0 { // TODO
 		} else {
@@ -418,8 +420,7 @@ func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
 	}
 	return
 }
-
-func (c *TCPSConn) checkClose() {
+func (c *TCPSConn) _checkClose() {
 	if c.closeSema.Add(-1) == 0 {
 		c.closeConn()
 	}

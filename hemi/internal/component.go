@@ -179,7 +179,7 @@ func RegisterSvcInit(name string, init func(svc *Svc) error) {
 type Component interface {
 	MakeComp(name string)
 	OnShutdown()
-	SubDone()
+	SubDone() // sub components call this
 
 	Name() string
 
@@ -590,12 +590,12 @@ func (s *Stage) OnPrepare() {
 }
 
 func (s *Stage) createUniture(sign string) Uniture {
+	if s.Uniture(sign) != nil {
+		UseExitf("conflicting uniture with a same sign '%s'\n", sign)
+	}
 	create, ok := unitureCreators[sign]
 	if !ok {
 		UseExitln("unknown uniture type: " + sign)
-	}
-	if s.Uniture(sign) != nil {
-		UseExitf("conflicting uniture with a same sign '%s'\n", sign)
 	}
 	uniture := create(sign, s)
 	uniture.setShell(uniture)
@@ -603,12 +603,12 @@ func (s *Stage) createUniture(sign string) Uniture {
 	return uniture
 }
 func (s *Stage) createBackend(sign string, name string) Backend {
+	if s.Backend(name) != nil {
+		UseExitf("conflicting backend with a same name '%s'\n", name)
+	}
 	create, ok := backendCreators[sign]
 	if !ok {
 		UseExitln("unknown backend type: " + sign)
-	}
-	if s.Backend(name) != nil {
-		UseExitf("conflicting backend with a same name '%s'\n", name)
 	}
 	backend := create(name, s)
 	backend.setShell(backend)
@@ -646,12 +646,12 @@ func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
 	return mesher
 }
 func (s *Stage) createStater(sign string, name string) Stater {
+	if s.Stater(name) != nil {
+		UseExitf("conflicting stater with a same name '%s'\n", name)
+	}
 	create, ok := staterCreators[sign]
 	if !ok {
 		UseExitln("unknown stater type: " + sign)
-	}
-	if s.Stater(name) != nil {
-		UseExitf("conflicting stater with a same name '%s'\n", name)
 	}
 	stater := create(name, s)
 	stater.setShell(stater)
@@ -659,12 +659,12 @@ func (s *Stage) createStater(sign string, name string) Stater {
 	return stater
 }
 func (s *Stage) createCacher(sign string, name string) Cacher {
+	if s.Cacher(name) != nil {
+		UseExitf("conflicting cacher with a same name '%s'\n", name)
+	}
 	create, ok := cacherCreators[sign]
 	if !ok {
 		UseExitln("unknown cacher type: " + sign)
-	}
-	if s.Cacher(name) != nil {
-		UseExitf("conflicting cacher with a same name '%s'\n", name)
 	}
 	cacher := create(name, s)
 	cacher.setShell(cacher)
@@ -692,12 +692,12 @@ func (s *Stage) createSvc(name string) *Svc {
 	return svc
 }
 func (s *Stage) createServer(sign string, name string) Server {
+	if s.Server(name) != nil {
+		UseExitf("conflicting server with a same name '%s'\n", name)
+	}
 	create, ok := serverCreators[sign]
 	if !ok {
 		UseExitln("unknown server type: " + sign)
-	}
-	if s.Server(name) != nil {
-		UseExitf("conflicting server with a same name '%s'\n", name)
 	}
 	server := create(name, s)
 	server.setShell(server)
@@ -705,12 +705,12 @@ func (s *Stage) createServer(sign string, name string) Server {
 	return server
 }
 func (s *Stage) createCronjob(sign string) Cronjob {
+	if s.Cronjob(sign) != nil {
+		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
+	}
 	create, ok := cronjobCreators[sign]
 	if !ok {
 		UseExitln("unknown cronjob type: " + sign)
-	}
-	if s.Cronjob(sign) != nil {
-		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
 	}
 	cronjob := create(sign, s)
 	cronjob.setShell(cronjob)
@@ -960,15 +960,9 @@ func (s *Stage) prepare() (err error) {
 func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
 
-func (s *Stage) Log(str string) {
-	s.booker.Print(str)
-}
-func (s *Stage) Logln(str string) {
-	s.booker.Println(str)
-}
-func (s *Stage) Logf(format string, args ...any) {
-	s.booker.Printf(format, args...)
-}
+func (s *Stage) Log(str string)                  { s.booker.Print(str) }
+func (s *Stage) Logln(str string)                { s.booker.Println(str) }
+func (s *Stage) Logf(format string, args ...any) { s.booker.Printf(format, args...) }
 
 func (s *Stage) ProfCPU() {
 	file, err := os.Create(s.cpuFile)

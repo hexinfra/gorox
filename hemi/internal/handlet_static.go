@@ -214,8 +214,8 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		//resp.AddHeader(bytesAcceptRange, bytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)
-		if pDot := strings.LastIndex(filePath, "."); pDot >= 0 {
-			ext := filePath[pDot+1:]
+		if p := strings.LastIndex(filePath, "."); p >= 0 {
+			ext := filePath[p+1:]
 			if mimeType, ok := h.mimeTypes[ext]; ok {
 				contentType = mimeType
 			}

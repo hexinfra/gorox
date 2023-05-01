@@ -613,8 +613,10 @@ func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
+
 	sizeRead, fileSize := int64(0), info.Size()
 	headSent, lastPart := false, false
+
 	for { // we don't use sendfile(2).
 		if sizeRead == fileSize {
 			return nil
@@ -630,10 +632,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 			r.stream.markBroken()
 			return err
 		}
-		if err = r._beforeWrite(); err != nil {
-			r.stream.markBroken()
-			return err
-		}
+
 		if headSent {
 			if lastPart { // stdin + emptyStdin
 				r.vector = r.fixedVector[0:3]
@@ -664,12 +663,10 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 			r.vector[4] = r.stdinHeader[:]
 			r.vector[5] = buffer[:n]
 		}
-		_, err = r.stream.writev(&r.vector)
-		if err = r._slowCheck(err); err != nil {
+		if err = r._writeVector(); err != nil {
 			return err
 		}
 	}
-	return nil
 }
 
 func (r *fcgiRequest) _writeBytes(p []byte) error {

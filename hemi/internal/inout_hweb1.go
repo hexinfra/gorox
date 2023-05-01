@@ -91,7 +91,7 @@ func (r *hweb1Out_) writeVectorB1() error {
 	return nil
 }
 
-//////////////////////////////////////// HWEB/1 protocol elements.
+//////////////////////////////////////// HWEB/1 protocol elements ////////////////////////////////////////
 
 // nameValue = nameSize(8) valueSize(24) name value
 // name      = 1*OCTET

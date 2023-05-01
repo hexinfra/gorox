@@ -145,7 +145,7 @@ func (p *http2Frames) decRef() {
 	}
 }
 
-//////////////////////////////////////// HTTP/2 protocol elements.
+//////////////////////////////////////// HTTP/2 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/2 sizes and limits
 	http2FrameMaxSize     = _16K // for both of our HTTP/2 client and HTTP/2 server

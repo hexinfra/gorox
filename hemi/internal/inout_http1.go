@@ -797,18 +797,18 @@ func (r *http1Out_) writePieceH1(piece *Piece, chunked bool) error {
 	} else { // file piece
 		buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 		defer PutNK(buffer)
-		nRead := int64(0)
+		sizeRead := int64(0)
 		for { // we don't use sendfile(2).
-			if nRead == piece.size {
+			if sizeRead == piece.size {
 				return nil
 			}
 			readSize := int64(cap(buffer))
-			if sizeLeft := piece.size - nRead; sizeLeft < readSize {
+			if sizeLeft := piece.size - sizeRead; sizeLeft < readSize {
 				readSize = sizeLeft
 			}
-			n, err := piece.file.ReadAt(buffer[:readSize], nRead)
-			nRead += int64(n)
-			if err != nil && nRead != piece.size {
+			n, err := piece.file.ReadAt(buffer[:readSize], sizeRead)
+			sizeRead += int64(n)
+			if err != nil && sizeRead != piece.size {
 				r.stream.markBroken()
 				return err
 			}
@@ -865,7 +865,7 @@ func (r *http1Out_) writeVectorH1() error {
 	return r._slowCheck(err)
 }
 
-//////////////////////////////////////// HTTP/1 protocol elements.
+//////////////////////////////////////// HTTP/1 protocol elements ////////////////////////////////////////
 
 var ( // HTTP/1 byteses
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")

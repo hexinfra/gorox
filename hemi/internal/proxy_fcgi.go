@@ -115,10 +115,10 @@ func (h *fcgiProxy) OnConfigure() {
 
 	// indexFile
 	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) error {
-		if len(value) < 255 {
+		if len(value) > 0 {
 			return nil
 		}
-		return errors.New(".indexFile value must be at least 255")
+		return errors.New(".indexFile is an invalid value")
 	}, []byte("index.php"))
 
 	// sendTimeout
@@ -339,25 +339,6 @@ func (s *fcgiStream) readAtLeast(p []byte, min int) (int, error) { return s.conn
 func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
 func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
 
-// poolFCGIParams
-var poolFCGIParams sync.Pool
-
-const fcgiMaxParams = _16K // max effective params
-
-func getFCGIParams() []byte {
-	if x := poolFCGIParams.Get(); x == nil {
-		return make([]byte, fcgiMaxParams)
-	} else {
-		return x.([]byte)
-	}
-}
-func putFCGIParams(params []byte) {
-	if cap(params) != fcgiMaxParams {
-		BugExitln("fcgi: bad params")
-	}
-	poolFCGIParams.Put(params)
-}
-
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building
 	// Assocs
@@ -378,7 +359,7 @@ type fcgiRequest struct { // outgoing. needs building
 	fcgiRequest0             // all values must be zero by default in this struct!
 }
 type fcgiRequest0 struct { // for fast reset, entirely
-	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= fcgiMaxParams.
+	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= 16K.
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
 }
@@ -391,7 +372,7 @@ func (r *fcgiRequest) onUse() {
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
-		putFCGIParams(r.params)
+		PutNK(r.params)
 		r.params = nil
 	}
 	r.sendTime = time.Time{}
@@ -536,7 +517,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 		return
 	}
 	if last > uint16(cap(r.params)) { // last <= _16K
-		params := getFCGIParams()
+		params := Get16K()
 		copy(params, r.params[:r.paramsEdge])
 		r.params = params
 	}
@@ -545,7 +526,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. unsized content must use post()
+func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. unsized content must use post(), as we don't use request-side chunking
 	r.vector = r.fixedVector[0:4]
 	if r.stream.proxy.keepConn {
 		r.vector[0] = fcgiBeginKeepConn
@@ -587,7 +568,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. 
 	}
 	return r._writeBytes(fcgiEmptyStdin)
 }
-func (r *fcgiRequest) post(content any) error { // nil, []byte, *os.File. for bufferClientContent or unsized Request content
+func (r *fcgiRequest) post(content any) error { // nil, []byte, and *os.File. for bufferClientContent or unsized Request content
 	if contentText, ok := content.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
 	} else if contentFile, ok := content.(*os.File); ok { // file
@@ -609,17 +590,19 @@ func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
 	} else { // beginRequest + (params + emptyParams) + (stdin + emptyStdin)
 		r.vector = r.fixedVector[0:7]
 	}
+	// beginRequest
 	if r.stream.proxy.keepConn {
 		r.vector[0] = fcgiBeginKeepConn
 	} else {
 		r.vector[0] = fcgiBeginDontKeep
 	}
+	// params + emptyParams
 	r.vector[1] = r.paramsHeader[:]
 	r.vector[2] = r.params[:r.paramsEdge]
 	r.vector[3] = fcgiEmptyParams
-	if size == 0 {
+	if size == 0 { // emptyStdin
 		r.vector[4] = fcgiEmptyStdin
-	} else {
+	} else { // stdin + emptyStdin
 		r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
 		r.vector[4] = r.stdinHeader[:]
 		r.vector[5] = content
@@ -628,8 +611,64 @@ func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
 	return r._writeVector()
 }
 func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	// TODO: use a buffer, for content, read to buffer, write buffer
-	// TODO: beginRequest + (params + emptyParams) + (stdin * N + emptyStdin)
+	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
+	defer PutNK(buffer)
+	sizeRead, fileSize := int64(0), info.Size()
+	headSent, lastPart := false, false
+	for { // we don't use sendfile(2).
+		if sizeRead == fileSize {
+			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := fileSize - sizeRead; sizeLeft <= readSize {
+			readSize = sizeLeft
+			lastPart = true
+		}
+		n, err := content.ReadAt(buffer[:readSize], sizeRead)
+		sizeRead += int64(n)
+		if err != nil && sizeRead != fileSize {
+			r.stream.markBroken()
+			return err
+		}
+		if err = r._beforeWrite(); err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		if headSent {
+			if lastPart { // stdin + emptyStdin
+				r.vector = r.fixedVector[0:3]
+				r.vector[2] = fcgiEmptyStdin
+			} else { // stdin
+				r.vector = r.fixedVector[0:2]
+			}
+			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
+			r.vector[0] = r.stdinHeader[:]
+			r.vector[1] = buffer[:n]
+		} else { // head is not sent
+			headSent = true
+			if lastPart { // beginRequest + (params + emptyParams) + (stdin * N + emptyStdin)
+				r.vector = r.fixedVector[0:7]
+				r.vector[6] = fcgiEmptyStdin
+			} else { // beginRequest + (params + emptyParams) + stdin
+				r.vector = r.fixedVector[0:6]
+			}
+			if r.stream.proxy.keepConn {
+				r.vector[0] = fcgiBeginKeepConn
+			} else {
+				r.vector[0] = fcgiBeginDontKeep
+			}
+			r.vector[1] = r.paramsHeader[:]
+			r.vector[2] = r.params[:r.paramsEdge]
+			r.vector[3] = fcgiEmptyParams
+			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
+			r.vector[4] = r.stdinHeader[:]
+			r.vector[5] = buffer[:n]
+		}
+		_, err = r.stream.writev(&r.vector)
+		if err = r._slowCheck(err); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1409,7 +1448,7 @@ var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
 )
 
-//////////////////////////////////////// FCGI protocol elements.
+//////////////////////////////////////// FCGI protocol elements ////////////////////////////////////////
 
 // FCGI Record = FCGI Header(8) + payload + padding
 // FCGI Header = version(1) + type(1) + requestId(2) + payloadLen(2) + paddingLen(1) + reserved(1)

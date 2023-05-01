@@ -172,18 +172,18 @@ func (p *Piece) copyTo(buffer []byte) error { // buffer is large enough, and p i
 	if p.IsText() {
 		BugExitln("copyTo when piece is text")
 	}
-	nRead := int64(0)
+	sizeRead := int64(0)
 	for {
-		if nRead == p.size {
+		if sizeRead == p.size {
 			return nil
 		}
 		readSize := int64(cap(buffer))
-		if sizeLeft := p.size - nRead; sizeLeft < readSize {
+		if sizeLeft := p.size - sizeRead; sizeLeft < readSize {
 			readSize = sizeLeft
 		}
-		num, err := p.file.ReadAt(buffer[:readSize], nRead)
-		nRead += int64(num)
-		if err != nil && nRead != p.size {
+		n, err := p.file.ReadAt(buffer[:readSize], sizeRead)
+		sizeRead += int64(n)
+		if err != nil && sizeRead != p.size {
 			return err
 		}
 	}

@@ -134,7 +134,7 @@ func (p *http3Frames) decRef() {
 	}
 }
 
-//////////////////////////////////////// HTTP/3 protocol elements.
+//////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/3 sizes and limits
 	http3MaxActiveStreams = 127

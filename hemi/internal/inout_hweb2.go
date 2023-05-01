@@ -91,7 +91,7 @@ func (r *hweb2Out_) writeVectorB2() error {
 	return nil
 }
 
-//////////////////////////////////////// HWEB/2 protocol elements.
+//////////////////////////////////////// HWEB/2 protocol elements ////////////////////////////////////////
 
 // recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 

@@ -44,7 +44,8 @@ func (h *dioginHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *dioginHandlet) OnConfigure() {}
+func (h *dioginHandlet) OnConfigure() {
+}
 func (h *dioginHandlet) OnPrepare() {
 	r := simple.New()
 

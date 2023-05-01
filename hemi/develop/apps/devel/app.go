@@ -44,7 +44,8 @@ func (h *develHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *develHandlet) OnConfigure() {}
+func (h *develHandlet) OnConfigure() {
+}
 func (h *develHandlet) OnPrepare() {
 	r := simple.New()
 

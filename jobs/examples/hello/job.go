@@ -39,8 +39,10 @@ func (j *helloCronjob) OnShutdown() {
 	close(j.Shut)
 }
 
-func (j *helloCronjob) OnConfigure() {}
-func (j *helloCronjob) OnPrepare()   {}
+func (j *helloCronjob) OnConfigure() {
+}
+func (j *helloCronjob) OnPrepare() {
+}
 
 func (j *helloCronjob) Schedule() { // goroutine
 	ticker := time.NewTicker(time.Second)

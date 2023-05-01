@@ -50,6 +50,7 @@ type fcgiProxy struct {
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
 	keepConn            bool          // instructs FCGI server to keep conn?
+	preferUnderscore    bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 	scriptFilename      []byte        // for SCRIPT_FILENAME
 	indexFile           []byte        // for indexFile
 	addRequestHeaders   [][2][]byte   // headers appended to client request
@@ -59,7 +60,6 @@ type fcgiProxy struct {
 	sendTimeout         time.Duration // timeout to send the whole request
 	recvTimeout         time.Duration // timeout to recv the whole response content
 	maxContentSize      int64         // max response content size allowed
-	preferUnderscore    bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
@@ -110,6 +110,8 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// keepConn
 	h.ConfigureBool("keepConn", &h.keepConn, false)
+	// preferUnderscore
+	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 
@@ -144,9 +146,6 @@ func (h *fcgiProxy) OnConfigure() {
 		}
 		return errors.New(".maxContentSize is an invalid value")
 	}, _1T)
-
-	// preferUnderscore
-	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 }
 func (h *fcgiProxy) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
@@ -528,11 +527,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 
 func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. unsized content must use post(), as we don't use request-side chunking
 	r.vector = r.fixedVector[0:4]
-	if r.stream.proxy.keepConn {
-		r.vector[0] = fcgiBeginKeepConn
-	} else {
-		r.vector[0] = fcgiBeginDontKeep
-	}
+	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
 	r.vector[2] = r.params[:r.paramsEdge] // effective params
 	r.vector[3] = fcgiEmptyParams
@@ -591,11 +586,7 @@ func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
 		r.vector = r.fixedVector[0:7]
 	}
 	// beginRequest
-	if r.stream.proxy.keepConn {
-		r.vector[0] = fcgiBeginKeepConn
-	} else {
-		r.vector[0] = fcgiBeginDontKeep
-	}
+	r._setBeginRequest(&r.vector[0])
 	// params + emptyParams
 	r.vector[1] = r.paramsHeader[:]
 	r.vector[2] = r.params[:r.paramsEdge]
@@ -651,11 +642,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 			} else { // beginRequest + (params + emptyParams) + stdin
 				r.vector = r.fixedVector[0:6]
 			}
-			if r.stream.proxy.keepConn {
-				r.vector[0] = fcgiBeginKeepConn
-			} else {
-				r.vector[0] = fcgiBeginDontKeep
-			}
+			r._setBeginRequest(&r.vector[0])
 			r.vector[1] = r.paramsHeader[:]
 			r.vector[2] = r.params[:r.paramsEdge]
 			r.vector[3] = fcgiEmptyParams
@@ -666,6 +653,14 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 		if err = r._writeVector(); err != nil {
 			return err
 		}
+	}
+}
+
+func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
+	if r.stream.proxy.keepConn {
+		*p = fcgiBeginKeepConn
+	} else {
+		*p = fcgiBeginDontKeep
 	}
 }
 
@@ -908,7 +903,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 	}
 	// r.input is not full. Are there any existing stdout data in r.records?
 	if r.stdoutFrom == r.stdoutEdge { // no, we must receive a new non-empty stdout record
-		if from, edge, err := r._recvStdout(); err == nil {
+		if from, edge, err := r.fcgiRecvStdout(); err == nil {
 			r.stdoutFrom, r.stdoutEdge = from, edge
 		} else { // unexpected error or EOF
 			r.headResult = -1
@@ -1217,7 +1212,7 @@ func (r *fcgiResponse) cleanInput() {
 	if r.hasContent() {
 		r.imme.set(r.pFore, r.inputEdge)
 		// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
-	} else if _, _, err := r._recvStdout(); err != io.EOF { // no content, receive endRequest
+	} else if _, _, err := r.fcgiRecvStdout(); err != io.EOF { // no content, receive endRequest
 		r.headResult, r.failReason = StatusBadRequest, "bad endRequest"
 	}
 }
@@ -1279,7 +1274,7 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 		r.imme.zero()
 		return
 	}
-	if from, edge, err := r._recvStdout(); from != edge {
+	if from, edge, err := r.fcgiRecvStdout(); from != edge {
 		return r.records[from:edge], nil
 	} else {
 		return nil, err
@@ -1333,14 +1328,14 @@ func (r *fcgiResponse) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-func (r *fcgiResponse) _recvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
+func (r *fcgiResponse) fcgiRecvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.
 	const (
 		fcgiKindStdout     = 6 // [S] many (ends with an emptyStdout record)
 		fcgiKindStderr     = 7 // [S] many (ends with an emptyStderr record)
 		fcgiKindEndRequest = 3 // [D] only one
 	)
 recv:
-	kind, from, edge, err := r._recvRecord()
+	kind, from, edge, err := r.fcgiRecvRecord()
 	if err != nil {
 		return 0, 0, err
 	}
@@ -1356,7 +1351,7 @@ recv:
 	switch kind {
 	case fcgiKindStdout: // emptyStdout
 		for { // receive until endRequest
-			kind, from, edge, err = r._recvRecord()
+			kind, from, edge, err = r.fcgiRecvRecord()
 			if kind == fcgiKindEndRequest {
 				return 0, 0, io.EOF
 			}
@@ -1375,11 +1370,11 @@ recv:
 		return 0, 0, fcgiReadBadRecord
 	}
 }
-func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
+func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
 	remainSize := r.recordsEdge - r.recordsFrom
 	// At least an fcgi header must be immediate
 	if remainSize < fcgiHeaderSize {
-		if n, e := r._growRecords(fcgiHeaderSize - int(remainSize)); e == nil {
+		if n, e := r.fcgiGrowRecords(fcgiHeaderSize - int(remainSize)); e == nil {
 			remainSize += int32(n)
 		} else {
 			err = e
@@ -1394,11 +1389,11 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 		// Shoud we switch to a larger r.records?
 		if recordSize > int32(cap(r.records)) { // yes, because this record is too large
 			records := getFCGIRecords()
-			r._slideRecords(records)
+			r.fcgiMoveRecords(records)
 			r.records = records
 		}
 		// Now r.records is large enough to place this record, we can read the missing bytes of this record
-		if n, e := r._growRecords(int(recordSize - remainSize)); e == nil {
+		if n, e := r.fcgiGrowRecords(int(recordSize - remainSize)); e == nil {
 			remainSize += int32(n)
 		} else {
 			err = e
@@ -1410,7 +1405,7 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	from = r.recordsFrom + fcgiHeaderSize
 	edge = from + payloadLen // payload edge, ignoring padding
 	if IsDebug(2) {
-		Debugf("_recvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
+		Debugf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
 	}
 	// Clean up positions for next call.
 	if recordSize == remainSize { // all remain data are consumed, so reset positions
@@ -1420,10 +1415,10 @@ func (r *fcgiResponse) _recvRecord() (kind byte, from int32, edge int32, err err
 	}
 	return
 }
-func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is large enough.
+func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is large enough.
 	// Should we slide to get enough space to grow?
 	if size > cap(r.records)-int(r.recordsEdge) { // yes
-		r._slideRecords(r.records)
+		r.fcgiMoveRecords(r.records)
 	}
 	// We now have enough space to grow.
 	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
@@ -1433,7 +1428,7 @@ func (r *fcgiResponse) _growRecords(size int) (int, error) { // r.records is lar
 	r.recordsEdge += int32(n)
 	return n, nil
 }
-func (r *fcgiResponse) _slideRecords(records []byte) { // so we can get more space to grow
+func (r *fcgiResponse) fcgiMoveRecords(records []byte) { // so we can get more space to grow
 	if r.recordsFrom > 0 {
 		copy(records, r.records[r.recordsFrom:r.recordsEdge])
 		r.recordsEdge -= r.recordsFrom

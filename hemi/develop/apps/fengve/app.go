@@ -44,7 +44,8 @@ func (h *fengveHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *fengveHandlet) OnConfigure() {}
+func (h *fengveHandlet) OnConfigure() {
+}
 func (h *fengveHandlet) OnPrepare() {
 	r := simple.New()
 	r.GET("/abc", h.abc)

@@ -183,9 +183,9 @@ func (c *helloConn) onPut() {
 }
 
 func (c *helloConn) serve() { // goroutine
-	defer putHelloConn(c)
 	c.netConn.Write([]byte("hello, world!"))
 	c.closeConn()
+	putHelloConn(c)
 }
 
 func (c *helloConn) closeConn() {

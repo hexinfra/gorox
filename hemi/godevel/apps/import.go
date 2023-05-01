@@ -8,7 +8,7 @@
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/devel"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/diogin"
-	_ "github.com/hexinfra/gorox/hemi/develop/apps/fengve"
+	_ "github.com/hexinfra/gorox/hemi/godevel/apps/devel"
+	_ "github.com/hexinfra/gorox/hemi/godevel/apps/diogin"
+	_ "github.com/hexinfra/gorox/hemi/godevel/apps/fengve"
 )

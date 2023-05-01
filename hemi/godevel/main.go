@@ -3,28 +3,28 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Develop server (leader & worker) and its control agent.
+// Godevel server (leader & worker) and its control agent.
 
 package main
 
 import (
 	"os"
 
-	"github.com/hexinfra/gorox/hemi/develop/test"
+	"github.com/hexinfra/gorox/hemi/godevel/test"
 	"github.com/hexinfra/gorox/hemi/process"
 
-	_ "github.com/hexinfra/gorox/hemi/develop/apps"
-	_ "github.com/hexinfra/gorox/hemi/develop/exts"
-	_ "github.com/hexinfra/gorox/hemi/develop/jobs"
-	_ "github.com/hexinfra/gorox/hemi/develop/srvs"
-	_ "github.com/hexinfra/gorox/hemi/develop/svcs"
+	_ "github.com/hexinfra/gorox/hemi/godevel/apps"
+	_ "github.com/hexinfra/gorox/hemi/godevel/exts"
+	_ "github.com/hexinfra/gorox/hemi/godevel/jobs"
+	_ "github.com/hexinfra/gorox/hemi/godevel/srvs"
+	_ "github.com/hexinfra/gorox/hemi/godevel/svcs"
 )
 
 const usage = `
-Develop (%s)
+Godevel (%s)
 ================================================================================
 
-  develop [ACTION] [OPTIONS]
+  godevel [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -59,7 +59,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: develop-leader.log in logs dir)
+  -log    <path>      # leader log file (default: godevel-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -76,6 +76,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		process.Main("develop", usage, 2, "127.0.0.1:9526")
+		process.Main("godevel", usage, 2, "127.0.0.1:9526")
 	}
 }

@@ -393,7 +393,7 @@ func (c *TCPSConn) hookEditor(editor TCPSEditor) {
 	c.nEditors++
 }
 
-func (c *TCPSConn) Recv() (p []byte, err error) {
+func (c *TCPSConn) Recv() (p []byte, err error) { // p == nil means EOF
 	// TODO: deadline
 	n, err := c.netConn.Read(c.input)
 	if n > 0 {

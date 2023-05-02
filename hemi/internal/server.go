@@ -132,7 +132,7 @@ type Gate interface {
 // Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {
 	// Mixins
-	subsWaiter_
+	subsWaiter_ // for conns
 	// Assocs
 	stage *Stage // current stage
 	// States

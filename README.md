@@ -3,11 +3,11 @@ Welcome
 
 Welcome to Gorox!
 
-Gorox is an advanced Web server, application server, RPC server, and proxy
-server. It can be used as:
+Gorox is an advanced Web server, App server, RPC server, and proxy server. It
+can be used as:
 
   * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, FCGI, uwsgi, AJP)
-  * Application Server for Go (Applications, Frameworks)
+  * App Server for Go (Applications, Frameworks)
   * RPC Server for Go (HRPC Services, gRPC Services)
   * Web Proxy Server (HTTP 1/2/3, WebSocket, TLS, Forward, Reverse, Caching)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
@@ -182,7 +182,7 @@ the roles in "gorox cluster":
   * srv1: A TCP server implemented directly on Gorox,
   * svc1: A public RPC service implemented directly on Gorox,
   * sidecar1: A Service Mesh sidecar for svc1,
-  * app2: A gateway passing requests to PHP-FPM / Tomcat application server,
+  * app2: A gateway passing requests to PHP-FPM / Tomcat server,
   * svc2: A private RPC service implemented directly on Gorox,
   * sidecar2: A Service Mesh sidecar for svc2,
   * job1: A background application in Gorox doing something periodically.

@@ -34,6 +34,7 @@ type App struct {
 	hostnames            [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
 	webRoot              string            // root dir for the web
 	file404              string            // 404 file path
+	bytes404             []byte            // bytes of the default 404 file
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            []string          // (file, rotate)
@@ -48,7 +49,6 @@ type App struct {
 	exactHostnames       [][]byte          // like: ("example.com")
 	suffixHostnames      [][]byte          // like: ("*.example.com")
 	prefixHostnames      [][]byte          // like: ("www.example.*")
-	bytes404             []byte            // bytes of the default 404 file
 	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
 	nRevisers            uint8             // used number of revisersByID in this app
 }
@@ -815,7 +815,7 @@ func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
 	}
 	// Execute handlets
 	for _, handlet := range r.handlets {
-		if next := handlet.Handle(req, resp); !next {
+		if next := handlet.Handle(req, resp); !next { // request is handled and a response is sent
 			return true
 		}
 	}

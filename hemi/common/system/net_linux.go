@@ -19,7 +19,7 @@ func SetDeferAccept(rawConn syscall.RawConn) (err error) {
 }
 
 func SetReusePort(rawConn syscall.RawConn) (err error) {
-	const SO_REUSEPORT = 0xf // for amd64, arm64, loong64, riscv64
+	const SO_REUSEPORT = 0xf // for amd64, arm64, riscv64, loong64
 	rawConn.Control(func(fd uintptr) {
 		err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, SO_REUSEPORT, 1)
 	})

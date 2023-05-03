@@ -27,7 +27,7 @@ var ( // flags
 	debugLevel int
 	targetAddr string
 	adminAddr  string
-	goopsAddr  = flag.String("goops", "", "")
+	myroxAddr  = flag.String("myrox", "", "")
 	tryRun     = flag.Bool("try", false, "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")

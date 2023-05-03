@@ -1,18 +1,12 @@
 <style type="text/css">
-article { font-family: sans-serif; }
-article h1 { text-align:center; background:#d0e0f0; }
-article > ol { padding-left:30px; }
-article h2 { background:#d0f0e0; }
-article h3 { background:#f0e0d0; }
-article h1, article h2, article h3, article h4, article h5, article h6 { padding:5px; }
-article p { padding:5px; }
-article code { display:block; padding:10px; background:#fff0f0; }
-article ul { background:#efefef; }
-article li { padding:2px; }
-article dt { font-weight:bold; font-style:italic; }
-article a { text-decoration:none; }
-article table { border-collapse:collapse; }
-article th, article td { border:1px solid #000; }
+article {
+	font-family: sans-serif;
+}
+article pre {
+	padding: 10px;
+	font-family: monospace;
+	background: #eee;
+}
 </style>
 
 <article>
@@ -21,12 +15,12 @@ article th, article td { border:1px solid #000; }
 <p>如果您是一位开发者，在阅读完本文后，还希望学习如何使用 Gorox 进行 Web 应用或 RPC 服务开发，那么请继续参考 <a href="/docs/gorox/developer">Gorox 开发者手册</a>。</p>
 
 	<h2>目录</h2>
-	<ol>
+	<ul>
 		<li><a href="#build-install">构建与安装</a></li>
 		<li><a href="#running-mode">运行模式</a></li>
 		<li><a href="#control">启动、退出、重启与升级</a></li>
 		<li><a href="#configure">配置</a></li>
-	</ol>
+	</ul>
 
 	<h2 id="build-install">构建与安装</h2>
 	<p>在构建 Gorox 前，请确保您的操作系统符合以下要求：</p>
@@ -43,50 +37,62 @@ article th, article td { border:1px solid #000; }
 		<li>RISCV64，也称为 RV64，RISC-V 64</li>
 		<li>LOONG64，也称为 LA64，LoongArch 64</li>
 	</ul>
-	<p>然后，请确保您安装了 Go &gt;= 1.19 版本。</p>
+	<p>然后，请确保您安装了 Go &gt;= 1.19 版本：</p>
+<pre>
+shell&gt; go version
+</pre>
 
 		<h3>构建</h3>
-		<code>
-		shell&gt; go build<br>
-		</code>
-		<p>如果报错，请设置环境变量 CGO_ENABLED=0 再试一次。</p>
+		<p>进入 Gorox 目录，使用以下命令构建 Gorox：</p>
+<pre>
+shell&gt; go build
+</pre>
+		<p>如果报错，请设置环境变量 CGO_ENABLED=0 再试一次：</p>
+<pre>
+shell&gt; go env -w CGO_ENABLED=0
+shell&gt; go build
+</pre>
 
 		<h3>安装</h3>
 		<p>在您构建成功，或者下载了二进制版本后，直接把 gorox 所在的整个目录移动到您想要存放的位置，即可。</p>
 
 	<h2 id="running-mode">运行模式</h2>
-	<p>Gorox 具备两种运行模式，一种是充当服务器用的服务器模式，另一种是充当客户端用的控制器模式。</p>
+	<p>Gorox 具备两种运行模式，一种是充当服务器用的服务器模式，另一种是充当客户端用的客户端模式。</p>
 
 		<h3>服务器模式</h3>
 		<p>正如您所希望的那样，Gorox 可以以服务器进程的方式运行。如果您加了“-daemon”选项，它可以进入后台运行，如果不加，则默认在前台运行。</p>
 
-		<h3>控制器模式</h3>
-		<p>在控制器模式下，Gorox 充当一个控制客户端，用于控制另一个在服务器模式下运行的 Gorox 进程。</p>
+		<h3>客户端模式</h3>
+		<p>在客户端模式下，Gorox 充当一个控制客户端，用于控制另一个在服务器模式下运行的 Gorox 进程。</p>
 
 	<h2 id="control">启动、退出、重启与升级</h2>
 	<p>TODO</p>
 
 		<h3>启动</h3>
-		<p>以前台模式启动 Gorox：</p>
-		<code>
-		shell&gt; ./gorox serve
-		</code>
-		<p>以后台模式启动 Gorox：</p>
-		<code>
-		shell&gt; ./gorox serve -daemon
-		</code>
+		<p>以前台模式启动 Gorox 服务器：</p>
+<pre>
+shell&gt; ./gorox serve
+</pre>
+		<p>以后台模式启动 Gorox 服务器：</p>
+<pre>
+shell&gt; ./gorox serve -daemon
+</pre>
+		<p>以后台模式启动 Gorox 服务器后，可以运行以下命令检查 leader 进程和 worker 进程是否启动成功：</p>
+<pre>
+shell&gt; ./gorox pid
+</pre>
 
 		<h3>退出</h3>
-		<p>运行一个控制器模式的 Gorox，可以告知当前正在运行的处于服务器模式的 Gorox 进程退出运行：</p>
-		<code>
-		shell&gt; ./gorox quit
-		</code>
+		<p>运行一个客户端模式的 Gorox，可以告知当前正在运行的处于服务器模式的 Gorox 进程退出运行：</p>
+<pre>
+shell&gt; ./gorox quit
+</pre>
 
 		<h3>重启</h3>
 		<p>通常来说，我们都是为了重启 worker 进程。使用以下命令重启 worker 进程：</p>
-		<code>
-		shell&gt; ./gorox rework
-		</code>
+<pre>
+shell&gt; ./gorox rework
+</pre>
 
 		<h3>升级</h3>
 		<p>TODO</p>

@@ -14,10 +14,10 @@ can be used as:
   * Service Mesh (Data Plane)
   * ... and more through its highly extensible compoments design!
 
-There is also a controller program called Goops which is distributed with Gorox
+There is also a controller program called Myrox which is distributed with Gorox
 and can be used to manage your Gorox cluster optionally.
 
-For more details about Gorox and Goops, please see: https://gorox.io/ .
+For more details about Gorox and Myrox, please see: https://gorox.io/ .
 
 
 Motivation
@@ -187,8 +187,8 @@ the roles in "gorox cluster":
   * sidecar2: A Service Mesh sidecar for svc2,
   * job1: A background application in Gorox doing something periodically.
 
-The whole "gorox cluster" can optionally be managed by a Goops instance. In this
-configuration, all Gorox instances in "gorox cluster" are connected to the Goops
+The whole "gorox cluster" can optionally be managed by a Myrox instance. In this
+configuration, all Gorox instances in "gorox cluster" are connected to the Myrox
 instance and under its control.
 
 Process
@@ -207,8 +207,8 @@ operator --------->| leader process |<------->| worker process |<=============>
 Leader process manages the worker process, which do the real and heavy work.
 
 A Gorox instance can be controlled by operators through the admin interface of
-leader process. Alternately, it can connects to a Goops instance and delegates
-its administration to Goops. In this way, the admin interface in leader process
+leader process. Alternately, it can connects to a Myrox instance and delegates
+its administration to Myrox. In this way, the admin interface in leader process
 is disabled.
 
 Dependencies

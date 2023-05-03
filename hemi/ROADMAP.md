@@ -13,7 +13,7 @@ Roadmap
   * [TODO] official websites.
   * [TODO] fcache.
   * [TODO] booking.
-  * [TODO] goops design and implementation.
+  * [TODO] myrox design and implementation.
   * [TODO] goben design and implementation.
   * [TODO] svc support.
   * [TODO] more unit tests.

@@ -6,5 +6,5 @@
 package srvs
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/goops/srvs/rocks"
+	_ "github.com/hexinfra/gorox/cmds/myrox/srvs/rocks"
 )

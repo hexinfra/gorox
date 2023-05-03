@@ -10,7 +10,7 @@ import (
 
 	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 
-	. "github.com/hexinfra/gorox/cmds/goops/srvs/rocks"
+	. "github.com/hexinfra/gorox/cmds/myrox/srvs/rocks"
 	. "github.com/hexinfra/gorox/hemi"
 )
 

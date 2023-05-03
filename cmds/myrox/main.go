@@ -10,17 +10,17 @@ package main
 import (
 	"github.com/hexinfra/gorox/hemi/process"
 
-	_ "github.com/hexinfra/gorox/cmds/goops/apps"
-	_ "github.com/hexinfra/gorox/cmds/goops/jobs"
-	_ "github.com/hexinfra/gorox/cmds/goops/srvs"
-	_ "github.com/hexinfra/gorox/cmds/goops/svcs"
+	_ "github.com/hexinfra/gorox/cmds/myrox/apps"
+	_ "github.com/hexinfra/gorox/cmds/myrox/jobs"
+	_ "github.com/hexinfra/gorox/cmds/myrox/srvs"
+	_ "github.com/hexinfra/gorox/cmds/myrox/svcs"
 )
 
 const usage = `
-Goops (%s)
+Myrox (%s)
 ================================================================================
 
-  goops [ACTION] [OPTIONS]
+  myrox [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -54,7 +54,7 @@ OPTIONS
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
-  -log    <path>      # leader log file (default: goops-leader.log in logs dir)
+  -log    <path>      # leader log file (default: myrox-leader.log in logs dir)
   -base   <path>      # base directory of the program
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
@@ -69,5 +69,5 @@ OPTIONS
 `
 
 func main() {
-	process.Main("goops", usage, 0, "127.0.0.1:9528")
+	process.Main("myrox", usage, 0, "127.0.0.1:9528")
 }

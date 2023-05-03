@@ -8,9 +8,9 @@ package webui
 import (
 	"errors"
 
-	"github.com/hexinfra/gorox/cmds/goops/apps/webui/pack"
+	"github.com/hexinfra/gorox/cmds/myrox/apps/webui/pack"
 
-	. "github.com/hexinfra/gorox/cmds/goops/srvs/rocks"
+	. "github.com/hexinfra/gorox/cmds/myrox/srvs/rocks"
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 )

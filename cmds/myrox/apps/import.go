@@ -6,6 +6,6 @@
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/cmds/goops/apps/cmdui"
-	_ "github.com/hexinfra/gorox/cmds/goops/apps/webui"
+	_ "github.com/hexinfra/gorox/cmds/myrox/apps/cmdui"
+	_ "github.com/hexinfra/gorox/cmds/myrox/apps/webui"
 )

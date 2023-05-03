@@ -45,7 +45,7 @@ OPTIONS
 
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9525)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9525)
-  -goops  <addr>      # goops address to join. if set, "-admin" will be ignored
+  -myrox  <addr>      # myrox address to join. if set, "-admin" will be ignored
   -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)

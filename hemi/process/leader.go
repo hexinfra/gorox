@@ -8,10 +8,10 @@
 // Some terms:
 //   admGate - Used by leader process, for receiving admConns from control agent
 //   admConn - control agent ----> adminServer()
-//   msgChan - adminServer()/goopsClient() <---> keepWorker()
+//   msgChan - adminServer()/myroxClient() <---> keepWorker()
 //   deadWay - keepWorker() <---- worker.wait()
 //   cmdPipe - leader process <---> worker process
-//   cmcConn - leader goopsClient <---> goops
+//   cmcConn - leader myroxClient <---> myrox
 
 package process
 
@@ -50,10 +50,10 @@ func leaderMain() {
 	}
 	booker = log.New(osFile, "", log.Ldate|log.Ltime)
 
-	if *goopsAddr == "" {
+	if *myroxAddr == "" {
 		adminServer()
 	} else {
-		goopsClient()
+		myroxClient()
 	}
 }
 
@@ -137,7 +137,7 @@ func adminServer() {
 		admConn.Close()
 	}
 }
-func goopsClient() {
+func myroxClient() {
 	// TODO
 	fmt.Println("TODO")
 }

@@ -11,7 +11,7 @@ package internal
 // Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
 type GRPCServer interface {
 	Server
+	RPCServer
 
-	LinkSvcs()
 	RealServer() any // TODO
 }

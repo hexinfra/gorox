@@ -26,10 +26,11 @@ ACTION
   serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
-  info         # call server to report its info
+  pid          # call server to report pids of leader and worker
   rework       # tell leader to restart worker gracefully
   reopen       # tell leader to reopen its admin interface
   ping         # call leader to give a pong
+  info         # call worker to report its info
   reconf       # tell worker to reconfigure
   cpu          # tell worker to perform cpu profiling
   heap         # tell worker to perform heap profiling

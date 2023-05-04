@@ -118,7 +118,7 @@ func adminServer() {
 			}
 		} else { // call
 			var resp *msgx.Message
-			switch req.Comd { // some messages are calling leader only, hijack them.
+			switch req.Comd { // some messages also call leader, hijack them.
 			case comdPing:
 				resp = msgx.NewMessage(comdPing, req.Flag, nil)
 				resp.Set(fmt.Sprintf("leader=%d", os.Getpid()), "pong")

@@ -11,6 +11,19 @@ package internal
 type hrpcServer struct {
 	// Mixins
 	rpcServer_
+	// States
+}
+
+func (s *hrpcServer) Serve() { // goroutine
+}
+
+// hrpcGate
+type hrpcGate struct {
+	// Mixins
+	rpcGate_
+}
+
+func (g *hrpcGate) serve() { // goroutine
 }
 
 // hrpcRequest

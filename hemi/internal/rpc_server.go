@@ -75,6 +75,12 @@ func (s *rpcServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
+// rpcGate_
+type rpcGate_ struct {
+	// Mixins
+	Gate_
+}
+
 // RPCRequest
 type RPCRequest interface {
 }

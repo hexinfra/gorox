@@ -207,7 +207,6 @@ func (c *serverConn_) markBroken()    { c.broken.Store(true) }
 type Request interface {
 	PeerAddr() net.Addr
 	App() *App
-	Svc() *Svc
 
 	VersionCode() uint8
 	IsHTTP1_0() bool
@@ -373,7 +372,6 @@ type serverRequest_ struct { // incoming. needs parsing
 	absPath        []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
 	app            *App        // target app of this request. set before processing stream
-	svc            *Svc        // target svc of this request. set before processing stream
 	formWindow     []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	serverRequest0             // all values must be zero by default in this struct!
 }
@@ -469,7 +467,6 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.absPath = nil
 	r.pathInfo = nil
 	r.app = nil
-	r.svc = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.serverRequest0 = serverRequest0{}
 
@@ -477,7 +474,6 @@ func (r *serverRequest_) onEnd() { // for zeros
 }
 
 func (r *serverRequest_) App() *App { return r.app }
-func (r *serverRequest_) Svc() *Svc { return r.svc }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
@@ -2585,7 +2581,6 @@ type serverResponse_ struct { // outgoing. needs building
 	}
 	// Stream states (zeros)
 	app             *App // associated app
-	svc             *Svc // associated svc
 	serverResponse0      // all values must be zero by default in this struct!
 }
 type serverResponse0 struct { // for fast reset, entirely
@@ -2604,7 +2599,6 @@ func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
 }
 func (r *serverResponse_) onEnd() { // for zeros
 	r.app = nil
-	r.svc = nil
 	r.serverResponse0 = serverResponse0{}
 	r.webOut_.onEnd()
 }

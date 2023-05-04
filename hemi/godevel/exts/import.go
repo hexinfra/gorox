@@ -16,6 +16,7 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
+	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/access"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/mysql"

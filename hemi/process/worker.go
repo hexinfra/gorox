@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/hexinfra/gorox/hemi"
@@ -89,7 +90,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
 	},
 	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("foo", "bar") // TODO: other infos
+		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 }
 

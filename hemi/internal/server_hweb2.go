@@ -284,10 +284,6 @@ func (s *hweb2Stream) executeWebApp(app *App, req *hweb2Request, resp *hweb2Resp
 	// TODO
 	//app.dispatchHandlet(req, resp)
 }
-func (s *hweb2Stream) executeRPCSvc(svc *Svc, req *hweb2Request, resp *hweb2Response) { // request & response
-	// TODO
-	svc.dispatchHRPC(req, resp)
-}
 func (s *hweb2Stream) serveAbnormal(req *hweb2Request, resp *hweb2Response) { // 4xx & 5xx
 	// TODO
 }

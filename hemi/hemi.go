@@ -157,7 +157,7 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
-	Svc        = internal.Svc        // supports both HRPC and gRPC
+	Svc        = internal.Svc
 	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
 
 	Server  = internal.Server

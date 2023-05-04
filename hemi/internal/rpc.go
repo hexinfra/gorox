@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// RPC service and related components. Currently only HRPC and gRPC are planned to support.
+// RPC service and related components.
 
 package internal
 
@@ -17,12 +17,11 @@ type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage       *Stage       // current stage
-	stater      Stater       // the stater which is used by this svc
-	hrpcServers []hrpcServer // linked hrpc servers. may be empty
-	grpcServers []GRPCServer // linked grpc servers. may be empty
+	stage      *Stage      // current stage
+	stater     Stater      // the stater which is used by this svc
+	rpcServers []RPCServer // linked rpc servers. may be empty
 	// States
-	hostnames       [][]byte // should be used by HRPC only
+	hostnames       [][]byte // ...
 	maxContentSize  int64    // max content size allowed
 	exactHostnames  [][]byte // like: ("example.com")
 	suffixHostnames [][]byte // like: ("*.example.com")
@@ -70,9 +69,8 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) linkHRPC(server hrpcServer) { s.hrpcServers = append(s.hrpcServers, server) }
-func (s *Svc) LinkGRPC(server GRPCServer) { s.grpcServers = append(s.grpcServers, server) }
-func (s *Svc) GRPCServers() []GRPCServer  { return s.grpcServers }
+func (s *Svc) LinkServer(server RPCServer) { s.rpcServers = append(s.rpcServers, server) }
+func (s *Svc) Servers() []RPCServer        { return s.rpcServers }
 
 func (s *Svc) maintain() { // goroutine
 	s.Loop(time.Second, func(now time.Time) {
@@ -84,6 +82,6 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatchHRPC(req hrpcRequest, resp hrpcResponse) {
+func (s *Svc) dispatch(req RPCRequest, resp RPCResponse) {
 	// TODO
 }

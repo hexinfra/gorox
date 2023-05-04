@@ -418,11 +418,6 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		req.schemeCode = SchemeHTTP
 	}
 
-	// TODO
-	if server.hrpcMode {
-	} else {
-	}
-
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
@@ -515,10 +510,6 @@ func (s *http1Stream) executeWebApp(app *App, req *http1Request, resp *http1Resp
 	if !req.contentReceived { // content exists but is not used, we receive and drop it here
 		req.dropContent()
 	}
-}
-func (s *http1Stream) executeRPCSvc(svc *Svc, req *http1Request, resp *http1Response) { // request & response
-	// TODO
-	svc.dispatchHRPC(req, resp)
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn

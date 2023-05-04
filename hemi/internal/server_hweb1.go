@@ -264,11 +264,6 @@ func (s *hweb1Stream) execute(conn *hweb1Conn) {
 
 	server := conn.server.(*hweb1Server)
 
-	// TODO
-	if server.hrpcMode {
-	} else {
-	}
-
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
@@ -342,10 +337,6 @@ func (s *hweb1Stream) executeWebApp(app *App, req *hweb1Request, resp *hweb1Resp
 	if !req.contentReceived { // content exists but is not used, we receive and drop it here
 		req.dropContent()
 	}
-}
-func (s *hweb1Stream) executeRPCSvc(svc *Svc, req *hweb1Request, resp *hweb1Response) { // request & response
-	// TODO
-	svc.dispatchHRPC(req, resp)
 }
 func (s *hweb1Stream) serveAbnormal(req *hweb1Request, resp *hweb1Response) { // 4xx & 5xx
 }

@@ -293,10 +293,6 @@ func (s *http3Stream) executeWebApp(app *App, req *http3Request, resp *http3Resp
 	// TODO
 	app.dispatchHandlet(req, resp)
 }
-func (s *http3Stream) executeRPCSvc(svc *Svc, req *http3Request, resp *http3Response) { // request & response
-	// TODO
-	svc.dispatchHRPC(req, resp)
-}
 func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { // 4xx & 5xx
 	// TODO
 }

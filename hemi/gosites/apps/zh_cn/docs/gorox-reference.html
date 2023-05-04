@@ -1768,8 +1768,6 @@ http1Proxy {
 		// .numGates = runtime.NumCPU() ; 不可配置，设置为cpu的核心数。
 		.maxConnsPerGate = 100000
 		.forApps = ("example_com")
-		.forSvcs = ("test_svcs")
-		.hrpcMode = false
 		.enableTCPTun = false
 		.enableUDPTun = false
 		.maxContentSize = 1T
@@ -1827,19 +1825,6 @@ http1Proxy {
 					<p>.forApps 当前 httpxServer 应用于那些 App。</p>
 					<code>语法：.forApps = ("test" "test2")
 						默认值：nil
-					</code>
-				</li>
-				<li>
-					<p>.forSvcs 当前 httpxServer 应用于那些 Svcs。</p>
-					<code>语法：.forSvcs = ("test" "test2")
-						默认值：nil
-					</code>
-				</li>
-				<li>
-					<p>.hrpcMode 是否作为 HRPC 服务？</p>
-					<code>语法 .hrpcMode = false
-						默认值：false
-						取值范围：false | true
 					</code>
 				</li>
 				<li>

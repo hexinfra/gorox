@@ -455,9 +455,7 @@ stage {
 
 	httpxServer "hxs" {
 		.forApps         = ("foo", "bar")
-		.forSvcs         = ()
 		.address         = string,required
-		.hrpcMode        = false
 		.tlsMode         = false
 		.readTimeout     = 60s
 		.writeTimeout    = 60s

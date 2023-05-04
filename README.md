@@ -118,7 +118,7 @@ By default, Gorox uses these dirs:
   * libs/ - Place libs written by you for your project,
   * misc/ - Place misc resource of your project,
   * srvs/ - Place your General Servers, like Chat server, SMS server, and so on,
-  * svcs/ - Place your RPC services, may be gRPC or HRPC.
+  * svcs/ - Place your RPC services,
   * test/ - Place tests for your project.
 
 After Gorox is started, 3 extra dirs are created:

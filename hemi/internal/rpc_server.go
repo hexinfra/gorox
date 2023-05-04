@@ -3,33 +3,82 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General RPC server implementation for gRPC and HRPC.
+// General RPC server implementation.
 
 package internal
 
-// hrpcServer is the HRPC server.
-type hrpcServer interface {
-	webServer
+import (
+	"bytes"
+)
 
-	linkSvcs()
-	findSvc(hostname []byte) *Svc
-}
-
-// hrpcRequest
-type hrpcRequest interface {
-	// TODO
-}
-
-// hrpcResponse
-type hrpcResponse interface {
-	// TODO
-}
-
-// GRPCServer is the interface for all gRPC servers.
-// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
-type GRPCServer interface {
-	Server
-
+// RPCServer
+type RPCServer interface {
 	LinkSvcs()
-	RealServer() any // TODO
+}
+
+// rpcServer_
+type rpcServer_ struct {
+	// Mixins
+	Server_
+	// States
+	forSvcs    []string            // for what svcs
+	exactSvcs  []*hostnameTo[*Svc] // like: ("example.com")
+	suffixSvcs []*hostnameTo[*Svc] // like: ("*.example.com")
+	prefixSvcs []*hostnameTo[*Svc] // like: ("www.example.*")
+}
+
+func (s *rpcServer_) onConfigure() {
+	// forSvcs
+	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
+}
+
+func (s *rpcServer_) LinkSvcs() {
+	for _, svcName := range s.forSvcs {
+		svc := s.stage.Svc(svcName)
+		if svc == nil {
+			continue
+		}
+		svc.LinkServer(s.shell.(RPCServer))
+		// TODO: use hash table?
+		for _, hostname := range svc.exactHostnames {
+			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.suffixHostnames {
+			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+		// TODO: use radix trie?
+		for _, hostname := range svc.prefixHostnames {
+			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		}
+	}
+}
+func (s *rpcServer_) findSvc(hostname []byte) *Svc {
+	// TODO: use hash table?
+	for _, exactMap := range s.exactSvcs {
+		if bytes.Equal(hostname, exactMap.hostname) {
+			return exactMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, suffixMap := range s.suffixSvcs {
+		if bytes.HasSuffix(hostname, suffixMap.hostname) {
+			return suffixMap.target
+		}
+	}
+	// TODO: use radix trie?
+	for _, prefixMap := range s.prefixSvcs {
+		if bytes.HasPrefix(hostname, prefixMap.hostname) {
+			return prefixMap.target
+		}
+	}
+	return nil
+}
+
+// RPCRequest
+type RPCRequest interface {
+}
+
+// RPCResponse
+type RPCResponse interface {
 }

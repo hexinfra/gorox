@@ -29,7 +29,7 @@ type webClient interface {
 type webOutgate_ struct {
 	// Mixins
 	outgate_
-	webKeeper_
+	webAgent_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -41,7 +41,7 @@ func (f *webOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *webOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	f.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	f.webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	f.streamHolder_.onConfigure(shell, 1000)
 	f.contentSaver_.onConfigure(shell, TempDir()+"/web/outgates/"+shell.Name())
 }
@@ -55,7 +55,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webKeeper_
+	webAgent_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
@@ -70,7 +70,7 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
-	b.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b.webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
 	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
 	b.loadBalancer_.onConfigure(shell)
@@ -253,7 +253,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
-		if r.stream.keeper().TLSMode() {
+		if r.stream.agent().TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP
@@ -800,7 +800,7 @@ func (r *clientResponse_) addCookie(cookie *cookie) bool {
 }
 
 func (r *clientResponse_) saveContentFilesDir() string {
-	return r.stream.keeper().SaveContentFilesDir()
+	return r.stream.agent().SaveContentFilesDir()
 }
 
 // cookie is a "set-cookie" received from server.

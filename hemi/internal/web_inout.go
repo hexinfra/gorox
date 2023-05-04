@@ -21,8 +21,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webKeeper is a webServer or webClient which keeps their connections and streams.
-type webKeeper interface {
+// webAgent is a webServer or webClient which keeps its connections and streams.
+type webAgent interface {
 	Stage() *Stage
 	TLSMode() bool
 	ReadTimeout() time.Duration  // timeout of a read operation
@@ -33,17 +33,17 @@ type webKeeper interface {
 	SaveContentFilesDir() string
 }
 
-// webKeeper_ is the mixin for webServer_ and webClient_.
-type webKeeper_ struct {
+// webAgent_ is the mixin for webServer_ and webClient_.
+type webAgent_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	sendTimeout    time.Duration // timeout to send the whole message
 	maxContentSize int64         // max content size allowed
 }
 
-func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+func (a *webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -51,7 +51,7 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, sendTimeout)
 
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -59,7 +59,7 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, recvTimeout)
 
 	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
+	shell.ConfigureInt64("maxContentSize", &a.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
@@ -67,13 +67,13 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, _1T)
 }
 
-func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
-func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
-func (k *webKeeper_) MaxContentSize() int64      { return k.maxContentSize }
+func (a *webAgent_) RecvTimeout() time.Duration { return a.recvTimeout }
+func (a *webAgent_) SendTimeout() time.Duration { return a.sendTimeout }
+func (a *webAgent_) MaxContentSize() int64      { return a.maxContentSize }
 
 // webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
-	keeper() webKeeper
+	agent() webAgent
 	peerAddr() net.Addr
 
 	buffer256() []byte
@@ -241,8 +241,8 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.stream.keeper().RecvTimeout()
-	r.maxContentSize = r.stream.keeper().MaxContentSize()
+	r.recvTimeout = r.stream.agent().RecvTimeout()
+	r.maxContentSize = r.stream.agent().MaxContentSize()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -996,7 +996,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 }
 func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.keeper().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.agent().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
@@ -1499,7 +1499,7 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.keeper().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.agent().ReadTimeout()))
 }
 func (r *webIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1581,7 +1581,7 @@ type webOut0 struct { // for fast reset, entirely
 
 func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.sendTimeout = r.stream.keeper().SendTimeout()
+	r.sendTimeout = r.stream.agent().SendTimeout()
 	r.contentSize = -1 // not set
 	r.versionCode = versionCode
 	r.asRequest = asRequest
@@ -1967,7 +1967,7 @@ func (r *webOut_) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.keeper().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.agent().WriteTimeout()))
 }
 func (r *webOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {

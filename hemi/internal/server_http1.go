@@ -491,7 +491,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *http1Stream) keeper() webKeeper  { return s.conn.getServer() }
+func (s *http1Stream) agent() webAgent    { return s.conn.getServer() }
 func (s *http1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
@@ -1231,7 +1231,7 @@ func (r *http1Response) passBytes(p []byte) error { return r.passBytesH1(p) }
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.oDate == 0 {
-		r.fieldsEdge += uint16(r.stream.keeper().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.agent().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {

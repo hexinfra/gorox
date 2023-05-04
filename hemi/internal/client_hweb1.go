@@ -291,7 +291,7 @@ func (s *B1Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *B1Stream) keeper() webKeeper  { return s.conn.getClient() }
+func (s *B1Stream) agent() webAgent    { return s.conn.getClient() }
 func (s *B1Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
 func (s *B1Stream) Request() *B1Request   { return &s.request }

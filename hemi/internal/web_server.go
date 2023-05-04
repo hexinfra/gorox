@@ -39,7 +39,7 @@ type webServer interface {
 type webServer_ struct {
 	// Mixins
 	Server_
-	webKeeper_
+	webAgent_
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
@@ -65,7 +65,7 @@ func (s *webServer_) onCreate(name string, stage *Stage) {
 
 func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s.webKeeper_.onConfigure(shell, 120*time.Second, 120*time.Second)
+	s.webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
 
@@ -661,9 +661,7 @@ func (r *serverRequest_) cleanPath() {
 		r.path = r.path[:pReal]
 	}
 }
-func (r *serverRequest_) unsafeAbsPath() []byte {
-	return r.absPath
-}
+func (r *serverRequest_) unsafeAbsPath() []byte { return r.absPath }
 func (r *serverRequest_) makeAbsPath() {
 	if r.app.webRoot == "" { // if app's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
 		return
@@ -682,9 +680,7 @@ func (r *serverRequest_) getPathInfo() os.FileInfo {
 	}
 	return r.pathInfo
 }
-func (r *serverRequest_) QueryString() string {
-	return string(r.UnsafeQueryString())
-}
+func (r *serverRequest_) QueryString() string { return string(r.UnsafeQueryString()) }
 func (r *serverRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
@@ -2426,7 +2422,7 @@ func (r *serverRequest_) saveContentFilesDir() string {
 	if r.app != nil {
 		return r.app.SaveContentFilesDir()
 	} else {
-		return r.stream.keeper().SaveContentFilesDir()
+		return r.stream.agent().SaveContentFilesDir()
 	}
 }
 

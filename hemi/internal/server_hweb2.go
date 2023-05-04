@@ -266,7 +266,7 @@ func (s *hweb2Stream) execute() { // goroutine
 	putHWEB2Stream(s)
 }
 
-func (s *hweb2Stream) keeper() webKeeper  { return nil }
+func (s *hweb2Stream) agent() webAgent    { return s.conn.getServer() }
 func (s *hweb2Stream) peerAddr() net.Addr { return nil }
 
 func (s *hweb2Stream) writeContinue() bool { // 100 continue

@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi"
@@ -125,7 +126,7 @@ func adminServer() {
 			case comdPid:
 				msgChan <- req
 				resp = <-msgChan
-				resp.Set("leader", fmt.Sprintf("%d", os.Getpid()))
+				resp.Set("leader", strconv.Itoa(os.Getpid()))
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
 				resp = <-msgChan

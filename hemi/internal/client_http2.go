@@ -290,7 +290,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *H2Stream) agent() webAgent    { return s.conn.getClient() }
+func (s *H2Stream) webAgent() webAgent { return s.conn.getClient() }
 func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) Request() *H2Request   { return &s.request }

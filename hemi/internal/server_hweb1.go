@@ -326,8 +326,8 @@ func (s *hweb1Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *hweb1Stream) agent() webAgent    { return s.conn.getServer() }
-func (s *hweb1Stream) peerAddr() net.Addr { return nil }
+func (s *hweb1Stream) webAgent() webAgent { return s.conn.getServer() }
+func (s *hweb1Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
 func (s *hweb1Stream) writeContinue() bool { // 100 continue
 	return false

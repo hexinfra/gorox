@@ -2422,7 +2422,7 @@ func (r *serverRequest_) saveContentFilesDir() string {
 	if r.app != nil {
 		return r.app.SaveContentFilesDir()
 	} else {
-		return r.stream.agent().SaveContentFilesDir()
+		return r.stream.webAgent().SaveContentFilesDir()
 	}
 }
 

@@ -8,7 +8,6 @@
 package process
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"runtime"
@@ -22,7 +21,6 @@ import (
 var (
 	configBase   string      // base string of config file
 	configFile   string      // config file path
-	lastStage    *hemi.Stage // last stage
 	currentStage *hemi.Stage // current stage
 )
 
@@ -87,7 +85,7 @@ func workerMain(token string) {
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
 	comdPid: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("worker", fmt.Sprintf("%d", os.Getpid()))
+		resp.Set("worker", strconv.Itoa(os.Getpid()))
 	},
 	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos

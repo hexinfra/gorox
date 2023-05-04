@@ -93,15 +93,15 @@ func (s *RocksServer) OnPrepare() {
 }
 
 func (s *RocksServer) Serve() { // goroutine
-	addr, err := net.ResolveTCPAddr("tcp", s.address)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", s.address)
 	if err != nil {
 		EnvExitln(err.Error())
 	}
-	gate, err := net.ListenTCP("tcp", addr)
+	tcpGate, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		EnvExitln(err.Error())
 	}
-	s.gate = gate
+	s.gate = tcpGate
 	connID := int64(0)
 	for {
 		tcpConn, err := s.gate.AcceptTCP()

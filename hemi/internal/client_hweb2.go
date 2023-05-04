@@ -288,7 +288,7 @@ func (s *B2Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *B2Stream) agent() webAgent    { return s.conn.getClient() }
+func (s *B2Stream) webAgent() webAgent { return s.conn.getClient() }
 func (s *B2Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
 func (s *B2Stream) Request() *B2Request   { return &s.request }

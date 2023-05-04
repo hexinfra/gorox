@@ -172,6 +172,9 @@ type hweb2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	tcpConn *net.TCPConn // the connection
+	rawConn syscall.RawConn
+	// Conn states (zeros)
 	hweb2Conn0 // all values must be zero by default in this struct!
 }
 type hweb2Conn0 struct { // for fast reset, entirely
@@ -179,11 +182,15 @@ type hweb2Conn0 struct { // for fast reset, entirely
 
 func (c *hweb2Conn) onGet(id int64, server *hweb2Server, gate *hweb2Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.serverConn_.onGet(id, server, gate)
-	// TODO
+	c.tcpConn = tcpConn
+	c.rawConn = rawConn
 }
 func (c *hweb2Conn) onPut() {
 	c.serverConn_.onPut()
-	// TODO
+	c.tcpConn = nil
+	c.rawConn = nil
+
+	c.hweb2Conn0 = hweb2Conn0{}
 }
 
 func (c *hweb2Conn) serve() { // goroutine
@@ -266,8 +273,8 @@ func (s *hweb2Stream) execute() { // goroutine
 	putHWEB2Stream(s)
 }
 
-func (s *hweb2Stream) agent() webAgent    { return s.conn.getServer() }
-func (s *hweb2Stream) peerAddr() net.Addr { return nil }
+func (s *hweb2Stream) webAgent() webAgent { return s.conn.getServer() }
+func (s *hweb2Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
 func (s *hweb2Stream) writeContinue() bool { // 100 continue
 	// TODO

@@ -73,7 +73,7 @@ func (a *webAgent_) MaxContentSize() int64      { return a.maxContentSize }
 
 // webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
-	agent() webAgent
+	webAgent() webAgent
 	peerAddr() net.Addr
 
 	buffer256() []byte
@@ -241,8 +241,8 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.stream.agent().RecvTimeout()
-	r.maxContentSize = r.stream.agent().MaxContentSize()
+	r.recvTimeout = r.stream.webAgent().RecvTimeout()
+	r.maxContentSize = r.stream.webAgent().MaxContentSize()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -996,7 +996,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 }
 func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.agent().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webAgent().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
@@ -1499,7 +1499,7 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.agent().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.webAgent().ReadTimeout()))
 }
 func (r *webIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1581,7 +1581,7 @@ type webOut0 struct { // for fast reset, entirely
 
 func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.sendTimeout = r.stream.agent().SendTimeout()
+	r.sendTimeout = r.stream.webAgent().SendTimeout()
 	r.contentSize = -1 // not set
 	r.versionCode = versionCode
 	r.asRequest = asRequest
@@ -1967,7 +1967,7 @@ func (r *webOut_) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.agent().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.webAgent().WriteTimeout()))
 }
 func (r *webOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {

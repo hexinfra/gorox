@@ -253,7 +253,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
-		if r.stream.agent().TLSMode() {
+		if r.stream.webAgent().TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP
@@ -800,7 +800,7 @@ func (r *clientResponse_) addCookie(cookie *cookie) bool {
 }
 
 func (r *clientResponse_) saveContentFilesDir() string {
-	return r.stream.agent().SaveContentFilesDir()
+	return r.stream.webAgent().SaveContentFilesDir()
 }
 
 // cookie is a "set-cookie" received from server.

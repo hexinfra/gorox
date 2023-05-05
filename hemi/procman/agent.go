@@ -5,7 +5,7 @@
 
 // Leader control agent.
 
-package process
+package procman
 
 import (
 	"fmt"

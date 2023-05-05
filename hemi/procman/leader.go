@@ -13,7 +13,7 @@
 //   cmdPipe - leader process <---> worker process
 //   cmcConn - leader myroxClient <---> myrox
 
-package process
+package procman
 
 import (
 	"fmt"

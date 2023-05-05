@@ -8,7 +8,7 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/process"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/cmds/myrox/apps"
 	_ "github.com/hexinfra/gorox/cmds/myrox/jobs"
@@ -70,5 +70,5 @@ OPTIONS
 `
 
 func main() {
-	process.Main("myrox", usage, 0, "127.0.0.1:9528")
+	procman.Main("myrox", usage, 0, "127.0.0.1:9528")
 }

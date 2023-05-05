@@ -5,7 +5,7 @@
 
 // Worker process.
 
-package process
+package procman
 
 import (
 	"net"

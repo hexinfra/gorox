@@ -10,7 +10,7 @@ package main
 import (
 	"os"
 
-	"github.com/hexinfra/gorox/hemi/process"
+	"github.com/hexinfra/gorox/hemi/procman"
 	"github.com/hexinfra/gorox/test"
 
 	_ "github.com/hexinfra/gorox/apps"
@@ -79,6 +79,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		process.Main("gorox", usage, 0, "127.0.0.1:9527")
+		procman.Main("gorox", usage, 0, "127.0.0.1:9527")
 	}
 }

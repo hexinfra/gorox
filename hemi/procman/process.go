@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Process package implements a leader-worker process model and its control agent.
+// Procman package implements a leader-worker process model and its control agent.
 
-package process
+package procman
 
 import (
 	"flag"

@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/hexinfra/gorox/hemi/godevel/test"
-	"github.com/hexinfra/gorox/hemi/process"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/godevel/apps"
 	_ "github.com/hexinfra/gorox/hemi/godevel/exts"
@@ -77,6 +77,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		process.Main("godevel", usage, 2, "127.0.0.1:9526")
+		procman.Main("godevel", usage, 2, "127.0.0.1:9526")
 	}
 }

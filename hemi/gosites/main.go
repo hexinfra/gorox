@@ -6,7 +6,7 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/process"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
 )
@@ -64,5 +64,5 @@ OPTIONS
 `
 
 func main() {
-	process.Main("gosites", usage, 0, "127.0.0.1:9525")
+	procman.Main("gosites", usage, 0, "127.0.0.1:9525")
 }

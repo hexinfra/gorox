@@ -223,7 +223,7 @@ Gorox has following dependencies:
                 |                               |          |
                 v                               v          v
   +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<process>|
+  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<procman>|
   +------+   +--+---------------------+--+   +--+---+ +----+----+
                 |                     |         |          |
                 v                     v         v          v

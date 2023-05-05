@@ -290,7 +290,7 @@ func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value
 				*prop = value
 			} else {
 				// TODO: line number
-				UseExitln(fmt.Sprintf("%s is error in %s: %s", name, c.name), err.Error())
+				UseExitln(fmt.Sprintf("%s is error in %s: %s", name, c.name, err.Error()))
 			}
 		} else {
 			UseExitln(fmt.Sprintf("invalid %s in %s", name, c.name))

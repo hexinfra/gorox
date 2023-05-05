@@ -26,6 +26,14 @@ type hrpcGate struct {
 func (g *hrpcGate) serve() { // goroutine
 }
 
+// hrpcExchange
+type hrpcExchange struct {
+	// Mixins
+	// Assocs
+	request  hrpcRequest
+	response hrpcResponse
+}
+
 // hrpcRequest
 type hrpcRequest struct {
 	// TODO

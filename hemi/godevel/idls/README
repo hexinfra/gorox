@@ -1,4 +1,4 @@
 Put your IDL files in this directory.
-For gRPC services, they are *.proto and *.pb.go files.
+For Protobuf based services, they are *.proto and *.pb.go files.
 
 See: https://en.wikipedia.org/wiki/Interface_description_language

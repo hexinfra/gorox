@@ -157,8 +157,9 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
-	Svc        = internal.Svc
-	GRPCServer = internal.GRPCServer // for implementing gRPC server in exts
+	Svc          = internal.Svc
+	GRPCServer   = internal.GRPCServer   // for implementing gRPC server in exts
+	ThriftServer = internal.ThriftServer // for implementing Thrift server in exts
 
 	Server  = internal.Server
 	Cronjob = internal.Cronjob

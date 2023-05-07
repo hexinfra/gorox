@@ -8,7 +8,7 @@ can be used as:
 
   * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, FCGI, uwsgi, AJP)
   * App Server for Go (Applications, Frameworks)
-  * RPC Framework for Go (HRPC, gRPC)
+  * RPC Framework for Go (HRPC, gRPC, Thrift)
   * Web Proxy Server (HTTP, WebSocket, Tunneling, Forward, Reverse, Caching)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
   * Service Mesh (Data Plane)

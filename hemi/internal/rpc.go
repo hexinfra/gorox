@@ -108,6 +108,6 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatch(req RPCRequest, resp RPCResponse) {
+func (s *Svc) dispatch(ping Ping, pong Pong) {
 	// TODO
 }

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// This is a hello svc showing how to use Gorox RPC server to host a svc.
+// This is a hello svc showing how to use Gorox RPC framework to host a svc.
 
 package hello
 

@@ -30,16 +30,16 @@ func (g *hrpcGate) serve() { // goroutine
 type hrpcExchange struct {
 	// Mixins
 	// Assocs
-	request  hrpcRequest
-	response hrpcResponse
+	ping hrpcPing
+	pong hrpcPong
 }
 
-// hrpcRequest
-type hrpcRequest struct {
+// hrpcPing
+type hrpcPing struct {
 	// TODO
 }
 
-// hrpcResponse
-type hrpcResponse struct {
+// hrpcPong
+type hrpcPong struct {
 	// TODO
 }

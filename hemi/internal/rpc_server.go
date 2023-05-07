@@ -91,11 +91,12 @@ type rpcGate_ struct {
 	Gate_
 }
 
-// RPCRequest
-type RPCRequest interface {
+// Ping
+type Ping interface {
 	Svc() *Svc
 }
 
-// RPCResponse
-type RPCResponse interface {
+// Pong
+type Pong interface {
+	Ping() Ping
 }

@@ -13,6 +13,8 @@ import (
 
 // RPCServer
 type RPCServer interface {
+	Server
+
 	LinkSvcs()
 }
 
@@ -20,6 +22,9 @@ type RPCServer interface {
 type rpcServer_ struct {
 	// Mixins
 	Server_
+	// Assocs
+	gates      []rpcGate
+	defaultSvc *Svc
 	// States
 	forSvcs    []string            // for what svcs
 	exactSvcs  []*hostnameTo[*Svc] // like: ("example.com")
@@ -75,6 +80,11 @@ func (s *rpcServer_) findSvc(hostname []byte) *Svc {
 	return nil
 }
 
+// rpcGate
+type rpcGate interface {
+	Gate
+}
+
 // rpcGate_
 type rpcGate_ struct {
 	// Mixins
@@ -83,6 +93,7 @@ type rpcGate_ struct {
 
 // RPCRequest
 type RPCRequest interface {
+	Svc() *Svc
 }
 
 // RPCResponse

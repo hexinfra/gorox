@@ -17,11 +17,14 @@ type Svc struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage      *Stage      // current stage
-	stater     Stater      // the stater which is used by this svc
-	rpcServers []RPCServer // linked rpc servers. may be empty
+	stage   *Stage      // current stage
+	stater  Stater      // the stater which is used by this svc
+	servers []RPCServer // linked rpc servers. may be empty
 	// States
 	hostnames       [][]byte // ...
+	accessLog       []string // (file, rotate)
+	logFormat       string   // log format
+	logger          *logger  // svc access logger
 	maxContentSize  int64    // max content size allowed
 	exactHostnames  [][]byte // like: ("example.com")
 	suffixHostnames [][]byte // like: ("*.example.com")
@@ -59,6 +62,10 @@ func (s *Svc) OnConfigure() {
 	}, _16M)
 }
 func (s *Svc) OnPrepare() {
+	if s.accessLog != nil {
+		//s.logger = newLogger(s.accessLog[0], s.accessLog[1])
+	}
+
 	initsLock.RLock()
 	svcInit := svcInits[s.name]
 	initsLock.RUnlock()
@@ -69,8 +76,27 @@ func (s *Svc) OnPrepare() {
 	}
 }
 
-func (s *Svc) LinkServer(server RPCServer) { s.rpcServers = append(s.rpcServers, server) }
-func (s *Svc) Servers() []RPCServer        { return s.rpcServers }
+func (s *Svc) Log(str string) {
+	// TODO
+	if s.logger != nil {
+		//s.logger.log(str)
+	}
+}
+func (s *Svc) Logln(str string) {
+	// TODO
+	if s.logger != nil {
+		//s.logger.logln(str)
+	}
+}
+func (s *Svc) Logf(format string, args ...any) {
+	// TODO
+	if s.logger != nil {
+		//s.logger.logf(format, args...)
+	}
+}
+
+func (s *Svc) LinkServer(server RPCServer) { s.servers = append(s.servers, server) }
+func (s *Svc) Servers() []RPCServer        { return s.servers }
 
 func (s *Svc) maintain() { // goroutine
 	s.Loop(time.Second, func(now time.Time) {

@@ -10,7 +10,6 @@ package internal
 // GRPCServer is the interface for all gRPC servers.
 // Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
 type GRPCServer interface {
-	Server
 	RPCServer
 
 	RealServer() any // TODO

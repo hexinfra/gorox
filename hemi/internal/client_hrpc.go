@@ -6,3 +6,11 @@
 // HRPC client implementation.
 
 package internal
+
+// hrpcBackend
+type hrpcBackend struct {
+}
+
+// hrpcNode
+type hrpcNode struct {
+}

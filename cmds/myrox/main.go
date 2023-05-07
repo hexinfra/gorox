@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Gorox Operation Server (leader & worker) and its control agent.
+// Gorox Operation Server (leader & worker) and its control client.
 
 package main
 

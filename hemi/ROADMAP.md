@@ -15,7 +15,7 @@ Roadmap
   * [TODO] booking.
   * [TODO] myrox design and implementation.
   * [TODO] goben design and implementation.
-  * [TODO] svc support.
+  * [TODO] rpc framework design and implementation.
   * [TODO] more unit tests.
   * [TODO] black/white box tests.
   * [TODO] ktls support.

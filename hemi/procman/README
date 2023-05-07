@@ -1,6 +1,6 @@
-Procman implements a leader-worker process model and its control agent.
+Procman implements a leader-worker process model and its control client.
 
-A control agent connects to a leader, tell or call its admin APIs. The leader
+A control client connects to a leader, tell or call its admin APIs. The leader
 process starts and monitors its worker process. It uses a TCP connection to
 communicate with its worker process.
 

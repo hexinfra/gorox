@@ -6,8 +6,8 @@
 // Leader process.
 
 // Some terms:
-//   admGate - Used by leader process, for receiving admConns from control agent
-//   admConn - control agent ----> adminServer()
+//   admGate - Used by leader process, for receiving admConns from control client
+//   admConn - control client ----> adminServer()
 //   msgChan - adminServer()/myroxClient() <---> keepWorker()
 //   deadWay - keepWorker() <---- worker.wait()
 //   cmdPipe - leader process <---> worker process
@@ -73,7 +73,7 @@ func adminServer() {
 	booker.Println("worker process started")
 
 	booker.Printf("open admin interface: %s\n", adminAddr)
-	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control agent
+	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control client
 	if err != nil {
 		crash(err.Error())
 	}
@@ -81,8 +81,8 @@ func adminServer() {
 		req *msgx.Message
 		ok  bool
 	)
-	for { // each admConn from control agent
-		admConn, err := admGate.Accept() // admConn is connection between leader and control agent
+	for { // each admConn from control client
+		admConn, err := admGate.Accept() // admConn is connection between leader and control client
 		if err != nil {
 			booker.Println(err.Error())
 			continue
@@ -95,7 +95,7 @@ func adminServer() {
 		if !ok {
 			goto closeNext
 		}
-		booker.Printf("received from agent: %v\n", req)
+		booker.Printf("received from client: %v\n", req)
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case comdStop:

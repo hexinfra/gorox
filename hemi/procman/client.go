@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Leader control agent.
+// Leader control client.
 
 package procman
 
@@ -14,8 +14,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 )
 
-// agentMain is main() for control agent.
-func agentMain(action string) {
+// clientMain is main() for control client.
+func clientMain(action string) {
 	if tell, ok := tellActions[action]; ok {
 		tell()
 	} else if call, ok := callActions[action]; ok {

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Procman package implements a leader-worker process model and its control agent.
+// Procman package implements a leader-worker process model and its control client.
 
 package procman
 
@@ -65,8 +65,8 @@ func Main(name string, usage string, level int, addr string) {
 		fmt.Println(hemi.Version)
 	} else if action == "advise" {
 		system.Advise()
-	} else if action != "serve" { // as control agent
-		agentMain(action)
+	} else if action != "serve" { // as control client
+		clientMain(action)
 	} else { // run as server
 		hemi.SetDebug(int32(debugLevel))
 		serve()

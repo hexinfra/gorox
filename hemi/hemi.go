@@ -13,8 +13,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib"
 )
 
-const Version = "0.2.0-dev"
-
 var ( // registers
 	RegisterUniture = internal.RegisterUniture
 
@@ -189,6 +187,8 @@ type ( // core mixins
 )
 
 const ( // core constants
+	Version = internal.Version
+
 	CodeBug = internal.CodeBug
 	CodeUse = internal.CodeUse
 	CodeEnv = internal.CodeEnv

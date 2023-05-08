@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const Version = "0.2.0-dev"
+
 var ( // global variables shared between stages
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable

@@ -54,19 +54,19 @@ var tellActions = map[string]func(){
 	"gc":        tellGC,
 }
 
-func tellStop()      { _tellLeader(comdStop, 0, nil) }
-func tellQuit()      { _tellLeader(comdQuit, 0, nil) }
-func tellRework()    { _tellLeader(comdRework, 0, nil) }
-func tellReopen()    { _tellLeader(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
-func tellReload()    { _tellLeader(comdReload, 0, nil) }
-func tellCPU()       { _tellLeader(comdCPU, 0, nil) }
-func tellHeap()      { _tellLeader(comdHeap, 0, nil) }
-func tellThread()    { _tellLeader(comdThread, 0, nil) }
-func tellGoroutine() { _tellLeader(comdGoroutine, 0, nil) }
-func tellBlock()     { _tellLeader(comdBlock, 0, nil) }
-func tellGC()        { _tellLeader(comdGC, 0, nil) }
+func tellStop()      { _tell(comdStop, 0, nil) }
+func tellQuit()      { _tell(comdQuit, 0, nil) }
+func tellRework()    { _tell(comdRework, 0, nil) }
+func tellReopen()    { _tell(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
+func tellReload()    { _tell(comdReload, 0, nil) }
+func tellCPU()       { _tell(comdCPU, 0, nil) }
+func tellHeap()      { _tell(comdHeap, 0, nil) }
+func tellThread()    { _tell(comdThread, 0, nil) }
+func tellGoroutine() { _tell(comdGoroutine, 0, nil) }
+func tellBlock()     { _tell(comdBlock, 0, nil) }
+func tellGC()        { _tell(comdGC, 0, nil) }
 
-func _tellLeader(comd uint8, flag uint16, args map[string]string) {
+func _tell(comd uint8, flag uint16, args map[string]string) {
 	admConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		fmt.Printf("tell leader failed: %s\n", err.Error())
@@ -83,17 +83,19 @@ func _tellLeader(comd uint8, flag uint16, args map[string]string) {
 const ( // for calls
 	comdPing = iota
 	comdPid
-	comdInfo
+	comdLeader
+	comdWorker
 )
 
 var callActions = map[string]func(){
-	"ping": callPing,
-	"pid":  callPid,
-	"info": callInfo,
+	"ping":   callPing,
+	"pid":    callPid,
+	"leader": callLeader,
+	"worker": callWorker,
 }
 
 func callPing() {
-	if resp, ok := _callLeader(comdPing, 0, nil); ok && resp.Comd == comdPing && resp.Flag == 0 {
+	if resp, ok := _call(comdPing, 0, nil); ok && resp.Comd == comdPing && resp.Flag == 0 {
 		for name, value := range resp.Args {
 			fmt.Printf("%s: %s\n", name, value)
 		}
@@ -102,7 +104,7 @@ func callPing() {
 	}
 }
 func callPid() {
-	if resp, ok := _callLeader(comdPid, 0, nil); ok {
+	if resp, ok := _call(comdPid, 0, nil); ok {
 		for name, value := range resp.Args {
 			fmt.Printf("%s: %s\n", name, value)
 		}
@@ -110,8 +112,17 @@ func callPid() {
 		fmt.Printf("call leader at %s: failed!\n", targetAddr)
 	}
 }
-func callInfo() {
-	if resp, ok := _callLeader(comdInfo, 0, nil); ok {
+func callLeader() {
+	if resp, ok := _call(comdLeader, 0, nil); ok {
+		for name, value := range resp.Args {
+			fmt.Printf("%s: %s\n", name, value)
+		}
+	} else {
+		fmt.Printf("call leader at %s: failed!\n", targetAddr)
+	}
+}
+func callWorker() {
+	if resp, ok := _call(comdWorker, 0, nil); ok {
 		for name, value := range resp.Args {
 			fmt.Printf("%s: %s\n", name, value)
 		}
@@ -120,7 +131,7 @@ func callInfo() {
 	}
 }
 
-func _callLeader(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
+func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
 	admConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		return nil, false

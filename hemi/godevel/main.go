@@ -37,10 +37,11 @@ ACTION
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
   pid          # call server to report pids of leader and worker
+  leader       # call leader to report its info
   rework       # tell leader to restart worker gracefully
   reopen       # tell leader to reopen its admin interface
   ping         # call leader to give a pong
-  info         # call worker to report its info
+  worker       # call worker to report its info
   reload       # tell worker to reload config
   cpu          # tell worker to perform cpu profiling
   heap         # tell worker to perform heap profiling

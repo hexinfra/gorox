@@ -127,6 +127,9 @@ func adminServer() {
 				msgChan <- req
 				resp = <-msgChan
 				resp.Set("leader", strconv.Itoa(os.Getpid()))
+			case comdLeader:
+				resp = msgx.NewMessage(comdLeader, req.Flag, nil)
+				resp.Set("goroutines", "123") // TODO
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
 				resp = <-msgChan

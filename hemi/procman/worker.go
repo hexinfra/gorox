@@ -87,7 +87,7 @@ var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Me
 	comdPid: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("worker", strconv.Itoa(os.Getpid()))
 	},
-	comdInfo: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
+	comdWorker: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 }

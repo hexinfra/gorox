@@ -26,11 +26,6 @@ func init() {
 		s.onCreate(name, stage)
 		return s
 	})
-	RegisterHandlet("hweb1Proxy", func(name string, stage *Stage, app *App) Handlet {
-		h := new(hweb1Proxy)
-		h.onCreate(name, stage, app)
-		return h
-	})
 }
 
 // hweb1Server is the HWEB/1 server.
@@ -442,29 +437,3 @@ func (r *hweb1Response) finalizeUnsized() error {
 
 func (r *hweb1Response) addedHeaders() []byte { return nil }
 func (r *hweb1Response) fixedHeaders() []byte { return nil }
-
-// hweb1Proxy handlet passes requests to another/backend HWEB/1 servers and cache responses.
-type hweb1Proxy struct {
-	// Mixins
-	normalProxy_
-	// States
-}
-
-func (h *hweb1Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.normalProxy_.onCreate(name, stage, app)
-}
-func (h *hweb1Proxy) OnShutdown() {
-	h.app.SubDone()
-}
-
-func (h *hweb1Proxy) OnConfigure() {
-	h.normalProxy_.onConfigure()
-}
-func (h *hweb1Proxy) OnPrepare() {
-	h.normalProxy_.onPrepare()
-}
-
-func (h *hweb1Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
-	// TODO
-	return
-}

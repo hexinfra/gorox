@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package devel
+package testee
 
 import (
 	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterAppInit("devel", func(app *App) error {
+	RegisterAppInit("testee", func(app *App) error {
 		return nil
 	})
 }

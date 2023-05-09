@@ -10,9 +10,9 @@ package test
 import (
 	"os"
 
-	"github.com/hexinfra/gorox/hemi/godevel/test/apps/devel"
-	"github.com/hexinfra/gorox/hemi/godevel/test/apps/diogin"
-	"github.com/hexinfra/gorox/hemi/godevel/test/apps/fengve"
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/devel"
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/diogin"
+	"github.com/hexinfra/gorox/hemi/develop/test/apps/fengve"
 )
 
 func Main() {

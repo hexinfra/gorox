@@ -75,6 +75,7 @@ type ( // core types
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP3Outgate = internal.HTTP3Outgate
+	HWEB1Outgate = internal.HWEB1Outgate
 	HWEB2Outgate = internal.HWEB2Outgate
 	QUICOutgate  = internal.QUICOutgate
 	TCPSOutgate  = internal.TCPSOutgate
@@ -104,6 +105,12 @@ type ( // core types
 	H3Request    = internal.H3Request
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
+
+	HWEB1Backend = internal.HWEB1Backend
+	B1Conn       = internal.B1Conn
+	B1Stream     = internal.B1Stream
+	B1Request    = internal.B1Request
+	B1Response   = internal.B1Response
 
 	HWEB2Backend = internal.HWEB2Backend
 	B2Conn       = internal.B2Conn

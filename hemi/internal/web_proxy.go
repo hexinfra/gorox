@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web proxy implementation for HTTP and HWEB.
+// General Web proxy implementation.
 
 package internal
 

@@ -29,11 +29,11 @@ Gorox (%s)
 ACTION
 ------
 
+  serve        # start as server
+  test         # run as tester
   help         # show this message
   version      # show version info
   advise       # show how to optimize current platform
-  test         # run as tester
-  serve        # start as server
   stop         # tell server to exit immediately
   quit         # tell server to exit gracefully
   pid          # call server to report pids of leader and worker

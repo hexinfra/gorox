@@ -9,6 +9,6 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *develHandlet) GET_querystring(req Request, resp Response) {
+func (h *testeeHandlet) GET_querystring(req Request, resp Response) {
 	resp.Send(req.QueryString())
 }

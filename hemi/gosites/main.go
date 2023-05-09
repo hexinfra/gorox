@@ -21,6 +21,7 @@ ACTION
 ------
 
   serve        # start as server
+  check        # dry run to check config
   help         # show this message
   version      # show version info
   advise       # show how to optimize current platform
@@ -29,7 +30,7 @@ ACTION
   pid          # call server to report pids of leader and worker
   leader       # call leader to report its info
   rework       # tell leader to restart worker gracefully
-  reopen       # tell leader to reopen its admin interface
+  readmin      # tell leader to reopen its admin interface
   ping         # call leader to give a pong
   worker       # call worker to report its info
   reload       # tell worker to reload config
@@ -40,7 +41,7 @@ ACTION
   block        # tell worker to perform block profiling
 
   Only one action is allowed at a time.
-  If ACTION is missing, the default action is "serve".
+  If ACTION is not specified, the default action is "serve".
 
 OPTIONS
 -------
@@ -48,7 +49,6 @@ OPTIONS
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9525)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9525)
   -myrox  <addr>      # myrox address to join. if set, "-admin" will be ignored
-  -try                # try to serve with config
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
   -log    <path>      # leader log file (default: gosites-leader.log in logs dir)
@@ -59,7 +59,7 @@ OPTIONS
   -config <config>    # path or url to worker config file
 
   "-target" applies for telling and calling actions only.
-  "-admin" applies for "reopen" and "serve".
+  "-admin" applies for "serve" and "readmin".
   Other options apply for "serve" only.
 
 `

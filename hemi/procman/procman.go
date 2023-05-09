@@ -28,7 +28,6 @@ var ( // flags
 	targetAddr string
 	adminAddr  string
 	myroxAddr  = flag.String("myrox", "", "")
-	tryRun     = flag.Bool("try", false, "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")
 	logFile    = flag.String("log", "", "")
@@ -59,84 +58,78 @@ func Main(name string, usage string, level int, addr string) {
 		flag.Parse()
 	}
 
-	if action == "help" {
+	switch action {
+	case "help":
 		fmt.Printf(usage, hemi.Version)
-	} else if action == "version" {
+	case "version":
 		fmt.Println(hemi.Version)
-	} else if action == "advise" {
+	case "advise":
 		system.Advise()
-	} else if action != "serve" { // as control client
-		clientMain(action)
-	} else { // run as server
+	case "serve", "check":
 		hemi.SetDebug(int32(debugLevel))
-		serve()
-	}
-}
-
-func serve() { // as single, leader, or worker
-	// baseDir
-	if *baseDir == "" {
-		*baseDir = system.ExeDir
-	} else { // baseDir is specified.
-		dir, err := filepath.Abs(*baseDir)
-		if err != nil {
-			crash(err.Error())
+		if *baseDir == "" {
+			*baseDir = system.ExeDir
+		} else { // baseDir is specified.
+			dir, err := filepath.Abs(*baseDir)
+			if err != nil {
+				crash(err.Error())
+			}
+			*baseDir = dir
 		}
-		*baseDir = dir
-	}
-	*baseDir = filepath.ToSlash(*baseDir)
-	hemi.SetBaseDir(*baseDir)
-
-	setDir := func(pDir *string, name string, set func(string)) {
-		if dir := *pDir; dir == "" {
-			*pDir = *baseDir + "/" + name
-		} else if !filepath.IsAbs(dir) {
-			*pDir = *baseDir + "/" + dir
+		*baseDir = filepath.ToSlash(*baseDir)
+		hemi.SetBaseDir(*baseDir)
+		setDir := func(pDir *string, name string, set func(string)) {
+			if dir := *pDir; dir == "" {
+				*pDir = *baseDir + "/" + name
+			} else if !filepath.IsAbs(dir) {
+				*pDir = *baseDir + "/" + dir
+			}
+			*pDir = filepath.ToSlash(*pDir)
+			set(*pDir)
 		}
-		*pDir = filepath.ToSlash(*pDir)
-		set(*pDir)
-	}
-	setDir(logsDir, "logs", hemi.SetLogsDir)
-	setDir(tempDir, "temp", hemi.SetTempDir)
-	setDir(varsDir, "vars", hemi.SetVarsDir)
-
-	if *tryRun { // for testing config file
-		if _, err := hemi.ApplyFile(getConfig()); err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println("PASS")
-		}
-	} else if *singleMode { // run as single foreground process. for single mode
-		if stage, err := hemi.ApplyFile(getConfig()); err == nil {
-			stage.Start(0)
-			select {}
-		} else {
-			fmt.Println(err.Error())
-		}
-	} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
-		if token == "leader" {
-			system.DaemonInit()
+		setDir(logsDir, "logs", hemi.SetLogsDir)
+		setDir(tempDir, "temp", hemi.SetTempDir)
+		setDir(varsDir, "vars", hemi.SetVarsDir)
+		if action == "check" {
+			if _, err := hemi.ApplyFile(getConfig()); err != nil {
+				fmt.Println(err.Error())
+			} else {
+				fmt.Println("PASS")
+			}
+		} else if *singleMode { // run as single foreground process. for single mode
+			if stage, err := hemi.ApplyFile(getConfig()); err == nil {
+				stage.Start(0)
+				select {}
+			} else {
+				fmt.Println(err.Error())
+			}
+		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
+			if token == "leader" {
+				system.DaemonInit()
+				leaderMain()
+			} else { // worker
+				workerMain(token)
+			}
+		} else if *daemonMode { // start the leader daemon and exit
+			devNull, err := os.Open(os.DevNull)
+			if err != nil {
+				crash(err.Error())
+			}
+			if leader, err := os.StartProcess(system.ExePath, procArgs, &os.ProcAttr{
+				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+				Files: []*os.File{devNull, devNull, devNull},
+				Sys:   system.DaemonSysAttr(),
+			}); err == nil {
+				leader.Release()
+				devNull.Close()
+			} else {
+				crash(err.Error())
+			}
+		} else { // run as foreground leader. default case
 			leaderMain()
-		} else {
-			workerMain(token)
 		}
-	} else if *daemonMode { // start the leader daemon and exit
-		devNull, err := os.Open(os.DevNull)
-		if err != nil {
-			crash(err.Error())
-		}
-		if leader, err := os.StartProcess(system.ExePath, procArgs, &os.ProcAttr{
-			Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-			Files: []*os.File{devNull, devNull, devNull},
-			Sys:   system.DaemonSysAttr(),
-		}); err == nil {
-			leader.Release()
-			devNull.Close()
-		} else {
-			crash(err.Error())
-		}
-	} else { // run as foreground leader. default case
-		leaderMain()
+	default: // as control client
+		clientMain(action)
 	}
 }
 
@@ -165,9 +158,7 @@ const ( // exit codes
 	codeCrash = 11
 )
 
-func stop() {
-	os.Exit(codeStop)
-}
+func stop() { os.Exit(codeStop) }
 func crash(s string) {
 	fmt.Fprintln(os.Stderr, s)
 	os.Exit(codeCrash)

@@ -101,7 +101,7 @@ func adminServer() {
 			case comdStop:
 				booker.Println("received stop")
 				stop() // worker will stop immediately after the pipe is closed
-			case comdReopen:
+			case comdReadmin:
 				newAddr := req.Get("newAddr") // succeeding adminAddr
 				if newAddr == "" {
 					goto closeNext
@@ -109,10 +109,10 @@ func adminServer() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					admGate.Close()
 					admGate = newGate
-					booker.Printf("reopen to %s\n", newAddr)
+					booker.Printf("admin re-opened to %s\n", newAddr)
 					goto closeNext
 				} else {
-					booker.Printf("reopen failed: %s\n", err.Error())
+					booker.Printf("readmin failed: %s\n", err.Error())
 				}
 			default: // other messages are sent to keepWorker().
 				msgChan <- req

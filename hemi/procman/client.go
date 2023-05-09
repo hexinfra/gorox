@@ -30,7 +30,7 @@ const ( // for tells
 	comdStop
 	comdQuit
 	comdRework
-	comdReopen
+	comdReadmin
 	comdReload
 	comdCPU
 	comdHeap
@@ -44,7 +44,7 @@ var tellActions = map[string]func(){
 	"stop":      tellStop,
 	"quit":      tellQuit,
 	"rework":    tellRework,
-	"reopen":    tellReopen,
+	"readmin":   tellReadmin,
 	"reload":    tellReload,
 	"cpu":       tellCPU,
 	"heap":      tellHeap,
@@ -57,7 +57,7 @@ var tellActions = map[string]func(){
 func tellStop()      { _tell(comdStop, 0, nil) }
 func tellQuit()      { _tell(comdQuit, 0, nil) }
 func tellRework()    { _tell(comdRework, 0, nil) }
-func tellReopen()    { _tell(comdReopen, 0, map[string]string{"newAddr": adminAddr}) }
+func tellReadmin()   { _tell(comdReadmin, 0, map[string]string{"newAddr": adminAddr}) }
 func tellReload()    { _tell(comdReload, 0, nil) }
 func tellCPU()       { _tell(comdCPU, 0, nil) }
 func tellHeap()      { _tell(comdHeap, 0, nil) }

@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Thrift server implementation.
+// Thrift server bridge.
 
 package internal
 
-// ThriftServer is the interface for all Thrift servers.
-// Users can implement their own Thrift server in exts, which implements the ThriftServer interface.
-type ThriftServer interface {
+// ThriftBridge is the interface for all Thrift server bridges.
+// Users can implement their own Thrift bridge in exts, which implements the ThriftBridge interface.
+type ThriftBridge interface {
 	RPCServer
 
-	RealServer() any // TODO
+	ThriftServer() any // TODO
 }

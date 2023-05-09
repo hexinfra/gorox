@@ -156,8 +156,8 @@ type ( // core types
 	Socket   = internal.Socket
 
 	Svc          = internal.Svc
-	GRPCServer   = internal.GRPCServer   // for implementing gRPC server in exts
-	ThriftServer = internal.ThriftServer // for implementing Thrift server in exts
+	GRPCBridge   = internal.GRPCBridge   // for bridging gRPC server in exts
+	ThriftBridge = internal.ThriftBridge // for bridging Thrift server in exts
 
 	Server  = internal.Server
 	Cronjob = internal.Cronjob

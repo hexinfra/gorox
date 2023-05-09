@@ -12,9 +12,9 @@ import (
 func init() {
 	RegisterSvcInit("devel", func(svc *Svc) error {
 		/*
-			ss := svc.GRPCServers()
+			ss := svc.Servers()
 			for _, s := range ss {
-				g := s.RealServer().(*grpc.Server)
+				g := s.GRPCServer().(*grpc.Server)
 				pb.RegisterGreeterServer(g, &greetService{})
 			}
 		*/

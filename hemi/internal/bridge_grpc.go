@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// gRPC server implementation.
+// gRPC server bridge.
 
 package internal
 
-// GRPCServer is the interface for all gRPC servers.
-// Users can implement their own gRPC server in exts, which embeds *grpc.Server and implements the GRPCServer interface.
-type GRPCServer interface {
+// GRPCBridge is the interface for all gRPC server bridges.
+// Users can implement their own gRPC bridge in exts, which embeds *grpc.Server and implements the GRPCBridge interface.
+type GRPCBridge interface {
 	RPCServer
 
-	RealServer() any // TODO
+	GRPCServer() any // TODO
 }

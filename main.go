@@ -41,7 +41,7 @@ ACTION
   reopen       # tell leader to reopen its admin interface
   ping         # call leader to give a pong
   info         # call worker to report its info
-  reconf       # tell worker to reconfigure
+  reload       # tell worker to reload config
   cpu          # tell worker to perform cpu profiling
   heap         # tell worker to perform heap profiling
   thread       # tell worker to perform thread profiling

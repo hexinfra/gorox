@@ -97,7 +97,7 @@ var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell comm
 		stage.Quit() // blocking
 		os.Exit(0)
 	},
-	comdReconf: func(stage *hemi.Stage, req *msgx.Message) {
+	comdReload: func(stage *hemi.Stage, req *msgx.Message) {
 		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
 			id := stage.ID() + 1
 			newStage.Start(id)

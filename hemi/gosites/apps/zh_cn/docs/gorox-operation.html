@@ -3,9 +3,12 @@ article {
 	font-family: sans-serif;
 }
 article pre {
+	display: block;
 	padding: 10px;
-	font-family: monospace;
 	background: #eee;
+}
+article .list {
+	background: #ddd;
 }
 </style>
 
@@ -15,43 +18,37 @@ article pre {
 <p>如果您是一位开发者，在阅读完本文后，还希望学习如何使用 Gorox 进行 Web 应用或 RPC 服务开发，那么请继续参考 <a href="/docs/gorox/developer">Gorox 开发者手册</a>。</p>
 
 	<h2>目录</h2>
-	<ul>
+	<ol>
 		<li><a href="#build-install">构建与安装</a></li>
 		<li><a href="#running-mode">运行模式</a></li>
 		<li><a href="#control">启动、退出、重启与升级</a></li>
 		<li><a href="#configure">配置</a></li>
-	</ul>
+	</ol>
 
 	<h2 id="build-install">构建与安装</h2>
 	<p>在构建 Gorox 前，请确保您的操作系统符合以下要求：</p>
-	<ul>
+	<ul class="list">
 		<li>Linux 内核版本 &gt;= 3.9</li>
 		<li>FreeBSD &gt;= 12.0</li>
 		<li>苹果 macOS &gt;= Catalina</li>
 		<li>微软 Windows &gt;= 10</li>
 	</ul>
 	<p>以及您的 CPU 架构符合以下要求：</p>
-	<ul>
+	<ul class="list">
 		<li>AMD64，也称为 x64，x86-64，Intel 64</li>
 		<li>ARM64，也称为 AArch64</li>
 		<li>RISCV64，也称为 RV64，RISC-V 64</li>
 		<li>LOONG64，也称为 LA64，LoongArch 64</li>
 	</ul>
 	<p>然后，请确保您安装了 Go &gt;= 1.19 版本：</p>
-<pre>
-shell&gt; go version
-</pre>
+	<pre>shell&gt; go version</pre>
 
 		<h3>构建</h3>
 		<p>进入 Gorox 目录，使用以下命令构建 Gorox：</p>
-<pre>
-shell&gt; go build
-</pre>
+		<pre>shell&gt; go build</pre>
 		<p>如果报错，请设置环境变量 CGO_ENABLED=0 再试一次：</p>
-<pre>
-shell&gt; go env -w CGO_ENABLED=0
-shell&gt; go build
-</pre>
+		<pre>shell&gt; go env -w CGO_ENABLED=0
+shell&gt; go build</pre>
 
 		<h3>安装</h3>
 		<p>在您构建成功，或者下载了二进制版本后，直接把 gorox 所在的整个目录移动到您想要存放的位置，即可。</p>
@@ -70,29 +67,19 @@ shell&gt; go build
 
 		<h3>启动</h3>
 		<p>以前台模式启动 Gorox 服务器：</p>
-<pre>
-shell&gt; ./gorox serve
-</pre>
+		<pre>shell&gt; ./gorox serve</pre>
 		<p>以后台模式启动 Gorox 服务器：</p>
-<pre>
-shell&gt; ./gorox serve -daemon
-</pre>
+		<pre>shell&gt; ./gorox serve -daemon</pre>
 		<p>以后台模式启动 Gorox 服务器后，可以运行以下命令检查 leader 进程和 worker 进程是否启动成功：</p>
-<pre>
-shell&gt; ./gorox pid
-</pre>
+		<pre>shell&gt; ./gorox pid</pre>
 
 		<h3>退出</h3>
 		<p>运行一个客户端模式的 Gorox，可以告知当前正在运行的处于服务器模式的 Gorox 进程退出运行：</p>
-<pre>
-shell&gt; ./gorox quit
-</pre>
+		<pre>shell&gt; ./gorox quit</pre>
 
 		<h3>重启</h3>
 		<p>通常来说，我们都是为了重启 worker 进程。使用以下命令重启 worker 进程：</p>
-<pre>
-shell&gt; ./gorox rework
-</pre>
+		<pre>shell&gt; ./gorox rework</pre>
 
 		<h3>升级</h3>
 		<p>TODO</p>

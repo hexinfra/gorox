@@ -274,7 +274,7 @@ stage {
 
 	// cachers
 	localCacher "lc1" {
-		.cacheDir = %varsDir + "/cacheDir/lc1"
+		.cacheDir = %varsDir + "/cachers/lc1"
 	}
 	memCacher "mc1" {
 	}

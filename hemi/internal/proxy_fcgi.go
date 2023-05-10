@@ -1066,8 +1066,8 @@ func (r *fcgiResponse) addPrime(prime *pair) bool {
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we believe in framing
-func (r *fcgiResponse) IsUnsized() bool    { return true } // fcgi is unsized by default. we believe in framing
+func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we trust in framing protocol
+func (r *fcgiResponse) IsUnsized() bool    { return true } // fcgi is unsized by default. we trust in framing protocol
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used

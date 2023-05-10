@@ -26,20 +26,20 @@ var (
 
 // workerMain is main() for worker process.
 func workerMain(token string) {
-	parts := strings.Split(token, "|") // ip:port|pipeKey
+	parts := strings.Split(token, "|") // ip:port|cmdKey
 	if len(parts) != 2 {
 		crash("bad token")
 	}
 
 	// Contact leader process
-	cmdPipe, err := net.Dial("tcp", parts[0]) // ip:port
+	cmdConn, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
 		crash("dial leader failed: " + err.Error())
 	}
 
 	// Register worker to leader
-	if loginResp, ok := msgx.Call(cmdPipe, msgx.NewMessage(0, 0, map[string]string{
-		"pipeKey": parts[1],
+	if loginResp, ok := msgx.Call(cmdConn, msgx.NewMessage(0, 0, map[string]string{
+		"cmdKey": parts[1],
 	}), 16<<20); ok {
 		configBase = loginResp.Get("base")
 		configFile = loginResp.Get("file")
@@ -56,7 +56,7 @@ func workerMain(token string) {
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
-		req, ok := msgx.Recv(cmdPipe, 16<<20)
+		req, ok := msgx.Recv(cmdConn, 16<<20)
 		if !ok { // leader must be gone
 			break
 		}
@@ -70,7 +70,7 @@ func workerMain(token string) {
 			} else {
 				resp.Flag = 404
 			}
-			if !msgx.Send(cmdPipe, resp) { // leader must be gone
+			if !msgx.Send(cmdConn, resp) { // leader must be gone
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {

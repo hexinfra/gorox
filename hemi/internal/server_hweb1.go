@@ -262,7 +262,7 @@ func (s *hweb1Stream) execute(conn *hweb1Conn) {
 	app := server.findApp(req.UnsafeHostname())
 
 	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
-		req.headResult, req.failReason = StatusNotFound, "target is not found in this server"
+		req.headResult, req.failReason = StatusNotFound, "target app is not found in this server"
 		s.serveAbnormal(req, resp)
 		return
 	}

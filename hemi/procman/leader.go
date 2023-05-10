@@ -10,8 +10,8 @@
 //   admConn - control client ----> adminServer()
 //   msgChan - adminServer()/myroxClient() <---> keepWorker()
 //   deadWay - keepWorker() <---- worker.wait()
-//   cmdPipe - leader process <---> worker process
-//   cmcConn - leader myroxClient <---> myrox
+//   cmdConn - leader process <---> worker process
+//   roxConn - leader myroxClient <---> myrox
 
 package procman
 
@@ -100,7 +100,7 @@ func adminServer() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case comdStop:
 				booker.Println("received stop")
-				stop() // worker will stop immediately after the pipe is closed
+				stop() // worker will stop immediately after cmdConn is closed
 			case comdReadmin:
 				newAddr := req.Get("newAddr") // succeeding adminAddr
 				if newAddr == "" {
@@ -155,9 +155,9 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 	for i := 0; i < len(keyBuffer); i++ {
 		keyBuffer[i] = chars[rand.Intn(10)]
 	}
-	pipeKey := string(keyBuffer)
+	cmdKey := string(keyBuffer)
 
-	worker := newWorker(pipeKey)
+	worker := newWorker(cmdKey)
 	worker.start(base, file, deadWay)
 	msgChan <- nil // reply to leaderMain that we have created the worker.
 
@@ -173,7 +173,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 				case comdRework: // restart worker
 					// Create new worker
 					deadWay2 := make(chan int)
-					worker2 := newWorker(pipeKey)
+					worker2 := newWorker(cmdKey)
 					worker2.start(base, file, deadWay2)
 					// Quit old worker
 					req.Comd = comdQuit
@@ -207,15 +207,15 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 
 // worker denotes the worker process used only in leader process
 type worker struct {
-	pipeKey string
 	process *os.Process
-	cmdPipe net.Conn
+	cmdKey  string
+	cmdConn net.Conn
 	lastDie time.Time
 }
 
-func newWorker(pipeKey string) *worker {
+func newWorker(cmdKey string) *worker {
 	w := new(worker)
-	w.pipeKey = pipeKey
+	w.cmdKey = cmdKey
 	return w
 }
 
@@ -228,7 +228,7 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, procArgs, &os.ProcAttr{
-		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.pipeKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.cmdKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit
 		Sys:   system.DaemonSysAttr(),
 	})
@@ -237,27 +237,27 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	}
 	w.process = process
 
-	// Accept pipe from worker
-	cmdPipe, err := tmpGate.Accept()
+	// Accept cmdConn from worker
+	cmdConn, err := tmpGate.Accept()
 	if err != nil {
 		crash(err.Error())
 	}
 	tmpGate.Close()
 
-	// Pipe is established, now register worker process
-	loginReq, ok := msgx.Recv(cmdPipe, 16<<10)
-	if !ok || loginReq.Get("pipeKey") != w.pipeKey {
+	// cmdConn is established, now register worker process
+	loginReq, ok := msgx.Recv(cmdConn, 16<<10)
+	if !ok || loginReq.Get("cmdKey") != w.cmdKey {
 		crash("bad worker")
 	}
-	if !msgx.Send(cmdPipe, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
+	if !msgx.Send(cmdConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"base": base,
 		"file": file,
 	})) {
 		crash("send worker")
 	}
 
-	// Register succeed, save pipe and start waiting
-	w.cmdPipe = cmdPipe
+	// Register succeed, save cmdConn and start waiting
+	w.cmdConn = cmdConn
 	go w.watch(deadWay)
 }
 func (w *worker) watch(deadWay chan int) { // goroutine
@@ -269,10 +269,10 @@ func (w *worker) watch(deadWay chan int) { // goroutine
 }
 
 func (w *worker) tell(req *msgx.Message) {
-	msgx.Tell(w.cmdPipe, req)
+	msgx.Tell(w.cmdConn, req)
 }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
-	resp, ok := msgx.Call(w.cmdPipe, req, 16<<20)
+	resp, ok := msgx.Call(w.cmdConn, req, 16<<20)
 	if !ok {
 		resp = msgx.NewMessage(req.Comd, 0, nil)
 		resp.Flag = 0xffff
@@ -282,5 +282,5 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 }
 
 func (w *worker) reset() {
-	w.cmdPipe.Close()
+	w.cmdConn.Close()
 }

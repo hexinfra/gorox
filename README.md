@@ -197,11 +197,11 @@ Process
 A Gorox instance has two processes: a leader process, and a worker process:
 
 ```
-                   +----------------+         +----------------+ public traffic
-          admConn  |                | cmdPipe |                |<=============>
-operator --------->| leader process |<------->| worker process |<=============>
-                   |                |         |                |<=============>
-                   +----------------+         +----------------+
+                  +----------------+         +----------------+ business traffic
+         admConn  |                | cmdConn |                |<===============>
+operator--------->| leader process |<------->| worker process |<===============>
+                  |                |         |                |<===============>
+                  +----------------+         +----------------+
 ```
 
 Leader process manages the worker process, which do the real and heavy work.

@@ -8,6 +8,7 @@
 package demo
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/hexinfra/gorox/hemi/internal"
@@ -46,7 +47,7 @@ func (r *demoRunner) OnPrepare() {
 
 func (r *demoRunner) Run() { // goroutine
 	r.Loop(time.Second, func(now time.Time) {
-		// TODO
+		fmt.Printf("i'm runner %s\n", r.Name())
 	})
 	if IsDebug(2) {
 		Debugf("demoRunner=%s done\n", r.Name())

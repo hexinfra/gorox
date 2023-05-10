@@ -599,7 +599,7 @@ func (s *Stage) createRunner(sign string, name string) Runner {
 	}
 	runner := create(name, s)
 	runner.setShell(runner)
-	s.runners[sign] = runner
+	s.runners[name] = runner
 	return runner
 }
 func (s *Stage) createBackend(sign string, name string) Backend {

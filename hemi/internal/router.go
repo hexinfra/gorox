@@ -209,12 +209,8 @@ func (c *case_[R, D, E]) OnConfigure() {
 func (c *case_[R, D, E]) OnPrepare() {
 }
 
-func (c *case_[R, D, E]) addDealer(dealer D) {
-	c.dealers = append(c.dealers, dealer)
-}
-func (c *case_[R, D, E]) addEditor(editor E) {
-	c.editors = append(c.editors, editor)
-}
+func (c *case_[R, D, E]) addDealer(dealer D) { c.dealers = append(c.dealers, dealer) }
+func (c *case_[R, D, E]) addEditor(editor E) { c.editors = append(c.editors, editor) }
 
 func (c *case_[R, D, E]) equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {

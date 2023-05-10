@@ -1,4 +1,7 @@
-// This file shows definitions of all components and properties in Gorox, with their default values.
+// This file shows definitions of all components in Gorox, with their properties
+// and default values. Names of the components are examples only.
+
+// Don't use this file as config file directly.
 
 stage {
 	.logFile = %logsDir + "/worker.log"
@@ -8,18 +11,18 @@ stage {
 	.grtFile = %tempDir + "/grt.prof"
 	.blkFile = %tempDir + "/blk.prof"
 
-	// fixtures
+	// fixtures. fixtures are singletons
 	clock {
 	}
-	fcache { // singleton, only one is allowed in stage.
+	fcache {
 		.smallFileSize = 65535
 		.maxSmallFiles = 1000
 		.maxLargeFiles = 500
 		.cacheTimeout  = 1s
 	}
-	resolver { // singleton, only one is allowed in stage.
+	resolver {
 	}
-	http1Outgate { // singleton, only one is allowed in stage.
+	http1Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -31,7 +34,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-	http2Outgate { // singleton, only one is allowed in stage.
+	http2Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -43,7 +46,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-	http3Outgate { // singleton, only one is allowed in stage.
+	http3Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -55,7 +58,9 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-	hweb2Outgate { // singleton, only one is allowed in stage.
+	hweb1Outgate {
+	}
+	hweb2Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -67,7 +72,7 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-	quicOutgate { // singleton, only one is allowed in stage.
+	quicOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -75,7 +80,7 @@ stage {
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
 	}
-	tcpsOutgate { // singleton, only one is allowed in stage.
+	tcpsOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -83,7 +88,7 @@ stage {
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
 	}
-	udpsOutgate { // singleton, only one is allowed in stage.
+	udpsOutgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -96,7 +101,7 @@ stage {
 	}
 
 	// backends
-	http1Backend "h1b" {
+	http1Backend "h1b1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -113,7 +118,7 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
 	}
-	http2Backend "h2b" {
+	http2Backend "h2b1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -130,7 +135,7 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
 	}
-	http3Backend "h3b" {
+	http3Backend "h3b1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -147,9 +152,11 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "ipHash"
 	}
-	hweb2Backend "b2b" {
+	hweb1Backend "b1b1" {
 	}
-	quicBackend "qb" {
+	hweb2Backend "b2b1" {
+	}
+	quicBackend "qb1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -162,8 +169,7 @@ stage {
 		.maxStreamsPerConn = 1000
 		.balancer = "random"
 	}
-
-	tcpsBackend "tb" {
+	tcpsBackend "tb1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -176,7 +182,7 @@ stage {
 		.maxStreamsPerConn = 1000
 		.balancer = "random"
 	}
-	udpsBackend "ub" {
+	udpsBackend "ub1" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -190,52 +196,93 @@ stage {
 	}
 
 	// meshers
-	quicMesher "qm" {
+	quicMesher "qm1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s
 		.writeTimeout    = 60s
 		.numGates        = runtime.NumCPU()
 		.maxConnsPerGate = 100000
+
+		// dealers
+		quicProxy "qp1" {
+		}
+
+		// editors
+
 		// cases
 	}
-	tcpsMesher "tm" {
+	tcpsMesher "tm1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s
 		.writeTimeout    = 60s
 		.numGates        = runtime.NumCPU()
 		.maxConnsPerGate = 100000
+
+		// dealers
+		accessDealer "ad1" {
+		}
+		echoDealer "ed1" {
+		}
+		helloDealer "hd1" {
+		}
+		mysqlProxy "mp1" {
+		}
+		pgsqlProxy "pp1" {
+		}
+		redisProxy "rp1" {
+		}
+		tcpsProxy "tp1" {
+		}
+
+		// editors
+		mysqlViewer "mv1" {
+		}
+		pgsqlViewer "pv1" {
+		}
+		redisViewer "rv1" {
+		}
+
 		// cases
 	}
-	udpsMesher "um" {
+	udpsMesher "um1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s
 		.writeTimeout    = 60s
 		.numGates        = runtime.NumCPU()
 		.maxConnsPerGate = 100000
+
+		// dealers
+		dnsDealer "dd1" {
+		}
+		udpsProxy "up1" {
+		}
+
+		// editors
+
 		// cases
 	}
 
 	// staters
-	localStater "ls" {
-		.stateDir = %VarsDir + "/staters/ls"
+	localStater "ls1" {
+		.stateDir = %varsDir + "/staters/ls"
 	}
-	redisStater "rs" {
+	redisStater "rs1" {
 	}
 
 	// cachers
-	localCacher "lc" {
-		.cacheDir = %VarsDir + "/cacheDir/lc"
+	localCacher "lc1" {
+		.cacheDir = %varsDir + "/cacheDir/lc1"
 	}
-	memCacher "mc" {
+	memCacher "mc1" {
 	}
-	redisCacher "rc" {
+	redisCacher "rc1" {
 	}
 
 	// apps
-	app "a" {
+	app "a1" {
 		.hostnames            = ("*")
 		.webRoot              = ""
 		.file404              = ""
@@ -251,89 +298,32 @@ stage {
 		.saveContentFilesDir  = %tempDir + "/apps/a"
 
 		// handlets
-		accessChecker "ah" {
+		accessChecker "ac1" {
 			.deny = ("all")
 			.allow = ("10.100.1.1/16", "127.0.0.1", "::1", "192.168.1.1/24")
 		}
-		refererChecker "rc" {
+		favicon "f1" {
+		}
+		hostnameChecker "hc1" {
+			.hostname = "www.example.cpm"
+			.permanent = true
+		}
+		httpsChecker "hc1" {
+			.authority = "www.example.cpm"
+			.permanent = true
+		}
+		limitChecker "lc1" {
+		}
+		mp4Handlet "mh1" {
+		}
+		refererChecker "rc1" {
 			.serverNames = ("*.gorox.com")
 			.none = false
 			.blocked = false
 		}
-		hostnameChecker "hh" {
-			.hostname = "www.example.cpm"
-			.permanent = true
+		rewriter "r1" {
 		}
-		httpsChecker "hh" {
-			.authority = "www.example.cpm"
-			.permanent = true
-		}
-		limitChecker "lh" {
-		}
-		refererChecker "rh" {
-		}
-		rewriter "rh" {
-		}
-		ajpProxy "ah" {
-		}
-		favicon "fh" {
-		}
-		fcgiProxy "fh" {
-			.saveContentFilesDir = %tempDir + "/fcgi/fh"
-			.toBackend = "php-fpm"
-			.sendTimeout = 60s
-			.recvTimeout = 60s
-			.scriptFilename = "action.php" // Notice: always use "action.php"
-			.indexFile = "index.php"
-			.keepConn = true
-			.bufferClientContent = true
-			.bufferServerContent = true
-			.preferUnderscore = true
-			.withCacher = "cacher name"
-		}
-		uwsgiProxy "uh" {
-		}
-		webdavHandlet "wh" {
-		}
-
-		http1Proxy "hh" {
-			.proxyMode = "reverse"
-			.toBackend = "proxy_name"
-			.viaName = "gorox"
-			.bufferClientContent = true
-			.bufferServerContent = true
-			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addRequestHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-			)
-
-			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addResponseHeaders = (
-				["cache-control" : "max-age=86400"],
-			)
-		}
-		http2Proxy "hh" {
-			.proxyMode = "reverse"
-			.toBackend = "proxy_name"
-			.viaName = "gorox"
-			.bufferClientContent = true
-			.bufferServerContent = true
-			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addRequestHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-			)
-
-			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addResponseHeaders = (
-				["cache-control" : "max-age=86400"],
-			)
-		}
-		http3Proxy "hh" {
-		}
-		hweb2Proxy "bh" {
-		}
-
-		sitex "sh" {
+		sitex "s1" {
 			.rdbms = "mysql://user:pass@host:port/dbname?charset=utf8mb4"
 			.sites = [
 				"front": [
@@ -346,8 +336,9 @@ stage {
 				],
 			]
 		}
-
-		static "sh" {
+		webdavHandlet "wh1" {
+		}
+		static "s1" {
 			.webRoot = "/var/www"
 			.indexFile = "index.html"
 			.autoIndex = true
@@ -357,103 +348,108 @@ stage {
 			]
 			.defaultType = "application/octet-stream"
 		}
+		ajpProxy "ap1" {
+		}
+		fcgiProxy "fp1" {
+			.saveContentFilesDir = %tempDir + "/fcgi/fp1"
+			.toBackend = "php-fpm"
+			.sendTimeout = 60s
+			.recvTimeout = 60s
+			.scriptFilename = ""
+			.indexFile = "index.php"
+			.keepConn = true
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.preferUnderscore = true
+			.withCacher = "cacher name"
+		}
+		http1Proxy "h1p1" {
+			.proxyMode = "reverse"
+			.toBackend = "proxy_name"
+			.viaName = "gorox"
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addRequestHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+			)
+
+			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addResponseHeaders = (
+				["cache-control" : "max-age=86400"],
+			)
+		}
+		http2Proxy "h2p1" {
+			.proxyMode = "reverse"
+			.toBackend = "proxy_name"
+			.viaName = "gorox"
+			.bufferClientContent = true
+			.bufferServerContent = true
+			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addRequestHeaders = (
+				["x-root-id" : "xxx-xxx-xxx-xxx"],
+			)
+
+			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+			.addResponseHeaders = (
+				["cache-control" : "max-age=86400"],
+			)
+		}
+		http3Proxy "h3p1" {
+		}
+		hweb1Proxy "b1p1" {
+		}
+		hweb2Proxy "b2p1" {
+		}
+		uwsgiProxy "up1" {
+		}
 
 		// revisers
-		gzipReviser "gr" {
+		gunzipReviser "gr1" {
+		}
+		gzipReviser "gr1" {
 			.compressLevel = 1
 			.minLength = 8k 
 			.onContentTypes = ("text/html") 
 		}
-		headReviser "hr" {
+		headReviser "hr1" {
 			.addResponse = ["cache-control" : "max-age=86400"]
 			.addRequest = ["env" : "gray"]
 			.delRequest = ("cookie", "date")
 			.delResponse = ("cookie", "date")
 		}
-		replaceReviser "rr" {
+		replaceReviser "rr1" {
 		}
-		ssiReviser "sr" {
+		ssiReviser "sr1" {
 		}
-		wrapReviser "wr" {
+		wrapReviser "wr1" {
 		}
 
 		// socklets
-		helloSocklet "hs" {
+		helloSocklet "hs1" {
 		}
-		sock1Proxy "s1p" {
+		sock1Proxy "s1p1" {
 		}
-		sock2Proxy "s2p" {
+		sock2Proxy "s2p1" {
 		}
-		sock3Proxy "s3p" {
+		sock3Proxy "s3p1" {
 		}
 
 		// rules
-		rule "r1" condition {
-		}
-		rule $path == "/phpstatus" { 
-			fcgiProxy {
-				.toBackend = "fpm"
-			}
-		}
-		rule $path == "/favicon.ico" { // favicon.ico  doesnot record logAccess
-			.logAccess = false
-		}
-		rule $path ^= "/user/" { // /user/xxxx forward user center server
-			http1Proxy { 
-				.toBackend = "user_center"
-			}
-		}
-		rule $path ^= "/order/" { // /order/xxxx forward order server
-			http1Proxy {
-				.toBackend = "order_server"
-			}
-		}
-		rule $path $= (".doc", ".docx", ".pdf") { // Forbidden
-			.returnCode = 403
-		}
-		rule $path ^= ("/favicon.ico", "/robots.txt", "/static/") { // http cache
-			static {}
-			headReviser {
-				.addResponse = ["cache-control" : "max-age=86400"]
-			}
-		}
-		rule $path ~= "\.php$" { // forward php requests
-			fcgiProxy {
-				.toBackend = "fpm"
-			}
-		}
-		rule $queryString ~= "version=4.11" { // match url query
-			.returnCode = 302
-			headReviser {
-				.addResponse = ["Location" : "/upgrade.html"]
-			}
-		}
-		rule $path !-e { // file path change
-			.returnCode = 302
-			headReviser {
-				.addResponse = ["Location" : "new_path"]
-			}
-		}
-		rule $path -d { // autoIndex
-			static {
-				.autoIndex = true
-			}
-		}
 	}
 
 	// svcs
-	svc "s" {
-		withStater = "Stater name"
-		maxContentSize = 16G
+	svc "s1" {
+		.withStater = "Stater name"
+		.maxContentSize = 16G
 	}
 
 	// servers
-	echoServer "es" {
+	echoServer "es1" {
 	}
-	http3Server "h3s" {
+	socksServer "ss1" {
 	}
-
-	httpxServer "hxs" {
+	httpxServer "hxs1" {
 		.forApps         = ("foo", "bar")
 		.address         = string,required
 		.tlsMode         = false
@@ -471,10 +467,11 @@ stage {
 		.enableHTTP2     = false
 		.h2cMode         = false
 	}
-
-	hweb2Server "b2s" {
+	http3Server "h3s1" {
 	}
-	socksServer "ss" {
+	hweb1Server "b1s1" {
+	}
+	hweb2Server "b2s1" {
 	}
 
 	// cronjobs

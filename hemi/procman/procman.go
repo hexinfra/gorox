@@ -28,6 +28,7 @@ var ( // flags
 	targetAddr string
 	adminAddr  string
 	myroxAddr  = flag.String("myrox", "", "")
+	config     = flag.String("conf", "", "")
 	singleMode = flag.Bool("single", false, "")
 	daemonMode = flag.Bool("daemon", false, "")
 	logFile    = flag.String("log", "", "")
@@ -35,7 +36,6 @@ var ( // flags
 	logsDir    = flag.String("logs", "", "")
 	tempDir    = flag.String("temp", "", "")
 	varsDir    = flag.String("vars", "", "")
-	config     = flag.String("config", "", "")
 )
 
 func Main(name string, usage string, level int, addr string) {
@@ -90,7 +90,7 @@ func Main(name string, usage string, level int, addr string) {
 		setDir(logsDir, "logs", hemi.SetLogsDir)
 		setDir(tempDir, "temp", hemi.SetTempDir)
 		setDir(varsDir, "vars", hemi.SetVarsDir)
-		if action == "check" {
+		if action == "check" { // dry run
 			if _, err := hemi.ApplyFile(getConfig()); err != nil {
 				fmt.Println(err.Error())
 			} else {
@@ -136,6 +136,7 @@ func Main(name string, usage string, level int, addr string) {
 func getConfig() (base string, file string) {
 	baseDir, config := *baseDir, *config
 	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
+		// base: scheme://host:port/path/
 		panic("currently not supported!")
 	} else {
 		if config == "" {

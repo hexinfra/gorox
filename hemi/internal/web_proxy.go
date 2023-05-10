@@ -43,6 +43,8 @@ func (h *normalProxy_) onConfigure() {
 		} else {
 			UseExitln("invalid proxyMode")
 		}
+	} else {
+		h.isForward = false
 	}
 
 	// toBackend
@@ -124,7 +126,10 @@ func (s *socketProxy_) onConfigure() {
 		} else {
 			UseExitln("invalid proxyMode")
 		}
+	} else {
+		s.isForward = false
 	}
+
 	// toBackend
 	if v, ok := s.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -144,6 +149,7 @@ func (s *socketProxy_) onConfigure() {
 	}
 }
 func (s *socketProxy_) onPrepare() {
+	// Currently nothing.
 }
 
 func (s *socketProxy_) IsProxy() bool { return true }

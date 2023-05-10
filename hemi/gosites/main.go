@@ -49,6 +49,7 @@ OPTIONS
   -target <addr>      # leader address to tell or call (default: 127.0.0.1:9525)
   -admin  <addr>      # listen address of leader admin (default: 127.0.0.1:9525)
   -myrox  <addr>      # myrox address to join. if set, "-admin" will be ignored
+  -conf   <config>    # path or url to worker config file
   -single             # run server in single mode. only a process is started
   -daemon             # run server as daemon (default: false)
   -log    <path>      # leader log file (default: gosites-leader.log in logs dir)
@@ -56,7 +57,6 @@ OPTIONS
   -logs   <path>      # logs directory to use
   -temp   <path>      # temp directory to use
   -vars   <path>      # vars directory to use
-  -config <config>    # path or url to worker config file
 
   "-target" applies for telling and calling actions only.
   "-admin" applies for "serve" and "readmin".

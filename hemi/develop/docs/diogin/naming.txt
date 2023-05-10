@@ -36,4 +36,4 @@ COMPONENTS
       rule [*]
     svc [*]
     server (httpxServer, http3Server, echoServer, ...)
-    cronjob (clean, ...)
+    cronjob (clean, stat, ...)

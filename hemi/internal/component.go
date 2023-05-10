@@ -83,7 +83,7 @@ var ( // global maps, shared between stages
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(sign string, stage *Stage) Cronjob)
+	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 	initsLock          sync.RWMutex
 	appInits           = make(map[string]func(app *App) error) // indexed by app name.
 	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
@@ -139,7 +139,7 @@ func RegisterSocklet(sign string, create func(name string, stage *Stage, app *Ap
 func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
 	_registerComponent0(sign, compServer, serverCreators, create)
 }
-func RegisterCronjob(sign string, create func(sign string, stage *Stage) Cronjob) {
+func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
@@ -373,7 +373,7 @@ type Stage struct {
 	apps         compDict[*App]        // indexed by appName
 	svcs         compDict[*Svc]        // indexed by svcName
 	servers      compDict[Server]      // indexed by serverName
-	cronjobs     compDict[Cronjob]     // indexed by sign
+	cronjobs     compDict[Cronjob]     // indexed by cronjobName
 	// States
 	logFile string // stage's log file
 	booker  *log.Logger
@@ -704,17 +704,17 @@ func (s *Stage) createServer(sign string, name string) Server {
 	s.servers[name] = server
 	return server
 }
-func (s *Stage) createCronjob(sign string) Cronjob {
-	if s.Cronjob(sign) != nil {
-		UseExitf("conflicting cronjob with a same sign '%s'\n", sign)
+func (s *Stage) createCronjob(sign string, name string) Cronjob {
+	if s.Cronjob(name) != nil {
+		UseExitf("conflicting cronjob with a same sign '%s'\n", name)
 	}
 	create, ok := cronjobCreators[sign]
 	if !ok {
 		UseExitln("unknown cronjob type: " + sign)
 	}
-	cronjob := create(sign, s)
+	cronjob := create(name, s)
 	cronjob.setShell(cronjob)
-	s.cronjobs[sign] = cronjob
+	s.cronjobs[name] = cronjob
 	return cronjob
 }
 
@@ -740,7 +740,7 @@ func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
 func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
-func (s *Stage) Cronjob(sign string) Cronjob        { return s.cronjobs[sign] }
+func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
 
 func (s *Stage) Start(id int32) {
 	s.id = id

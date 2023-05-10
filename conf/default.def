@@ -478,8 +478,8 @@ stage {
 	}
 
 	// cronjobs
-	cleanCronjob { // singleton, only one is allowed in stage.
+	cleanCronjob "cc1" {
 	}
-	statCronjob { // singleton, only one is allowed in stage.
+	statCronjob "sc1" {
 	}
 }

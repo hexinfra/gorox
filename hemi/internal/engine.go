@@ -716,11 +716,8 @@ func (c *config) parseSvc(sign *token, stage *Stage) { // svc <name> {}
 func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
-func (c *config) parseCronjob(sign *token, stage *Stage) { // xxxCronjob {}
-	cronjob := stage.createCronjob(sign.text)
-	cronjob.setParent(stage)
-	c.forward()
-	c.parseLeaf(cronjob)
+func (c *config) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <name> {}
+	parseComponent0(c, sign, stage, stage.createCronjob)
 }
 
 func (c *config) parseLeaf(component Component) {
@@ -904,7 +901,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 	value.kind, value.data = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server
+func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)

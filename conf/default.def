@@ -91,8 +91,8 @@ stage {
 		.idleTimeout = 4s
 	}
 
-	// unitures
-	demoUniture { // singleton, only one is allowed in stage.
+	// runners
+	demoRunner "dr1" {
 	}
 
 	// backends

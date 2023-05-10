@@ -24,7 +24,7 @@ import (
 const ( // component list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, fcache, resolver, http1Outgate, tcpsOutgate, ...
-	compUniture               // ...
+	compRunner                // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICMesher            // quicMesher
 	compQUICDealer            // quicProxy, ...
@@ -69,7 +69,7 @@ func signComp(sign string, comp int16) {
 var ( // global maps, shared between stages
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	unitureCreators    = make(map[string]func(sign string, stage *Stage) Uniture) // indexed by sign, same below.
+	runnerCreators     = make(map[string]func(name string, stage *Stage) Runner) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
 	quicDealerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealer)
 	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
@@ -97,8 +97,8 @@ func registerFixture(sign string) {
 	signComp(sign, compFixture)
 }
 
-func RegisterUniture(sign string, create func(sign string, stage *Stage) Uniture) {
-	_registerComponent0(sign, compUniture, unitureCreators, create)
+func RegisterRunner(sign string, create func(name string, stage *Stage) Runner) {
+	_registerComponent0(sign, compRunner, runnerCreators, create)
 }
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
@@ -143,7 +143,7 @@ func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
-func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // uniture, backend, stater, cacher, server, cronjob
+func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // runner, backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -363,7 +363,7 @@ type Stage struct {
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
-	unitures     compDict[Uniture]     // indexed by sign
+	runners      compDict[Runner]      // indexed by runnerName
 	backends     compDict[Backend]     // indexed by backendName
 	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
 	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
@@ -412,7 +412,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
 
-	s.unitures = make(compDict[Uniture])
+	s.runners = make(compDict[Runner])
 	s.backends = make(compDict[Backend])
 	s.quicMeshers = make(compDict[*QUICMesher])
 	s.tcpsMeshers = make(compDict[*TCPSMesher])
@@ -463,9 +463,9 @@ func (s *Stage) OnShutdown() {
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
-	// unitures
-	s.IncSub(len(s.unitures))
-	s.unitures.goWalk(Uniture.OnShutdown)
+	// runners
+	s.IncSub(len(s.runners))
+	s.runners.goWalk(Runner.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures
@@ -550,7 +550,7 @@ func (s *Stage) OnConfigure() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
-	s.unitures.walk(Uniture.OnConfigure)
+	s.runners.walk(Runner.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
 	s.quicMeshers.walk((*QUICMesher).OnConfigure)
 	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
@@ -576,7 +576,7 @@ func (s *Stage) OnPrepare() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
-	s.unitures.walk(Uniture.OnPrepare)
+	s.runners.walk(Runner.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
 	s.quicMeshers.walk((*QUICMesher).OnPrepare)
 	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
@@ -589,18 +589,18 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createUniture(sign string) Uniture {
-	if s.Uniture(sign) != nil {
-		UseExitf("conflicting uniture with a same sign '%s'\n", sign)
+func (s *Stage) createRunner(sign string, name string) Runner {
+	if s.Runner(name) != nil {
+		UseExitf("conflicting runner with a same sign '%s'\n", name)
 	}
-	create, ok := unitureCreators[sign]
+	create, ok := runnerCreators[sign]
 	if !ok {
-		UseExitln("unknown uniture type: " + sign)
+		UseExitln("unknown runner type: " + sign)
 	}
-	uniture := create(sign, s)
-	uniture.setShell(uniture)
-	s.unitures[sign] = uniture
-	return uniture
+	runner := create(name, s)
+	runner.setShell(runner)
+	s.runners[sign] = runner
+	return runner
 }
 func (s *Stage) createBackend(sign string, name string) Backend {
 	if s.Backend(name) != nil {
@@ -730,7 +730,7 @@ func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Uniture(sign string) Uniture        { return s.unitures[sign] }
+func (s *Stage) Runner(name string) Runner          { return s.runners[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
@@ -791,7 +791,7 @@ func (s *Stage) Start(id int32) {
 
 	// Start all components
 	s.startFixtures() // go fixture.run()
-	s.startUnitures() // go uniture.Run()
+	s.startRunners()  // go runner.Run()
 	s.startBackends() // go backend.maintain()
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
@@ -839,12 +839,12 @@ func (s *Stage) startFixtures() {
 		go fixture.run()
 	}
 }
-func (s *Stage) startUnitures() {
-	for _, uniture := range s.unitures {
+func (s *Stage) startRunners() {
+	for _, runner := range s.runners {
 		if IsDebug(1) {
-			Debugf("uniture=%s go Run()\n", uniture.Name())
+			Debugf("runner=%s go Run()\n", runner.Name())
 		}
-		go uniture.Run()
+		go runner.Run()
 	}
 }
 func (s *Stage) startBackends() {
@@ -1022,11 +1022,10 @@ type fixture interface {
 	run() // goroutine
 }
 
-// Uniture component.
+// Runner component.
 //
-// Unitures behave like fixtures except that they are optional
-// and extendible, so users can create their own unitures.
-type Uniture interface {
+// Runners are plugins or addons for Gorox. Users can create their own runners.
+type Runner interface {
 	Component
 	Run() // goroutine
 }

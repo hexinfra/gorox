@@ -14,7 +14,7 @@ import (
 )
 
 var ( // registers
-	RegisterUniture = internal.RegisterUniture
+	RegisterRunner = internal.RegisterRunner
 
 	RegisterBackend = internal.RegisterBackend
 
@@ -81,7 +81,7 @@ type ( // core types
 	TCPSOutgate  = internal.TCPSOutgate
 	UDPSOutgate  = internal.UDPSOutgate
 
-	Uniture = internal.Uniture
+	Runner = internal.Runner
 
 	Backend = internal.Backend
 

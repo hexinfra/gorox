@@ -6,7 +6,7 @@
 package testee
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -47,9 +47,9 @@ func (h *testeeHandlet) OnShutdown() {
 func (h *testeeHandlet) OnConfigure() {
 }
 func (h *testeeHandlet) OnPrepare() {
-	r := simple.New()
+	m := simple.New()
 
-	h.UseRouter(h, r)
+	h.UseMapper(h, m)
 }
 
 func (h *testeeHandlet) Handle(req Request, resp Response) (next bool) {

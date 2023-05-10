@@ -8,7 +8,7 @@
 package blog
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -50,12 +50,12 @@ func (h *blogHandlet) OnShutdown() {
 func (h *blogHandlet) OnConfigure() {
 }
 func (h *blogHandlet) OnPrepare() {
-	r := simple.New()
+	m := simple.New()
 
-	r.GET("/", h.index)
-	r.Link("/foo", h.foo)
+	m.GET("/", h.index)
+	m.Map("/foo", h.foo)
 
-	h.UseRouter(h, r)
+	h.UseMapper(h, m)
 }
 
 func (h *blogHandlet) Handle(req Request, resp Response) (next bool) {

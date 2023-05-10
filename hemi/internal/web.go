@@ -421,7 +421,7 @@ type Handlet_ struct {
 	// Mixins
 	Component_
 	// Assocs
-	router Router
+	mapper Mapper
 	// States
 	rShell reflect.Value // the shell handlet
 }
@@ -429,17 +429,17 @@ type Handlet_ struct {
 func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
 func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
 
-func (h *Handlet_) UseRouter(handlet Handlet, router Router) {
-	h.router = router
+func (h *Handlet_) UseMapper(handlet Handlet, mapper Mapper) {
+	h.mapper = mapper
 	h.rShell = reflect.ValueOf(handlet)
 }
 func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
-	if h.router != nil {
-		if handle := h.router.FindHandle(req); handle != nil {
+	if h.mapper != nil {
+		if handle := h.mapper.FindHandle(req); handle != nil {
 			handle(req, resp)
 			return
 		}
-		if name := h.router.HandleName(req); name != "" {
+		if name := h.mapper.HandleName(req); name != "" {
 			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
 				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
 				return
@@ -456,8 +456,8 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 // Handle is a function which can handle http request and gives http response.
 type Handle func(req Request, resp Response)
 
-// Router performs request routing in handlets.
-type Router interface {
+// Mapper performs request mapping in handlets.
+type Mapper interface {
 	FindHandle(req Request) Handle // firstly
 	HandleName(req Request) string // secondly
 }

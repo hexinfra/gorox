@@ -127,17 +127,17 @@ type ( // core types
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
 
-	QUICMesher = internal.QUICMesher
+	QUICRouter = internal.QUICRouter
 	QUICDealer = internal.QUICDealer
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
 
-	TCPSMesher = internal.TCPSMesher
+	TCPSRouter = internal.TCPSRouter
 	TCPSDealer = internal.TCPSDealer
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
 
-	UDPSMesher = internal.UDPSMesher
+	UDPSRouter = internal.UDPSRouter
 	UDPSDealer = internal.UDPSDealer
 	UDPSEditor = internal.UDPSEditor
 	UDPSConn   = internal.UDPSConn

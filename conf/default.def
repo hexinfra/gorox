@@ -195,8 +195,8 @@ stage {
 		.balancer = "random"
 	}
 
-	// meshers
-	quicMesher "qm1" {
+	// routers
+	quicRouter "qr1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s
@@ -212,7 +212,7 @@ stage {
 
 		// cases
 	}
-	tcpsMesher "tm1" {
+	tcpsRouter "tr1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s
@@ -246,7 +246,7 @@ stage {
 
 		// cases
 	}
-	udpsMesher "um1" {
+	udpsRouter "ur1" {
 		.address         = string,required
 		.tlsMode         = false
 		.readTimeout     = 60s

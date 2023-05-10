@@ -129,7 +129,7 @@ type Gate interface {
 	shutdown() error
 }
 
-// Gate_ is a mixin for mesher gates and server gates.
+// Gate_ is a mixin for router gates and server gates.
 type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns

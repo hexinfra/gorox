@@ -122,21 +122,21 @@ func _newConfig() *config {
 		"tempDir": TempDir(),
 		"varsDir": VarsDir(),
 	}, map[string]int16{
-		// general conn vars. keep sync with mesher_quic.go, mesher_tcps.go, and mesher_udps.go
+		// general conn vars. keep sync with router_quic.go, router_tcps.go, and router_udps.go
 		"srcHost": 0,
 		"srcPort": 1,
 
-		// general tcps & udps conn vars. keep sync with mesher_tcps.go and mesher_udps.go
+		// general tcps & udps conn vars. keep sync with router_tcps.go and router_udps.go
 		"transport": 2, // tcp/udp, tls/dtls
 
-		// quic conn vars. keep sync with quicConnVariables in mesher_quic.go
-		// quic stream vars. keep sync with quicConnVariables in mesher_quic.go
+		// quic conn vars. keep sync with quicConnVariables in router_quic.go
+		// quic stream vars. keep sync with quicConnVariables in router_quic.go
 
-		// tcps conn vars. keep sync with tcpsConnVariables in mesher_tcps.go
+		// tcps conn vars. keep sync with tcpsConnVariables in router_tcps.go
 		"serverName": 3,
 		"nextProto":  4,
 
-		// udps conn vars. keep sync with udpsConnVariables in mesher_udps.go
+		// udps conn vars. keep sync with udpsConnVariables in router_udps.go
 
 		// http request vars. keep sync with serverRequestVariables in web_server.go
 		"method":      0, // GET, POST, ...
@@ -284,12 +284,12 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseRunner(current, stage)
 		case compBackend:
 			c.parseBackend(current, stage)
-		case compQUICMesher:
-			c.parseQUICMesher(stage)
-		case compTCPSMesher:
-			c.parseTCPSMesher(stage)
-		case compUDPSMesher:
-			c.parseUDPSMesher(stage)
+		case compQUICRouter:
+			c.parseQUICRouter(stage)
+		case compTCPSRouter:
+			c.parseTCPSRouter(stage)
+		case compUDPSRouter:
+			c.parseUDPSRouter(stage)
 		case compStater:
 			c.parseStater(current, stage)
 		case compCacher:
@@ -323,10 +323,10 @@ func (c *config) parseRunner(sign *token, stage *Stage) { // xxxRunner <name> {}
 func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
-	mesherName := c.forwardExpect(tokenString)
-	mesher := stage.createQUICMesher(mesherName.text)
-	mesher.setParent(stage)
+func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
+	routerName := c.forwardExpect(tokenString)
+	router := stage.createQUICRouter(routerName.text)
+	router.setParent(stage)
 	c.forwardExpect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -334,33 +334,33 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, mesher)
+			c.parseAssign(current, router)
 			continue
 		}
 		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicRouter\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compQUICDealer:
-			c.parseQUICDealer(current, mesher, nil)
+			c.parseQUICDealer(current, router, nil)
 		case compQUICEditor:
-			c.parseQUICEditor(current, mesher, nil)
+			c.parseQUICEditor(current, router, nil)
 		case compCase:
-			c.parseQUICCase(mesher)
+			c.parseQUICCase(router)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in quicMesher\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in quicRouter\n", current.text))
 		}
 	}
 }
-func (c *config) parseQUICDealer(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
-	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
+func (c *config) parseQUICDealer(sign *token, router *QUICRouter, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
+	parseComponent1(c, sign, router, router.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseQUICEditor(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
+func (c *config) parseQUICEditor(sign *token, router *QUICRouter, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
+	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
-func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.newName()) // use a temp name by default
-	kase.setParent(mesher)
+func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.newName()) // use a temp name by default
+	kase.setParent(router)
 	c.forward()
 	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
@@ -388,18 +388,18 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		}
 		switch current.info {
 		case compQUICDealer:
-			c.parseQUICDealer(current, mesher, kase)
+			c.parseQUICDealer(current, router, kase)
 		case compQUICEditor:
-			c.parseQUICEditor(current, mesher, kase)
+			c.parseQUICEditor(current, router, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
 	}
 }
-func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
-	mesherName := c.forwardExpect(tokenString)
-	mesher := stage.createTCPSMesher(mesherName.text)
-	mesher.setParent(stage)
+func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
+	routerName := c.forwardExpect(tokenString)
+	router := stage.createTCPSRouter(routerName.text)
+	router.setParent(stage)
 	c.forwardExpect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -407,33 +407,33 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, mesher)
+			c.parseAssign(current, router)
 			continue
 		}
 		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsRouter\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compTCPSDealer:
-			c.parseTCPSDealer(current, mesher, nil)
+			c.parseTCPSDealer(current, router, nil)
 		case compTCPSEditor:
-			c.parseTCPSEditor(current, mesher, nil)
+			c.parseTCPSEditor(current, router, nil)
 		case compCase:
-			c.parseTCPSCase(mesher)
+			c.parseTCPSCase(router)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in tcpsMesher\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in tcpsRouter\n", current.text))
 		}
 	}
 }
-func (c *config) parseTCPSDealer(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
-	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
+func (c *config) parseTCPSDealer(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
+	parseComponent1(c, sign, router, router.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseTCPSEditor(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
+func (c *config) parseTCPSEditor(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
+	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
-func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.newName()) // use a temp name by default
-	kase.setParent(mesher)
+func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.newName()) // use a temp name by default
+	kase.setParent(router)
 	c.forward()
 	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
@@ -461,18 +461,18 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		}
 		switch current.info {
 		case compTCPSDealer:
-			c.parseTCPSDealer(current, mesher, kase)
+			c.parseTCPSDealer(current, router, kase)
 		case compTCPSEditor:
-			c.parseTCPSEditor(current, mesher, kase)
+			c.parseTCPSEditor(current, router, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
 	}
 }
-func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
-	mesherName := c.forwardExpect(tokenString)
-	mesher := stage.createUDPSMesher(mesherName.text)
-	mesher.setParent(stage)
+func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
+	routerName := c.forwardExpect(tokenString)
+	router := stage.createUDPSRouter(routerName.text)
+	router.setParent(stage)
 	c.forwardExpect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -480,33 +480,33 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, mesher)
+			c.parseAssign(current, router)
 			continue
 		}
 		if current.kind != tokenIdentifier {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsRouter\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compUDPSDealer:
-			c.parseUDPSDealer(current, mesher, nil)
+			c.parseUDPSDealer(current, router, nil)
 		case compUDPSEditor:
-			c.parseUDPSEditor(current, mesher, nil)
+			c.parseUDPSEditor(current, router, nil)
 		case compCase:
-			c.parseUDPSCase(mesher)
+			c.parseUDPSCase(router)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in udpsMesher\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in udpsRouter\n", current.text))
 		}
 	}
 }
-func (c *config) parseUDPSDealer(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
-	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
+func (c *config) parseUDPSDealer(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
+	parseComponent1(c, sign, router, router.createDealer, kase, kase.addDealer)
 }
-func (c *config) parseUDPSEditor(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
+func (c *config) parseUDPSEditor(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
+	parseComponent1(c, sign, router, router.createEditor, kase, kase.addEditor)
 }
-func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := mesher.createCase(c.newName()) // use a temp name by default
-	kase.setParent(mesher)
+func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.newName()) // use a temp name by default
+	kase.setParent(router)
 	c.forward()
 	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
 		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
@@ -534,9 +534,9 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		}
 		switch current.info {
 		case compUDPSDealer:
-			c.parseUDPSDealer(current, mesher, kase)
+			c.parseUDPSDealer(current, router, kase)
 		case compUDPSEditor:
-			c.parseUDPSEditor(current, mesher, kase)
+			c.parseUDPSEditor(current, router, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -905,7 +905,7 @@ func parseComponent0[T Component](c *config, sign *token, stage *Stage, create f
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
+func parseComponent1[M Component, T Component, C any](c *config, sign *token, router M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text
@@ -914,7 +914,7 @@ func parseComponent1[M Component, T Component, C any](c *config, sign *token, me
 		name = c.newName()
 	}
 	component := create(sign.text, name)
-	component.setParent(mesher)
+	component.setParent(router)
 	if kase != nil { // in case
 		assign(component)
 	}

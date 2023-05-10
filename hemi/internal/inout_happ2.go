@@ -3,71 +3,71 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB/2 protocol elements, incoming message and outgoing message implementation.
+// HAPP/2 protocol elements, incoming message and outgoing message implementation.
 
-// HWEB/2 is a simplified HTTP/2. Its design makes it easy to implement a server or client.
+// HAPP/2 is a simplified HTTP/2. Its design makes it easy to implement a server or client.
 
 package internal
 
-// hweb2In_ is used by hweb2Request and B2Response.
-type hweb2In_ = webIn_
+// happ2In_ is used by happ2Request and B2Response.
+type happ2In_ = webIn_
 
-func (r *hweb2In_) readContentB2() (p []byte, err error) {
+func (r *happ2In_) readContentB2() (p []byte, err error) {
 	return
 }
 
-// hweb2Out_ is used by hweb2Response and B2Request.
-type hweb2Out_ = webOut_
+// happ2Out_ is used by happ2Response and B2Request.
+type happ2Out_ = webOut_
 
-func (r *hweb2Out_) addHeaderB2(name []byte, value []byte) bool {
+func (r *happ2Out_) addHeaderB2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) headerB2(name []byte) (value []byte, ok bool) {
+func (r *happ2Out_) headerB2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hweb2Out_) hasHeaderB2(name []byte) bool {
+func (r *happ2Out_) hasHeaderB2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) delHeaderB2(name []byte) (deleted bool) {
+func (r *happ2Out_) delHeaderB2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) delHeaderAtB2(o uint8) {
+func (r *happ2Out_) delHeaderAtB2(o uint8) {
 	// TODO
 }
 
-func (r *hweb2Out_) sendChainB2() error {
+func (r *happ2Out_) sendChainB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) echoHeadersB2() error {
+func (r *happ2Out_) echoHeadersB2() error {
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) echoChainB2() error {
+func (r *happ2Out_) echoChainB2() error {
 	// TODO
 	return nil
 }
 
-func (r *hweb2Out_) addTrailerB2(name []byte, value []byte) bool {
+func (r *happ2Out_) addTrailerB2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hweb2Out_) trailerB2(name []byte) (value []byte, ok bool) {
+func (r *happ2Out_) trailerB2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hweb2Out_) trailersB2() []byte {
+func (r *happ2Out_) trailersB2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *hweb2Out_) passBytesB2(p []byte) error { return r.writeBytesB2(p) }
+func (r *happ2Out_) passBytesB2(p []byte) error { return r.writeBytesB2(p) }
 
-func (r *hweb2Out_) finalizeUnsizedB2() error {
+func (r *happ2Out_) finalizeUnsizedB2() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -75,23 +75,23 @@ func (r *hweb2Out_) finalizeUnsizedB2() error {
 	return nil
 }
 
-func (r *hweb2Out_) writeHeadersB2() error { // used by echo and pass
+func (r *happ2Out_) writeHeadersB2() error { // used by echo and pass
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) writePieceB2(piece *Piece, unsized bool) error {
+func (r *happ2Out_) writePieceB2(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) writeBytesB2(p []byte) error {
+func (r *happ2Out_) writeBytesB2(p []byte) error {
 	// TODO
 	return nil
 }
-func (r *hweb2Out_) writeVectorB2() error {
+func (r *happ2Out_) writeVectorB2() error {
 	return nil
 }
 
-//////////////////////////////////////// HWEB/2 protocol elements ////////////////////////////////////////
+//////////////////////////////////////// HAPP/2 protocol elements ////////////////////////////////////////
 
 // recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 
@@ -117,29 +117,29 @@ func (r *hweb2Out_) writeVectorB2() error {
 // If concurrent streams exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
-	hweb2TypeINIT = 0 // contains connection settings
-	hweb2TypeHEAD = 1 // contains name-value pairs for headers
-	hweb2TypeDATA = 2 // contains content data
-	hweb2TypeSIZE = 3 // available window size for receiving content
-	hweb2TypeTAIL = 4 // contains name-value pairs for trailers
+	happ2TypeINIT = 0 // contains connection settings
+	happ2TypeHEAD = 1 // contains name-value pairs for headers
+	happ2TypeDATA = 2 // contains content data
+	happ2TypeSIZE = 3 // available window size for receiving content
+	happ2TypeTAIL = 4 // contains name-value pairs for trailers
 )
 
 const ( // record flags
-	hwebFlagEndStream = 0b00000001 // end of stream, used by HEAD, DATA, and TAIL
+	happFlagEndStream = 0b00000001 // end of stream, used by HEAD, DATA, and TAIL
 )
 
 const ( // setting codes
-	hweb2SettingMaxRecordBodySize    = 0
-	hweb2SettingInitialWindowSize    = 1
-	hweb2SettingMaxStreams           = 2
-	hweb2SettingMaxConcurrentStreams = 3
+	happ2SettingMaxRecordBodySize    = 0
+	happ2SettingInitialWindowSize    = 1
+	happ2SettingMaxStreams           = 2
+	happ2SettingMaxConcurrentStreams = 3
 )
 
-var hweb2SettingDefaults = [...]int32{
-	hweb2SettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	hweb2SettingInitialWindowSize:    16376, // allow: [16376-16777215]
-	hweb2SettingMaxStreams:           1000,  // allow: [100-16777215]
-	hweb2SettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
+var happ2SettingDefaults = [...]int32{
+	happ2SettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
+	happ2SettingInitialWindowSize:    16376, // allow: [16376-16777215]
+	happ2SettingMaxStreams:           1000,  // allow: [100-16777215]
+	happ2SettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
 }
 
 /*

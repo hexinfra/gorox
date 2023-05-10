@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB/1 client implementation.
+// HAPP/1 client implementation.
 
-// HWEB/1 is a binary HTTP/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HAPP/1 is a binary HTTP/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
 
 package internal
 
@@ -18,53 +18,53 @@ import (
 )
 
 func init() {
-	registerFixture(signHWEB1Outgate)
-	RegisterBackend("hweb1Backend", func(name string, stage *Stage) Backend {
-		b := new(HWEB1Backend)
+	registerFixture(signHAPP1Outgate)
+	RegisterBackend("happ1Backend", func(name string, stage *Stage) Backend {
+		b := new(HAPP1Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-const signHWEB1Outgate = "hweb1Outgate"
+const signHAPP1Outgate = "happ1Outgate"
 
-func createHWEB1Outgate(stage *Stage) *HWEB1Outgate {
-	hweb1 := new(HWEB1Outgate)
-	hweb1.onCreate(stage)
-	hweb1.setShell(hweb1)
-	return hweb1
+func createHAPP1Outgate(stage *Stage) *HAPP1Outgate {
+	happ1 := new(HAPP1Outgate)
+	happ1.onCreate(stage)
+	happ1.setShell(happ1)
+	return happ1
 }
 
-// HWEB1Outgate
-type HWEB1Outgate struct {
+// HAPP1Outgate
+type HAPP1Outgate struct {
 	// Mixins
 	webOutgate_
 	// States
 	conns any // TODO
 }
 
-func (f *HWEB1Outgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHWEB1Outgate, stage)
+func (f *HAPP1Outgate) onCreate(stage *Stage) {
+	f.webOutgate_.onCreate(signHAPP1Outgate, stage)
 }
 
-func (f *HWEB1Outgate) OnConfigure() {
+func (f *HAPP1Outgate) OnConfigure() {
 	f.webOutgate_.onConfigure(f)
 }
-func (f *HWEB1Outgate) OnPrepare() {
+func (f *HAPP1Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
 }
 
-func (f *HWEB1Outgate) run() { // goroutine
+func (f *HAPP1Outgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("hweb1Outgate done")
+		Debugln("happ1Outgate done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *HWEB1Outgate) Dial(address string, tlsMode bool) (*B1Conn, error) {
+func (f *HAPP1Outgate) Dial(address string, tlsMode bool) (*B1Conn, error) {
 	netConn, err := net.DialTimeout("tcp", address, f.dialTimeout)
 	if err != nil {
 		return nil, err
@@ -79,53 +79,53 @@ func (f *HWEB1Outgate) Dial(address string, tlsMode bool) (*B1Conn, error) {
 	return getB1Conn(connID, f, nil, tcpConn, rawConn), nil
 }
 
-// HWEB1Backend
-type HWEB1Backend struct {
+// HAPP1Backend
+type HAPP1Backend struct {
 	// Mixins
-	webBackend_[*hweb1Node]
+	webBackend_[*happ1Node]
 	// States
 }
 
-func (b *HWEB1Backend) onCreate(name string, stage *Stage) {
+func (b *HAPP1Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *HWEB1Backend) OnConfigure() {
+func (b *HAPP1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *HWEB1Backend) OnPrepare() {
+func (b *HAPP1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HWEB1Backend) createNode(id int32) *hweb1Node {
-	node := new(hweb1Node)
+func (b *HAPP1Backend) createNode(id int32) *happ1Node {
+	node := new(happ1Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *HWEB1Backend) FetchConn() (*B1Conn, error) {
+func (b *HAPP1Backend) FetchConn() (*B1Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *HWEB1Backend) StoreConn(conn *B1Conn) {
+func (b *HAPP1Backend) StoreConn(conn *B1Conn) {
 	conn.node.storeConn(conn)
 }
 
-// hweb1Node is a node in HWEB1Backend.
-type hweb1Node struct {
+// happ1Node is a node in HAPP1Backend.
+type happ1Node struct {
 	// Mixins
 	webNode_
 	// Assocs
-	backend *HWEB1Backend
+	backend *HAPP1Backend
 	// States
 }
 
-func (n *hweb1Node) init(id int32, backend *HWEB1Backend) {
+func (n *happ1Node) init(id int32, backend *HAPP1Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
 }
 
-func (n *hweb1Node) Maintain() { // goroutine
+func (n *happ1Node) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
@@ -135,12 +135,12 @@ func (n *hweb1Node) Maintain() { // goroutine
 	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
-		Debugf("hweb1Node=%d done\n", n.id)
+		Debugf("happ1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *hweb1Node) fetchConn() (*B1Conn, error) {
+func (n *happ1Node) fetchConn() (*B1Conn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -160,7 +160,7 @@ func (n *hweb1Node) fetchConn() (*B1Conn, error) {
 		return nil, err
 	}
 	if IsDebug(2) {
-		Debugf("hweb1Node=%d dial %s OK!\n", n.id, n.address)
+		Debugf("happ1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	tcpConn := netConn.(*net.TCPConn)
@@ -172,7 +172,7 @@ func (n *hweb1Node) fetchConn() (*B1Conn, error) {
 	n.IncSub(1)
 	return getB1Conn(connID, n.backend, n, tcpConn, rawConn), nil
 }
-func (n *hweb1Node) storeConn(b1Conn *B1Conn) {
+func (n *happ1Node) storeConn(b1Conn *B1Conn) {
 	if b1Conn.isBroken() || n.isDown() || !b1Conn.isAlive() || !b1Conn.keepConn {
 		if IsDebug(2) {
 			Debugf("B1Conn[node=%d id=%d] closed\n", b1Conn.node.id, b1Conn.id)
@@ -186,16 +186,16 @@ func (n *hweb1Node) storeConn(b1Conn *B1Conn) {
 	}
 }
 
-func (n *hweb1Node) closeConn(b1Conn *B1Conn) {
+func (n *happ1Node) closeConn(b1Conn *B1Conn) {
 	b1Conn.closeConn()
 	putB1Conn(b1Conn)
 	n.SubDone()
 }
 
-// poolB1Conn is the client-side HWEB/1 connection pool.
+// poolB1Conn is the client-side HAPP/1 connection pool.
 var poolB1Conn sync.Pool
 
-func getB1Conn(id int64, client webClient, node *hweb1Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *B1Conn {
+func getB1Conn(id int64, client webClient, node *happ1Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *B1Conn {
 	var conn *B1Conn
 	if x := poolB1Conn.Get(); x == nil {
 		conn = new(B1Conn)
@@ -217,7 +217,7 @@ func putB1Conn(conn *B1Conn) {
 	poolB1Conn.Put(conn)
 }
 
-// B1Conn is the client-side HWEB/1 connection.
+// B1Conn is the client-side HAPP/1 connection.
 type B1Conn struct {
 	// Mixins
 	clientConn_
@@ -226,14 +226,14 @@ type B1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *hweb1Node      // associated node if client is hweb1 backend
+	node     *happ1Node      // associated node if client is happ1 backend
 	tcpConn  *net.TCPConn    // the connection
 	rawConn  syscall.RawConn // ...
 	keepConn bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
-func (c *B1Conn) onGet(id int64, client webClient, node *hweb1Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
+func (c *B1Conn) onGet(id int64, client webClient, node *happ1Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.tcpConn = tcpConn
@@ -264,13 +264,13 @@ func (c *B1Conn) Close() error { // only used by clients of dial
 
 func (c *B1Conn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
 
-// B1Stream is the client-side HWEB/1 stream.
+// B1Stream is the client-side HAPP/1 stream.
 type B1Stream struct {
 	// Mixins
 	webStream_
 	// Assocs
-	request  B1Request  // the client-side hweb/1 request
-	response B1Response // the client-side hweb/1 response
+	request  B1Request  // the client-side happ/1 request
+	response B1Response // the client-side happ/1 response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
@@ -344,7 +344,7 @@ func (s *B1Stream) readFull(p []byte) (int, error)            { return io.ReadFu
 func (s *B1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *B1Stream) markBroken()    { s.conn.markBroken() }
 
-// B1Request is the client-side HWEB/1 request.
+// B1Request is the client-side HAPP/1 request.
 type B1Request struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
@@ -393,7 +393,7 @@ func (r *B1Request) finalizeUnsized() error { return r.finalizeUnsizedB1() }
 func (r *B1Request) addedHeaders() []byte { return nil }
 func (r *B1Request) fixedHeaders() []byte { return nil }
 
-// B1Response is the client-side HWEB/1 response.
+// B1Response is the client-side HAPP/1 response.
 type B1Response struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_

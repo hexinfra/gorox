@@ -58,16 +58,16 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 	}
-	hweb1Outgate {
+	happ1Outgate {
 	}
-	hweb2Outgate {
+	happ2Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/http/hweb2Outgate/hweb2O"
+		.saveContentFilesDir = %tempDir + "/http/happ2Outgate/happ2O"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -152,9 +152,9 @@ stage {
 		.recvTimeout = 60s
 		.balancer = "ipHash"
 	}
-	hweb1Backend "b1b1" {
+	happ1Backend "b1b1" {
 	}
-	hweb2Backend "b2b1" {
+	happ2Backend "b2b1" {
 	}
 	quicBackend "qb1" {
 		.tlsMode = false
@@ -397,9 +397,9 @@ stage {
 		}
 		http3Proxy "h3p1" {
 		}
-		hweb1Proxy "b1p1" {
+		happ1Proxy "b1p1" {
 		}
-		hweb2Proxy "b2p1" {
+		happ2Proxy "b2p1" {
 		}
 		uwsgiProxy "up1" {
 		}
@@ -469,9 +469,9 @@ stage {
 	}
 	http3Server "h3s1" {
 	}
-	hweb1Server "b1s1" {
+	happ1Server "b1s1" {
 	}
-	hweb2Server "b2s1" {
+	happ2Server "b2s1" {
 	}
 
 	// cronjobs

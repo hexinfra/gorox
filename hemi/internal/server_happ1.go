@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB/1 server implementation.
+// HAPP/1 server implementation.
 
-// HWEB/1 is a binary HTTP/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HAPP/1 is a binary HTTP/1.1 without WebSocket, TCP Tunnel, and UDP Tunnel support.
 
 package internal
 
@@ -21,40 +21,40 @@ import (
 )
 
 func init() {
-	RegisterServer("hweb1Server", func(name string, stage *Stage) Server {
-		s := new(hweb1Server)
+	RegisterServer("happ1Server", func(name string, stage *Stage) Server {
+		s := new(happ1Server)
 		s.onCreate(name, stage)
 		return s
 	})
 }
 
-// hweb1Server is the HWEB/1 server.
-type hweb1Server struct {
+// happ1Server is the HAPP/1 server.
+type happ1Server struct {
 	// Mixins
 	webServer_
 	// States
 }
 
-func (s *hweb1Server) onCreate(name string, stage *Stage) {
+func (s *happ1Server) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 }
-func (s *hweb1Server) OnShutdown() {
+func (s *happ1Server) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
 		gate.shutdown()
 	}
 }
 
-func (s *hweb1Server) OnConfigure() {
+func (s *happ1Server) OnConfigure() {
 	s.webServer_.onConfigure(s)
 }
-func (s *hweb1Server) OnPrepare() {
+func (s *happ1Server) OnPrepare() {
 	s.webServer_.onPrepare(s)
 }
 
-func (s *hweb1Server) Serve() { // goroutine
+func (s *happ1Server) Serve() { // goroutine
 	for id := int32(0); id < s.numGates; id++ {
-		gate := new(hweb1Gate)
+		gate := new(happ1Gate)
 		gate.init(s, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
@@ -65,27 +65,27 @@ func (s *hweb1Server) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("hwebServer=%s done\n", s.Name())
+		Debugf("happServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
 
-// hweb1Gate is a gate of hwebServer.
-type hweb1Gate struct {
+// happ1Gate is a gate of happServer.
+type happ1Gate struct {
 	// Mixins
 	webGate_
 	// Assocs
-	server *hweb1Server
+	server *happ1Server
 	// States
 	gate *net.TCPListener // the real gate. set after open
 }
 
-func (g *hweb1Gate) init(server *hweb1Server, id int32) {
+func (g *happ1Gate) init(server *happ1Server, id int32) {
 	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
-func (g *hweb1Gate) open() error {
+func (g *happ1Gate) open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		if err := system.SetReusePort(rawConn); err != nil {
@@ -99,12 +99,12 @@ func (g *hweb1Gate) open() error {
 	}
 	return err
 }
-func (g *hweb1Gate) shutdown() error {
+func (g *happ1Gate) shutdown() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
 
-func (g *hweb1Gate) serve() { // goroutine
+func (g *happ1Gate) serve() { // goroutine
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -112,7 +112,7 @@ func (g *hweb1Gate) serve() { // goroutine
 			if g.IsShut() {
 				break
 			} else {
-				g.stage.Logf("hwebServer[%s] hwebGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				g.stage.Logf("happServer[%s] happGate[%d]: accept error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 		}
@@ -123,33 +123,33 @@ func (g *hweb1Gate) serve() { // goroutine
 			rawConn, err := tcpConn.SyscallConn()
 			if err != nil {
 				tcpConn.Close()
-				g.stage.Logf("hwebServer[%s] hwebGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				g.stage.Logf("happServer[%s] happGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			hweb1Conn := getHWEB1Conn(connID, g.server, g, tcpConn, rawConn)
-			go hweb1Conn.serve() // hweb1Conn is put to pool in serve()
+			happ1Conn := getHAPP1Conn(connID, g.server, g, tcpConn, rawConn)
+			go happ1Conn.serve() // happ1Conn is put to pool in serve()
 			connID++
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("hwebGate=%d TCP done\n", g.id)
+		Debugf("happGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
 }
 
-func (g *hweb1Gate) justClose(tcpConn *net.TCPConn) {
+func (g *happ1Gate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
 	g.onConnectionClosed()
 }
 
-// poolHWEB1Conn is the server-side HWEB/1 connection pool.
-var poolHWEB1Conn sync.Pool
+// poolHAPP1Conn is the server-side HAPP/1 connection pool.
+var poolHAPP1Conn sync.Pool
 
-func getHWEB1Conn(id int64, server *hweb1Server, gate *hweb1Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) serverConn {
-	var conn *hweb1Conn
-	if x := poolHWEB1Conn.Get(); x == nil {
-		conn = new(hweb1Conn)
+func getHAPP1Conn(id int64, server *happ1Server, gate *happ1Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) serverConn {
+	var conn *happ1Conn
+	if x := poolHAPP1Conn.Get(); x == nil {
+		conn = new(happ1Conn)
 		stream := &conn.stream
 		req, resp := &stream.request, &stream.response
 		req.shell = req
@@ -158,22 +158,22 @@ func getHWEB1Conn(id int64, server *hweb1Server, gate *hweb1Gate, tcpConn *net.T
 		resp.stream = stream
 		resp.request = req
 	} else {
-		conn = x.(*hweb1Conn)
+		conn = x.(*happ1Conn)
 	}
 	conn.onGet(id, server, gate, tcpConn, rawConn)
 	return conn
 }
-func putHWEB1Conn(conn *hweb1Conn) {
+func putHAPP1Conn(conn *happ1Conn) {
 	conn.onPut()
-	poolHWEB1Conn.Put(conn)
+	poolHAPP1Conn.Put(conn)
 }
 
-// hweb1Conn is the server-side HWEB/1 connection.
-type hweb1Conn struct {
+// happ1Conn is the server-side HAPP/1 connection.
+type happ1Conn struct {
 	// Mixins
 	serverConn_
 	// Assocs
-	stream hweb1Stream // an hweb1Conn has exactly one stream at a time, so just embed it
+	stream happ1Stream // an happ1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -184,7 +184,7 @@ type hweb1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *hweb1Conn) onGet(id int64, server *hweb1Server, gate *hweb1Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
+func (c *happ1Conn) onGet(id int64, server *happ1Server, gate *happ1Gate, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.serverConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
@@ -193,7 +193,7 @@ func (c *hweb1Conn) onGet(id int64, server *hweb1Server, gate *hweb1Gate, tcpCon
 	c.keepConn = true
 	c.closeSafe = true
 }
-func (c *hweb1Conn) onPut() {
+func (c *happ1Conn) onPut() {
 	c.tcpConn = nil
 	c.rawConn = nil
 	req := &c.stream.request
@@ -206,7 +206,7 @@ func (c *hweb1Conn) onPut() {
 	c.serverConn_.onPut()
 }
 
-func (c *hweb1Conn) serve() { // goroutine
+func (c *happ1Conn) serve() { // goroutine
 	stream := &c.stream
 	for { // each stream
 		stream.execute(c)
@@ -219,10 +219,10 @@ func (c *hweb1Conn) serve() { // goroutine
 	} else {
 		// It's switcher's responsibility to call c.closeConn()
 	}
-	putHWEB1Conn(c)
+	putHAPP1Conn(c)
 }
 
-func (c *hweb1Conn) closeConn() {
+func (c *happ1Conn) closeConn() {
 	if !c.closeSafe {
 		c.tcpConn.CloseWrite()
 		time.Sleep(time.Second)
@@ -231,21 +231,21 @@ func (c *hweb1Conn) closeConn() {
 	c.gate.onConnectionClosed()
 }
 
-// hweb1Stream is the server-side HWEB/1 stream.
-type hweb1Stream struct {
+// happ1Stream is the server-side HAPP/1 stream.
+type happ1Stream struct {
 	// Mixins
 	webStream_
 	// Assocs
-	request  hweb1Request  // the server-side HWEB/1 request.
-	response hweb1Response // the server-side HWEB/1 response.
+	request  happ1Request  // the server-side HAPP/1 request.
+	response happ1Response // the server-side HAPP/1 response.
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *hweb1Conn // associated conn
+	conn *happ1Conn // associated conn
 	// Stream states (zeros)
 }
 
-func (s *hweb1Stream) execute(conn *hweb1Conn) {
+func (s *happ1Stream) execute(conn *happ1Conn) {
 	s.onUse(conn)
 	defer s.onEnd()
 
@@ -257,7 +257,7 @@ func (s *hweb1Stream) execute(conn *hweb1Conn) {
 		return
 	}
 
-	server := conn.server.(*hweb1Server)
+	server := conn.server.(*happ1Server)
 
 	app := server.findApp(req.UnsafeHostname())
 
@@ -303,26 +303,26 @@ func (s *hweb1Stream) execute(conn *hweb1Conn) {
 	}
 }
 
-func (s *hweb1Stream) onUse(conn *hweb1Conn) { // for non-zeros
+func (s *happ1Stream) onUse(conn *happ1Conn) { // for non-zeros
 	s.webStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
-func (s *hweb1Stream) onEnd() { // for zeros
+func (s *happ1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.conn = nil
 	s.webStream_.onEnd()
 }
 
-func (s *hweb1Stream) webAgent() webAgent { return s.conn.getServer() }
-func (s *hweb1Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+func (s *happ1Stream) webAgent() webAgent { return s.conn.getServer() }
+func (s *happ1Stream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
 
-func (s *hweb1Stream) writeContinue() bool { // 100 continue
+func (s *happ1Stream) writeContinue() bool { // 100 continue
 	return false
 }
-func (s *hweb1Stream) executeWebApp(app *App, req *hweb1Request, resp *hweb1Response) { // request & response
+func (s *happ1Stream) executeWebApp(app *App, req *happ1Request, resp *happ1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
@@ -333,32 +333,32 @@ func (s *hweb1Stream) executeWebApp(app *App, req *hweb1Request, resp *hweb1Resp
 		req.dropContent()
 	}
 }
-func (s *hweb1Stream) serveAbnormal(req *hweb1Request, resp *hweb1Response) { // 4xx & 5xx
+func (s *happ1Stream) serveAbnormal(req *happ1Request, resp *happ1Response) { // 4xx & 5xx
 }
 
-func (s *hweb1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *happ1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return s.conn.makeTempName(p, unixTime)
 }
 
-func (s *hweb1Stream) setReadDeadline(deadline time.Time) error {
+func (s *happ1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
-func (s *hweb1Stream) setWriteDeadline(deadline time.Time) error {
+func (s *happ1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *hweb1Stream) read(p []byte) (int, error)     { return 0, nil }
-func (s *hweb1Stream) readFull(p []byte) (int, error) { return 0, nil }
-func (s *hweb1Stream) write(p []byte) (int, error)    { return 0, nil }
-func (s *hweb1Stream) writev(vector *net.Buffers) (int64, error) {
+func (s *happ1Stream) read(p []byte) (int, error)     { return 0, nil }
+func (s *happ1Stream) readFull(p []byte) (int, error) { return 0, nil }
+func (s *happ1Stream) write(p []byte) (int, error)    { return 0, nil }
+func (s *happ1Stream) writev(vector *net.Buffers) (int64, error) {
 	return 0, nil
 }
 
-func (s *hweb1Stream) isBroken() bool { return s.conn.isBroken() }
-func (s *hweb1Stream) markBroken()    { s.conn.markBroken() }
+func (s *happ1Stream) isBroken() bool { return s.conn.isBroken() }
+func (s *happ1Stream) markBroken()    { s.conn.markBroken() }
 
-// hweb1Request is the server-side HWEB/1 request.
-type hweb1Request struct { // incoming. needs parsing
+// happ1Request is the server-side HAPP/1 request.
+type happ1Request struct { // incoming. needs parsing
 	// Mixins
 	serverRequest_
 	// Stream states (stocks)
@@ -367,18 +367,18 @@ type hweb1Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *hweb1Request) recvHead() {
+func (r *happ1Request) recvHead() {
 }
-func (r *hweb1Request) recvControl() bool {
+func (r *happ1Request) recvControl() bool {
 	return false
 }
-func (r *hweb1Request) cleanInput() {
+func (r *happ1Request) cleanInput() {
 }
 
-func (r *hweb1Request) readContent() (p []byte, err error) { return r.readContentB1() }
+func (r *happ1Request) readContent() (p []byte, err error) { return r.readContentB1() }
 
-// hweb1Response is the server-side HWEB/1 response.
-type hweb1Response struct { // outgoing. needs building
+// happ1Response is the server-side HAPP/1 response.
+type happ1Response struct { // outgoing. needs building
 	// Mixins
 	serverResponse_
 	// Stream states (stocks)
@@ -387,53 +387,53 @@ type hweb1Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *hweb1Response) control() []byte {
+func (r *happ1Response) control() []byte {
 	return nil
 }
 
-func (r *hweb1Response) addHeader(name []byte, value []byte) bool   { return false }
-func (r *hweb1Response) header(name []byte) (value []byte, ok bool) { return nil, false }
-func (r *hweb1Response) hasHeader(name []byte) bool                 { return false }
-func (r *hweb1Response) delHeader(name []byte) (deleted bool)       { return false }
-func (r *hweb1Response) delHeaderAt(o uint8)                        {}
+func (r *happ1Response) addHeader(name []byte, value []byte) bool   { return false }
+func (r *happ1Response) header(name []byte) (value []byte, ok bool) { return nil, false }
+func (r *happ1Response) hasHeader(name []byte) bool                 { return false }
+func (r *happ1Response) delHeader(name []byte) (deleted bool)       { return false }
+func (r *happ1Response) delHeaderAt(o uint8)                        {}
 
-func (r *hweb1Response) AddHTTPSRedirection(authority string) bool {
+func (r *happ1Response) AddHTTPSRedirection(authority string) bool {
 	return false
 }
-func (r *hweb1Response) AddHostnameRedirection(hostname string) bool {
+func (r *happ1Response) AddHostnameRedirection(hostname string) bool {
 	return false
 }
-func (r *hweb1Response) AddDirectoryRedirection() bool {
+func (r *happ1Response) AddDirectoryRedirection() bool {
 	return false
 }
-func (r *hweb1Response) setConnectionClose() {
+func (r *happ1Response) setConnectionClose() {
 }
 
-func (r *hweb1Response) SetCookie(cookie *Cookie) bool {
+func (r *happ1Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *hweb1Response) sendChain() error { return nil }
+func (r *happ1Response) sendChain() error { return nil }
 
-func (r *hweb1Response) echoHeaders() error { return nil }
-func (r *hweb1Response) echoChain() error   { return r.echoChainB1() }
+func (r *happ1Response) echoHeaders() error { return nil }
+func (r *happ1Response) echoChain() error   { return r.echoChainB1() }
 
-func (r *hweb1Response) addTrailer(name []byte, value []byte) bool {
+func (r *happ1Response) addTrailer(name []byte, value []byte) bool {
 	return false
 }
-func (r *hweb1Response) trailer(name []byte) (value []byte, ok bool) { return nil, false }
+func (r *happ1Response) trailer(name []byte) (value []byte, ok bool) { return nil, false }
 
-func (r *hweb1Response) pass1xx(resp clientResponse) bool { // used by proxies
+func (r *happ1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	return true
 }
-func (r *hweb1Response) passHeaders() error       { return r.writeHeadersB1() }
-func (r *hweb1Response) passBytes(p []byte) error { return r.passBytesB1(p) }
+func (r *happ1Response) passHeaders() error       { return r.writeHeadersB1() }
+func (r *happ1Response) passBytes(p []byte) error { return r.passBytesB1(p) }
 
-func (r *hweb1Response) finalizeHeaders() { // add at most 256 bytes
+func (r *happ1Response) finalizeHeaders() { // add at most 256 bytes
 }
-func (r *hweb1Response) finalizeUnsized() error {
+func (r *happ1Response) finalizeUnsized() error {
 	return nil
 }
 
-func (r *hweb1Response) addedHeaders() []byte { return nil }
-func (r *hweb1Response) fixedHeaders() []byte { return nil }
+func (r *happ1Response) addedHeaders() []byte { return nil }
+func (r *happ1Response) fixedHeaders() []byte { return nil }

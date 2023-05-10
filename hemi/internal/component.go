@@ -358,8 +358,8 @@ type Stage struct {
 	http1Outgate *HTTP1Outgate         // for fast accessing
 	http2Outgate *HTTP2Outgate         // for fast accessing
 	http3Outgate *HTTP3Outgate         // for fast accessing
-	hweb1Outgate *HWEB1Outgate         // for fast accessing
-	hweb2Outgate *HWEB2Outgate         // for fast accessing
+	happ1Outgate *HAPP1Outgate         // for fast accessing
+	happ2Outgate *HAPP2Outgate         // for fast accessing
 	quicOutgate  *QUICOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
@@ -396,8 +396,8 @@ func (s *Stage) onCreate() {
 	s.http1Outgate = createHTTP1Outgate(s)
 	s.http2Outgate = createHTTP2Outgate(s)
 	s.http3Outgate = createHTTP3Outgate(s)
-	s.hweb1Outgate = createHWEB1Outgate(s)
-	s.hweb2Outgate = createHWEB2Outgate(s)
+	s.happ1Outgate = createHAPP1Outgate(s)
+	s.happ2Outgate = createHAPP2Outgate(s)
 	s.quicOutgate = createQUICOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
@@ -409,8 +409,8 @@ func (s *Stage) onCreate() {
 	s.fixtures[signHTTP1Outgate] = s.http1Outgate
 	s.fixtures[signHTTP2Outgate] = s.http2Outgate
 	s.fixtures[signHTTP3Outgate] = s.http3Outgate
-	s.fixtures[signHWEB1Outgate] = s.hweb1Outgate
-	s.fixtures[signHWEB2Outgate] = s.hweb2Outgate
+	s.fixtures[signHAPP1Outgate] = s.happ1Outgate
+	s.fixtures[signHAPP2Outgate] = s.happ2Outgate
 	s.fixtures[signQUICOutgate] = s.quicOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
@@ -476,8 +476,8 @@ func (s *Stage) OnShutdown() {
 	go s.http1Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.http2Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.http3Outgate.OnShutdown() // we don't treat this as goroutine
-	go s.hweb1Outgate.OnShutdown() // we don't treat this as goroutine
-	go s.hweb2Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.happ1Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.happ2Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
@@ -729,8 +729,8 @@ func (s *Stage) Resolver() *resolverFixture  { return s.resolver }
 func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
 func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
-func (s *Stage) HWEB1Outgate() *HWEB1Outgate { return s.hweb1Outgate }
-func (s *Stage) HWEB2Outgate() *HWEB2Outgate { return s.hweb2Outgate }
+func (s *Stage) HAPP1Outgate() *HAPP1Outgate { return s.happ1Outgate }
+func (s *Stage) HAPP2Outgate() *HAPP2Outgate { return s.happ2Outgate }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }

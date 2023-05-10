@@ -25,7 +25,7 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEB[1-2]Outgate.
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HAPP[1-2]Outgate.
 type webOutgate_ struct {
 	// Mixins
 	outgate_
@@ -51,7 +51,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 	f.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and HWEB[1-2]Backend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and HAPP[1-2]Backend.
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
@@ -82,7 +82,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// webNode_ is the mixin for http[1-3]Node and hweb[1-2]Node.
+// webNode_ is the mixin for http[1-3]Node and happ[1-2]Node.
 type webNode_ struct {
 	// Mixins
 	Node_

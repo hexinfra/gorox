@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB/2 client implementation.
+// HAPP/2 client implementation.
 
-// HWEB/2 is a simplified HTTP/2 without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HAPP/2 is a simplified HTTP/2 without WebSocket, TCP Tunnel, and UDP Tunnel support.
 
 package internal
 
@@ -18,117 +18,117 @@ import (
 )
 
 func init() {
-	registerFixture(signHWEB2Outgate)
-	RegisterBackend("hweb2Backend", func(name string, stage *Stage) Backend {
-		b := new(HWEB2Backend)
+	registerFixture(signHAPP2Outgate)
+	RegisterBackend("happ2Backend", func(name string, stage *Stage) Backend {
+		b := new(HAPP2Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-const signHWEB2Outgate = "hweb2Outgate"
+const signHAPP2Outgate = "happ2Outgate"
 
-func createHWEB2Outgate(stage *Stage) *HWEB2Outgate {
-	hweb2 := new(HWEB2Outgate)
-	hweb2.onCreate(stage)
-	hweb2.setShell(hweb2)
-	return hweb2
+func createHAPP2Outgate(stage *Stage) *HAPP2Outgate {
+	happ2 := new(HAPP2Outgate)
+	happ2.onCreate(stage)
+	happ2.setShell(happ2)
+	return happ2
 }
 
-// HWEB2Outgate
-type HWEB2Outgate struct {
+// HAPP2Outgate
+type HAPP2Outgate struct {
 	// Mixins
 	webOutgate_
 	// States
 }
 
-func (f *HWEB2Outgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHWEB2Outgate, stage)
+func (f *HAPP2Outgate) onCreate(stage *Stage) {
+	f.webOutgate_.onCreate(signHAPP2Outgate, stage)
 }
 
-func (f *HWEB2Outgate) OnConfigure() {
+func (f *HAPP2Outgate) OnConfigure() {
 	f.webOutgate_.onConfigure(f)
 }
-func (f *HWEB2Outgate) OnPrepare() {
+func (f *HAPP2Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
 }
 
-func (f *HWEB2Outgate) run() { // goroutine
+func (f *HAPP2Outgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("hweb2Outgate done")
+		Debugln("happ2Outgate done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *HWEB2Outgate) FetchConn(address string, tlsMode bool) (*B2Conn, error) {
+func (f *HAPP2Outgate) FetchConn(address string, tlsMode bool) (*B2Conn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *HWEB2Outgate) StoreConn(conn *B2Conn) {
+func (f *HAPP2Outgate) StoreConn(conn *B2Conn) {
 	// TODO
 }
 
-// HWEB2Backend
-type HWEB2Backend struct {
+// HAPP2Backend
+type HAPP2Backend struct {
 	// Mixins
-	webBackend_[*hweb2Node]
+	webBackend_[*happ2Node]
 	// States
 }
 
-func (b *HWEB2Backend) onCreate(name string, stage *Stage) {
+func (b *HAPP2Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *HWEB2Backend) OnConfigure() {
+func (b *HAPP2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *HWEB2Backend) OnPrepare() {
+func (b *HAPP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HWEB2Backend) createNode(id int32) *hweb2Node {
-	node := new(hweb2Node)
+func (b *HAPP2Backend) createNode(id int32) *happ2Node {
+	node := new(happ2Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *HWEB2Backend) FetchConn() (*B2Conn, error) {
+func (b *HAPP2Backend) FetchConn() (*B2Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *HWEB2Backend) StoreConn(conn *B2Conn) {
+func (b *HAPP2Backend) StoreConn(conn *B2Conn) {
 	conn.node.storeConn(conn)
 }
 
-// hweb2Node
-type hweb2Node struct {
+// happ2Node
+type happ2Node struct {
 	// Mixins
 	webNode_
 	// Assocs
-	backend *HWEB2Backend
+	backend *HAPP2Backend
 	// States
 }
 
-func (n *hweb2Node) init(id int32, backend *HWEB2Backend) {
+func (n *happ2Node) init(id int32, backend *HAPP2Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
 }
 
-func (n *hweb2Node) Maintain() { // goroutine
+func (n *happ2Node) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if IsDebug(2) {
-		Debugf("hweb2Node=%d done\n", n.id)
+		Debugf("happ2Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *hweb2Node) fetchConn() (*B2Conn, error) {
+func (n *happ2Node) fetchConn() (*B2Conn, error) {
 	// Note: An B2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var tcpConn *net.TCPConn
@@ -136,15 +136,15 @@ func (n *hweb2Node) fetchConn() (*B2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getB2Conn(connID, n.backend, n, tcpConn, rawConn), nil
 }
-func (n *hweb2Node) storeConn(b2Conn *B2Conn) {
+func (n *happ2Node) storeConn(b2Conn *B2Conn) {
 	// Note: An B2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
-// poolB2Conn is the client-side HWEB/2 connection pool.
+// poolB2Conn is the client-side HAPP/2 connection pool.
 var poolB2Conn sync.Pool
 
-func getB2Conn(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *B2Conn {
+func getB2Conn(id int64, client webClient, node *happ2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) *B2Conn {
 	var conn *B2Conn
 	if x := poolB2Conn.Get(); x == nil {
 		conn = new(B2Conn)
@@ -166,14 +166,14 @@ type B2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *hweb2Node   // associated node
+	node    *happ2Node   // associated node
 	tcpConn *net.TCPConn // the connection
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *B2Conn) onGet(id int64, client webClient, node *hweb2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
+func (c *B2Conn) onGet(id int64, client webClient, node *happ2Node, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
 	c.clientConn_.onGet(id, client)
 	c.node = node
 	c.tcpConn = tcpConn
@@ -333,7 +333,7 @@ func (s *B2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 func (s *B2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *B2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-// B2Request is the client-side HWEB/2 request.
+// B2Request is the client-side HAPP/2 request.
 type B2Request struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
@@ -393,7 +393,7 @@ func (r *B2Request) finalizeUnsized() error {
 func (r *B2Request) addedHeaders() []byte { return nil } // TODO
 func (r *B2Request) fixedHeaders() []byte { return nil } // TODO
 
-// B2Response is the client-side HWEB/2 response.
+// B2Response is the client-side HAPP/2 response.
 type B2Response struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_

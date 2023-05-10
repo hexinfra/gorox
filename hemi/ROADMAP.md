@@ -8,7 +8,7 @@ Roadmap
   * [TODO] http/2 support.
   * [TODO] http/3 support.
   * [TODO] http cache support.
-  * [TODO] web mvc framework. requires a strong standard like jakarta servlet.
+  * [TODO] web mvc framework. requires a strong standard like jakarta ee.
   * [TODO] documentation.
   * [TODO] official websites.
   * [TODO] fcache.

@@ -11,7 +11,6 @@ can be used as:
   * RPC Framework for Go (HRPC, gRPC, Thrift)
   * Web Proxy Server (HTTP, WebSocket, Tunneling, Forward, Reverse, Caching)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
-  * Service Mesh (Data Plane)
   * ... and more through its highly extensible compoments design!
 
 There is also a controller program called Myrox which is distributed with Gorox
@@ -181,10 +180,10 @@ the roles in "gorox cluster":
   * app1: A Web application implemented directly on Gorox,
   * srv1: A TCP server implemented directly on Gorox,
   * svc1: A public RPC service implemented directly on Gorox,
-  * sidecar1: A Service Mesh sidecar for svc1,
+  * sidecar1: A sidecar for svc1,
   * app2: A gateway passing requests to PHP-FPM / Tomcat server,
   * svc2: A private RPC service implemented directly on Gorox,
-  * sidecar2: A Service Mesh sidecar for svc2,
+  * sidecar2: A sidecar for svc2,
   * job1: A background application in Gorox doing something periodically.
 
 The whole "gorox cluster" can optionally be managed by a Myrox instance. In this

@@ -11,6 +11,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/cmds/myrox/apps"
+	_ "github.com/hexinfra/gorox/cmds/myrox/exts"
 	_ "github.com/hexinfra/gorox/cmds/myrox/jobs"
 	_ "github.com/hexinfra/gorox/cmds/myrox/srvs"
 	_ "github.com/hexinfra/gorox/cmds/myrox/svcs"

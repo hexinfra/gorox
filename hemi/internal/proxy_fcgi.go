@@ -248,7 +248,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 		}
 	}
 
-	if !resp.copyHeadFrom(fResp, nil) {
+	if !resp.copyHeadFrom(fResp, nil) { // viaName = nil
 		fStream.markBroken()
 		return
 	}

@@ -19,6 +19,11 @@
 
 package internal
 
+import (
+	"errors"
+	"time"
+)
+
 func init() {
 	RegisterHandlet("ajpProxy", func(name string, stage *Stage, app *App) Handlet {
 		h := new(ajpProxy)
@@ -38,8 +43,11 @@ type ajpProxy struct {
 	backend *TCPSBackend // the ajp backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	bufferClientContent bool // client content is buffered anyway?
-	bufferServerContent bool // server content is buffered anyway?
+	bufferClientContent bool          // client content is buffered anyway?
+	bufferServerContent bool          // server content is buffered anyway?
+	sendTimeout         time.Duration // timeout to send the whole request
+	recvTimeout         time.Duration // timeout to recv the whole response content
+	maxContentSize      int64         // max response content size allowed
 }
 
 func (h *ajpProxy) onCreate(name string, stage *Stage, app *App) {
@@ -87,6 +95,30 @@ func (h *ajpProxy) OnConfigure() {
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
+
+	// sendTimeout
+	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout is an invalid value")
+	}, 60*time.Second)
+
+	// recvTimeout
+	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout is an invalid value")
+	}, 60*time.Second)
+
+	// maxContentSize
+	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize is an invalid value")
+	}, _1T)
 }
 func (h *ajpProxy) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)

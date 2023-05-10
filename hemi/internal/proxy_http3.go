@@ -160,7 +160,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		}
 	}
 
-	if !resp.copyHeadFrom(resp3, nil) {
+	if !resp.copyHeadFrom(resp3, nil) { // viaName = nil
 		stream3.markBroken()
 		return
 	}

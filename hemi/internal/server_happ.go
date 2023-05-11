@@ -275,7 +275,7 @@ func (s *happStream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *happStream) executeWebApp(app *App, req *happRequest, resp *happResponse) { // request & response
+func (s *happStream) executeNormal(app *App, req *happRequest, resp *happResponse) { // request & response
 	// TODO
 	//app.dispatchHandlet(req, resp)
 }

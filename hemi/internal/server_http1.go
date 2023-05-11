@@ -76,7 +76,7 @@ func (c *http1Conn) onPut() {
 	c.rawConn = nil
 	req := &c.stream.request
 	if cap(req.input) != cap(req.stockInput) { // fetched from pool
-		// request.input is conn scoped but put in stream scoped c.request for convenience
+		// req.input is conn scoped but put in stream scoped c.request for convenience
 		PutNK(req.input)
 		req.input = nil
 	}
@@ -245,7 +245,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-	s.executeWebApp(app, req, resp)
+	s.executeNormal(app, req, resp)
 
 	if s.isBroken() {
 		s.conn.keepConn = false // i/o error
@@ -279,7 +279,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
-func (s *http1Stream) executeWebApp(app *App, req *http1Request, resp *http1Response) { // request & response
+func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()

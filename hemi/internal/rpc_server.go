@@ -18,6 +18,22 @@ type RPCServer interface {
 	LinkSvcs()
 }
 
+// GRPCBridge is the interface for all gRPC server bridges.
+// Users can implement their own gRPC server bridge in exts, which embeds *grpc.Server and implements the GRPCBridge interface.
+type GRPCBridge interface {
+	RPCServer
+
+	GRPCServer() any // must be a *grpc.Server
+}
+
+// ThriftBridge is the interface for all Thrift server bridges.
+// Users can implement their own Thrift server bridge in exts, which embeds thrift.TServer and implements the ThriftBridge interface.
+type ThriftBridge interface {
+	RPCServer
+
+	ThriftServer() any // must be a thrift.TServer?
+}
+
 // rpcServer_
 type rpcServer_ struct {
 	// Mixins

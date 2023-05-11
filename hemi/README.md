@@ -7,22 +7,23 @@ Hemi is the engine of Gorox.
 Architecture
 ============
 
-The logical architecture of a Stage in Hemi Engine looks like this:
+The logical architecture of a stage in Hemi engine looks like this:
 
 ```
    ^     +--------------------------------------------+  shutdown
    |     |                cronjob(*)                  |     |
    |     +--------+---+--------------+----------------+     |
-   |     |        |   |      rpc     |      web       |     |
+   |     |        |   |     rpc[+]   |     web[+]     |     |
    |     |        | s |     server   |     server     |     |
    |     | router | e | [gate][conn] |  [gate][conn]  |     |
    |     | dealer | r +--------------+----------------+     |
-   |     | editor | v |              | app(*) reviser |     |
-   |     |  case  | e |   svc(*)     | socklet handlet|     |
-   |     |        | r |          +---+--+ rule +------+     |
-   |     |        |(*)|          |stater|      |cacher|     |
+   |     | editor | v |              | app(*) handlet |     |
+   |     |  case  | e |              | socklet reviser|     |
+   |     |        | r |   svc(*)     |    rule        |     |
+   |     |        |(*)|          +---+--+      +------+     |
+   |     |        |   |          |stater|      |cacher|     |
    |     +--------+---+----------+------+------+------+     |
-   |     |           [node] [conn] backend            |     |
+   |     |           backend [node] [conn]            |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
    |     | o | u | t | g | a | t | e | s |   runner   |     |
    |     +---+---+---+---+---+---+---+---+------------+     |

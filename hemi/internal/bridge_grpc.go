@@ -8,9 +8,9 @@
 package internal
 
 // GRPCBridge is the interface for all gRPC server bridges.
-// Users can implement their own gRPC bridge in exts, which embeds *grpc.Server and implements the GRPCBridge interface.
+// Users can implement their own gRPC server bridge in exts, which embeds *grpc.Server and implements the GRPCBridge interface.
 type GRPCBridge interface {
 	RPCServer
 
-	GRPCServer() any // TODO
+	GRPCServer() any // must be a *grpc.Server
 }

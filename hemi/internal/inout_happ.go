@@ -93,6 +93,8 @@ func (r *happOut_) writeVectorP() error {
 
 //////////////////////////////////////// HAPP protocol elements ////////////////////////////////////////
 
+// WARNING: DRAFT DESIGN!
+
 // recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 
 // initRecord = recordHead *setting
@@ -101,12 +103,16 @@ func (r *happOut_) writeVectorP() error {
 // request  = headRecord *dataRecord [ tailRecord ]
 // response = headRecord *dataRecord [ tailRecord ]
 
-//   headRecord = recordHead 1*nameValue
-//   tailRecord = recordHead 1*nameValue
+//   headRecord = recordHead 1*field
+//   tailRecord = recordHead 1*field
 
-//     nameValue = nameSize(8) valueSize(24) name value
-//       name  = 1*OCTET
-//       value = *OCTET
+//     field = literalField | indexedField | indexedName | indexedValue
+//       literalField = 00(2) valueSize(22) nameSize(8) name value
+//       indexedField = 11(2) index(6)
+//       indexedName  = 10(2) index(6) valueSize(24) value
+//       indexedValue = 01(2) index(6) nameSize(8) name
+//         name  = 1*OCTET
+//         value = *OCTET
 
 //   dataRecord = recordHead *OCTET
 //   sizeRecord = recordHead windowSize(3)

@@ -26,20 +26,20 @@ type hrpcGate struct {
 func (g *hrpcGate) serve() { // goroutine
 }
 
-// hrpcExchange
-type hrpcExchange struct {
+// hrpcCall
+type hrpcCall struct {
 	// Mixins
 	// Assocs
-	ping hrpcPing
-	pong hrpcPong
+	in  hrpcIn
+	out hrpcOut
 }
 
-// hrpcPing
-type hrpcPing struct {
+// hrpcIn
+type hrpcIn struct {
 	// TODO
 }
 
-// hrpcPong
-type hrpcPong struct {
+// hrpcOut
+type hrpcOut struct {
 	// TODO
 }

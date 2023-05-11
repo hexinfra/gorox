@@ -8,13 +8,9 @@
 package internal
 
 import (
-	"context"
 	"net"
 	"sync"
-	"syscall"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
 func init() {
@@ -74,7 +70,6 @@ type happGate struct {
 	// Assocs
 	server *happServer
 	// States
-	gate *net.TCPListener // the real gate. set after open
 }
 
 func (g *happGate) init(server *happServer, id int32) {
@@ -83,131 +78,117 @@ func (g *happGate) init(server *happServer, id int32) {
 }
 
 func (g *happGate) open() error {
-	listenConfig := new(net.ListenConfig)
-	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		if err := system.SetReusePort(rawConn); err != nil {
-			return err
-		}
-		return system.SetDeferAccept(rawConn)
-	}
-	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
-	if err == nil {
-		g.gate = gate.(*net.TCPListener)
-	}
-	return err
+	// TODO
+	return nil
 }
 func (g *happGate) shutdown() error {
 	g.MarkShut()
-	return g.gate.Close()
+	// TODO
+	return nil
 }
 
 func (g *happGate) serve() { // goroutine
 	// TODO
 }
 
-func (g *happGate) justClose(tcpConn *net.TCPConn) {
-	tcpConn.Close()
-	g.onConnectionClosed()
-}
+// poolHAPPExchan is the server-side HAPP exchan pool.
+var poolHAPPExchan sync.Pool
 
-// poolHAPPStream is the server-side HAPP stream pool.
-var poolHAPPStream sync.Pool
-
-func getHAPPStream(gate *happGate, id uint32) *happStream {
+func getHAPPExchan(gate *happGate, id uint32) *happExchan {
 	// TODO
 	return nil
 }
-func putHAPPStream(stream *happStream) {
+func putHAPPExchan(exchan *happExchan) {
 	// TODO
 }
 
-// happStream is the server-side HAPP stream.
-type happStream struct {
+// happExchan is the server-side HAPP exchan.
+type happExchan struct {
 	// Mixins
 	webStream_
 	// Assocs
 	request  happRequest
 	response happResponse
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	gate *happGate
-	// Stream states (zeros)
-	happStream0 // all values must be zero by default in this struct!
+	// Exchan states (zeros)
+	happExchan0 // all values must be zero by default in this struct!
 }
-type happStream0 struct { // for fast reset, entirely
-}
-
-func (s *happStream) onUse(gate *happGate) { // for non-zeros
-	s.webStream_.onUse()
-	s.gate = gate
-	s.request.onUse(Version2)
-	s.response.onUse(Version2)
-}
-func (s *happStream) onEnd() { // for zeros
-	s.response.onEnd()
-	s.request.onEnd()
-	s.webStream_.onEnd()
-	s.gate = nil
-	s.happStream0 = happStream0{}
+type happExchan0 struct { // for fast reset, entirely
 }
 
-func (s *happStream) execute() { // goroutine
+func (x *happExchan) onUse(gate *happGate) { // for non-zeros
+	x.webStream_.onUse()
+	x.gate = gate
+	x.request.onUse(Version2)
+	x.response.onUse(Version2)
+}
+func (x *happExchan) onEnd() { // for zeros
+	x.response.onEnd()
+	x.request.onEnd()
+	x.webStream_.onEnd()
+	x.gate = nil
+	x.happExchan0 = happExchan0{}
+}
+
+func (x *happExchan) execute() { // goroutine
 	// TODO
-	putHAPPStream(s)
+	putHAPPExchan(x)
 }
 
-func (s *happStream) webAgent() webAgent { return nil }
-func (s *happStream) peerAddr() net.Addr { return nil }
+func (x *happExchan) webAgent() webAgent { return nil }
+func (x *happExchan) peerAddr() net.Addr { return nil }
 
-func (s *happStream) writeContinue() bool { // 100 continue
+func (x *happExchan) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *happStream) executeNormal(app *App, req *happRequest, resp *happResponse) { // request & response
+func (x *happExchan) executeNormal(app *App, req *happRequest, resp *happResponse) { // request & response
 	// TODO
 	//app.dispatchHandlet(req, resp)
 }
-func (s *happStream) serveAbnormal(req *happRequest, resp *happResponse) { // 4xx & 5xx
+func (x *happExchan) serveAbnormal(req *happRequest, resp *happResponse) { // 4xx & 5xx
 	// TODO
 }
 
-func (s *happStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (x *happExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	// TODO
 	return
 }
 
-func (s *happStream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (x *happExchan) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-func (s *happStream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (x *happExchan) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 
-func (s *happStream) read(p []byte) (int, error) { // for content i/o only
+func (x *happExchan) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *happStream) readFull(p []byte) (int, error) { // for content i/o only
+func (x *happExchan) readFull(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *happStream) write(p []byte) (int, error) { // for content i/o only
+func (x *happExchan) write(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *happStream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (x *happExchan) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
 
-func (s *happStream) isBroken() bool { return false } // TODO: limit the breakage in the stream
-func (s *happStream) markBroken()    {}               // TODO: limit the breakage in the stream
+func (x *happExchan) isBroken() bool { return false } // TODO: limit the breakage in the exchan
+func (x *happExchan) markBroken()    {}               // TODO: limit the breakage in the exchan
 
 // happRequest is the server-side HAPP request.
 type happRequest struct { // incoming. needs parsing
 	// Mixins
 	serverRequest_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 func (r *happRequest) readContent() (p []byte, err error) { return r.readContentP() }
@@ -216,10 +197,10 @@ func (r *happRequest) readContent() (p []byte, err error) { return r.readContent
 type happResponse struct { // outgoing. needs building
 	// Mixins
 	serverResponse_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 func (r *happResponse) addHeader(name []byte, value []byte) bool   { return r.addHeaderP(name, value) }

@@ -108,117 +108,105 @@ func (n *happNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-// poolPStream
-var poolPStream sync.Pool
+// poolPExchan
+var poolPExchan sync.Pool
 
-func getPStream(node *happNode, id int32) *PStream {
-	var stream *PStream
-	if x := poolPStream.Get(); x == nil {
-		stream = new(PStream)
-		req, resp := &stream.request, &stream.response
-		req.shell = req
-		req.stream = stream
-		req.response = resp
-		resp.shell = resp
-		resp.stream = stream
-	} else {
-		stream = x.(*PStream)
-	}
-	stream.onUse(node, id)
-	return stream
+func getPExchan(node *happNode, id int32) *PExchan {
+	// TODO
+	return nil
 }
-func putPStream(stream *PStream) {
-	stream.onEnd()
-	poolPStream.Put(stream)
+func putPExchan(exchan *PExchan) {
+	exchan.onEnd()
+	poolPExchan.Put(exchan)
 }
 
-// PStream
-type PStream struct {
+// PExchan
+type PExchan struct {
 	// Mixins
 	webStream_
 	// Assocs
 	request  PRequest
 	response PResponse
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	node *happNode
 	id   int32
-	// Stream states (zeros)
-	b2Stream0 // all values must be zero by default in this struct!
+	// Exchan states (zeros)
+	b2Exchan0 // all values must be zero by default in this struct!
 }
-type b2Stream0 struct { // for fast reset, entirely
-}
-
-func (s *PStream) onUse(node *happNode, id int32) { // for non-zeros
-	s.webStream_.onUse()
-	s.node = node
-	s.id = id
-	s.request.onUse(Version2)
-	s.response.onUse(Version2)
-}
-func (s *PStream) onEnd() { // for zeros
-	s.response.onEnd()
-	s.request.onEnd()
-	s.node = nil
-	s.b2Stream0 = b2Stream0{}
-	s.webStream_.onEnd()
+type b2Exchan0 struct { // for fast reset, entirely
 }
 
-func (s *PStream) webAgent() webAgent { return nil }
-func (s *PStream) peerAddr() net.Addr { return nil }
+func (x *PExchan) onUse(node *happNode, id int32) { // for non-zeros
+	x.webStream_.onUse()
+	x.node = node
+	x.id = id
+	x.request.onUse(Version2)
+	x.response.onUse(Version2)
+}
+func (x *PExchan) onEnd() { // for zeros
+	x.response.onEnd()
+	x.request.onEnd()
+	x.node = nil
+	x.b2Exchan0 = b2Exchan0{}
+	x.webStream_.onEnd()
+}
 
-func (s *PStream) Request() *PRequest   { return &s.request }
-func (s *PStream) Response() *PResponse { return &s.response }
+func (x *PExchan) webAgent() webAgent { return nil }
+func (x *PExchan) peerAddr() net.Addr { return nil }
 
-func (s *PStream) ExecuteNormal() error { // request & response
+func (x *PExchan) Request() *PRequest   { return &x.request }
+func (x *PExchan) Response() *PResponse { return &x.response }
+
+func (x *PExchan) ExecuteNormal() error { // request & response
 	// TODO
 	return nil
 }
 
-func (s *PStream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (x *PExchan) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (s *PStream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (x *PExchan) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 
-func (s *PStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (x *PExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	// TODO
 	return
 }
 
-func (s *PStream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (x *PExchan) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *PStream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (x *PExchan) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *PStream) write(p []byte) (int, error) { // for content i/o only?
+func (x *PExchan) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *PStream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (x *PExchan) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *PStream) read(p []byte) (int, error) { // for content i/o only?
+func (x *PExchan) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *PStream) readFull(p []byte) (int, error) { // for content i/o only?
+func (x *PExchan) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-func (s *PStream) isBroken() bool { return false } // TODO: limit the breakage in the stream
-func (s *PStream) markBroken()    {}               // TODO: limit the breakage in the stream
+func (x *PExchan) isBroken() bool { return false } // TODO: limit the breakage in the exchan
+func (x *PExchan) markBroken()    {}               // TODO: limit the breakage in the exchan
 
 // PRequest is the client-side HAPP request.
 type PRequest struct { // outgoing. needs building
 	// Mixins
 	clientRequest_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 func (r *PRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
@@ -275,10 +263,10 @@ func (r *PRequest) fixedHeaders() []byte { return nil } // TODO
 type PResponse struct { // incoming. needs parsing
 	// Mixins
 	clientResponse_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 func (r *PResponse) readContent() (p []byte, err error) { return r.readContentP() }

@@ -102,37 +102,7 @@ func (g *happGate) shutdown() error {
 }
 
 func (g *happGate) serve() { // goroutine
-	connID := int64(0)
-	for {
-		tcpConn, err := g.gate.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				g.stage.Logf("happServer[%s] happGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub(1)
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				tcpConn.Close()
-				g.stage.Logf("happServer[%s] happGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			happConn := getHAPPConn(connID, g.server, g, tcpConn, rawConn)
-			go happConn.serve() // happConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
-		Debugf("happGate=%d TCP done\n", g.id)
-	}
-	g.server.SubDone()
+	// TODO
 }
 
 func (g *happGate) justClose(tcpConn *net.TCPConn) {
@@ -140,89 +110,10 @@ func (g *happGate) justClose(tcpConn *net.TCPConn) {
 	g.onConnectionClosed()
 }
 
-// poolHAPPConn is the server-side HAPP connection pool.
-var poolHAPPConn sync.Pool
-
-func getHAPPConn(id int64, server *happServer, gate *happGate, tcpConn *net.TCPConn, rawConn syscall.RawConn) serverConn {
-	var conn *happConn
-	if x := poolHAPPConn.Get(); x == nil {
-		conn = new(happConn)
-	} else {
-		conn = x.(*happConn)
-	}
-	conn.onGet(id, server, gate, tcpConn, rawConn)
-	return conn
-}
-func putHAPPConn(conn *happConn) {
-	conn.onPut()
-	poolHAPPConn.Put(conn)
-}
-
-// happConn is the server-side HAPP connection.
-type happConn struct {
-	// Mixins
-	serverConn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	tcpConn *net.TCPConn // the connection
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-	happConn0 // all values must be zero by default in this struct!
-}
-type happConn0 struct { // for fast reset, entirely
-}
-
-func (c *happConn) onGet(id int64, server *happServer, gate *happGate, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
-	c.serverConn_.onGet(id, server, gate)
-	c.tcpConn = tcpConn
-	c.rawConn = rawConn
-}
-func (c *happConn) onPut() {
-	c.serverConn_.onPut()
-	c.tcpConn = nil
-	c.rawConn = nil
-
-	c.happConn0 = happConn0{}
-}
-
-func (c *happConn) serve() { // goroutine
-	// TODO
-}
-func (c *happConn) receive() { // goroutine
-	// TODO
-}
-
-func (c *happConn) setReadDeadline(deadline time.Time) error {
-	// TODO
-	return nil
-}
-func (c *happConn) setWriteDeadline(deadline time.Time) error {
-	// TODO
-	return nil
-}
-
-func (c *happConn) readAtLeast(p []byte, n int) (int, error) {
-	// TODO
-	return 0, nil
-}
-func (c *happConn) write(p []byte) (int, error) {
-	// TODO
-	return 0, nil
-}
-func (c *happConn) writev(vector *net.Buffers) (int64, error) {
-	// TODO
-	return 0, nil
-}
-
-func (c *happConn) closeConn() {
-	// TODO
-}
-
 // poolHAPPStream is the server-side HAPP stream pool.
 var poolHAPPStream sync.Pool
 
-func getHAPPStream(conn *happConn, id uint32) *happStream {
+func getHAPPStream(gate *happGate, id uint32) *happStream {
 	// TODO
 	return nil
 }
@@ -240,16 +131,16 @@ type happStream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *happConn
+	gate *happGate
 	// Stream states (zeros)
 	happStream0 // all values must be zero by default in this struct!
 }
 type happStream0 struct { // for fast reset, entirely
 }
 
-func (s *happStream) onUse(conn *happConn) { // for non-zeros
+func (s *happStream) onUse(gate *happGate) { // for non-zeros
 	s.webStream_.onUse()
-	s.conn = conn
+	s.gate = gate
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
 }
@@ -257,7 +148,7 @@ func (s *happStream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.webStream_.onEnd()
-	s.conn = nil
+	s.gate = nil
 	s.happStream0 = happStream0{}
 }
 
@@ -266,8 +157,8 @@ func (s *happStream) execute() { // goroutine
 	putHAPPStream(s)
 }
 
-func (s *happStream) webAgent() webAgent { return s.conn.getServer() }
-func (s *happStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+func (s *happStream) webAgent() webAgent { return nil }
+func (s *happStream) peerAddr() net.Addr { return nil }
 
 func (s *happStream) writeContinue() bool { // 100 continue
 	// TODO
@@ -282,7 +173,8 @@ func (s *happStream) serveAbnormal(req *happRequest, resp *happResponse) { // 4x
 }
 
 func (s *happStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return s.conn.makeTempName(p, unixTime)
+	// TODO
+	return
 }
 
 func (s *happStream) setReadDeadline(deadline time.Time) error { // for content i/o only
@@ -305,8 +197,8 @@ func (s *happStream) writev(vector *net.Buffers) (int64, error) { // for content
 	return 0, nil
 }
 
-func (s *happStream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *happStream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *happStream) isBroken() bool { return false } // TODO: limit the breakage in the stream
+func (s *happStream) markBroken()    {}               // TODO: limit the breakage in the stream
 
 // happRequest is the server-side HAPP request.
 type happRequest struct { // incoming. needs parsing

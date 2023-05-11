@@ -26,8 +26,8 @@ type hrpcGate struct {
 func (g *hrpcGate) serve() { // goroutine
 }
 
-// hrpcCall
-type hrpcCall struct {
+// hrpcExchan
+type hrpcExchan struct {
 	// Mixins
 	// Assocs
 	in  hrpcIn

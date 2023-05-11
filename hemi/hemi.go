@@ -85,7 +85,6 @@ type ( // core types
 	Backend = internal.Backend
 
 	HAPPBackend = internal.HAPPBackend
-	PConn       = internal.PConn
 	PStream     = internal.PStream
 	PRequest    = internal.PRequest
 	PResponse   = internal.PResponse

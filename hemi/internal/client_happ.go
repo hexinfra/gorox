@@ -8,10 +8,8 @@
 package internal
 
 import (
-	"io"
 	"net"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -61,14 +59,6 @@ func (f *HAPPOutgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *HAPPOutgate) FetchConn(address string, tlsMode bool) (*PConn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *HAPPOutgate) StoreConn(conn *PConn) {
-	// TODO
-}
-
 // HAPPBackend
 type HAPPBackend struct {
 	// Mixins
@@ -91,14 +81,6 @@ func (b *HAPPBackend) createNode(id int32) *happNode {
 	node := new(happNode)
 	node.init(id, b)
 	return node
-}
-
-func (b *HAPPBackend) FetchConn() (*PConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
-}
-func (b *HAPPBackend) StoreConn(conn *PConn) {
-	conn.node.storeConn(conn)
 }
 
 // happNode
@@ -126,113 +108,10 @@ func (n *happNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-func (n *happNode) fetchConn() (*PConn, error) {
-	// Note: An PConn can be used concurrently, limited by maxStreams.
-	// TODO
-	var tcpConn *net.TCPConn
-	var rawConn syscall.RawConn
-	connID := n.backend.nextConnID()
-	return getPConn(connID, n.backend, n, tcpConn, rawConn), nil
-}
-func (n *happNode) storeConn(b2Conn *PConn) {
-	// Note: An PConn can be used concurrently, limited by maxStreams.
-	// TODO
-}
-
-// poolPConn is the client-side HAPP connection pool.
-var poolPConn sync.Pool
-
-func getPConn(id int64, client webClient, node *happNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) *PConn {
-	var conn *PConn
-	if x := poolPConn.Get(); x == nil {
-		conn = new(PConn)
-	} else {
-		conn = x.(*PConn)
-	}
-	conn.onGet(id, client, node, tcpConn, rawConn)
-	return conn
-}
-func putPConn(conn *PConn) {
-	conn.onPut()
-	poolPConn.Put(conn)
-}
-
-// PConn
-type PConn struct {
-	// Mixins
-	clientConn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	node    *happNode    // associated node
-	tcpConn *net.TCPConn // the connection
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-	activeStreams int32 // concurrent streams
-}
-
-func (c *PConn) onGet(id int64, client webClient, node *happNode, tcpConn *net.TCPConn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, client)
-	c.node = node
-	c.tcpConn = tcpConn
-	c.rawConn = rawConn
-}
-func (c *PConn) onPut() {
-	c.clientConn_.onPut()
-	c.node = nil
-	c.tcpConn = nil
-	c.rawConn = nil
-	c.activeStreams = 0
-}
-
-func (c *PConn) FetchStream() *PStream {
-	// TODO: stream.onUse()
-	return nil
-}
-func (c *PConn) StoreStream(stream *PStream) {
-	// TODO
-	stream.onEnd()
-}
-
-func (c *PConn) Close() error { // only used by clients of dial
-	// TODO
-	return nil
-}
-
-func (c *PConn) setWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.tcpConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastWrite = deadline
-	}
-	return nil
-}
-func (c *PConn) setReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.tcpConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastRead = deadline
-	}
-	return nil
-}
-
-func (c *PConn) write(p []byte) (int, error) { return c.tcpConn.Write(p) }
-func (c *PConn) writev(vector *net.Buffers) (int64, error) {
-	// Will consume vector automatically
-	return vector.WriteTo(c.tcpConn)
-}
-func (c *PConn) readAtLeast(p []byte, n int) (int, error) {
-	return io.ReadAtLeast(c.tcpConn, p, n)
-}
-
-func (c *PConn) closeConn() { c.tcpConn.Close() } // used by codes other than dial
-
 // poolPStream
 var poolPStream sync.Pool
 
-func getPStream(conn *PConn, id int32) *PStream {
+func getPStream(node *happNode, id int32) *PStream {
 	var stream *PStream
 	if x := poolPStream.Get(); x == nil {
 		stream = new(PStream)
@@ -245,7 +124,7 @@ func getPStream(conn *PConn, id int32) *PStream {
 	} else {
 		stream = x.(*PStream)
 	}
-	stream.onUse(conn, id)
+	stream.onUse(node, id)
 	return stream
 }
 func putPStream(stream *PStream) {
@@ -263,7 +142,7 @@ type PStream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *PConn
+	node *happNode
 	id   int32
 	// Stream states (zeros)
 	b2Stream0 // all values must be zero by default in this struct!
@@ -271,9 +150,9 @@ type PStream struct {
 type b2Stream0 struct { // for fast reset, entirely
 }
 
-func (s *PStream) onUse(conn *PConn, id int32) { // for non-zeros
+func (s *PStream) onUse(node *happNode, id int32) { // for non-zeros
 	s.webStream_.onUse()
-	s.conn = conn
+	s.node = node
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
@@ -281,13 +160,13 @@ func (s *PStream) onUse(conn *PConn, id int32) { // for non-zeros
 func (s *PStream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.conn = nil
+	s.node = nil
 	s.b2Stream0 = b2Stream0{}
 	s.webStream_.onEnd()
 }
 
-func (s *PStream) webAgent() webAgent { return s.conn.getClient() }
-func (s *PStream) peerAddr() net.Addr { return s.conn.tcpConn.RemoteAddr() }
+func (s *PStream) webAgent() webAgent { return nil }
+func (s *PStream) peerAddr() net.Addr { return nil }
 
 func (s *PStream) Request() *PRequest   { return &s.request }
 func (s *PStream) Response() *PResponse { return &s.response }
@@ -305,7 +184,8 @@ func (s *PStream) ReverseProxy(req Request, resp Response, bufferClientContent b
 }
 
 func (s *PStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return s.conn.makeTempName(p, unixTime)
+	// TODO
+	return
 }
 
 func (s *PStream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
@@ -328,8 +208,8 @@ func (s *PStream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-func (s *PStream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *PStream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *PStream) isBroken() bool { return false } // TODO: limit the breakage in the stream
+func (s *PStream) markBroken()    {}               // TODO: limit the breakage in the stream
 
 // PRequest is the client-side HAPP request.
 type PRequest struct { // outgoing. needs building

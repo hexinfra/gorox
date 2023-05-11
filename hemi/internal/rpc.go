@@ -111,3 +111,7 @@ func (s *Svc) maintain() { // goroutine
 func (s *Svc) dispatch(ping Ping, pong Pong) {
 	// TODO
 }
+
+// Bundle
+type Bundle interface {
+}

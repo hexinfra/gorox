@@ -5,7 +5,8 @@
 
 // HAPP protocol elements, incoming message and outgoing message implementation.
 
-// HAPP is a simplified HTTP/2. Its design makes it easy to implement a server or client.
+// HAPP is an HTTP gateway protocol without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HAPP is under design, maybe we'll build it upon Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal
 
@@ -117,7 +118,7 @@ func (r *happOut_) writeVectorP() error {
 //   dataRecord = recordHead *OCTET
 //   sizeRecord = recordHead windowSize(3)
 
-// On TCP connection established, client sends an init record, then server sends one, too.
+// On connection established, client sends an init record, then server sends one, too.
 // Whenever a client kicks a new request, it must use the least unused streamID starting from 1.
 // A streamID is considered as unused after a response with this streamID was received entirely.
 // If concurrent streams exceeds the limit set in init record, server can close the connection.

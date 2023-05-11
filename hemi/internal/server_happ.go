@@ -5,8 +5,6 @@
 
 // HAPP server implementation.
 
-// HAPP is a simplified HTTP/2 without WebSocket, TCP Tunnel, and UDP Tunnel support.
-
 package internal
 
 import (

@@ -20,9 +20,9 @@ COMPONENTS
 ==========
 
   stage [*]
-    fixture (clock, fcache, resolver, happOutgate, http1Outgate, http2Outgate, http3Outgate, quicOutgate, tcpsOutgate, udpsOutgate)
+    fixture (clock, fcache, resolver, http1Outgate, tcpsOutgate, ...)
     runner (...)
-    backend (http1Backend, http2Backend, http3Backend, quicBackend, tcpsBackend, udpsBackend)
+    backend (http1Backend, tcpsBackend, ...)
     router (quicRouter, tcpsRouter, udpsRouter)
       dealer (...)
       editor (...)

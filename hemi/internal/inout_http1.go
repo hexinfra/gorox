@@ -598,7 +598,7 @@ func (r *http1Out_) delHeaderH1(name []byte) (deleted bool) {
 }
 func (r *http1Out_) delHeaderAtH1(o uint8) {
 	if o == 0 {
-		BugExitln("delHeaderAt1: o == 0 must not happen!")
+		BugExitln("delHeaderAt1: o == 0")
 	}
 	from := r.edges[o-1]
 	edge := r.edges[o]

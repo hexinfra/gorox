@@ -464,7 +464,7 @@ func (b *loadBalancer_) onPrepare(numNodes int) {
 	case "random":
 		b.indexGet = b.getNextByRandom
 	default:
-		BugExitln("this should not happen")
+		BugExitln("unknown balancer")
 	}
 	b.numNodes = int64(numNodes)
 }

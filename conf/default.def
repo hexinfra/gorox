@@ -22,18 +22,6 @@ stage {
 	}
 	resolver {
 	}
-	happOutgate {
-		.tlsMode = false
-		.dialTimeout = 10s
-		.writeTimeout = 30s
-		.readTimeout = 30s
-		.idleTimeout = 4s
-		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/http/happOutgate/happO"
-		.maxContentSize = 1T
-		.sendTimeout = 60s
-		.recvTimeout = 60s
-	}
 	http1Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -99,8 +87,6 @@ stage {
 	}
 
 	// backends
-	happBackend "pb1" {
-	}
 	http1Backend "h1b1" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -359,8 +345,6 @@ stage {
 			.preferUnderscore = true
 			.withCacher = "cacher name"
 		}
-		happProxy "pp1" {
-		}
 		http1Proxy "h1p1" {
 			.proxyMode = "reverse"
 			.toBackend = "proxy_name"
@@ -442,8 +426,6 @@ stage {
 	echoServer "es1" {
 	}
 	socksServer "ss1" {
-	}
-	happServer "ps1" {
 	}
 	httpxServer "hxs1" {
 		.forApps         = ("foo", "bar")

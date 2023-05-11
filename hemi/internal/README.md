@@ -11,7 +11,7 @@ THE WEB PICTURE
 
 ```
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
-  ----happStream----->                        ------PStream------>
+  ----happExchan----->                        ------PExchan------>
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
@@ -33,7 +33,7 @@ THE WEB PICTURE
                   /          /         \
                             /           \
   <--http[1-3]Stream--                        <---H[1-3]Stream----
-  <----happStream-----                        <-----PStream-------
+  <----happExchan-----                        <-----PExchan-------
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |

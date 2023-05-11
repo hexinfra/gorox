@@ -72,23 +72,17 @@ var ( // core funcs
 type ( // core types
 	Stage = internal.Stage
 
-	HAPPOutgate  = internal.HAPPOutgate
-	HTTP1Outgate = internal.HTTP1Outgate
-	HTTP2Outgate = internal.HTTP2Outgate
-	HTTP3Outgate = internal.HTTP3Outgate
-	QUICOutgate  = internal.QUICOutgate
-	TCPSOutgate  = internal.TCPSOutgate
-	UDPSOutgate  = internal.UDPSOutgate
-
 	Runner = internal.Runner
 
 	Backend = internal.Backend
 
+	HAPPOutgate = internal.HAPPOutgate
 	HAPPBackend = internal.HAPPBackend
 	PExchan     = internal.PExchan
 	PRequest    = internal.PRequest
 	PResponse   = internal.PResponse
 
+	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -96,6 +90,7 @@ type ( // core types
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
 
+	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
@@ -103,6 +98,7 @@ type ( // core types
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
 
+	HTTP3Outgate = internal.HTTP3Outgate
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
@@ -110,12 +106,15 @@ type ( // core types
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
 
+	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend
 	QConn       = internal.QConn
 
+	TCPSOutgate = internal.TCPSOutgate
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
 
+	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
 

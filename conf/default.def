@@ -22,6 +22,18 @@ stage {
 	}
 	resolver {
 	}
+	happOutgate {
+		.tlsMode = false
+		.dialTimeout = 10s
+		.writeTimeout = 30s
+		.readTimeout = 30s
+		.idleTimeout = 4s
+		.maxStreamsPerConn = 1000
+		.saveContentFilesDir = %tempDir + "/http/happOutgate/happO"
+		.maxContentSize = 1T
+		.sendTimeout = 60s
+		.recvTimeout = 60s
+	}
 	http1Outgate {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -29,7 +41,7 @@ stage {
 		.readTimeout = 30s
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/http/http1Outgate/h1o" 
+		.saveContentFilesDir = %tempDir + "/http/http1Outgate/h1o"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -54,20 +66,6 @@ stage {
 		.idleTimeout = 4s
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tempDir + "/http/http3Outgate/h3o"
-		.maxContentSize = 1T
-		.sendTimeout = 60s
-		.recvTimeout = 60s
-	}
-	happ1Outgate {
-	}
-	happ2Outgate {
-		.tlsMode = false
-		.dialTimeout = 10s
-		.writeTimeout = 30s
-		.readTimeout = 30s
-		.idleTimeout = 4s
-		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/http/happ2Outgate/happ2O"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -101,6 +99,8 @@ stage {
 	}
 
 	// backends
+	happBackend "pb1" {
+	}
 	http1Backend "h1b1" {
 		.tlsMode = false
 		.dialTimeout = 10s
@@ -151,10 +151,6 @@ stage {
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 		.balancer = "ipHash"
-	}
-	happ1Backend "b1b1" {
-	}
-	happ2Backend "b2b1" {
 	}
 	quicBackend "qb1" {
 		.tlsMode = false
@@ -363,6 +359,8 @@ stage {
 			.preferUnderscore = true
 			.withCacher = "cacher name"
 		}
+		happProxy "pp1" {
+		}
 		http1Proxy "h1p1" {
 			.proxyMode = "reverse"
 			.toBackend = "proxy_name"
@@ -396,10 +394,6 @@ stage {
 			)
 		}
 		http3Proxy "h3p1" {
-		}
-		happ1Proxy "b1p1" {
-		}
-		happ2Proxy "b2p1" {
 		}
 		uwsgiProxy "up1" {
 		}
@@ -449,6 +443,8 @@ stage {
 	}
 	socksServer "ss1" {
 	}
+	happServer "ps1" {
+	}
 	httpxServer "hxs1" {
 		.forApps         = ("foo", "bar")
 		.address         = string,required
@@ -468,10 +464,6 @@ stage {
 		.h2cMode         = false
 	}
 	http3Server "h3s1" {
-	}
-	happ1Server "b1s1" {
-	}
-	happ2Server "b2s1" {
 	}
 
 	// cronjobs

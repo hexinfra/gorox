@@ -11,7 +11,7 @@ THE WEB PICTURE
 
 ```
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
-  --happ[1-2]Stream-->                        ----B[1-2]Stream--->
+  ----happStream----->                        ------PStream------>
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
@@ -24,7 +24,7 @@ THE WEB PICTURE
     ^             |                             ^             |
     |             v                             |             v
     +-http[1-3]Request                          +-H[1-3]Request
-    +-happ[1-2]Request                          +-B[1-2]Request
+    +-happRequest                               +-PRequest
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
@@ -33,7 +33,7 @@ THE WEB PICTURE
                   /          /         \
                             /           \
   <--http[1-3]Stream--                        <---H[1-3]Stream----
-  <--happ[1-2]Stream--                        <---B[1-2]Stream----
+  <----happStream-----                        <-----PStream-------
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |
@@ -46,7 +46,7 @@ THE WEB PICTURE
     ^              |                            ^              |
     |              v                            |              v
     +-http[1-3]Response                         +-H[1-3]Response
-    +-happ[1-2]Response                         +-B[1-2]Response
+    +-happResponse                              +-PResponse
 ```
 
 

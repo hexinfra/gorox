@@ -3,71 +3,71 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HAPP/2 protocol elements, incoming message and outgoing message implementation.
+// HAPP protocol elements, incoming message and outgoing message implementation.
 
-// HAPP/2 is a simplified HTTP/2. Its design makes it easy to implement a server or client.
+// HAPP is a simplified HTTP/2. Its design makes it easy to implement a server or client.
 
 package internal
 
-// happ2In_ is used by happ2Request and B2Response.
-type happ2In_ = webIn_
+// happIn_ is used by happRequest and PResponse.
+type happIn_ = webIn_
 
-func (r *happ2In_) readContentB2() (p []byte, err error) {
+func (r *happIn_) readContentP() (p []byte, err error) {
 	return
 }
 
-// happ2Out_ is used by happ2Response and B2Request.
-type happ2Out_ = webOut_
+// happOut_ is used by happResponse and PRequest.
+type happOut_ = webOut_
 
-func (r *happ2Out_) addHeaderB2(name []byte, value []byte) bool {
+func (r *happOut_) addHeaderP(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *happ2Out_) headerB2(name []byte) (value []byte, ok bool) {
+func (r *happOut_) headerP(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *happ2Out_) hasHeaderB2(name []byte) bool {
+func (r *happOut_) hasHeaderP(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *happ2Out_) delHeaderB2(name []byte) (deleted bool) {
+func (r *happOut_) delHeaderP(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *happ2Out_) delHeaderAtB2(o uint8) {
+func (r *happOut_) delHeaderAtP(o uint8) {
 	// TODO
 }
 
-func (r *happ2Out_) sendChainB2() error {
+func (r *happOut_) sendChainP() error {
 	return nil
 }
 
-func (r *happ2Out_) echoHeadersB2() error {
+func (r *happOut_) echoHeadersP() error {
 	// TODO
 	return nil
 }
-func (r *happ2Out_) echoChainB2() error {
+func (r *happOut_) echoChainP() error {
 	// TODO
 	return nil
 }
 
-func (r *happ2Out_) addTrailerB2(name []byte, value []byte) bool {
+func (r *happOut_) addTrailerP(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *happ2Out_) trailerB2(name []byte) (value []byte, ok bool) {
+func (r *happOut_) trailerP(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *happ2Out_) trailersB2() []byte {
+func (r *happOut_) trailersP() []byte {
 	// TODO
 	return nil
 }
 
-func (r *happ2Out_) passBytesB2(p []byte) error { return r.writeBytesB2(p) }
+func (r *happOut_) passBytesP(p []byte) error { return r.writeBytesP(p) }
 
-func (r *happ2Out_) finalizeUnsizedB2() error {
+func (r *happOut_) finalizeUnsizedP() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -75,23 +75,23 @@ func (r *happ2Out_) finalizeUnsizedB2() error {
 	return nil
 }
 
-func (r *happ2Out_) writeHeadersB2() error { // used by echo and pass
+func (r *happOut_) writeHeadersP() error { // used by echo and pass
 	// TODO
 	return nil
 }
-func (r *happ2Out_) writePieceB2(piece *Piece, unsized bool) error {
+func (r *happOut_) writePieceP(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *happ2Out_) writeBytesB2(p []byte) error {
+func (r *happOut_) writeBytesP(p []byte) error {
 	// TODO
 	return nil
 }
-func (r *happ2Out_) writeVectorB2() error {
+func (r *happOut_) writeVectorP() error {
 	return nil
 }
 
-//////////////////////////////////////// HAPP/2 protocol elements ////////////////////////////////////////
+//////////////////////////////////////// HAPP protocol elements ////////////////////////////////////////
 
 // recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
 
@@ -117,11 +117,11 @@ func (r *happ2Out_) writeVectorB2() error {
 // If concurrent streams exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
-	happ2TypeINIT = 0 // contains connection settings
-	happ2TypeHEAD = 1 // contains name-value pairs for headers
-	happ2TypeDATA = 2 // contains content data
-	happ2TypeSIZE = 3 // available window size for receiving content
-	happ2TypeTAIL = 4 // contains name-value pairs for trailers
+	happTypeINIT = 0 // contains connection settings
+	happTypeHEAD = 1 // contains name-value pairs for headers
+	happTypeDATA = 2 // contains content data
+	happTypeSIZE = 3 // available window size for receiving content
+	happTypeTAIL = 4 // contains name-value pairs for trailers
 )
 
 const ( // record flags
@@ -129,17 +129,17 @@ const ( // record flags
 )
 
 const ( // setting codes
-	happ2SettingMaxRecordBodySize    = 0
-	happ2SettingInitialWindowSize    = 1
-	happ2SettingMaxStreams           = 2
-	happ2SettingMaxConcurrentStreams = 3
+	happSettingMaxRecordBodySize    = 0
+	happSettingInitialWindowSize    = 1
+	happSettingMaxStreams           = 2
+	happSettingMaxConcurrentStreams = 3
 )
 
-var happ2SettingDefaults = [...]int32{
-	happ2SettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	happ2SettingInitialWindowSize:    16376, // allow: [16376-16777215]
-	happ2SettingMaxStreams:           1000,  // allow: [100-16777215]
-	happ2SettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
+var happSettingDefaults = [...]int32{
+	happSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
+	happSettingInitialWindowSize:    16376, // allow: [16376-16777215]
+	happSettingMaxStreams:           1000,  // allow: [100-16777215]
+	happSettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
 }
 
 /*

@@ -329,7 +329,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		</li>
 		<li id="stage-http1Outgate">
 			<h3>stage &gt; http1Outgate</h3>
-			<p>http1.1 正向代理，通过转发 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http1Outgate。<br />当 http1Proxy 设置 .proxyMode =
+			<p>http1.1 正向代理，通过 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http1Outgate。<br />当 http1Proxy 设置 .proxyMode =
 				"forward"，gorox 自动使用 http1Outgate 相关配置作为 http client 的配置。</p>
 			<ul>
 				<li>
@@ -443,7 +443,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 		</li>
 		<li id="stage-http2Outgate">
 			<h3>stage &gt; http2Outgate</h3>
-			<p>http2 正向代理，通过转发 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http2Outgate。<br />当 http2Proxy 设置 .proxyMode =
+			<p>http2 正向代理，通过 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http2Outgate。<br />当 http2Proxy 设置 .proxyMode =
 				"forward"，gorox 自动使用 http2Outgate 相关配置作为 http client 的配置。
 			</p>
 			<ul>

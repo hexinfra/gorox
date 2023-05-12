@@ -39,8 +39,8 @@ func (d *tcpsRelay) OnShutdown() {
 func (d *tcpsRelay) OnConfigure() {
 	d.process = d.relay
 	isReverse := true
-	// proxyMode
-	if v, ok := d.Find("proxyMode"); ok {
+	// relayMode
+	if v, ok := d.Find("relayMode"); ok {
 		if mode, ok := v.String(); ok {
 			switch mode {
 			case "socks": // SOCKS
@@ -51,7 +51,7 @@ func (d *tcpsRelay) OnConfigure() {
 				isReverse = false
 			}
 		} else {
-			UseExitln("invalid proxyMode")
+			UseExitln("invalid relayMode")
 		}
 	}
 	// toBackend

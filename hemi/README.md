@@ -12,17 +12,17 @@ The logical architecture of a stage in Hemi engine looks like this:
 ```
    ^     +--------------------------------------------+  shutdown
    |     |                cronjob(*)                  |     |
-   |     +--------+---+--------------+----------------+     |
-   |     |        |   |     rpc[+]   |     web[+]     |     |
-   |     | [quic] | s |     server   |     server     |     |
-   |     | [tcps] | e | <gate><conn> |  <gate><conn>  |     |
-   |     | [udps] | r +--------------+----------------+     |
-   |     | router | v |              | app(*) handlet |     |
-   |     | dealer | e |              | socklet reviser|     |
-   |     | editor | r |   svc(*)     |    rule        |     |
-   |     |  case  |(*)|          +---+--+      +------+     |
-   |     |        |   |          |stater|      |cacher|     |
-   |     +--------+---+----------+------+------+------+     |
+   |     +---+--------+--------------+----------------+     |
+   |     |   |        |     rpc[+]   |     web[+]     |     |
+   |     | s | [quic] |     server   |     server     |     |
+   |     | e | [tcps] | <gate><conn> |  <gate><conn>  |     |
+   |     | r | [udps] +--------------+----------------+     |
+   |     | v | router |              | app(*) handlet |     |
+   |     | e | dealer |              | socklet reviser|     |
+   |     | r | editor |   svc(*)     |    rule        |     |
+   |     |(*)|  case  |          +---+--+      +------+     |
+   |     |   |        |          |stater|      |cacher|     |
+   |     +---+--------+----------+------+------+------+     |
    |     |           backend <node> <conn>            |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
    |     | o | u | t | g | a | t | e | s |   runner   |     |

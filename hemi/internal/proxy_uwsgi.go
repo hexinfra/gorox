@@ -123,20 +123,3 @@ func (h *uwsgiProxy) Handle(req Request, resp Response) (next bool) { // reverse
 	resp.Send("uwsgi")
 	return
 }
-
-// uwsgiStream
-type uwsgiStream struct {
-	// TODO
-}
-
-// uwsgiRequest
-type uwsgiRequest struct { // outgoing. needs building
-	// TODO
-}
-
-// uwsgiResponse
-type uwsgiResponse struct { // incoming. needs parsing
-	// TODO
-}
-
-//////////////////////////////////////// UWSGI protocol elements ////////////////////////////////////////

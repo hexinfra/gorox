@@ -301,14 +301,14 @@ func (s *H2Stream) ExecuteNormal() error { // request & response
 	return nil
 }
 func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
-	// TODO, use s.socketClient()
+	// TODO, use s.startSocket()
 	return s.socket
 }
 func (s *H2Stream) ExecuteTCPTun() { // CONNECT method
-	// TODO, use s.tcpTunClient()
+	// TODO, use s.startTCPTun()
 }
 func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298: https://datatracker.ietf.org/doc/html/rfc9298
-	// TODO, use s.udpTunClient()
+	// TODO, use s.startUDPTun()
 }
 
 func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {

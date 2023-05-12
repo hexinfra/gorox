@@ -93,22 +93,6 @@ func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
 }
 
-// clientStream_
-type clientStream_ struct {
-	// Mixins
-	webStream_
-}
-
-func (s *clientStream_) startSocket() {
-	// TODO
-}
-func (s *clientStream_) startTCPTun() {
-	// TODO: CONNECT method
-}
-func (s *clientStream_) startUDPTun() {
-	// TODO: upgrade connect-udp
-}
-
 // clientConn is the interface for *H[1-3]Conn.
 type clientConn interface {
 	getClient() webClient
@@ -152,6 +136,22 @@ func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 
 func (c *clientConn_) isBroken() bool { return c.broken.Load() }
 func (c *clientConn_) markBroken()    { c.broken.Store(true) }
+
+// clientStream_
+type clientStream_ struct {
+	// Mixins
+	webStream_
+}
+
+func (s *clientStream_) startSocket() {
+	// TODO
+}
+func (s *clientStream_) startTCPTun() {
+	// TODO: CONNECT method
+}
+func (s *clientStream_) startUDPTun() {
+	// TODO: upgrade connect-udp
+}
 
 // clientRequest is the interface for *H[1-3]Request and *PRequest.
 type clientRequest interface {

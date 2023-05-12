@@ -337,21 +337,21 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 }
 func (s *http1Stream) executeSocket() { // upgrade: websocket
-	// TODO(diogin): implementation (RFC 6455), use s.socketClient()
+	// TODO(diogin): implementation (RFC 6455), use s.serveSocket()
 	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
 func (s *http1Stream) executeTCPTun() { // CONNECT method
-	// TODO(diogin): implementation, use s.tcpTunServer()
+	// TODO(diogin): implementation, use s.serveTCPTun()
 	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }
 func (s *http1Stream) executeUDPTun() { // upgrade: connect-udp
-	// TODO(diogin): implementation (RFC 9298), use s.udpTunServer()
+	// TODO(diogin): implementation (RFC 9298), use s.serveUDPTun()
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()

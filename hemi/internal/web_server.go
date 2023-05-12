@@ -153,22 +153,6 @@ func (g *webGate_) onConnectionClosed() {
 	g.SubDone()
 }
 
-// serverStream_
-type serverStream_ struct {
-	// Mixins
-	webStream_
-}
-
-func (s *serverStream_) serveSocket() {
-	// TODO
-}
-func (s *serverStream_) serveTCPTun() {
-	// TODO: CONNECT method
-}
-func (s *serverStream_) serveUDPTun() {
-	// TODO: upgrade connect-udp
-}
-
 // serverConn is the interface for *http[1-3]Conn.
 type serverConn interface {
 	serve() // goroutine
@@ -218,6 +202,22 @@ func (c *serverConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 
 func (c *serverConn_) isBroken() bool { return c.broken.Load() }
 func (c *serverConn_) markBroken()    { c.broken.Store(true) }
+
+// serverStream_
+type serverStream_ struct {
+	// Mixins
+	webStream_
+}
+
+func (s *serverStream_) serveSocket() {
+	// TODO
+}
+func (s *serverStream_) serveTCPTun() {
+	// TODO: CONNECT method
+}
+func (s *serverStream_) serveUDPTun() {
+	// TODO: upgrade connect-udp
+}
 
 // Request is the interface for *http[1-3]Request and *happRequest.
 type Request interface {

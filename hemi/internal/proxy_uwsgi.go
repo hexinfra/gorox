@@ -5,9 +5,6 @@
 
 // UWSGI proxy handlet passes requests to backend uWSGI servers and cache responses.
 
-// UWSGI is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
-// UWSGI 1.9.13 seems to have unsized content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
-
 package internal
 
 import (

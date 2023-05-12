@@ -5,6 +5,15 @@
 
 // FCGI client implementation.
 
+// FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
+// And we don't use request-side chunking due to the limitation of CGI/1.1 even
+// though FCGI can do that through its framing protocol. Perhaps most FCGI
+// applications don't implement this feature either.
+
+// In response side, FCGI applications mostly use "unsized" output.
+
+// To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
+
 package internal
 
 import (

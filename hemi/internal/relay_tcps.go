@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS proxy implementation.
+// TCP/TLS relay implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
-		d := new(tcpsProxy)
+	RegisterTCPSDealer("tcpsRelay", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+		d := new(tcpsRelay)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// tcpsProxy passes TCP/TLS connections to another/backend TCP/TLS server.
-type tcpsProxy struct {
+// tcpsRelay passes TCP/TLS connections to another/backend TCP/TLS server.
+type tcpsRelay struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
@@ -27,16 +27,16 @@ type tcpsProxy struct {
 	process func(*TCPSConn)
 }
 
-func (d *tcpsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *tcpsRelay) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *tcpsProxy) OnShutdown() {
+func (d *tcpsRelay) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *tcpsProxy) OnConfigure() {
+func (d *tcpsRelay) OnConfigure() {
 	d.process = d.relay
 	isReverse := true
 	// proxyMode
@@ -62,7 +62,7 @@ func (d *tcpsProxy) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				d.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for tcpsProxy\n", name)
+				UseExitf("incorrect backend '%s' for tcpsRelay\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -71,23 +71,23 @@ func (d *tcpsProxy) OnConfigure() {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (d *tcpsProxy) OnPrepare() {
+func (d *tcpsRelay) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
+func (d *tcpsRelay) Deal(conn *TCPSConn) (next bool) { // forward or reverse
 	d.process(conn)
 	return false
 }
 
-func (d *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
+func (d *tcpsRelay) socks(conn *TCPSConn) { // SOCKS
 	// TODO
 }
-func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
+func (d *tcpsRelay) https(conn *TCPSConn) { // HTTP CONNECT
 	// TODO
 }
 
-func (d *tcpsProxy) relay(conn *TCPSConn) { // reverse proxy
+func (d *tcpsRelay) relay(conn *TCPSConn) { // reverse
 	// TODO
 	tConn, err := d.backend.Dial()
 	if err != nil {

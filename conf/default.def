@@ -187,7 +187,7 @@ stage {
 		.maxConnsPerGate = 100000
 
 		// dealers
-		quicProxy "qp1" {
+		quicRelay "qr1" {
 		}
 
 		// editors
@@ -215,7 +215,7 @@ stage {
 		}
 		redisProxy "rp1" {
 		}
-		tcpsProxy "tp1" {
+		tcpsRelay "tr1" {
 		}
 
 		// editors
@@ -239,7 +239,7 @@ stage {
 		// dealers
 		dnsDealer "dd1" {
 		}
-		udpsProxy "up1" {
+		udpsRelay "ur1" {
 		}
 
 		// editors

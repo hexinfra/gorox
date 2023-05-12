@@ -758,9 +758,6 @@ func (s *Stage) Start(id int32) {
 		Debugf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
 		Debugf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
 		Debugf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
-		Debugf("size of ajpStream = %d\n", unsafe.Sizeof(ajpStream{}))
-		Debugf("size of fcgiStream = %d\n", unsafe.Sizeof(fcgiStream{}))
-		Debugf("size of uwsgiStream = %d\n", unsafe.Sizeof(uwsgiStream{}))
 	}
 	if IsDebug(1) {
 		Debugf("stageID=%d\n", s.id)

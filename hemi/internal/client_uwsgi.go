@@ -7,8 +7,8 @@
 
 package internal
 
-// uwsgiStream
-type uwsgiStream struct {
+// uwsgiExchan
+type uwsgiExchan struct {
 	// TODO
 }
 

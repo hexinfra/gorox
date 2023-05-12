@@ -7,8 +7,8 @@
 
 package internal
 
-// ajpStream
-type ajpStream struct {
+// ajpExchan
+type ajpExchan struct {
 	// TODO
 }
 

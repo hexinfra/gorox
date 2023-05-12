@@ -96,7 +96,7 @@ func (r *happOut_) writeVectorP() error {
 
 // WARNING: DRAFT DESIGN!
 
-// recordHead(64) = type(8) streamID(24) flags(8) bodySize(24)
+// recordHead(64) = type(8) exchanID(24) flags(8) bodySize(24)
 
 // initRecord = recordHead *setting
 //   setting(32) = settingCode(8) settingValue(24)
@@ -119,9 +119,9 @@ func (r *happOut_) writeVectorP() error {
 //   sizeRecord = recordHead windowSize(3)
 
 // On connection established, client sends an init record, then server sends one, too.
-// Whenever a client kicks a new request, it must use the least unused streamID starting from 1.
-// A streamID is considered as unused after a response with this streamID was received entirely.
-// If concurrent streams exceeds the limit set in init record, server can close the connection.
+// Whenever a client kicks a new request, it must use the least unused exchanID starting from 1.
+// A exchanID is considered as unused after a response with this exchanID was received entirely.
+// If concurrent exchans exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
 	happTypeINIT = 0 // contains connection settings
@@ -132,49 +132,49 @@ const ( // record types
 )
 
 const ( // record flags
-	happFlagEndStream = 0b00000001 // end of stream, used by HEAD, DATA, and TAIL
+	happFlagEndExchan = 0b00000001 // end of exchan, used by HEAD, DATA, and TAIL
 )
 
 const ( // setting codes
 	happSettingMaxRecordBodySize    = 0
 	happSettingInitialWindowSize    = 1
-	happSettingMaxStreams           = 2
-	happSettingMaxConcurrentStreams = 3
+	happSettingMaxExchans           = 2
+	happSettingMaxConcurrentExchans = 3
 )
 
 var happSettingDefaults = [...]int32{
 	happSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
 	happSettingInitialWindowSize:    16376, // allow: [16376-16777215]
-	happSettingMaxStreams:           1000,  // allow: [100-16777215]
-	happSettingMaxConcurrentStreams: 100,   // allow: [100-16777215]. cannot be larger than maxStreams
+	happSettingMaxExchans:           1000,  // allow: [100-16777215]
+	happSettingMaxConcurrentExchans: 100,   // allow: [100-16777215]. cannot be larger than maxExchans
 }
 
 /*
 
 on connection established:
 
-    ==> type=INIT streamID=0 bodySize=8     body=[maxRecordBodySize=16376 initialWindowSize=16376]
-    <== type=INIT streamID=0 bodySize=16    body=[maxRecordBodySize=16376 initialWindowSize=16376 maxStreams=1000 maxConcurrentStreams=10]
+    ==> type=INIT exchanID=0 bodySize=8     body=[maxRecordBodySize=16376 initialWindowSize=16376]
+    <== type=INIT exchanID=0 bodySize=16    body=[maxRecordBodySize=16376 initialWindowSize=16376 maxExchans=1000 maxConcurrentExchans=10]
 
-stream=1 (sized output):
+exchan=1 (sized output):
 
-    --> type=HEAD streamID=1 bodySize=?     body=[:method=GET :path=/hello host=example.com:8081] // endStream=1
+    --> type=HEAD exchanID=1 bodySize=?     body=[:method=GET :path=/hello host=example.com:8081] // endExchan=1
 
-    <-- type=HEAD streamID=1 bodySize=?     body=[:status=200 content-length=12]
-    <-- type=DATA streamID=1 bodySize=6     body=[hello,]
-    <-- type=DATA streamID=1 bodySize=6     body=[world!] // endStream=1
+    <-- type=HEAD exchanID=1 bodySize=?     body=[:status=200 content-length=12]
+    <-- type=DATA exchanID=1 bodySize=6     body=[hello,]
+    <-- type=DATA exchanID=1 bodySize=6     body=[world!] // endExchan=1
 
-stream=2 (unsized output):
+exchan=2 (unsized output):
 
-    --> type=HEAD streamID=2 bodySize=?     body=[:method=POST :path=/abc?d=e host=example.com:8081 content-length=90]
-    --> type=DATA streamID=2 bodySize=90    body=[...90...] // endStream=1
+    --> type=HEAD exchanID=2 bodySize=?     body=[:method=POST :path=/abc?d=e host=example.com:8081 content-length=90]
+    --> type=DATA exchanID=2 bodySize=90    body=[...90...] // endExchan=1
 
-    <-- type=HEAD streamID=2 bodySize=?     body=[:status=200 content-type=text/html;charset=utf-8]
-    <-- type=DATA streamID=2 bodySize=16376 body=[...16376...]
-    ==> type=SIZE streamID=2 bodySize=3     body=123
-    <-- type=DATA streamID=2 bodySize=123   body=[...123...]
-    ==> type=SIZE streamID=2 bodySize=3     body=16376
-    <-- type=DATA streamID=2 bodySize=4567  body=[...4567...]
-    <-- type=TAIL streamID=2 bodySize=?     body=[md5-digest=12345678901234567890123456789012] // endStream=1
+    <-- type=HEAD exchanID=2 bodySize=?     body=[:status=200 content-type=text/html;charset=utf-8]
+    <-- type=DATA exchanID=2 bodySize=16376 body=[...16376...]
+    ==> type=SIZE exchanID=2 bodySize=3     body=123
+    <-- type=DATA exchanID=2 bodySize=123   body=[...123...]
+    ==> type=SIZE exchanID=2 bodySize=3     body=16376
+    <-- type=DATA exchanID=2 bodySize=4567  body=[...4567...]
+    <-- type=TAIL exchanID=2 bodySize=?     body=[md5-digest=12345678901234567890123456789012] // endExchan=1
 
 */

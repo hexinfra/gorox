@@ -19,84 +19,84 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// poolFCGIStream
-var poolFCGIStream sync.Pool
+// poolFCGIExchan
+var poolFCGIExchan sync.Pool
 
-func getFCGIStream(proxy *fcgiProxy, conn *TConn) *fcgiStream {
-	var stream *fcgiStream
-	if x := poolFCGIStream.Get(); x == nil {
-		stream = new(fcgiStream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+func getFCGIExchan(proxy *fcgiProxy, conn *TConn) *fcgiExchan {
+	var exchan *fcgiExchan
+	if x := poolFCGIExchan.Get(); x == nil {
+		exchan = new(fcgiExchan)
+		req, resp := &exchan.request, &exchan.response
+		req.exchan = exchan
 		req.response = resp
-		resp.stream = stream
+		resp.exchan = exchan
 	} else {
-		stream = x.(*fcgiStream)
+		exchan = x.(*fcgiExchan)
 	}
-	stream.onUse(proxy, conn)
-	return stream
+	exchan.onUse(proxy, conn)
+	return exchan
 }
-func putFCGIStream(stream *fcgiStream) {
-	stream.onEnd()
-	poolFCGIStream.Put(stream)
+func putFCGIExchan(exchan *fcgiExchan) {
+	exchan.onEnd()
+	poolFCGIExchan.Put(exchan)
 }
 
-// fcgiStream
-type fcgiStream struct {
+// fcgiExchan
+type fcgiExchan struct {
 	// Assocs
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
-	// Stream states (stocks)
+	// Exchan states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Stream states (controlled)
-	// Stream states (non-zeros)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	proxy  *fcgiProxy // associated proxy
 	conn   *TConn     // associated conn
 	region Region     // a region-based memory pool
-	// Stream states (zeros)
+	// Exchan states (zeros)
 }
 
-func (s *fcgiStream) onUse(proxy *fcgiProxy, conn *TConn) {
-	s.proxy = proxy
-	s.conn = conn
-	s.region.Init()
-	s.request.onUse()
-	s.response.onUse()
+func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn *TConn) {
+	x.proxy = proxy
+	x.conn = conn
+	x.region.Init()
+	x.request.onUse()
+	x.response.onUse()
 }
-func (s *fcgiStream) onEnd() {
-	s.request.onEnd()
-	s.response.onEnd()
-	s.region.Free()
-	s.conn = nil
-	s.proxy = nil
-}
-
-func (s *fcgiStream) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *fcgiStream) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-func (s *fcgiStream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
-	return s.conn.MakeTempName(p, unixTime)
+func (x *fcgiExchan) onEnd() {
+	x.request.onEnd()
+	x.response.onEnd()
+	x.region.Free()
+	x.conn = nil
+	x.proxy = nil
 }
 
-func (s *fcgiStream) setWriteDeadline(deadline time.Time) error {
-	return s.conn.SetWriteDeadline(deadline)
-}
-func (s *fcgiStream) setReadDeadline(deadline time.Time) error {
-	return s.conn.SetReadDeadline(deadline)
+func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
+
+func (x *fcgiExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+	return x.conn.MakeTempName(p, unixTime)
 }
 
-func (s *fcgiStream) write(p []byte) (int, error)                { return s.conn.Write(p) }
-func (s *fcgiStream) writev(vector *net.Buffers) (int64, error)  { return s.conn.Writev(vector) }
-func (s *fcgiStream) read(p []byte) (int, error)                 { return s.conn.Read(p) }
-func (s *fcgiStream) readAtLeast(p []byte, min int) (int, error) { return s.conn.ReadAtLeast(p, min) }
+func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
+	return x.conn.SetWriteDeadline(deadline)
+}
+func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
+	return x.conn.SetReadDeadline(deadline)
+}
 
-func (s *fcgiStream) isBroken() bool { return s.conn.IsBroken() }
-func (s *fcgiStream) markBroken()    { s.conn.MarkBroken() }
+func (x *fcgiExchan) write(p []byte) (int, error)                { return x.conn.Write(p) }
+func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return x.conn.Writev(vector) }
+func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.conn.Read(p) }
+func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return x.conn.ReadAtLeast(p, min) }
+
+func (x *fcgiExchan) isBroken() bool { return x.conn.IsBroken() }
+func (x *fcgiExchan) markBroken()    { x.conn.MarkBroken() }
 
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building
 	// Assocs
-	stream   *fcgiStream
+	exchan   *fcgiExchan
 	response *fcgiResponse
 	// States (stocks)
 	stockParams [_2K]byte // for r.params
@@ -108,8 +108,8 @@ type fcgiRequest struct { // outgoing. needs building
 	sendTimeout time.Duration // timeout to send the whole request
 	// States (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
-	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector  [7][]byte   // for sending request. reset after stream. 120B
+	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
+	fixedVector  [7][]byte   // for sending request. reset after exchan. 120B
 	fcgiRequest0             // all values must be zero by default in this struct!
 }
 type fcgiRequest0 struct { // for fast reset, entirely
@@ -122,7 +122,7 @@ func (r *fcgiRequest) onUse() {
 	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
 	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.sendTimeout = r.stream.proxy.sendTimeout
+	r.sendTimeout = r.exchan.proxy.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -200,7 +200,7 @@ func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: R
 	return r._addParam(name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
-	if !header.isUnderscore() || !r.stream.proxy.preferUnderscore {
+	if !header.isUnderscore() || !r.exchan.proxy.preferUnderscore {
 		return r._addParam(name, value, true)
 	}
 	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
@@ -375,7 +375,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 		n, err := content.ReadAt(buffer[:readSize], sizeRead)
 		sizeRead += int64(n)
 		if err != nil && sizeRead != fileSize {
-			r.stream.markBroken()
+			r.exchan.markBroken()
 			return err
 		}
 
@@ -412,7 +412,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.stream.proxy.keepConn {
+	if r.exchan.proxy.keepConn {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep
@@ -420,31 +420,31 @@ func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
 }
 
 func (r *fcgiRequest) _writeBytes(p []byte) error {
-	if r.stream.isBroken() {
+	if r.exchan.isBroken() {
 		return fcgiWriteBroken
 	}
 	if len(p) == 0 {
 		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
-		r.stream.markBroken()
+		r.exchan.markBroken()
 		return err
 	}
-	_, err := r.stream.write(p)
+	_, err := r.exchan.write(p)
 	return r._slowCheck(err)
 }
 func (r *fcgiRequest) _writeVector() error {
-	if r.stream.isBroken() {
+	if r.exchan.isBroken() {
 		return fcgiWriteBroken
 	}
 	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
 		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
-		r.stream.markBroken()
+		r.exchan.markBroken()
 		return err
 	}
-	_, err := r.stream.writev(&r.vector)
+	_, err := r.exchan.writev(&r.vector)
 	return r._slowCheck(err)
 }
 func (r *fcgiRequest) _beforeWrite() error {
@@ -452,14 +452,14 @@ func (r *fcgiRequest) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.proxy.backend.WriteTimeout()))
+	return r.exchan.setWriteDeadline(now.Add(r.exchan.proxy.backend.WriteTimeout()))
 }
 func (r *fcgiRequest) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
 		err = fcgiWriteTooSlow
 	}
 	if err != nil {
-		r.stream.markBroken()
+		r.exchan.markBroken()
 	}
 	return err
 }
@@ -494,7 +494,7 @@ func putFCGIRecords(records []byte) {
 // fcgiResponse must implements webIn and clientResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
-	stream *fcgiStream
+	exchan *fcgiExchan
 	// States (stocks)
 	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP
 	stockInput   [_2K]byte  // for r.input
@@ -515,9 +515,9 @@ type fcgiResponse struct { // incoming. needs parsing
 	// States (zeros)
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
-	bodyTime      time.Time // the time when first body read operation is performed on this stream
+	bodyTime      time.Time // the time when first body read operation is performed on this exchan
 	contentText   []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
-	contentFile   *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
+	contentFile   *os.File  // used by r.takeContent(), if content is tempFile. will be closed on exchan ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
@@ -573,8 +573,8 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.stream.proxy.recvTimeout
-	r.maxContentSize = r.stream.proxy.maxContentSize
+	r.recvTimeout = r.exchan.proxy.recvTimeout
+	r.maxContentSize = r.exchan.proxy.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -991,7 +991,7 @@ func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know th
 			Debugln(content.Error())
 		}
 	}
-	r.stream.markBroken()
+	r.exchan.markBroken()
 	return nil
 }
 func (r *fcgiResponse) recvContent() any { // to tempFile
@@ -1061,14 +1061,14 @@ func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, val
 	return true
 }
 
-func (r *fcgiResponse) saveContentFilesDir() string { return r.stream.proxy.SaveContentFilesDir() }
+func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.proxy.SaveContentFilesDir() }
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
 	pathSize := len(filesDir)
-	filePath := r.stream.unsafeMake(pathSize + 19) // 19 bytes is enough for int64
+	filePath := r.exchan.unsafeMake(pathSize + 19) // 19 bytes is enough for int64
 	copy(filePath, filesDir)
-	from, edge := r.stream.makeTempName(filePath[pathSize:], r.recvTime.Unix())
+	from, edge := r.exchan.makeTempName(filePath[pathSize:], r.recvTime.Unix())
 	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
 	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
 }
@@ -1077,7 +1077,7 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.proxy.backend.ReadTimeout()))
+	return r.exchan.setReadDeadline(now.Add(r.exchan.proxy.backend.ReadTimeout()))
 }
 func (r *fcgiResponse) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1176,7 +1176,7 @@ func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is 
 		r.fcgiMoveRecords(r.records)
 	}
 	// We now have enough space to grow.
-	n, err := r.stream.readAtLeast(r.records[r.recordsEdge:], size)
+	n, err := r.exchan.readAtLeast(r.records[r.recordsEdge:], size)
 	if err != nil {
 		return 0, err
 	}

@@ -159,7 +159,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 	if hasContent && (h.bufferClientContent || req.IsUnsized()) { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
-			// stream is marked as broken
+			// exchan is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
 			return
@@ -180,12 +180,12 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 		return
 	}
 
-	fStream := getFCGIStream(h, fConn)
-	defer putFCGIStream(fStream)
+	fExchan := getFCGIExchan(h, fConn)
+	defer putFCGIExchan(fExchan)
 
-	fReq := &fStream.request
+	fReq := &fExchan.request
 	if !fReq.copyHeadFrom(req, h.scriptFilename, h.indexFile) {
-		fStream.markBroken()
+		fExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
@@ -195,16 +195,16 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 		fErr = fReq.post(content)
 	}
 	if fErr != nil {
-		fStream.markBroken()
+		fExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	fResp := &fStream.response
+	fResp := &fExchan.response
 	for { // until we found a non-1xx status (>= 200)
 		fResp.recvHead()
 		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
-			fStream.markBroken()
+			fExchan.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
@@ -213,7 +213,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 		}
 		// We got 1xx
 		if req.VersionCode() == Version1_0 {
-			fStream.markBroken()
+			fExchan.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
@@ -221,7 +221,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.pass1xx(fResp) {
-			fStream.markBroken()
+			fExchan.markBroken()
 			return
 		}
 		fResp.onEnd()
@@ -235,19 +235,19 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 	if fHasContent && h.bufferServerContent { // including size 0
 		fContent = fResp.takeContent()
 		if fContent == nil { // take failed
-			// fStream is marked as broken
+			// fExchan is marked as broken
 			resp.SendBadGateway(nil)
 			return
 		}
 	}
 
 	if !resp.copyHeadFrom(fResp, nil) { // viaName = nil
-		fStream.markBroken()
+		fExchan.markBroken()
 		return
 	}
 	if fHasContent && !h.bufferServerContent {
 		if err := resp.pass(fResp); err != nil {
-			fStream.markBroken()
+			fExchan.markBroken()
 			return
 		}
 	} else if err := resp.post(fContent, false); err != nil { // false means no trailers

@@ -30,16 +30,16 @@ func (g *hrpcGate) serve() { // goroutine
 type hrpcExchan struct {
 	// Mixins
 	// Assocs
-	in  hrpcIn
-	out hrpcOut
+	in  hrpcInput
+	out hrpcOutput
 }
 
-// hrpcIn
-type hrpcIn struct {
+// hrpcInput
+type hrpcInput struct {
 	// TODO
 }
 
-// hrpcOut
-type hrpcOut struct {
+// hrpcOutput
+type hrpcOutput struct {
 	// TODO
 }

@@ -108,7 +108,7 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatch(ping Ping, pong Pong) {
+func (s *Svc) dispatch(in Input, out Output) {
 	// TODO
 }
 

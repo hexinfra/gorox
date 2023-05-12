@@ -40,7 +40,7 @@ type rpcServer_ struct {
 	Server_
 	// Assocs
 	gates      []rpcGate
-	defaultSvc *Svc
+	defaultSvc *Svc // default svc if not found
 	// States
 	forSvcs    []string            // for what svcs
 	exactSvcs  []*hostnameTo[*Svc] // like: ("example.com")
@@ -107,12 +107,12 @@ type rpcGate_ struct {
 	Gate_
 }
 
-// Ping
-type Ping interface {
+// Input is the RPC request.
+type Input interface {
 	Svc() *Svc
 }
 
-// Pong
-type Pong interface {
-	Ping() Ping
+// Output is the RPC response.
+type Output interface {
+	Input() Input
 }

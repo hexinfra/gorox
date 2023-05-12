@@ -44,7 +44,7 @@ type webServer_ struct {
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
 	gates      []webGate
-	defaultApp *App // default app
+	defaultApp *App // default app if not found
 	// States
 	forApps      []string            // for what apps
 	exactApps    []*hostnameTo[*App] // like: ("example.com")

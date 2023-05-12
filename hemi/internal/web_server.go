@@ -153,6 +153,22 @@ func (g *webGate_) onConnectionClosed() {
 	g.SubDone()
 }
 
+// serverStream_
+type serverStream_ struct {
+	// Mixins
+	webStream_
+}
+
+func (s *serverStream_) serveSocket() {
+	// TODO
+}
+func (s *serverStream_) serveTCPTun() {
+	// TODO: CONNECT method
+}
+func (s *serverStream_) serveUDPTun() {
+	// TODO: upgrade connect-udp
+}
+
 // serverConn is the interface for *http[1-3]Conn.
 type serverConn interface {
 	serve() // goroutine

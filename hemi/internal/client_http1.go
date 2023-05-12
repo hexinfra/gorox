@@ -283,7 +283,7 @@ func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes other than d
 // H1Stream is the client-side HTTP/1 stream.
 type H1Stream struct {
 	// Mixins
-	webStream_
+	clientStream_
 	// Assocs
 	request  H1Request  // the client-side http/1 request
 	response H1Response // the client-side http/1 response
@@ -296,7 +296,7 @@ type H1Stream struct {
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.webStream_.onUse()
+	s.clientStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -306,7 +306,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.webStream_.onEnd()
+	s.clientStream_.onEnd()
 }
 
 func (s *H1Stream) webAgent() webAgent { return s.conn.getClient() }
@@ -321,16 +321,13 @@ func (s *H1Stream) ExecuteNormal() error { // request & response
 }
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO
-	// use s.socketServer()
 	return s.socket
 }
 func (s *H1Stream) ExecuteTCPTun() { // CONNECT method
 	// TODO
-	// use s.tcpTunClient()
 }
 func (s *H1Stream) ExecuteUDPTun() { // upgrade: connect-udp
 	// TODO
-	// use s.udpTunClient()
 }
 
 func (s *H1Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {

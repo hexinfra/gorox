@@ -123,7 +123,7 @@ func putPExchan(exchan *PExchan) {
 // PExchan
 type PExchan struct {
 	// Mixins
-	webStream_
+	clientStream_
 	// Assocs
 	request  PRequest
 	response PResponse
@@ -133,13 +133,13 @@ type PExchan struct {
 	node *happNode
 	id   int32
 	// Exchan states (zeros)
-	b2Exchan0 // all values must be zero by default in this struct!
+	pExchan0 // all values must be zero by default in this struct!
 }
-type b2Exchan0 struct { // for fast reset, entirely
+type pExchan0 struct { // for fast reset, entirely
 }
 
 func (x *PExchan) onUse(node *happNode, id int32) { // for non-zeros
-	x.webStream_.onUse()
+	x.clientStream_.onUse()
 	x.node = node
 	x.id = id
 	x.request.onUse(Version2)
@@ -149,8 +149,8 @@ func (x *PExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.request.onEnd()
 	x.node = nil
-	x.b2Exchan0 = b2Exchan0{}
-	x.webStream_.onEnd()
+	x.pExchan0 = pExchan0{}
+	x.clientStream_.onEnd()
 }
 
 func (x *PExchan) webAgent() webAgent { return nil }

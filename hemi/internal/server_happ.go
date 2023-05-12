@@ -105,7 +105,7 @@ func putHAPPExchan(exchan *happExchan) {
 // happExchan is the server-side HAPP exchan.
 type happExchan struct {
 	// Mixins
-	webStream_
+	serverStream_
 	// Assocs
 	request  happRequest
 	response happResponse
@@ -120,7 +120,7 @@ type happExchan0 struct { // for fast reset, entirely
 }
 
 func (x *happExchan) onUse(gate *happGate) { // for non-zeros
-	x.webStream_.onUse()
+	x.serverStream_.onUse()
 	x.gate = gate
 	x.request.onUse(Version2)
 	x.response.onUse(Version2)
@@ -128,7 +128,7 @@ func (x *happExchan) onUse(gate *happGate) { // for non-zeros
 func (x *happExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.request.onEnd()
-	x.webStream_.onEnd()
+	x.serverStream_.onEnd()
 	x.gate = nil
 	x.happExchan0 = happExchan0{}
 }

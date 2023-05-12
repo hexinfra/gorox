@@ -233,7 +233,7 @@ func putHTTP3Stream(stream *http3Stream) {
 // http3Stream is the server-side HTTP/3 stream.
 type http3Stream struct {
 	// Mixins
-	webStream_
+	serverStream_
 	// Assocs
 	request  http3Request  // the http/3 request.
 	response http3Response // the http/3 response.
@@ -252,7 +252,7 @@ type http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream) onUse(conn *http3Conn, quicStream *quix.Stream) { // for non-zeros
-	s.webStream_.onUse()
+	s.serverStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -261,7 +261,7 @@ func (s *http3Stream) onUse(conn *http3Conn, quicStream *quix.Stream) { // for n
 func (s *http3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.webStream_.onEnd()
+	s.serverStream_.onEnd()
 	s.conn = nil
 	s.quicStream = nil
 	s.http3Stream0 = http3Stream0{}
@@ -287,13 +287,13 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 	// TODO
 }
 func (s *http3Stream) executeSocket() { // see RFC 9220
-	// TODO, use s.socketServer()
+	// TODO
 }
 func (s *http3Stream) executeTCPTun() { // CONNECT method
-	// TODO, use s.tcpTunServer()
+	// TODO
 }
 func (s *http3Stream) executeUDPTun() { // see RFC 9298
-	// TODO, use s.udpTunServer()
+	// TODO
 }
 
 func (s *http3Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {

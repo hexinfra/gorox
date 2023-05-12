@@ -136,7 +136,7 @@ func (c *http1Conn) closeConn() {
 // http1Stream is the server-side HTTP/1 stream.
 type http1Stream struct {
 	// Mixins
-	webStream_
+	serverStream_
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
@@ -253,7 +253,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s.webStream_.onUse()
+	s.serverStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -262,7 +262,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.conn = nil
-	s.webStream_.onEnd()
+	s.serverStream_.onEnd()
 }
 
 func (s *http1Stream) webAgent() webAgent { return s.conn.getServer() }

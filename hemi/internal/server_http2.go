@@ -820,7 +820,7 @@ func putHTTP2Stream(stream *http2Stream) {
 // http2Stream is the server-side HTTP/2 stream.
 type http2Stream struct {
 	// Mixins
-	webStream_
+	serverStream_
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
@@ -841,7 +841,7 @@ type http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
-	s.webStream_.onUse()
+	s.serverStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
@@ -852,7 +852,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.webStream_.onEnd()
+	s.serverStream_.onEnd()
 	s.conn = nil
 	s.http2Stream0 = http2Stream0{}
 }
@@ -880,13 +880,13 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 	// TODO
 }
 func (s *http2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
-	// TODO, use s.socketServer()
+	// TODO
 }
 func (s *http2Stream) executeTCPTun() { // CONNECT method
-	// TODO, use s.tcpTunServer()
+	// TODO
 }
 func (s *http2Stream) executeUDPTun() { // see RFC 9298: https://datatracker.ietf.org/doc/html/rfc9298
-	// TODO, use s.udpTunServer()
+	// TODO
 }
 
 func (s *http2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {

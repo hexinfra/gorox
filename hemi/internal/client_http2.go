@@ -258,7 +258,7 @@ func putH2Stream(stream *H2Stream) {
 // H2Stream
 type H2Stream struct {
 	// Mixins
-	webStream_
+	clientStream_
 	// Assocs
 	request  H2Request
 	response H2Response
@@ -275,7 +275,7 @@ type h2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
-	s.webStream_.onUse()
+	s.clientStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -287,7 +287,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.socket = nil
 	s.conn = nil
 	s.h2Stream0 = h2Stream0{}
-	s.webStream_.onEnd()
+	s.clientStream_.onEnd()
 }
 
 func (s *H2Stream) webAgent() webAgent { return s.conn.getClient() }

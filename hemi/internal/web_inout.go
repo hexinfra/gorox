@@ -29,11 +29,11 @@ type webAgent interface {
 	WriteTimeout() time.Duration // timeout of a write operation
 	RecvTimeout() time.Duration  // timeout to recv the whole message content
 	SendTimeout() time.Duration  // timeout to send the whole message
-	MaxContentSize() int64
+	MaxContentSize() int64       // allowed
 	SaveContentFilesDir() string
 }
 
-// webAgent_ is the mixin for webServer_ and webClient_.
+// webAgent_ is the mixin for webServer_, webOutgate_, and webBackend_.
 type webAgent_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content

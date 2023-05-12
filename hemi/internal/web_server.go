@@ -27,7 +27,7 @@ type webServer interface {
 	streamHolder
 	contentSaver
 
-	MaxContentSize() int64
+	MaxContentSize() int64 // allowed
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 

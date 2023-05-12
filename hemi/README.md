@@ -14,16 +14,16 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     |                cronjob(*)                  |     |
    |     +--------+---+--------------+----------------+     |
    |     |        |   |     rpc[+]   |     web[+]     |     |
-   |     |        | s |     server   |     server     |     |
-   |     | router | e | [gate][conn] |  [gate][conn]  |     |
-   |     | dealer | r +--------------+----------------+     |
-   |     | editor | v |              | app(*) handlet |     |
-   |     |  case  | e |              | socklet reviser|     |
-   |     |        | r |   svc(*)     |    rule        |     |
-   |     |        |(*)|          +---+--+      +------+     |
+   |     | [quic] | s |     server   |     server     |     |
+   |     | [tcps] | e | <gate><conn> |  <gate><conn>  |     |
+   |     | [udps] | r +--------------+----------------+     |
+   |     | router | v |              | app(*) handlet |     |
+   |     | dealer | e |              | socklet reviser|     |
+   |     | editor | r |   svc(*)     |    rule        |     |
+   |     |  case  |(*)|          +---+--+      +------+     |
    |     |        |   |          |stater|      |cacher|     |
    |     +--------+---+----------+------+------+------+     |
-   |     |           backend [node] [conn]            |     |
+   |     |           backend <node> <conn>            |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
    |     | o | u | t | g | a | t | e | s |   runner   |     |
    |     +---+---+---+---+---+---+---+---+------------+     |

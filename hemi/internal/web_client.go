@@ -20,7 +20,7 @@ type webClient interface {
 	client
 	streamHolder
 	contentSaver
-	MaxContentSize() int64
+	MaxContentSize() int64 // allowed
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
 }
@@ -29,7 +29,7 @@ type webClient interface {
 type webOutgate_ struct {
 	// Mixins
 	outgate_
-	webAgent_
+	webAgent_ // webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -55,7 +55,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webAgent_
+	webAgent_ // webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_

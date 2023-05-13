@@ -25,11 +25,11 @@ import (
 var booker *log.Logger
 
 func Main() {
-	logFile := *common.LogFile
+	logFile := common.LogFile
 	if logFile == "" {
-		logFile = *common.LogsDir + "/" + common.Program + "-leader.log"
+		logFile = common.LogsDir + "/" + common.Program + "-leader.log"
 	} else if !filepath.IsAbs(logFile) {
-		logFile = *common.BaseDir + "/" + logFile
+		logFile = common.BaseDir + "/" + logFile
 	}
 	if err := os.MkdirAll(filepath.Dir(logFile), 0755); err != nil {
 		common.Crash(err.Error())
@@ -40,7 +40,7 @@ func Main() {
 	}
 	booker = log.New(osFile, "", log.Ldate|log.Ltime)
 
-	if *common.MyroxAddr == "" {
+	if common.MyroxAddr == "" {
 		adminServer()
 	} else {
 		myroxClient()

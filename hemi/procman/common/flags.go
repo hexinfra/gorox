@@ -7,21 +7,17 @@
 
 package common
 
-import (
-	"flag"
-)
-
 var (
 	DebugLevel int
 	TargetAddr string
 	AdminAddr  string
-	MyroxAddr  = flag.String("myrox", "", "")
-	Config     = flag.String("conf", "", "")
-	SingleMode = flag.Bool("single", false, "")
-	DaemonMode = flag.Bool("daemon", false, "")
-	LogFile    = flag.String("log", "", "")
-	BaseDir    = flag.String("base", "", "")
-	LogsDir    = flag.String("logs", "", "")
-	TempDir    = flag.String("temp", "", "")
-	VarsDir    = flag.String("vars", "", "")
+	MyroxAddr  string
+	Config     string
+	SingleMode bool
+	DaemonMode bool
+	LogFile    string
+	BaseDir    string
+	LogsDir    string
+	TempDir    string
+	VarsDir    string
 )

@@ -41,7 +41,7 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
 		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files
 		Sys:   system.DaemonSysAttr(),
 	})
 	if err != nil {
@@ -80,9 +80,7 @@ func (w *worker) watch(deadWay chan int) { // goroutine
 	deadWay <- stat.ExitCode()
 }
 
-func (w *worker) tell(req *msgx.Message) {
-	msgx.Tell(w.cmdConn, req)
-}
+func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.cmdConn, req) }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 	resp, ok := msgx.Call(w.cmdConn, req, 16<<20)
 	if !ok {
@@ -93,6 +91,4 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 	return resp
 }
 
-func (w *worker) reset() {
-	w.cmdConn.Close()
-}
+func (w *worker) reset() { w.cmdConn.Close() }

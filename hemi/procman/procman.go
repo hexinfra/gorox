@@ -16,25 +16,31 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/system"
 	"github.com/hexinfra/gorox/hemi/procman/client"
+	"github.com/hexinfra/gorox/hemi/procman/common"
 	"github.com/hexinfra/gorox/hemi/procman/leader"
 	"github.com/hexinfra/gorox/hemi/procman/worker"
-
-	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
 func Main(program string, usage string, level int, addr string) {
 	if !system.Check() {
-		common.Crash("current platform (os+arch) is not supported.")
+		common.Crash("current platform (os + arch) is not supported.")
 	}
 
 	common.Program = program
 
-	flag.Usage = func() {
-		fmt.Printf(usage, hemi.Version)
-	}
+	flag.Usage = func() { fmt.Printf(usage, hemi.Version) }
 	flag.IntVar(&common.DebugLevel, "debug", level, "")
 	flag.StringVar(&common.TargetAddr, "target", addr, "")
 	flag.StringVar(&common.AdminAddr, "admin", addr, "")
+	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
+	flag.StringVar(&common.Config, "conf", "", "")
+	flag.BoolVar(&common.SingleMode, "single", false, "")
+	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
+	flag.StringVar(&common.LogFile, "log", "", "")
+	flag.StringVar(&common.BaseDir, "base", "", "")
+	flag.StringVar(&common.LogsDir, "logs", "", "")
+	flag.StringVar(&common.TempDir, "temp", "", "")
+	flag.StringVar(&common.VarsDir, "vars", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -52,29 +58,29 @@ func Main(program string, usage string, level int, addr string) {
 		system.Advise()
 	case "serve", "check":
 		hemi.SetDebug(int32(common.DebugLevel))
-		if *common.BaseDir == "" {
-			*common.BaseDir = system.ExeDir
+		if common.BaseDir == "" {
+			common.BaseDir = system.ExeDir
 		} else { // baseDir is specified.
-			dir, err := filepath.Abs(*common.BaseDir)
+			dir, err := filepath.Abs(common.BaseDir)
 			if err != nil {
 				common.Crash(err.Error())
 			}
-			*common.BaseDir = dir
+			common.BaseDir = dir
 		}
-		*common.BaseDir = filepath.ToSlash(*common.BaseDir)
-		hemi.SetBaseDir(*common.BaseDir)
+		common.BaseDir = filepath.ToSlash(common.BaseDir)
+		hemi.SetBaseDir(common.BaseDir)
 		setDir := func(pDir *string, name string, set func(string)) {
 			if dir := *pDir; dir == "" {
-				*pDir = *common.BaseDir + "/" + name
+				*pDir = common.BaseDir + "/" + name
 			} else if !filepath.IsAbs(dir) {
-				*pDir = *common.BaseDir + "/" + dir
+				*pDir = common.BaseDir + "/" + dir
 			}
 			*pDir = filepath.ToSlash(*pDir)
 			set(*pDir)
 		}
-		setDir(common.LogsDir, "logs", hemi.SetLogsDir)
-		setDir(common.TempDir, "temp", hemi.SetTempDir)
-		setDir(common.VarsDir, "vars", hemi.SetVarsDir)
+		setDir(&common.LogsDir, "logs", hemi.SetLogsDir)
+		setDir(&common.TempDir, "temp", hemi.SetTempDir)
+		setDir(&common.VarsDir, "vars", hemi.SetVarsDir)
 
 		if action == "check" { // dry run
 			if _, err := hemi.ApplyFile(common.GetConfig()); err != nil {
@@ -82,21 +88,25 @@ func Main(program string, usage string, level int, addr string) {
 			} else {
 				fmt.Println("PASS")
 			}
-		} else if *common.SingleMode { // run as single foreground process. for single mode
+			return
+		}
+
+		// Serve.
+		if common.SingleMode { // run as single foreground process. for single mode
 			if stage, err := hemi.ApplyFile(common.GetConfig()); err == nil {
 				stage.Start(0)
-				select {}
+				select {} // waiting forever
 			} else {
 				fmt.Println(err.Error())
 			}
 		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
-			if token == "leader" {
+			if token == "leader" { // leader daemon
 				system.DaemonInit()
 				leader.Main()
-			} else { // worker
+			} else { // worker daemon
 				worker.Main(token)
 			}
-		} else if *common.DaemonMode { // start the leader daemon and exit
+		} else if common.DaemonMode { // start the leader daemon and exit
 			devNull, err := os.Open(os.DevNull)
 			if err != nil {
 				common.Crash(err.Error())

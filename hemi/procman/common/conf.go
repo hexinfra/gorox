@@ -13,7 +13,7 @@ import (
 )
 
 func GetConfig() (base string, file string) {
-	baseDir, config := *BaseDir, *Config
+	baseDir, config := BaseDir, Config
 	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
 		// base: scheme://host:port/path/
 		panic("currently not supported!")

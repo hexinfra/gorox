@@ -216,8 +216,10 @@ type TCPSEditor interface {
 
 // TCPSEditor_
 type TCPSEditor_ struct {
+	// Mixins
 	Component_
 	identifiable_
+	// States
 }
 
 // tcpsCase

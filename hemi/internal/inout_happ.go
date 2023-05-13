@@ -6,7 +6,7 @@
 // HAPP protocol elements, incoming message and outgoing message implementation.
 
 // HAPP is an HTTP gateway protocol without WebSocket, TCP Tunnel, and UDP Tunnel support.
-// HAPP is under design, maybe we'll build it upon Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
+// HAPP is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal
 

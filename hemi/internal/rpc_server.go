@@ -19,19 +19,19 @@ type RPCServer interface {
 }
 
 // GRPCBridge is the interface for all gRPC server bridges.
-// Users can implement their own gRPC server bridge in exts, which embeds *grpc.Server and implements the GRPCBridge interface.
+// Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
 type GRPCBridge interface {
 	RPCServer
 
-	GRPCServer() any // must be a *grpc.Server
+	GRPCServer() any // may be a *grpc.Server
 }
 
 // ThriftBridge is the interface for all Thrift server bridges.
-// Users can implement their own Thrift server bridge in exts, which embeds thrift.TServer and implements the ThriftBridge interface.
+// Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
 type ThriftBridge interface {
 	RPCServer
 
-	ThriftServer() any // must be a thrift.TServer?
+	ThriftServer() any // may be a thrift.TServer?
 }
 
 // rpcServer_

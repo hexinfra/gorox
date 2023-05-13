@@ -5,6 +5,6 @@
 
 // HRPC protocol elements, incoming message and outgoing message implementation.
 
-// HRPC is under design, maybe we'll build it upon Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
+// HRPC is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal

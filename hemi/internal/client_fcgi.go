@@ -107,15 +107,15 @@ type fcgiRequest struct { // outgoing. needs building
 	// Assocs
 	exchan   *fcgiExchan
 	response *fcgiResponse
-	// States (stocks)
+	// Exchan states (stocks)
 	stockParams [_2K]byte // for r.params
-	// States (controlled)
+	// Exchan states (controlled)
 	paramsHeader [8]byte // used by params record
 	stdinHeader  [8]byte // used by stdin record
-	// States (non-zeros)
+	// Exchan states (non-zeros)
 	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
 	sendTimeout time.Duration // timeout to send the whole request
-	// States (zeros)
+	// Exchan states (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
 	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
 	fixedVector  [7][]byte   // for sending request. reset after exchan. 120B
@@ -504,14 +504,14 @@ func putFCGIRecords(records []byte) {
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan
-	// States (stocks)
+	// Exchan states (stocks)
 	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP
 	stockInput   [_2K]byte  // for r.input
 	stockPrimes  [48]pair   // for r.primes
 	stockExtras  [16]pair   // for r.extras
-	// States (controlled)
+	// Exchan states (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
-	// States (non-zeros)
+	// Exchan states (non-zeros)
 	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	primes         []pair        // prime fcgi response headers
@@ -521,7 +521,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	status         int16         // 200, 302, 404, ...
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
-	// States (zeros)
+	// Exchan states (zeros)
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this exchan

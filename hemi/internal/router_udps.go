@@ -138,7 +138,9 @@ type UDPSDealer interface {
 
 // UDPSDealer_
 type UDPSDealer_ struct {
+	// Mixins
 	Component_
+	// States
 }
 
 // UDPSEditor
@@ -150,8 +152,10 @@ type UDPSEditor interface {
 
 // UDPSEditor_
 type UDPSEditor_ struct {
+	// Mixins
 	Component_
 	identifiable_
+	// States
 }
 
 // udpsCase

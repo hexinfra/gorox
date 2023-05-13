@@ -125,7 +125,9 @@ type QUICDealer interface {
 
 // QUICDealer_
 type QUICDealer_ struct {
+	// Mixins
 	Component_
+	// States
 }
 
 // QUICEditor
@@ -137,8 +139,10 @@ type QUICEditor interface {
 
 // QUICEditor_
 type QUICEditor_ struct {
+	// Mixins
 	Component_
 	identifiable_
+	// States
 }
 
 // quicCase

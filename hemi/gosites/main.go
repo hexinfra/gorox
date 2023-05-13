@@ -46,6 +46,7 @@ ACTION
 OPTIONS
 -------
 
+  -debug  <level>   # debug level (default: 0, means disable. max: 2)
   -target <addr>    # leader address to tell or call (default: 127.0.0.1:9525)
   -admin  <addr>    # listen address of leader admin (default: 127.0.0.1:9525)
   -myrox  <addr>    # myrox address to join. if set, "-admin" will be ignored
@@ -58,9 +59,10 @@ OPTIONS
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
 
-  "-target" applies for telling and calling actions only.
-  "-admin" and "-myrox" apply for "serve" and "readmin".
-  Other options apply for "serve" only.
+  "-debug" applies to all actions.
+  "-target" applies to telling and calling actions only.
+  "-admin" and "-myrox" apply to "serve" and "readmin".
+  Other options apply to "serve" only.
 
 `
 

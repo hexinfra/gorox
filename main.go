@@ -69,10 +69,10 @@ OPTIONS
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
 
-  "-debug" applies for all actions.
-  "-target" applies for telling and calling actions only.
-  "-admin" and "-myrox" apply for "serve" and "readmin".
-  Other options apply for "serve" only.
+  "-debug" applies to all actions.
+  "-target" applies to telling and calling actions only.
+  "-admin" and "-myrox" apply to "serve" and "readmin".
+  Other options apply to "serve" only.
 
 `
 

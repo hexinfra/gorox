@@ -6,8 +6,8 @@
 // Leader process.
 
 // Some terms:
-//   admGate - Used by leader process, for receiving admConns from control client
-//   admConn - control client ----> adminServer()
+//   admGate - Used by leader process, for receiving opsConns from control client
+//   opsConn - control client ----> adminServer()
 //   msgChan - adminServer()/myroxClient() <---> keepWorker()
 //   deadWay - keepWorker() <---- worker.wait()
 //   cmdConn - leader process <---> worker process
@@ -73,7 +73,7 @@ func adminServer() {
 	booker.Println("worker process started")
 
 	booker.Printf("open admin interface: %s\n", adminAddr)
-	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving admConns from control client
+	admGate, err := net.Listen("tcp", adminAddr) // admGate is for receiving opsConns from control client
 	if err != nil {
 		crash(err.Error())
 	}
@@ -81,17 +81,17 @@ func adminServer() {
 		req *msgx.Message
 		ok  bool
 	)
-	for { // each admConn from control client
-		admConn, err := admGate.Accept() // admConn is connection between leader and control client
+	for { // each opsConn from control client
+		opsConn, err := admGate.Accept() // opsConn is connection between leader and control client
 		if err != nil {
 			booker.Println(err.Error())
 			continue
 		}
-		if err := admConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		if err := opsConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
 			booker.Println(err.Error())
 			goto closeNext
 		}
-		req, ok = msgx.Recv(admConn, 16<<20)
+		req, ok = msgx.Recv(opsConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
@@ -135,10 +135,10 @@ func adminServer() {
 				resp = <-msgChan
 			}
 			booker.Printf("send response: %v\n", resp)
-			msgx.Send(admConn, resp)
+			msgx.Send(opsConn, resp)
 		}
 	closeNext:
-		admConn.Close()
+		opsConn.Close()
 	}
 }
 func myroxClient() {

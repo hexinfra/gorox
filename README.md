@@ -142,8 +142,8 @@ A typical deployment architecture using Gorox might looks like this:
                |    |   |
                v    v   v
              +------------+
-+------------| edgeProxy1 |-------------+
-|            +--+---+--+--+             | gorox cluster
++------------| edgeProxy1 |-------------+ gorox cluster
+|            +--+---+--+--+             |
 |    web        |   |  |       tcp      |
 |      +--------+   |  +-------+        |
 |      |            |          |        |
@@ -151,7 +151,7 @@ A typical deployment architecture using Gorox might looks like this:
 |   +------+        |       +------+    |
 |   | app1 +----+   |   +---+ srv1 |    |
 |   +------+    |   |   |   +---+--+    |
-|               |   |   |       |       |
+|               |   |   |       |       | stateless layer
 |               v   v   v       v       |
 |  +------+   +----------+  +--------+  |   +------------------+
 |  | svc1 |<->| sidecar1 |  | proxy2 |--+-->| php-fpm / tomcat |
@@ -167,7 +167,7 @@ A typical deployment architecture using Gorox might looks like this:
             v      v         v
 +---------------------------------------+
 |     +------+  +-----+  +--------+     |
-| ... | db1  |  | mq1 |  | cache1 | ... | data layer
+| ... | db1  |  | mq1 |  | cache1 | ... | stateful layer
 |     +------+  +-----+  +--------+     |
 +---------------------------------------+
 
@@ -186,9 +186,9 @@ the roles in "gorox cluster":
   * sidecar2  : A sidecar for svc2,
   * job1      : A background application in Gorox doing something periodically.
 
-The whole "gorox cluster" can optionally be managed by a Myrox instance. In this
-configuration, all Gorox instances in "gorox cluster" are connected to the Myrox
-instance and under its control.
+The whole gorox cluster can alternatively be managed by a Myrox instance, which
+behaves like the control plane in Service Mesh. In this configuration, all Gorox
+instances in the cluster connect to Myrox and are under its control.
 
 Process
 -------
@@ -197,7 +197,7 @@ A Gorox instance has two processes: a leader process, and a worker process:
 
 ```
                   +----------------+         +----------------+ business traffic
-         admConn  |                | cmdConn |                |<===============>
+         opsConn  |                | cmdConn |                |<===============>
 operator--------->| leader process |<------->| worker process |<===============>
                   |                |         |                |<===============>
                   +----------------+         +----------------+
@@ -206,7 +206,10 @@ operator--------->| leader process |<------->| worker process |<===============>
 Leader process manages the worker process, which do the real and heavy work.
 
 A Gorox instance can be controlled by operators through the admin interface of
-leader process. Alternately, it can connects to a Myrox instance and delegates
+leader process. Operators connect to leader, send commands, and leader executes
+the commands. Some commands are delivered to worker through cmdConn.
+
+Alternatively, Gorox instances can connects to a Myrox instance and delegates
 its administration to Myrox. In this way, the admin interface in leader process
 is disabled.
 

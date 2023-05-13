@@ -67,13 +67,13 @@ func tellBlock()     { _tell(comdBlock, 0, nil) }
 func tellGC()        { _tell(comdGC, 0, nil) }
 
 func _tell(comd uint8, flag uint16, args map[string]string) {
-	admConn, err := net.Dial("tcp", targetAddr)
+	opsConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		fmt.Printf("tell leader failed: %s\n", err.Error())
 		return
 	}
-	defer admConn.Close()
-	if msgx.Tell(admConn, msgx.NewMessage(comd, flag, args)) {
+	defer opsConn.Close()
+	if msgx.Tell(opsConn, msgx.NewMessage(comd, flag, args)) {
 		fmt.Printf("tell leader at %s: ok!\n", targetAddr)
 	} else {
 		fmt.Printf("tell leader at %s: failed!\n", targetAddr)
@@ -132,10 +132,10 @@ func callWorker() {
 }
 
 func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
-	admConn, err := net.Dial("tcp", targetAddr)
+	opsConn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		return nil, false
 	}
-	defer admConn.Close()
-	return msgx.Call(admConn, msgx.NewMessage(comd, flag, args), 16<<20)
+	defer opsConn.Close()
+	return msgx.Call(opsConn, msgx.NewMessage(comd, flag, args), 16<<20)
 }

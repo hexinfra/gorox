@@ -3,72 +3,72 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HAPP protocol elements, incoming message and outgoing message implementation.
+// HWEB protocol elements, incoming message and outgoing message implementation.
 
-// HAPP is an HTTP gateway protocol without WebSocket, TCP Tunnel, and UDP Tunnel support.
-// HAPP is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
+// HWEB is an HTTP gateway protocol without WebSocket, TCP Tunnel, and UDP Tunnel support.
+// HWEB is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal
 
-// happIn_ is used by happRequest and PResponse.
-type happIn_ = webIn_
+// hwebIn_ is used by hwebRequest and HResponse.
+type hwebIn_ = webIn_
 
-func (r *happIn_) readContentP() (p []byte, err error) {
+func (r *hwebIn_) readContentH() (p []byte, err error) {
 	return
 }
 
-// happOut_ is used by happResponse and PRequest.
-type happOut_ = webOut_
+// hwebOut_ is used by hwebResponse and HRequest.
+type hwebOut_ = webOut_
 
-func (r *happOut_) addHeaderP(name []byte, value []byte) bool {
+func (r *hwebOut_) addHeaderH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *happOut_) headerP(name []byte) (value []byte, ok bool) {
+func (r *hwebOut_) headerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *happOut_) hasHeaderP(name []byte) bool {
+func (r *hwebOut_) hasHeaderH(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *happOut_) delHeaderP(name []byte) (deleted bool) {
+func (r *hwebOut_) delHeaderH(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *happOut_) delHeaderAtP(o uint8) {
+func (r *hwebOut_) delHeaderAtH(o uint8) {
 	// TODO
 }
 
-func (r *happOut_) sendChainP() error {
+func (r *hwebOut_) sendChainH() error {
 	return nil
 }
 
-func (r *happOut_) echoHeadersP() error {
+func (r *hwebOut_) echoHeadersH() error {
 	// TODO
 	return nil
 }
-func (r *happOut_) echoChainP() error {
+func (r *hwebOut_) echoChainH() error {
 	// TODO
 	return nil
 }
 
-func (r *happOut_) addTrailerP(name []byte, value []byte) bool {
+func (r *hwebOut_) addTrailerH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *happOut_) trailerP(name []byte) (value []byte, ok bool) {
+func (r *hwebOut_) trailerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *happOut_) trailersP() []byte {
+func (r *hwebOut_) trailersH() []byte {
 	// TODO
 	return nil
 }
 
-func (r *happOut_) passBytesP(p []byte) error { return r.writeBytesP(p) }
+func (r *hwebOut_) passBytesH(p []byte) error { return r.writeBytesH(p) }
 
-func (r *happOut_) finalizeUnsizedP() error {
+func (r *hwebOut_) finalizeUnsizedH() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -76,23 +76,23 @@ func (r *happOut_) finalizeUnsizedP() error {
 	return nil
 }
 
-func (r *happOut_) writeHeadersP() error { // used by echo and pass
+func (r *hwebOut_) writeHeadersH() error { // used by echo and pass
 	// TODO
 	return nil
 }
-func (r *happOut_) writePieceP(piece *Piece, unsized bool) error {
+func (r *hwebOut_) writePieceH(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *happOut_) writeBytesP(p []byte) error {
+func (r *hwebOut_) writeBytesH(p []byte) error {
 	// TODO
 	return nil
 }
-func (r *happOut_) writeVectorP() error {
+func (r *hwebOut_) writeVectorH() error {
 	return nil
 }
 
-//////////////////////////////////////// HAPP protocol elements ////////////////////////////////////////
+//////////////////////////////////////// HWEB protocol elements ////////////////////////////////////////
 
 // WARNING: DRAFT DESIGN!
 
@@ -124,29 +124,29 @@ func (r *happOut_) writeVectorP() error {
 // If concurrent exchans exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
-	happTypeINIT = 0 // contains connection settings
-	happTypeHEAD = 1 // contains name-value pairs for headers
-	happTypeDATA = 2 // contains content data
-	happTypeSIZE = 3 // available window size for receiving content
-	happTypeTAIL = 4 // contains name-value pairs for trailers
+	hwebTypeINIT = 0 // contains connection settings
+	hwebTypeHEAD = 1 // contains name-value pairs for headers
+	hwebTypeDATA = 2 // contains content data
+	hwebTypeSIZE = 3 // available window size for receiving content
+	hwebTypeTAIL = 4 // contains name-value pairs for trailers
 )
 
 const ( // record flags
-	happFlagEndExchan = 0b00000001 // end of exchan, used by HEAD, DATA, and TAIL
+	hwebFlagEndExchan = 0b00000001 // end of exchan, used by HEAD, DATA, and TAIL
 )
 
 const ( // setting codes
-	happSettingMaxRecordBodySize    = 0
-	happSettingInitialWindowSize    = 1
-	happSettingMaxExchans           = 2
-	happSettingMaxConcurrentExchans = 3
+	hwebSettingMaxRecordBodySize    = 0
+	hwebSettingInitialWindowSize    = 1
+	hwebSettingMaxExchans           = 2
+	hwebSettingMaxConcurrentExchans = 3
 )
 
-var happSettingDefaults = [...]int32{
-	happSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
-	happSettingInitialWindowSize:    16376, // allow: [16376-16777215]
-	happSettingMaxExchans:           1000,  // allow: [100-16777215]
-	happSettingMaxConcurrentExchans: 100,   // allow: [100-16777215]. cannot be larger than maxExchans
+var hwebSettingDefaults = [...]int32{
+	hwebSettingMaxRecordBodySize:    16376, // allow: [16376-16777215]
+	hwebSettingInitialWindowSize:    16376, // allow: [16376-16777215]
+	hwebSettingMaxExchans:           1000,  // allow: [100-16777215]
+	hwebSettingMaxConcurrentExchans: 100,   // allow: [100-16777215]. cannot be larger than maxExchans
 }
 
 /*

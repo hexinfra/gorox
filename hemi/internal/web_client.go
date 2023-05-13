@@ -25,7 +25,7 @@ type webClient interface {
 	RecvTimeout() time.Duration
 }
 
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HAPPOutgate.
+// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEBOutgate.
 type webOutgate_ struct {
 	// Mixins
 	outgate_
@@ -51,7 +51,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 	f.contentSaver_.onPrepare(shell, 0755)
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and HAPPBackend.
+// webBackend_ is the mixin for HTTP[1-3]Backend and HWEBBackend.
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
@@ -82,7 +82,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// webNode_ is the mixin for http[1-3]Node and happNode.
+// webNode_ is the mixin for http[1-3]Node and hwebNode.
 type webNode_ struct {
 	// Mixins
 	Node_
@@ -153,14 +153,14 @@ func (s *clientStream_) startUDPTun() {
 	// TODO: upgrade connect-udp
 }
 
-// clientRequest is the interface for *H[1-3]Request and *PRequest.
+// clientRequest is the interface for *H[1-3]Request and *HRequest.
 type clientRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
 	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// clientRequest_ is the mixin for H[1-3]Request and PRequest.
+// clientRequest_ is the mixin for H[1-3]Request and HRequest.
 type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
@@ -376,7 +376,7 @@ type upload struct {
 	// TODO
 }
 
-// clientResponse is the interface for *H[1-3]Response and *PResponse.
+// clientResponse is the interface for *H[1-3]Response and *HResponse.
 type clientResponse interface {
 	Status() int16
 	delHopHeaders()
@@ -385,7 +385,7 @@ type clientResponse interface {
 	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 }
 
-// clientResponse_ is the mixin for H[1-3]Response and PResponse.
+// clientResponse_ is the mixin for H[1-3]Response and HResponse.
 type clientResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message

@@ -11,7 +11,7 @@ THE WEB PICTURE
 
 ```
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
-  ----happExchan----->                        ------PExchan------>
+  ----hwebExchan----->                        ------HExchan------>
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
@@ -24,7 +24,7 @@ THE WEB PICTURE
     ^             |                             ^             |
     |             v                             |             v
     +-http[1-3]Request                          +-H[1-3]Request
-    +-happRequest                               +-PRequest
+    +-hwebRequest                               +-HRequest
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
@@ -33,7 +33,7 @@ THE WEB PICTURE
                   /          /         \
                             /           \
   <--http[1-3]Stream--                        <---H[1-3]Stream----
-  <----happExchan-----                        <-----PExchan-------
+  <----hwebExchan-----                        <-----HExchan-------
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |
@@ -46,7 +46,7 @@ THE WEB PICTURE
     ^              |                            ^              |
     |              v                            |              v
     +-http[1-3]Response                         +-H[1-3]Response
-    +-happResponse                              +-PResponse
+    +-hwebResponse                              +-HResponse
 ```
 
 

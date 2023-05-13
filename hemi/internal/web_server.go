@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webServer is the interface for *http[x3]Server and *happServer.
+// webServer is the interface for *http[x3]Server and *hwebServer.
 type webServer interface {
 	Server
 	streamHolder
@@ -35,7 +35,7 @@ type webServer interface {
 	findApp(hostname []byte) *App
 }
 
-// webServer_ is a mixin for http[x3]Server and happServer.
+// webServer_ is a mixin for http[x3]Server and hwebServer.
 type webServer_ struct {
 	// Mixins
 	Server_
@@ -136,13 +136,13 @@ func (s *webServer_) findApp(hostname []byte) *App {
 	return s.defaultApp
 }
 
-// webGate is the interface for *http[x3]Gate and *happGate.
+// webGate is the interface for *http[x3]Gate and *hwebGate.
 type webGate interface {
 	Gate
 	onConnectionClosed()
 }
 
-// webGate_ is the mixin for http[x3]Gate and happGate.
+// webGate_ is the mixin for http[x3]Gate and hwebGate.
 type webGate_ struct {
 	// Mixins
 	Gate_
@@ -219,7 +219,7 @@ func (s *serverStream_) serveUDPTun() {
 	// TODO: upgrade connect-udp
 }
 
-// Request is the interface for *http[1-3]Request and *happRequest.
+// Request is the interface for *http[1-3]Request and *hwebRequest.
 type Request interface {
 	PeerAddr() net.Addr
 	App() *App
@@ -373,7 +373,7 @@ type Request interface {
 	unsafeVariable(index int16) []byte
 }
 
-// serverRequest_ is the mixin for http[1-3]Request and happRequest.
+// serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
 type serverRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
@@ -2510,7 +2510,7 @@ func (u *Upload) MoveTo(path string) error {
 	return nil
 }
 
-// Response is the interface for *http[1-3]Response and *happResponse.
+// Response is the interface for *http[1-3]Response and *hwebResponse.
 type Response interface {
 	Request() Request
 
@@ -2580,12 +2580,12 @@ type Response interface {
 	unsafeMake(size int) []byte
 }
 
-// serverResponse_ is the mixin for http[1-3]Response and happResponse.
+// serverResponse_ is the mixin for http[1-3]Response and hwebResponse.
 type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
-	request Request // *http[1-3]Request or *happRequest
+	request Request // *http[1-3]Request or *hwebRequest
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

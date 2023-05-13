@@ -76,11 +76,11 @@ type ( // core types
 
 	Backend = internal.Backend
 
-	HAPPOutgate = internal.HAPPOutgate
-	HAPPBackend = internal.HAPPBackend
-	PExchan     = internal.PExchan
-	PRequest    = internal.PRequest
-	PResponse   = internal.PResponse
+	HWEBOutgate = internal.HWEBOutgate
+	HWEBBackend = internal.HWEBBackend
+	HExchan     = internal.HExchan
+	HRequest    = internal.HRequest
+	HResponse   = internal.HResponse
 
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend

@@ -27,7 +27,7 @@ ACTION
   advise     # show how to optimize current platform
   stop       # tell server to exit immediately
   quit       # tell server to exit gracefully
-  pid        # call server to report pids of leader and worker
+  pids       # call server to report pids of leader and worker
   leader     # call leader to report its info
   rework     # tell leader to restart worker gracefully
   readmin    # tell leader to reopen its admin interface

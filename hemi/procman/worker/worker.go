@@ -5,17 +5,15 @@
 
 // Worker process.
 
-package procman
+package worker
 
 import (
 	"net"
-	"os"
-	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
+	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
 var (
@@ -24,33 +22,32 @@ var (
 	currentStage *hemi.Stage // current stage
 )
 
-// workerMain is main() for worker process.
-func workerMain(token string) {
-	parts := strings.Split(token, "|") // ip:port|cmdKey
+func Main(token string) {
+	parts := strings.Split(token, "|") // ip:port|connKey
 	if len(parts) != 2 {
-		crash("bad token")
+		common.Crash("bad token")
 	}
 
 	// Contact leader process
 	cmdConn, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
-		crash("dial leader failed: " + err.Error())
+		common.Crash("dial leader failed: " + err.Error())
 	}
 
 	// Register worker to leader
 	if loginResp, ok := msgx.Call(cmdConn, msgx.NewMessage(0, 0, map[string]string{
-		"cmdKey": parts[1],
+		"connKey": parts[1],
 	}), 16<<20); ok {
 		configBase = loginResp.Get("base")
 		configFile = loginResp.Get("file")
 	} else {
-		crash("call leader failed")
+		common.Crash("call leader failed")
 	}
 
 	// Register succeeded. Now start the initial stage
 	currentStage, err = hemi.ApplyFile(configBase, configFile)
 	if err != nil {
-		crash(err.Error())
+		common.Crash(err.Error())
 	}
 	currentStage.Start(0)
 
@@ -80,47 +77,5 @@ func workerMain(token string) {
 		}
 	}
 
-	stop() // the loop is broken. simply stop worker
-}
-
-var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){ // call commands
-	comdPid: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("worker", strconv.Itoa(os.Getpid()))
-	},
-	comdWorker: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
-	},
-}
-
-var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){ // tell commands
-	comdQuit: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.Quit() // blocking
-		os.Exit(0)
-	},
-	comdReload: func(stage *hemi.Stage, req *msgx.Message) {
-		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
-			id := stage.ID() + 1
-			newStage.Start(id)
-			currentStage = newStage
-			stage.Quit()
-		}
-	},
-	comdCPU: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfCPU()
-	},
-	comdHeap: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfHeap()
-	},
-	comdThread: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfThread()
-	},
-	comdGoroutine: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfGoroutine()
-	},
-	comdBlock: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfBlock()
-	},
-	comdGC: func(stage *hemi.Stage, req *msgx.Message) {
-		runtime.GC()
-	},
+	common.Stop() // the loop is broken. simply stop worker
 }

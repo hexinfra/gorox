@@ -61,7 +61,11 @@ To run Gorox as a background daemon (if not, remove the "-daemon" option):
 
     shell> ./gorox serve -daemon
 
-Visit http://localhost:3080 to check if it works. To exit server gracefully:
+To ensure the leader and the worker process are both started:
+
+    shell> ./gorox pids
+
+Now visit http://localhost:3080 to check if it works. To exit server gracefully:
 
     shell> ./gorox quit
 
@@ -197,7 +201,7 @@ A Gorox instance has two processes: a leader process, and a worker process:
 
 ```
                   +----------------+         +----------------+ business traffic
-         opsConn  |                | cmdConn |                |<===============>
+         admConn  |                | cmdConn |                |<===============>
 operator--------->| leader process |<------->| worker process |<===============>
                   |                |         |                |<===============>
                   +----------------+         +----------------+

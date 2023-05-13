@@ -12,44 +12,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/system"
+	"github.com/hexinfra/gorox/hemi/procman/client"
+	"github.com/hexinfra/gorox/hemi/procman/leader"
+	"github.com/hexinfra/gorox/hemi/procman/worker"
+
+	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var (
-	progName string
-	procArgs = append([]string{system.ExePath}, os.Args[1:]...)
-)
-
-var ( // flags
-	debugLevel int
-	targetAddr string
-	adminAddr  string
-	myroxAddr  = flag.String("myrox", "", "")
-	config     = flag.String("conf", "", "")
-	singleMode = flag.Bool("single", false, "")
-	daemonMode = flag.Bool("daemon", false, "")
-	logFile    = flag.String("log", "", "")
-	baseDir    = flag.String("base", "", "")
-	logsDir    = flag.String("logs", "", "")
-	tempDir    = flag.String("temp", "", "")
-	varsDir    = flag.String("vars", "", "")
-)
-
-func Main(name string, usage string, level int, addr string) {
+func Main(program string, usage string, level int, addr string) {
 	if !system.Check() {
-		crash("current platform (os+arch) is not supported.")
+		common.Crash("current platform (os+arch) is not supported.")
 	}
-	progName = name
+
+	common.Program = program
 
 	flag.Usage = func() {
 		fmt.Printf(usage, hemi.Version)
 	}
-	flag.IntVar(&debugLevel, "debug", level, "")
-	flag.StringVar(&targetAddr, "target", addr, "")
-	flag.StringVar(&adminAddr, "admin", addr, "")
+	flag.IntVar(&common.DebugLevel, "debug", level, "")
+	flag.StringVar(&common.TargetAddr, "target", addr, "")
+	flag.StringVar(&common.AdminAddr, "admin", addr, "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -66,38 +51,39 @@ func Main(name string, usage string, level int, addr string) {
 	case "advise":
 		system.Advise()
 	case "serve", "check":
-		hemi.SetDebug(int32(debugLevel))
-		if *baseDir == "" {
-			*baseDir = system.ExeDir
+		hemi.SetDebug(int32(common.DebugLevel))
+		if *common.BaseDir == "" {
+			*common.BaseDir = system.ExeDir
 		} else { // baseDir is specified.
-			dir, err := filepath.Abs(*baseDir)
+			dir, err := filepath.Abs(*common.BaseDir)
 			if err != nil {
-				crash(err.Error())
+				common.Crash(err.Error())
 			}
-			*baseDir = dir
+			*common.BaseDir = dir
 		}
-		*baseDir = filepath.ToSlash(*baseDir)
-		hemi.SetBaseDir(*baseDir)
+		*common.BaseDir = filepath.ToSlash(*common.BaseDir)
+		hemi.SetBaseDir(*common.BaseDir)
 		setDir := func(pDir *string, name string, set func(string)) {
 			if dir := *pDir; dir == "" {
-				*pDir = *baseDir + "/" + name
+				*pDir = *common.BaseDir + "/" + name
 			} else if !filepath.IsAbs(dir) {
-				*pDir = *baseDir + "/" + dir
+				*pDir = *common.BaseDir + "/" + dir
 			}
 			*pDir = filepath.ToSlash(*pDir)
 			set(*pDir)
 		}
-		setDir(logsDir, "logs", hemi.SetLogsDir)
-		setDir(tempDir, "temp", hemi.SetTempDir)
-		setDir(varsDir, "vars", hemi.SetVarsDir)
+		setDir(common.LogsDir, "logs", hemi.SetLogsDir)
+		setDir(common.TempDir, "temp", hemi.SetTempDir)
+		setDir(common.VarsDir, "vars", hemi.SetVarsDir)
+
 		if action == "check" { // dry run
-			if _, err := hemi.ApplyFile(getConfig()); err != nil {
+			if _, err := hemi.ApplyFile(common.GetConfig()); err != nil {
 				fmt.Println(err.Error())
 			} else {
 				fmt.Println("PASS")
 			}
-		} else if *singleMode { // run as single foreground process. for single mode
-			if stage, err := hemi.ApplyFile(getConfig()); err == nil {
+		} else if *common.SingleMode { // run as single foreground process. for single mode
+			if stage, err := hemi.ApplyFile(common.GetConfig()); err == nil {
 				stage.Start(0)
 				select {}
 			} else {
@@ -106,61 +92,29 @@ func Main(name string, usage string, level int, addr string) {
 		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
 			if token == "leader" {
 				system.DaemonInit()
-				leaderMain()
+				leader.Main()
 			} else { // worker
-				workerMain(token)
+				worker.Main(token)
 			}
-		} else if *daemonMode { // start the leader daemon and exit
+		} else if *common.DaemonMode { // start the leader daemon and exit
 			devNull, err := os.Open(os.DevNull)
 			if err != nil {
-				crash(err.Error())
+				common.Crash(err.Error())
 			}
-			if leader, err := os.StartProcess(system.ExePath, procArgs, &os.ProcAttr{
+			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
 				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 				Files: []*os.File{devNull, devNull, devNull},
 				Sys:   system.DaemonSysAttr(),
-			}); err == nil {
-				leader.Release()
+			}); err == nil { // leader process started
+				process.Release()
 				devNull.Close()
 			} else {
-				crash(err.Error())
+				common.Crash(err.Error())
 			}
 		} else { // run as foreground leader. default case
-			leaderMain()
+			leader.Main()
 		}
 	default: // as control client
-		clientMain(action)
+		client.Main(action)
 	}
-}
-
-func getConfig() (base string, file string) {
-	baseDir, config := *baseDir, *config
-	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
-		// base: scheme://host:port/path/
-		panic("currently not supported!")
-	} else {
-		if config == "" {
-			base = baseDir
-			file = "conf/" + progName + ".conf"
-		} else if filepath.IsAbs(config) { // /path/to/file.conf
-			base = filepath.Dir(config)
-			file = filepath.Base(config)
-		} else { // path/to/file.conf
-			base = baseDir
-			file = config
-		}
-		base += "/"
-	}
-	return
-}
-
-const ( // exit codes
-	codeStop  = 10
-	codeCrash = 11
-)
-
-func stop() { os.Exit(codeStop) }
-func crash(s string) {
-	fmt.Fprintln(os.Stderr, s)
-	os.Exit(codeCrash)
 }

@@ -1,0 +1,27 @@
+// Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.
+// Copyright (c) 2022-2023 HexInfra Co., Ltd.
+// All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+
+// Misc.
+
+package common
+
+import (
+	"fmt"
+	"os"
+)
+
+const (
+	CodeStop  = 10
+	CodeCrash = 11
+)
+
+func Stop() {
+	os.Exit(CodeStop)
+}
+
+func Crash(s string) {
+	fmt.Fprintln(os.Stderr, s)
+	os.Exit(CodeCrash)
+}

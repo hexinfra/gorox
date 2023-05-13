@@ -2585,7 +2585,7 @@ type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
-	request Request // *http[1-3]Request or *hwebRequest
+	request Request // related request
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

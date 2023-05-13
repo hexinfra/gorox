@@ -655,8 +655,8 @@ var ruleMatchers = map[string]struct {
 	"-f": {(*Rule).fileMatch, true},
 	"-d": {(*Rule).dirMatch, true},
 	"-e": {(*Rule).existMatch, true},
-	"-D": {(*Rule).dirMatchWithWebRoot, true},
-	"-E": {(*Rule).existMatchWithWebRoot, true},
+	"-D": {(*Rule).dirMatchIncludingWebRoot, true},
+	"-E": {(*Rule).existMatchIncludingWebRoot, true},
 	"!=": {(*Rule).notEqualMatch, false},
 	"!^": {(*Rule).notPrefixMatch, false},
 	"!$": {(*Rule).notSuffixMatch, false},
@@ -703,20 +703,20 @@ func (r *Rule) dirMatch(req Request, value []byte) bool { // value -d
 		// webRoot is not included and thus not treated as dir
 		return false
 	}
-	return r.dirMatchWithWebRoot(req, value)
+	return r.dirMatchIncludingWebRoot(req, value)
 }
 func (r *Rule) existMatch(req Request, value []byte) bool { // value -e
 	if len(value) == 1 && value[0] == '/' {
 		// webRoot is not included and thus not treated as exist
 		return false
 	}
-	return r.existMatchWithWebRoot(req, value)
+	return r.existMatchIncludingWebRoot(req, value)
 }
-func (r *Rule) dirMatchWithWebRoot(req Request, _ []byte) bool { // value -D
+func (r *Rule) dirMatchIncludingWebRoot(req Request, _ []byte) bool { // value -D
 	pathInfo := req.getPathInfo()
 	return pathInfo != nil && pathInfo.IsDir()
 }
-func (r *Rule) existMatchWithWebRoot(req Request, _ []byte) bool { // value -E
+func (r *Rule) existMatchIncludingWebRoot(req Request, _ []byte) bool { // value -E
 	pathInfo := req.getPathInfo()
 	return pathInfo != nil
 }

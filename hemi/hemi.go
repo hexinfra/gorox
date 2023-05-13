@@ -76,12 +76,6 @@ type ( // core types
 
 	Backend = internal.Backend
 
-	HWEBOutgate = internal.HWEBOutgate
-	HWEBBackend = internal.HWEBBackend
-	HExchan     = internal.HExchan
-	HRequest    = internal.HRequest
-	HResponse   = internal.HResponse
-
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
@@ -105,6 +99,12 @@ type ( // core types
 	H3Request    = internal.H3Request
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
+
+	HWEBOutgate = internal.HWEBOutgate
+	HWEBBackend = internal.HWEBBackend
+	HExchan     = internal.HExchan
+	HRequest    = internal.HRequest
+	HResponse   = internal.HResponse
 
 	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend

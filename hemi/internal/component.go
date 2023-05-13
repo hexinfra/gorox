@@ -355,10 +355,10 @@ type Stage struct {
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
 	resolver     *resolverFixture      // for fast accessing
-	hwebOutgate  *HWEBOutgate          // for fast accessing
 	http1Outgate *HTTP1Outgate         // for fast accessing
 	http2Outgate *HTTP2Outgate         // for fast accessing
 	http3Outgate *HTTP3Outgate         // for fast accessing
+	hwebOutgate  *HWEBOutgate          // for fast accessing
 	quicOutgate  *QUICOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
@@ -392,10 +392,10 @@ func (s *Stage) onCreate() {
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
 	s.resolver = createResolver(s)
-	s.hwebOutgate = createHWEBOutgate(s)
 	s.http1Outgate = createHTTP1Outgate(s)
 	s.http2Outgate = createHTTP2Outgate(s)
 	s.http3Outgate = createHTTP3Outgate(s)
+	s.hwebOutgate = createHWEBOutgate(s)
 	s.quicOutgate = createQUICOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
@@ -404,10 +404,10 @@ func (s *Stage) onCreate() {
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolver] = s.resolver
-	s.fixtures[signHWEBOutgate] = s.hwebOutgate
 	s.fixtures[signHTTP1Outgate] = s.http1Outgate
 	s.fixtures[signHTTP2Outgate] = s.http2Outgate
 	s.fixtures[signHTTP3Outgate] = s.http3Outgate
+	s.fixtures[signHWEBOutgate] = s.hwebOutgate
 	s.fixtures[signQUICOutgate] = s.quicOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
@@ -470,10 +470,10 @@ func (s *Stage) OnShutdown() {
 
 	// fixtures
 	s.IncSub(7)
-	go s.hwebOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.http1Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.http2Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.http3Outgate.OnShutdown() // we don't treat this as goroutine
+	go s.hwebOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
@@ -722,10 +722,10 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
 func (s *Stage) Resolver() *resolverFixture  { return s.resolver }
-func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
 func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
 func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
+func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }

@@ -17,8 +17,8 @@ type normalProxy_ struct {
 	backend Backend // if works as forward proxy, this is nil
 	cacher  Cacher  // the cacher which is used by this proxy
 	// States
-	hostname            []byte      // ...
-	colonPort           []byte      // ...
+	hostname            []byte      // hostname used in ":authority" and "host" header
+	colonPort           []byte      // colonPort used in ":authority" and "host" header
 	viaName             []byte      // ...
 	isForward           bool        // reverse if false
 	bufferClientContent bool        // buffer client content into tempFile?

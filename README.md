@@ -136,40 +136,40 @@ Deployment
 A typical deployment architecture using Gorox might looks like this:
 
 ```
-           mobile  pc iot
-              |    |   |
-              |    |   |           public internet
-              |    |   |
-              v    v   v
-            +------------+
-+-----------| edgeProxy1 |------------+
-|           +--+---+--+--+            | gorox cluster
-|   web        |   |  |       tcp     |
-|     +--------+   |  +-------+       |
-|     |            |          |       |
-|     v           rpc         v       |
-|  +------+        |       +------+   |
-|  | app1 +----+   |   +---+ srv1 |   |
-|  +------+    |   |   |   +---+--+   |
-|              |   |   |       |      |
-|              v   v   v       v      |
-| +------+   +----------+   +------+  |   +------------------+
-| | svc1 |<->| sidecar1 |   | app2 +--+-->| php-fpm / tomcat |
-| +------+   +----+-----+   +------+  |   +------------------+
-|                 |                   |
-|                 v                   |
-| +------+   +----------+   +------+  |
-| | svc2 |<--+ sidecar2 |   | job1 |  |
-| +------+   +----------+   +------+  |
-|                                     |
-+----------+------+---------+---------+
-           |      |         |
-           v      v         v
-+-------------------------------------+
-|    +------+  +-----+  +--------+    |
-| .. | db1  |  | mq1 |  | cache1 | .. | data layer
-|    +------+  +-----+  +--------+    |
-+-------------------------------------+
+            mobile  pc iot
+               |    |   |
+               |    |   |           public internet
+               |    |   |
+               v    v   v
+             +------------+
++------------| edgeProxy1 |-------------+
+|            +--+---+--+--+             | gorox cluster
+|    web        |   |  |       tcp      |
+|      +--------+   |  +-------+        |
+|      |            |          |        |
+|      v           rpc         v        |
+|   +------+        |       +------+    |
+|   | app1 +----+   |   +---+ srv1 |    |
+|   +------+    |   |   |   +---+--+    |
+|               |   |   |       |       |
+|               v   v   v       v       |
+|  +------+   +----------+  +--------+  |   +------------------+
+|  | svc1 |<->| sidecar1 |  | proxy2 |--+-->| php-fpm / tomcat |
+|  +------+   +----+-----+  +--------+  |   +------------------+
+|                  |                    |
+|                  v                    |
+|  +------+   +----------+   +------+   |
+|  | svc2 |<--+ sidecar2 |   | job1 |   |
+|  +------+   +----------+   +------+   |
+|                                       |
++-----------+------+---------+----------+
+            |      |         |
+            v      v         v
++---------------------------------------+
+|     +------+  +-----+  +--------+     |
+| ... | db1  |  | mq1 |  | cache1 | ... | data layer
+|     +------+  +-----+  +--------+     |
++---------------------------------------+
 
 ```
 
@@ -177,14 +177,14 @@ In this typical architecture, with various configurations, Gorox can play ALL of
 the roles in "gorox cluster":
 
   * edgeProxy1: The Edge Proxy, also works as an API Gateway or WAF,
-  * app1: A Web application implemented directly on Gorox,
-  * srv1: A TCP server implemented directly on Gorox,
-  * svc1: A public RPC service implemented directly on Gorox,
-  * sidecar1: A sidecar for svc1,
-  * app2: A gateway passing requests to PHP-FPM / Tomcat server,
-  * svc2: A private RPC service implemented directly on Gorox,
-  * sidecar2: A sidecar for svc2,
-  * job1: A background application in Gorox doing something periodically.
+  * app1      : A Web application implemented directly on Gorox,
+  * srv1      : A TCP server implemented directly on Gorox,
+  * svc1      : A public RPC service implemented directly on Gorox,
+  * sidecar1  : A sidecar for svc1,
+  * proxy2    : A gateway proxy passing requests to PHP-FPM / Tomcat server,
+  * svc2      : A private RPC service implemented directly on Gorox,
+  * sidecar2  : A sidecar for svc2,
+  * job1      : A background application in Gorox doing something periodically.
 
 The whole "gorox cluster" can optionally be managed by a Myrox instance. In this
 configuration, all Gorox instances in "gorox cluster" are connected to the Myrox

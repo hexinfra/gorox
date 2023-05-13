@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Exported elements of internal.
+// Exported elements of Hemi.
 
 package hemi
 
@@ -153,11 +153,14 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
-	Svc          = internal.Svc
+	Svc    = internal.Svc
+	Bundle = internal.Bundle
+
+	Server = internal.Server
+
 	GRPCBridge   = internal.GRPCBridge   // for implementing gRPC server in exts
 	ThriftBridge = internal.ThriftBridge // for implementing Thrift server in exts
 
-	Server  = internal.Server
 	Cronjob = internal.Cronjob
 )
 

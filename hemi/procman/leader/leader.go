@@ -41,7 +41,9 @@ func Main() {
 	booker = log.New(osFile, "", log.Ldate|log.Ltime)
 
 	if common.MyroxAddr == "" {
-		adminServer()
+		go webuiServer()
+		go adminServer()
+		select {} // waiting forever
 	} else {
 		myroxClient()
 	}

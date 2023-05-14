@@ -85,7 +85,7 @@ func (c *client_) onConfigure() {
 			return nil
 		}
 		return errors.New(".readTimeout has an invalid value")
-	}, 4*time.Second)
+	}, 5*time.Second)
 }
 func (c *client_) onPrepare() {
 	// Currently nothing.
@@ -105,7 +105,8 @@ func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
 // outgate
 type outgate interface {
-	served() int64 // number of conns or streams that are served through this outgate
+	servedConns() int64
+	servedStreams() int64
 }
 
 // outgate_ is the mixin for outgates.
@@ -113,7 +114,8 @@ type outgate_ struct {
 	// Mixins
 	client_
 	// States
-	nServed atomic.Int64
+	nServedStreams atomic.Int64
+	nServedExchans atomic.Int64
 }
 
 func (o *outgate_) onCreate(name string, stage *Stage) {
@@ -127,13 +129,17 @@ func (o *outgate_) onPrepare() {
 	o.client_.onPrepare()
 }
 
-func (o *outgate_) served() int64 { return o.nServed.Load() }
-func (o *outgate_) incServed()    { o.nServed.Add(1) }
+func (o *outgate_) servedStreams() int64 { return o.nServedStreams.Load() }
+func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
+
+func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
+func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
 // Backend is a group of nodes.
 type Backend interface {
 	Component
 	client
+
 	Maintain() // goroutine
 }
 
@@ -171,6 +177,7 @@ func (b *Backend_[N]) onConfigure() {
 			UseExitln("node in nodes must be a dict")
 		}
 		node := b.creator.createNode(int32(id))
+
 		// address
 		vAddress, ok := vNode["address"]
 		if !ok {
@@ -179,28 +186,27 @@ func (b *Backend_[N]) onConfigure() {
 		if address, ok := vAddress.String(); ok && address != "" {
 			node.setAddress(address)
 		}
+
 		// weight
 		vWeight, ok := vNode["weight"]
-		if ok {
-			if weight, ok := vWeight.Int32(); ok && weight > 0 {
-				node.setWeight(weight)
-			} else {
-				UseExitln("bad weight in node")
-			}
-		} else {
+		if !ok {
 			node.setWeight(1)
+		} else if weight, ok := vWeight.Int32(); ok && weight > 0 {
+			node.setWeight(weight)
+		} else {
+			UseExitln("bad weight in node")
 		}
+
 		// keepConns
 		vKeepConns, ok := vNode["keepConns"]
-		if ok {
-			if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
-				node.setKeepConns(keepConns)
-			} else {
-				UseExitln("bad keepConns in node")
-			}
-		} else {
+		if !ok {
 			node.setKeepConns(10)
+		} else if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
+			node.setKeepConns(keepConns)
+		} else {
+			UseExitln("bad keepConns in node")
 		}
+
 		b.nodes = append(b.nodes, node)
 	}
 }
@@ -214,7 +220,8 @@ func (b *Backend_[N]) Maintain() { // goroutine
 		go node.Maintain()
 	}
 	<-b.Shut
-	// Backend is shutdown. Tell its nodes to shutdown
+
+	// Backend is told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
 		node.shutdown()
 	}
@@ -237,7 +244,7 @@ type Node interface {
 // Node_ is a mixin for backend nodes.
 type Node_ struct {
 	// Mixins
-	subsWaiter_
+	subsWaiter_ // usually for conns
 	shutdownable_
 	// States
 	id        int32       // the node id

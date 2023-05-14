@@ -152,21 +152,18 @@ func (r *router_[R, G, D, E, C]) hasCase(name string) bool {
 func (r *router_[R, G, D, E, C]) editorByID(id uint8) E { return r.editorsByID[id] }
 
 func (r *router_[R, G, D, E, C]) Log(s string) {
-	// TODO
 	if r.logger != nil {
-		//r.logger.log(s)
+		r.logger.Log(s)
 	}
 }
 func (r *router_[R, G, D, E, C]) Logln(s string) {
-	// TODO
 	if r.logger != nil {
-		//r.logger.logln(s)
+		r.logger.Logln(s)
 	}
 }
 func (r *router_[R, G, D, E, C]) Logf(format string, args ...any) {
-	// TODO
 	if r.logger != nil {
-		//r.logger.logf(format, args...)
+		r.logger.Logf(format, args...)
 	}
 }
 

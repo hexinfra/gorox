@@ -63,14 +63,14 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 		case exitCode := <-deadWay: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == common.CodeCrash || exitCode == common.CodeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				booker.Println("worker critical error")
+				logger.Println("worker critical error")
 				common.Stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()
 				worker.lastDie = now
 				worker.start(base, file, deadWay) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				booker.Println("worker is broken!")
+				logger.Println("worker is broken!")
 				common.Stop()
 			}
 		}

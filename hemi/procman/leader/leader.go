@@ -26,7 +26,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var booker *log.Logger
+var logger *log.Logger
 
 func Main() {
 	logFile := common.LogFile
@@ -42,12 +42,12 @@ func Main() {
 	if err != nil {
 		common.Crash(err.Error())
 	}
-	booker = log.New(osFile, "", log.Ldate|log.Ltime)
+	logger = log.New(osFile, "", log.Ldate|log.Ltime)
 
 	if common.MyroxAddr == "" {
 		// Load worker's config
 		base, file := common.GetConfig()
-		booker.Printf("parse worker config: base=%s file=%s\n", base, file)
+		logger.Printf("parse worker config: base=%s file=%s\n", base, file)
 		if _, err := hemi.ApplyFile(base, file); err != nil {
 			common.Crash("leader: " + err.Error())
 		}
@@ -56,7 +56,7 @@ func Main() {
 		msgChan := make(chan *msgx.Message) // msgChan is the channel between adminServer()/webuiServer() and keepWorker()
 		go keepWorker(base, file, msgChan)
 		<-msgChan // wait for keepWorker() to ensure worker is started.
-		booker.Println("worker process started")
+		logger.Println("worker process started")
 
 		// TODO: msgChan MUST be protected against concurrent adminServer() and webuiServer()
 		go adminServer(msgChan)

@@ -329,21 +329,18 @@ func (a *App) Setting(name string) (value string, ok bool) {
 }
 
 func (a *App) Log(s string) {
-	// TODO
 	if a.logger != nil {
-		//a.logger.log(s)
+		a.logger.Log(s)
 	}
 }
 func (a *App) Logln(s string) {
-	// TODO
 	if a.logger != nil {
-		//a.logger.logln(s)
+		a.logger.Logln(s)
 	}
 }
 func (a *App) Logf(format string, args ...any) {
-	// TODO
 	if a.logger != nil {
-		//a.logger.logf(format, args...)
+		a.logger.Logf(format, args...)
 	}
 }
 

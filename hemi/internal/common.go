@@ -25,7 +25,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// logger is logger for routers and apps.
+// logger is logger for routers, apps, and svcs.
 type logger struct {
 	file   *os.File
 	queue  chan string

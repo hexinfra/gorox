@@ -14,3 +14,15 @@ type hrpcBackend struct {
 // hrpcNode
 type hrpcNode struct {
 }
+
+// RExchan
+type RExchan struct {
+}
+
+// ROutput
+type ROutput struct {
+}
+
+// RInput
+type RInput struct {
+}

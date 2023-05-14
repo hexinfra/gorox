@@ -78,21 +78,18 @@ func (s *Svc) OnPrepare() {
 }
 
 func (s *Svc) Log(str string) {
-	// TODO
 	if s.logger != nil {
-		//s.logger.log(str)
+		s.logger.Log(str)
 	}
 }
 func (s *Svc) Logln(str string) {
-	// TODO
 	if s.logger != nil {
-		//s.logger.logln(str)
+		s.logger.Logln(str)
 	}
 }
 func (s *Svc) Logf(format string, args ...any) {
-	// TODO
 	if s.logger != nil {
-		//s.logger.logf(format, args...)
+		s.logger.Logf(format, args...)
 	}
 }
 

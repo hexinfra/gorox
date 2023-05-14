@@ -18,7 +18,7 @@ import (
 )
 
 func adminServer(msgChan chan *msgx.Message) {
-	booker.Printf("open admin interface: %s\n", common.AdminAddr)
+	logger.Printf("open admin interface: %s\n", common.AdminAddr)
 	admGate, err := net.Listen("tcp", common.AdminAddr) // admGate is for receiving admConns from control client
 	if err != nil {
 		common.Crash(err.Error())
@@ -30,22 +30,22 @@ func adminServer(msgChan chan *msgx.Message) {
 	for { // each admConn from control client
 		admConn, err := admGate.Accept()
 		if err != nil {
-			booker.Println(err.Error())
+			logger.Println(err.Error())
 			continue
 		}
 		if err := admConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			booker.Println(err.Error())
+			logger.Println(err.Error())
 			goto closeNext
 		}
 		req, ok = msgx.Recv(admConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
-		booker.Printf("received from client: %v\n", req)
+		logger.Printf("received from client: %v\n", req)
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
-				booker.Println("received stop")
+				logger.Println("received stop")
 				common.Stop() // worker will stop immediately after cmdConn is closed
 			case common.ComdReadmin:
 				newAddr := req.Get("newAddr") // succeeding adminAddr
@@ -55,10 +55,10 @@ func adminServer(msgChan chan *msgx.Message) {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					admGate.Close()
 					admGate = newGate
-					booker.Printf("admin re-opened to %s\n", newAddr)
+					logger.Printf("admin re-opened to %s\n", newAddr)
 					goto closeNext
 				} else {
-					booker.Printf("readmin failed: %s\n", err.Error())
+					logger.Printf("readmin failed: %s\n", err.Error())
 				}
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
@@ -77,7 +77,7 @@ func adminServer(msgChan chan *msgx.Message) {
 				msgChan <- req
 				resp = <-msgChan
 			}
-			booker.Printf("send response: %v\n", resp)
+			logger.Printf("send response: %v\n", resp)
 			msgx.Send(admConn, resp)
 		}
 	closeNext:

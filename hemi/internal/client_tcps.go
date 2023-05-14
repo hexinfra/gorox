@@ -132,8 +132,8 @@ func (b *TCPSBackend) FetchConn() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *TCPSBackend) StoreConn(conn *TConn) {
-	conn.node.storeConn(conn)
+func (b *TCPSBackend) StoreConn(tConn *TConn) {
+	tConn.node.storeConn(tConn)
 }
 
 // tcpsNode is a node in TCPSBackend.

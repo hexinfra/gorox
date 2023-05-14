@@ -133,7 +133,7 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 // UDPSDealer
 type UDPSDealer interface {
 	Component
-	Deal(conn *UDPSConn) (next bool)
+	Deal(link *UDPSLink) (next bool)
 }
 
 // UDPSDealer_
@@ -147,7 +147,7 @@ type UDPSDealer_ struct {
 type UDPSEditor interface {
 	Component
 	identifiable
-	OnInput(conn *UDPSConn, data []byte) (next bool)
+	OnInput(link *UDPSLink, data []byte) (next bool)
 }
 
 // UDPSEditor_
@@ -163,7 +163,7 @@ type udpsCase struct {
 	// Mixins
 	case_[*UDPSRouter, UDPSDealer, UDPSEditor]
 	// States
-	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
+	matcher func(kase *udpsCase, link *UDPSLink, value []byte) bool
 }
 
 func (c *udpsCase) OnConfigure() {
@@ -181,14 +181,14 @@ func (c *udpsCase) OnPrepare() {
 	c.case_.OnPrepare()
 }
 
-func (c *udpsCase) isMatch(conn *UDPSConn) bool {
+func (c *udpsCase) isMatch(link *UDPSLink) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, conn, conn.unsafeVariable(c.varCode))
+	return c.matcher(c, link, link.unsafeVariable(c.varCode))
 }
 
-var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []byte) bool{
+var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []byte) bool{
 	"==": (*udpsCase).equalMatch,
 	"^=": (*udpsCase).prefixMatch,
 	"$=": (*udpsCase).suffixMatch,
@@ -199,112 +199,112 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 	"!~": (*udpsCase).notRegexpMatch,
 }
 
-func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
+func (c *udpsCase) equalMatch(link *UDPSLink, value []byte) bool { // value == patterns
 	return c.case_.equalMatch(value)
 }
-func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= patterns
+func (c *udpsCase) prefixMatch(link *UDPSLink, value []byte) bool { // value ^= patterns
 	return c.case_.prefixMatch(value)
 }
-func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
+func (c *udpsCase) suffixMatch(link *UDPSLink, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
-func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
+func (c *udpsCase) regexpMatch(link *UDPSLink, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
-func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool { // value != patterns
+func (c *udpsCase) notEqualMatch(link *UDPSLink, value []byte) bool { // value != patterns
 	return c.case_.notEqualMatch(value)
 }
-func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value !^ patterns
+func (c *udpsCase) notPrefixMatch(link *UDPSLink, value []byte) bool { // value !^ patterns
 	return c.case_.notPrefixMatch(value)
 }
-func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
+func (c *udpsCase) notSuffixMatch(link *UDPSLink, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
 }
-func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
+func (c *udpsCase) notRegexpMatch(link *UDPSLink, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)
 }
 
-func (c *udpsCase) execute(conn *UDPSConn) (processed bool) {
+func (c *udpsCase) execute(link *UDPSLink) (processed bool) {
 	// TODO
 	return false
 }
 
-// poolUDPSConn
-var poolUDPSConn sync.Pool
+// poolUDPSLink
+var poolUDPSLink sync.Pool
 
-func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
-	var conn *UDPSConn
-	if x := poolUDPSConn.Get(); x == nil {
-		conn = new(UDPSConn)
+func getUDPSLink(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSLink {
+	var link *UDPSLink
+	if x := poolUDPSLink.Get(); x == nil {
+		link = new(UDPSLink)
 	} else {
-		conn = x.(*UDPSConn)
+		link = x.(*UDPSLink)
 	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
-	return conn
+	link.onGet(id, stage, router, gate, udpConn, rawConn)
+	return link
 }
-func putUDPSConn(conn *UDPSConn) {
-	conn.onPut()
-	poolUDPSConn.Put(conn)
+func putUDPSLink(link *UDPSLink) {
+	link.onPut()
+	poolUDPSLink.Put(link)
 }
 
-// UDPSConn needs redesign, maybe datagram?
-type UDPSConn struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
+// UDPSLink needs redesign, maybe datagram?
+type UDPSLink struct {
+	// Link states (stocks)
+	// Link states (controlled)
+	// Link states (non-zeros)
 	id      int64
 	stage   *Stage // current stage
 	router  *UDPSRouter
 	gate    *udpsGate
-	netConn *net.UDPConn
+	udpConn *net.UDPConn
 	rawConn syscall.RawConn
-	// Conn states (zeros)
+	// Link states (zeros)
 }
 
-func (c *UDPSConn) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, netConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
+func (l *UDPSLink) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	l.id = id
+	l.stage = stage
+	l.router = router
+	l.gate = gate
+	l.udpConn = udpConn
+	l.rawConn = rawConn
 }
-func (c *UDPSConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
-	c.netConn = nil
-	c.rawConn = nil
+func (l *UDPSLink) onPut() {
+	l.stage = nil
+	l.router = nil
+	l.gate = nil
+	l.udpConn = nil
+	l.rawConn = nil
 }
 
-func (c *UDPSConn) execute() { // goroutine
-	for _, kase := range c.router.cases {
-		if !kase.isMatch(c) {
+func (l *UDPSLink) execute() { // goroutine
+	for _, kase := range l.router.cases {
+		if !kase.isMatch(l) {
 			continue
 		}
-		if processed := kase.execute(c); processed {
+		if processed := kase.execute(l); processed {
 			break
 		}
 	}
-	c.closeConn()
-	putUDPSConn(c)
+	l.closeConn()
+	putUDPSLink(l)
 }
 
-func (c *UDPSConn) Close() error {
-	netConn := c.netConn
-	putUDPSConn(c)
-	return netConn.Close()
+func (l *UDPSLink) Close() error {
+	udpConn := l.udpConn
+	putUDPSLink(l)
+	return udpConn.Close()
 }
 
-func (c *UDPSConn) closeConn() {
-	c.netConn.Close()
+func (l *UDPSLink) closeConn() {
+	l.udpConn.Close()
 }
 
-func (c *UDPSConn) unsafeVariable(index int16) []byte {
-	return udpsConnVariables[index](c)
+func (l *UDPSLink) unsafeVariable(index int16) []byte {
+	return udpsLinkVariables[index](l)
 }
 
-// udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in engine.go
+// udpsLinkVariables
+var udpsLinkVariables = [...]func(*UDPSLink) []byte{ // keep sync with varCodes in engine.go
 	// TODO
 }

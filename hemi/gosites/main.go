@@ -8,9 +8,6 @@
 package main
 
 import (
-	"os"
-
-	"github.com/hexinfra/gorox/hemi/gosites/test"
 	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
@@ -31,7 +28,6 @@ ACTION
 
   serve      # start as server
   check      # dry run to check config
-  test       # run as tester
   help       # show this message
   version    # show version info
   advise     # show how to optimize current platform
@@ -76,9 +72,5 @@ OPTIONS
 `
 
 func main() {
-	if len(os.Args) >= 2 && os.Args[1] == "test" {
-		test.Main()
-	} else {
-		procman.Main("gosites", usage, 0, "127.0.0.1:9525")
-	}
+	procman.Main("gosites", usage, 0, "127.0.0.1:9525")
 }

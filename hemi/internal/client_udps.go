@@ -66,15 +66,15 @@ func (f *UDPSOutgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*UConn, error) {
+func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*ULink, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UDPSOutgate) FetchConn(address string, tlsMode bool) (*UConn, error) {
+func (f *UDPSOutgate) FetchLink(address string, tlsMode bool) (*ULink, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UDPSOutgate) StoreConn(conn *UConn) {
+func (f *UDPSOutgate) StoreLink(link *ULink) {
 	// TODO
 }
 
@@ -107,16 +107,16 @@ func (b *UDPSBackend) createNode(id int32) *udpsNode {
 	return node
 }
 
-func (b *UDPSBackend) Dial() (*UConn, error) {
+func (b *UDPSBackend) Dial() (*ULink, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
-func (b *UDPSBackend) FetchConn() (*UConn, error) {
+func (b *UDPSBackend) FetchLink() (*ULink, error) {
 	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+	return node.fetchLink()
 }
-func (b *UDPSBackend) StoreConn(conn *UConn) {
-	conn.node.storeConn(conn)
+func (b *UDPSBackend) StoreLink(uLink *ULink) {
+	uLink.node.storeLink(uLink)
 }
 
 // udpsNode is a node in UDPSBackend.
@@ -137,113 +137,113 @@ func (n *udpsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
-	// TODO: wait for all conns
+	// TODO: wait for all links
 	if IsDebug(2) {
 		Debugf("udpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *udpsNode) dial() (*UConn, error) {
+func (n *udpsNode) dial() (*ULink, error) {
 	// TODO
 	return nil, nil
 }
-func (n *udpsNode) fetchConn() (*UConn, error) {
-	conn := n.pullConn()
-	if conn != nil {
-		uConn := conn.(*UConn)
-		if uConn.isAlive() {
-			return uConn, nil
+func (n *udpsNode) fetchLink() (*ULink, error) {
+	link := n.pullConn()
+	if link != nil {
+		uLink := link.(*ULink)
+		if uLink.isAlive() {
+			return uLink, nil
 		}
-		uConn.closeConn()
-		putUConn(uConn)
+		uLink.closeConn()
+		putULink(uLink)
 	}
 	return n.dial()
 }
-func (n *udpsNode) storeConn(uConn *UConn) {
-	if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
-		uConn.closeConn()
-		putUConn(uConn)
+func (n *udpsNode) storeLink(uLink *ULink) {
+	if uLink.isBroken() || n.isDown() || !uLink.isAlive() {
+		uLink.closeConn()
+		putULink(uLink)
 	} else {
-		n.pushConn(uConn)
+		n.pushConn(uLink)
 	}
 }
 
-// poolUConn
-var poolUConn sync.Pool
+// poolULink
+var poolULink sync.Pool
 
-func getUConn(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
-	var conn *UConn
-	if x := poolUConn.Get(); x == nil {
-		conn = new(UConn)
+func getULink(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
+	var link *ULink
+	if x := poolULink.Get(); x == nil {
+		link = new(ULink)
 	} else {
-		conn = x.(*UConn)
+		link = x.(*ULink)
 	}
-	conn.onGet(id, client, node, udpConn, rawConn)
-	return conn
+	link.onGet(id, client, node, udpConn, rawConn)
+	return link
 }
-func putUConn(conn *UConn) {
-	conn.onPut()
-	poolUConn.Put(conn)
+func putULink(link *ULink) {
+	link.onPut()
+	poolULink.Put(link)
 }
 
-// UConn is a client-side connection to udpsNode.
-type UConn struct { // only exported to hemi
+// ULink is a client-side link to udpsNode.
+type ULink struct { // only exported to hemi
 	// Mixins
 	conn_
-	// Conn states (non-zeros)
+	// Link states (non-zeros)
 	node    *udpsNode       // associated node if client is UDPSBackend
 	udpConn *net.UDPConn    // udp conn
 	rawConn syscall.RawConn // for syscall
-	// Conn states (zeros)
-	broken atomic.Bool // is conn broken?
+	// Link states (zeros)
+	broken atomic.Bool // is link broken?
 }
 
-func (c *UConn) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.conn_.onGet(id, client)
-	c.node = node
-	c.udpConn = udpConn
-	c.rawConn = rawConn
+func (l *ULink) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	l.conn_.onGet(id, client)
+	l.node = node
+	l.udpConn = udpConn
+	l.rawConn = rawConn
 }
-func (c *UConn) onPut() {
-	c.conn_.onPut()
-	c.node = nil
-	c.udpConn = nil
-	c.rawConn = nil
-	c.broken.Store(false)
+func (l *ULink) onPut() {
+	l.conn_.onPut()
+	l.node = nil
+	l.udpConn = nil
+	l.rawConn = nil
+	l.broken.Store(false)
 }
 
-func (c *UConn) getClient() udpsClient { return c.client.(udpsClient) }
+func (l *ULink) getClient() udpsClient { return l.client.(udpsClient) }
 
-func (c *UConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.udpConn.SetWriteDeadline(deadline); err != nil {
+func (l *ULink) SetWriteDeadline(deadline time.Time) error {
+	if deadline.Sub(l.lastWrite) >= time.Second {
+		if err := l.udpConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
-		c.lastWrite = deadline
+		l.lastWrite = deadline
 	}
 	return nil
 }
-func (c *UConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.udpConn.SetReadDeadline(deadline); err != nil {
+func (l *ULink) SetReadDeadline(deadline time.Time) error {
+	if deadline.Sub(l.lastRead) >= time.Second {
+		if err := l.udpConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
-		c.lastRead = deadline
+		l.lastRead = deadline
 	}
 	return nil
 }
 
-func (c *UConn) Write(p []byte) (n int, err error) { return c.udpConn.Write(p) }
-func (c *UConn) Read(p []byte) (n int, err error)  { return c.udpConn.Read(p) }
+func (l *ULink) Write(p []byte) (n int, err error) { return l.udpConn.Write(p) }
+func (l *ULink) Read(p []byte) (n int, err error)  { return l.udpConn.Read(p) }
 
-func (c *UConn) isBroken() bool { return c.broken.Load() }
-func (c *UConn) markBroken()    { c.broken.Store(true) }
+func (l *ULink) isBroken() bool { return l.broken.Load() }
+func (l *ULink) markBroken()    { l.broken.Store(true) }
 
-func (c *UConn) Close() error { // only used by clients of dial
-	udpConn := c.udpConn
-	putUConn(c)
+func (l *ULink) Close() error { // only used by clients of dial
+	udpConn := l.udpConn
+	putULink(l)
 	return udpConn.Close()
 }
 
-func (c *UConn) closeConn() { c.udpConn.Close() } // used by codes other than dial
+func (l *ULink) closeConn() { l.udpConn.Close() } // used by codes other than dial

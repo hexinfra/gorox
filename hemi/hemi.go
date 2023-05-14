@@ -116,7 +116,7 @@ type ( // core types
 
 	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
-	UConn       = internal.UConn
+	ULink       = internal.ULink
 
 	QUICRouter = internal.QUICRouter
 	QUICDealer = internal.QUICDealer
@@ -131,7 +131,7 @@ type ( // core types
 	UDPSRouter = internal.UDPSRouter
 	UDPSDealer = internal.UDPSDealer
 	UDPSEditor = internal.UDPSEditor
-	UDPSConn   = internal.UDPSConn
+	UDPSLink   = internal.UDPSLink
 
 	Stater  = internal.Stater
 	Session = internal.Session

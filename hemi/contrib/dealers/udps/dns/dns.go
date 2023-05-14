@@ -45,7 +45,7 @@ func (d *dnsDealer) OnPrepare() {
 	// TODO
 }
 
-func (d *dnsDealer) Deal(conn *UDPSConn) (next bool) {
+func (d *dnsDealer) Deal(link *UDPSLink) (next bool) {
 	// TODO
 	return
 }

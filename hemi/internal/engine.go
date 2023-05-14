@@ -137,7 +137,7 @@ func _newConfig() *config {
 		"serverName": 3,
 		"nextProto":  4,
 
-		// udps conn vars. keep sync with udpsConnVariables in router_udps.go
+		// udps link vars. keep sync with udpsLinkVariables in router_udps.go
 
 		// http request vars. keep sync with serverRequestVariables in web_server.go
 		"method":      0, // GET, POST, ...

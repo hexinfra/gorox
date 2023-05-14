@@ -77,7 +77,7 @@ func (f *QUICOutgate) Dial(address string) (*QConn, error) {
 func (f *QUICOutgate) FetchConn(address string) {
 	// TODO
 }
-func (f *QUICOutgate) StoreConn(conn *QConn) {
+func (f *QUICOutgate) StoreConn(qConn *QConn) {
 	// TODO
 }
 
@@ -121,7 +121,7 @@ func (b *QUICBackend) FetchConn() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUICBackend) StoreConn(conn *QConn) {
+func (b *QUICBackend) StoreConn(qConn *QConn) {
 	// TODO
 }
 

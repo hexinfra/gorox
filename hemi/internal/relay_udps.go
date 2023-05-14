@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// udpsRelay passes UDP/DTLS connections to backend UDP/DTLS server.
+// udpsRelay passes UDP/DTLS links to backend UDP/DTLS server.
 type udpsRelay struct {
 	// Mixins
 	UDPSDealer_
@@ -56,7 +56,7 @@ func (d *udpsRelay) OnConfigure() {
 func (d *udpsRelay) OnPrepare() {
 }
 
-func (d *udpsRelay) Deal(conn *UDPSConn) (next bool) { // reverse only
+func (d *udpsRelay) Deal(link *UDPSLink) (next bool) { // reverse only
 	// TODO
 	return
 }

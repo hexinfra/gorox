@@ -53,7 +53,7 @@ func (r *gzipReviser) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".minLength is an invalid value")
+		return errors.New(".minLength has an invalid value")
 	}, 0)
 
 	// onContentTypes

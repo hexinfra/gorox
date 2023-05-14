@@ -88,7 +88,7 @@ func (h *staticHandlet) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".indexFile is an invalid value")
+		return errors.New(".indexFile has an invalid value")
 	}, "index.html")
 
 	// mimeTypes
@@ -113,7 +113,7 @@ func (h *staticHandlet) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".indexFile is an invalid value")
+		return errors.New(".indexFile has an invalid value")
 	}, "application/octet-stream")
 
 	// autoIndex

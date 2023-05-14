@@ -56,7 +56,7 @@ func (s *httpxServer) OnConfigure() {
 		if value == "http" || value == "https" {
 			return nil
 		}
-		return errors.New(".forceScheme is an invalid value")
+		return errors.New(".forceScheme has an invalid value")
 	}, "")
 	if scheme == "http" {
 		s.forceScheme = SchemeHTTP

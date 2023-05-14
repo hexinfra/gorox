@@ -47,7 +47,7 @@ func (s *localStater) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".stateDir is an invalid value")
+		return errors.New(".stateDir has an invalid value")
 	}, VarsDir()+"/staters/"+s.Name())
 }
 func (s *localStater) OnPrepare() {

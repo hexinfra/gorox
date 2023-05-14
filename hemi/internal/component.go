@@ -502,7 +502,7 @@ func (s *Stage) OnConfigure() {
 	// logFile
 	s.ConfigureString("logFile", &s.logFile, func(value string) error {
 		if value == "" {
-			return errors.New(".logFile is an invalid value")
+			return errors.New(".logFile has an invalid value")
 		}
 		return nil
 	}, LogsDir()+"/worker.log")
@@ -512,7 +512,7 @@ func (s *Stage) OnConfigure() {
 	// cpuFile
 	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) error {
 		if value == "" {
-			return errors.New(".cpuFile is an invalid value")
+			return errors.New(".cpuFile has an invalid value")
 		}
 		return nil
 	}, tempDir+"/cpu.prof")
@@ -520,7 +520,7 @@ func (s *Stage) OnConfigure() {
 	// hepFile
 	s.ConfigureString("hepFile", &s.hepFile, func(value string) error {
 		if value == "" {
-			return errors.New(".hepFile is an invalid value")
+			return errors.New(".hepFile has an invalid value")
 		}
 		return nil
 	}, tempDir+"/hep.prof")
@@ -528,7 +528,7 @@ func (s *Stage) OnConfigure() {
 	// thrFile
 	s.ConfigureString("thrFile", &s.thrFile, func(value string) error {
 		if value == "" {
-			return errors.New(".thrFile is an invalid value")
+			return errors.New(".thrFile has an invalid value")
 		}
 		return nil
 	}, tempDir+"/thr.prof")
@@ -536,7 +536,7 @@ func (s *Stage) OnConfigure() {
 	// grtFile
 	s.ConfigureString("grtFile", &s.grtFile, func(value string) error {
 		if value == "" {
-			return errors.New(".grtFile is an invalid value")
+			return errors.New(".grtFile has an invalid value")
 		}
 		return nil
 	}, tempDir+"/grt.prof")
@@ -544,7 +544,7 @@ func (s *Stage) OnConfigure() {
 	// blkFile
 	s.ConfigureString("blkFile", &s.blkFile, func(value string) error {
 		if value == "" {
-			return errors.New(".blkFile is an invalid value")
+			return errors.New(".blkFile has an invalid value")
 		}
 		return nil
 	}, tempDir+"/blk.prof")

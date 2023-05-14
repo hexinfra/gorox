@@ -83,7 +83,7 @@ func (r *router_[R, G, D, E, C]) onConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".logFormat is an invalid value")
+		return errors.New(".logFormat has an invalid value")
 	}, "%T... todo")
 }
 func (r *router_[R, G, D, E, C]) configureSubs() { // dealers, editors, cases

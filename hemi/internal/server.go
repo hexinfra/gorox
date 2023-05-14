@@ -80,7 +80,7 @@ func (s *Server_) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".readTimeout is an invalid value")
+		return errors.New(".readTimeout has an invalid value")
 	}, 60*time.Second)
 
 	// writeTimeout
@@ -88,7 +88,7 @@ func (s *Server_) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".writeTimeout is an invalid value")
+		return errors.New(".writeTimeout has an invalid value")
 	}, 60*time.Second)
 
 	// numGates
@@ -96,7 +96,7 @@ func (s *Server_) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".numGates is an invalid value")
+		return errors.New(".numGates has an invalid value")
 	}, s.stage.NumCPU())
 
 	// maxConnsPerGate
@@ -104,7 +104,7 @@ func (s *Server_) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxConnsPerGate is an invalid value")
+		return errors.New(".maxConnsPerGate has an invalid value")
 	}, 100000)
 }
 func (s *Server_) OnPrepare() {

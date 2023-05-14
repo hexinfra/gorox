@@ -89,7 +89,7 @@ func (h *ajpProxy) OnConfigure() {
 		if value >= 0 {
 			return nil
 		}
-		return errors.New(".sendTimeout is an invalid value")
+		return errors.New(".sendTimeout has an invalid value")
 	}, 60*time.Second)
 
 	// recvTimeout
@@ -97,7 +97,7 @@ func (h *ajpProxy) OnConfigure() {
 		if value >= 0 {
 			return nil
 		}
-		return errors.New(".recvTimeout is an invalid value")
+		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 
 	// maxContentSize
@@ -105,7 +105,7 @@ func (h *ajpProxy) OnConfigure() {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize is an invalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
 func (h *ajpProxy) OnPrepare() {

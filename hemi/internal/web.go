@@ -124,7 +124,7 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".file404 is an invalid value")
+		return errors.New(".file404 has an invalid value")
 	}, "")
 
 	// tlsCertificate
@@ -132,7 +132,7 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".tlsCertificate is an invalid value")
+		return errors.New(".tlsCertificate has an invalid value")
 	}, "")
 
 	// tlsPrivateKey
@@ -140,7 +140,7 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".tlsCertificate is an invalid value")
+		return errors.New(".tlsCertificate has an invalid value")
 	}, "")
 
 	// accessLog
@@ -159,7 +159,7 @@ func (a *App) OnConfigure() {
 		if value != "" {
 			return nil
 		}
-		return errors.New(".logFormat is an invalid value")
+		return errors.New(".logFormat has an invalid value")
 	}, "%T... todo")
 
 	// maxMemoryContentSize
@@ -167,7 +167,7 @@ func (a *App) OnConfigure() {
 		if value > 0 && value <= _1G {
 			return nil
 		}
-		return errors.New(".maxMemoryContentSize is an invalid value")
+		return errors.New(".maxMemoryContentSize has an invalid value")
 	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 
 	// maxUploadContentSize
@@ -175,7 +175,7 @@ func (a *App) OnConfigure() {
 		if value > 0 && value <= _1T {
 			return nil
 		}
-		return errors.New(".maxUploadContentSize is an invalid value")
+		return errors.New(".maxUploadContentSize has an invalid value")
 	}, _128M)
 
 	// settings
@@ -564,7 +564,7 @@ func (r *Rule) OnConfigure() {
 		if value >= 200 && value < 1000 {
 			return nil
 		}
-		return errors.New(".returnCode is an invalid value")
+		return errors.New(".returnCode has an invalid value")
 	}, 0)
 
 	// returnText

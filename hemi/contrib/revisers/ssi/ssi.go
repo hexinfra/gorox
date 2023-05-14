@@ -48,7 +48,7 @@ func (r *ssiReviser) OnConfigure() {
 		if value >= 6 && value < 26 {
 			return nil
 		}
-		return errors.New(".rank is an invalid value")
+		return errors.New(".rank has an invalid value")
 	}, RankSSI)
 }
 func (r *ssiReviser) OnPrepare() {

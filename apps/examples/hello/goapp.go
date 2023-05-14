@@ -14,15 +14,6 @@ import (
 )
 
 func init() {
-	// Register initializer for your app.
-	RegisterAppInit("hello", func(app *App) error {
-		app.AddSetting("name1", "value1") // add example setting
-		return nil
-	})
-}
-
-func init() {
-	// Register additional handlets for your app.
 	RegisterHandlet("helloHandlet", func(name string, stage *Stage, app *App) Handlet {
 		h := new(helloHandlet)
 		h.onCreate(name, stage, app)

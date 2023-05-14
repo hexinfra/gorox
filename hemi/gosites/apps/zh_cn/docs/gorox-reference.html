@@ -453,7 +453,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 	.dialTimeout = 10s
 	.writeTimeout = 30s
 	.readTimeout = 30s
-	.idleTimeout = 4s
+	.aliveTimeout = 5s
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tempDir + "/web/outgates/http2Outgate"
 	.maxContentSize = 1T

@@ -8,8 +8,7 @@
 package common
 
 const (
-	ComdServe     = iota // start server. no tell action is bound to this comd. must be 0
-	ComdStop             // exit server immediately
+	ComdStop      = iota // exit server immediately
 	ComdQuit             // exit server gracefully
 	ComdRework           // restart worker process
 	ComdReadmin          // reopen admin interface

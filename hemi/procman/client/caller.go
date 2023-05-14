@@ -15,7 +15,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var calls = map[string]func(){
+var calls = map[string]func(){ // indexed by action
 	"pids": func() {
 		if resp, ok := _call(common.ComdPids, 0, nil); ok {
 			for name, value := range resp.Args {

@@ -15,7 +15,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var tells = map[string]func(){
+var tells = map[string]func(){ // indexed by action
 	"stop":      func() { _tell(common.ComdStop, 0, nil) },
 	"quit":      func() { _tell(common.ComdQuit, 0, nil) },
 	"rework":    func() { _tell(common.ComdRework, 0, nil) },

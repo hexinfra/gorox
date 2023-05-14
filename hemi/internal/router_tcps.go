@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
@@ -133,7 +134,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 		} else {
 			rawConn, err := tcpConn.SyscallConn()
 			if err != nil {
-				tcpConn.Close()
+				g.justClose(tcpConn)
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
@@ -166,9 +167,8 @@ func (g *tcpsGate) serveTLS() { // goroutine
 			g.justClose(tcpConn)
 		} else {
 			tlsConn := tls.Server(tcpConn, g.router.tlsConfig)
-			// TODO: set deadline
-			if err := tlsConn.Handshake(); err != nil {
-				tlsConn.Close()
+			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+				g.justClose(tlsConn)
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tlsConn, nil)
@@ -183,8 +183,8 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	g.router.SubDone()
 }
 
-func (g *tcpsGate) justClose(tcpConn *net.TCPConn) {
-	tcpConn.Close()
+func (g *tcpsGate) justClose(netConn net.Conn) {
+	netConn.Close()
 	g.onConnectionClosed()
 }
 func (g *tcpsGate) onConnectionClosed() {

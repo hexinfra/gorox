@@ -13,6 +13,7 @@ import (
 	"errors"
 	"net"
 	"syscall"
+	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
@@ -166,12 +167,12 @@ func (g *httpxGate) serveTCP() { // goroutine
 		} else {
 			rawConn, err := tcpConn.SyscallConn()
 			if err != nil {
-				tcpConn.Close()
+				g.justClose(tcpConn)
 				g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			httpxConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
+			go httpxConn.serve() // httpxConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -198,9 +199,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 			g.justClose(tcpConn)
 		} else {
 			tlsConn := tls.Server(tcpConn, g.server.tlsConfig)
-			// TODO: set deadline
-			if err := tlsConn.Handshake(); err != nil {
-				g.justClose(tcpConn)
+			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+				g.justClose(tlsConn)
 				continue
 			}
 			connState := tlsConn.ConnectionState()
@@ -208,8 +208,8 @@ func (g *httpxGate) serveTLS() { // goroutine
 			if connState.NegotiatedProtocol == "h2" {
 				getHTTPConn = getHTTP2Conn
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			httpxConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
+			go httpxConn.serve() // httpxConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -220,7 +220,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *httpxGate) justClose(tcpConn *net.TCPConn) {
-	tcpConn.Close()
+func (g *httpxGate) justClose(netConn net.Conn) {
+	netConn.Close()
 	g.onConnectionClosed()
 }

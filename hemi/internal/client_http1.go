@@ -171,8 +171,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	connID := n.backend.nextConnID()
 	if n.backend.tlsMode {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
-		// TODO: timeout
-		if err := tlsConn.Handshake(); err != nil {
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
 			return nil, err
 		}

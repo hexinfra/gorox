@@ -180,8 +180,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	connID := n.backend.nextConnID()
 	if n.backend.tlsMode {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
-		// TODO: timeout
-		if err := tlsConn.Handshake(); err != nil {
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
 			return nil, err
 		}

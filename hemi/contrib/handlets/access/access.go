@@ -51,7 +51,6 @@ func (h *accessChecker) onCreate(name string, stage *Stage, app *App) {
 	h.stage = stage
 	h.app = app
 }
-
 func (h *accessChecker) OnShutdown() {
 	h.app.SubDone()
 }
@@ -68,7 +67,6 @@ func (h *accessChecker) OnConfigure() {
 		return checkRuleConflict(h.allow, rules)
 	}, nil)
 }
-
 func (h *accessChecker) OnPrepare() {
 	h.allowRules = h.parseRule(h.allow)
 	h.denyRules = h.parseRule(h.deny)

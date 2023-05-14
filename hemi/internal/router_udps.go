@@ -27,7 +27,7 @@ func (r *UDPSRouter) onCreate(name string, stage *Stage) {
 func (r *UDPSRouter) OnShutdown() {
 	// We don't close(r.Shut) here.
 	for _, gate := range r.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -91,7 +91,7 @@ type udpsGate struct {
 	// States
 	id      int32
 	address string
-	shut    atomic.Bool
+	isShut  atomic.Bool
 }
 
 func (g *udpsGate) init(router *UDPSRouter, id int32) {
@@ -105,22 +105,22 @@ func (g *udpsGate) open() error {
 	// TODO
 	return nil
 }
-func (g *udpsGate) shutdown() error {
-	g.shut.Store(true)
+func (g *udpsGate) shut() error {
+	g.isShut.Store(true)
 	// TODO
 	return nil
 }
 
 func (g *udpsGate) serveUDP() { // goroutine
 	// TODO
-	for !g.shut.Load() {
+	for !g.isShut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.router.SubDone()
 }
 func (g *udpsGate) serveTLS() { // goroutine
 	// TODO
-	for !g.shut.Load() {
+	for !g.isShut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.router.SubDone()

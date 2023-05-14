@@ -62,7 +62,6 @@ func (h *refererChecker) OnConfigure() {
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
 
 }
-
 func (h *refererChecker) OnPrepare() {
 	h.serverNameRules = make([]*refererRule, 0, len(h.serverNames))
 	for _, serverName := range h.serverNames {
@@ -248,22 +247,15 @@ func (r *refererRule) match(hostname []byte) bool {
 	return false
 }
 
-// for example: www.bar.com
-func (r *refererRule) fullMatch(hostname []byte) bool {
+func (r *refererRule) fullMatch(hostname []byte) bool { // for example: www.bar.com
 	return bytes.Equal(hostname, r.hostname)
 }
-
-// for example: *.bar.com
-func (r *refererRule) suffixMatch(hostname []byte) bool {
+func (r *refererRule) suffixMatch(hostname []byte) bool { // for example: *.bar.com
 	return bytes.HasSuffix(hostname, r.hostname[1:])
 }
-
-// for example: www.bar.*
-func (r *refererRule) prefixMatch(hostname []byte) bool {
+func (r *refererRule) prefixMatch(hostname []byte) bool { // for example: www.bar.*
 	return bytes.HasPrefix(hostname, r.hostname[:len(r.hostname)-1])
 }
-
-// for example:  ~\.bar\.
-func (r *refererRule) regexpMatch(hostname []byte) bool {
+func (r *refererRule) regexpMatch(hostname []byte) bool { // for example:  ~\.bar\.
 	return r.pcre.Match(hostname)
 }

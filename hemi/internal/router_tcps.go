@@ -30,7 +30,7 @@ func (r *TCPSRouter) onCreate(name string, stage *Stage) {
 func (r *TCPSRouter) OnShutdown() {
 	// We don't close(r.Shut) here.
 	for _, gate := range r.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -111,7 +111,7 @@ func (g *tcpsGate) open() error {
 	}
 	return err
 }
-func (g *tcpsGate) shutdown() error {
+func (g *tcpsGate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

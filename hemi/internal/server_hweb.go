@@ -34,7 +34,7 @@ func (s *hwebServer) onCreate(name string, stage *Stage) {
 func (s *hwebServer) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -81,7 +81,7 @@ func (g *hwebGate) open() error {
 	// TODO
 	return nil
 }
-func (g *hwebGate) shutdown() error {
+func (g *hwebGate) shut() error {
 	g.MarkShut()
 	// TODO
 	return nil

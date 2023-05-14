@@ -40,7 +40,7 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 func (s *http3Server) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -92,7 +92,7 @@ func (g *http3Gate) open() error {
 	g.gate = gate
 	return nil
 }
-func (g *http3Gate) shutdown() error {
+func (g *http3Gate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

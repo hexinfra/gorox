@@ -43,7 +43,7 @@ func (s *socksServer) onCreate(name string, stage *Stage) {
 func (s *socksServer) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -98,7 +98,7 @@ func (g *socksGate) open() error {
 	}
 	return err
 }
-func (g *socksGate) shutdown() error {
+func (g *socksGate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

@@ -126,7 +126,7 @@ type Gate interface {
 	ID() int32
 	IsShut() bool
 
-	shutdown() error
+	shut() error
 }
 
 // Gate_ is a mixin for router gates and server gates.
@@ -138,7 +138,7 @@ type Gate_ struct {
 	// States
 	id       int32        // gate id
 	address  string       // listening address
-	shut     atomic.Bool  // is gate shut?
+	isShut   atomic.Bool  // is gate shut?
 	maxConns int32        // max concurrent conns allowed
 	numConns atomic.Int32 // TODO: false sharing
 }
@@ -147,7 +147,7 @@ func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
 	g.stage = stage
 	g.id = id
 	g.address = address
-	g.shut.Store(false)
+	g.isShut.Store(false)
 	g.maxConns = maxConns
 	g.numConns.Store(0)
 }
@@ -156,8 +156,8 @@ func (g *Gate_) Stage() *Stage   { return g.stage }
 func (g *Gate_) ID() int32       { return g.id }
 func (g *Gate_) Address() string { return g.address }
 
-func (g *Gate_) MarkShut()    { g.shut.Store(true) }
-func (g *Gate_) IsShut() bool { return g.shut.Load() }
+func (g *Gate_) MarkShut()    { g.isShut.Store(true) }
+func (g *Gate_) IsShut() bool { return g.isShut.Load() }
 
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }

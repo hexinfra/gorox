@@ -42,7 +42,7 @@ func (s *echoServer) onCreate(name string, stage *Stage) {
 func (s *echoServer) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -97,7 +97,7 @@ func (g *echoGate) open() error {
 	}
 	return err
 }
-func (g *echoGate) shutdown() error {
+func (g *echoGate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

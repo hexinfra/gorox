@@ -16,7 +16,7 @@ type _router interface { // *QUICRouter, *TCPSRouter, *UDPSRouter
 }
 type _gate interface { // *quicGate, *tcpsGate, *udpsGate
 	open() error
-	shutdown() error
+	shut() error
 }
 type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
 	Component

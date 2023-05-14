@@ -26,7 +26,7 @@ func (r *QUICRouter) onCreate(name string, stage *Stage) {
 func (r *QUICRouter) OnShutdown() {
 	// We don't close(r.Shut) here.
 	for _, gate := range r.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -96,7 +96,7 @@ func (g *quicGate) open() error {
 	// TODO
 	return nil
 }
-func (g *quicGate) shutdown() error {
+func (g *quicGate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

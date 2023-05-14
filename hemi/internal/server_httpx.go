@@ -43,7 +43,7 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 func (s *httpxServer) OnShutdown() {
 	// We don't close(s.Shut) here.
 	for _, gate := range s.gates {
-		gate.shutdown()
+		gate.shut()
 	}
 }
 
@@ -139,7 +139,7 @@ func (g *httpxGate) open() error {
 	}
 	return err
 }
-func (g *httpxGate) shutdown() error {
+func (g *httpxGate) shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

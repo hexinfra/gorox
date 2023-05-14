@@ -38,7 +38,7 @@ type RocksServer struct { // implements hemi.Server
 	colonPortBytes []byte
 	readTimeout    time.Duration
 	writeTimeout   time.Duration
-	shut           atomic.Bool
+	isShut         atomic.Bool
 	mutex          sync.Mutex
 	conns          map[int64]*goroxConn
 }
@@ -49,7 +49,7 @@ func (s *RocksServer) onCreate(name string, stage *Stage) {
 	s.conns = make(map[int64]*goroxConn)
 }
 func (s *RocksServer) OnShutdown() {
-	s.shut.Store(true)
+	s.isShut.Store(true)
 	s.gate.Close()
 }
 
@@ -106,7 +106,7 @@ func (s *RocksServer) Serve() { // goroutine
 	for {
 		tcpConn, err := s.gate.AcceptTCP()
 		if err != nil {
-			if s.shut.Load() {
+			if s.isShut.Load() {
 				break
 			} else {
 				continue

@@ -37,8 +37,7 @@ type App struct {
 	bytes404             []byte            // bytes of the default 404 file
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
-	accessLog            []string          // (file, rotate)
-	logFormat            string            // log format
+	accessLog            *logcfg           // ...
 	logger               *logger           // app access logger
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
@@ -143,24 +142,7 @@ func (a *App) OnConfigure() {
 		return errors.New(".tlsCertificate has an invalid value")
 	}, "")
 
-	// accessLog
-	if v, ok := a.Find("accessLog"); ok {
-		if log, ok := v.StringListN(2); ok {
-			a.accessLog = log
-		} else {
-			UseExitln("invalid accessLog")
-		}
-	} else {
-		a.accessLog = nil
-	}
-
-	// logFormat
-	a.ConfigureString("logFormat", &a.logFormat, func(value string) error {
-		if value != "" {
-			return nil
-		}
-		return errors.New(".logFormat has an invalid value")
-	}, "%T... todo")
+	// accessLog, TODO
 
 	// maxMemoryContentSize
 	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
@@ -218,7 +200,7 @@ func (a *App) OnPrepare() {
 	a.contentSaver_.onPrepare(a, 0755)
 
 	if a.accessLog != nil {
-		//a.logger = newLogger(a.accessLog[0], a.accessLog[1])
+		//a.logger = newLogger(a.accessLog.logFile, a.accessLog.rotate)
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {

@@ -22,8 +22,7 @@ type Svc struct {
 	servers []RPCServer // linked rpc servers. may be empty
 	// States
 	hostnames       [][]byte          // ...
-	accessLog       []string          // (file, rotate)
-	logFormat       string            // log format
+	accessLog       *logcfg           // ...
 	logger          *logger           // svc access logger
 	maxContentSize  int64             // max content size allowed
 	exactHostnames  [][]byte          // like: ("example.com")
@@ -64,7 +63,7 @@ func (s *Svc) OnConfigure() {
 }
 func (s *Svc) OnPrepare() {
 	if s.accessLog != nil {
-		//s.logger = newLogger(s.accessLog[0], s.accessLog[1])
+		//s.logger = newLogger(s.accessLog.logFile, s.accessLog.rotate)
 	}
 
 	initsLock.RLock()

@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"errors"
 )
 
 type _router interface { // *QUICRouter, *TCPSRouter, *UDPSRouter
@@ -42,11 +41,10 @@ type router_[R _router, G _gate, D _dealer, E _editor, C _case] struct {
 	// States
 	dealerCreators map[string]func(name string, stage *Stage, router R) D
 	editorCreators map[string]func(name string, stage *Stage, router R) E
-	accessLog      []string // (file, rotate)
-	logFormat      string   // log format
-	logger         *logger  // router access logger
-	editorsByID    [256]E   // for fast searching. position 0 is not used
-	nEditors       uint8    // used number of editorsByID in this router
+	accessLog      *logcfg // ...
+	logger         *logger // router access logger
+	editorsByID    [256]E  // for fast searching. position 0 is not used
+	nEditors       uint8   // used number of editorsByID in this router
 }
 
 func (r *router_[R, G, D, E, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, R) D, editorCreators map[string]func(string, *Stage, R) E) {
@@ -67,24 +65,7 @@ func (r *router_[R, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
 func (r *router_[R, G, D, E, C]) onConfigure() {
 	r.Server_.OnConfigure()
 
-	// accessLog
-	if v, ok := r.Find("accessLog"); ok {
-		if log, ok := v.StringListN(2); ok {
-			r.accessLog = log
-		} else {
-			UseExitln("invalid accessLog")
-		}
-	} else {
-		r.accessLog = nil
-	}
-
-	// logFormat
-	r.ConfigureString("logFormat", &r.logFormat, func(value string) error {
-		if value != "" {
-			return nil
-		}
-		return errors.New(".logFormat has an invalid value")
-	}, "%T... todo")
+	// accessLog, TODO
 }
 func (r *router_[R, G, D, E, C]) configureSubs() { // dealers, editors, cases
 	r.dealers.walk(D.OnConfigure)
@@ -95,7 +76,7 @@ func (r *router_[R, G, D, E, C]) configureSubs() { // dealers, editors, cases
 func (r *router_[R, G, D, E, C]) onPrepare() {
 	r.Server_.OnPrepare()
 	if r.accessLog != nil {
-		//r.logger = newLogger(r.accessLog[0], r.accessLog[1])
+		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 }
 func (r *router_[R, G, D, E, C]) prepareSubs() { // dealers, editors, cases

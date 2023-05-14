@@ -184,7 +184,7 @@
 
 	app "example" {
 		.hostnames = ("*.example.com")
-		.webRoot = "/var/www"
+		.webRoot = %baseDir + "/apps/example/root"
 		static {}
 	}
 
@@ -342,7 +342,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.readTimeout = 30s
 		.aliveTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/outgate/http1Outgate"
+		.saveContentFilesDir = %tempDir + "/web/outgates/http1Outgate"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -414,7 +414,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgate/http1Outgate"
+						默认值：%tempDir + "/web/outgates/http1Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -455,7 +455,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 	.readTimeout = 30s
 	.idleTimeout = 4s
 	.maxStreamsPerConn = 1000
-	.saveContentFilesDir = %tempDir + "/web/outgate/http2Outgate"
+	.saveContentFilesDir = %tempDir + "/web/outgates/http2Outgate"
 	.maxContentSize = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
@@ -506,7 +506,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgate/http2Outgate"
+						默认值：%tempDir + "/web/outgates/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -667,7 +667,7 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgate/http2Outgate"
+						默认值：%tempDir + "/web/outgates/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -800,14 +800,17 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 	app "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
 		.saveContentFilesDir = %tempDir + "/apps/name"
-		.webRoot =  "/var/www"
-		.accessLog = (%logsDir + "/app-zh_cn.log", "day")
+		.webRoot = %baseDir + "/apps/proxy/root"
+		.accessLog = [
+			"logFile": %logsDir + "/apps/zh_cn.log",
+			"rotate" : "day",
+			"format" : "%T",
+		]
 		.maxMemoryContentSize = 16M
 		.maxUploadContentSize = 128M
 		.settings = []
 		.proxyOnly = false
 		.withStater = ""
-		.logFormat = ""
 		.file404 = ""
 		.tlsCertificate = ""
 		.tlsPrivateKey = ""
@@ -851,13 +854,6 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 				</code>
 				</li>
 				<li>
-					<p>.accessLog 配置访问日志，有2个参数，第一个是日志文件，第二个的轮换规则。</p>
-					<code>语法： .accessLog = (file, rotate)
-					默认值： -
-					取值范围：-
-				</code>
-				</li>
-				<li>
 					<p>.maxMemoryContentSize 一个请求可以加载到内存中的最大内容大小。</p>
 					<code>语法： .maxMemoryContentSize = Sizes
 					默认值： 16M
@@ -893,15 +889,6 @@ curl -x "http://127.0.0.1:3080" "http://www.baidu.com"
 					</code>
 				</li>
 
-				<li>
-					<p>.logFormat 当前 app 的访问日志格式化。</p>
-					<code>语法： .logFormat = ""
-					默认值： -  
-					取值范围：-
-				</code>
-					<p>例子</p>
-					<code>格式说明：</code>
-				</li>
 				<li>
 					<p>.file404 当前app的404配置。</p>
 					<code>语法： .file404 = "file path"
@@ -1529,7 +1516,7 @@ http1Proxy {
 			<h3>stage &gt; app &gt; static </h3>
 			<p>static 处理静态资源，例如（js、css、html）等。</p>
 			<code class="pre">static {
-	.webRoot = "/var/www"
+	.webRoot = %baseDir + "/apps/app1/root"
 	.indexFile = "index.html"
 	.autoIndex = true
 	.mimeTypes = [
@@ -1753,7 +1740,7 @@ http1Proxy {
 			<code class="pre">stage {
 	app "example_com" {
 		.hostnames = ("example.com" "*.example.com")
-		.webRoot = "/var/www"
+		.webRoot = %baseDir + "/apps/example_com/root"
 		.tlsCertificate = "/etc/tls/example_com.pem"
 		.tlsPrivateKey = "/etc/tls/example_com.key"
 	}

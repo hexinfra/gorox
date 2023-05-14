@@ -25,6 +25,13 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
+// logcfg
+type logcfg struct {
+	logFile string
+	rotate  string
+	bufSize int
+}
+
 // logger is logger for routers, apps, and svcs.
 type logger struct {
 	file   *os.File

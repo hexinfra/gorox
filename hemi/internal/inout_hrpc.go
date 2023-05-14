@@ -5,6 +5,7 @@
 
 // HRPC protocol elements, incoming message and outgoing message implementation.
 
+// HRPC is a request/response RPC protocol.
 // HRPC is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal

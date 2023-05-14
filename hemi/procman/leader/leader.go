@@ -9,10 +9,10 @@
 // admGate: Used by adminServer(), for receiving admConns from control client
 // webConn: control browser ----> webuiServer()
 // webGate: Used by webuiServer(), for receiving webConns from control browser
-// msgChan: adminServer()+webuiServer() / myroxClient() <---> keepWorker()
+// roxConn: myroxClient() <---> myrox
+// msgChan: adminServer()/webuiServer()/myroxClient() <---> keepWorker()
 // deadWay: keepWorker() <---- worker.wait()
 // cmdConn: leader process <---> worker process
-// roxConn: leader myroxClient <---> myrox
 
 package leader
 

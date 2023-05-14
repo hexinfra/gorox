@@ -120,7 +120,7 @@ func putHExchan(exchan *HExchan) {
 	poolHExchan.Put(exchan)
 }
 
-// HExchan
+// HExchan is the client-side HWEB exchan.
 type HExchan struct {
 	// Mixins
 	clientStream_

@@ -8,6 +8,7 @@ import (
 func main() {
 	serverAddr, err := net.ResolveUDPAddr("udp", ":9889")
 	must(err)
+
 	serverGate, err := net.ListenUDP("udp", serverAddr)
 	must(err)
 	defer serverGate.Close()
@@ -15,10 +16,13 @@ func main() {
 	p := make([]byte, 1200)
 	n, clientAddr, err := serverGate.ReadFromUDP(p)
 	must(err)
-	fmt.Printf("%v %s %v\n", n, p[:n], clientAddr)
+	if false {
+		fmt.Printf("%v %s %v\n", n, p[:n], clientAddr)
+	}
 
 	n, err = serverGate.WriteToUDP([]byte("xxxxxxx"), clientAddr)
 	must(err)
+
 	fmt.Printf("%v\n", n)
 }
 

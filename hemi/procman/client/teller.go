@@ -32,7 +32,7 @@ var tells = map[string]func(){
 func _tell(comd uint8, flag uint16, args map[string]string) {
 	admConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		fmt.Printf("tell leader failed: %s\n", err.Error())
+		fmt.Printf("tell leader at %s failed: %s\n", common.TargetAddr, err.Error())
 		return
 	}
 	defer admConn.Close()

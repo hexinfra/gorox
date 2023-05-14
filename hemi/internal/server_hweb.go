@@ -91,7 +91,7 @@ func (g *hwebGate) serve() { // goroutine
 	// TODO
 }
 
-// poolHWEBExchan is the server-side HWEB exchan pool.
+// poolHWEBExchan
 var poolHWEBExchan sync.Pool
 
 func getHWEBExchan(gate *hwebGate, id uint32) *hwebExchan {

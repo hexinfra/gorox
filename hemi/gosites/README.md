@@ -1,7 +1,10 @@
-To build:
+Build
+=====
 
   shell> go build
 
-To run:
+
+Run
+===
 
   shell> ./gosites

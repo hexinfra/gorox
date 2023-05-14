@@ -8,7 +8,7 @@
 package common
 
 const (
-	ComdServe     = iota // start server. no tell action bound to this comd. must be 0
+	ComdServe     = iota // start server. no tell action is bound to this comd. must be 0
 	ComdStop             // exit server immediately
 	ComdQuit             // exit server gracefully
 	ComdRework           // restart worker process
@@ -19,5 +19,5 @@ const (
 	ComdThread           // profile thread
 	ComdGoroutine        // profile goroutine
 	ComdBlock            // profile block
-	ComdGC               // run gc
+	ComdGC               // run runtime.GC()
 )

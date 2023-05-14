@@ -11,6 +11,8 @@ can be used as:
   * RPC Framework for Go (HRPC, gRPC, Thrift)
   * Web Proxy Server (HTTP, WebSocket, Tunneling, Forward, Reverse, Caching)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
+  * API Gateway
+  * Service Mesh
   * ... and more through its highly extensible compoments design!
 
 There is also a controller program called Myrox which is distributed with Gorox

@@ -7,7 +7,7 @@
 
 package internal
 
-// hrpcServer is the HRPC server.
+// hrpcServer
 type hrpcServer struct {
 	// Mixins
 	rpcServer_

@@ -21,14 +21,15 @@ type Svc struct {
 	stater  Stater      // the stater which is used by this svc
 	servers []RPCServer // linked rpc servers. may be empty
 	// States
-	hostnames       [][]byte // ...
-	accessLog       []string // (file, rotate)
-	logFormat       string   // log format
-	logger          *logger  // svc access logger
-	maxContentSize  int64    // max content size allowed
-	exactHostnames  [][]byte // like: ("example.com")
-	suffixHostnames [][]byte // like: ("*.example.com")
-	prefixHostnames [][]byte // like: ("www.example.*")
+	hostnames       [][]byte          // ...
+	accessLog       []string          // (file, rotate)
+	logFormat       string            // log format
+	logger          *logger           // svc access logger
+	maxContentSize  int64             // max content size allowed
+	exactHostnames  [][]byte          // like: ("example.com")
+	suffixHostnames [][]byte          // like: ("*.example.com")
+	prefixHostnames [][]byte          // like: ("www.example.*")
+	bundles         map[string]Bundle // ...
 }
 
 func (s *Svc) onCreate(name string, stage *Stage) {
@@ -112,6 +113,6 @@ func (s *Svc) dispatch(in Input, out Output) {
 	// TODO
 }
 
-// Bundle
+// Bundle is a set of procedures in Svc.
 type Bundle interface {
 }

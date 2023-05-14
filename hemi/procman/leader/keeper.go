@@ -30,11 +30,11 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 
 	worker := newWorker(connKey)
 	worker.start(base, file, deadWay)
-	msgChan <- nil // reply to leaderMain that we have created the worker.
+	msgChan <- nil // reply to adminServer() that we have created the worker.
 
-	for { // each event from leaderMain and worker
+	for { // each event from adminServer() and worker
 		select {
-		case req := <-msgChan: // a message arrives from leaderMain
+		case req := <-msgChan: // a message arrives from adminServer()
 			if req.IsTell() {
 				switch req.Comd {
 				case common.ComdQuit:
@@ -57,7 +57,8 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					worker.tell(req)
 				}
 			} else { // call
-				msgChan <- worker.call(req)
+				resp := worker.call(req)
+				msgChan <- resp
 			}
 		case exitCode := <-deadWay: // worker process dies unexpectedly
 			// TODO: more details

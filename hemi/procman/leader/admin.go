@@ -14,25 +14,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-func adminServer() {
-	// Load worker's config
-	base, file := common.GetConfig()
-	booker.Printf("parse worker config: base=%s file=%s\n", base, file)
-	if _, err := hemi.ApplyFile(base, file); err != nil {
-		common.Crash("leader: " + err.Error())
-	}
-
-	// Start the worker
-	msgChan := make(chan *msgx.Message) // msgChan is the channel between leaderMain() and keepWorker()
-	go keepWorker(base, file, msgChan)
-	<-msgChan // wait for keepWorker() to ensure worker is started.
-	booker.Println("worker process started")
-
+func adminServer(msgChan chan *msgx.Message) {
 	booker.Printf("open admin interface: %s\n", common.AdminAddr)
 	admGate, err := net.Listen("tcp", common.AdminAddr) // admGate is for receiving admConns from control client
 	if err != nil {

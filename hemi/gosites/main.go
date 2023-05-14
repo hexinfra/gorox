@@ -3,12 +3,21 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
+// Gosites server (leader & worker) and its control client.
+
 package main
 
 import (
+	"os"
+
+	"github.com/hexinfra/gorox/hemi/gosites/test"
 	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
+	_ "github.com/hexinfra/gorox/hemi/gosites/exts"
+	_ "github.com/hexinfra/gorox/hemi/gosites/jobs"
+	_ "github.com/hexinfra/gorox/hemi/gosites/srvs"
+	_ "github.com/hexinfra/gorox/hemi/gosites/svcs"
 )
 
 const usage = `
@@ -22,6 +31,7 @@ ACTION
 
   serve      # start as server
   check      # dry run to check config
+  test       # run as tester
   help       # show this message
   version    # show version info
   advise     # show how to optimize current platform
@@ -66,5 +76,9 @@ OPTIONS
 `
 
 func main() {
-	procman.Main("gosites", usage, 0, "127.0.0.1:9525")
+	if len(os.Args) >= 2 && os.Args[1] == "test" {
+		test.Main()
+	} else {
+		procman.Main("gosites", usage, 0, "127.0.0.1:9525")
+	}
 }

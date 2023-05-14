@@ -9,11 +9,15 @@ package internal
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"net"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -805,4 +809,54 @@ func bytesesFind(byteses [][]byte, elem []byte) bool {
 		}
 	}
 	return false
+}
+
+func loadURL(scheme string, host string, path string) (content string, err error) {
+	addr := host
+	if strings.IndexByte(host, ':') == -1 {
+		if scheme == "https" {
+			addr += ":443"
+		} else {
+			addr += ":80"
+		}
+	}
+
+	var conn net.Conn
+	netDialer := net.Dialer{
+		Timeout: 2 * time.Second,
+	}
+	if scheme == "https" {
+		tlsDialer := tls.Dialer{
+			NetDialer: &netDialer,
+			Config:    nil,
+		}
+		conn, err = tlsDialer.Dial("tcp", addr)
+	} else {
+		conn, err = netDialer.Dial("tcp", addr)
+	}
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	if err = conn.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return
+	}
+
+	request := []byte(fmt.Sprintf("GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path, host))
+	if _, err = conn.Write(request); err != nil {
+		return
+	}
+
+	response, err := io.ReadAll(conn)
+	if err != nil {
+		return
+	}
+	if p := bytes.Index(response, []byte("\r\n\r\n")); p == -1 {
+		return "", errors.New("bad http response")
+	} else if len(response) < 12 || response[9] != '2' { // HTTP/1.1 200
+		return "", errors.New("invalid http response")
+	} else {
+		return string(response[p+4:]), nil
+	}
 }

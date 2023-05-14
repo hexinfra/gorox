@@ -10,6 +10,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -1149,10 +1150,10 @@ func (l *lexer) nextDigits() {
 }
 
 func (l *lexer) load(base string, file string) string {
-	if true { // TODO
-		return l._loadLFS(base, file)
-	} else {
+	if strings.HasPrefix(base, "http://") || strings.HasPrefix(base, "https://") {
 		return l._loadURL(base, file)
+	} else {
+		return l._loadLFS(base, file)
 	}
 }
 func (l *lexer) _loadLFS(base string, file string) string {
@@ -1164,15 +1165,23 @@ func (l *lexer) _loadLFS(base string, file string) string {
 			path = base + "/" + file
 		}
 	}
-	data, err := os.ReadFile(path)
+	if data, err := os.ReadFile(path); err != nil {
+		panic(err)
+	} else {
+		return string(data)
+	}
+}
+func (l *lexer) _loadURL(base string, file string) string {
+	u, err := url.Parse(base)
 	if err != nil {
 		panic(err)
 	}
-	return string(data)
-}
-func (l *lexer) _loadURL(base string, file string) string {
-	// TODO
-	return ""
+	path := u.Path + file
+	if data, err := loadURL(u.Scheme, u.Host, path); err != nil {
+		panic(err)
+	} else {
+		return data
+	}
 }
 
 // token is a token in config file.

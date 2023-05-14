@@ -34,8 +34,8 @@ var (
 func GetConfig() (base string, file string) {
 	baseDir, config := BaseDir, Config
 	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
-		// base: scheme://host:port/path/
-		// file: program.conf
+		// base: scheme://host:port/prefix
+		// file: /program.conf
 		panic("currently not supported!")
 	} else {
 		if config == "" {

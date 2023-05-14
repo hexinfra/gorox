@@ -8,7 +8,6 @@
 package leader
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -67,9 +66,6 @@ func adminServer(msgChan chan *msgx.Message) {
 		} else { // call
 			var resp *msgx.Message
 			switch req.Comd { // some messages also call leader, hijack them.
-			case common.ComdPing:
-				resp = msgx.NewMessage(common.ComdPing, req.Flag, nil)
-				resp.Set(fmt.Sprintf("leader=%d", os.Getpid()), "pong")
 			case common.ComdPids:
 				msgChan <- req
 				resp = <-msgChan

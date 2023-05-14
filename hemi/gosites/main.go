@@ -25,13 +25,12 @@ ACTION
   help       # show this message
   version    # show version info
   advise     # show how to optimize current platform
+  pids       # call server to report pids of leader and worker
   stop       # tell server to exit immediately
   quit       # tell server to exit gracefully
-  pids       # call server to report pids of leader and worker
   leader     # call leader to report its info
   rework     # tell leader to restart worker gracefully
   readmin    # tell leader to reopen its admin interface
-  ping       # call leader to give a pong
   worker     # call worker to report its info
   reload     # tell worker to reload config
   cpu        # tell worker to perform cpu profiling

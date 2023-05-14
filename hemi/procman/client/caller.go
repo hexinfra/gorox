@@ -16,15 +16,6 @@ import (
 )
 
 var calls = map[string]func(){
-	"ping": func() {
-		if resp, ok := _call(common.ComdPing, 0, nil); ok && resp.Comd == common.ComdPing && resp.Flag == 0 {
-			for name, value := range resp.Args {
-				fmt.Printf("%s: %s\n", name, value)
-			}
-		} else {
-			fmt.Printf("call leader at %s: failed!\n", common.TargetAddr)
-		}
-	},
 	"pids": func() {
 		if resp, ok := _call(common.ComdPids, 0, nil); ok {
 			for name, value := range resp.Args {

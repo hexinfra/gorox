@@ -8,8 +8,7 @@
 package common
 
 const (
-	ComdPing   = iota // ping pong
-	ComdPids          // report pids of leader and worker
+	ComdPids   = iota // report pids of leader and worker
 	ComdLeader        // report leader info
 	ComdWorker        // report worker info
 )

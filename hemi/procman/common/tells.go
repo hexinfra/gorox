@@ -13,7 +13,7 @@ const (
 	ComdRecmd            // reopen cmdui interface
 	ComdReweb            // reopen webui interface
 	ComdRework           // restart worker process
-	ComdReload           // reload config
+	ComdReload           // reload worker config
 	ComdCPU              // profile cpu
 	ComdHeap             // profile heap
 	ComdThread           // profile thread

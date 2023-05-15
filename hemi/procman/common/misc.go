@@ -22,7 +22,7 @@ var (
 	CmdUIAddr  string
 	WebUIAddr  string
 	MyroxAddr  string
-	Config     string
+	ConfigFile string
 	SingleMode bool
 	DaemonMode bool
 	BaseDir    string
@@ -33,21 +33,20 @@ var (
 )
 
 func GetConfig() (base string, file string) {
-	baseDir, config := BaseDir, Config
-	if strings.HasPrefix(config, "http://") || strings.HasPrefix(config, "https://") {
+	if strings.HasPrefix(ConfigFile, "http://") || strings.HasPrefix(ConfigFile, "https://") {
 		// base: scheme://host:port/prefix
 		// file: /program.conf
 		panic("currently not supported!")
 	} else {
-		if config == "" {
-			base = baseDir
+		if ConfigFile == "" {
+			base = BaseDir
 			file = "conf/" + Program + ".conf"
-		} else if filepath.IsAbs(config) { // /path/to/file.conf
-			base = filepath.Dir(config)
-			file = filepath.Base(config)
+		} else if filepath.IsAbs(ConfigFile) { // /path/to/file.conf
+			base = filepath.Dir(ConfigFile)
+			file = filepath.Base(ConfigFile)
 		} else { // path/to/file.conf
-			base = baseDir
-			file = config
+			base = BaseDir
+			file = ConfigFile
 		}
 		base += "/"
 	}

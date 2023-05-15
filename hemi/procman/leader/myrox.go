@@ -9,9 +9,11 @@ package leader
 
 import (
 	"fmt"
+
+	"github.com/hexinfra/gorox/hemi/common/msgx"
 )
 
-func myroxClient() {
+func myroxClient(msgChan chan *msgx.Message) {
 	// TODO
 	fmt.Println("TODO")
 }

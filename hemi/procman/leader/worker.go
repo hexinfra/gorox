@@ -31,7 +31,7 @@ func newWorker(connKey string) *worker {
 	return w
 }
 
-func (w *worker) start(base string, file string, deadWay chan int) {
+func (w *worker) start(base string, file string, dieChan chan int) {
 	// Open temporary gate
 	tmpGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
 	if err != nil {
@@ -70,14 +70,14 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 
 	// Register succeed, save msgConn and start waiting
 	w.msgConn = msgConn
-	go w.watch(deadWay)
+	go w.watch(dieChan)
 }
-func (w *worker) watch(deadWay chan int) { // goroutine
+func (w *worker) watch(dieChan chan int) { // goroutine
 	stat, err := w.process.Wait()
 	if err != nil {
 		common.Crash(err.Error())
 	}
-	deadWay <- stat.ExitCode()
+	dieChan <- stat.ExitCode()
 }
 
 func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.msgConn, req) }

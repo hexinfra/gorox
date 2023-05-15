@@ -63,7 +63,7 @@ func cmduiServer(msgChan chan *msgx.Message) {
 				}
 			case common.ComdReweb:
 				// TODO: ignore?
-			default: // other messages are sent to keepWorker().
+			default: // other messages are sent to workerKeeper().
 				msgChan <- req
 			}
 		} else { // call
@@ -76,7 +76,7 @@ func cmduiServer(msgChan chan *msgx.Message) {
 			case common.ComdLeader:
 				resp = msgx.NewMessage(common.ComdLeader, req.Flag, nil)
 				resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine()))
-			default: // other messages are sent to keepWorker().
+			default: // other messages are sent to workerKeeper().
 				msgChan <- req
 				resp = <-msgChan
 			}

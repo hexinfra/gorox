@@ -5,6 +5,17 @@
 
 // Procman package implements a leader-worker process model and its control client.
 
+// cmdConn: control client ----> cmduiServer()
+// webConn: control browser ----> webuiServer()
+
+// cmdGate: used by cmduiServer(), for receiving cmdConns from control client
+// webGate: used by webuiServer(), for receiving webConns from control browser
+// roxConn: myroxClient() <---> myrox
+// msgChan: cmduiServer()/webuiServer()/myroxClient() <---> workerKeeper()
+// dieChan: workerKeeper() <---- worker.wait()
+
+// msgConn: leader process <---> worker process
+
 package procman
 
 import (
@@ -34,7 +45,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.StringVar(&common.CmdUIAddr, "cmdui", cmdAddr, "")
 	flag.StringVar(&common.WebUIAddr, "webui", webAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
-	flag.StringVar(&common.Config, "conf", "", "")
+	flag.StringVar(&common.ConfigFile, "conf", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
 	flag.StringVar(&common.BaseDir, "base", "", "")

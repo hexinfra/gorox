@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi"
@@ -59,7 +60,14 @@ func workerKeeper(base string, file string, msgChan chan *msgx.Message) { // gor
 					worker.tell(req)
 				}
 			} else { // call
-				resp := worker.call(req)
+				var resp *msgx.Message
+				switch req.Comd {
+				case common.ComdPids:
+					resp = msgx.NewMessage(req.Comd, req.Flag, nil)
+					resp.Set("worker", strconv.Itoa(worker.pid()))
+				default:
+					resp = worker.call(req)
+				}
 				msgChan <- resp
 			}
 		case exitCode := <-dieChan: // worker process dies unexpectedly
@@ -152,5 +160,7 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 	}
 	return resp
 }
+
+func (w *worker) pid() int { return w.process.Pid }
 
 func (w *worker) reset() { w.msgConn.Close() }

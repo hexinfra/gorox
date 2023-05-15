@@ -8,7 +8,6 @@
 package worker
 
 import (
-	"os"
 	"runtime"
 	"strconv"
 
@@ -18,9 +17,6 @@ import (
 )
 
 var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){
-	common.ComdPids: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
-		resp.Set("worker", strconv.Itoa(os.Getpid()))
-	},
 	common.ComdWorker: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},

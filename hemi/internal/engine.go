@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const Version = "0.2.0-dev"
+const Version = "0.1.3"
 
 var ( // global variables shared between stages
 	_baseOnce sync.Once    // protects _baseDir

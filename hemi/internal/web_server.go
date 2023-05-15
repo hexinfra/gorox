@@ -203,7 +203,7 @@ func (c *serverConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 func (c *serverConn_) isBroken() bool { return c.broken.Load() }
 func (c *serverConn_) markBroken()    { c.broken.Store(true) }
 
-// serverStream_
+// serverStream_ is the mixin for http[1-3]Stream and hwebExchan.
 type serverStream_ struct {
 	// Mixins
 	webStream_

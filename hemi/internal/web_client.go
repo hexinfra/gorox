@@ -137,7 +137,7 @@ func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int
 func (c *clientConn_) isBroken() bool { return c.broken.Load() }
 func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 
-// clientStream_
+// clientStream_ is the mixin for H[1-3]Stream and HExchan.
 type clientStream_ struct {
 	// Mixins
 	webStream_

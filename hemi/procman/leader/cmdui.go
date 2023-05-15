@@ -17,10 +17,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var cmdChan chan *msgx.Message
-
 func cmduiServer() {
-	cmdChan = make(chan *msgx.Message)
+	cmdChan := make(chan *msgx.Message)
 	logger.Printf("open cmdui interface: %s\n", common.CmdUIAddr)
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {

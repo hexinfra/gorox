@@ -13,10 +13,9 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 )
 
-var roxChan chan *msgx.Message
-
 func myroxClient() {
 	// TODO
-	roxChan = make(chan *msgx.Message)
+	roxChan := make(chan *msgx.Message)
+	_ = roxChan
 	fmt.Println("TODO")
 }

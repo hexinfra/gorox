@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	webChan chan *msgx.Message
+	webChan  chan *msgx.Message
 	webStage *hemi.Stage
 )
 

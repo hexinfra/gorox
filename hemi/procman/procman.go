@@ -6,11 +6,13 @@
 // Procman package implements a leader-worker process model and its control client.
 
 // cmdConn: control client ----> cmduiServer()
-// webConn: control browser ----> webuiServer()
-
 // cmdGate: used by cmduiServer(), for receiving cmdConns from control client
+
+// webConn: control browser ----> webuiServer()
 // webGate: used by webuiServer(), for receiving webConns from control browser
+
 // roxConn: myroxClient() <---> myrox
+
 // msgChan: cmduiServer()/webuiServer()/myroxClient() <---> workerKeeper()
 // dieChan: workerKeeper() <---- worker.wait()
 

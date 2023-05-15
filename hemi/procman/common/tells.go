@@ -10,8 +10,9 @@ package common
 const (
 	ComdStop      = iota // exit server immediately
 	ComdQuit             // exit server gracefully
-	ComdRework           // restart worker process
 	ComdRecmd            // reopen cmdui interface
+	ComdReweb            // reopen webui interface
+	ComdRework           // restart worker process
 	ComdReload           // reload config
 	ComdCPU              // profile cpu
 	ComdHeap             // profile heap

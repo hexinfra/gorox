@@ -18,8 +18,9 @@ import (
 var tells = map[string]func(){ // indexed by action
 	"stop":      func() { _tell(common.ComdStop, 0, nil) },
 	"quit":      func() { _tell(common.ComdQuit, 0, nil) },
-	"rework":    func() { _tell(common.ComdRework, 0, nil) },
 	"recmd":     func() { _tell(common.ComdRecmd, 0, map[string]string{"newAddr": common.CmdUIAddr}) },
+	"reweb":     func() { _tell(common.ComdReweb, 0, map[string]string{"newAddr": common.WebUIAddr}) },
+	"rework":    func() { _tell(common.ComdRework, 0, nil) },
 	"reload":    func() { _tell(common.ComdReload, 0, nil) },
 	"cpu":       func() { _tell(common.ComdCPU, 0, nil) },
 	"heap":      func() { _tell(common.ComdHeap, 0, nil) },

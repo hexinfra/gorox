@@ -20,6 +20,7 @@ var (
 	DebugLevel int
 	TargetAddr string
 	CmdUIAddr  string
+	WebUIAddr  string
 	MyroxAddr  string
 	Config     string
 	SingleMode bool

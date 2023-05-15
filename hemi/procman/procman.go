@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/worker"
 )
 
-func Main(program string, usage string, level int, addr string) {
+func Main(program string, usage string, level int, cmdAddr string, webAddr string) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
@@ -30,8 +30,9 @@ func Main(program string, usage string, level int, addr string) {
 
 	flag.Usage = func() { fmt.Printf(usage, hemi.Version) }
 	flag.IntVar(&common.DebugLevel, "debug", level, "")
-	flag.StringVar(&common.TargetAddr, "target", addr, "")
-	flag.StringVar(&common.CmdUIAddr, "cmdui", addr, "")
+	flag.StringVar(&common.TargetAddr, "target", cmdAddr, "")
+	flag.StringVar(&common.CmdUIAddr, "cmdui", cmdAddr, "")
+	flag.StringVar(&common.WebUIAddr, "webui", webAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
 	flag.StringVar(&common.Config, "conf", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")

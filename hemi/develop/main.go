@@ -39,8 +39,9 @@ ACTION
   stop       # tell server to exit immediately
   quit       # tell server to exit gracefully
   leader     # call leader to report its info
-  rework     # tell leader to restart worker gracefully
   recmd      # tell leader to reopen its cmdui interface
+  reweb      # tell leader to reopen its webui interface
+  rework     # tell leader to restart worker gracefully
   worker     # call worker to report its info
   reload     # tell worker to reload config
   cpu        # tell worker to perform cpu profiling
@@ -56,9 +57,10 @@ OPTIONS
 -------
 
   -debug  <level>   # debug level (default: 2. min: 0)
-  -target <addr>    # leader address to tell or call (default: 127.0.0.1:9526)
-  -cmdui  <addr>    # listen address of leader cmdui (default: 127.0.0.1:9526)
-  -myrox  <addr>    # myrox address to join. if set, "-cmdui" will be ignored
+  -target <addr>    # leader address to tell or call (default: 127.0.0.1:9523)
+  -cmdui  <addr>    # listen address of leader cmdui (default: 127.0.0.1:9523)
+  -webui  <addr>    # listen address of leader webui (default: 127.0.0.1:9524)
+  -myrox  <addr>    # myrox to use. "-cmdui" and "-webui" will be ignored if set
   -conf   <config>  # path or url to worker config file
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
@@ -70,7 +72,8 @@ OPTIONS
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
-  "-cmdui" and "-myrox" apply to "serve" and "recmd".
+  "-cmdui" apply to "serve" and "recmd".
+  "-webui" apply to "serve" and "reweb".
   Other options apply to "serve" only.
 
 `
@@ -79,6 +82,6 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "test" {
 		test.Main()
 	} else {
-		procman.Main("develop", usage, 2, "127.0.0.1:9526")
+		procman.Main("develop", usage, 2, "127.0.0.1:9523", "127.0.0.1:9524")
 	}
 }

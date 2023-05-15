@@ -86,10 +86,13 @@ func (c *http1Conn) onPut() {
 
 func (c *http1Conn) serve() { // goroutine
 	stream := &c.stream
-	for { // each stream
+	for c.keepConn { // each stream
+		stream.onUse(c)
 		stream.execute(c)
-		if !c.keepConn {
-			break
+		if stream.mode == streamModeExchan {
+			stream.onEnd()
+		} else {
+			// It's switcher's responsibility to call stream.onEnd()
 		}
 	}
 	if stream.mode == streamModeExchan {
@@ -148,18 +151,10 @@ type http1Stream struct {
 }
 
 func (s *http1Stream) execute(conn *http1Conn) {
-	s.onUse(conn)
-	defer func() {
-		if s.mode == streamModeExchan {
-			s.onEnd()
-		} else {
-			// It's switcher's responsibility to call s.onEnd()
-		}
-	}()
-
 	req, resp := &s.request, &s.response
 
 	req.recvHead()
+
 	if req.headResult != StatusOK { // receiving request error
 		s.serveAbnormal(req, resp)
 		return

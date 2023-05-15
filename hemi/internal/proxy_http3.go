@@ -23,22 +23,22 @@ func init() {
 // http3Proxy handlet passes requests to another/backend HTTP/3 servers and cache responses.
 type http3Proxy struct {
 	// Mixins
-	normalProxy_
+	exchanProxy_
 	// States
 }
 
 func (h *http3Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.normalProxy_.onCreate(name, stage, app)
+	h.exchanProxy_.onCreate(name, stage, app)
 }
 func (h *http3Proxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *http3Proxy) OnConfigure() {
-	h.normalProxy_.onConfigure()
+	h.exchanProxy_.onConfigure()
 }
 func (h *http3Proxy) OnPrepare() {
-	h.normalProxy_.onPrepare()
+	h.exchanProxy_.onPrepare()
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse

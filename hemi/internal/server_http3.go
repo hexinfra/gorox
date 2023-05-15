@@ -279,7 +279,7 @@ func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (s *http3Stream) executeNormal(app *App, req *http3Request, resp *http3Response) { // request & response
+func (s *http3Stream) executeExchan(app *App, req *http3Request, resp *http3Response) { // request & response
 	// TODO
 	app.dispatchHandlet(req, resp)
 }

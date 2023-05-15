@@ -142,8 +142,8 @@ func (x *HExchan) onUse(node *hwebNode, id int32) { // for non-zeros
 	x.clientStream_.onUse()
 	x.node = node
 	x.id = id
-	x.request.onUse(Version2)
-	x.response.onUse(Version2)
+	x.request.onUse(Version3)
+	x.response.onUse(Version3)
 }
 func (x *HExchan) onEnd() { // for zeros
 	x.response.onEnd()
@@ -159,7 +159,7 @@ func (x *HExchan) peerAddr() net.Addr { return nil }
 func (x *HExchan) Request() *HRequest   { return &x.request }
 func (x *HExchan) Response() *HResponse { return &x.response }
 
-func (x *HExchan) ExecuteNormal() error { // request & response
+func (x *HExchan) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }

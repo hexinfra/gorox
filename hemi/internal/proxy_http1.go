@@ -23,22 +23,22 @@ func init() {
 // http1Proxy handlet passes requests to another/backend HTTP/1 servers and cache responses.
 type http1Proxy struct {
 	// Mixins
-	normalProxy_
+	exchanProxy_
 	// States
 }
 
 func (h *http1Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.normalProxy_.onCreate(name, stage, app)
+	h.exchanProxy_.onCreate(name, stage, app)
 }
 func (h *http1Proxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *http1Proxy) OnConfigure() {
-	h.normalProxy_.onConfigure()
+	h.exchanProxy_.onConfigure()
 }
 func (h *http1Proxy) OnPrepare() {
-	h.normalProxy_.onPrepare()
+	h.exchanProxy_.onPrepare()
 }
 
 func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse

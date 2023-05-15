@@ -92,7 +92,7 @@ func (c *http1Conn) serve() { // goroutine
 			break
 		}
 	}
-	if stream.mode == streamModeNormal {
+	if stream.mode == streamModeExchan {
 		c.closeConn()
 	} else {
 		// It's switcher's responsibility to call c.closeConn()
@@ -150,7 +150,7 @@ type http1Stream struct {
 func (s *http1Stream) execute(conn *http1Conn) {
 	s.onUse(conn)
 	defer func() {
-		if s.mode == streamModeNormal {
+		if s.mode == streamModeExchan {
 			s.onEnd()
 		} else {
 			// It's switcher's responsibility to call s.onEnd()
@@ -217,7 +217,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		return
 	}
 
-	// Normal mode.
+	// Exchan mode.
 	if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 		req.maxContentSize = app.maxUploadContentSize
 	} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
@@ -245,7 +245,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-	s.executeNormal(app, req, resp)
+	s.executeExchan(app, req, resp)
 
 	if s.isBroken() {
 		s.conn.keepConn = false // i/o error
@@ -279,7 +279,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
-func (s *http1Stream) executeNormal(app *App, req *http1Request, resp *http1Response) { // request & response
+func (s *http1Stream) executeExchan(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()

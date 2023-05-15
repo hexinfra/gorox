@@ -18,22 +18,22 @@ func init() {
 // hwebProxy handlet passes requests to another/backend HWEB servers and cache responses.
 type hwebProxy struct {
 	// Mixins
-	normalProxy_
+	exchanProxy_
 	// States
 }
 
 func (h *hwebProxy) onCreate(name string, stage *Stage, app *App) {
-	h.normalProxy_.onCreate(name, stage, app)
+	h.exchanProxy_.onCreate(name, stage, app)
 }
 func (h *hwebProxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *hwebProxy) OnConfigure() {
-	h.normalProxy_.onConfigure()
+	h.exchanProxy_.onConfigure()
 }
 func (h *hwebProxy) OnPrepare() {
-	h.normalProxy_.onPrepare()
+	h.exchanProxy_.onPrepare()
 }
 
 func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward or reverse

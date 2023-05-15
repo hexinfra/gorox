@@ -42,7 +42,7 @@ func Main() {
 	req.SetMethodURI("GET", "/", false)
 	req.AddHeader("host", "httpwg.org")
 
-	if err := stream.ExecuteNormal(); err != nil {
+	if err := stream.ExecuteExchan(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}

@@ -104,7 +104,7 @@ type webStream_ struct {
 }
 
 const ( // stream modes
-	streamModeNormal = 0 // request & response, must be 0
+	streamModeExchan = 0 // request & response, must be 0
 	streamModeSocket = 1 // upgrade: websocket
 	streamModeTCPTun = 2 // CONNECT method
 	streamModeUDPTun = 3 // upgrade: connect-udp
@@ -112,7 +112,7 @@ const ( // stream modes
 
 func (s *webStream_) onUse() { // for non-zeros
 	s.region.Init()
-	s.mode = streamModeNormal
+	s.mode = streamModeExchan
 }
 func (s *webStream_) onEnd() { // for zeros
 	s.region.Free()

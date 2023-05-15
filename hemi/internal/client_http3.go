@@ -268,7 +268,7 @@ func (s *H3Stream) peerAddr() net.Addr { return nil } // TODO
 func (s *H3Stream) Request() *H3Request   { return &s.request }
 func (s *H3Stream) Response() *H3Response { return &s.response }
 
-func (s *H3Stream) ExecuteNormal() error { // request & response
+func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }

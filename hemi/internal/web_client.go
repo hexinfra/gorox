@@ -699,7 +699,7 @@ func (r *clientResponse_) checkTransferEncoding(pairs []pair, from uint8, edge u
 }
 func (r *clientResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	// TODO: socket, tcptun, udptun?
-	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in normal mode"
+	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
 func (r *clientResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )

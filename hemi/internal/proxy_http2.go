@@ -23,22 +23,22 @@ func init() {
 // http2Proxy handlet passes requests to another/backend HTTP/2 servers and cache responses.
 type http2Proxy struct {
 	// Mixins
-	normalProxy_
+	exchanProxy_
 	// States
 }
 
 func (h *http2Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.normalProxy_.onCreate(name, stage, app)
+	h.exchanProxy_.onCreate(name, stage, app)
 }
 func (h *http2Proxy) OnShutdown() {
 	h.app.SubDone()
 }
 
 func (h *http2Proxy) OnConfigure() {
-	h.normalProxy_.onConfigure()
+	h.exchanProxy_.onConfigure()
 }
 func (h *http2Proxy) OnPrepare() {
-	h.normalProxy_.onPrepare()
+	h.exchanProxy_.onPrepare()
 }
 
 func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse

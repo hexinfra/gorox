@@ -314,7 +314,7 @@ func (s *H1Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }
 
-func (s *H1Stream) ExecuteNormal() error { // request & response
+func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }

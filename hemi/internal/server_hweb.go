@@ -122,8 +122,8 @@ type hwebExchan0 struct { // for fast reset, entirely
 func (x *hwebExchan) onUse(gate *hwebGate) { // for non-zeros
 	x.serverStream_.onUse()
 	x.gate = gate
-	x.request.onUse(Version2)
-	x.response.onUse(Version2)
+	x.request.onUse(Version3)
+	x.response.onUse(Version3)
 }
 func (x *hwebExchan) onEnd() { // for zeros
 	x.response.onEnd()
@@ -145,7 +145,7 @@ func (x *hwebExchan) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
-func (x *hwebExchan) executeNormal(app *App, req *hwebRequest, resp *hwebResponse) { // request & response
+func (x *hwebExchan) executeExchan(app *App, req *hwebRequest, resp *hwebResponse) { // request & response
 	// TODO
 	//app.dispatchHandlet(req, resp)
 }
@@ -251,7 +251,7 @@ func (r *hwebResponse) pass1xx(resp clientResponse) bool { // used by proxies
 	// TODO
 	// For next use.
 	r.onEnd()
-	r.onUse(Version2)
+	r.onUse(Version3)
 	return false
 }
 func (r *hwebResponse) passHeaders() error       { return r.writeHeadersH() }

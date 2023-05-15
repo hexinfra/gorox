@@ -7,8 +7,8 @@
 
 package internal
 
-// normalProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
-type normalProxy_ struct {
+// exchanProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
+type exchanProxy_ struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -29,13 +29,13 @@ type normalProxy_ struct {
 	delResponseHeaders  [][]byte    // server response headers to delete
 }
 
-func (h *normalProxy_) onCreate(name string, stage *Stage, app *App) {
+func (h *exchanProxy_) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
 
-func (h *normalProxy_) onConfigure() {
+func (h *exchanProxy_) onConfigure() {
 	// proxyMode
 	if v, ok := h.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
@@ -93,12 +93,12 @@ func (h *normalProxy_) onConfigure() {
 	// delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }
-func (h *normalProxy_) onPrepare() {
+func (h *exchanProxy_) onPrepare() {
 	// Currently nothing.
 }
 
-func (h *normalProxy_) IsProxy() bool { return true }
-func (h *normalProxy_) IsCache() bool { return h.cacher != nil }
+func (h *exchanProxy_) IsProxy() bool { return true }
+func (h *exchanProxy_) IsCache() bool { return h.cacher != nil }
 
 // socketProxy_ is the mixin for sock[1-3]Proxy.
 type socketProxy_ struct {

@@ -360,7 +360,7 @@ func (a *App) dispatchHandlet(req Request, resp Response) {
 		if !rule.isMatch(req) {
 			continue
 		}
-		if processed := rule.executeNormal(req, resp); processed {
+		if processed := rule.executeExchan(req, resp); processed {
 			if rule.logAccess && a.logger != nil {
 				//a.logger.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
@@ -740,7 +740,7 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-func (r *Rule) executeNormal(req Request, resp Response) (processed bool) {
+func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
 	if r.returnCode != 0 {
 		resp.SetStatus(r.returnCode)
 		if len(r.returnText) == 0 {

@@ -296,7 +296,7 @@ func (s *H2Stream) peerAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 func (s *H2Stream) Request() *H2Request   { return &s.request }
 func (s *H2Stream) Response() *H2Response { return &s.response }
 
-func (s *H2Stream) ExecuteNormal() error { // request & response
+func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }

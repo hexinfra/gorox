@@ -64,6 +64,7 @@ func workerKeeper(base string, file string, msgChan chan *msgx.Message) { // gor
 				switch req.Comd {
 				case common.ComdPids:
 					resp = msgx.NewMessage(req.Comd, req.Flag, nil)
+					resp.Set("leader", strconv.Itoa(os.Getpid()))
 					resp.Set("worker", strconv.Itoa(worker.pid()))
 				default:
 					resp = worker.call(req)

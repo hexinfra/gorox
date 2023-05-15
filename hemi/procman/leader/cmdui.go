@@ -9,7 +9,6 @@ package leader
 
 import (
 	"net"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -69,10 +68,6 @@ func cmduiServer(msgChan chan *msgx.Message) {
 		} else { // call
 			var resp *msgx.Message
 			switch req.Comd { // some messages also call leader, hijack them.
-			case common.ComdPids:
-				msgChan <- req
-				resp = <-msgChan
-				resp.Set("leader", strconv.Itoa(os.Getpid()))
 			case common.ComdLeader:
 				resp = msgx.NewMessage(common.ComdLeader, req.Flag, nil)
 				resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine()))

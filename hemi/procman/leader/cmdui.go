@@ -10,6 +10,7 @@ package leader
 import (
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -74,7 +75,7 @@ func cmduiServer(msgChan chan *msgx.Message) {
 				resp.Set("leader", strconv.Itoa(os.Getpid()))
 			case common.ComdLeader:
 				resp = msgx.NewMessage(common.ComdLeader, req.Flag, nil)
-				resp.Set("goroutines", "123") // TODO
+				resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine()))
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
 				resp = <-msgChan

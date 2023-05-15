@@ -59,11 +59,11 @@ OPTIONS
   -conf   <config>  # path or url to worker config file
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
-  -log    <path>    # leader log file (default: myrox-leader.log in logs dir)
   -base   <path>    # base directory of the program
   -logs   <path>    # logs directory to use
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
+  -log    <path>    # leader log file (default: myrox-leader.log in logs dir)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.

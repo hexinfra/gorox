@@ -53,7 +53,7 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 					<-deadWay
 					// Use new worker
 					deadWay, worker = deadWay2, worker2
-				default: // tell worker
+				default: // other messages are sent to worker
 					worker.tell(req)
 				}
 			} else { // call

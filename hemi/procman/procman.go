@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/worker"
 )
 
-func Main(program string, usage string, level int, cmdAddr string, webAddr string) {
+func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr string) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
@@ -29,7 +29,7 @@ func Main(program string, usage string, level int, cmdAddr string, webAddr strin
 	common.Program = program
 
 	flag.Usage = func() { fmt.Printf(usage, hemi.Version) }
-	flag.IntVar(&common.DebugLevel, "debug", level, "")
+	flag.IntVar(&common.DebugLevel, "debug", debugLevel, "")
 	flag.StringVar(&common.TargetAddr, "target", cmdAddr, "")
 	flag.StringVar(&common.CmdUIAddr, "cmdui", cmdAddr, "")
 	flag.StringVar(&common.WebUIAddr, "webui", webAddr, "")
@@ -37,11 +37,11 @@ func Main(program string, usage string, level int, cmdAddr string, webAddr strin
 	flag.StringVar(&common.Config, "conf", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
-	flag.StringVar(&common.LogFile, "log", "", "")
 	flag.StringVar(&common.BaseDir, "base", "", "")
 	flag.StringVar(&common.LogsDir, "logs", "", "")
 	flag.StringVar(&common.TempDir, "temp", "", "")
 	flag.StringVar(&common.VarsDir, "vars", "", "")
+	flag.StringVar(&common.LogFile, "log", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]

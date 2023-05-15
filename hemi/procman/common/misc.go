@@ -25,11 +25,11 @@ var (
 	Config     string
 	SingleMode bool
 	DaemonMode bool
-	LogFile    string
 	BaseDir    string
 	LogsDir    string
 	TempDir    string
 	VarsDir    string
+	LogFile    string
 )
 
 func GetConfig() (base string, file string) {

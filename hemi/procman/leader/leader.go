@@ -6,9 +6,9 @@
 // Leader process.
 
 // cmdConn: control client ----> cmduiServer()
-// cmdGate: Used by cmduiServer(), for receiving cmdConns from control client
+// cmdGate: used by cmduiServer(), for receiving cmdConns from control client
 // webConn: control browser ----> webuiServer()
-// webGate: Used by webuiServer(), for receiving webConns from control browser
+// webGate: used by webuiServer(), for receiving webConns from control browser
 // roxConn: myroxClient() <---> myrox
 // msgChan: cmduiServer()/webuiServer()/myroxClient() <---> keepWorker()
 // deadWay: keepWorker() <---- worker.wait()

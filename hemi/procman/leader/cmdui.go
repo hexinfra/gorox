@@ -60,6 +60,8 @@ func cmduiServer(msgChan chan *msgx.Message) {
 				} else {
 					logger.Printf("recmd failed: %s\n", err.Error())
 				}
+			case common.ComdReweb:
+				// TODO: ignore?
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
 			}

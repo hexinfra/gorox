@@ -8,11 +8,18 @@
 package leader
 
 import (
+	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 
 	_ "github.com/hexinfra/gorox/hemi/procman/leader/webui"
 )
 
-func webuiServer(msgChan chan *msgx.Message) {
+var (
+	webChan chan *msgx.Message
+	webStage *hemi.Stage
+)
+
+func webuiServer() {
 	// TODO
+	webChan = make(chan *msgx.Message)
 }

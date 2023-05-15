@@ -17,7 +17,10 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-func cmduiServer(msgChan chan *msgx.Message) {
+var cmdChan chan *msgx.Message
+
+func cmduiServer() {
+	cmdChan = make(chan *msgx.Message)
 	logger.Printf("open cmdui interface: %s\n", common.CmdUIAddr)
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {
@@ -61,9 +64,10 @@ func cmduiServer(msgChan chan *msgx.Message) {
 					logger.Printf("recmd failed: %s\n", err.Error())
 				}
 			case common.ComdReweb:
-				// TODO: ignore?
+				// TODO
 			default: // other messages are sent to workerKeeper().
-				msgChan <- req
+				keeperChan <- cmdChan
+				cmdChan <- req
 			}
 		} else { // call
 			var resp *msgx.Message
@@ -72,8 +76,9 @@ func cmduiServer(msgChan chan *msgx.Message) {
 				resp = msgx.NewMessage(common.ComdLeader, req.Flag, nil)
 				resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine()))
 			default: // other messages are sent to workerKeeper().
-				msgChan <- req
-				resp = <-msgChan
+				keeperChan <- cmdChan
+				cmdChan <- req
+				resp = <-cmdChan
 			}
 			logger.Printf("send response: %v\n", resp)
 			msgx.Send(cmdConn, resp)

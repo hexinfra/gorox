@@ -13,7 +13,10 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 )
 
-func myroxClient(msgChan chan *msgx.Message) {
+var roxChan chan *msgx.Message
+
+func myroxClient() {
 	// TODO
+	roxChan = make(chan *msgx.Message)
 	fmt.Println("TODO")
 }

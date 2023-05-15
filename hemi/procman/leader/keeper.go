@@ -20,7 +20,9 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-func workerKeeper(base string, file string, msgChan chan *msgx.Message) { // goroutine
+var keeperChan chan chan *msgx.Message
+
+func workerKeeper(base string, file string) { // goroutine
 	dieChan := make(chan int) // dead worker go through this channel
 
 	rand.Seed(time.Now().UnixNano())
@@ -33,11 +35,12 @@ func workerKeeper(base string, file string, msgChan chan *msgx.Message) { // gor
 
 	worker := newWorker(connKey)
 	worker.start(base, file, dieChan)
-	msgChan <- nil // reply that we have created the worker.
+	keeperChan <- nil // reply that we have created the worker.
 
 	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker
 		select {
-		case req := <-msgChan: // a message arrives
+		case msgChan := <-keeperChan: // a message arrives
+			req := <-msgChan
 			if req.IsTell() {
 				switch req.Comd {
 				case common.ComdQuit:

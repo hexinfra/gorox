@@ -43,17 +43,16 @@ func Main() {
 	}
 
 	// Start the worker
-	msgChan := make(chan *msgx.Message) // msgChan is the channel between cmduiServer()/webuiServer()/myroxClient() and workerKeeper()
-	go workerKeeper(base, file, msgChan)
-	<-msgChan // wait for workerKeeper() to ensure worker is started.
+	keeperChan = make(chan chan *msgx.Message)
+	go workerKeeper(base, file)
+	<-keeperChan // wait for workerKeeper() to ensure worker is started.
 	logger.Println("worker process started")
 
 	if common.MyroxAddr == "" {
-		// TODO: msgChan MUST be protected against concurrent cmduiServer() and webuiServer()
-		go cmduiServer(msgChan)
-		go webuiServer(msgChan)
+		go cmduiServer()
+		go webuiServer()
 	} else {
-		go myroxClient(msgChan)
+		go myroxClient()
 	}
 
 	select {} // waiting forever

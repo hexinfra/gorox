@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Admin server.
+// CmdUI server.
 
 package leader
 
@@ -17,9 +17,9 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-func adminServer(msgChan chan *msgx.Message) {
-	logger.Printf("open admin interface: %s\n", common.AdminAddr)
-	admGate, err := net.Listen("tcp", common.AdminAddr) // admGate is for receiving admConns from control client
+func cmduiServer(msgChan chan *msgx.Message) {
+	logger.Printf("open cmdui interface: %s\n", common.CmdUIAddr)
+	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {
 		common.Crash(err.Error())
 	}
@@ -27,17 +27,17 @@ func adminServer(msgChan chan *msgx.Message) {
 		req *msgx.Message
 		ok  bool
 	)
-	for { // each admConn from control client
-		admConn, err := admGate.Accept()
+	for { // each cmdConn from control client
+		cmdConn, err := cmdGate.Accept()
 		if err != nil {
 			logger.Println(err.Error())
 			continue
 		}
-		if err := admConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		if err := cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
 			logger.Println(err.Error())
 			goto closeNext
 		}
-		req, ok = msgx.Recv(admConn, 16<<20)
+		req, ok = msgx.Recv(cmdConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
@@ -46,19 +46,19 @@ func adminServer(msgChan chan *msgx.Message) {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
 				logger.Println("received stop")
-				common.Stop() // worker will stop immediately after cmdConn is closed
-			case common.ComdReadmin:
-				newAddr := req.Get("newAddr") // succeeding adminAddr
+				common.Stop() // worker will stop immediately after msgConn is closed
+			case common.ComdRecmd:
+				newAddr := req.Get("newAddr") // succeeding cmduiAddr
 				if newAddr == "" {
 					goto closeNext
 				}
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
-					admGate.Close()
-					admGate = newGate
-					logger.Printf("admin re-opened to %s\n", newAddr)
+					cmdGate.Close()
+					cmdGate = newGate
+					logger.Printf("cmdui re-opened to %s\n", newAddr)
 					goto closeNext
 				} else {
-					logger.Printf("readmin failed: %s\n", err.Error())
+					logger.Printf("recmd failed: %s\n", err.Error())
 				}
 			default: // other messages are sent to keepWorker().
 				msgChan <- req
@@ -78,9 +78,9 @@ func adminServer(msgChan chan *msgx.Message) {
 				resp = <-msgChan
 			}
 			logger.Printf("send response: %v\n", resp)
-			msgx.Send(admConn, resp)
+			msgx.Send(cmdConn, resp)
 		}
 	closeNext:
-		admConn.Close()
+		cmdConn.Close()
 	}
 }

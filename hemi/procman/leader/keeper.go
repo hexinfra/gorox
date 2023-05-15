@@ -30,11 +30,11 @@ func keepWorker(base string, file string, msgChan chan *msgx.Message) { // gorou
 
 	worker := newWorker(connKey)
 	worker.start(base, file, deadWay)
-	msgChan <- nil // reply to adminServer() that we have created the worker.
+	msgChan <- nil // reply to cmduiServer() that we have created the worker.
 
-	for { // each event from adminServer() and worker
+	for { // each event from cmduiServer() and worker
 		select {
-		case req := <-msgChan: // a message arrives from adminServer()
+		case req := <-msgChan: // a message arrives from cmduiServer()
 			if req.IsTell() {
 				switch req.Comd {
 				case common.ComdQuit:

@@ -202,7 +202,7 @@ A Gorox instance has two processes: a leader process, and a worker process:
 
 ```
                   +----------------+         +----------------+ business traffic
-         admConn  |                | cmdConn |                |<===============>
+         cmdConn  |                | msgConn |                |<===============>
 operator--------->| leader process |<------->| worker process |<===============>
                   |                |         |                |<===============>
                   +----------------+         +----------------+
@@ -210,12 +210,12 @@ operator--------->| leader process |<------->| worker process |<===============>
 
 Leader process manages the worker process, which do the real and heavy work.
 
-A Gorox instance can be controlled by operators through the admin interface of
+A Gorox instance can be controlled by operators through the cmdui interface of
 leader process. Operators connect to leader, send commands, and leader executes
-the commands. Some commands are delivered to worker through cmdConn.
+the commands. Some commands are delivered to worker through msgConn.
 
 Alternatively, Gorox instances can connects to a Myrox instance and delegates
-its administration to Myrox. In this way, the admin interface in leader process
+its administration to Myrox. In this way, the cmdui interface in leader process
 is disabled.
 
 

@@ -5,14 +5,14 @@
 
 // Leader process.
 
-// admConn: control client ----> adminServer()
-// admGate: Used by adminServer(), for receiving admConns from control client
+// cmdConn: control client ----> cmduiServer()
+// cmdGate: Used by cmduiServer(), for receiving cmdConns from control client
 // webConn: control browser ----> webuiServer()
 // webGate: Used by webuiServer(), for receiving webConns from control browser
 // roxConn: myroxClient() <---> myrox
-// msgChan: adminServer()/webuiServer()/myroxClient() <---> keepWorker()
+// msgChan: cmduiServer()/webuiServer()/myroxClient() <---> keepWorker()
 // deadWay: keepWorker() <---- worker.wait()
-// cmdConn: leader process <---> worker process
+// msgConn: leader process <---> worker process
 
 package leader
 
@@ -53,13 +53,13 @@ func Main() {
 		}
 
 		// Start the worker
-		msgChan := make(chan *msgx.Message) // msgChan is the channel between adminServer()/webuiServer() and keepWorker()
+		msgChan := make(chan *msgx.Message) // msgChan is the channel between cmduiServer()/webuiServer() and keepWorker()
 		go keepWorker(base, file, msgChan)
 		<-msgChan // wait for keepWorker() to ensure worker is started.
 		logger.Println("worker process started")
 
-		// TODO: msgChan MUST be protected against concurrent adminServer() and webuiServer()
-		go adminServer(msgChan)
+		// TODO: msgChan MUST be protected against concurrent cmduiServer() and webuiServer()
+		go cmduiServer(msgChan)
 		go webuiServer(msgChan)
 		select {} // waiting forever
 	} else {

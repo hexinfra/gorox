@@ -11,7 +11,7 @@ const (
 	ComdStop      = iota // exit server immediately
 	ComdQuit             // exit server gracefully
 	ComdRework           // restart worker process
-	ComdReadmin          // reopen admin interface
+	ComdRecmd            // reopen cmdui interface
 	ComdReload           // reload config
 	ComdCPU              // profile cpu
 	ComdHeap             // profile heap

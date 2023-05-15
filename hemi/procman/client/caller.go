@@ -46,11 +46,11 @@ var calls = map[string]func(){ // indexed by action
 }
 
 func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
-	admConn, err := net.Dial("tcp", common.TargetAddr)
+	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
 		return nil, false
 	}
-	defer admConn.Close()
+	defer cmdConn.Close()
 
-	return msgx.Call(admConn, msgx.NewMessage(comd, flag, args), 16<<20)
+	return msgx.Call(cmdConn, msgx.NewMessage(comd, flag, args), 16<<20)
 }

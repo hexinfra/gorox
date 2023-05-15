@@ -19,7 +19,7 @@ import (
 var (
 	DebugLevel int
 	TargetAddr string
-	AdminAddr  string
+	CmdUIAddr  string
 	MyroxAddr  string
 	Config     string
 	SingleMode bool

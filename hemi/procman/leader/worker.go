@@ -21,7 +21,7 @@ import (
 type worker struct {
 	process *os.Process
 	connKey string
-	cmdConn net.Conn
+	msgConn net.Conn
 	lastDie time.Time
 }
 
@@ -49,27 +49,27 @@ func (w *worker) start(base string, file string, deadWay chan int) {
 	}
 	w.process = process
 
-	// Accept cmdConn from worker
-	cmdConn, err := tmpGate.Accept()
+	// Accept msgConn from worker
+	msgConn, err := tmpGate.Accept()
 	if err != nil {
 		common.Crash(err.Error())
 	}
 	tmpGate.Close()
 
-	// cmdConn is established, now register worker process
-	loginReq, ok := msgx.Recv(cmdConn, 16<<10)
+	// msgConn is established, now register worker process
+	loginReq, ok := msgx.Recv(msgConn, 16<<10)
 	if !ok || loginReq.Get("connKey") != w.connKey {
 		common.Crash("bad worker")
 	}
-	if !msgx.Send(cmdConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
+	if !msgx.Send(msgConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"base": base,
 		"file": file,
 	})) {
 		common.Crash("send worker")
 	}
 
-	// Register succeed, save cmdConn and start waiting
-	w.cmdConn = cmdConn
+	// Register succeed, save msgConn and start waiting
+	w.msgConn = msgConn
 	go w.watch(deadWay)
 }
 func (w *worker) watch(deadWay chan int) { // goroutine
@@ -80,9 +80,9 @@ func (w *worker) watch(deadWay chan int) { // goroutine
 	deadWay <- stat.ExitCode()
 }
 
-func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.cmdConn, req) }
+func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.msgConn, req) }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
-	resp, ok := msgx.Call(w.cmdConn, req, 16<<20)
+	resp, ok := msgx.Call(w.msgConn, req, 16<<20)
 	if !ok {
 		resp = msgx.NewMessage(req.Comd, 0, nil)
 		resp.Flag = 0xffff
@@ -91,4 +91,4 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 	return resp
 }
 
-func (w *worker) reset() { w.cmdConn.Close() }
+func (w *worker) reset() { w.msgConn.Close() }

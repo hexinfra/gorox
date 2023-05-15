@@ -36,7 +36,7 @@ ACTION
   quit       # tell server to exit gracefully
   leader     # call leader to report its info
   rework     # tell leader to restart worker gracefully
-  readmin    # tell leader to reopen its admin interface
+  recmd      # tell leader to reopen its cmdui interface
   worker     # call worker to report its info
   reload     # tell worker to reload config
   cpu        # tell worker to perform cpu profiling
@@ -53,7 +53,7 @@ OPTIONS
 
   -debug  <level>   # debug level (default: 0, means disable. max: 2)
   -target <addr>    # leader address to tell or call (default: 127.0.0.1:9528)
-  -admin  <addr>    # listen address of leader admin (default: 127.0.0.1:9528)
+  -cmdui  <addr>    # listen address of leader cmdui (default: 127.0.0.1:9528)
   -conf   <config>  # path or url to worker config file
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
@@ -65,7 +65,7 @@ OPTIONS
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
-  "-admin" and "-myrox" apply to "serve" and "readmin".
+  "-cmdui" and "-myrox" apply to "serve" and "recmd".
   Other options apply to "serve" only.
 
 `

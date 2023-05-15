@@ -31,7 +31,7 @@ func Main(program string, usage string, level int, addr string) {
 	flag.Usage = func() { fmt.Printf(usage, hemi.Version) }
 	flag.IntVar(&common.DebugLevel, "debug", level, "")
 	flag.StringVar(&common.TargetAddr, "target", addr, "")
-	flag.StringVar(&common.AdminAddr, "admin", addr, "")
+	flag.StringVar(&common.CmdUIAddr, "cmdui", addr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
 	flag.StringVar(&common.Config, "conf", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")

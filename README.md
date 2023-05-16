@@ -63,6 +63,7 @@ Then build Gorox with Go (replace x.y.z as version number):
 If build failed, set CGO_ENABLED=0 and build again:
 
     shell> go env -w CGO_ENABLED=0
+    shell> go build
 
 After you have successfully built binaries from source, or have downloaded and
 uncompressed the official binary distributions, you can run Gorox as a daemon

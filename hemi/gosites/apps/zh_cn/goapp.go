@@ -10,8 +10,6 @@ package zh_cn
 import (
 	"errors"
 
-	"github.com/hexinfra/gorox/hemi/gosites/apps/zh_cn/pack"
-
 	. "github.com/hexinfra/gorox/hemi"
 	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 )
@@ -26,7 +24,7 @@ func init() {
 		if !ok {
 			return errors.New("handlet in 'logic' rule is not Sitex handlet")
 		}
-		sitex.RegisterSite("front", pack.Pack{})
+		sitex.RegisterSite("front", Pack{})
 		return nil
 	})
 }

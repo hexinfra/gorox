@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package pack
+package en_us
 
 import (
 	"github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
@@ -21,11 +21,4 @@ func (p *Pack) OPTIONS_index(req Request, resp Response) {
 	} else {
 		resp.Send("this is OPTIONS / or OPTIONS /index")
 	}
-}
-func (p *Pack) GET_example(req Request, resp Response) { // GET /example
-	resp.Send("get example")
-}
-func (p *Pack) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
-	resp.Echo("foo")
-	resp.Echo("bar")
 }

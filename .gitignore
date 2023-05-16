@@ -13,14 +13,16 @@
 *.swp
 *.test
 
-.idea
-.vscode
-
 .DS_Store
 .Spotlight-V100
 .Trashes
 desktop.ini
 Thumbs.db
+
+.idea
+.vscode
+
+local.conf
 
 dist/
 logs/

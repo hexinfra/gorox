@@ -55,11 +55,18 @@ need to build from source, please ensure you have Go >= 1.19 installed:
 
     shell> go version
 
-Then build Gorox with Go (if build failed, set CGO_ENABLED=0 and try again):
+Then build Gorox with Go (replace x.y.z as version number):
 
+    shell> cd gorox-x.y.z
     shell> go build
 
-To run Gorox as a background daemon (if not, remove the "-daemon" option):
+If build failed, set CGO_ENABLED=0 and build again:
+
+    shell> go env -w CGO_ENABLED=0
+
+After you have successfully built binaries from source, or have downloaded and
+uncompressed the official binary distributions, you can run Gorox as a daemon
+(if not, remove the "-daemon" option):
 
     shell> ./gorox serve -daemon
 
@@ -99,7 +106,7 @@ View Gorox documentation online:
   * English version: https://gorox.io/docs
   * Chinese version: https://www.gorox.io/docs
 
-Or view locally (ensure your local server under hemi/gosites is started):
+Or view locally (ensure your gosites server under "hemi/gosites/" is started):
 
   * English version: http://gorox.net:5080/docs
   * Chinese version: http://www.gorox.net:5080/docs
@@ -108,7 +115,7 @@ Or view locally (ensure your local server under hemi/gosites is started):
 Layout
 ======
 
-By default, Gorox uses these dirs:
+By default, Gorox uses these directories:
 
   * apps/ - Place your Web applications,
   * cmds/ - Place your auxiliary commands,
@@ -125,7 +132,7 @@ By default, Gorox uses these dirs:
   * svcs/ - Place your RPC services,
   * test/ - Place tests for your project.
 
-After Gorox is started, 3 extra dirs are created:
+After Gorox is started, 3 extra directories are created:
 
   * logs/ - Place running logs,
   * temp/ - Place temp files which are safe to remove after Gorox is shutdown,
@@ -242,7 +249,7 @@ The official website of the Gorox project is at:
 License
 =======
 
-Gorox is licensed under a BSD License. See LICENSE.md file.
+Gorox is licensed under a 2-clause BSD License. See LICENSE.md file.
 
 
 Contributing

@@ -37,12 +37,12 @@ func (r *TCPSRouter) OnShutdown() {
 
 func (r *TCPSRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// TODO: configure r
+	// configure r here
 	r.configureSubs()
 }
 func (r *TCPSRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// TODO: prepare r
+	// prepare r here
 	r.prepareSubs()
 }
 
@@ -104,6 +104,7 @@ func (g *tcpsGate) init(router *TCPSRouter, id int32) {
 func (g *tcpsGate) open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
+		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
 		return system.SetReusePort(rawConn)
 	}
 	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
@@ -337,7 +338,7 @@ type TCPSConn struct {
 	tcpsConn0
 }
 type tcpsConn0 struct {
-	editors  [32]uint8
+	editors  [32]uint8 // editor ids which will apply on this conn. indexed by editor order
 	nEditors int8
 }
 

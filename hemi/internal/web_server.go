@@ -207,6 +207,7 @@ func (c *serverConn_) markBroken()    { c.broken.Store(true) }
 type serverStream_ struct {
 	// Mixins
 	webStream_
+	// Stream states (zeros)
 }
 
 func (s *serverStream_) serveSocket() {
@@ -2748,14 +2749,16 @@ func (r *serverResponse_) doSend() error {
 }
 
 func (r *serverResponse_) beforeRevise() {
-	resp := r.shell.(Response)
-	for _, id := range r.revisers { // revise headers
-		if id == 0 { // id of effective reviser is ensured to be > 0
-			continue
+	/*
+		resp := r.shell.(Response)
+		for _, id := range r.revisers { // revise headers
+			if id == 0 { // id of effective reviser is ensured to be > 0
+				continue
+			}
+			reviser := r.app.reviserByID(id)
+			reviser.BeforeEcho(resp.Request(), resp)
 		}
-		reviser := r.app.reviserByID(id)
-		reviser.BeforeEcho(resp.Request(), resp)
-	}
+	*/
 }
 func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {

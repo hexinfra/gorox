@@ -141,6 +141,7 @@ func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 type clientStream_ struct {
 	// Mixins
 	webStream_
+	// Stream states (zeros)
 }
 
 func (s *clientStream_) startSocket() {

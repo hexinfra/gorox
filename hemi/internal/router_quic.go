@@ -245,7 +245,10 @@ type QUICConn struct {
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
-	editors [32]uint8
+	quicConn0
+}
+type quicConn0 struct {
+	editors [32]uint8 // editor ids which will apply on this conn. indexed by editor order
 }
 
 func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) {
@@ -260,7 +263,7 @@ func (c *QUICConn) onPut() {
 	c.router = nil
 	c.gate = nil
 	c.quicConn = nil
-	c.editors = [32]uint8{}
+	c.quicConn0 = quicConn0{}
 }
 
 func (c *QUICConn) execute() { // goroutine

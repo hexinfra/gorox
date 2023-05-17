@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC relay implementation.
+// QUIC proxy implementation.
 
 package internal
 
 func init() {
-	RegisterQUICDealer("quicRelay", func(name string, stage *Stage, router *QUICRouter) QUICDealer {
-		d := new(quicRelay)
+	RegisterQUICDealer("quicProxy", func(name string, stage *Stage, router *QUICRouter) QUICDealer {
+		d := new(quicProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// quicRelay passes QUIC connections to backend QUIC server.
-type quicRelay struct {
+// quicProxy passes QUIC connections to backend QUIC server.
+type quicProxy struct {
 	// Mixins
 	QUICDealer_
 	// Assocs
@@ -26,16 +26,16 @@ type quicRelay struct {
 	// States
 }
 
-func (d *quicRelay) onCreate(name string, stage *Stage, router *QUICRouter) {
+func (d *quicProxy) onCreate(name string, stage *Stage, router *QUICRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *quicRelay) OnShutdown() {
+func (d *quicProxy) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *quicRelay) OnConfigure() {
+func (d *quicProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -44,19 +44,19 @@ func (d *quicRelay) OnConfigure() {
 			} else if quicBackend, ok := backend.(*QUICBackend); ok {
 				d.backend = quicBackend
 			} else {
-				UseExitf("incorrect backend '%s' for quicRelay\n", name)
+				UseExitf("incorrect backend '%s' for quicProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for quicRelay")
+		UseExitln("toBackend is required for quicProxy")
 	}
 }
-func (d *quicRelay) OnPrepare() {
+func (d *quicProxy) OnPrepare() {
 }
 
-func (d *quicRelay) Deal(conn *QUICConn, stream *QUICStream) (next bool) { // reverse only
+func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) { // reverse only
 	// TODO
 	return
 }

@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS relay implementation.
+// UDP/DTLS proxy implementation.
 
 package internal
 
 func init() {
-	RegisterUDPSDealer("udpsRelay", func(name string, stage *Stage, router *UDPSRouter) UDPSDealer {
-		d := new(udpsRelay)
+	RegisterUDPSDealer("udpsProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealer {
+		d := new(udpsProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// udpsRelay passes UDP/DTLS links to backend UDP/DTLS server.
-type udpsRelay struct {
+// udpsProxy passes UDP/DTLS links to backend UDP/DTLS server.
+type udpsProxy struct {
 	// Mixins
 	UDPSDealer_
 	// Assocs
@@ -26,16 +26,16 @@ type udpsRelay struct {
 	// States
 }
 
-func (d *udpsRelay) onCreate(name string, stage *Stage, router *UDPSRouter) {
+func (d *udpsProxy) onCreate(name string, stage *Stage, router *UDPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *udpsRelay) OnShutdown() {
+func (d *udpsProxy) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *udpsRelay) OnConfigure() {
+func (d *udpsProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -44,19 +44,19 @@ func (d *udpsRelay) OnConfigure() {
 			} else if udpsBackend, ok := backend.(*UDPSBackend); ok {
 				d.backend = udpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for udpsRelay\n", name)
+				UseExitf("incorrect backend '%s' for udpsProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for udpsRelay")
+		UseExitln("toBackend is required for udpsProxy")
 	}
 }
-func (d *udpsRelay) OnPrepare() {
+func (d *udpsProxy) OnPrepare() {
 }
 
-func (d *udpsRelay) Deal(link *UDPSLink) (next bool) { // reverse only
+func (d *udpsProxy) Deal(link *UDPSLink) (next bool) { // reverse only
 	// TODO
 	return
 }

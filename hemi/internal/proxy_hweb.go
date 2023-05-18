@@ -38,5 +38,6 @@ func (h *hwebProxy) OnPrepare() {
 
 func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
 	// TODO
+	// hResp.onUse(Version3)
 	return
 }

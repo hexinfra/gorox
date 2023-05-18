@@ -74,60 +74,54 @@ type ( // core types
 
 	Runner = internal.Runner
 
-	Backend = internal.Backend
-
 	HTTP1Outgate = internal.HTTP1Outgate
+	HTTP2Outgate = internal.HTTP2Outgate
+	HTTP3Outgate = internal.HTTP3Outgate
+	HWEBOutgate  = internal.HWEBOutgate
+	QUICOutgate  = internal.QUICOutgate
+	TCPSOutgate  = internal.TCPSOutgate
+	UDPSOutgate  = internal.UDPSOutgate
+
+	Backend      = internal.Backend
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
 	H1Request    = internal.H1Request
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
-
-	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
 	H2Request    = internal.H2Request
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
-
-	HTTP3Outgate = internal.HTTP3Outgate
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
 	H3Request    = internal.H3Request
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
-
-	HWEBOutgate = internal.HWEBOutgate
-	HWEBBackend = internal.HWEBBackend
-	HExchan     = internal.HExchan
-	HRequest    = internal.HRequest
-	HResponse   = internal.HResponse
-
-	QUICOutgate = internal.QUICOutgate
-	QUICBackend = internal.QUICBackend
-	QConn       = internal.QConn
-
-	TCPSOutgate = internal.TCPSOutgate
-	TCPSBackend = internal.TCPSBackend
-	TConn       = internal.TConn
-
-	UDPSOutgate = internal.UDPSOutgate
-	UDPSBackend = internal.UDPSBackend
-	ULink       = internal.ULink
+	HWEBBackend  = internal.HWEBBackend
+	HExchan      = internal.HExchan
+	HRequest     = internal.HRequest
+	HResponse    = internal.HResponse
+	QUICBackend  = internal.QUICBackend
+	QConn        = internal.QConn
+	QStream      = internal.QStream
+	QOneway      = internal.QOneway
+	TCPSBackend  = internal.TCPSBackend
+	TConn        = internal.TConn
+	UDPSBackend  = internal.UDPSBackend
+	ULink        = internal.ULink
 
 	QUICRouter = internal.QUICRouter
 	QUICDealer = internal.QUICDealer
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
-
 	TCPSRouter = internal.TCPSRouter
 	TCPSDealer = internal.TCPSDealer
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
-
 	UDPSRouter = internal.UDPSRouter
 	UDPSDealer = internal.UDPSDealer
 	UDPSEditor = internal.UDPSEditor

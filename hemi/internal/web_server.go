@@ -66,10 +66,13 @@ func (s *webServer_) onConfigure(shell Component) {
 
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
-	// enableTCPTun
-	s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
-	// enableUDPTun
-	s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
+
+	if IsDebug(2) { // remove this condition after TCPTun and UDPTun are fully implemented
+		// enableTCPTun
+		s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
+		// enableUDPTun
+		s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
+	}
 }
 func (s *webServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()

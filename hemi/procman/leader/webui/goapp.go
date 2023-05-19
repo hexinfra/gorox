@@ -6,3 +6,25 @@
 // WebUI application.
 
 package webui
+
+import (
+	"errors"
+
+	. "github.com/hexinfra/gorox/hemi"
+	. "github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
+)
+
+func init() {
+	RegisterAppInit("webui", func(app *App) error {
+		logic := app.Handlet("logic")
+		if logic == nil {
+			return errors.New("no handlet named 'logic' in app config file")
+		}
+		sitex, ok := logic.(*Sitex) // must be Sitex handlet.
+		if !ok {
+			return errors.New("handlet in 'logic' rule is not Sitex handlet")
+		}
+		sitex.RegisterSite("front", Pack{})
+		return nil
+	})
+}

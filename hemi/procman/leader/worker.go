@@ -84,7 +84,7 @@ func workerKeeper(base string, file string) { // goroutine
 				worker.lastDie = now
 				worker.start(base, file, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				logger.Println("worker is broken!")
+				logger.Printf("worker is broken! code=%d\n", exitCode)
 				common.Stop()
 			}
 		}

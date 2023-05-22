@@ -362,10 +362,11 @@ func (r *webIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
 }
 
-func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool { // data and params
+func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) bool { // data and params
 	field.setParsed()
+
 	if field.value.isEmpty() {
-		if desc.allowEmpty {
+		if fdesc.allowEmpty {
 			field.dataEdge = field.value.edge
 			return true
 		} else {
@@ -373,13 +374,12 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 			return false
 		}
 	}
+
 	text := field.value
-	if p[text.from] != '"' { // normal text
+	if p[text.from] != '"' { // field value is normal text
 	forData:
 		for spAt := int32(0); text.from < field.value.edge; text.from++ {
 			switch b := p[text.from]; b {
-			default:
-				spAt = 0
 			case ' ', '\t':
 				if spAt == 0 {
 					spAt = text.from
@@ -396,13 +396,13 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 				if fully {
 					spAt = 0
 				} else {
-					field.dataEdge = text.from
 					field.value.edge = text.from
+					field.dataEdge = text.from
 					//Debugf("1=%s\n", string(field.dataAt(p)))
 					return true
 				}
 			case '(':
-				if desc.hasComment {
+				if fdesc.hasComment {
 					text.from++
 					for {
 						if text.from == field.value.edge {
@@ -417,6 +417,8 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 				} else {
 					spAt = 0
 				}
+			default:
+				spAt = 0
 			}
 		}
 		if text.from == field.value.edge { // exact data
@@ -438,11 +440,11 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 			text.from++
 		}
 		// "..."
-		if !desc.allowQuote {
+		if !fdesc.allowQuote {
 			r.failReason = "DQUOTE is not allowed"
 			return false
 		}
-		if text.from-field.value.from == 1 && !desc.allowEmpty { // ""
+		if text.from-field.value.from == 1 && !fdesc.allowEmpty { // ""
 			r.failReason = "field cannot be empty"
 			return false
 		}
@@ -477,11 +479,12 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 			}
 		}
 	}
-	// text.from is at ';'
-	if !desc.allowParam {
+	// text.from is now at ';'
+	if !fdesc.allowParam {
 		r.failReason = "parameters are not allowed"
 		return false
 	}
+
 	field.params.from = uint8(len(r.extras))
 	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
 		haveSemic := false
@@ -579,18 +582,14 @@ func (r *webIn_) _parseField(field *pair, desc *desc, p []byte, fully bool) bool
 		text.from = text.edge
 	}
 }
-func (r *webIn_) _splitField(field *pair, desc *desc, p []byte) bool {
+func (r *webIn_) _splitField(field *pair, fdesc *desc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
 	field.setParsed()
-	// RFC 9110 (section 5.6.1.2):
-	// In other words, a recipient MUST accept lists that satisfy the following syntax:
-	// #element => [ element ] *( OWS "," OWS [ element ] )
-	var (
-		bakField  pair
-		subField  = *field
-		numSubs   = 0
-		needComma = false
-	)
+
+	subField := *field
 	subField.setSubField()
+	var bakField pair
+	numSubs, needComma := 0, false
+
 	for { // each sub value
 		haveComma := false
 	forComma:
@@ -613,11 +612,11 @@ func (r *webIn_) _splitField(field *pair, desc *desc, p []byte) bool {
 			return false
 		}
 		subField.value.edge = field.value.edge
-		if !r._parseField(&subField, desc, p, false) {
+		if !r._parseField(&subField, fdesc, p, false) { // parse one sub field
 			// r.failReason is set.
 			return false
 		}
-		if numSubs == 0 { // first sub, save as backup
+		if numSubs == 0 { // first sub field, save as backup
 			bakField = subField
 		} else { // numSubs >= 1, sub fields exist
 			if numSubs == 1 { // got the second sub field
@@ -727,7 +726,11 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
 			break
 		}
-		data := pairs[i].dataAt(r.input)
+		pair := &pairs[i]
+		if pair.kind != kindHeader {
+			continue
+		}
+		data := pair.dataAt(r.input)
 		bytesToLower(data)
 		var coding uint8
 		if bytes.Equal(data, bytesGzip) {

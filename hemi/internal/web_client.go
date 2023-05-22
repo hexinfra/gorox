@@ -506,7 +506,7 @@ func (r *clientResponse_) applyHeader(index uint8) bool {
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) {
+		} else if !r._parseField(header, &sh.desc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}

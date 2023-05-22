@@ -887,7 +887,7 @@ func (r *serverRequest_) applyHeader(index uint8) bool {
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) {
+		} else if !r._parseField(header, &sh.desc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -1199,6 +1199,7 @@ func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint
 	if IsDebug(2) {
 		/*
 			for i := from; i < edge; i++ {
+				// NOTE: test pair.kind == kindHeader
 				data := pairs[i].dataAt(r.input)
 				Debugf("lang=%s\n", string(data))
 			}
@@ -1221,7 +1222,11 @@ func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool 
 		}
 		r.zones.expect.edge = edge
 		for i := from; i < edge; i++ {
-			data := pairs[i].dataAt(r.input)
+			pair := &pairs[i]
+			if pair.kind != kindHeader {
+				continue
+			}
+			data := pair.dataAt(r.input)
 			bytesToLower(data) // the Expect field-value is case-insensitive.
 			if bytes.Equal(data, bytes100Continue) {
 				r.expectContinue = true
@@ -1262,7 +1267,11 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
+		pair := &pairs[i]
+		if pair.kind != kindHeader {
+			continue
+		}
+		data := pair.dataAt(r.input)
 		bytesToLower(data)
 		if bytes.Equal(data, bytesTrailers) {
 			r.acceptTrailers = true

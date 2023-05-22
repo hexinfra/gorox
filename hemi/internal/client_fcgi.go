@@ -879,12 +879,12 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, desc *desc, fully bool) bool { // data and params
+func (r *fcgiResponse) _parseHeader(header *pair, fdesc *desc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
 	return true
 }
-func (r *fcgiResponse) _splitHeader(header *pair, desc *desc) bool {
+func (r *fcgiResponse) _splitHeader(header *pair, fdesc *desc) bool {
 	// TODO
 	// use r._addExtra
 	return true

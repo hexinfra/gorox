@@ -23,10 +23,10 @@ type rpcBackend_ struct {
 type rpcNode_ struct {
 }
 
-// clientExchan_
-type clientExchan_ struct {
+// clientCall_
+type clientCall_ struct {
 	// Mixins
-	rpcExchan_
+	rpcCall_
 }
 
 // clientReq is the client-side RPC request.

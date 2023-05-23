@@ -15,12 +15,12 @@ type rpcAgent interface {
 type rpcAgent_ struct {
 }
 
-// rpcExchan
-type rpcExchan interface {
+// rpcCall
+type rpcCall interface {
 }
 
-// rpcExchan_
-type rpcExchan_ struct {
+// rpcCall_
+type rpcCall_ struct {
 }
 
 // rpcIn

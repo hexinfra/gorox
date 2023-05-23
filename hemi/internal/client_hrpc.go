@@ -15,14 +15,19 @@ type hrpcBackend struct {
 type hrpcNode struct {
 }
 
-// RExchan
-type RExchan struct {
+// HCall
+type HCall struct {
+	// Mixins
+	clientCall_
+	// Assocs
+	req  HReq
+	resp HResp
 }
 
-// ROutput
-type ROutput struct {
+// HReq
+type HReq struct {
 }
 
-// RInput
-type RInput struct {
+// HResp
+type HResp struct {
 }

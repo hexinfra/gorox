@@ -112,10 +112,10 @@ type rpcGate_ struct {
 	Gate_
 }
 
-// serverExchan_
-type serverExchan_ struct {
+// serverCall_
+type serverCall_ struct {
 	// Mixins
-	rpcExchan_
+	rpcCall_
 }
 
 // Req is the server-side RPC request.

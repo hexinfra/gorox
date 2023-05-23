@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS client implementation.
+// TCP/TLS broker implementation.
 
 package internal
 
@@ -26,8 +26,8 @@ func init() {
 	})
 }
 
-// tcpsClient is the interface for TCPSOutgate and TCPSBackend.
-type tcpsClient interface {
+// tcpsBroker is the interface for TCPSOutgate and TCPSBackend.
+type tcpsBroker interface {
 	client
 	streamHolder
 }
@@ -237,14 +237,14 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, broker tcpsBroker, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
 	} else {
 		conn = x.(*TConn)
 	}
-	conn.onGet(id, client, node, netConn, rawConn)
+	conn.onGet(id, broker, node, netConn, rawConn)
 	return conn
 }
 func putTConn(conn *TConn) {
@@ -257,7 +257,7 @@ type TConn struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
-	node       *tcpsNode       // associated node if client is TCPSBackend
+	node       *tcpsNode       // associated node if broker is TCPSBackend
 	netConn    net.Conn        // TCP, TLS
 	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP
 	maxStreams int32           // how many streams are allowed on this conn?
@@ -268,12 +268,12 @@ type TConn struct { // only exported to hemi
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.conn_.onGet(id, client)
+func (c *TConn) onGet(id int64, broker tcpsBroker, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.conn_.onGet(id, broker)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.maxStreams = client.MaxStreamsPerConn()
+	c.maxStreams = broker.MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
 	c.conn_.onPut()
@@ -286,7 +286,7 @@ func (c *TConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
+func (c *TConn) getBroker() tcpsBroker { return c.client.(tcpsBroker) }
 
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }

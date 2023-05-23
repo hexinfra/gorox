@@ -362,7 +362,7 @@ func (r *webIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
 }
 
-func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) bool { // data and params
+func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) bool { // for field data and value params
 	field.setParsed()
 
 	if field.value.isEmpty() {
@@ -375,33 +375,32 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		}
 	}
 
+	// Now parse field value.
 	text := field.value
 	if p[text.from] != '"' { // field value is normal text
 	forData:
-		for spAt := int32(0); text.from < field.value.edge; text.from++ {
+		for pSpace := int32(0); text.from < field.value.edge; text.from++ {
 			switch b := p[text.from]; b {
 			case ' ', '\t':
-				if spAt == 0 {
-					spAt = text.from
+				if pSpace == 0 {
+					pSpace = text.from
 				}
 			case ';':
-				if spAt == 0 {
+				if pSpace == 0 {
 					field.dataEdge = text.from
 				} else {
-					field.dataEdge = spAt
+					field.dataEdge = pSpace
 				}
-				//Debugf("3=%s\n", string(field.dataAt(p)))
 				break forData
 			case ',':
-				if fully {
-					spAt = 0
-				} else {
+				if !fully {
 					field.value.edge = text.from
 					field.dataEdge = text.from
-					//Debugf("1=%s\n", string(field.dataAt(p)))
 					return true
 				}
+				pSpace = 0
 			case '(':
+				// TODO: comments can nest
 				if fdesc.hasComment {
 					text.from++
 					for {
@@ -414,24 +413,22 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 						}
 						text.from++
 					}
-				} else {
-					spAt = 0
+				} else { // comment is not allowed. treat as normal character and reset pSpace
+					pSpace = 0
 				}
-			default:
-				spAt = 0
+			default: // normal character. reset pSpace
+				pSpace = 0
 			}
 		}
 		if text.from == field.value.edge { // exact data
 			field.dataEdge = text.from
-			//Debugf("2=%s\n", string(field.dataAt(p)))
 			return true
 		}
-	} else { // begins with '"'
+	} else { // field value begins with '"'
 		text.from++
 		for {
 			if text.from == field.value.edge { // "...
 				field.dataEdge = text.from
-				//Debugf("4=%s\n", string(field.dataAt(p)))
 				return true
 			}
 			if p[text.from] == '"' {
@@ -450,9 +447,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		}
 		field.setQuoted()
 		field.dataEdge = text.from
-		//Debugf("5=%s\n", string(field.dataAt(p)))
-		text.from++
-		if text.from == field.value.edge { // exact "..."
+		if text.from++; text.from == field.value.edge { // exact "..."
 			return true
 		}
 	afterValue:
@@ -485,6 +480,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		return false
 	}
 
+	// Now parse value params.
 	field.params.from = uint8(len(r.extras))
 	for { // each *( OWS ";" OWS [ token "=" ( token / quoted-string ) ] )
 		haveSemic := false
@@ -542,9 +538,8 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		param.nameSize = uint8(nameSize)
 		param.nameFrom = text.from
 		param.place = field.place
-		text.edge++ // skip '='
 		// parameter-value = ( token / quoted-string )
-		if text.edge == field.value.edge {
+		if text.edge++; text.edge == field.value.edge {
 			r.failReason = "missing parameter-value"
 			return false
 		}
@@ -552,6 +547,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 			text.edge++
 			text.from = text.edge
 			for {
+				// TODO: detect qdtext
 				if text.edge == field.value.edge {
 					r.failReason = "invalid quoted-string"
 					return false
@@ -579,7 +575,8 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 			return false
 		}
 		field.params.edge = uint8(len(r.extras))
-		text.from = text.edge
+
+		text.from = text.edge // for next parameter
 	}
 }
 func (r *webIn_) _splitField(field *pair, fdesc *desc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
@@ -622,7 +619,7 @@ func (r *webIn_) _splitField(field *pair, fdesc *desc, p []byte) bool { // split
 			if numSubs == 1 { // got the second sub field
 				field.setCommaValue() // mark main field as comma-value
 				if !r._addExtra(&bakField) {
-					r.failReason = "too many sub fields"
+					r.failReason = "too many extra fields"
 					return false
 				}
 			}

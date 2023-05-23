@@ -6,3 +6,7 @@
 // General RPC proxy implementation.
 
 package internal
+
+// rpcProxy_
+type rpcProxy_ struct {
+}

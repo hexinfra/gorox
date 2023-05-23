@@ -14,7 +14,7 @@ import (
 // GRPCBridge is the interface for all gRPC server bridges.
 // Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
 type GRPCBridge interface {
-	RPCServer
+	rpcServer
 
 	GRPCServer() any // may be a *grpc.Server
 }
@@ -22,13 +22,13 @@ type GRPCBridge interface {
 // ThriftBridge is the interface for all Thrift server bridges.
 // Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
 type ThriftBridge interface {
-	RPCServer
+	rpcServer
 
 	ThriftServer() any // may be a thrift.TServer?
 }
 
-// RPCServer
-type RPCServer interface {
+// rpcServer
+type rpcServer interface {
 	Server
 
 	LinkSvcs()
@@ -48,9 +48,14 @@ type rpcServer_ struct {
 	prefixSvcs []*hostnameTo[*Svc] // like: ("www.example.*")
 }
 
-func (s *rpcServer_) onConfigure() {
+func (s *rpcServer_) onConfigure(shell Component) {
+	s.Server_.OnConfigure()
+
 	// forSvcs
 	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
+}
+func (s *rpcServer_) onPrepare(shell Component) {
+	s.Server_.OnPrepare()
 }
 
 func (s *rpcServer_) LinkSvcs() {
@@ -59,7 +64,7 @@ func (s *rpcServer_) LinkSvcs() {
 		if svc == nil {
 			continue
 		}
-		svc.LinkServer(s.shell.(RPCServer))
+		svc.LinkServer(s.shell.(rpcServer))
 		// TODO: use hash table?
 		for _, hostname := range svc.exactHostnames {
 			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
@@ -107,12 +112,30 @@ type rpcGate_ struct {
 	Gate_
 }
 
-// In is the RPC request.
-type In interface {
+// serverExchan_
+type serverExchan_ struct {
+	// Mixins
+	rpcExchan_
+}
+
+// Req is the server-side RPC request.
+type Req interface {
 	Svc() *Svc
 }
 
-// Out is the RPC response.
-type Out interface {
-	In() In
+// serverReq_
+type serverReq_ struct {
+	// Mixins
+	rpcIn_
+}
+
+// Resp is the server-side RPC response.
+type Resp interface {
+	Req() Req
+}
+
+// serverResp_
+type serverResp_ struct {
+	// Mixins
+	rpcOut_
 }

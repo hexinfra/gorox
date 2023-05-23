@@ -6,3 +6,39 @@
 // General RPC incoming and outgoing messages.
 
 package internal
+
+// rpcAgent
+type rpcAgent interface {
+}
+
+// rpcAgent_
+type rpcAgent_ struct {
+}
+
+// rpcExchan
+type rpcExchan interface {
+}
+
+// rpcExchan_
+type rpcExchan_ struct {
+}
+
+// rpcIn
+type rpcIn interface {
+}
+
+// rpcIn_
+type rpcIn_ struct {
+	// Assocs
+	shell rpcIn
+}
+
+// rpcOut
+type rpcOut interface {
+}
+
+// rpcOut_
+type rpcOut_ struct {
+	// Assocs
+	shell rpcOut
+}

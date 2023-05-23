@@ -823,7 +823,7 @@ func (s *Stage) linkServerSvcs() {
 		Debugln("link svcs to rpc servers")
 	}
 	for _, server := range s.servers {
-		if rpcServer, ok := server.(RPCServer); ok {
+		if rpcServer, ok := server.(rpcServer); ok {
 			rpcServer.LinkSvcs()
 		}
 	}

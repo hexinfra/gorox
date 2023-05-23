@@ -403,9 +403,8 @@ func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
 	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
-		} else {
-			return errors.New(".maxStreamsPerConn is a valid value")
 		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
 func (s *streamHolder_) onPrepare(shell Component) {

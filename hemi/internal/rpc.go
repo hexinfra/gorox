@@ -19,7 +19,7 @@ type Svc struct {
 	// Assocs
 	stage   *Stage      // current stage
 	stater  Stater      // the stater which is used by this svc
-	servers []RPCServer // linked rpc servers. may be empty
+	servers []rpcServer // linked rpc servers. may be empty
 	// States
 	hostnames       [][]byte          // ...
 	accessLog       *logcfg           // ...
@@ -92,8 +92,8 @@ func (s *Svc) Logf(format string, args ...any) {
 	}
 }
 
-func (s *Svc) LinkServer(server RPCServer) { s.servers = append(s.servers, server) }
-func (s *Svc) Servers() []RPCServer        { return s.servers }
+func (s *Svc) LinkServer(server rpcServer) { s.servers = append(s.servers, server) }
+func (s *Svc) Servers() []rpcServer        { return s.servers }
 
 func (s *Svc) maintain() { // goroutine
 	s.Loop(time.Second, func(now time.Time) {
@@ -105,7 +105,7 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatch(in In, out Out) {
+func (s *Svc) dispatch(req Req, resp Resp) {
 	// TODO
 }
 

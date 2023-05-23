@@ -272,8 +272,8 @@ func (s *http3Stream) execute() { // goroutine
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) webAgent() webAgent { return s.conn.getServer() }
-func (s *http3Stream) peerAddr() net.Addr { return nil } // TODO
+func (s *http3Stream) webKeeper() webKeeper { return s.conn.getServer() }
+func (s *http3Stream) peerAddr() net.Addr   { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO

@@ -138,8 +138,8 @@ func (x *hwebExchan) execute() { // goroutine
 	putHWEBExchan(x)
 }
 
-func (x *hwebExchan) webAgent() webAgent { return nil }
-func (x *hwebExchan) peerAddr() net.Addr { return nil }
+func (x *hwebExchan) webKeeper() webKeeper { return nil }
+func (x *hwebExchan) peerAddr() net.Addr   { return nil }
 
 func (x *hwebExchan) writeContinue() bool { // 100 continue
 	// TODO

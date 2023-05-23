@@ -153,8 +153,8 @@ func (x *HExchan) onEnd() { // for zeros
 	x.clientStream_.onEnd()
 }
 
-func (x *HExchan) webAgent() webAgent { return nil }
-func (x *HExchan) peerAddr() net.Addr { return nil }
+func (x *HExchan) webKeeper() webKeeper { return nil }
+func (x *HExchan) peerAddr() net.Addr   { return nil }
 
 func (x *HExchan) Request() *HRequest   { return &x.request }
 func (x *HExchan) Response() *HResponse { return &x.response }

@@ -7,12 +7,12 @@
 
 package internal
 
-// rpcAgent
-type rpcAgent interface {
+// rpcKeeper
+type rpcKeeper interface {
 }
 
-// rpcAgent_
-type rpcAgent_ struct {
+// rpcKeeper_
+type rpcKeeper_ struct {
 }
 
 // rpcCall is the interface for *hrpcCall and *HCall.

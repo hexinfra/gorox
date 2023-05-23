@@ -219,10 +219,10 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashExpect             = 649
 	hashForwarded          = 958
 	hashHost               = 446
-	hashIfMatch            = 777
+	hashIfMatch            = 777 // same with hashIfRange
 	hashIfModifiedSince    = 1660
 	hashIfNoneMatch        = 1254
-	hashIfRange            = 777
+	hashIfRange            = 777 // same with hashIfMatch
 	hashIfUnmodifiedSince  = 1887
 	hashProxyAuthorization = 2048
 	hashProxyConnection    = 1695
@@ -2090,8 +2090,9 @@ const ( // field flags
 
 // If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
 //
+//                                 [         params         )
 //                     [             value                  )
-//        [   name   )  [  data   )[         params         )
+//        [   name   )  [  data   )  [    param1    )[param2)
 //       +--------------------------------------------------+
 //       |accept-type: "text/plain"; charset="utf-8";lang=en|
 //       +--------------------------------------------------+

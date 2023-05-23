@@ -614,11 +614,11 @@ func (r *http1Request) recvHead() { // control + headers
 		r.headResult = -1
 		return
 	}
-	if r.inputEdge == 0 && !r.growHeadH1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
+	if r.inputEdge == 0 && !r.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
 		// r.headResult is set.
 		return
 	}
-	if !r.recvControl() || !r.recvHeadersH1() || !r.examineHead() {
+	if !r.recvControl() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -636,7 +636,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 	for {
 		if b := r.input[r.pFore]; httpTchar[b] != 0 {
 			hash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		} else if b == ' ' {
@@ -654,7 +654,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 	r.method.set(r.pBack, r.pFore)
 	r.recognizeMethod(r.input[r.pBack:r.pFore], hash)
 	// Skip SP after method
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -686,7 +686,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
 					return false
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
@@ -699,7 +699,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			// Skip ':'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			if r.input[r.pFore] != '/' {
@@ -707,7 +707,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			if r.input[r.pFore] != '/' {
@@ -715,7 +715,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			// authority = host [ ":" port ]
@@ -727,7 +727,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				} else if b == '/' || b == ' ' {
 					break
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
@@ -872,7 +872,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					state >>= 4 // restore previous state
 				}
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -909,7 +909,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			return false
 		}
 		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 		r.asteriskOptions = true
@@ -940,7 +940,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			} else if b == ' ' {
 				break
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -959,7 +959,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 
 beforeVersion: // r.pFore is at ' '.
 	// Skip SP before HTTP-version
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -976,7 +976,7 @@ beforeVersion: // r.pFore is at ' '.
 		// r.inputEdge at "TTP/1.X\n" -> after EOL
 		r.pFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -990,7 +990,7 @@ beforeVersion: // r.pFore is at ' '.
 		return false
 	}
 	if r.input[r.pFore] == '\r' {
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
@@ -1000,7 +1000,7 @@ beforeVersion: // r.pFore is at ' '.
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -1044,7 +1044,7 @@ func (r *http1Request) cleanInput() {
 	}
 }
 
-func (r *http1Request) readContent() (p []byte, err error) { return r.readContentH1() }
+func (r *http1Request) readContent() (p []byte, err error) { return r.readContent1() }
 
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
@@ -1070,11 +1070,11 @@ func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and
 	return start
 }
 
-func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeaderH1(name, value) }
-func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.headerH1(name) }
-func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeaderH1(name) }
-func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderH1(name) }
-func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeaderAtH1(o) }
+func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
 
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
@@ -1092,7 +1092,7 @@ func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 			from += copy(r.fields[from:], authority)
 		}
 		from += copy(r.fields[from:], r.request.UnsafeURI())
-		r._addCRLFHeaderH1(from)
+		r._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -1114,7 +1114,7 @@ func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
 		from += copy(r.fields[from:], colonPort)
 		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
-		r._addCRLFHeaderH1(from)
+		r._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -1139,7 +1139,7 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		if len(req.UnsafeQueryString()) > 0 {
 			from += copy(r.fields[from:], req.UnsafeQueryString())
 		}
-		r._addCRLFHeaderH1(from)
+		r._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -1160,25 +1160,25 @@ func (r *http1Response) SetCookie(cookie *Cookie) bool {
 		r.fields[from+1] = ' '
 		from += 2
 		from += cookie.writeTo(r.fields[from:])
-		r._addCRLFHeaderH1(from)
+		r._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
 	}
 }
 
-func (r *http1Response) sendChain() error { return r.sendChainH1() }
+func (r *http1Response) sendChain() error { return r.sendChain1() }
 
-func (r *http1Response) echoHeaders() error { return r.writeHeadersH1() }
-func (r *http1Response) echoChain() error   { return r.echoChainH1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
+func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
+func (r *http1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
 
 func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
-		return r.addTrailerH1(name, value)
+		return r.addTrailer1(name, value)
 	}
 	return true // HTTP/1.0 doesn't support trailer.
 }
-func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
+func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
 func (r *http1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	resp.delHopHeaders()
@@ -1193,7 +1193,7 @@ func (r *http1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	r.vector[1] = r.addedHeaders()
 	r.vector[2] = bytesCRLF
 	// 1xx has no content.
-	if r.writeVectorH1() != nil {
+	if r.writeVector1() != nil {
 		return false
 	}
 	// For next use.
@@ -1201,8 +1201,8 @@ func (r *http1Response) pass1xx(resp clientResponse) bool { // used by proxies
 	r.onUse(Version1_1)
 	return true
 }
-func (r *http1Response) passHeaders() error       { return r.writeHeadersH1() }
-func (r *http1Response) passBytes(p []byte) error { return r.passBytesH1(p) }
+func (r *http1Response) passHeaders() error       { return r.writeHeaders1() }
+func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -1222,7 +1222,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			if !r.isUnsized() { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeaderH1(bytesContentLength, sizeBuffer[from:edge])
+				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else {
@@ -1245,7 +1245,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 }
 func (r *http1Response) finalizeUnsized() error {
 	if r.request.VersionCode() == Version1_1 {
-		return r.finalizeUnsizedH1()
+		return r.finalizeUnsized1()
 	}
 	return nil // HTTP/1.0 does nothing.
 }

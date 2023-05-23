@@ -419,18 +419,18 @@ func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 		from += 2
 		from += copy(r.fields[from:], hostname)
 		from += copy(r.fields[from:], colonPort)
-		r._addCRLFHeaderH1(from)
+		r._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
 	}
 }
 
-func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHeaderH1(name, value) }
-func (r *H1Request) header(name []byte) (value []byte, ok bool) { return r.headerH1(name) }
-func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHeaderH1(name) }
-func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeaderH1(name) }
-func (r *H1Request) delHeaderAt(o uint8)                        { r.delHeaderAtH1(o) }
+func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *H1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *H1Request) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
 
 func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -465,16 +465,16 @@ func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge in
 	}
 }
 
-func (r *H1Request) sendChain() error { return r.sendChainH1() }
+func (r *H1Request) sendChain() error { return r.sendChain1() }
 
-func (r *H1Request) echoHeaders() error { return r.writeHeadersH1() }
-func (r *H1Request) echoChain() error   { return r.echoChainH1(true) } // we always use HTTP/1.1 chunked
+func (r *H1Request) echoHeaders() error { return r.writeHeaders1() }
+func (r *H1Request) echoChain() error   { return r.echoChain1(true) } // we always use HTTP/1.1 chunked
 
-func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailerH1(name, value) }
-func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailerH1(name) }
+func (r *H1Request) addTrailer(name []byte, value []byte) bool   { return r.addTrailer1(name, value) }
+func (r *H1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *H1Request) passHeaders() error       { return r.writeHeadersH1() }
-func (r *H1Request) passBytes(p []byte) error { return r.passBytesH1(p) }
+func (r *H1Request) passHeaders() error       { return r.writeHeaders1() }
+func (r *H1Request) passBytes(p []byte) error { return r.passBytes1(p) }
 
 func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -492,7 +492,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeaderH1(bytesContentLength, sizeBuffer[from:edge])
+				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			}
 		}
 		// content-type: application/octet-stream\r\n
@@ -503,7 +503,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsizedH1() }
+func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }
 
 func (r *H1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
@@ -524,11 +524,11 @@ func (r *H1Response) recvHead() { // control + headers
 		r.headResult = -1
 		return
 	}
-	if !r.growHeadH1() { // r.input must be empty because we don't use pipelining in requests.
+	if !r.growHead1() { // r.input must be empty because we don't use pipelining in requests.
 		// r.headResult is set.
 		return
 	}
-	if !r.recvControl() || !r.recvHeadersH1() || !r.examineHead() {
+	if !r.recvControl() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -549,7 +549,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 		// r.inputEdge at "TTP/1.X " -> after ' '
 		r.pFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -563,7 +563,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	if r.input[r.pFore] != ' ' {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -573,7 +573,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
@@ -581,7 +581,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
@@ -589,7 +589,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -597,7 +597,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 	if r.input[r.pFore] != ' ' {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
@@ -606,13 +606,13 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 		if b := r.input[r.pFore]; b == '\n' {
 			break
 		}
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHeadH1() {
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 	return true
@@ -654,7 +654,7 @@ func (r *H1Response) cleanInput() {
 	}
 }
 
-func (r *H1Response) readContent() (p []byte, err error) { return r.readContentH1() }
+func (r *H1Response) readContent() (p []byte, err error) { return r.readContent1() }
 
 // poolH1Socket
 var poolH1Socket sync.Pool

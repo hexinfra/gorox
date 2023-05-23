@@ -928,7 +928,7 @@ type http2Request struct { // incoming. needs parsing
 
 func (r *http2Request) joinHeaders(p []byte) bool {
 	if len(p) > 0 {
-		if !r._growHeadersH2(int32(len(p))) {
+		if !r._growHeaders2(int32(len(p))) {
 			return false
 		}
 		r.inputEdge += int32(copy(r.input[r.inputEdge:], p))
@@ -936,7 +936,7 @@ func (r *http2Request) joinHeaders(p []byte) bool {
 	return true
 }
 
-func (r *http2Request) readContent() (p []byte, err error) { return r.readContentH2() }
+func (r *http2Request) readContent() (p []byte, err error) { return r.readContent2() }
 
 func (r *http2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
@@ -953,11 +953,11 @@ type http2Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *http2Response) addHeader(name []byte, value []byte) bool   { return r.addHeaderH2(name, value) }
-func (r *http2Response) header(name []byte) (value []byte, ok bool) { return r.headerH2(name) }
-func (r *http2Response) hasHeader(name []byte) bool                 { return r.hasHeaderH2(name) }
-func (r *http2Response) delHeader(name []byte) (deleted bool)       { return r.delHeaderH2(name) }
-func (r *http2Response) delHeaderAt(o uint8)                        { r.delHeaderAtH2(o) }
+func (r *http2Response) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
+func (r *http2Response) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
+func (r *http2Response) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
+func (r *http2Response) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
+func (r *http2Response) delHeaderAt(o uint8)                        { r.delHeaderAt2(o) }
 
 func (r *http2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -978,16 +978,16 @@ func (r *http2Response) SetCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *http2Response) sendChain() error { return r.sendChainH2() }
+func (r *http2Response) sendChain() error { return r.sendChain2() }
 
-func (r *http2Response) echoHeaders() error { return r.writeHeadersH2() }
-func (r *http2Response) echoChain() error   { return r.echoChainH2() }
+func (r *http2Response) echoHeaders() error { return r.writeHeaders2() }
+func (r *http2Response) echoChain() error   { return r.echoChain2() }
 
 func (r *http2Response) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailerH2(name, value)
+	return r.addTrailer2(name, value)
 }
 func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailerH2(name)
+	return r.trailer2(name)
 }
 
 func (r *http2Response) pass1xx(resp clientResponse) bool { // used by proxies
@@ -1004,8 +1004,8 @@ func (r *http2Response) pass1xx(resp clientResponse) bool { // used by proxies
 	r.onUse(Version2)
 	return false
 }
-func (r *http2Response) passHeaders() error       { return r.writeHeadersH2() }
-func (r *http2Response) passBytes(p []byte) error { return r.passBytesH2(p) }
+func (r *http2Response) passHeaders() error       { return r.writeHeaders2() }
+func (r *http2Response) passBytes(p []byte) error { return r.passBytes2(p) }
 
 func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

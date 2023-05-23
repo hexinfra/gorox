@@ -15,29 +15,29 @@ type rpcAgent interface {
 type rpcAgent_ struct {
 }
 
-// rpcCall
+// rpcCall is the interface for *hrpcCall and *HCall.
 type rpcCall interface {
 }
 
-// rpcCall_
+// rpcCall_ is the mixin for hrpcCall and HCall.
 type rpcCall_ struct {
 }
 
-// rpcIn
+// rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
 type rpcIn interface {
 }
 
-// rpcIn_
+// rpcIn_ is a mixin for serverReq_ and clientResp_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
 }
 
-// rpcOut
+// rpcOut is the interface for *hrpcResp and *HReq. Used as shell by rpcOut_.
 type rpcOut interface {
 }
 
-// rpcOut_
+// rpcOut_ is a mixin for serverResp_ and clientReq_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

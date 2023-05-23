@@ -50,7 +50,7 @@ func (c *client_) onConfigure() {
 	// tlsMode
 	c.ConfigureBool("tlsMode", &c.tlsMode, false)
 	if c.tlsMode {
-		c.tlsConfig = &tls.Config{}
+		c.tlsConfig = new(tls.Config)
 	}
 
 	// dialTimeout

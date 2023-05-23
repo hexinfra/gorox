@@ -4,7 +4,6 @@ directory, but many related apps can be grouped into a container directory.
 Some builtin apps are:
 
   examples/hello/    - An example "hello, world" app.
-  examples/blog/     - An example blog app.
   examples/forum/    - An example forum app.
   fallback/          - A static app. Can be used as default app of web servers.
 

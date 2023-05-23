@@ -30,6 +30,7 @@ var (
 	TempDir    string
 	VarsDir    string
 	LogFile    string
+	ErrFile    string
 )
 
 func GetConfig() (base string, file string) {

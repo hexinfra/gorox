@@ -8,6 +8,7 @@
 package leader
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -77,14 +78,14 @@ func workerKeeper(base string, file string) { // goroutine
 		case exitCode := <-dieChan: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == common.CodeCrash || exitCode == common.CodeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				logger.Println("worker critical error")
+				fmt.Println("worker critical error")
 				common.Stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()
 				worker.lastDie = now
 				worker.start(base, file, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				logger.Printf("worker is broken! code=%d\n", exitCode)
+				fmt.Printf("worker is broken! code=%d\n", exitCode)
 				common.Stop()
 			}
 		}

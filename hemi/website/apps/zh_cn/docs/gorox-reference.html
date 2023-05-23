@@ -180,8 +180,6 @@
 			</code>
 			<p>例子</p>
 			<code class="pre">stage {
-	.logFile = %logsDir + "/worker.log"
-
 	app "example" {
 		.hostnames = ("*.example.com")
 		.webRoot = %baseDir + "/apps/example/root"
@@ -233,7 +231,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		<li>
 			<p>stage 属性列表。</p>
 			<code class="pre">stage {
-	.logFile = %logsDir + "/worker.log"
 	.cpuFile = %tempDir + "/cpu.prof"
 	.hepFile = %tempDir + "/hep.prof"
 	.thrFile = %tempDir + "/thr.prof"
@@ -242,11 +239,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 }</code>
 			<ul>
 				<li>
-					<p>.logFile: gorox 内部运行产生的日志（非访问日志）。</p>
-					<code>语法：.logFile = "filename"
-					默认值：%logsDir + "/worker.log"
-					</code>
-
 					<p>.cpuFile: 采集 gorox 5s 的 CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu。
 					</p>
 					<code>语法：.cpuFile = "filename"

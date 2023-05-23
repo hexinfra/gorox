@@ -42,6 +42,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.StringVar(&common.TempDir, "temp", "", "")
 	flag.StringVar(&common.VarsDir, "vars", "", "")
 	flag.StringVar(&common.LogFile, "log", "", "")
+	flag.StringVar(&common.ErrFile, "err", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -107,23 +108,57 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			} else { // worker daemon
 				worker.Main(token)
 			}
-		} else if common.DaemonMode { // start the leader daemon and exit
-			devNull, err := os.Open(os.DevNull)
+		} else {
+			LogFile := common.LogFile
+			if LogFile == "" {
+				LogFile = common.LogsDir + "/" + common.Program + ".log"
+			} else if !filepath.IsAbs(LogFile) {
+				LogFile = common.BaseDir + "/" + LogFile
+			}
+			if err := os.MkdirAll(filepath.Dir(LogFile), 0755); err != nil {
+				common.Crash(err.Error())
+			}
+			logFile, err := os.OpenFile(LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
 			if err != nil {
 				common.Crash(err.Error())
 			}
-			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-				Files: []*os.File{devNull, devNull, devNull},
-				Sys:   system.DaemonSysAttr(),
-			}); err == nil { // leader process started
-				process.Release()
-				devNull.Close()
-			} else {
+			ErrFile := common.ErrFile
+			if ErrFile == "" {
+				ErrFile = common.LogsDir + "/" + common.Program + ".err"
+			} else if !filepath.IsAbs(ErrFile) {
+				ErrFile = common.BaseDir + "/" + ErrFile
+			}
+			if err := os.MkdirAll(filepath.Dir(ErrFile), 0755); err != nil {
 				common.Crash(err.Error())
 			}
-		} else { // run as foreground leader. default case
-			leader.Main()
+			errFile, err := os.OpenFile(ErrFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+			if err != nil {
+				common.Crash(err.Error())
+			}
+			if common.DaemonMode { // start the leader daemon and exit
+				devNull, err := os.Open(os.DevNull)
+				if err != nil {
+					common.Crash(err.Error())
+				}
+				if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+					Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+					Files: []*os.File{devNull, logFile, errFile},
+					Sys:   system.DaemonSysAttr(),
+				}); err == nil { // leader process started
+					process.Release()
+					devNull.Close()
+					logFile.Close()
+					errFile.Close()
+				} else {
+					common.Crash(err.Error())
+				}
+			} else { // run as foreground leader. default case
+				os.Stdout.Close()
+				os.Stdout = logFile
+				os.Stderr.Close()
+				os.Stderr = errFile
+				leader.Main()
+			}
 		}
 	default: // as control client
 		client.Main(action)

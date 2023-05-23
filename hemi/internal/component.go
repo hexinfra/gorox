@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -378,8 +377,6 @@ type Stage struct {
 	servers      compDict[Server]      // indexed by serverName
 	cronjobs     compDict[Cronjob]     // indexed by cronjobName
 	// States
-	logFile string // stage's log file
-	logger  *log.Logger
 	cpuFile string
 	hepFile string
 	thrFile string
@@ -498,18 +495,9 @@ func (s *Stage) OnShutdown() {
 	if IsDebug(2) {
 		Debugln("stage close log file")
 	}
-	s.logger.Writer().(*os.File).Close()
 }
 
 func (s *Stage) OnConfigure() {
-	// logFile
-	s.ConfigureString("logFile", &s.logFile, func(value string) error {
-		if value == "" {
-			return errors.New(".logFile has an invalid value")
-		}
-		return nil
-	}, LogsDir()+"/worker.log")
-
 	tempDir := TempDir()
 
 	// cpuFile
@@ -567,16 +555,11 @@ func (s *Stage) OnConfigure() {
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
 func (s *Stage) OnPrepare() {
-	for _, file := range []string{s.logFile, s.cpuFile, s.hepFile, s.thrFile, s.grtFile, s.blkFile} {
+	for _, file := range []string{s.cpuFile, s.hepFile, s.thrFile, s.grtFile, s.blkFile} {
 		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
 			EnvExitln(err.Error())
 		}
 	}
-	osFile, err := os.OpenFile(s.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-	if err != nil {
-		EnvExitln(err.Error())
-	}
-	s.logger = log.New(osFile, "", log.Ldate|log.Ltime)
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
@@ -802,7 +785,7 @@ func (s *Stage) Start(id int32) {
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 
-	s.Logf("stage=%d is ready to serve.\n", s.id)
+	fmt.Printf("stage=%d is ready to serve.\n", s.id)
 }
 func (s *Stage) Quit() {
 	s.OnShutdown()
@@ -959,9 +942,11 @@ func (s *Stage) prepare() (err error) {
 func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
 
+/*
 func (s *Stage) Log(str string)                  { s.logger.Print(str) }
 func (s *Stage) Logln(str string)                { s.logger.Println(str) }
 func (s *Stage) Logf(format string, args ...any) { s.logger.Printf(format, args...) }
+*/
 
 func (s *Stage) ProfCPU() {
 	file, err := os.Create(s.cpuFile)

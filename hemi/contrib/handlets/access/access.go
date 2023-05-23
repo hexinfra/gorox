@@ -142,7 +142,7 @@ func (h *accessChecker) parseRule(rules []string) []*ipRule {
 		} else if _, ipnet, err := net.ParseCIDR(rule); err == nil {
 			p = append(p, &ipRule{cidr: ipnet, rank: rankCIDR})
 		} else {
-			h.stage.Logf("accessChecker illegal ip rule: %v", rule)
+			//h.stage.Logf("accessChecker illegal ip rule: %v", rule)
 		}
 	}
 	return p

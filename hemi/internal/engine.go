@@ -57,7 +57,7 @@ func SetVarsDir(dir string) { // only once!
 }
 func _mkdir(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Printf(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(0)
 	}
 }

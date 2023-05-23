@@ -785,7 +785,7 @@ func (s *Stage) Start(id int32) {
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 
-	fmt.Printf("stage=%d is ready to serve.\n", s.id)
+	fmt.Printf("[worker] stage=%d is ready to serve.\n", s.id)
 }
 func (s *Stage) Quit() {
 	s.OnShutdown()

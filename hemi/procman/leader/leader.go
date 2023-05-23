@@ -24,7 +24,7 @@ import (
 func Main() {
 	// Check worker's config
 	base, file := common.GetConfig()
-	fmt.Printf("parse worker config: base=%s file=%s\n", base, file)
+	fmt.Printf("[leader] parse worker config: base=%s file=%s\n", base, file)
 	if _, err := hemi.ApplyFile(base, file); err != nil {
 		common.Crash("leader: " + err.Error())
 	}
@@ -33,7 +33,7 @@ func Main() {
 	keeperChan = make(chan chan *msgx.Message)
 	go workerKeeper(base, file)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
-	fmt.Println("worker process started")
+	fmt.Println("[leader] worker process started")
 
 	if common.MyroxAddr == "" {
 		go cmduiServer()
@@ -47,7 +47,7 @@ func Main() {
 
 func cmduiServer() {
 	cmdChan := make(chan *msgx.Message)
-	fmt.Printf("open cmdui interface: %s\n", common.CmdUIAddr)
+	fmt.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {
 		common.Crash(err.Error())
@@ -59,22 +59,22 @@ func cmduiServer() {
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("[leader] " + err.Error())
 			continue
 		}
 		if err := cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("[leader] " + err.Error())
 			goto closeNext
 		}
 		req, ok = msgx.Recv(cmdConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
-		fmt.Printf("received from client: %v\n", req)
+		fmt.Printf("[leader] received from client: %v\n", req)
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
-				fmt.Println("received stop")
+				fmt.Println("[leader] received stop")
 				common.Stop() // worker will stop immediately after msgConn is closed
 			case common.ComdRecmd:
 				newAddr := req.Get("newAddr") // succeeding cmduiAddr
@@ -84,10 +84,10 @@ func cmduiServer() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					cmdGate.Close()
 					cmdGate = newGate
-					fmt.Printf("cmdui re-opened to %s\n", newAddr)
+					fmt.Printf("[leader] cmdui re-opened to %s\n", newAddr)
 					goto closeNext
 				} else {
-					fmt.Printf("recmd failed: %s\n", err.Error())
+					fmt.Printf("[leader] recmd failed: %s\n", err.Error())
 				}
 			case common.ComdReweb:
 				// TODO
@@ -106,7 +106,7 @@ func cmduiServer() {
 				cmdChan <- req
 				resp = <-cmdChan
 			}
-			fmt.Printf("send response: %v\n", resp)
+			fmt.Printf("[leader] send response: %v\n", resp)
 			msgx.Send(cmdConn, resp)
 		}
 	closeNext:
@@ -126,5 +126,5 @@ func myroxClient() {
 	// TODO
 	roxChan := make(chan *msgx.Message)
 	_ = roxChan
-	fmt.Println("TODO")
+	fmt.Println("[leader] TODO")
 }

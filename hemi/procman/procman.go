@@ -118,10 +118,14 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			if err := os.MkdirAll(filepath.Dir(LogFile), 0755); err != nil {
 				common.Crash(err.Error())
 			}
+			if !common.DaemonMode {
+				os.Stdout.Close()
+			}
 			logFile, err := os.OpenFile(LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
 			if err != nil {
 				common.Crash(err.Error())
 			}
+
 			ErrFile := common.ErrFile
 			if ErrFile == "" {
 				ErrFile = common.LogsDir + "/" + common.Program + ".err"
@@ -131,10 +135,14 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			if err := os.MkdirAll(filepath.Dir(ErrFile), 0755); err != nil {
 				common.Crash(err.Error())
 			}
+			if !common.DaemonMode {
+				os.Stderr.Close()
+			}
 			errFile, err := os.OpenFile(ErrFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
 			if err != nil {
 				common.Crash(err.Error())
 			}
+
 			if common.DaemonMode { // start the leader daemon and exit
 				devNull, err := os.Open(os.DevNull)
 				if err != nil {
@@ -153,9 +161,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 					common.Crash(err.Error())
 				}
 			} else { // run as foreground leader. default case
-				os.Stdout.Close()
 				os.Stdout = logFile
-				os.Stderr.Close()
 				os.Stderr = errFile
 				leader.Main()
 			}

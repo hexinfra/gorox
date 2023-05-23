@@ -3,25 +3,25 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Gosites server (leader & worker) and its control client.
+// Website server (leader & worker) and its control client.
 
 package main
 
 import (
 	"github.com/hexinfra/gorox/hemi/procman"
 
-	_ "github.com/hexinfra/gorox/hemi/gosites/apps"
-	_ "github.com/hexinfra/gorox/hemi/gosites/exts"
-	_ "github.com/hexinfra/gorox/hemi/gosites/jobs"
-	_ "github.com/hexinfra/gorox/hemi/gosites/srvs"
-	_ "github.com/hexinfra/gorox/hemi/gosites/svcs"
+	_ "github.com/hexinfra/gorox/hemi/website/apps"
+	_ "github.com/hexinfra/gorox/hemi/website/exts"
+	_ "github.com/hexinfra/gorox/hemi/website/jobs"
+	_ "github.com/hexinfra/gorox/hemi/website/srvs"
+	_ "github.com/hexinfra/gorox/hemi/website/svcs"
 )
 
 const usage = `
-Gosites (%s)
+Website (%s)
 ================================================================================
 
-  gosites [ACTION] [OPTIONS]
+  website [ACTION] [OPTIONS]
 
 ACTION
 ------
@@ -64,7 +64,7 @@ OPTIONS
   -logs   <path>    # logs directory to use
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
-  -log    <path>    # leader log file (default: gosites-leader.log in logs dir)
+  -log    <path>    # leader log file (default: website-leader.log in logs dir)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
@@ -75,5 +75,5 @@ OPTIONS
 `
 
 func main() {
-	procman.Main("gosites", usage, 0, "127.0.0.1:9521", "127.0.0.1:9522")
+	procman.Main("website", usage, 0, "127.0.0.1:9521", "127.0.0.1:9522")
 }

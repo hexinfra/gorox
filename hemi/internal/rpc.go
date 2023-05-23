@@ -105,7 +105,7 @@ func (s *Svc) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatch(in Input, out Output) {
+func (s *Svc) dispatch(in In, out Out) {
 	// TODO
 }
 

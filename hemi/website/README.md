@@ -7,4 +7,4 @@ Build
 Run
 ===
 
-  shell> ./gosites
+  shell> ./website

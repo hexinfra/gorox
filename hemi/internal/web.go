@@ -34,7 +34,7 @@ type App struct {
 	hostnames            [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
 	webRoot              string            // root dir for the web
 	file404              string            // 404 file path
-	bytes404             []byte            // bytes of the default 404 file
+	text404              []byte            // bytes of the default 404 file
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            *logcfg           // ...
@@ -204,7 +204,7 @@ func (a *App) OnPrepare() {
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
-			a.bytes404 = data
+			a.text404 = data
 		}
 	}
 
@@ -368,7 +368,7 @@ func (a *App) dispatchHandlet(req Request, resp Response) {
 		}
 	}
 	// If we reach here, it means the stream is not processed by any rule in this app.
-	resp.SendNotFound(a.bytes404)
+	resp.SendNotFound(a.text404)
 }
 func (a *App) dispatchSocklet(req Request, sock Socket) {
 	req.makeAbsPath() // for fs check rules, if any

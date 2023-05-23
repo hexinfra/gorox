@@ -47,7 +47,7 @@ func (a *webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recv
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".sendTimeout is a ivalid value")
+		return errors.New(".sendTimeout has an invalid value")
 	}, sendTimeout)
 
 	// recvTimeout
@@ -55,7 +55,7 @@ func (a *webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recv
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".recvTimeout is a ivalid value")
+		return errors.New(".recvTimeout has an invalid value")
 	}, recvTimeout)
 
 	// maxContentSize
@@ -63,7 +63,7 @@ func (a *webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recv
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize is a ivalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
 

@@ -11,13 +11,6 @@ import (
 	"bytes"
 )
 
-// RPCServer
-type RPCServer interface {
-	Server
-
-	LinkSvcs()
-}
-
 // GRPCBridge is the interface for all gRPC server bridges.
 // Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
 type GRPCBridge interface {
@@ -32,6 +25,13 @@ type ThriftBridge interface {
 	RPCServer
 
 	ThriftServer() any // may be a thrift.TServer?
+}
+
+// RPCServer
+type RPCServer interface {
+	Server
+
+	LinkSvcs()
 }
 
 // rpcServer_
@@ -107,12 +107,12 @@ type rpcGate_ struct {
 	Gate_
 }
 
-// Input is the RPC request.
-type Input interface {
+// In is the RPC request.
+type In interface {
 	Svc() *Svc
 }
 
-// Output is the RPC response.
-type Output interface {
-	Input() Input
+// Out is the RPC response.
+type Out interface {
+	In() In
 }

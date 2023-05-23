@@ -6,6 +6,6 @@
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/gosites/apps/en_us"
-	_ "github.com/hexinfra/gorox/hemi/gosites/apps/zh_cn"
+	_ "github.com/hexinfra/gorox/hemi/website/apps/en_us"
+	_ "github.com/hexinfra/gorox/hemi/website/apps/zh_cn"
 )

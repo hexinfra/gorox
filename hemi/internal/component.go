@@ -8,6 +8,8 @@
 package internal
 
 import (
+	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -16,7 +18,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -1030,6 +1034,348 @@ type Runner interface {
 	Run() // goroutine
 }
 
+// client is the interface for outgates and backends.
+type client interface {
+	Stage() *Stage
+	TLSMode() bool
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
+
+// client_ is a mixin for outgates and backends.
+type client_ struct {
+	// Mixins
+	Component_
+	// Assocs
+	stage *Stage // current stage
+	// States
+	tlsMode      bool          // use TLS?
+	tlsConfig    *tls.Config   // TLS config if TLS is enabled
+	dialTimeout  time.Duration // dial remote timeout
+	writeTimeout time.Duration // write operation timeout
+	readTimeout  time.Duration // read operation timeout
+	aliveTimeout time.Duration // conn alive timeout
+	connID       atomic.Int64  // next conn id
+}
+
+func (c *client_) onCreate(name string, stage *Stage) {
+	c.MakeComp(name)
+	c.stage = stage
+}
+
+func (c *client_) onConfigure() {
+	// tlsMode
+	c.ConfigureBool("tlsMode", &c.tlsMode, false)
+	if c.tlsMode {
+		c.tlsConfig = new(tls.Config)
+	}
+
+	// dialTimeout
+	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".dialTimeout has an invalid value")
+	}, 10*time.Second)
+
+	// writeTimeout
+	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, 30*time.Second)
+
+	// readTimeout
+	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
+		if value > time.Second {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 30*time.Second)
+
+	// aliveTimeout
+	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 5*time.Second)
+}
+func (c *client_) onPrepare() {
+	// Currently nothing.
+}
+
+func (c *client_) OnShutdown() {
+	close(c.Shut)
+}
+
+func (c *client_) Stage() *Stage               { return c.stage }
+func (c *client_) TLSMode() bool               { return c.tlsMode }
+func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
+func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
+func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
+
+func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
+
+// outgate
+type outgate interface {
+	servedConns() int64
+	servedStreams() int64
+}
+
+// outgate_ is the mixin for outgates.
+type outgate_ struct {
+	// Mixins
+	client_
+	// States
+	nServedStreams atomic.Int64
+	nServedExchans atomic.Int64
+}
+
+func (o *outgate_) onCreate(name string, stage *Stage) {
+	o.client_.onCreate(name, stage)
+}
+
+func (o *outgate_) onConfigure() {
+	o.client_.onConfigure()
+}
+func (o *outgate_) onPrepare() {
+	o.client_.onPrepare()
+}
+
+func (o *outgate_) servedStreams() int64 { return o.nServedStreams.Load() }
+func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
+
+func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
+func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
+
+// Backend is a group of nodes.
+type Backend interface {
+	Component
+	client
+
+	Maintain() // goroutine
+}
+
+// Backend_ is the mixin for backends.
+type Backend_[N Node] struct {
+	// Mixins
+	client_
+	// Assocs
+	creator interface {
+		createNode(id int32) N
+	} // if Go's generic supports new(N) then this is not needed.
+	nodes []N // nodes of this backend
+	// States
+}
+
+func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+	b.client_.onCreate(name, stage)
+	b.creator = creator
+}
+
+func (b *Backend_[N]) onConfigure() {
+	b.client_.onConfigure()
+	// nodes
+	v, ok := b.Find("nodes")
+	if !ok {
+		UseExitln("nodes is required for backends")
+	}
+	vNodes, ok := v.List()
+	if !ok {
+		UseExitln("nodes must be a list")
+	}
+	for id, elem := range vNodes {
+		vNode, ok := elem.Dict()
+		if !ok {
+			UseExitln("node in nodes must be a dict")
+		}
+		node := b.creator.createNode(int32(id))
+
+		// address
+		vAddress, ok := vNode["address"]
+		if !ok {
+			UseExitln("address is required in node")
+		}
+		if address, ok := vAddress.String(); ok && address != "" {
+			node.setAddress(address)
+		}
+
+		// weight
+		vWeight, ok := vNode["weight"]
+		if !ok {
+			node.setWeight(1)
+		} else if weight, ok := vWeight.Int32(); ok && weight > 0 {
+			node.setWeight(weight)
+		} else {
+			UseExitln("bad weight in node")
+		}
+
+		// keepConns
+		vKeepConns, ok := vNode["keepConns"]
+		if !ok {
+			node.setKeepConns(10)
+		} else if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
+			node.setKeepConns(keepConns)
+		} else {
+			UseExitln("bad keepConns in node")
+		}
+
+		b.nodes = append(b.nodes, node)
+	}
+}
+func (b *Backend_[N]) onPrepare() {
+	b.client_.onPrepare()
+}
+
+func (b *Backend_[N]) Maintain() { // goroutine
+	for _, node := range b.nodes {
+		b.IncSub(1)
+		go node.Maintain()
+	}
+	<-b.Shut
+
+	// Backend is told to shutdown. Tell its nodes to shutdown too
+	for _, node := range b.nodes {
+		node.shut()
+	}
+	b.WaitSubs() // nodes
+	if IsDebug(2) {
+		Debugf("backend=%s done\n", b.Name())
+	}
+	b.stage.SubDone()
+}
+
+// Node is a member of backend.
+type Node interface {
+	setAddress(address string)
+	setWeight(weight int32)
+	setKeepConns(keepConns int32)
+	Maintain() // goroutine
+	shut()
+}
+
+// Node_ is a mixin for backend nodes.
+type Node_ struct {
+	// Mixins
+	subsWaiter_ // usually for conns
+	shutdownable_
+	// States
+	id        int32       // the node id
+	address   string      // hostname:port
+	weight    int32       // 1, 22, 333, ...
+	keepConns int32       // max conns to keep alive
+	down      atomic.Bool // TODO: false-sharing
+	freeList  struct {    // free list of conns in this node
+		sync.Mutex
+		head conn // head element
+		tail conn // tail element
+		qnty int  // size of the list
+	}
+}
+
+func (n *Node_) init(id int32) {
+	n.shutdownable_.init()
+	n.id = id
+}
+
+func (n *Node_) setAddress(address string)    { n.address = address }
+func (n *Node_) setWeight(weight int32)       { n.weight = weight }
+func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
+
+func (n *Node_) markDown()    { n.down.Store(true) }
+func (n *Node_) markUp()      { n.down.Store(false) }
+func (n *Node_) isDown() bool { return n.down.Load() }
+
+func (n *Node_) pullConn() conn {
+	list := &n.freeList
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.getNext()
+	conn.setNext(nil)
+	list.qnty--
+	return conn
+}
+func (n *Node_) pushConn(conn conn) {
+	list := &n.freeList
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		list.head = conn
+		list.tail = conn
+	} else { // >= 1
+		list.tail.setNext(conn)
+		list.tail = conn
+	}
+	list.qnty++
+}
+
+func (n *Node_) closeFree() int {
+	list := &n.freeList
+	list.Lock()
+	defer list.Unlock()
+
+	for conn := list.head; conn != nil; conn = conn.getNext() {
+		conn.closeConn()
+	}
+	qnty := list.qnty
+	list.qnty = 0
+	list.head, list.tail = nil, nil
+	return qnty
+}
+
+func (n *Node_) shut() {
+	close(n.Shut)
+}
+
+var errNodeDown = errors.New("node is down")
+
+// conn is the client conns.
+type conn interface {
+	getNext() conn
+	setNext(next conn)
+	isAlive() bool
+	closeConn()
+}
+
+// conn_ is the mixin for client conns.
+type conn_ struct {
+	// Conn states (non-zeros)
+	next   conn      // the link
+	id     int64     // the conn id
+	client client    // associated client
+	expire time.Time // when the conn is considered expired
+	// Conn states (zeros)
+	lastWrite time.Time // deadline of last write operation
+	lastRead  time.Time // deadline of last read operation
+}
+
+func (c *conn_) onGet(id int64, client client) {
+	c.id = id
+	c.client = client
+	c.expire = time.Now().Add(client.AliveTimeout())
+}
+func (c *conn_) onPut() {
+	c.client = nil
+	c.expire = time.Time{}
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
+}
+
+func (c *conn_) getNext() conn     { return c.next }
+func (c *conn_) setNext(next conn) { c.next = next }
+
+func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
+
 // Stater component is the interface to storages of HTTP states. See RFC 6265.
 type Stater interface {
 	Component
@@ -1066,6 +1412,389 @@ func (s *Session) init() {
 func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
+
+type _router interface { // *QUICRouter, *TCPSRouter, *UDPSRouter
+	Component
+}
+type _gate interface { // *quicGate, *tcpsGate, *udpsGate
+	open() error
+	shut() error
+}
+type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
+	Component
+}
+type _editor interface { // QUICEditor, TCPSEditor, UDPSEditor
+	Component
+	identifiable
+}
+type _case interface { // *quicCase, *tcpsCase, *udpsCase
+	Component
+}
+
+// router_ is the mixin for *QUICRouter, *TCPSRouter, *UDPSRouter.
+type router_[R _router, G _gate, D _dealer, E _editor, C _case] struct {
+	// Mixins
+	Server_
+	// Assocs
+	gates   []G         // gates opened
+	dealers compDict[D] // defined dealers. indexed by name
+	editors compDict[E] // defined editors. indexed by name
+	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	// States
+	dealerCreators map[string]func(name string, stage *Stage, router R) D
+	editorCreators map[string]func(name string, stage *Stage, router R) E
+	accessLog      *logcfg // ...
+	logger         *logger // router access logger
+	editorsByID    [256]E  // for fast searching. position 0 is not used
+	nEditors       uint8   // used number of editorsByID in this router
+}
+
+func (r *router_[R, G, D, E, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, R) D, editorCreators map[string]func(string, *Stage, R) E) {
+	r.Server_.OnCreate(name, stage)
+	r.dealers = make(compDict[D])
+	r.editors = make(compDict[E])
+	r.dealerCreators = dealerCreators
+	r.editorCreators = editorCreators
+	r.nEditors = 1 // position 0 is not used
+}
+
+func (r *router_[R, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
+	r.cases.walk(C.OnShutdown)
+	r.editors.walk(E.OnShutdown)
+	r.dealers.walk(D.OnShutdown)
+}
+
+func (r *router_[R, G, D, E, C]) onConfigure() {
+	r.Server_.OnConfigure()
+
+	// accessLog, TODO
+}
+func (r *router_[R, G, D, E, C]) configureSubs() { // dealers, editors, cases
+	r.dealers.walk(D.OnConfigure)
+	r.editors.walk(E.OnConfigure)
+	r.cases.walk(C.OnConfigure)
+}
+
+func (r *router_[R, G, D, E, C]) onPrepare() {
+	r.Server_.OnPrepare()
+	if r.accessLog != nil {
+		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+	}
+}
+func (r *router_[R, G, D, E, C]) prepareSubs() { // dealers, editors, cases
+	r.dealers.walk(D.OnPrepare)
+	r.editors.walk(E.OnPrepare)
+	r.cases.walk(C.OnPrepare)
+}
+
+func (r *router_[R, G, D, E, C]) createDealer(sign string, name string) D {
+	if _, ok := r.dealers[name]; ok {
+		UseExitln("conflicting dealer with a same name in router")
+	}
+	creatorsLock.RLock()
+	defer creatorsLock.RUnlock()
+	create, ok := r.dealerCreators[sign]
+	if !ok {
+		UseExitln("unknown dealer sign: " + sign)
+	}
+	dealer := create(name, r.stage, r.shell.(R))
+	dealer.setShell(dealer)
+	r.dealers[name] = dealer
+	return dealer
+}
+func (r *router_[R, G, D, E, C]) createEditor(sign string, name string) E {
+	if r.nEditors == 255 {
+		UseExitln("cannot create editor: too many editors in one router")
+	}
+	if _, ok := r.editors[name]; ok {
+		UseExitln("conflicting editor with a same name in router")
+	}
+	creatorsLock.RLock()
+	defer creatorsLock.RUnlock()
+	create, ok := r.editorCreators[sign]
+	if !ok {
+		UseExitln("unknown editor sign: " + sign)
+	}
+	editor := create(name, r.stage, r.shell.(R))
+	editor.setShell(editor)
+	editor.setID(r.nEditors)
+	r.editors[name] = editor
+	r.editorsByID[r.nEditors] = editor
+	r.nEditors++
+	return editor
+}
+func (r *router_[R, G, D, E, C]) hasCase(name string) bool {
+	for _, kase := range r.cases {
+		if kase.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *router_[R, G, D, E, C]) editorByID(id uint8) E { return r.editorsByID[id] }
+
+func (r *router_[R, G, D, E, C]) Log(s string) {
+	if r.logger != nil {
+		r.logger.Log(s)
+	}
+}
+func (r *router_[R, G, D, E, C]) Logln(s string) {
+	if r.logger != nil {
+		r.logger.Logln(s)
+	}
+}
+func (r *router_[R, G, D, E, C]) Logf(format string, args ...any) {
+	if r.logger != nil {
+		r.logger.Logf(format, args...)
+	}
+}
+
+// case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
+type case_[R _router, D _dealer, E _editor] struct {
+	// Mixins
+	Component_
+	// Assocs
+	router  R   // associated router
+	dealers []D // dealers contained
+	editors []E // editors contained
+	// States
+	general  bool  // general match?
+	varCode  int16 // the variable code
+	patterns [][]byte
+}
+
+func (c *case_[R, D, E]) onCreate(name string, router R) {
+	c.MakeComp(name)
+	c.router = router
+}
+func (c *case_[R, D, E]) OnShutdown() {
+	c.router.SubDone()
+}
+
+func (c *case_[R, D, E]) OnConfigure() {
+	if c.info == nil {
+		c.general = true
+		return
+	}
+	cond := c.info.(caseCond)
+	c.varCode = cond.varCode
+	for _, pattern := range cond.patterns {
+		if pattern == "" {
+			UseExitln("empty case cond pattern")
+		}
+		c.patterns = append(c.patterns, []byte(pattern))
+	}
+}
+func (c *case_[R, D, E]) OnPrepare() {
+}
+
+func (c *case_[R, D, E]) addDealer(dealer D) { c.dealers = append(c.dealers, dealer) }
+func (c *case_[R, D, E]) addEditor(editor E) { c.editors = append(c.editors, editor) }
+
+func (c *case_[R, D, E]) equalMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.Equal(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (c *case_[R, D, E]) prefixMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (c *case_[R, D, E]) suffixMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (c *case_[R, D, E]) regexpMatch(value []byte) bool {
+	// TODO
+	return false
+}
+func (c *case_[R, D, E]) notEqualMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.Equal(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (c *case_[R, D, E]) notPrefixMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (c *case_[R, D, E]) notSuffixMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (c *case_[R, D, E]) notRegexpMatch(value []byte) bool {
+	// TODO
+	return false
+}
+
+// Server component.
+type Server interface {
+	Component
+	Serve() // goroutine
+
+	Stage() *Stage
+	TLSMode() bool
+	ColonPort() string
+	ColonPortBytes() []byte
+	ReadTimeout() time.Duration
+	WriteTimeout() time.Duration
+}
+
+// Server_ is the mixin for all servers.
+type Server_ struct {
+	// Mixins
+	Component_
+	// Assocs
+	stage *Stage // current stage
+	// States
+	address         string        // hostname:port
+	colonPort       string        // like: ":9876"
+	colonPortBytes  []byte        // like: []byte(":9876")
+	tlsMode         bool          // tls mode?
+	tlsConfig       *tls.Config   // set if is tls mode
+	readTimeout     time.Duration // read() timeout
+	writeTimeout    time.Duration // write() timeout
+	numGates        int32         // number of gates
+	maxConnsPerGate int32         // max concurrent connections allowed per gate
+}
+
+func (s *Server_) OnCreate(name string, stage *Stage) { // exported
+	s.MakeComp(name)
+	s.stage = stage
+}
+
+func (s *Server_) OnConfigure() {
+	// address
+	if v, ok := s.Find("address"); ok {
+		if address, ok := v.String(); ok {
+			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
+				UseExitln("bad address: " + address)
+			} else {
+				s.address = address
+				s.colonPort = address[p:]
+				s.colonPortBytes = []byte(s.colonPort)
+			}
+		} else {
+			UseExitln("address should be of string type")
+		}
+	} else {
+		UseExitln("address is required for servers")
+	}
+
+	// tlsMode
+	s.ConfigureBool("tlsMode", &s.tlsMode, false)
+	if s.tlsMode {
+		s.tlsConfig = new(tls.Config)
+	}
+
+	// readTimeout
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// writeTimeout
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// numGates
+	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".numGates has an invalid value")
+	}, s.stage.NumCPU())
+
+	// maxConnsPerGate
+	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxConnsPerGate has an invalid value")
+	}, 100000)
+}
+func (s *Server_) OnPrepare() {
+	// Currently nothing.
+}
+
+func (s *Server_) Stage() *Stage               { return s.stage }
+func (s *Server_) Address() string             { return s.address }
+func (s *Server_) ColonPort() string           { return s.colonPort }
+func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
+func (s *Server_) TLSMode() bool               { return s.tlsMode }
+func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
+func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
+func (s *Server_) NumGates() int32             { return s.numGates }
+func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
+
+// Gate is the interface for all gates.
+type Gate interface {
+	ID() int32
+	IsShut() bool
+
+	shut() error
+}
+
+// Gate_ is a mixin for router gates and server gates.
+type Gate_ struct {
+	// Mixins
+	subsWaiter_ // for conns
+	// Assocs
+	stage *Stage // current stage
+	// States
+	id       int32        // gate id
+	address  string       // listening address
+	isShut   atomic.Bool  // is gate shut?
+	maxConns int32        // max concurrent conns allowed
+	numConns atomic.Int32 // TODO: false sharing
+}
+
+func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
+	g.stage = stage
+	g.id = id
+	g.address = address
+	g.isShut.Store(false)
+	g.maxConns = maxConns
+	g.numConns.Store(0)
+}
+
+func (g *Gate_) Stage() *Stage   { return g.stage }
+func (g *Gate_) ID() int32       { return g.id }
+func (g *Gate_) Address() string { return g.address }
+
+func (g *Gate_) MarkShut()    { g.isShut.Store(true) }
+func (g *Gate_) IsShut() bool { return g.isShut.Load() }
+
+func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 // Cronjob component
 type Cronjob interface {

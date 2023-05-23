@@ -19,6 +19,34 @@
 
 package internal
 
+import (
+	"sync"
+)
+
+// TODO: use dedicated backends and nodes?
+
+// poolAJPExchan
+var poolAJPExchan sync.Pool
+
+func getAJPExchan(proxy *ajpProxy, conn *TConn) *ajpExchan {
+	var exchan *ajpExchan
+	if x := poolAJPExchan.Get(); x == nil {
+		exchan = new(ajpExchan)
+		req, resp := &exchan.request, &exchan.response
+		req.exchan = exchan
+		req.response = resp
+		resp.exchan = exchan
+	} else {
+		exchan = x.(*ajpExchan)
+	}
+	exchan.onUse(proxy, conn)
+	return exchan
+}
+func putAJPExchan(exchan *ajpExchan) {
+	exchan.onEnd()
+	poolAJPExchan.Put(exchan)
+}
+
 // ajpExchan
 type ajpExchan struct {
 	// Assocs
@@ -26,14 +54,22 @@ type ajpExchan struct {
 	response ajpResponse // the ajp response
 }
 
+func (x *ajpExchan) onUse(proxy *ajpProxy, conn *TConn) {
+}
+func (x *ajpExchan) onEnd() {
+}
+
 // ajpRequest
 type ajpRequest struct { // outgoing. needs building
-	// TODO
+	// Assocs
+	exchan   *ajpExchan
+	response *ajpResponse
 }
 
 // ajpResponse
 type ajpResponse struct { // incoming. needs parsing
-	// TODO
+	// Assocs
+	exchan *ajpExchan
 }
 
 //////////////////////////////////////// AJP protocol elements ////////////////////////////////////////

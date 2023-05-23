@@ -10,6 +10,34 @@
 
 package internal
 
+import (
+	"sync"
+)
+
+// TODO: use dedicated backends and nodes?
+
+// poolUWSGIExchan
+var poolUWSGIExchan sync.Pool
+
+func getUWSGIExchan(proxy *uwsgiProxy, conn *TConn) *uwsgiExchan {
+	var exchan *uwsgiExchan
+	if x := poolUWSGIExchan.Get(); x == nil {
+		exchan = new(uwsgiExchan)
+		req, resp := &exchan.request, &exchan.response
+		req.exchan = exchan
+		req.response = resp
+		resp.exchan = exchan
+	} else {
+		exchan = x.(*uwsgiExchan)
+	}
+	exchan.onUse(proxy, conn)
+	return exchan
+}
+func putUWSGIExchan(exchan *uwsgiExchan) {
+	exchan.onEnd()
+	poolUWSGIExchan.Put(exchan)
+}
+
 // uwsgiExchan
 type uwsgiExchan struct {
 	// Assocs
@@ -17,14 +45,22 @@ type uwsgiExchan struct {
 	response uwsgiResponse // the uwsgi response
 }
 
+func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn *TConn) {
+}
+func (x *uwsgiExchan) onEnd() {
+}
+
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
-	// TODO
+	// Assocs
+	exchan   *uwsgiExchan
+	response *uwsgiResponse
 }
 
 // uwsgiResponse
 type uwsgiResponse struct { // incoming. needs parsing
-	// TODO
+	// Assocs
+	exchan *uwsgiExchan
 }
 
 //////////////////////////////////////// UWSGI protocol elements ////////////////////////////////////////

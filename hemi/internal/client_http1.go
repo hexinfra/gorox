@@ -51,6 +51,9 @@ func (f *HTTP1Outgate) onCreate(stage *Stage) {
 
 func (f *HTTP1Outgate) OnConfigure() {
 	f.webOutgate_.onConfigure(f)
+	if f.tlsConfig != nil {
+		f.tlsConfig.NextProtos = []string{"http/1.1"}
+	}
 }
 func (f *HTTP1Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
@@ -98,6 +101,9 @@ func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
+	if b.tlsConfig != nil {
+		b.tlsConfig.NextProtos = []string{"http/1.1"}
+	}
 }
 func (b *HTTP1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))

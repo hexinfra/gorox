@@ -6,3 +6,9 @@
 // HRPC proxy implementation.
 
 package internal
+
+// hrpcProxy
+type hrpcProxy struct {
+	// Mixins
+	rpcProxy_
+}

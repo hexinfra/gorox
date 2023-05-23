@@ -48,6 +48,9 @@ func (f *HTTP2Outgate) onCreate(stage *Stage) {
 
 func (f *HTTP2Outgate) OnConfigure() {
 	f.webOutgate_.onConfigure(f)
+	if f.tlsConfig != nil {
+		f.tlsConfig.NextProtos = []string{"h2"}
+	}
 }
 func (f *HTTP2Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
@@ -84,6 +87,9 @@ func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
+	if b.tlsConfig != nil {
+		b.tlsConfig.NextProtos = []string{"h2"}
+	}
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))

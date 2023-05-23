@@ -41,6 +41,9 @@ func (f *webOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *webOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
+	if f.tlsConfig != nil {
+		f.tlsConfig.InsecureSkipVerify = true
+	}
 	f.webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	f.streamHolder_.onConfigure(shell, 1000)
 	f.contentSaver_.onConfigure(shell, TempDir()+"/web/outgates/"+shell.Name())
@@ -70,6 +73,9 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
+	if b.tlsConfig != nil {
+		b.tlsConfig.InsecureSkipVerify = true
+	}
 	b.webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
 	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
@@ -157,8 +163,8 @@ func (s *clientStream_) startUDPTun() {
 // clientRequest is the interface for *H[1-3]Request and *HRequest.
 type clientRequest interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool // used by proxies
-	copyCookies(req Request) bool                        // HTTP 1/2/3 have different requirements on "cookie" header
+	setAuthority(hostname []byte, colonPort []byte) bool
+	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
 // clientRequest_ is the mixin for H[1-3]Request and HRequest.

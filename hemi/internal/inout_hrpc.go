@@ -9,3 +9,9 @@
 // HRPC is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
 
 package internal
+
+// hrpcIn_
+type hrpcIn_ = rpcIn_
+
+// hrpcOut_
+type hrpcOut_ = rpcOut_

@@ -7,7 +7,7 @@
 
 package internal
 
-// hrpcServer
+// hrpcServer is the HRPC server.
 type hrpcServer struct {
 	// Mixins
 	rpcServer_
@@ -17,7 +17,7 @@ type hrpcServer struct {
 func (s *hrpcServer) Serve() { // goroutine
 }
 
-// hrpcGate
+// hrpcGate is a gate of hrpcServer.
 type hrpcGate struct {
 	// Mixins
 	rpcGate_
@@ -26,21 +26,36 @@ type hrpcGate struct {
 func (g *hrpcGate) serve() { // goroutine
 }
 
-// hrpcCall
+// hrpcCall is the server-side HRPC call.
 type hrpcCall struct {
 	// Mixins
 	serverCall_
 	// Assocs
 	req  hrpcReq
 	resp hrpcResp
+	// Call states (stocks)
+	// Call states (controlled)
+	// Call states (non-zeros)
+	gate *hrpcGate
+	// Call states (zeros)
 }
 
-// hrpcReq
+// hrpcReq is the server-side HRPC request.
 type hrpcReq struct {
-	// TODO
+	// Mixins
+	serverReq_
+	// Call states (stocks)
+	// Call states (controlled)
+	// Call states (non-zeros)
+	// Call states (zeros)
 }
 
-// hrpcResp
+// hrpcResp is the server-side HRPC response.
 type hrpcResp struct {
-	// TODO
+	// Mixins
+	serverResp_
+	// Call states (stocks)
+	// Call states (controlled)
+	// Call states (non-zeros)
+	// Call states (zeros)
 }

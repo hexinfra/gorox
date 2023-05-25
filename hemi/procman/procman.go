@@ -34,7 +34,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.StringVar(&common.CmdUIAddr, "cmdui", cmdAddr, "")
 	flag.StringVar(&common.WebUIAddr, "webui", webAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
-	flag.StringVar(&common.ConfigFile, "conf", "", "")
+	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
 	flag.StringVar(&common.BaseDir, "base", "", "")

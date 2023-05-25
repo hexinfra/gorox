@@ -8,6 +8,7 @@
 package worker
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 
@@ -18,31 +19,34 @@ import (
 
 var onTells = map[uint8]func(req *msgx.Message){
 	common.ComdQuit: func(req *msgx.Message) {
-		currentStage.Quit() // blocking
+		curStage.Quit() // blocking
 		os.Exit(0)
 	},
 	common.ComdReload: func(req *msgx.Message) {
-		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
-			oldStage := currentStage
-			newStage.Start(oldStage.ID() + 1)
-			currentStage = newStage
-			oldStage.Quit()
+		newStage, err := hemi.ApplyFile(configBase, configFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return
 		}
+		oldStage := curStage
+		newStage.Start(oldStage.ID() + 1)
+		curStage = newStage
+		oldStage.Quit()
 	},
 	common.ComdCPU: func(req *msgx.Message) {
-		currentStage.ProfCPU()
+		curStage.ProfCPU()
 	},
 	common.ComdHeap: func(req *msgx.Message) {
-		currentStage.ProfHeap()
+		curStage.ProfHeap()
 	},
 	common.ComdThread: func(req *msgx.Message) {
-		currentStage.ProfThread()
+		curStage.ProfThread()
 	},
 	common.ComdGoroutine: func(req *msgx.Message) {
-		currentStage.ProfGoroutine()
+		curStage.ProfGoroutine()
 	},
 	common.ComdBlock: func(req *msgx.Message) {
-		currentStage.ProfBlock()
+		curStage.ProfBlock()
 	},
 	common.ComdGC: func(req *msgx.Message) {
 		runtime.GC()

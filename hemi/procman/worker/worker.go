@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	configBase   string      // base string of config file
-	configFile   string      // config file path
-	currentStage *hemi.Stage // current stage
+	configBase string      // base string of config file
+	configFile string      // config file path
+	curStage   *hemi.Stage // current stage
 )
 
 func Main(token string) {
@@ -45,11 +45,11 @@ func Main(token string) {
 	}
 
 	// Register succeeded. Now start the initial stage
-	currentStage, err = hemi.ApplyFile(configBase, configFile)
+	curStage, err = hemi.ApplyFile(configBase, configFile)
 	if err != nil {
 		common.Crash(err.Error())
 	}
-	currentStage.Start(0)
+	curStage.Start(0)
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process

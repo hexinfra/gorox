@@ -61,7 +61,7 @@ OPTIONS
   -cmdui  <addr>    # listen address of leader cmdui (default: 127.0.0.1:9523)
   -webui  <addr>    # listen address of leader webui (default: 127.0.0.1:9524)
   -myrox  <addr>    # myrox to use. "-cmdui" and "-webui" will be ignored if set
-  -conf   <config>  # path or url to worker config file
+  -config <config>  # path or url to worker config file
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
   -base   <path>    # base directory of the program

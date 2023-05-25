@@ -78,7 +78,7 @@ func workerKeeper(base string, file string) { // goroutine
 		case exitCode := <-dieChan: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == common.CodeCrash || exitCode == common.CodeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				fmt.Println("[leader] worker critical error")
+				fmt.Printf("[leader] worker critical error! code=%d\n", exitCode)
 				common.Stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()

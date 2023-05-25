@@ -1249,7 +1249,7 @@ type Node_ struct {
 	shutdownable_
 	// States
 	id        int32       // the node id
-	address   string      // hostname:port
+	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
 	keepConns int32       // max conns to keep alive
 	down      atomic.Bool // TODO: false-sharing

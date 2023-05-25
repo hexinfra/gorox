@@ -113,6 +113,8 @@ type ( // core types
 	TConn        = internal.TConn
 	UDPSBackend  = internal.UDPSBackend
 	ULink        = internal.ULink
+	UNIXBackend  = internal.UNIXBackend
+	XConn        = internal.XConn
 
 	QUICRouter = internal.QUICRouter
 	QUICDealer = internal.QUICDealer

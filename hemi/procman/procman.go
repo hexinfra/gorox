@@ -41,7 +41,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.StringVar(&common.LogsDir, "logs", "", "")
 	flag.StringVar(&common.TempDir, "temp", "", "")
 	flag.StringVar(&common.VarsDir, "vars", "", "")
-	flag.StringVar(&common.LogFile, "log", "", "")
+	flag.StringVar(&common.OutFile, "out", "", "")
 	flag.StringVar(&common.ErrFile, "err", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
@@ -127,7 +127,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 				}
 				return osFile
 			}
-			logFile := newFile(common.LogFile, ".log", os.Stdout)
+			outFile := newFile(common.OutFile, ".out", os.Stdout)
 			errFile := newFile(common.ErrFile, ".err", os.Stderr)
 			if common.DaemonMode { // start leader daemon and exit
 				devNull, err := os.Open(os.DevNull)
@@ -136,18 +136,18 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 				}
 				if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
 					Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-					Files: []*os.File{devNull, logFile, errFile},
+					Files: []*os.File{devNull, outFile, errFile},
 					Sys:   system.DaemonSysAttr(),
 				}); err == nil { // leader process started
 					process.Release()
 					devNull.Close()
-					logFile.Close()
+					outFile.Close()
 					errFile.Close()
 				} else {
 					common.Crash(err.Error())
 				}
 			} else { // run as foreground leader. default case
-				os.Stdout = logFile
+				os.Stdout = outFile
 				os.Stderr = errFile
 				leader.Main()
 			}

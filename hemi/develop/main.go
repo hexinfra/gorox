@@ -68,8 +68,8 @@ OPTIONS
   -logs   <path>    # logs directory to use
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
-  -log    <path>    # server log file (default: develop.log in logs dir)
-  -err    <path>    # server err file (default: develop.err in logs dir)
+  -out    <path>    # server stdout file (default: develop.out in logs dir)
+  -err    <path>    # server stderr file (default: develop.err in logs dir)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.

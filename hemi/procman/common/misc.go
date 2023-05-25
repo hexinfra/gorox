@@ -29,7 +29,7 @@ var (
 	LogsDir    string
 	TempDir    string
 	VarsDir    string
-	LogFile    string
+	OutFile    string
 	ErrFile    string
 )
 

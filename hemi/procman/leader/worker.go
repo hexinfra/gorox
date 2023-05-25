@@ -23,7 +23,7 @@ import (
 
 var keeperChan chan chan *msgx.Message
 
-func workerKeeper(base string, file string) { // goroutine
+func workerKeeper(configBase string, configFile string) { // goroutine
 	dieChan := make(chan int) // dead worker go through this channel
 
 	rand.Seed(time.Now().UnixNano())
@@ -35,7 +35,7 @@ func workerKeeper(base string, file string) { // goroutine
 	connKey := string(keyBuffer)
 
 	worker := newWorker(connKey)
-	worker.start(base, file, dieChan)
+	worker.start(configBase, configFile, dieChan)
 	keeperChan <- nil // reply that we have created the worker.
 
 	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker
@@ -52,7 +52,7 @@ func workerKeeper(base string, file string) { // goroutine
 					// Create new worker
 					dieChan2 := make(chan int)
 					worker2 := newWorker(connKey)
-					worker2.start(base, file, dieChan2)
+					worker2.start(configBase, configFile, dieChan2)
 					// Quit old worker
 					req.Comd = common.ComdQuit
 					worker.tell(req)
@@ -83,7 +83,7 @@ func workerKeeper(base string, file string) { // goroutine
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.reset()
 				worker.lastDie = now
-				worker.start(base, file, dieChan) // start again
+				worker.start(configBase, configFile, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
 				fmt.Printf("[leader] worker is broken! code=%d\n", exitCode)
 				common.Stop()
@@ -106,7 +106,7 @@ func newWorker(connKey string) *worker {
 	return w
 }
 
-func (w *worker) start(base string, file string, dieChan chan int) {
+func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	// Open temporary gate
 	tmpGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
 	if err != nil {
@@ -116,7 +116,7 @@ func (w *worker) start(base string, file string, dieChan chan int) {
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
 		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files from leader
 		Sys:   system.DaemonSysAttr(),
 	})
 	if err != nil {
@@ -129,16 +129,18 @@ func (w *worker) start(base string, file string, dieChan chan int) {
 	if err != nil {
 		common.Crash(err.Error())
 	}
+
+	// Close temporary gate
 	tmpGate.Close()
 
-	// msgConn is established, now register worker process
+	// Now that msgConn is established, we register worker process
 	loginReq, ok := msgx.Recv(msgConn, 16<<10)
 	if !ok || loginReq.Get("connKey") != w.connKey {
 		common.Crash("bad worker")
 	}
 	if !msgx.Send(msgConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
-		"base": base,
-		"file": file,
+		"configBase": configBase,
+		"configFile": configFile,
 	})) {
 		common.Crash("send worker")
 	}

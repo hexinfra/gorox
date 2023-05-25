@@ -38,8 +38,8 @@ func Main(token string) {
 	if loginResp, ok := msgx.Call(msgConn, msgx.NewMessage(0, 0, map[string]string{
 		"connKey": parts[1],
 	}), 16<<20); ok {
-		configBase = loginResp.Get("base")
-		configFile = loginResp.Get("file")
+		configBase = loginResp.Get("configBase")
+		configFile = loginResp.Get("configFile")
 	} else {
 		common.Crash("call leader failed")
 	}

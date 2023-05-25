@@ -23,26 +23,34 @@ import (
 
 func Main() {
 	// Check worker's config
-	base, file := common.GetConfig()
-	fmt.Printf("[leader] parse worker config: base=%s file=%s\n", base, file)
-	if _, err := hemi.ApplyFile(base, file); err != nil {
+	configBase, configFile := common.GetConfig()
+	fmt.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
+	if _, err := hemi.ApplyFile(configBase, configFile); err != nil {
 		common.Crash("leader: " + err.Error())
 	}
 
 	// Start the worker
 	keeperChan = make(chan chan *msgx.Message)
-	go workerKeeper(base, file)
+	go workerKeeper(configBase, configFile)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
 	fmt.Println("[leader] worker process started")
 
-	if common.MyroxAddr == "" {
-		go cmduiServer()
-		go webuiServer()
-	} else {
+	if common.MyroxAddr != "" {
 		go myroxClient()
+	} else {
+		// TODO: sync
+		go webuiServer()
+		go cmduiServer()
 	}
 
 	select {} // waiting forever
+}
+
+func myroxClient() {
+	// TODO
+	roxChan := make(chan *msgx.Message)
+	_ = roxChan
+	fmt.Println("[leader] TODO")
 }
 
 func cmduiServer() {
@@ -119,12 +127,6 @@ var webStage *hemi.Stage
 func webuiServer() {
 	// TODO
 	webChan := make(chan *msgx.Message)
+	fmt.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
 	_ = webChan
-}
-
-func myroxClient() {
-	// TODO
-	roxChan := make(chan *msgx.Message)
-	_ = roxChan
-	fmt.Println("[leader] TODO")
 }

@@ -93,7 +93,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			return
 		}
 
-		// Serve.
+		// Now serve.
 		if common.SingleMode { // run as single foreground process. for single mode
 			if stage, err := hemi.ApplyFile(common.GetConfig()); err == nil {
 				stage.Start(0)
@@ -108,42 +108,28 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			} else { // worker daemon
 				worker.Main(token)
 			}
-		} else {
-			LogFile := common.LogFile
-			if LogFile == "" {
-				LogFile = common.LogsDir + "/" + common.Program + ".log"
-			} else if !filepath.IsAbs(LogFile) {
-				LogFile = common.BaseDir + "/" + LogFile
+		} else { // start leader daemon or run leader directly
+			newFile := func(file string, ext string, osFile *os.File) *os.File {
+				if file == "" {
+					file = common.LogsDir + "/" + common.Program + ext
+				} else if !filepath.IsAbs(file) {
+					file = common.BaseDir + "/" + file
+				}
+				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+					common.Crash(err.Error())
+				}
+				if !common.DaemonMode {
+					osFile.Close()
+				}
+				osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+				if err != nil {
+					common.Crash(err.Error())
+				}
+				return osFile
 			}
-			if err := os.MkdirAll(filepath.Dir(LogFile), 0755); err != nil {
-				common.Crash(err.Error())
-			}
-			if !common.DaemonMode {
-				os.Stdout.Close()
-			}
-			logFile, err := os.OpenFile(LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-			if err != nil {
-				common.Crash(err.Error())
-			}
-
-			ErrFile := common.ErrFile
-			if ErrFile == "" {
-				ErrFile = common.LogsDir + "/" + common.Program + ".err"
-			} else if !filepath.IsAbs(ErrFile) {
-				ErrFile = common.BaseDir + "/" + ErrFile
-			}
-			if err := os.MkdirAll(filepath.Dir(ErrFile), 0755); err != nil {
-				common.Crash(err.Error())
-			}
-			if !common.DaemonMode {
-				os.Stderr.Close()
-			}
-			errFile, err := os.OpenFile(ErrFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-			if err != nil {
-				common.Crash(err.Error())
-			}
-
-			if common.DaemonMode { // start the leader daemon and exit
+			logFile := newFile(common.LogFile, ".log", os.Stdout)
+			errFile := newFile(common.ErrFile, ".err", os.Stderr)
+			if common.DaemonMode { // start leader daemon and exit
 				devNull, err := os.Open(os.DevNull)
 				if err != nil {
 					common.Crash(err.Error())

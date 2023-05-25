@@ -33,7 +33,6 @@ func Main() {
 	keeperChan = make(chan chan *msgx.Message)
 	go workerKeeper(configBase, configFile)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
-	fmt.Println("[leader] worker process started")
 
 	if common.MyroxAddr != "" {
 		go myroxClient()
@@ -122,11 +121,13 @@ func cmduiServer() {
 	}
 }
 
-var webStage *hemi.Stage
+var (
+	webStage *hemi.Stage
+	webChan  chan *msgx.Message
+)
 
 func webuiServer() {
-	// TODO
-	webChan := make(chan *msgx.Message)
+	webChan = make(chan *msgx.Message)
 	fmt.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
-	_ = webChan
+	// TODO
 }

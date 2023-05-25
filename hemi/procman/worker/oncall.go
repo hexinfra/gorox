@@ -11,13 +11,12 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var onCalls = map[uint8]func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message){
-	common.ComdWorker: func(stage *hemi.Stage, req *msgx.Message, resp *msgx.Message) {
+var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
+	common.ComdWorker: func(req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 }

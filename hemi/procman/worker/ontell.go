@@ -16,35 +16,35 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-var onTells = map[uint8]func(stage *hemi.Stage, req *msgx.Message){
-	common.ComdQuit: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.Quit() // blocking
+var onTells = map[uint8]func(req *msgx.Message){
+	common.ComdQuit: func(req *msgx.Message) {
+		currentStage.Quit() // blocking
 		os.Exit(0)
 	},
-	common.ComdReload: func(stage *hemi.Stage, req *msgx.Message) {
+	common.ComdReload: func(req *msgx.Message) {
 		if newStage, err := hemi.ApplyFile(configBase, configFile); err == nil {
-			id := stage.ID() + 1
-			newStage.Start(id)
+			oldStage := currentStage
+			newStage.Start(oldStage.ID() + 1)
 			currentStage = newStage
-			stage.Quit()
+			oldStage.Quit()
 		}
 	},
-	common.ComdCPU: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfCPU()
+	common.ComdCPU: func(req *msgx.Message) {
+		currentStage.ProfCPU()
 	},
-	common.ComdHeap: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfHeap()
+	common.ComdHeap: func(req *msgx.Message) {
+		currentStage.ProfHeap()
 	},
-	common.ComdThread: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfThread()
+	common.ComdThread: func(req *msgx.Message) {
+		currentStage.ProfThread()
 	},
-	common.ComdGoroutine: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfGoroutine()
+	common.ComdGoroutine: func(req *msgx.Message) {
+		currentStage.ProfGoroutine()
 	},
-	common.ComdBlock: func(stage *hemi.Stage, req *msgx.Message) {
-		stage.ProfBlock()
+	common.ComdBlock: func(req *msgx.Message) {
+		currentStage.ProfBlock()
 	},
-	common.ComdGC: func(stage *hemi.Stage, req *msgx.Message) {
+	common.ComdGC: func(req *msgx.Message) {
 		runtime.GC()
 	},
 }

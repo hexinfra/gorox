@@ -63,7 +63,7 @@ func Main(token string) {
 		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
-				onCall(currentStage, req, resp)
+				onCall(req, resp)
 			} else {
 				resp.Flag = 404
 			}
@@ -71,7 +71,7 @@ func Main(token string) {
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {
-			onTell(currentStage, req)
+			onTell(req)
 		} else {
 			// Unknown tell command, ignore.
 		}

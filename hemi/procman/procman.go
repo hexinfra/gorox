@@ -60,6 +60,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 		system.Advise()
 	case "serve", "check":
 		hemi.SetDebug(int32(common.DebugLevel))
+
 		if common.BaseDir == "" {
 			common.BaseDir = system.ExeDir
 		} else { // baseDir is specified.
@@ -71,6 +72,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 		}
 		common.BaseDir = filepath.ToSlash(common.BaseDir)
 		hemi.SetBaseDir(common.BaseDir)
+
 		setDir := func(pDir *string, name string, set func(string)) {
 			if dir := *pDir; dir == "" {
 				*pDir = common.BaseDir + "/" + name
@@ -86,7 +88,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 
 		if action == "check" { // dry run
 			if _, err := hemi.ApplyFile(common.GetConfig()); err != nil {
-				fmt.Println(err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 			} else {
 				fmt.Println("PASS")
 			}
@@ -99,7 +101,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 				stage.Start(0)
 				select {} // waiting forever
 			} else {
-				fmt.Println(err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 			}
 		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
 			if token == "leader" { // leader daemon

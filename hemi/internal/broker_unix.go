@@ -104,14 +104,14 @@ func (n *unixNode) Maintain() { // goroutine
 	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
-		Debugf("unixNode=%d done\n", n.id)
+		Printf("unixNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
 func (n *unixNode) dial() (*XConn, error) { // some protocols don't support or need connection reusing, just dial & xConn.close.
 	if IsDebug(2) {
-		Debugf("unixNode=%d dial %s\n", n.id, n.address)
+		Printf("unixNode=%d dial %s\n", n.id, n.address)
 	}
 	unixConn, err := net.DialUnix("unix", nil, n.unixAddr)
 	if err != nil {
@@ -119,7 +119,7 @@ func (n *unixNode) dial() (*XConn, error) { // some protocols don't support or n
 		return nil, err
 	}
 	if IsDebug(2) {
-		Debugf("unixNode=%d dial %s OK!\n", n.id, n.address)
+		Printf("unixNode=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := unixConn.SyscallConn()
@@ -152,12 +152,12 @@ func (n *unixNode) fetchConn() (*XConn, error) {
 func (n *unixNode) storeConn(xConn *XConn) {
 	if xConn.IsBroken() || n.isDown() || !xConn.isAlive() {
 		if IsDebug(2) {
-			Debugf("XConn[node=%d id=%d] closed\n", xConn.node.id, xConn.id)
+			Printf("XConn[node=%d id=%d] closed\n", xConn.node.id, xConn.id)
 		}
 		n.closeConn(xConn)
 	} else {
 		if IsDebug(2) {
-			Debugf("XConn[node=%d id=%d] pushed\n", xConn.node.id, xConn.id)
+			Printf("XConn[node=%d id=%d] pushed\n", xConn.node.id, xConn.id)
 		}
 		n.pushConn(xConn)
 	}

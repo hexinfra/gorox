@@ -66,7 +66,7 @@ func (s *echoServer) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("echoServer=%s done\n", s.Name())
+		Printf("echoServer=%s done\n", s.Name())
 	}
 	s.Stage().SubDone()
 }
@@ -124,7 +124,7 @@ func (g *echoGate) serve() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("echoGate=%d done\n", g.ID())
+		Printf("echoGate=%d done\n", g.ID())
 	}
 	g.server.SubDone()
 }

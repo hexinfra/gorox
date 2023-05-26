@@ -77,7 +77,7 @@ func (r *UDPSRouter) serve() { // goroutine
 		r.logger.Close()
 	}
 	if IsDebug(2) {
-		Debugf("udpsRouter=%s done\n", r.Name())
+		Printf("udpsRouter=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }

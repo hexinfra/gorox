@@ -64,7 +64,7 @@ func (s *http3Server) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("http3Server=%s done\n", s.Name())
+		Printf("http3Server=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
@@ -119,7 +119,7 @@ func (g *http3Gate) serve() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("http3Gate=%d done\n", g.id)
+		Printf("http3Gate=%d done\n", g.id)
 	}
 	g.server.SubDone()
 }

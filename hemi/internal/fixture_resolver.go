@@ -51,7 +51,7 @@ func (f *resolverFixture) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("resolver done")
+		Println("resolver done")
 	}
 	f.stage.SubDone()
 }

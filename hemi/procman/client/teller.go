@@ -10,6 +10,7 @@ package client
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
@@ -33,7 +34,7 @@ var tells = map[string]func(){ // indexed by action
 func _tell(comd uint8, flag uint16, args map[string]string) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		fmt.Printf("tell leader at %s failed: %s\n", common.TargetAddr, err.Error())
+		fmt.Fprintf(os.Stderr, "tell leader at %s failed: %s\n", common.TargetAddr, err.Error())
 		return
 	}
 	defer cmdConn.Close()
@@ -41,6 +42,6 @@ func _tell(comd uint8, flag uint16, args map[string]string) {
 	if msgx.Tell(cmdConn, msgx.NewMessage(comd, flag, args)) {
 		fmt.Printf("tell leader at %s: ok!\n", common.TargetAddr)
 	} else {
-		fmt.Printf("tell leader at %s: failed!\n", common.TargetAddr)
+		fmt.Fprintf(os.Stderr, "tell leader at %s: failed!\n", common.TargetAddr)
 	}
 }

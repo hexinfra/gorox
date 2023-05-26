@@ -84,7 +84,7 @@ func (n *gramNode) Maintain() { // goroutine
 	})
 	// TODO: wait for all links
 	if IsDebug(2) {
-		Debugf("gramNode=%d done\n", n.id)
+		Printf("gramNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

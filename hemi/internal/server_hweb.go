@@ -58,7 +58,7 @@ func (s *hwebServer) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("hwebServer=%s done\n", s.Name())
+		Printf("hwebServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

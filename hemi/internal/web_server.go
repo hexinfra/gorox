@@ -95,7 +95,7 @@ func (s *webServer_) linkApps() {
 				UseExitln(err.Error())
 			}
 			if IsDebug(1) {
-				Debugf("adding certificate to %s\n", s.ColonPort())
+				Printf("adding certificate to %s\n", s.ColonPort())
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
@@ -719,12 +719,12 @@ func (r *serverRequest_) examineHead() bool {
 		}
 	}
 	if IsDebug(2) {
-		Debugln("======primes======")
+		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))
 		}
-		Debugln("======extras======")
+		Println("======extras======")
 		for i := 0; i < len(r.extras); i++ {
 			extra := &r.extras[i]
 			extra.show(r._placeOf(extra))
@@ -1201,7 +1201,7 @@ func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint
 			for i := from; i < edge; i++ {
 				// NOTE: test pair.kind == kindHeader
 				data := pairs[i].dataAt(r.input)
-				Debugf("lang=%s\n", string(data))
+				Printf("lang=%s\n", string(data))
 			}
 		*/
 	}
@@ -1860,7 +1860,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
 			if IsDebug(2) {
-				Debugln(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
+				Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
 		} else if !bytes.Equal(r.formWindow[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
@@ -2071,12 +2071,12 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			part.upload.pathSize, part.upload.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
 				if IsDebug(2) {
-					Debugln("OPENED")
+					Println("OPENED")
 				}
 				part.osFile = osFile
 			} else {
 				if IsDebug(2) {
-					Debugln(err.Error())
+					Println(err.Error())
 				}
 				part.osFile = nil
 			}
@@ -2119,7 +2119,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 					r.addUpload(&part.upload)
 					part.osFile.Close()
 					if IsDebug(2) {
-						Debugln("CLOSED")
+						Println("CLOSED")
 					}
 				}
 			}

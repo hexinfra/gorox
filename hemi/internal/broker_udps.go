@@ -61,7 +61,7 @@ func (f *UDPSOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("udpsOutgate done")
+		Println("udpsOutgate done")
 	}
 	f.stage.SubDone()
 }
@@ -139,7 +139,7 @@ func (n *udpsNode) Maintain() { // goroutine
 	})
 	// TODO: wait for all links
 	if IsDebug(2) {
-		Debugf("udpsNode=%d done\n", n.id)
+		Printf("udpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

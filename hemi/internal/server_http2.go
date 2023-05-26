@@ -116,9 +116,9 @@ func (c *http2Conn) onPut() {
 }
 
 func (c *http2Conn) serve() { // goroutine
-	Debugf("========================== conn=%d start =========================\n", c.id)
+	Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
-		Debugf("========================== conn=%d exit =========================\n", c.id)
+		Printf("========================== conn=%d exit =========================\n", c.id)
 		putHTTP2Conn(c)
 	}()
 	if err := c.handshake(); err != nil {
@@ -158,7 +158,7 @@ serve:
 			break serve
 		case outFrame := <-c.outgoing: // from streams. only headers and data
 			// TODO: collect as many frames as we can?
-			Debugf("%+v\n", outFrame)
+			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
 				c.quitStream(outFrame.streamID)
 				c.nStreams--
@@ -171,7 +171,7 @@ serve:
 			}
 		}
 	}
-	Debugf("conn=%d waiting for active streams to end\n", c.id)
+	Printf("conn=%d waiting for active streams to end\n", c.id)
 	for c.nStreams > 0 {
 		if outFrame := <-c.outgoing; outFrame.endStream {
 			c.quitStream(outFrame.streamID)
@@ -179,7 +179,7 @@ serve:
 		}
 	}
 	if c.waitReceive {
-		Debugf("conn=%d waiting for c.receive() quits\n", c.id)
+		Printf("conn=%d waiting for c.receive() quits\n", c.id)
 		for {
 			incoming := <-c.incoming
 			if _, ok := incoming.(*http2InFrame); !ok {
@@ -188,11 +188,11 @@ serve:
 			}
 		}
 	}
-	Debugf("conn=%d c.serve() quit\n", c.id)
+	Printf("conn=%d c.serve() quit\n", c.id)
 }
 func (c *http2Conn) receive() { // goroutine
 	if IsDebug(1) {
-		defer Debugf("conn=%d c.receive() quit\n", c.id)
+		defer Printf("conn=%d c.receive() quit\n", c.id)
 	}
 	for { // each incoming frame
 		inFrame, err := c.recvFrame()
@@ -231,10 +231,10 @@ func (c *http2Conn) handshake() error {
 	}
 	// TODO: write deadline
 	n, err := c.write(http2ServerPrefaceAndMore)
-	Debugf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
-	Debugf("conn=%d ---> %v\n", c.id, http2ServerPrefaceAndMore)
+	Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
+	Printf("conn=%d ---> %v\n", c.id, http2ServerPrefaceAndMore)
 	if err != nil {
-		Debugf("conn=%d error=%s\n", c.id, err.Error())
+		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	return err
 }
@@ -351,20 +351,20 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 		if b >= 1<<7 { // Indexed Header Field Representation
 			I, j, ok = http2DecodeInteger(fields[i:], 7, 128)
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
 			if I == 0 {
-				Debugln("index == 0")
+				Println("index == 0")
 				return false
 			}
 			field := http2StaticTable[I]
-			Debugf("name=%s value=%s\n", field.nameAt(http2BytesStatic), field.valueAt(http2BytesStatic))
+			Printf("name=%s value=%s\n", field.nameAt(http2BytesStatic), field.valueAt(http2BytesStatic))
 		} else if b >= 1<<6 { // Literal Header Field with Incremental Indexing
 			I, j, ok = http2DecodeInteger(fields[i:], 6, 128)
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
@@ -374,34 +374,34 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 			} else { // Literal Header Field with Incremental Indexing — New Name
 				N, j, ok = http2DecodeString(fields[i:])
 				if !ok {
-					Debugln("decode error")
+					Println("decode error")
 					return false
 				}
 				i += j
 				if len(N) == 0 {
-					Debugln("empty name")
+					Println("empty name")
 					return false
 				}
 			}
 			V, j, ok = http2DecodeString(fields[i:])
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
-			Debugf("name=%s value=%s\n", N, V)
+			Printf("name=%s value=%s\n", N, V)
 		} else if b >= 1<<5 { // Dynamic Table Size Update
 			I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
-			Debugf("update size=%d\n", I)
+			Printf("update size=%d\n", I)
 		} else if b >= 1<<4 { // Literal Header Field Never Indexed
 			I, j, ok = http2DecodeInteger(fields[i:], 4, 128)
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
@@ -411,24 +411,24 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 			} else { // Literal Header Field Never Indexed — New Name
 				N, j, ok = http2DecodeString(fields[i:])
 				if !ok {
-					Debugln("decode error")
+					Println("decode error")
 					return false
 				}
 				i += j
 				if len(N) == 0 {
-					Debugln("empty name")
+					Println("empty name")
 					return false
 				}
 			}
 			V, j, ok = http2DecodeString(fields[i:])
 			if !ok {
-				Debugln("decode error")
+				Println("decode error")
 				return false
 			}
 			i += j
-			Debugf("name=%s value=%s\n", N, V)
+			Printf("name=%s value=%s\n", N, V)
 		} else { // Literal Header Field without Indexing
-			Debugln("2222222222222")
+			Println("2222222222222")
 			return false
 		}
 	}
@@ -463,7 +463,7 @@ func (c *http2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
 	}
 	// TODO
 	c.inWindow = int32(windowSize)
-	Debugf("conn=%d stream=%d windowUpdate=%d\n", c.id, inFrame.streamID, windowSize)
+	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, inFrame.streamID, windowSize)
 	return nil
 }
 func (c *http2Conn) processSettingsFrame(inFrame *http2InFrame) error {
@@ -511,7 +511,7 @@ func (c *http2Conn) _updateClientSettings(inFrame *http2InFrame) error {
 		c.clientSettings.initialWindowSize += windowDelta
 		c._adjustStreamWindows(windowDelta)
 	}
-	Debugf("conn=%d clientSettings=%+v\n", c.id, c.clientSettings)
+	Printf("conn=%d clientSettings=%+v\n", c.id, c.clientSettings)
 	return nil
 }
 func (c *http2Conn) _adjustStreamWindows(delta int32) {
@@ -546,7 +546,7 @@ func (c *http2Conn) findStream(streamID uint32) *http2Stream {
 		return nil
 	}
 	if IsDebug(2) {
-		Debugf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
+		Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
 	}
 	return c.streams[index]
 }
@@ -560,7 +560,7 @@ func (c *http2Conn) joinStream(stream *http2Stream) {
 		BugExitln("joinStream cannot find an empty slot")
 	}
 	if IsDebug(2) {
-		Debugf("conn=%d joinStream=%d at %d\n", c.id, stream.id, index)
+		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.id, index)
 	}
 	stream.index = index
 	c.streams[index] = stream
@@ -572,7 +572,7 @@ func (c *http2Conn) quitStream(streamID uint32) {
 		BugExitln("quitStream cannot find the stream")
 	}
 	if IsDebug(2) {
-		Debugf("conn=%d quitStream=%d at %d\n", c.id, streamID, stream.index)
+		Printf("conn=%d quitStream=%d at %d\n", c.id, streamID, stream.index)
 	}
 	c.streams[stream.index] = nil
 	c.streamIDs[stream.index] = 0
@@ -626,7 +626,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 		}
 	}
 	if IsDebug(2) {
-		Debugf("conn=%d <--- %+v\n", c.id, inFrame)
+		Printf("conn=%d <--- %+v\n", c.id, inFrame)
 	}
 	return inFrame, nil
 }
@@ -654,10 +654,10 @@ func (c *http2Conn) growFrame(size uint32) error {
 func (c *http2Conn) fillFrames(size uint32) error {
 	n, err := c.readAtLeast(c.frames.buf[c.framesEdge:], int(size))
 	if IsDebug(2) {
-		Debugf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
+		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
 	}
 	if err != nil && IsDebug(2) {
-		Debugf("conn=%d error=%s\n", c.id, err.Error())
+		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	c.framesEdge += uint32(n)
 	return err
@@ -751,8 +751,8 @@ func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
 	c.vector[0] = header
 	n, err := c.writev(&c.vector)
 	if IsDebug(2) {
-		Debugf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
-		Debugf("conn=%d ---> %+v\n", c.id, outFrame)
+		Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
+		Printf("conn=%d ---> %+v\n", c.id, outFrame)
 	}
 	return err
 }
@@ -787,7 +787,7 @@ func (c *http2Conn) writev(vector *net.Buffers) (int64, error) {
 
 func (c *http2Conn) closeConn() {
 	if IsDebug(2) {
-		Debugf("conn=%d connClosed by serve()\n", c.id)
+		Printf("conn=%d connClosed by serve()\n", c.id)
 	}
 	c.netConn.Close()
 	c.gate.onConnectionClosed()
@@ -860,7 +860,7 @@ func (s *http2Stream) onEnd() { // for zeros
 func (s *http2Stream) execute() { // goroutine
 	// TODO ...
 	if IsDebug(2) {
-		Debugln("stream processing...")
+		Println("stream processing...")
 	}
 	putHTTP2Stream(s)
 }

@@ -66,9 +66,9 @@ func (h *staticHandlet) OnConfigure() {
 	h.useAppRoot = h.webRoot == h.app.webRoot
 	if IsDebug(1) {
 		if h.useAppRoot {
-			Debugf("static=%s use app web root\n", h.Name())
+			Printf("static=%s use app web root\n", h.Name())
 		} else {
-			Debugf("static=%s NOT use app web root\n", h.Name())
+			Printf("static=%s NOT use app web root\n", h.Name())
 		}
 	}
 
@@ -163,11 +163,11 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	entry, err := fcache.getEntry(openPath)
 	if err == nil {
 		if IsDebug(1) {
-			Debugln("entry HIT")
+			Println("entry HIT")
 		}
 	} else { // entry not exist
 		if IsDebug(1) {
-			Debugln("entry MISS")
+			Println("entry MISS")
 		}
 		entry, err = fcache.newEntry(string(openPath))
 		if err != nil {
@@ -223,12 +223,12 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 		if entry.isSmall() {
 			if IsDebug(2) {
-				Debugln("static send text")
+				Println("static send text")
 			}
 			resp.sendText(entry.text)
 		} else {
 			if IsDebug(2) {
-				Debugln("static send file")
+				Println("static send file")
 			}
 			resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
 		}

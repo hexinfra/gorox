@@ -426,7 +426,7 @@ func (s *Stage) onCreate() {
 }
 func (s *Stage) OnShutdown() {
 	if IsDebug(2) {
-		Debugf("stage id=%d shutdown start!!\n", s.id)
+		Printf("stage id=%d shutdown start!!\n", s.id)
 	}
 
 	// cronjobs
@@ -493,7 +493,7 @@ func (s *Stage) OnShutdown() {
 
 	// stage
 	if IsDebug(2) {
-		Debugln("stage close log file")
+		Println("stage close log file")
 	}
 }
 
@@ -734,24 +734,24 @@ func (s *Stage) Start(id int32) {
 	s.numCPU = int32(runtime.NumCPU())
 
 	if IsDebug(2) {
-		Debugf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
-		Debugf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
-		Debugf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
-		Debugf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
-		Debugf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
-		Debugf("size of H1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
-		Debugf("size of H2Conn = %d\n", unsafe.Sizeof(H2Conn{}))
-		Debugf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
-		Debugf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
-		Debugf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
+		Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
+		Printf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
+		Printf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
+		Printf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
+		Printf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
+		Printf("size of H1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
+		Printf("size of H2Conn = %d\n", unsafe.Sizeof(H2Conn{}))
+		Printf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
+		Printf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
+		Printf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
 	}
 	if IsDebug(1) {
-		Debugf("stageID=%d\n", s.id)
-		Debugf("numCPU=%d\n", s.numCPU)
-		Debugf("baseDir=%s\n", BaseDir())
-		Debugf("logsDir=%s\n", LogsDir())
-		Debugf("tempDir=%s\n", TempDir())
-		Debugf("varsDir=%s\n", VarsDir())
+		Printf("stageID=%d\n", s.id)
+		Printf("numCPU=%d\n", s.numCPU)
+		Printf("baseDir=%s\n", BaseDir())
+		Printf("logsDir=%s\n", LogsDir())
+		Printf("tempDir=%s\n", TempDir())
+		Printf("varsDir=%s\n", VarsDir())
 	}
 
 	// Init running environment
@@ -785,18 +785,18 @@ func (s *Stage) Start(id int32) {
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 
-	fmt.Printf("[worker] stage=%d is ready to serve.\n", s.id)
+	Printf("[worker] stage=%d is ready to serve.\n", s.id)
 }
 func (s *Stage) Quit() {
 	s.OnShutdown()
 	if IsDebug(2) {
-		Debugf("stage id=%d: quit.\n", s.id)
+		Printf("stage id=%d: quit.\n", s.id)
 	}
 }
 
 func (s *Stage) linkServerApps() {
 	if IsDebug(1) {
-		Debugln("link apps to web servers")
+		Println("link apps to web servers")
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
@@ -806,7 +806,7 @@ func (s *Stage) linkServerApps() {
 }
 func (s *Stage) linkServerSvcs() {
 	if IsDebug(1) {
-		Debugln("link svcs to rpc servers")
+		Println("link svcs to rpc servers")
 	}
 	for _, server := range s.servers {
 		if rpcServer, ok := server.(rpcServer); ok {
@@ -818,7 +818,7 @@ func (s *Stage) linkServerSvcs() {
 func (s *Stage) startFixtures() {
 	for _, fixture := range s.fixtures {
 		if IsDebug(1) {
-			Debugf("fixture=%s go run()\n", fixture.Name())
+			Printf("fixture=%s go run()\n", fixture.Name())
 		}
 		go fixture.run()
 	}
@@ -826,7 +826,7 @@ func (s *Stage) startFixtures() {
 func (s *Stage) startRunners() {
 	for _, runner := range s.runners {
 		if IsDebug(1) {
-			Debugf("runner=%s go Run()\n", runner.Name())
+			Printf("runner=%s go Run()\n", runner.Name())
 		}
 		go runner.Run()
 	}
@@ -834,7 +834,7 @@ func (s *Stage) startRunners() {
 func (s *Stage) startBackends() {
 	for _, backend := range s.backends {
 		if IsDebug(1) {
-			Debugf("backend=%s go maintain()\n", backend.Name())
+			Printf("backend=%s go maintain()\n", backend.Name())
 		}
 		go backend.Maintain()
 	}
@@ -842,19 +842,19 @@ func (s *Stage) startBackends() {
 func (s *Stage) startRouters() {
 	for _, quicRouter := range s.quicRouters {
 		if IsDebug(1) {
-			Debugf("quicRouter=%s go serve()\n", quicRouter.Name())
+			Printf("quicRouter=%s go serve()\n", quicRouter.Name())
 		}
 		go quicRouter.serve()
 	}
 	for _, tcpsRouter := range s.tcpsRouters {
 		if IsDebug(1) {
-			Debugf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
+			Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
 		}
 		go tcpsRouter.serve()
 	}
 	for _, udpsRouter := range s.udpsRouters {
 		if IsDebug(1) {
-			Debugf("udpsRouter=%s go serve()\n", udpsRouter.Name())
+			Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
 		go udpsRouter.serve()
 	}
@@ -862,7 +862,7 @@ func (s *Stage) startRouters() {
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
 		if IsDebug(1) {
-			Debugf("stater=%s go Maintain()\n", stater.Name())
+			Printf("stater=%s go Maintain()\n", stater.Name())
 		}
 		go stater.Maintain()
 	}
@@ -870,7 +870,7 @@ func (s *Stage) startStaters() {
 func (s *Stage) startCachers() {
 	for _, cacher := range s.cachers {
 		if IsDebug(1) {
-			Debugf("cacher=%s go Maintain()\n", cacher.Name())
+			Printf("cacher=%s go Maintain()\n", cacher.Name())
 		}
 		go cacher.Maintain()
 	}
@@ -878,7 +878,7 @@ func (s *Stage) startCachers() {
 func (s *Stage) startApps() {
 	for _, app := range s.apps {
 		if IsDebug(1) {
-			Debugf("app=%s go maintain()\n", app.Name())
+			Printf("app=%s go maintain()\n", app.Name())
 		}
 		go app.maintain()
 	}
@@ -886,7 +886,7 @@ func (s *Stage) startApps() {
 func (s *Stage) startSvcs() {
 	for _, svc := range s.svcs {
 		if IsDebug(1) {
-			Debugf("svc=%s go maintain()\n", svc.Name())
+			Printf("svc=%s go maintain()\n", svc.Name())
 		}
 		go svc.maintain()
 	}
@@ -894,7 +894,7 @@ func (s *Stage) startSvcs() {
 func (s *Stage) startServers() {
 	for _, server := range s.servers {
 		if IsDebug(1) {
-			Debugf("server=%s go Serve()\n", server.Name())
+			Printf("server=%s go Serve()\n", server.Name())
 		}
 		go server.Serve()
 	}
@@ -902,7 +902,7 @@ func (s *Stage) startServers() {
 func (s *Stage) startCronjobs() {
 	for _, cronjob := range s.cronjobs {
 		if IsDebug(1) {
-			Debugf("cronjob=%s go Schedule()\n", cronjob.Name())
+			Printf("cronjob=%s go Schedule()\n", cronjob.Name())
 		}
 		go cronjob.Schedule()
 	}
@@ -910,14 +910,14 @@ func (s *Stage) startCronjobs() {
 
 func (s *Stage) configure() (err error) {
 	if IsDebug(1) {
-		Debugln("now configure stage")
+		Println("now configure stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
 		if IsDebug(1) {
-			Debugln("stage configured")
+			Println("stage configured")
 		}
 	}()
 	s.OnConfigure()
@@ -925,14 +925,14 @@ func (s *Stage) configure() (err error) {
 }
 func (s *Stage) prepare() (err error) {
 	if IsDebug(1) {
-		Debugln("now prepare stage")
+		Println("now prepare stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
 		if IsDebug(1) {
-			Debugln("stage prepared")
+			Println("stage prepared")
 		}
 	}()
 	s.OnPrepare()
@@ -1228,7 +1228,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 	}
 	b.WaitSubs() // nodes
 	if IsDebug(2) {
-		Debugf("backend=%s done\n", b.Name())
+		Printf("backend=%s done\n", b.Name())
 	}
 	b.stage.SubDone()
 }

@@ -128,7 +128,7 @@ func (p *http3Frames) incRef()       { p.ref.Add(1) }
 func (p *http3Frames) decRef() {
 	if p.ref.Add(-1) == 0 {
 		if IsDebug(1) {
-			Debugf("putHTTP3Frames ref=%d\n", p.ref.Load())
+			Printf("putHTTP3Frames ref=%d\n", p.ref.Load())
 		}
 		putHTTP3Frames(p)
 	}

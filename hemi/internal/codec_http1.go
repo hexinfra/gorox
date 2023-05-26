@@ -644,11 +644,11 @@ func (r *http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writ
 	vector[2] = r.shell.fixedHeaders()
 	if IsDebug(2) {
 		if r.asRequest {
-			Debugf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
+			Printf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
 		} else {
-			Debugf("[http1Stream=%d]-------> ", r.stream.(*http1Stream).conn.id)
+			Printf("[http1Stream=%d]-------> ", r.stream.(*http1Stream).conn.id)
 		}
-		Debugf("[%s%s%s]\n", vector[0], vector[1], vector[2])
+		Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vFrom, vEdge := 0, 3
 	for piece := r.chain.head; piece != nil; piece = piece.next {
@@ -762,11 +762,11 @@ func (r *http1Out_) writeHeaders1() error { // used by echo and pass
 	r.vector[2] = r.shell.fixedHeaders()
 	if IsDebug(2) {
 		if r.asRequest {
-			Debugf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
+			Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
 		} else {
-			Debugf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
+			Printf("[http1Stream=%d]", r.stream.(*http1Stream).conn.id)
 		}
-		Debugf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
+		Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
 	if err := r.writeVector1(); err != nil {
 		return err

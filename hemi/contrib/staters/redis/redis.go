@@ -53,7 +53,7 @@ func (s *redisStater) Maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("redisStater=%s done\n", s.Name())
+		Printf("redisStater=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

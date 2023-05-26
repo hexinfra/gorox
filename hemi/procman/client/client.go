@@ -9,6 +9,7 @@ package client
 
 import (
 	"fmt"
+	"os"
 )
 
 func Main(action string) {
@@ -17,6 +18,6 @@ func Main(action string) {
 	} else if call, ok := calls[action]; ok {
 		call()
 	} else {
-		fmt.Printf("unknown action: %s\n", action)
+		fmt.Fprintf(os.Stderr, "unknown action: %s\n", action)
 	}
 }

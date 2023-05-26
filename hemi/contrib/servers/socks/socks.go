@@ -67,7 +67,7 @@ func (s *socksServer) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("socksServer=%s done\n", s.Name())
+		Printf("socksServer=%s done\n", s.Name())
 	}
 	s.Stage().SubDone()
 }
@@ -125,7 +125,7 @@ func (g *socksGate) serve() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("socksGate=%d done\n", g.ID())
+		Printf("socksGate=%d done\n", g.ID())
 	}
 	g.server.SubDone()
 }

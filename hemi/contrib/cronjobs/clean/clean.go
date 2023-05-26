@@ -50,7 +50,7 @@ func (j *cleanCronjob) Schedule() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("cleanCronjob=%s done\n", j.Name())
+		Printf("cleanCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()
 }

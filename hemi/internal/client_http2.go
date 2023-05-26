@@ -61,7 +61,7 @@ func (f *HTTP2Outgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("http2Outgate done")
+		Println("http2Outgate done")
 	}
 	f.stage.SubDone()
 }
@@ -129,7 +129,7 @@ func (n *http2Node) Maintain() { // goroutine
 	})
 	// TODO: wait for all conns
 	if IsDebug(2) {
-		Debugf("http2Node=%d done\n", n.id)
+		Printf("http2Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

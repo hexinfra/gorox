@@ -2191,7 +2191,7 @@ func (p *pair) show(place []byte) {
 	if len(flags) == 0 {
 		flags = append(flags, "nothing")
 	}
-	Debugf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
+	Printf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
 }
 
 // defaultDesc

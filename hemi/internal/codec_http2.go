@@ -139,7 +139,7 @@ func (p *http2Frames) incRef()       { p.ref.Add(1) }
 func (p *http2Frames) decRef() {
 	if p.ref.Add(-1) == 0 {
 		if IsDebug(1) {
-			Debugf("putHTTP2Frames ref=%d\n", p.ref.Load())
+			Printf("putHTTP2Frames ref=%d\n", p.ref.Load())
 		}
 		putHTTP2Frames(p)
 	}

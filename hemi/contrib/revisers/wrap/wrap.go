@@ -88,7 +88,7 @@ func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 	if IsDebug(2) {
-		Debugln("BeforeEcho")
+		Println("BeforeEcho")
 	}
 }
 func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
@@ -101,6 +101,6 @@ func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // uns
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
 	if IsDebug(2) {
-		Debugln("FinishEcho")
+		Println("FinishEcho")
 	}
 }

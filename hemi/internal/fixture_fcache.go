@@ -103,7 +103,7 @@ func (f *fcacheFixture) run() { // goroutine
 			}
 			delete(f.entries, path)
 			if IsDebug(2) {
-				Debugf("fcache entry deleted: %s\n", path)
+				Printf("fcache entry deleted: %s\n", path)
 			}
 		}
 		f.rwMutex.Unlock()
@@ -113,7 +113,7 @@ func (f *fcacheFixture) run() { // goroutine
 	f.rwMutex.Unlock()
 
 	if IsDebug(2) {
-		Debugln("fcache done")
+		Println("fcache done")
 	}
 	f.stage.SubDone()
 }
@@ -211,7 +211,7 @@ func (e *fcacheEntry) addRef() {
 func (e *fcacheEntry) decRef() {
 	if e.nRef.Add(-1) < 0 {
 		if IsDebug(2) {
-			Debugf("fcache large entry closed: %s\n", e.file.Name())
+			Printf("fcache large entry closed: %s\n", e.file.Name())
 		}
 		e.file.Close()
 	}

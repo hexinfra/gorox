@@ -53,7 +53,7 @@ func (c *redisCacher) Maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("redisCacher=%s done\n", c.Name())
+		Printf("redisCacher=%s done\n", c.Name())
 	}
 	c.stage.SubDone()
 }

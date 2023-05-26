@@ -62,7 +62,7 @@ func (s *localStater) Maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("localStater=%s done\n", s.Name())
+		Printf("localStater=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

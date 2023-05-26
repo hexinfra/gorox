@@ -81,7 +81,7 @@ func (r *TCPSRouter) serve() { // goroutine
 		r.logger.Close()
 	}
 	if IsDebug(2) {
-		Debugf("tcpsRouter=%s done\n", r.Name())
+		Printf("tcpsRouter=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }
@@ -140,7 +140,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
 			if IsDebug(1) {
-				Debugf("%+v\n", tcpsConn)
+				Printf("%+v\n", tcpsConn)
 			}
 			go tcpsConn.execute() // tcpsConn is put to pool in execute()
 			connID++
@@ -148,7 +148,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("tcpsGate=%d TCP done\n", g.id)
+		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.router.SubDone()
 }
@@ -179,7 +179,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("tcpsGate=%d TLS done\n", g.id)
+		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.router.SubDone()
 }

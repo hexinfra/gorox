@@ -64,7 +64,7 @@ func (f *HTTP1Outgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("http1Outgate done")
+		Println("http1Outgate done")
 	}
 	f.stage.SubDone()
 }
@@ -147,7 +147,7 @@ func (n *http1Node) Maintain() { // goroutine
 	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
-		Debugf("http1Node=%d done\n", n.id)
+		Printf("http1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
@@ -172,7 +172,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return nil, err
 	}
 	if IsDebug(2) {
-		Debugf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	if n.backend.tlsMode {
@@ -196,12 +196,12 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 func (n *http1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
+			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
 		}
 		n.closeConn(h1Conn)
 	} else {
 		if IsDebug(2) {
-			Debugf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.id, h1Conn.id)
+			Printf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.id, h1Conn.id)
 		}
 		n.pushConn(h1Conn)
 	}
@@ -540,7 +540,7 @@ func (r *H1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if IsDebug(2) {
-		Debugf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
+		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

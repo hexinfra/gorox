@@ -54,7 +54,7 @@ func (f *HWEBOutgate) run() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugln("hwebOutgate done")
+		Println("hwebOutgate done")
 	}
 	f.stage.SubDone()
 }
@@ -103,7 +103,7 @@ func (n *hwebNode) Maintain() { // goroutine
 	})
 	// TODO: wait for all conns
 	if IsDebug(2) {
-		Debugf("hwebNode=%d done\n", n.id)
+		Printf("hwebNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }

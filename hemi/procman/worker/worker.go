@@ -57,9 +57,7 @@ func Main(token string) {
 		if !ok { // leader must be gone
 			break
 		}
-		if hemi.IsDebug(2) {
-			hemi.Debugf("worker received req=%v\n", req)
-		}
+		hemi.Printf("[worker] received req=%v\n", req)
 		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {

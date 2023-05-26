@@ -75,7 +75,7 @@ func (f *clockFixture) run() { // goroutine
 		f.date.Store(date)
 	})
 	if IsDebug(2) {
-		Debugln("clock done")
+		Println("clock done")
 	}
 	f.stage.SubDone()
 }

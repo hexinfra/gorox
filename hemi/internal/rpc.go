@@ -100,7 +100,7 @@ func (s *Svc) maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("svc=%s done\n", s.Name())
+		Printf("svc=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }

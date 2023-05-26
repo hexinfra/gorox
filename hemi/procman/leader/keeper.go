@@ -8,7 +8,6 @@
 package leader
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -36,7 +35,7 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 
 	worker := newWorker(connKey)
 	worker.start(configBase, configFile, dieChan)
-	fmt.Printf("[leader] worker process id=%d started\n", worker.pid())
+	hemi.Printf("[leader] worker process id=%d started\n", worker.pid())
 	keeperChan <- nil // reply that we have created the worker.
 
 	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker
@@ -54,13 +53,13 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 					dieChan2 := make(chan int)
 					worker2 := newWorker(connKey)
 					worker2.start(configBase, configFile, dieChan2)
-					fmt.Printf("[leader] new worker process id=%d started\n", worker2.pid())
+					hemi.Printf("[leader] new worker process id=%d started\n", worker2.pid())
 					// Quit old worker
 					req.Comd = common.ComdQuit
 					worker.tell(req)
 					worker.closeConn()
 					<-dieChan
-					fmt.Printf("[leader] old worker process id=%d exited\n", worker.pid())
+					hemi.Printf("[leader] old worker process id=%d exited\n", worker.pid())
 					// Use new worker
 					dieChan, worker = dieChan2, worker2
 				default: // other messages are sent to worker
@@ -81,14 +80,14 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 		case exitCode := <-dieChan: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == common.CodeCrash || exitCode == common.CodeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				fmt.Printf("[leader] worker critical error! code=%d\n", exitCode)
+				hemi.Printf("[leader] worker critical error! code=%d\n", exitCode)
 				common.Stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
 				worker.closeConn()
 				worker.lastDie = now
 				worker.start(configBase, configFile, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				fmt.Printf("[leader] worker is broken! code=%d\n", exitCode)
+				hemi.Printf("[leader] worker is broken! code=%d\n", exitCode)
 				common.Stop()
 			}
 		}

@@ -65,7 +65,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		conn3, err3 = outgate3.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err3 != nil {
 			if IsDebug(1) {
-				Debugln(err3.Error())
+				Println(err3.Error())
 			}
 			resp.SendBadGateway(nil)
 			return
@@ -76,7 +76,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		conn3, err3 = backend3.FetchConn()
 		if err3 != nil {
 			if IsDebug(1) {
-				Debugln(err3.Error())
+				Println(err3.Error())
 			}
 			resp.SendBadGateway(nil)
 			return

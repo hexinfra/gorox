@@ -72,9 +72,21 @@ var _debug atomic.Int32 // debug level
 func SetDebug(level int32)     { _debug.Store(level) }
 func IsDebug(level int32) bool { return _debug.Load() >= level }
 
-func Debug(args ...any)                 { fmt.Print(args...) }
-func Debugln(args ...any)               { fmt.Println(args...) }
-func Debugf(format string, args ...any) { fmt.Printf(format, args...) }
+func Print(args ...any) {
+	_printTime()
+	fmt.Print(args...)
+}
+func Println(args ...any) {
+	_printTime()
+	fmt.Println(args...)
+}
+func Printf(format string, args ...any) {
+	_printTime()
+	fmt.Printf(format, args...)
+}
+func _printTime() {
+	fmt.Printf("[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
+}
 
 const ( // exit codes. keep sync with ../hemi.go
 	CodeBug = 20

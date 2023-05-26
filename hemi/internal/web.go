@@ -344,7 +344,7 @@ func (a *App) maintain() { // goroutine
 		a.logger.Close()
 	}
 	if IsDebug(2) {
-		Debugf("app=%s done\n", a.Name())
+		Printf("app=%s done\n", a.Name())
 	}
 	a.stage.SubDone()
 }

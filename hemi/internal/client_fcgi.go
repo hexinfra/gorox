@@ -620,7 +620,7 @@ func (r *fcgiResponse) onEnd() {
 	if r.contentFile != nil {
 		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is, not removed!")
+			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
@@ -999,7 +999,7 @@ func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know th
 	case error: // i/o error or unexpected EOF
 		// TODO: log err?
 		if IsDebug(2) {
-			Debugln(content.Error())
+			Println(content.Error())
 		}
 	}
 	r.exchan.markBroken()
@@ -1110,7 +1110,7 @@ recv:
 	}
 	if kind == fcgiKindStderr {
 		if IsDebug(2) && edge > from {
-			Debugf("fcgi stderr=%s\n", r.records[from:edge])
+			Printf("fcgi stderr=%s\n", r.records[from:edge])
 		}
 		goto recv
 	}
@@ -1127,7 +1127,7 @@ recv:
 			}
 			// Must be stderr.
 			if IsDebug(2) && edge > from {
-				Debugf("fcgi stderr=%s\n", r.records[from:edge])
+				Printf("fcgi stderr=%s\n", r.records[from:edge])
 			}
 		}
 	case fcgiKindEndRequest:
@@ -1171,7 +1171,7 @@ func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err 
 	from = r.recordsFrom + fcgiHeaderSize
 	edge = from + payloadLen // payload edge, ignoring padding
 	if IsDebug(2) {
-		Debugf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
+		Printf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
 	}
 	// Clean up positions for next call.
 	if recordSize == remainSize { // all remain data are consumed, so reset positions

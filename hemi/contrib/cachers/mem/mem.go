@@ -50,7 +50,7 @@ func (c *memCacher) Maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("memCacher=%s done\n", c.Name())
+		Printf("memCacher=%s done\n", c.Name())
 	}
 	c.stage.SubDone()
 }

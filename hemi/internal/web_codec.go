@@ -284,7 +284,7 @@ func (r *webIn_) onEnd() { // for zeros
 	if r.contentFile != nil {
 		r.contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is, not removed!")
+			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
 		}
@@ -930,7 +930,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		}
 		contentFile.Close()
 		if IsDebug(2) {
-			Debugln("contentFile is left as is, not removed!")
+			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.app.log
 		}
@@ -1156,7 +1156,7 @@ func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 			return 0, false
 		}
 		if IsDebug(2) {
-			Debugln("use large primes!")
+			Println("use large primes!")
 		}
 		r.primes = getPairs()
 		r.primes = append(r.primes, r.stockPrimes[:]...)
@@ -1205,7 +1205,7 @@ func (r *webIn_) _addExtra(extra *pair) bool {
 			return false
 		}
 		if IsDebug(2) {
-			Debugln("use large extras!")
+			Println("use large extras!")
 		}
 		r.extras = getPairs()
 		r.extras = append(r.extras, r.stockExtras[:]...)

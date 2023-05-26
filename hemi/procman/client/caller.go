@@ -10,6 +10,7 @@ package client
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
@@ -22,7 +23,7 @@ var calls = map[string]func(){ // indexed by action
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Printf("call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
 		}
 	},
 	"leader": func() {
@@ -31,7 +32,7 @@ var calls = map[string]func(){ // indexed by action
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Printf("call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
 		}
 	},
 	"worker": func() {
@@ -40,7 +41,7 @@ var calls = map[string]func(){ // indexed by action
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Printf("call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
 		}
 	},
 }

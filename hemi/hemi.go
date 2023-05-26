@@ -54,9 +54,9 @@ var ( // core funcs
 	SetDebug = internal.SetDebug
 	IsDebug  = internal.IsDebug
 
-	Debug   = internal.Debug
-	Debugln = internal.Debugln
-	Debugf  = internal.Debugf
+	Print   = internal.Print
+	Println = internal.Println
+	Printf  = internal.Printf
 
 	BugExitln = internal.BugExitln
 	BugExitf  = internal.BugExitf

@@ -62,7 +62,7 @@ func (c *localCacher) Maintain() { // goroutine
 		// TODO
 	})
 	if IsDebug(2) {
-		Debugf("localCacher=%s done\n", c.Name())
+		Printf("localCacher=%s done\n", c.Name())
 	}
 	c.stage.SubDone()
 }

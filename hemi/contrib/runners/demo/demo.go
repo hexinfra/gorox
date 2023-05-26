@@ -50,7 +50,7 @@ func (r *demoRunner) Run() { // goroutine
 		fmt.Printf("i'm runner %s\n", r.Name())
 	})
 	if IsDebug(2) {
-		Debugf("demoRunner=%s done\n", r.Name())
+		Printf("demoRunner=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }

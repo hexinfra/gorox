@@ -57,7 +57,7 @@ loop:
 		}
 	}
 	if IsDebug(2) {
-		Debugf("helloCronjob=%s done\n", j.Name())
+		Printf("helloCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()
 }

@@ -113,7 +113,7 @@ func (s *httpxServer) Serve() { // goroutine
 	}
 	s.WaitSubs() // gates
 	if IsDebug(2) {
-		Debugf("httpxServer=%s done\n", s.Name())
+		Printf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
@@ -185,7 +185,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("httpxGate=%d TCP done\n", g.id)
+		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
 }
@@ -222,7 +222,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if IsDebug(2) {
-		Debugf("httpxGate=%d TLS done\n", g.id)
+		Printf("httpxGate=%d TLS done\n", g.id)
 	}
 	g.server.SubDone()
 }
@@ -499,7 +499,7 @@ func (s *http1Stream) executeExchan(app *App, req *http1Request, resp *http1Resp
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
 	if IsDebug(2) {
-		Debugf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
 	status := req.headResult
@@ -624,7 +624,7 @@ func (r *http1Request) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if IsDebug(2) {
-		Debugf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
+		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-version CRLF

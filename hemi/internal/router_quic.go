@@ -72,7 +72,7 @@ func (r *QUICRouter) serve() { // goroutine
 		r.logger.Close()
 	}
 	if IsDebug(2) {
-		Debugf("quicRouter=%s done\n", r.Name())
+		Printf("quicRouter=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }

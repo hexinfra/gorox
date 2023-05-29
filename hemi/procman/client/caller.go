@@ -44,6 +44,13 @@ var calls = map[string]func(){ // indexed by action
 			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
 		}
 	},
+	"reload": func() {
+		if resp, ok := _call(common.ComdReload, 0, nil); ok && resp.Flag == 0 {
+			fmt.Println("reload ok!")
+		} else {
+			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
+		}
+	},
 }
 
 func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {

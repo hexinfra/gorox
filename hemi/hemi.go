@@ -192,7 +192,9 @@ const ( // core constants
 	CodeBug = internal.CodeBug
 	CodeUse = internal.CodeUse
 	CodeEnv = internal.CodeEnv
+)
 
+const ( // protocol constants
 	Version1_0 = internal.Version1_0
 	Version1_1 = internal.Version1_1
 	Version2   = internal.Version2

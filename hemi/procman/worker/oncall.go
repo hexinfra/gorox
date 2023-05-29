@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
@@ -18,5 +19,17 @@ import (
 var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
 	common.ComdWorker: func(req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
+	},
+	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
+		newStage, err := hemi.ApplyFile(configBase, configFile)
+		if err != nil {
+			hemi.Errorln(err.Error())
+			resp.Flag = 500
+			return
+		}
+		oldStage := curStage
+		newStage.Start(oldStage.ID() + 1)
+		curStage = newStage
+		oldStage.Quit()
 	},
 }

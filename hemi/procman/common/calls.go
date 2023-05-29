@@ -11,4 +11,5 @@ const (
 	ComdPids   = iota // report pids of leader and worker
 	ComdLeader        // report leader info
 	ComdWorker        // report worker info
+	ComdReload        // reload worker config
 )

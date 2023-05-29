@@ -22,7 +22,6 @@ var tells = map[string]func(){ // indexed by action
 	"recmd":     func() { _tell(common.ComdRecmd, 0, map[string]string{"newAddr": common.CmdUIAddr}) },
 	"reweb":     func() { _tell(common.ComdReweb, 0, map[string]string{"newAddr": common.WebUIAddr}) },
 	"rework":    func() { _tell(common.ComdRework, 0, nil) },
-	"reload":    func() { _tell(common.ComdReload, 0, nil) },
 	"cpu":       func() { _tell(common.ComdCPU, 0, nil) },
 	"heap":      func() { _tell(common.ComdHeap, 0, nil) },
 	"thread":    func() { _tell(common.ComdThread, 0, nil) },

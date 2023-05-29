@@ -8,11 +8,9 @@
 package worker
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
-	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
@@ -21,17 +19,6 @@ var onTells = map[uint8]func(req *msgx.Message){
 	common.ComdQuit: func(req *msgx.Message) {
 		curStage.Quit() // blocking
 		os.Exit(0)
-	},
-	common.ComdReload: func(req *msgx.Message) {
-		newStage, err := hemi.ApplyFile(configBase, configFile)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			return
-		}
-		oldStage := curStage
-		newStage.Start(oldStage.ID() + 1)
-		curStage = newStage
-		oldStage.Quit()
 	},
 	common.ComdCPU: func(req *msgx.Message) {
 		curStage.ProfCPU()

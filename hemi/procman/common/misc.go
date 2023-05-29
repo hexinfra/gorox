@@ -33,23 +33,23 @@ var (
 	ErrFile    string
 )
 
-func GetConfig() (base string, file string) {
+func GetConfig() (configBase string, configFile string) {
 	if strings.HasPrefix(ConfigFile, "http://") || strings.HasPrefix(ConfigFile, "https://") {
 		// base: scheme://host:port/prefix
 		// file: /program.conf
 		panic("currently not supported!")
 	} else {
 		if ConfigFile == "" {
-			base = BaseDir
-			file = "conf/" + Program + ".conf"
+			configBase = BaseDir
+			configFile = "conf/" + Program + ".conf"
 		} else if filepath.IsAbs(ConfigFile) { // /path/to/file.conf
-			base = filepath.Dir(ConfigFile)
-			file = filepath.Base(ConfigFile)
+			configBase = filepath.Dir(ConfigFile)
+			configFile = filepath.Base(ConfigFile)
 		} else { // path/to/file.conf
-			base = BaseDir
-			file = ConfigFile
+			configBase = BaseDir
+			configFile = ConfigFile
 		}
-		base += "/"
+		configBase += "/"
 	}
 	return
 }

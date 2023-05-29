@@ -144,6 +144,7 @@ func (g *httpxGate) open() error {
 	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
 	if err == nil {
 		g.gate = gate.(*net.TCPListener)
+		Printf("httpxGate id=%d address=%s opened!\n", g.id, g.address)
 	}
 	return err
 }

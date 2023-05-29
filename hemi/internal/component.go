@@ -784,8 +784,6 @@ func (s *Stage) Start(id int32) {
 	s.startSvcs()     // go svc.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
-
-	Printf("[worker] stage=%d is ready to serve.\n", s.id)
 }
 func (s *Stage) Quit() {
 	s.OnShutdown()
@@ -941,12 +939,6 @@ func (s *Stage) prepare() (err error) {
 
 func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
-
-/*
-func (s *Stage) Log(str string)                  { s.logger.Print(str) }
-func (s *Stage) Logln(str string)                { s.logger.Println(str) }
-func (s *Stage) Logf(format string, args ...any) { s.logger.Printf(format, args...) }
-*/
 
 func (s *Stage) ProfCPU() {
 	file, err := os.Create(s.cpuFile)

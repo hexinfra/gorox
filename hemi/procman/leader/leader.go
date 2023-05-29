@@ -51,13 +51,24 @@ func myroxClient() {
 	hemi.Println("[leader] TODO")
 }
 
+var (
+	webStage *hemi.Stage
+	webChan  chan *msgx.Message
+)
+
+func webuiServer() {
+	webChan = make(chan *msgx.Message)
+	hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
+	// TODO
+}
+
 func cmduiServer() {
-	cmdChan := make(chan *msgx.Message)
 	hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {
 		common.Crash(err.Error())
 	}
+	cmdChan := make(chan *msgx.Message)
 	var (
 		req *msgx.Message
 		ok  bool
@@ -76,7 +87,7 @@ func cmduiServer() {
 		if !ok {
 			goto closeNext
 		}
-		hemi.Printf("[leader] received from client: %+v\n", req)
+		hemi.Printf("[leader] recv: %+v\n", req)
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
@@ -112,21 +123,10 @@ func cmduiServer() {
 				cmdChan <- req
 				resp = <-cmdChan
 			}
-			hemi.Printf("[leader] send response: %+v\n", resp)
+			hemi.Printf("[leader] send: %+v\n", resp)
 			msgx.Send(cmdConn, resp)
 		}
 	closeNext:
 		cmdConn.Close()
 	}
-}
-
-var (
-	webStage *hemi.Stage
-	webChan  chan *msgx.Message
-)
-
-func webuiServer() {
-	webChan = make(chan *msgx.Message)
-	hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
-	// TODO
 }

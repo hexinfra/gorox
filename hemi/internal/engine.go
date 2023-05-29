@@ -21,7 +21,12 @@ import (
 
 const Version = "0.1.5-dev"
 
-var ( // global variables shared between stages
+var _debug atomic.Int32 // debug level
+
+func SetDebug(level int32)     { _debug.Store(level) }
+func IsDebug(level int32) bool { return _debug.Load() >= level }
+
+var (
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
 	_logsOnce sync.Once    // protects _logsDir
@@ -67,25 +72,32 @@ func LogsDir() string { return _logsDir.Load().(string) }
 func TempDir() string { return _tempDir.Load().(string) }
 func VarsDir() string { return _varsDir.Load().(string) }
 
-var _debug atomic.Int32 // debug level
-
-func SetDebug(level int32)     { _debug.Store(level) }
-func IsDebug(level int32) bool { return _debug.Load() >= level }
-
 func Print(args ...any) {
-	_printTime()
-	fmt.Print(args...)
+	_printTime(os.Stdout)
+	fmt.Fprint(os.Stdout, args...)
 }
 func Println(args ...any) {
-	_printTime()
-	fmt.Println(args...)
+	_printTime(os.Stdout)
+	fmt.Fprintln(os.Stdout, args...)
 }
 func Printf(format string, args ...any) {
-	_printTime()
-	fmt.Printf(format, args...)
+	_printTime(os.Stdout)
+	fmt.Fprintf(os.Stdout, format, args...)
 }
-func _printTime() {
-	fmt.Printf("[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
+func Error(args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprint(os.Stderr, args...)
+}
+func Errorln(args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprintln(os.Stderr, args...)
+}
+func Errorf(format string, args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprintf(os.Stdout, format, args...)
+}
+func _printTime(file *os.File) {
+	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
 }
 
 const ( // exit codes. keep sync with ../hemi.go

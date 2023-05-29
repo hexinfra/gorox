@@ -119,8 +119,8 @@ func cmduiServer() {
 						hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
 					}
 					goto closeNext
-				} else if hemi.IsDebug(1) {
-					hemi.Printf("[leader] recmd failed: %s\n", err.Error())
+				} else {
+					hemi.Errorf("[leader] recmd failed: %s\n", err.Error())
 				}
 			case common.ComdReweb:
 				// TODO

@@ -86,16 +86,15 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 		case exitCode := <-dieChan: // worker process dies unexpectedly
 			// TODO: more details
 			if exitCode == common.CodeCrash || exitCode == common.CodeStop || exitCode == hemi.CodeBug || exitCode == hemi.CodeUse || exitCode == hemi.CodeEnv {
-				// TODO: Errorf
-				hemi.Printf("[leader] worker critical error! code=%d\n", exitCode)
+				hemi.Errorf("[leader] worker critical error! code=%d\n", exitCode)
 				common.Stop()
 			} else if now := time.Now(); now.Sub(worker.lastDie) > time.Second {
+				hemi.Errorf("[leader] worker died unexpectedly, code=%d, restart again!\n", exitCode)
 				worker.closeConn()
 				worker.lastDie = now
 				worker.start(configBase, configFile, dieChan) // start again
 			} else { // worker has suffered too frequent crashes, unable to serve!
-				// TODO: Errorf
-				hemi.Printf("[leader] worker is broken! code=%d\n", exitCode)
+				hemi.Errorf("[leader] worker is broken! code=%d\n", exitCode)
 				common.Stop()
 			}
 		}

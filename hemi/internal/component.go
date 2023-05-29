@@ -68,8 +68,17 @@ func signComp(sign string, comp int16) {
 	signedComps[sign] = comp
 }
 
-var ( // global maps, shared between stages
-	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+var fixtureSigns = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+
+func registerFixture(sign string) {
+	if _, ok := fixtureSigns[sign]; ok {
+		BugExitln("fixture sign conflicted")
+	}
+	fixtureSigns[sign] = true
+	signComp(sign, compFixture)
+}
+
+var (
 	creatorsLock       sync.RWMutex
 	runnerCreators     = make(map[string]func(name string, stage *Stage) Runner) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
@@ -86,18 +95,7 @@ var ( // global maps, shared between stages
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
 	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
-	initsLock          sync.RWMutex
-	appInits           = make(map[string]func(app *App) error) // indexed by app name.
-	svcInits           = make(map[string]func(svc *Svc) error) // indexed by svc name.
 )
-
-func registerFixture(sign string) {
-	if _, ok := fixtureSigns[sign]; ok {
-		BugExitln("fixture sign conflicted")
-	}
-	fixtureSigns[sign] = true
-	signComp(sign, compFixture)
-}
 
 func RegisterRunner(sign string, create func(name string, stage *Stage) Runner) {
 	_registerComponent0(sign, compRunner, runnerCreators, create)
@@ -165,6 +163,12 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 	creators[sign] = create
 	signComp(sign, comp)
 }
+
+var (
+	initsLock sync.RWMutex
+	appInits  = make(map[string]func(app *App) error) // indexed by app name.
+	svcInits  = make(map[string]func(svc *Svc) error) // indexed by svc name.
+)
 
 func RegisterAppInit(name string, init func(app *App) error) {
 	initsLock.Lock()

@@ -41,6 +41,9 @@ var ( // registers
 )
 
 var ( // core funcs
+	SetDebug = internal.SetDebug
+	IsDebug  = internal.IsDebug
+
 	SetBaseDir = internal.SetBaseDir
 	SetLogsDir = internal.SetLogsDir
 	SetTempDir = internal.SetTempDir
@@ -51,12 +54,12 @@ var ( // core funcs
 	TempDir = internal.TempDir
 	VarsDir = internal.VarsDir
 
-	SetDebug = internal.SetDebug
-	IsDebug  = internal.IsDebug
-
 	Print   = internal.Print
 	Println = internal.Println
 	Printf  = internal.Printf
+	Error   = internal.Error
+	Errorln = internal.Errorln
+	Errorf  = internal.Errorf
 
 	BugExitln = internal.BugExitln
 	BugExitf  = internal.BugExitf

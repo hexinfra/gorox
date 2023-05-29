@@ -112,7 +112,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			} else { // worker daemon
 				worker.Main(token)
 			}
-		} else { // start leader daemon or run leader directly
+		} else if common.DaemonMode { // start leader daemon and exit
 			newFile := func(file string, ext string, osFile *os.File) *os.File {
 				if file == "" {
 					file = common.LogsDir + "/" + common.Program + ext
@@ -133,28 +133,24 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			}
 			outFile := newFile(common.OutFile, ".out", os.Stdout)
 			errFile := newFile(common.ErrFile, ".err", os.Stderr)
-			if common.DaemonMode { // start leader daemon and exit
-				devNull, err := os.Open(os.DevNull)
-				if err != nil {
-					common.Crash(err.Error())
-				}
-				if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-					Env:   []string{"_GOROX_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-					Files: []*os.File{devNull, outFile, errFile},
-					Sys:   system.DaemonSysAttr(),
-				}); err == nil { // leader process started
-					process.Release()
-					devNull.Close()
-					outFile.Close()
-					errFile.Close()
-				} else {
-					common.Crash(err.Error())
-				}
-			} else { // run as foreground leader. default case
-				os.Stdout = outFile
-				os.Stderr = errFile
-				leader.Main()
+			devNull, err := os.Open(os.DevNull)
+			if err != nil {
+				common.Crash(err.Error())
 			}
+			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+				Env:   []string{"_GOROX_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+				Files: []*os.File{devNull, outFile, errFile},
+				Sys:   system.DaemonSysAttr(),
+			}); err == nil { // leader process started
+				process.Release()
+				devNull.Close()
+				outFile.Close()
+				errFile.Close()
+			} else {
+				common.Crash(err.Error())
+			}
+		} else { // run as foreground leader. default case
+			leader.Main()
 		}
 	default: // as control client
 		client.Main(action)

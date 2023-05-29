@@ -64,8 +64,8 @@ OPTIONS
   -logs   <path>    # logs directory to use
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
-  -out    <path>    # server stdout file (default: website.out in logs dir)
-  -err    <path>    # server stderr file (default: website.err in logs dir)
+  -out    <path>    # daemon's stdout file (default: website.out in logs dir)
+  -err    <path>    # daemon's stderr file (default: website.err in logs dir)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.

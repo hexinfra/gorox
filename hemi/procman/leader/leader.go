@@ -23,7 +23,9 @@ import (
 func Main() {
 	// Check worker's config
 	configBase, configFile := common.GetConfig()
-	hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
+	if hemi.IsDebug(1) {
+		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
+	}
 	if _, err := hemi.ApplyFile(configBase, configFile); err != nil {
 		common.Crash("leader: " + err.Error())
 	}
@@ -48,7 +50,7 @@ func myroxClient() {
 	// TODO
 	roxChan := make(chan *msgx.Message)
 	_ = roxChan
-	hemi.Println("[leader] TODO")
+	hemi.Println("[leader] myrox: TODO")
 }
 
 var (
@@ -58,12 +60,16 @@ var (
 
 func webuiServer() {
 	webChan = make(chan *msgx.Message)
-	hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
+	if hemi.IsDebug(1) {
+		hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
+	}
 	// TODO
 }
 
 func cmduiServer() {
-	hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
+	if hemi.IsDebug(1) {
+		hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
+	}
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
 	if err != nil {
 		common.Crash(err.Error())
@@ -76,22 +82,30 @@ func cmduiServer() {
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
 		if err != nil {
-			hemi.Println("[leader] " + err.Error())
+			if hemi.IsDebug(1) {
+				hemi.Println("[leader] accept error: " + err.Error())
+			}
 			continue
 		}
 		if err := cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			hemi.Println("[leader] " + err.Error())
+			if hemi.IsDebug(1) {
+				hemi.Println("[leader]: SetReadDeadline error: " + err.Error())
+			}
 			goto closeNext
 		}
 		req, ok = msgx.Recv(cmdConn, 16<<20)
 		if !ok {
 			goto closeNext
 		}
-		hemi.Printf("[leader] recv: %+v\n", req)
+		if hemi.IsDebug(1) {
+			hemi.Printf("[leader] recv: %+v\n", req)
+		}
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
-				hemi.Println("[leader] received stop")
+				if hemi.IsDebug(1) {
+					hemi.Println("[leader] received stop")
+				}
 				common.Stop() // worker will stop immediately after msgConn is closed
 			case common.ComdRecmd:
 				newAddr := req.Get("newAddr") // succeeding cmduiAddr
@@ -101,9 +115,11 @@ func cmduiServer() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					cmdGate.Close()
 					cmdGate = newGate
-					hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
+					if hemi.IsDebug(1) {
+						hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
+					}
 					goto closeNext
-				} else {
+				} else if hemi.IsDebug(1) {
 					hemi.Printf("[leader] recmd failed: %s\n", err.Error())
 				}
 			case common.ComdReweb:
@@ -123,7 +139,9 @@ func cmduiServer() {
 				cmdChan <- req
 				resp = <-cmdChan
 			}
-			hemi.Printf("[leader] send: %+v\n", resp)
+			if hemi.IsDebug(1) {
+				hemi.Printf("[leader] send: %+v\n", resp)
+			}
 			msgx.Send(cmdConn, resp)
 		}
 	closeNext:

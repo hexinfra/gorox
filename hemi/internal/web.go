@@ -222,6 +222,10 @@ func (a *App) OnPrepare() {
 			UseExitln(err.Error())
 		}
 	}
+
+	if len(a.rules) == 0 {
+		Printf("no rules defined for app: '%s'\n", a.name)
+	}
 }
 
 func (a *App) createHandlet(sign string, name string) Handlet {

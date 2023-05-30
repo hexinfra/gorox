@@ -14,6 +14,9 @@ main{
 		width:80%;
 	}
 }
+main > h1{
+	background:#ca8;
+}
 footer{
 	clear:left;
 }

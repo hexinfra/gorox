@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// hwebProxy handlet passes requests to another/backend HWEB servers and cache responses.
+// hwebProxy handlet passes web requests to another/backend HWEB servers and cache responses.
 type hwebProxy struct {
 	// Mixins
 	exchanProxy_

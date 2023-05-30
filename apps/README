@@ -5,7 +5,6 @@ Some builtin apps are:
 
   examples/hello/    - An example "hello, world" app.
   examples/forum/    - An example forum app.
-  fallback/          - A static app. Can be used as default app of web servers.
 
 To add a new static app named "foo":
 

@@ -8,7 +8,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/hexinfra/gorox/hemi/procman"
+	"github.com/hexinfra/gorox/hemi/website/test"
 
 	_ "github.com/hexinfra/gorox/hemi/website/apps"
 	_ "github.com/hexinfra/gorox/hemi/website/exts"
@@ -28,6 +31,7 @@ ACTION
 
   serve      # start as server
   check      # dry run to check config
+  test       # run as tester
   help       # show this message
   version    # show version info
   advise     # show how to optimize current platform
@@ -76,5 +80,9 @@ OPTIONS
 `
 
 func main() {
-	procman.Main("website", usage, 0, "127.0.0.1:9521", "127.0.0.1:9522")
+	if len(os.Args) >= 2 && os.Args[1] == "test" {
+		test.Main()
+	} else {
+		procman.Main("website", usage, 0, "127.0.0.1:9521", "127.0.0.1:9522")
+	}
 }

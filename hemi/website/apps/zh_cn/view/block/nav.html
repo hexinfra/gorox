@@ -1,12 +1,9 @@
 <style type="text/css">
 nav{
-	width:10%;
-	background:#ca8;
+	background:#e0e0e0;
 }
-@media (max-width:600px){
-	nav{
-		width:20%;
-	}
+nav img{
+	width:100%;
 }
 nav h2{
 	text-align:center;
@@ -14,21 +11,28 @@ nav h2{
 }
 nav li{
 	text-align:center;
-	border-bottom:1px solid #999;
+	border-top:1px solid #999;
+}
+nav li a{
+	display:block;
 	padding:5px;
+}
+nav li a:hover{
+	background:#fff;
 }
 </style>
 
 <nav>
-	<h2>导航</h2>
+	<div><img src="/static/logo.png"></div>
 	<ul>
 		<li><a href="/">首页</a></li>
 		<li><a href="/about">关于</a></li>
+		<li><a href="/faq">FAQ</a></li>
+		<li><a href="/download">下载</a></li>
 		<li><a href="/docs">文档</a></li>
-		<li><a href="/community">社区</a></li>
 		<li><a href="/support">支持</a></li>
-		<li><a href="https://github.com/hexinfra/gorox/releases" target="_blank">下载</a></li>
+		<li><a href="/community">社区</a></li>
 		<li><a href="https://github.com/hexinfra/gorox" target="_blank">GitHub</a></li>
-		<li><a href="{{$scheme}}://{{@en_us}}{{$colonPort}}{{$uri}}">English</a></li>
+		<li><a href="{{$scheme}}://{{@en_us}}{{$colonPort}}">English</a></li>
 	</ul>
 </nav>

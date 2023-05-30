@@ -1,101 +1,93 @@
 <style type="text/css">
-	article {
-		font-family: sans-serif;
-	}
+article {
+	font-family: sans-serif;
+}
 
-	article h1 {
-		text-align: center;
-		background: #d0e0f0;
-	}
+article h1 {
+	text-align: center;
+	background: #d0e0f0;
+}
 
-	article>ol {
-		padding-left: 30px;
-		list-style-type: none;
-	}
+article>ol {
+	padding-left: 30px;
+	list-style-type: none;
+}
 
-	article h3 {
-		margin: 12px 0px;
-	}
+article h3 {
+	margin: 12px 0px;
+}
 
-	a,
-	a:hover,
-	a:active,
-	a:focus,
-	a:visited {
-		color: #0022e4;
-	}
+article h1,
+article h2,
+article h3,
+article h4,
+article h5,
+article h6 {
+	padding: 5px;
+}
 
-	article h1,
-	article h2,
-	article h3,
-	article h4,
-	article h5,
-	article h6 {
-		padding: 5px;
-	}
+article p {
+	padding: 5px;
+	background: #ffffff;
+	margin-right: 10px;
+}
 
-	article p {
-		padding: 5px;
-		background: #ffffff;
-		margin-right: 10px;
-	}
+article code {
+	display: block;
+	padding: 10px;
+	white-space: pre-line;
+	line-height: 22px;
+	background-color: #f5f5f5;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	margin-right: 20px;
+}
 
-	article code {
-		display: block;
-		padding: 10px;
-		white-space: pre-line;
-		line-height: 22px;
-		background-color: #f5f5f5;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		margin-right: 20px;
-	}
-
-	article code.pre {
-		white-space: pre;
-		-moz-tab-size: 2;
-		-o-tab-size: 2;
-		-webkit-tab-size: 2;
-		tab-size: 2;
-	}
+article code.pre {
+	white-space: pre;
+	-moz-tab-size: 2;
+	-o-tab-size: 2;
+	-webkit-tab-size: 2;
+	tab-size: 2;
+}
 
 
-	article ul {}
+article ul {}
 
-	article li {
-		padding: 2px;
-	}
+article li {
+	padding: 2px;
+}
 
-	article dt {
-		font-weight: bold;
-		font-style: italic;
-	}
+article dt {
+	font-weight: bold;
+	font-style: italic;
+}
 
-	article a {
-		text-decoration: none;
-	}
+article a {
+	text-decoration: none;
+}
 
-	article table {
-		border-collapse: collapse;
-	}
+article table {
+	border-collapse: collapse;
+}
 
-	article th,
-	article td {
-		border: 1px solid #000;
-	}
+article th,
+article td {
+	border: 1px solid #000;
+}
 
-	table.none tr td {
-		border-collapse: collapse;
-		border: none;
-		height: 22px
-	}
+article table.none tr td {
+	border-collapse: collapse;
+	border: none;
+	height: 22px
+}
 </style>
 
 <article>
-	<h1>Gorox 参考手册</h1>
+	<h2>Gorox 参考手册</h2>
 	<p>本文列出 Gorox 内各组件的详尽参考。</p>
 
-	<h2>目录</h2>
+	<h3>目录</h3>
 	<ol>
 		<li><a href="#stage">stage</a></li>
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
@@ -171,7 +163,7 @@
 
 	<ol style="margin-top:10px">
 		<li id="stage">
-			<h3>stage</h3>
+			<h4>stage</h4>
 			<p>stage 是 gorox 工作进程的运行阶段，其余的配置和组件都必须在 stage 内部。</p>
 			<code>语法: stage { ... }
 				默认值: 无
@@ -269,11 +261,11 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		</li>
 
 		<li id="stage-clock">
-			<h3>stage &gt; clock</h3>
+			<h4>stage &gt; clock</h4>
 			<p>clock: gorox 获取时间并且缓存时间，每隔100ms更新一次，目前不可配置。用于http header中的date、expires、last-modified等。</p>
 		</li>
 		<li id="stage-fcache">
-			<h3>stage &gt; fcache</h3>
+			<h4>stage &gt; fcache</h4>
 			<p>fcache: 将静态文件缓存在内存中，用于加快访问速度，减少磁盘IO。</p>
 			<code class="pre">stage { 
 	fcache {
@@ -315,11 +307,11 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			</ul>
 		</li>
 		<li id="stage-resolver">
-			<h3>stage &gt; resolver</h3>
+			<h4>stage &gt; resolver</h4>
 			<p>resolver: 用于DNS解析ip4、ip6等。</p>
 		</li>
 		<li id="stage-http1Outgate">
-			<h3>stage &gt; http1Outgate</h3>
+			<h4>stage &gt; http1Outgate</h4>
 			<p>http1.1 正向代理，通过 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http1Outgate。<br />当 http1Proxy 设置 .proxyMode =
 				"forward"，gorox 自动使用 http1Outgate 相关配置作为 http client 的配置。</p>
 			<ul>
@@ -433,7 +425,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 			</ul>
 		</li>
 		<li id="stage-http2Outgate">
-			<h3>stage &gt; http2Outgate</h3>
+			<h4>stage &gt; http2Outgate</h4>
 			<p>http2 正向代理，通过 gorox 转发 http 请求。在整个 stage 里面只能配置一个 http2Outgate。<br />当 http2Proxy 设置 .proxyMode =
 				"forward"，gorox 自动使用 http2Outgate 相关配置作为 http client 的配置。
 			</p>
@@ -525,37 +517,37 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 			</ul>
 		</li>
 		<li id="stage-http3Outgate">
-			<h3>stage &gt; http3Outgate</h3>
+			<h4>stage &gt; http3Outgate</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-quicOutgate">
-			<h3>stage &gt; quicOutgate</h3>
+			<h4>stage &gt; quicOutgate</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-tcpsOutgate">
-			<h3>stage &gt; tcpsOutgate</h3>
+			<h4>stage &gt; tcpsOutgate</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-udpsOutgate">
-			<h3>stage &gt; udpsOutgate</h3>
+			<h4>stage &gt; udpsOutgate</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-demoRunner">
-			<h3>stage &gt; demoRunner</h3>
+			<h4>stage &gt; demoRunner</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-http1Backend">
-			<h3>stage &gt; http1Backend</h3>
+			<h4>stage &gt; http1Backend</h4>
 			<p>例子</p>
 			<code class="pre">stage {
 	http1Backend "h1b" {
@@ -691,45 +683,45 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 			</ul>
 		</li>
 		<li id="stage-http2Backend">
-			<h3>stage &gt; http2Backend</h3>
+			<h4>stage &gt; http2Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-http3Backend">
-			<h3>stage &gt; http3Backend</h3>
+			<h4>stage &gt; http3Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-quicBackend">
-			<h3>stage &gt; quicBackend</h3>
+			<h4>stage &gt; quicBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-tcpsBackend">
-			<h3>stage &gt; tcpsBackend</h3>
+			<h4>stage &gt; tcpsBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 		<li id="stage-udpsBackend">
-			<h3>stage &gt; udpsBackend</h3>
+			<h4>stage &gt; udpsBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 
 		<li id="stage-unixBackend">
-			<h3>stage &gt; unixBackend</h3>
+			<h4>stage &gt; unixBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
 
 		<li id="stage-localCacher">
-			<h3>stage &gt; localCacher</h3>
+			<h4>stage &gt; localCacher</h4>
 			<p>localCacher：本地文件 cache，根据 http 的 header 信息把远端的数据缓存在本地。</p>
 			<ul>
 				<li>
@@ -743,7 +735,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 		</li>
 
 		<li id="stage-redisCacher">
-			<h3>stage &gt; redisCacher</h3>
+			<h4>stage &gt; redisCacher</h4>
 			<p>redisCacher：根据 http 的 header 信息把远端的数据缓存在 redis 中。</p>
 			<ul>
 				<li>
@@ -764,7 +756,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 		</li>
 
 		<li id="stage-app">
-			<h3>stage &gt; app </h3>
+			<h4>stage &gt; app </h4>
 			<p>app：应用服务器的配置说明。</p>
 			<ul>
 				<li>
@@ -901,7 +893,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 		</li>
 
 		<li id="stage-app-rule">
-			<h3>stage &gt; app &gt; rule </h3>
+			<h4>stage &gt; app &gt; rule </h4>
 			<p>rule：在请求中根据某些特定的 URL 对应的一系列配置项。如果配置多个，则按照从上到下的顺序匹配，一旦匹配成功就停止向下寻找。</p>
 			<ul>
 				<li>
@@ -1086,7 +1078,7 @@ app "main" {
 		</li>
 
 		<li id="stage-app-accessChecker">
-			<h3>stage &gt; app &gt; accessChecker </h3>
+			<h4>stage &gt; app &gt; accessChecker </h4>
 			<p> accessChecker 对 ip 做检测，可以设置白名单或者黑名单。其中白名单和黑名单不能有同样的配置。拒绝访问 ip 将会返回403。</p>
 			<ul>
 				<li>
@@ -1134,7 +1126,7 @@ app "main" {
 		</li>
 
 		<li id="stage-app-hostnameChecker">
-			<h3>stage &gt; app &gt; hostnameChecker </h3>
+			<h4>stage &gt; app &gt; hostnameChecker </h4>
 			<p> hostnameChecker 对域名做检测。</p>
 			<ul>
 				<li>
@@ -1156,7 +1148,7 @@ app "main" {
 		</li>
 
 		<li id="stage-app-httpsChecker">
-			<h3>stage &gt; app &gt; httpsChecker </h3>
+			<h4>stage &gt; app &gt; httpsChecker </h4>
 			<p> httpsChecker 对请求是否是 https 做检测。如果开启检测并且.authority 不为空，则使用https跳转到authority上。</p>
 			<ul>
 				<li>
@@ -1176,11 +1168,11 @@ app "main" {
 			</ul>
 		</li>
 		<li id="stage-app-limitChecker">
-			<h3>stage &gt; app &gt; limitChecker </h3>
+			<h4>stage &gt; app &gt; limitChecker </h4>
 		</li>
 
 		<li id="stage-app-refererChecker">
-			<h3>stage &gt; app &gt; refererChecker </h3>
+			<h4>stage &gt; app &gt; refererChecker </h4>
 			<p> refererChecker 验证 http 请求中的 referer 是否符合要求。</p>
 			<ul>
 				<li>
@@ -1225,23 +1217,23 @@ app "main" {
 		</li>
 
 		<li id="stage-app-rewriter">
-			<h3>stage &gt; app &gt; rewriter </h3>
+			<h4>stage &gt; app &gt; rewriter </h4>
 		</li>
 
 		<li id="stage-app-favicon">
-			<h3>stage &gt; app &gt; favicon </h3>
+			<h4>stage &gt; app &gt; favicon </h4>
 		</li>
 
 		<li id="stage-app-ajpProxy">
-			<h3>stage &gt; app &gt; ajpProxy </h3>
+			<h4>stage &gt; app &gt; ajpProxy </h4>
 		</li>
 
 		<li id="stage-app-uwsgiProxy">
-			<h3>stage &gt; app &gt; uwsgiProxy </h3>
+			<h4>stage &gt; app &gt; uwsgiProxy </h4>
 		</li>
 
 		<li id="stage-app-fcgiProxy">
-			<h3>stage &gt; app &gt; fcgiProxy </h3>
+			<h4>stage &gt; app &gt; fcgiProxy </h4>
 			<p>fcgiProxy 用于 fastcgi 协议的后端代理，比如代理 php-fpm。 </p>
 			<code class="pre">语法：fcgiProxy [name] { ... }
 
@@ -1393,7 +1385,7 @@ stage {
 			</ul>
 		</li>
 		<li id="stage-app-http1Proxy">
-			<h3>stage &gt; app &gt; http1Proxy </h3>
+			<h4>stage &gt; app &gt; http1Proxy </h4>
 			<p>http1Proxy 用于 http1.x 协议的后端代理。</p>
 			<code class="pre">语法：http1Proxy [name] { ... }
 
@@ -1486,19 +1478,19 @@ http1Proxy {
 		</li>
 
 		<li id="stage-app-http2Proxy">
-			<h3>stage &gt; app &gt; http2Proxy </h3>
+			<h4>stage &gt; app &gt; http2Proxy </h4>
 		</li>
 
 		<li id="stage-app-http3Proxy">
-			<h3>stage &gt; app &gt; http3Proxy </h3>
+			<h4>stage &gt; app &gt; http3Proxy </h4>
 		</li>
 
 		<li id="stage-app-sitex">
-			<h3>stage &gt; app &gt; sitex </h3>
+			<h4>stage &gt; app &gt; sitex </h4>
 		</li>
 
 		<li id="stage-app-static">
-			<h3>stage &gt; app &gt; static </h3>
+			<h4>stage &gt; app &gt; static </h4>
 			<p>static 处理静态资源，例如（js、css、html）等。</p>
 			<code class="pre">static {
 	.webRoot = %baseDir + "/apps/app1/root"
@@ -1596,10 +1588,10 @@ http1Proxy {
 				</li>
 			</ul>
 		<li id="stage-app-webdavHandlet">
-			<h3>stage &gt; app &gt; webdavHandlet </h3>
+			<h4>stage &gt; app &gt; webdavHandlet </h4>
 		</li>
 		<li id="stage-app-gzipReviser">
-			<h3>stage &gt; app &gt; gzipReviser </h3>
+			<h4>stage &gt; app &gt; gzipReviser </h4>
 			<p>gzipReviser gzip压缩相关的配置</p>
 			<code>gzipReviser {
 					.compressLevel = 1
@@ -1632,7 +1624,7 @@ http1Proxy {
 			</ul>
 		</li>
 		<li id="stage-app-headReviser">
-			<h3>stage &gt; app &gt; headReviser </h3>
+			<h4>stage &gt; app &gt; headReviser </h4>
 			<p>headReviser 对 header 做添加和删除。</p>
 			<ul>
 				<li>
@@ -1691,35 +1683,35 @@ http1Proxy {
 			</ul>
 		</li>
 		<li id="stage-app-replaceReviser">
-			<h3>stage &gt; app &gt; replaceReviser </h3>
+			<h4>stage &gt; app &gt; replaceReviser </h4>
 		</li>
 
 		<li id="stage-app-ssiReviser">
-			<h3>stage &gt; app &gt; ssiReviser </h3>
+			<h4>stage &gt; app &gt; ssiReviser </h4>
 		</li>
 
 		<li id="stage-app-wrapReviser">
-			<h3>stage &gt; app &gt; wrapReviser </h3>
+			<h4>stage &gt; app &gt; wrapReviser </h4>
 		</li>
 
 		<li id="stage-app-sock1Proxy">
-			<h3>stage &gt; app &gt; sock1Proxy </h3>
+			<h4>stage &gt; app &gt; sock1Proxy </h4>
 		</li>
 
 		<li id="stage-app-sock2Proxy">
-			<h3>stage &gt; app &gt; sock2Proxy </h3>
+			<h4>stage &gt; app &gt; sock2Proxy </h4>
 		</li>
 
 		<li id="stage-app-sock3Proxy">
-			<h3>stage &gt; app &gt; sock3Proxy </h3>
+			<h4>stage &gt; app &gt; sock3Proxy </h4>
 		</li>
 
 		<li id="stage-svc">
-			<h3>stage &gt; svc </h3>
+			<h4>stage &gt; svc </h4>
 		</li>
 
 		<li id="stage-httpxServer">
-			<h3>stage &gt; httpxServer </h3>
+			<h4>stage &gt; httpxServer </h4>
 			<p>httpxServer goroxy 中对 http1.1 和 http2 服务端配置。</p>
 			<p>例子</p>
 			<code class="pre">stage {
@@ -1875,11 +1867,11 @@ http1Proxy {
 		</li>
 
 		<li id="stage-http3Server">
-			<h3>stage &gt; http3Server </h3>
+			<h4>stage &gt; http3Server </h4>
 		</li>
 
 		<li id="stage-socksServer">
-			<h3>stage &gt; socksServer </h3>
+			<h4>stage &gt; socksServer </h4>
 			<p></p>
 			<code class="pre">stage {
 	socksServer "socks" {
@@ -1931,11 +1923,11 @@ http1Proxy {
 		</li>
 
 		<li id="stage-cleanCronjob">
-			<h3>stage &gt; cleanCronjob </h3>
+			<h4>stage &gt; cleanCronjob </h4>
 		</li>
 
 		<li id="stage-statCronjob">
-			<h3>stage &gt; statCronjob </h3>
+			<h4>stage &gt; statCronjob </h4>
 		</li>
 	</ol>
 </article>

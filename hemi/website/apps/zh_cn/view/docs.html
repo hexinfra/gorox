@@ -2,33 +2,24 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="/static/global.css" type="text/css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/reset.css" type="text/css">
+<link rel="stylesheet" href="/static/zh-cn.css" type="text/css">
+<style type="text/css">
+</style>
 <title>Gorox: 文档</title>
 </head>
 <body>
 	{{block/header.html}}
-	<style type="text/css">
-	main{display:flex;background:#fff;}
-	</style>
+	{{block/nav.html}}
 	<main>
-		{{block/nav.html}}
-		<div>
-			<h1>文档</h1>
-			<h2>Gorox 文档</h2>
-			<ul>
-				<li><a href="/docs/gorox/operation">操作手册</a></li>
-				<li><a href="/docs/gorox/developer">开发者手册</a></li>
-				<li><a href="/docs/gorox/committer">贡献者手册</a></li>
-				<li><a href="/docs/gorox/reference">参考手册</a></li>
-			</ul>
-			<h2>Myrox 文档</h2>
-			<ul>
-				<li><a href="/docs/myrox/operation">操作手册</a></li>
-				<li><a href="/docs/myrox/developer">开发者手册</a></li>
-				<li><a href="/docs/myrox/committer">贡献者手册</a></li>
-				<li><a href="/docs/myrox/reference">参考手册</a></li>
-			</ul>
-		</div>
+		<h1>文档</h1>
+		<ul>
+			<li><a href="/docs/operation">操作手册</a></li>
+			<li><a href="/docs/reference">参考手册</a></li>
+			<li><a href="/docs/developer">开发者手册</a></li>
+			<li><a href="/docs/committer">贡献者手册</a></li>
+		</ul>
 	</main>
 	{{block/footer.html}}
 </body>

@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Stream UDS relay implementation.
+// Stream UDS proxy implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSDealer("unixRelay", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
-		d := new(unixRelay)
+	RegisterTCPSDealer("unixProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+		d := new(unixProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// unixRelay passes TCP/TLS connections to backend Stream UDS server.
-type unixRelay struct {
+// unixProxy passes TCP/TLS connections to backend Stream UDS server.
+type unixProxy struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
@@ -26,16 +26,16 @@ type unixRelay struct {
 	// States
 }
 
-func (d *unixRelay) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *unixProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *unixRelay) OnShutdown() {
+func (d *unixProxy) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *unixRelay) OnConfigure() {
+func (d *unixProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -44,20 +44,20 @@ func (d *unixRelay) OnConfigure() {
 			} else if unixBackend, ok := backend.(*UNIXBackend); ok {
 				d.backend = unixBackend
 			} else {
-				UseExitf("incorrect backend '%s' for unixRelay\n", name)
+				UseExitf("incorrect backend '%s' for unixProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for reverse relay")
+		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (d *unixRelay) OnPrepare() {
+func (d *unixProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *unixRelay) Deal(conn *TCPSConn) (next bool) { // forward or reverse
+func (d *unixProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
 	// TODO
 	xConn, err := d.backend.Dial()
 	if err != nil {

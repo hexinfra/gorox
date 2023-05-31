@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC broker implementation.
+// QUIC client implementation.
 
 package internal
 
@@ -24,8 +24,8 @@ func init() {
 	})
 }
 
-// quicBroker is the interface for QUICOutgate and QUICBackend.
-type quicBroker interface {
+// quicClient is the interface for QUICOutgate and QUICBackend.
+type quicClient interface {
 	client
 	streamHolder
 }
@@ -167,14 +167,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, broker quicBroker, node *quicNode, quicConn *quix.Conn) *QConn {
+func getQConn(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
 	} else {
 		conn = x.(*QConn)
 	}
-	conn.onGet(id, broker, node, quicConn)
+	conn.onGet(id, client, node, quicConn)
 	return conn
 }
 func putQConn(conn *QConn) {
@@ -187,7 +187,7 @@ type QConn struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
-	node       *quicNode // associated node if broker is QUICBackend
+	node       *quicNode // associated node if client is QUICBackend
 	quicConn   *quix.Conn
 	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)
@@ -195,11 +195,11 @@ type QConn struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *QConn) onGet(id int64, broker quicBroker, node *quicNode, quicConn *quix.Conn) {
-	c.conn_.onGet(id, broker)
+func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) {
+	c.conn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
-	c.maxStreams = broker.MaxStreamsPerConn()
+	c.maxStreams = client.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
 	c.conn_.onPut()
@@ -209,7 +209,7 @@ func (c *QConn) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *QConn) getBroker() quicBroker { return c.client.(quicBroker) }
+func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
 
 func (c *QConn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams

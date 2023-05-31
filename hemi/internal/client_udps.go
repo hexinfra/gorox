@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS broker implementation.
+// UDP/DTLS client implementation.
 
 package internal
 
@@ -24,8 +24,8 @@ func init() {
 	})
 }
 
-// udpsBroker is the interface for UDPSOutgate and UDPSBackend.
-type udpsBroker interface {
+// udpsClient is the interface for UDPSOutgate and UDPSBackend.
+type udpsClient interface {
 	client
 }
 
@@ -172,14 +172,14 @@ func (n *udpsNode) storeLink(uLink *ULink) {
 // poolULink
 var poolULink sync.Pool
 
-func getULink(id int64, broker udpsBroker, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
+func getULink(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
 	var link *ULink
 	if x := poolULink.Get(); x == nil {
 		link = new(ULink)
 	} else {
 		link = x.(*ULink)
 	}
-	link.onGet(id, broker, node, udpConn, rawConn)
+	link.onGet(id, client, node, udpConn, rawConn)
 	return link
 }
 func putULink(link *ULink) {
@@ -192,15 +192,15 @@ type ULink struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Link states (non-zeros)
-	node    *udpsNode       // associated node if broker is UDPSBackend
+	node    *udpsNode       // associated node if client is UDPSBackend
 	udpConn *net.UDPConn    // udp conn
 	rawConn syscall.RawConn // for syscall
 	// Link states (zeros)
 	broken atomic.Bool // is link broken?
 }
 
-func (l *ULink) onGet(id int64, broker udpsBroker, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	l.conn_.onGet(id, broker)
+func (l *ULink) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	l.conn_.onGet(id, client)
 	l.node = node
 	l.udpConn = udpConn
 	l.rawConn = rawConn
@@ -213,7 +213,7 @@ func (l *ULink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *ULink) getBroker() udpsBroker { return l.client.(udpsBroker) }
+func (l *ULink) getClient() udpsClient { return l.client.(udpsClient) }
 
 func (l *ULink) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {

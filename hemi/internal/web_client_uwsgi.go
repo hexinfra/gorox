@@ -14,8 +14,6 @@ import (
 	"sync"
 )
 
-// TODO: use dedicated backends and nodes?
-
 // poolUWSGIExchan
 var poolUWSGIExchan sync.Pool
 

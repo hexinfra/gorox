@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Datagram UDS broker implementation.
+// Datagram UDS client implementation.
 
 package internal
 
@@ -137,7 +137,7 @@ type XLink struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Link states (non-zeros)
-	node     *gramNode       // associated node if broker is GRAMBackend
+	node     *gramNode       // associated node if client is GRAMBackend
 	unixConn *net.UnixConn   // unix conn
 	rawConn  syscall.RawConn // for syscall
 	// Link states (zeros)

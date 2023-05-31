@@ -28,8 +28,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// TODO: use dedicated backends and nodes?
-
 // poolFCGIExchan
 var poolFCGIExchan sync.Pool
 

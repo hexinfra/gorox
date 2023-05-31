@@ -23,8 +23,6 @@ import (
 	"sync"
 )
 
-// TODO: use dedicated backends and nodes?
-
 // poolAJPExchan
 var poolAJPExchan sync.Pool
 

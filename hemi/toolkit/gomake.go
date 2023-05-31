@@ -162,7 +162,6 @@ func build(name string) {
 
 func reset(withVars bool) {
 	names := []string{
-		"dist",
 		"logs",
 		"temp",
 	}

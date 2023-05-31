@@ -56,6 +56,11 @@ func (f *resolvFixture) run() { // goroutine
 	f.stage.SubDone()
 }
 
+func (f *resolvFixture) Register(name string, address string) bool {
+	// TODO
+	return false
+}
+
 func (f *resolvFixture) Resolve(name string) (address string) {
 	// TODO
 	return ""

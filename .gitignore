@@ -24,7 +24,6 @@ Thumbs.db
 
 local.conf
 
-dist/
 logs/
 temp/
 vars/

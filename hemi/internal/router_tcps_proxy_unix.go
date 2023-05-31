@@ -57,7 +57,7 @@ func (d *unixProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *unixProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
+func (d *unixProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
 	xConn, err := d.backend.Dial()
 	if err != nil {

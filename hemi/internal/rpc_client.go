@@ -9,10 +9,28 @@ package internal
 
 // rpcClient
 type rpcClient interface {
+	client
 }
 
 // rpcOutgate_
 type rpcOutgate_ struct {
+	// Mixins
+	outgate_
+	// States
+}
+
+func (f *rpcOutgate_) onCreate(name string, stage *Stage) {
+	f.outgate_.onCreate(name, stage)
+}
+
+func (f *rpcOutgate_) onConfigure(shell Component) {
+	f.outgate_.onConfigure()
+	if f.tlsConfig != nil {
+		f.tlsConfig.InsecureSkipVerify = true
+	}
+}
+func (f *rpcOutgate_) onPrepare(shell Component) {
+	f.outgate_.onPrepare()
 }
 
 // rpcBackend_

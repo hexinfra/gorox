@@ -77,6 +77,7 @@ type ( // core types
 
 	Runner = internal.Runner
 
+	HRPCOutgate  = internal.HRPCOutgate
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP3Outgate = internal.HTTP3Outgate

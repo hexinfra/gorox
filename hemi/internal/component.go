@@ -25,7 +25,7 @@ import (
 
 const ( // component list
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, resolver, http1Outgate, tcpsOutgate, ...
+	compFixture               // clock, fcache, resolv, http1Outgate, tcpsOutgate, ...
 	compRunner                // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICRouter            // quicRouter
@@ -360,7 +360,7 @@ type Stage struct {
 	// Assocs
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
-	resolver     *resolverFixture      // for fast accessing
+	resolv       *resolvFixture        // for fast accessing
 	hrpcOutgate  *HRPCOutgate          // for fast accessing
 	http1Outgate *HTTP1Outgate         // for fast accessing
 	http2Outgate *HTTP2Outgate         // for fast accessing
@@ -396,7 +396,7 @@ func (s *Stage) onCreate() {
 
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
-	s.resolver = createResolver(s)
+	s.resolv = createResolv(s)
 	s.hrpcOutgate = createHRPCOutgate(s)
 	s.http1Outgate = createHTTP1Outgate(s)
 	s.http2Outgate = createHTTP2Outgate(s)
@@ -409,7 +409,7 @@ func (s *Stage) onCreate() {
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
-	s.fixtures[signResolver] = s.resolver
+	s.fixtures[signResolv] = s.resolv
 	s.fixtures[signHRPCOutgate] = s.hrpcOutgate
 	s.fixtures[signHTTP1Outgate] = s.http1Outgate
 	s.fixtures[signHTTP2Outgate] = s.http2Outgate
@@ -492,7 +492,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	s.IncSub(1)
-	s.resolver.OnShutdown()
+	s.resolv.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -715,7 +715,7 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
-func (s *Stage) Resolver() *resolverFixture  { return s.resolver }
+func (s *Stage) Resolv() *resolvFixture      { return s.resolv }
 func (s *Stage) HRPCOutgate() *HRPCOutgate   { return s.hrpcOutgate }
 func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
@@ -1002,7 +1002,7 @@ func (s *Stage) ProfBlock() {
 // fixture component.
 //
 // Fixtures only exist in internal, and are created by stage.
-// Some critical functions, like clock and name resolver, are
+// Some critical functions, like clock and name resolv, are
 // implemented as fixtures.
 //
 // Fixtures are singletons in stage.
@@ -1059,7 +1059,7 @@ func (c *client_) onConfigure() {
 
 	// dialTimeout
 	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
-		if value > time.Second {
+		if value >= time.Second {
 			return nil
 		}
 		return errors.New(".dialTimeout has an invalid value")
@@ -1067,7 +1067,7 @@ func (c *client_) onConfigure() {
 
 	// writeTimeout
 	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
-		if value > time.Second {
+		if value >= time.Second {
 			return nil
 		}
 		return errors.New(".writeTimeout has an invalid value")
@@ -1075,7 +1075,7 @@ func (c *client_) onConfigure() {
 
 	// readTimeout
 	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
-		if value > time.Second {
+		if value >= time.Second {
 			return nil
 		}
 		return errors.New(".readTimeout has an invalid value")

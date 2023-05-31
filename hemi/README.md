@@ -30,7 +30,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     +---+---+---+---+---+---+---+---+------------+     |
    |     | o | u | t | g | a | t | e | s |   runner   |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
-   |     |   clock   |     fcache    |    resolver    |     |
+   |     |   clock   |     fcache    |     resolv     |     |
 prepare  +-----------+---------------+----------------+     v
 
 ```

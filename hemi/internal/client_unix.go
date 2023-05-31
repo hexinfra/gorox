@@ -96,7 +96,7 @@ func (n *unixNode) setAddress(address string) {
 
 func (n *unixNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markUp()
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {

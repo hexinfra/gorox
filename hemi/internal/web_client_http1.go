@@ -139,7 +139,7 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 
 func (n *http1Node) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markUp()
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {

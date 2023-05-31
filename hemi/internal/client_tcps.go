@@ -152,7 +152,7 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 
 func (n *tcpsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markUp()
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {

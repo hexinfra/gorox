@@ -143,15 +143,15 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	tmpGate.Close()
 
 	// Now that msgConn is established, we register worker process
-	loginReq, ok := msgx.Recv(msgConn, 16<<10)
-	if !ok || loginReq.Get("connKey") != w.connKey {
+	loginReq, err := msgx.Recv(msgConn, 16<<10)
+	if err != nil || loginReq.Get("connKey") != w.connKey {
 		common.Crash("bad worker")
 	}
-	if !msgx.Send(msgConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
+	if err := msgx.Send(msgConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"configBase": configBase,
 		"configFile": configFile,
-	})) {
-		common.Crash("send worker")
+	})); err != nil {
+		common.Crash("send worker failed: " + err.Error())
 	}
 
 	// Register succeed, save msgConn and start waiting
@@ -168,8 +168,8 @@ func (w *worker) watch(dieChan chan int) { // goroutine
 
 func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.msgConn, req) }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
-	resp, ok := msgx.Call(w.msgConn, req, 16<<20)
-	if !ok {
+	resp, err := msgx.Call(w.msgConn, req, 16<<20)
+	if err != nil {
 		resp = msgx.NewMessage(req.Comd, 0, nil)
 		resp.Flag = 0xffff
 		resp.Set("worker", "failed")

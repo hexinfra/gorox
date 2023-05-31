@@ -35,13 +35,13 @@ func Main(token string) {
 	}
 
 	// Register worker to leader
-	if loginResp, ok := msgx.Call(msgConn, msgx.NewMessage(0, 0, map[string]string{
+	if loginResp, err := msgx.Call(msgConn, msgx.NewMessage(0, 0, map[string]string{
 		"connKey": parts[1],
-	}), 16<<20); ok {
+	}), 16<<20); err == nil {
 		configBase = loginResp.Get("configBase")
 		configFile = loginResp.Get("configFile")
 	} else {
-		common.Crash("call leader failed")
+		common.Crash("call leader failed: " + err.Error())
 	}
 
 	// Register succeeded. Now start the initial stage
@@ -53,8 +53,8 @@ func Main(token string) {
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
-		req, ok := msgx.Recv(msgConn, 16<<20)
-		if !ok { // leader must be gone
+		req, err := msgx.Recv(msgConn, 16<<20)
+		if err != nil { // leader must be gone
 			break
 		}
 		hemi.Printf("[worker] recv: %+v\n", req)
@@ -65,7 +65,7 @@ func Main(token string) {
 			} else {
 				resp.Flag = 404
 			}
-			if !msgx.Send(msgConn, resp) { // leader must be gone
+			if msgx.Send(msgConn, resp) != nil { // leader must be gone
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {

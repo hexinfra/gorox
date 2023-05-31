@@ -38,9 +38,9 @@ func _tell(comd uint8, flag uint16, args map[string]string) {
 	}
 	defer cmdConn.Close()
 
-	if msgx.Tell(cmdConn, msgx.NewMessage(comd, flag, args)) {
+	if err := msgx.Tell(cmdConn, msgx.NewMessage(comd, flag, args)); err == nil {
 		fmt.Printf("tell leader at %s: ok!\n", common.TargetAddr)
 	} else {
-		fmt.Fprintf(os.Stderr, "tell leader at %s: failed!\n", common.TargetAddr)
+		fmt.Fprintf(os.Stderr, "tell leader at %s: %s\n", common.TargetAddr, err.Error())
 	}
 }

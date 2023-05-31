@@ -18,45 +18,45 @@ import (
 
 var calls = map[string]func(){ // indexed by action
 	"pids": func() {
-		if resp, ok := _call(common.ComdPids, 0, nil); ok {
+		if resp, err := _call(common.ComdPids, 0, nil); err == nil {
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"leader": func() {
-		if resp, ok := _call(common.ComdLeader, 0, nil); ok {
+		if resp, err := _call(common.ComdLeader, 0, nil); err == nil {
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"worker": func() {
-		if resp, ok := _call(common.ComdWorker, 0, nil); ok {
+		if resp, err := _call(common.ComdWorker, 0, nil); err == nil {
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"reload": func() {
-		if resp, ok := _call(common.ComdReload, 0, nil); ok && resp.Flag == 0 {
+		if resp, err := _call(common.ComdReload, 0, nil); err == nil && resp.Flag == 0 {
 			fmt.Println("reload ok!")
 		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: failed!\n", common.TargetAddr)
+			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 }
 
-func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, bool) {
+func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, error) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
 	defer cmdConn.Close()
 

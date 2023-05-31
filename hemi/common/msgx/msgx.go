@@ -8,17 +8,18 @@
 package msgx
 
 import (
+	"errors"
 	"io"
 )
 
-func Tell(writer io.Writer, req *Message) bool {
+func Tell(writer io.Writer, req *Message) error {
 	req.SetTell()
 	return Send(writer, req)
 }
-func Call(readWriter io.ReadWriter, req *Message, maxSize int32) (*Message, bool) {
+func Call(readWriter io.ReadWriter, req *Message, maxSize int32) (*Message, error) {
 	req.SetCall()
-	if !Send(readWriter, req) {
-		return nil, false
+	if err := Send(readWriter, req); err != nil {
+		return nil, err
 	}
 	return Recv(readWriter, maxSize)
 }
@@ -31,24 +32,30 @@ func Call(readWriter io.ReadWriter, req *Message, maxSize int32) (*Message, bool
 
 const maxSize = 2147483647
 
-func Send(writer io.Writer, msg *Message) (ok bool) {
+var (
+	errTooManyArgs  = errors.New("too many args")
+	errNameTooLarge = errors.New("name too large")
+	errSizeOverflow = errors.New("size over flow")
+)
+
+func Send(writer io.Writer, msg *Message) error {
 	nArgs := len(msg.Args)
 	if nArgs > 255 {
-		return false
+		return errTooManyArgs
 	}
 	size := nArgs * 5
 	for name, value := range msg.Args {
 		nameSize := len(name)
 		if nameSize > 255 {
-			return false
+			return errNameTooLarge
 		}
 		size += nameSize
 		if size < 0 || size > maxSize {
-			return false
+			return errSizeOverflow
 		}
 		size += len(value)
 		if size < 0 || size > maxSize {
-			return false
+			return errSizeOverflow
 		}
 	}
 	buffer := make([]byte, 8+size)
@@ -78,12 +85,12 @@ func Send(writer io.Writer, msg *Message) (ok bool) {
 		back = fore
 	}
 	_, err := writer.Write(buffer)
-	return err == nil
+	return err
 }
-func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
-	msg = new(Message)
+func Recv(reader io.Reader, maxSize int32) (*Message, error) {
+	msg := new(Message)
 	if _, err := io.ReadFull(reader, msg.head[:]); err != nil {
-		return nil, false
+		return nil, err
 	}
 	msg.Comd = msg.head[0]
 	msg.Flag = uint16(msg.head[2])<<8 | uint16(msg.head[3])
@@ -93,19 +100,19 @@ func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 		size &= 0x7fffffff
 	}
 	if size > maxSize {
-		return nil, false
+		return nil, errSizeOverflow
 	}
 	if size == 0 {
-		return msg, true
+		return msg, nil
 	}
 	nArgs := int32(msg.head[1])
 	back := nArgs * 5
 	if back > size {
-		return nil, false
+		return nil, errSizeOverflow
 	}
 	body := make([]byte, size)
 	if _, err := io.ReadFull(reader, body); err != nil {
-		return nil, false
+		return nil, err
 	}
 	msg.Args = make(map[string]string, nArgs)
 	from := 0
@@ -115,13 +122,13 @@ func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 		from += 5
 		fore := back + nameSize
 		if fore > size {
-			return nil, false
+			return nil, errSizeOverflow
 		}
 		name := string(body[back:fore])
 		back = fore
 		fore += valueSize
 		if fore > size {
-			return nil, false
+			return nil, errSizeOverflow
 		}
 		value := string(body[back:fore])
 		back = fore
@@ -130,9 +137,9 @@ func Recv(reader io.Reader, maxSize int32) (msg *Message, ok bool) {
 		}
 	}
 	if back != size {
-		return nil, false
+		return nil, errSizeOverflow
 	}
-	return msg, true
+	return msg, nil
 }
 
 // Message

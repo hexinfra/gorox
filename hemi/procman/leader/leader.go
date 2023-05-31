@@ -75,10 +75,7 @@ func cmduiServer() {
 		common.Crash(err.Error())
 	}
 	cmdChan := make(chan *msgx.Message)
-	var (
-		req *msgx.Message
-		ok  bool
-	)
+	var req *msgx.Message
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
 		if err != nil {
@@ -87,14 +84,13 @@ func cmduiServer() {
 			}
 			continue
 		}
-		if err := cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		if err = cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
 			if hemi.IsDebug(1) {
 				hemi.Println("[leader]: SetReadDeadline error: " + err.Error())
 			}
 			goto closeNext
 		}
-		req, ok = msgx.Recv(cmdConn, 16<<20)
-		if !ok {
+		if req, err = msgx.Recv(cmdConn, 16<<20); err != nil {
 			goto closeNext
 		}
 		if hemi.IsDebug(1) {

@@ -3,60 +3,60 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Datagram UDS proxy implementation.
+// DUDS (datagram unix domain socket) proxy implementation.
 
 package internal
 
 func init() {
-	RegisterUDPSDealer("gramProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealer {
-		d := new(gramProxy)
+	RegisterUDPSDealer("dudsProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealer {
+		d := new(dudsProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// gramProxy passes UDP/DTLS links to backend Datagram UDS server.
-type gramProxy struct {
+// dudsProxy passes UDP/DTLS links to backend DUDS server.
+type dudsProxy struct {
 	// Mixins
 	UDPSDealer_
 	// Assocs
 	stage   *Stage
 	router  *UDPSRouter
-	backend *GRAMBackend
+	backend *DUDSBackend
 	// States
 }
 
-func (d *gramProxy) onCreate(name string, stage *Stage, router *UDPSRouter) {
+func (d *dudsProxy) onCreate(name string, stage *Stage, router *UDPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *gramProxy) OnShutdown() {
+func (d *dudsProxy) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *gramProxy) OnConfigure() {
+func (d *dudsProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if gramBackend, ok := backend.(*GRAMBackend); ok {
-				d.backend = gramBackend
+			} else if dudsBackend, ok := backend.(*DUDSBackend); ok {
+				d.backend = dudsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for gramProxy\n", name)
+				UseExitf("incorrect backend '%s' for dudsProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for gramProxy")
+		UseExitln("toBackend is required for dudsProxy")
 	}
 }
-func (d *gramProxy) OnPrepare() {
+func (d *dudsProxy) OnPrepare() {
 }
 
-func (d *gramProxy) Deal(link *UDPSLink) (next bool) { // reverse only
+func (d *dudsProxy) Deal(link *UDPSLink) (next bool) { // reverse only
 	// TODO
 	return
 }

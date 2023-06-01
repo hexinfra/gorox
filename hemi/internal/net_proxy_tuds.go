@@ -3,48 +3,48 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// SUDS (stream unix domain socket) proxy implementation.
+// TUDS (TCP-like Unix Domain Socket) proxy implementation.
 
 package internal
 
 func init() {
-	RegisterTCPSDealer("sudsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
-		d := new(sudsProxy)
+	RegisterTCPSDealer("tudsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+		d := new(tudsProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// sudsProxy passes TCP/TLS connections to backend SUDS server.
-type sudsProxy struct {
+// tudsProxy passes TCP/TLS connections to backend TUDS server.
+type tudsProxy struct {
 	// Mixins
 	TCPSDealer_
 	// Assocs
 	stage   *Stage       // current stage
 	router  *TCPSRouter  // the router to which the dealer belongs
-	backend *SUDSBackend // the suds backend
+	backend *TUDSBackend // the tuds backend
 	// States
 }
 
-func (d *sudsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *tudsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *sudsProxy) OnShutdown() {
+func (d *tudsProxy) OnShutdown() {
 	d.router.SubDone()
 }
 
-func (d *sudsProxy) OnConfigure() {
+func (d *tudsProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if sudsBackend, ok := backend.(*SUDSBackend); ok {
-				d.backend = sudsBackend
+			} else if tudsBackend, ok := backend.(*TUDSBackend); ok {
+				d.backend = tudsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for sudsProxy\n", name)
+				UseExitf("incorrect backend '%s' for tudsProxy\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -53,11 +53,11 @@ func (d *sudsProxy) OnConfigure() {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (d *sudsProxy) OnPrepare() {
+func (d *tudsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *sudsProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
+func (d *tudsProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
 	xConn, err := d.backend.Dial()
 	if err != nil {

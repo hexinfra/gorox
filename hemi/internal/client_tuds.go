@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// SUDS (stream unix domain socket) client implementation.
+// TUDS (TCP-like Unix Domain Socket) client implementation.
 
 package internal
 
@@ -17,60 +17,60 @@ import (
 )
 
 func init() {
-	RegisterBackend("sudsBackend", func(name string, stage *Stage) Backend {
-		b := new(SUDSBackend)
+	RegisterBackend("tudsBackend", func(name string, stage *Stage) Backend {
+		b := new(TUDSBackend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// sudsClient is the interface for SUDSOutgate and SUDSBackend.
-type sudsClient interface {
+// tudsClient is the interface for TUDSOutgate and TUDSBackend.
+type tudsClient interface {
 	client
 	streamHolder
 }
 
-const signSUDSOutgate = "sudsOutgate"
+const signTUDSOutgate = "tudsOutgate"
 
-func createSUDSOutgate(stage *Stage) *SUDSOutgate {
-	suds := new(SUDSOutgate)
-	suds.onCreate(stage)
-	suds.setShell(suds)
-	return suds
+func createTUDSOutgate(stage *Stage) *TUDSOutgate {
+	tuds := new(TUDSOutgate)
+	tuds.onCreate(stage)
+	tuds.setShell(tuds)
+	return tuds
 }
 
-// SUDSOutgate component.
-type SUDSOutgate struct {
+// TUDSOutgate component.
+type TUDSOutgate struct {
 	// Mixins
 	outgate_
 	streamHolder_
 	// States
 }
 
-func (f *SUDSOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signSUDSOutgate, stage)
+func (f *TUDSOutgate) onCreate(stage *Stage) {
+	f.outgate_.onCreate(signTUDSOutgate, stage)
 }
 
-func (f *SUDSOutgate) OnConfigure() {
+func (f *TUDSOutgate) OnConfigure() {
 	f.outgate_.onConfigure()
 	f.streamHolder_.onConfigure(f, 1000)
 }
-func (f *SUDSOutgate) OnPrepare() {
+func (f *TUDSOutgate) OnPrepare() {
 	f.outgate_.onPrepare()
 	f.streamHolder_.onPrepare(f)
 }
 
-func (f *SUDSOutgate) run() { // goroutine
+func (f *TUDSOutgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if IsDebug(2) {
-		Println("sudsOutgate done")
+		Println("tudsOutgate done")
 	}
 	f.stage.SubDone()
 }
 
-func (f *SUDSOutgate) Dial(address string) (*XConn, error) {
+func (f *TUDSOutgate) Dial(address string) (*XConn, error) {
 	unixAddr, err := net.ResolveUnixAddr("unix", address)
 	if err != nil {
 		return nil, err
@@ -88,67 +88,67 @@ func (f *SUDSOutgate) Dial(address string) (*XConn, error) {
 	return getXConn(connID, f, nil, unixConn, rawConn), nil
 }
 
-// SUDSBackend component.
-type SUDSBackend struct {
+// TUDSBackend component.
+type TUDSBackend struct {
 	// Mixins
-	Backend_[*sudsNode]
+	Backend_[*tudsNode]
 	streamHolder_
 	loadBalancer_
 	// States
 	health any // TODO
 }
 
-func (b *SUDSBackend) onCreate(name string, stage *Stage) {
+func (b *TUDSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.onCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
-func (b *SUDSBackend) OnConfigure() {
+func (b *TUDSBackend) OnConfigure() {
 	b.Backend_.onConfigure()
 	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
-func (b *SUDSBackend) OnPrepare() {
+func (b *TUDSBackend) OnPrepare() {
 	b.Backend_.onPrepare()
 	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *SUDSBackend) createNode(id int32) *sudsNode {
-	node := new(sudsNode)
+func (b *TUDSBackend) createNode(id int32) *tudsNode {
+	node := new(tudsNode)
 	node.init(id, b)
 	return node
 }
 
-func (b *SUDSBackend) Dial() (*XConn, error) {
+func (b *TUDSBackend) Dial() (*XConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *SUDSBackend) FetchConn() (*XConn, error) {
+func (b *TUDSBackend) FetchConn() (*XConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *SUDSBackend) StoreConn(xConn *XConn) {
+func (b *TUDSBackend) StoreConn(xConn *XConn) {
 	xConn.node.storeConn(xConn)
 }
 
-// sudsNode is a node in SUDSBackend.
-type sudsNode struct {
+// tudsNode is a node in TUDSBackend.
+type tudsNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *SUDSBackend
+	backend *TUDSBackend
 	// States
 	unixAddr *net.UnixAddr
 }
 
-func (n *sudsNode) init(id int32, backend *SUDSBackend) {
+func (n *tudsNode) init(id int32, backend *TUDSBackend) {
 	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *sudsNode) setAddress(address string) {
+func (n *tudsNode) setAddress(address string) {
 	unixAddr, err := net.ResolveUnixAddr("unix", address)
 	if err != nil {
 		UseExitln(err.Error())
@@ -158,7 +158,7 @@ func (n *sudsNode) setAddress(address string) {
 	n.unixAddr = unixAddr
 }
 
-func (n *sudsNode) Maintain() { // goroutine
+func (n *tudsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markUp()
 	})
@@ -168,14 +168,14 @@ func (n *sudsNode) Maintain() { // goroutine
 	}
 	n.WaitSubs() // conns
 	if IsDebug(2) {
-		Printf("sudsNode=%d done\n", n.id)
+		Printf("tudsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *sudsNode) dial() (*XConn, error) { // some protocols don't support or need connection reusing, just dial & xConn.close.
+func (n *tudsNode) dial() (*XConn, error) { // some protocols don't support or need connection reusing, just dial & xConn.close.
 	if IsDebug(2) {
-		Printf("sudsNode=%d dial %s\n", n.id, n.address)
+		Printf("tudsNode=%d dial %s\n", n.id, n.address)
 	}
 	unixConn, err := net.DialUnix("unix", nil, n.unixAddr)
 	if err != nil {
@@ -183,7 +183,7 @@ func (n *sudsNode) dial() (*XConn, error) { // some protocols don't support or n
 		return nil, err
 	}
 	if IsDebug(2) {
-		Printf("sudsNode=%d dial %s OK!\n", n.id, n.address)
+		Printf("tudsNode=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := unixConn.SyscallConn()
@@ -194,7 +194,7 @@ func (n *sudsNode) dial() (*XConn, error) { // some protocols don't support or n
 	return getXConn(connID, n.backend, n, unixConn, rawConn), nil
 }
 
-func (n *sudsNode) fetchConn() (*XConn, error) {
+func (n *tudsNode) fetchConn() (*XConn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -213,7 +213,7 @@ func (n *sudsNode) fetchConn() (*XConn, error) {
 	}
 	return xConn, err
 }
-func (n *sudsNode) storeConn(xConn *XConn) {
+func (n *tudsNode) storeConn(xConn *XConn) {
 	if xConn.IsBroken() || n.isDown() || !xConn.isAlive() {
 		if IsDebug(2) {
 			Printf("XConn[node=%d id=%d] closed\n", xConn.node.id, xConn.id)
@@ -227,7 +227,7 @@ func (n *sudsNode) storeConn(xConn *XConn) {
 	}
 }
 
-func (n *sudsNode) closeConn(xConn *XConn) {
+func (n *tudsNode) closeConn(xConn *XConn) {
 	xConn.closeConn()
 	putXConn(xConn)
 	n.SubDone()
@@ -236,7 +236,7 @@ func (n *sudsNode) closeConn(xConn *XConn) {
 // poolXConn
 var poolXConn sync.Pool
 
-func getXConn(id int64, client sudsClient, node *sudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XConn {
+func getXConn(id int64, client tudsClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XConn {
 	var conn *XConn
 	if x := poolXConn.Get(); x == nil {
 		conn = new(XConn)
@@ -251,12 +251,12 @@ func putXConn(conn *XConn) {
 	poolXConn.Put(conn)
 }
 
-// XConn is a client-side connection to sudsNode.
+// XConn is a client-side connection to tudsNode.
 type XConn struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Conn states (non-zeros)
-	node       *sudsNode       // associated node if client is SUDSBackend
+	node       *tudsNode       // associated node if client is TUDSBackend
 	unixConn   *net.UnixConn   // unix conn
 	rawConn    syscall.RawConn // for syscall
 	maxStreams int32           // how many streams are allowed on this conn?
@@ -267,7 +267,7 @@ type XConn struct { // only exported to hemi
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *XConn) onGet(id int64, client sudsClient, node *sudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
+func (c *XConn) onGet(id int64, client tudsClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
 	c.conn_.onGet(id, client)
 	c.node = node
 	c.unixConn = unixConn
@@ -285,7 +285,7 @@ func (c *XConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *XConn) getClient() sudsClient { return c.client.(sudsClient) }
+func (c *XConn) getClient() tudsClient { return c.client.(tudsClient) }
 
 func (c *XConn) UnixConn() *net.UnixConn { return c.unixConn }
 

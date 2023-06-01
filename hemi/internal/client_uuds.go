@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// DUDS (datagram unix domain socket) client implementation.
+// UUDS (UDP-like Unix Domain Socket) client implementation.
 
 package internal
 
@@ -16,84 +16,84 @@ import (
 )
 
 func init() {
-	RegisterBackend("dudsBackend", func(name string, stage *Stage) Backend {
-		b := new(DUDSBackend)
+	RegisterBackend("uudsBackend", func(name string, stage *Stage) Backend {
+		b := new(UUDSBackend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// DUDSBackend component.
-type DUDSBackend struct {
+// UUDSBackend component.
+type UUDSBackend struct {
 	// Mixins
-	Backend_[*dudsNode]
+	Backend_[*uudsNode]
 	loadBalancer_
 	// States
 	health any // TODO
 }
 
-func (b *DUDSBackend) onCreate(name string, stage *Stage) {
+func (b *UUDSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.onCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
-func (b *DUDSBackend) OnConfigure() {
+func (b *UUDSBackend) OnConfigure() {
 	b.Backend_.onConfigure()
 	b.loadBalancer_.onConfigure(b)
 }
-func (b *DUDSBackend) OnPrepare() {
+func (b *UUDSBackend) OnPrepare() {
 	b.Backend_.onPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *DUDSBackend) createNode(id int32) *dudsNode {
-	node := new(dudsNode)
+func (b *UUDSBackend) createNode(id int32) *uudsNode {
+	node := new(uudsNode)
 	node.init(id, b)
 	return node
 }
 
-func (b *DUDSBackend) Link() (*XLink, error) {
+func (b *UUDSBackend) Link() (*XLink, error) {
 	node := b.nodes[b.getNext()]
 	return node.link()
 }
-func (b *DUDSBackend) FetchLink() (*XLink, error) {
+func (b *UUDSBackend) FetchLink() (*XLink, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchLink()
 }
-func (b *DUDSBackend) StoreLink(xLink *XLink) {
+func (b *UUDSBackend) StoreLink(xLink *XLink) {
 	xLink.node.storeLink(xLink)
 }
 
-// dudsNode is a node in DUDSBackend.
-type dudsNode struct {
+// uudsNode is a node in UUDSBackend.
+type uudsNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *DUDSBackend
+	backend *UUDSBackend
 	// States
 }
 
-func (n *dudsNode) init(id int32, backend *DUDSBackend) {
+func (n *uudsNode) init(id int32, backend *UUDSBackend) {
 	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *dudsNode) Maintain() { // goroutine
+func (n *uudsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all links
 	if IsDebug(2) {
-		Printf("dudsNode=%d done\n", n.id)
+		Printf("uudsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *dudsNode) link() (*XLink, error) {
+func (n *uudsNode) link() (*XLink, error) {
 	// TODO
 	return nil, nil
 }
-func (n *dudsNode) fetchLink() (*XLink, error) {
+func (n *uudsNode) fetchLink() (*XLink, error) {
 	link := n.pullConn()
 	if link != nil {
 		xLink := link.(*XLink)
@@ -105,7 +105,7 @@ func (n *dudsNode) fetchLink() (*XLink, error) {
 	}
 	return n.link()
 }
-func (n *dudsNode) storeLink(xLink *XLink) {
+func (n *uudsNode) storeLink(xLink *XLink) {
 	if xLink.isBroken() || n.isDown() || !xLink.isAlive() {
 		xLink.closeConn()
 		putXLink(xLink)
@@ -117,7 +117,7 @@ func (n *dudsNode) storeLink(xLink *XLink) {
 // poolXLink
 var poolXLink sync.Pool
 
-func getXLink(id int64, backend *DUDSBackend, node *dudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
+func getXLink(id int64, backend *UUDSBackend, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
 	var link *XLink
 	if x := poolXLink.Get(); x == nil {
 		link = new(XLink)
@@ -132,19 +132,19 @@ func putXLink(link *XLink) {
 	poolXLink.Put(link)
 }
 
-// XLink is a client-side link to dudsNode.
+// XLink is a client-side link to uudsNode.
 type XLink struct { // only exported to hemi
 	// Mixins
 	conn_
 	// Link states (non-zeros)
-	node     *dudsNode       // associated node if client is DUDSBackend
+	node     *uudsNode       // associated node if client is UUDSBackend
 	unixConn *net.UnixConn   // unix conn
 	rawConn  syscall.RawConn // for syscall
 	// Link states (zeros)
 	broken atomic.Bool // is link broken?
 }
 
-func (l *XLink) onGet(id int64, backend *DUDSBackend, node *dudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
+func (l *XLink) onGet(id int64, backend *UUDSBackend, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
 	l.conn_.onGet(id, backend)
 	l.node = node
 	l.unixConn = unixConn
@@ -158,7 +158,7 @@ func (l *XLink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *XLink) getBackend() *DUDSBackend { return l.client.(*DUDSBackend) }
+func (l *XLink) getBackend() *UUDSBackend { return l.client.(*UUDSBackend) }
 
 func (l *XLink) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {

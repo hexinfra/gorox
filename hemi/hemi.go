@@ -77,16 +77,30 @@ type ( // core types
 
 	Runner = internal.Runner
 
+	QUICOutgate  = internal.QUICOutgate
+	TCPSOutgate  = internal.TCPSOutgate
+	UDPSOutgate  = internal.UDPSOutgate
 	HRPCOutgate  = internal.HRPCOutgate
 	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP3Outgate = internal.HTTP3Outgate
 	HWEBOutgate  = internal.HWEBOutgate
-	QUICOutgate  = internal.QUICOutgate
-	TCPSOutgate  = internal.TCPSOutgate
-	UDPSOutgate  = internal.UDPSOutgate
 
 	Backend      = internal.Backend
+	QUICBackend  = internal.QUICBackend
+	QConn        = internal.QConn
+	QStream      = internal.QStream
+	QOneway      = internal.QOneway
+	QUDSBackend  = internal.QUDSBackend
+	DConn        = internal.DConn
+	TCPSBackend  = internal.TCPSBackend
+	TConn        = internal.TConn
+	TUDSBackend  = internal.TUDSBackend
+	XConn        = internal.XConn
+	UDPSBackend  = internal.UDPSBackend
+	ULink        = internal.ULink
+	UUDSBackend  = internal.UUDSBackend
+	XLink        = internal.XLink
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -109,16 +123,6 @@ type ( // core types
 	HExchan      = internal.HExchan
 	HRequest     = internal.HRequest
 	HResponse    = internal.HResponse
-	QUICBackend  = internal.QUICBackend
-	QConn        = internal.QConn
-	QStream      = internal.QStream
-	QOneway      = internal.QOneway
-	TCPSBackend  = internal.TCPSBackend
-	TConn        = internal.TConn
-	UDPSBackend  = internal.UDPSBackend
-	ULink        = internal.ULink
-	SUDSBackend  = internal.SUDSBackend
-	XConn        = internal.XConn
 
 	QUICRouter = internal.QUICRouter
 	QUICDealer = internal.QUICDealer

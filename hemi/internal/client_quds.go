@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUDS (QUIC over DUDS) client implementation.
+// QUDS (QUIC over UUDS) client implementation.
 
 package internal
 

@@ -152,7 +152,7 @@ type ( // core types
 	App      = internal.App
 	Handlet  = internal.Handlet
 	Handle   = internal.Handle
-	Mapper   = internal.Mapper
+	Router   = internal.Router
 	Reviser  = internal.Reviser
 	Piece    = internal.Piece
 	Socklet  = internal.Socklet

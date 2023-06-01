@@ -6,7 +6,7 @@
 package diogin
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -47,9 +47,9 @@ func (h *dioginHandlet) OnShutdown() {
 func (h *dioginHandlet) OnConfigure() {
 }
 func (h *dioginHandlet) OnPrepare() {
-	m := simple.New()
+	r := simple.New()
 
-	h.UseMapper(h, m)
+	h.UseRouter(h, r)
 }
 
 func (h *dioginHandlet) Handle(req Request, resp Response) (next bool) {

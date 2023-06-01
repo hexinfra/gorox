@@ -8,7 +8,7 @@ package cmdui
 import (
 	"fmt"
 
-	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 
 	. "github.com/hexinfra/gorox/cmds/myrox/srvs/rocks"
 	. "github.com/hexinfra/gorox/hemi"
@@ -52,9 +52,9 @@ func (h *apiv1Handlet) OnConfigure() {
 }
 func (h *apiv1Handlet) OnPrepare() {
 	h.rocks = h.stage.Server("rocks").(*RocksServer)
-	m := simple.New()
+	r := simple.New()
 
-	h.UseMapper(h, m)
+	h.UseRouter(h, r)
 }
 
 func (h *apiv1Handlet) Handle(req Request, resp Response) (next bool) {

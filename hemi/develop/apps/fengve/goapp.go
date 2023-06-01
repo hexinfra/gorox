@@ -6,7 +6,7 @@
 package fengve
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -47,10 +47,10 @@ func (h *fengveHandlet) OnShutdown() {
 func (h *fengveHandlet) OnConfigure() {
 }
 func (h *fengveHandlet) OnPrepare() {
-	m := simple.New()
-	m.GET("/abc", h.abc)
+	r := simple.New()
+	r.GET("/abc", h.abc)
 
-	h.UseMapper(h, m)
+	h.UseRouter(h, r)
 }
 
 func (h *fengveHandlet) Handle(req Request, resp Response) (next bool) {

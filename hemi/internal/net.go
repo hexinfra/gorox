@@ -132,14 +132,14 @@ func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
 
 func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return m.editorsByID[id] }
 
-func (m *mesher_[M, G, D, E, C]) Log(s string) {
+func (m *mesher_[M, G, D, E, C]) Log(str string) {
 	if m.logger != nil {
-		m.logger.Log(s)
+		m.logger.Log(str)
 	}
 }
-func (m *mesher_[M, G, D, E, C]) Logln(s string) {
+func (m *mesher_[M, G, D, E, C]) Logln(str string) {
 	if m.logger != nil {
-		m.logger.Logln(s)
+		m.logger.Logln(str)
 	}
 }
 func (m *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {

@@ -314,14 +314,14 @@ func (a *App) Setting(name string) (value string, ok bool) {
 	return
 }
 
-func (a *App) Log(s string) {
+func (a *App) Log(str string) {
 	if a.logger != nil {
-		a.logger.Log(s)
+		a.logger.Log(str)
 	}
 }
-func (a *App) Logln(s string) {
+func (a *App) Logln(str string) {
 	if a.logger != nil {
-		a.logger.Logln(s)
+		a.logger.Logln(str)
 	}
 }
 func (a *App) Logf(format string, args ...any) {

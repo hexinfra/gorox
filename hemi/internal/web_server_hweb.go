@@ -5,6 +5,8 @@
 
 // HWEB server implementation.
 
+// Only exchan mode is supported.
+
 package internal
 
 import (
@@ -145,6 +147,7 @@ func (x *hwebExchan) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
+
 func (x *hwebExchan) executeExchan(app *App, req *hwebRequest, resp *hwebResponse) { // request & response
 	// TODO
 	//app.dispatchHandlet(req, resp)

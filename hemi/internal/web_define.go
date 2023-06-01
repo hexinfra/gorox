@@ -2153,7 +2153,7 @@ const ( // field flags
 	flagSubField   = 0b00100000 // sub field or not. mainly used by apps
 	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
 	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
-	flagUnderscore = 0b00000100 // name contains '_' or not. some proxies (like fcgi) need this information
+	flagUnderscore = 0b00000100 // name contains '_' or not. some proxies need this information
 	flagCommaValue = 0b00000010 // value has comma or not
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )

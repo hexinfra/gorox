@@ -488,6 +488,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	s.conn.keepConn = false
 	return false
 }
+
 func (s *http1Stream) executeExchan(app *App, req *http1Request, resp *http1Response) { // request & response
 	app.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo

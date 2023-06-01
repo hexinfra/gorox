@@ -25,65 +25,65 @@ type TCPSMesher struct {
 	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
 }
 
-func (r *TCPSMesher) onCreate(name string, stage *Stage) {
-	r.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
+func (m *TCPSMesher) onCreate(name string, stage *Stage) {
+	m.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
 }
-func (r *TCPSMesher) OnShutdown() {
-	// We don't close(r.Shut) here.
-	for _, gate := range r.gates {
+func (m *TCPSMesher) OnShutdown() {
+	// We don't close(m.Shut) here.
+	for _, gate := range m.gates {
 		gate.shut()
 	}
 }
 
-func (r *TCPSMesher) OnConfigure() {
-	r.mesher_.onConfigure()
-	// configure r here
-	r.configureSubs()
+func (m *TCPSMesher) OnConfigure() {
+	m.mesher_.onConfigure()
+	// configure m here
+	m.configureSubs()
 }
-func (r *TCPSMesher) OnPrepare() {
-	r.mesher_.onPrepare()
-	// prepare r here
-	r.prepareSubs()
+func (m *TCPSMesher) OnPrepare() {
+	m.mesher_.onPrepare()
+	// prepare m here
+	m.prepareSubs()
 }
 
-func (r *TCPSMesher) createCase(name string) *tcpsCase {
-	if r.hasCase(name) {
+func (m *TCPSMesher) createCase(name string) *tcpsCase {
+	if m.hasCase(name) {
 		UseExitln("conflicting case with a same name")
 	}
 	kase := new(tcpsCase)
-	kase.onCreate(name, r)
+	kase.onCreate(name, m)
 	kase.setShell(kase)
-	r.cases = append(r.cases, kase)
+	m.cases = append(m.cases, kase)
 	return kase
 }
 
-func (r *TCPSMesher) serve() { // goroutine
-	for id := int32(0); id < r.numGates; id++ {
+func (m *TCPSMesher) serve() { // goroutine
+	for id := int32(0); id < m.numGates; id++ {
 		gate := new(tcpsGate)
-		gate.init(r, id)
+		gate.init(m, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
-		r.IncSub(1)
-		if r.tlsMode {
+		m.gates = append(m.gates, gate)
+		m.IncSub(1)
+		if m.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
 		}
 	}
-	r.WaitSubs() // gates
-	r.IncSub(len(r.dealers) + len(r.editors) + len(r.cases))
-	r.shutdownSubs()
-	r.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // gates
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.shutdownSubs()
+	m.WaitSubs() // dealers, editors, cases
 
-	if r.logger != nil {
-		r.logger.Close()
+	if m.logger != nil {
+		m.logger.Close()
 	}
 	if IsDebug(2) {
-		Printf("tcpsMesher=%s done\n", r.Name())
+		Printf("tcpsMesher=%s done\n", m.Name())
 	}
-	r.stage.SubDone()
+	m.stage.SubDone()
 }
 
 // tcpsGate

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Network mesher and related components
+// Network mesher and related components.
 
 package internal
 
@@ -47,82 +47,82 @@ type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
 	nEditors       uint8   // used number of editorsByID in this mesher
 }
 
-func (r *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, M) D, editorCreators map[string]func(string, *Stage, M) E) {
-	r.Server_.OnCreate(name, stage)
-	r.dealers = make(compDict[D])
-	r.editors = make(compDict[E])
-	r.dealerCreators = dealerCreators
-	r.editorCreators = editorCreators
-	r.nEditors = 1 // position 0 is not used
+func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, M) D, editorCreators map[string]func(string, *Stage, M) E) {
+	m.Server_.OnCreate(name, stage)
+	m.dealers = make(compDict[D])
+	m.editors = make(compDict[E])
+	m.dealerCreators = dealerCreators
+	m.editorCreators = editorCreators
+	m.nEditors = 1 // position 0 is not used
 }
 
-func (r *mesher_[M, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
-	r.cases.walk(C.OnShutdown)
-	r.editors.walk(E.OnShutdown)
-	r.dealers.walk(D.OnShutdown)
+func (m *mesher_[M, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
+	m.cases.walk(C.OnShutdown)
+	m.editors.walk(E.OnShutdown)
+	m.dealers.walk(D.OnShutdown)
 }
 
-func (r *mesher_[M, G, D, E, C]) onConfigure() {
-	r.Server_.OnConfigure()
+func (m *mesher_[M, G, D, E, C]) onConfigure() {
+	m.Server_.OnConfigure()
 
 	// accessLog, TODO
 }
-func (r *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
-	r.dealers.walk(D.OnConfigure)
-	r.editors.walk(E.OnConfigure)
-	r.cases.walk(C.OnConfigure)
+func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
+	m.dealers.walk(D.OnConfigure)
+	m.editors.walk(E.OnConfigure)
+	m.cases.walk(C.OnConfigure)
 }
 
-func (r *mesher_[M, G, D, E, C]) onPrepare() {
-	r.Server_.OnPrepare()
-	if r.accessLog != nil {
-		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+func (m *mesher_[M, G, D, E, C]) onPrepare() {
+	m.Server_.OnPrepare()
+	if m.accessLog != nil {
+		//m.logger = newLogger(m.accessLog.logFile, m.accessLog.rotate)
 	}
 }
-func (r *mesher_[M, G, D, E, C]) prepareSubs() { // dealers, editors, cases
-	r.dealers.walk(D.OnPrepare)
-	r.editors.walk(E.OnPrepare)
-	r.cases.walk(C.OnPrepare)
+func (m *mesher_[M, G, D, E, C]) prepareSubs() { // dealers, editors, cases
+	m.dealers.walk(D.OnPrepare)
+	m.editors.walk(E.OnPrepare)
+	m.cases.walk(C.OnPrepare)
 }
 
-func (r *mesher_[M, G, D, E, C]) createDealer(sign string, name string) D {
-	if _, ok := r.dealers[name]; ok {
+func (m *mesher_[M, G, D, E, C]) createDealer(sign string, name string) D {
+	if _, ok := m.dealers[name]; ok {
 		UseExitln("conflicting dealer with a same name in mesher")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := r.dealerCreators[sign]
+	create, ok := m.dealerCreators[sign]
 	if !ok {
 		UseExitln("unknown dealer sign: " + sign)
 	}
-	dealer := create(name, r.stage, r.shell.(M))
+	dealer := create(name, m.stage, m.shell.(M))
 	dealer.setShell(dealer)
-	r.dealers[name] = dealer
+	m.dealers[name] = dealer
 	return dealer
 }
-func (r *mesher_[M, G, D, E, C]) createEditor(sign string, name string) E {
-	if r.nEditors == 255 {
+func (m *mesher_[M, G, D, E, C]) createEditor(sign string, name string) E {
+	if m.nEditors == 255 {
 		UseExitln("cannot create editor: too many editors in one mesher")
 	}
-	if _, ok := r.editors[name]; ok {
+	if _, ok := m.editors[name]; ok {
 		UseExitln("conflicting editor with a same name in mesher")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := r.editorCreators[sign]
+	create, ok := m.editorCreators[sign]
 	if !ok {
 		UseExitln("unknown editor sign: " + sign)
 	}
-	editor := create(name, r.stage, r.shell.(M))
+	editor := create(name, m.stage, m.shell.(M))
 	editor.setShell(editor)
-	editor.setID(r.nEditors)
-	r.editors[name] = editor
-	r.editorsByID[r.nEditors] = editor
-	r.nEditors++
+	editor.setID(m.nEditors)
+	m.editors[name] = editor
+	m.editorsByID[m.nEditors] = editor
+	m.nEditors++
 	return editor
 }
-func (r *mesher_[M, G, D, E, C]) hasCase(name string) bool {
-	for _, kase := range r.cases {
+func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
+	for _, kase := range m.cases {
 		if kase.Name() == name {
 			return true
 		}
@@ -130,21 +130,21 @@ func (r *mesher_[M, G, D, E, C]) hasCase(name string) bool {
 	return false
 }
 
-func (r *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return r.editorsByID[id] }
+func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return m.editorsByID[id] }
 
-func (r *mesher_[M, G, D, E, C]) Log(s string) {
-	if r.logger != nil {
-		r.logger.Log(s)
+func (m *mesher_[M, G, D, E, C]) Log(s string) {
+	if m.logger != nil {
+		m.logger.Log(s)
 	}
 }
-func (r *mesher_[M, G, D, E, C]) Logln(s string) {
-	if r.logger != nil {
-		r.logger.Logln(s)
+func (m *mesher_[M, G, D, E, C]) Logln(s string) {
+	if m.logger != nil {
+		m.logger.Logln(s)
 	}
 }
-func (r *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {
-	if r.logger != nil {
-		r.logger.Logf(format, args...)
+func (m *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {
+	if m.logger != nil {
+		m.logger.Logf(format, args...)
 	}
 }
 

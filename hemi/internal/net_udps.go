@@ -21,65 +21,65 @@ type UDPSMesher struct {
 	mesher_[*UDPSMesher, *udpsGate, UDPSDealer, UDPSEditor, *udpsCase]
 }
 
-func (r *UDPSMesher) onCreate(name string, stage *Stage) {
-	r.mesher_.onCreate(name, stage, udpsDealerCreators, udpsEditorCreators)
+func (m *UDPSMesher) onCreate(name string, stage *Stage) {
+	m.mesher_.onCreate(name, stage, udpsDealerCreators, udpsEditorCreators)
 }
-func (r *UDPSMesher) OnShutdown() {
-	// We don't close(r.Shut) here.
-	for _, gate := range r.gates {
+func (m *UDPSMesher) OnShutdown() {
+	// We don't close(m.Shut) here.
+	for _, gate := range m.gates {
 		gate.shut()
 	}
 }
 
-func (r *UDPSMesher) OnConfigure() {
-	r.mesher_.onConfigure()
-	// TODO: configure r
-	r.configureSubs()
+func (m *UDPSMesher) OnConfigure() {
+	m.mesher_.onConfigure()
+	// TODO: configure m
+	m.configureSubs()
 }
-func (r *UDPSMesher) OnPrepare() {
-	r.mesher_.onPrepare()
-	// TODO: prepare r
-	r.prepareSubs()
+func (m *UDPSMesher) OnPrepare() {
+	m.mesher_.onPrepare()
+	// TODO: prepare m
+	m.prepareSubs()
 }
 
-func (r *UDPSMesher) createCase(name string) *udpsCase {
-	if r.hasCase(name) {
+func (m *UDPSMesher) createCase(name string) *udpsCase {
+	if m.hasCase(name) {
 		UseExitln("conflicting case with a same name")
 	}
 	kase := new(udpsCase)
-	kase.onCreate(name, r)
+	kase.onCreate(name, m)
 	kase.setShell(kase)
-	r.cases = append(r.cases, kase)
+	m.cases = append(m.cases, kase)
 	return kase
 }
 
-func (r *UDPSMesher) serve() { // goroutine
-	for id := int32(0); id < r.numGates; id++ {
+func (m *UDPSMesher) serve() { // goroutine
+	for id := int32(0); id < m.numGates; id++ {
 		gate := new(udpsGate)
-		gate.init(r, id)
+		gate.init(m, id)
 		if err := gate.open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
-		r.IncSub(1)
-		if r.tlsMode {
+		m.gates = append(m.gates, gate)
+		m.IncSub(1)
+		if m.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
 		}
 	}
-	r.WaitSubs() // gates
-	r.IncSub(len(r.dealers) + len(r.editors) + len(r.cases))
-	r.shutdownSubs()
-	r.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // gates
+	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.shutdownSubs()
+	m.WaitSubs() // dealers, editors, cases
 
-	if r.logger != nil {
-		r.logger.Close()
+	if m.logger != nil {
+		m.logger.Close()
 	}
 	if IsDebug(2) {
-		Printf("udpsMesher=%s done\n", r.Name())
+		Printf("udpsMesher=%s done\n", m.Name())
 	}
-	r.stage.SubDone()
+	m.stage.SubDone()
 }
 
 // udpsGate

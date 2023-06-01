@@ -107,9 +107,9 @@ func (b *UDPSBackend) createNode(id int32) *udpsNode {
 	return node
 }
 
-func (b *UDPSBackend) Dial() (*ULink, error) {
+func (b *UDPSBackend) Link() (*ULink, error) {
 	node := b.nodes[b.getNext()]
-	return node.dial()
+	return node.link()
 }
 func (b *UDPSBackend) FetchLink() (*ULink, error) {
 	node := b.nodes[b.getNext()]
@@ -144,7 +144,7 @@ func (n *udpsNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-func (n *udpsNode) dial() (*ULink, error) {
+func (n *udpsNode) link() (*ULink, error) {
 	// TODO
 	return nil, nil
 }
@@ -158,7 +158,7 @@ func (n *udpsNode) fetchLink() (*ULink, error) {
 		uLink.closeConn()
 		putULink(uLink)
 	}
-	return n.dial()
+	return n.link()
 }
 func (n *udpsNode) storeLink(uLink *ULink) {
 	if uLink.isBroken() || n.isDown() || !uLink.isAlive() {

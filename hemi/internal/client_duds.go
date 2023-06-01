@@ -52,9 +52,9 @@ func (b *DUDSBackend) createNode(id int32) *dudsNode {
 	return node
 }
 
-func (b *DUDSBackend) Dial() (*XLink, error) {
+func (b *DUDSBackend) Link() (*XLink, error) {
 	node := b.nodes[b.getNext()]
-	return node.dial()
+	return node.link()
 }
 func (b *DUDSBackend) FetchLink() (*XLink, error) {
 	node := b.nodes[b.getNext()]
@@ -89,7 +89,7 @@ func (n *dudsNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-func (n *dudsNode) dial() (*XLink, error) {
+func (n *dudsNode) link() (*XLink, error) {
 	// TODO
 	return nil, nil
 }
@@ -103,7 +103,7 @@ func (n *dudsNode) fetchLink() (*XLink, error) {
 		xLink.closeConn()
 		putXLink(xLink)
 	}
-	return n.dial()
+	return n.link()
 }
 func (n *dudsNode) storeLink(xLink *XLink) {
 	if xLink.isBroken() || n.isDown() || !xLink.isAlive() {

@@ -6,3 +6,57 @@
 // QUDS (QUIC over DUDS) proxy implementation.
 
 package internal
+
+func init() {
+	RegisterQUICDealer("qudsProxy", func(name string, stage *Stage, router *QUICRouter) QUICDealer {
+		d := new(qudsProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
+
+// qudsProxy passes QUIC connections to backend QUDS server.
+type qudsProxy struct {
+	// Mixins
+	QUICDealer_
+	// Assocs
+	stage   *Stage
+	router  *QUICRouter
+	backend *QUDSBackend
+	// States
+}
+
+func (d *qudsProxy) onCreate(name string, stage *Stage, router *QUICRouter) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.router = router
+}
+func (d *qudsProxy) OnShutdown() {
+	d.router.SubDone()
+}
+
+func (d *qudsProxy) OnConfigure() {
+	// toBackend
+	if v, ok := d.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := d.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if qudsBackend, ok := backend.(*QUDSBackend); ok {
+				d.backend = qudsBackend
+			} else {
+				UseExitf("incorrect backend '%s' for qudsProxy\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for qudsProxy")
+	}
+}
+func (d *qudsProxy) OnPrepare() {
+}
+
+func (d *qudsProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) { // reverse only
+	// TODO
+	return
+}

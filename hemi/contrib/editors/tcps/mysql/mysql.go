@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSEditor("mysqlViewer", func(name string, stage *Stage, router *TCPSRouter) TCPSEditor {
+	RegisterTCPSEditor("mysqlViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor {
 		e := new(mysqlViewer)
-		e.onCreate(name, stage, router)
+		e.onCreate(name, stage, mesher)
 		return e
 	})
 }
@@ -25,17 +25,17 @@ type mysqlViewer struct {
 	TCPSEditor_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (e *mysqlViewer) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (e *mysqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	e.MakeComp(name)
 	e.stage = stage
-	e.router = router
+	e.mesher = mesher
 }
 func (e *mysqlViewer) OnShutdown() {
-	e.router.SubDone()
+	e.mesher.SubDone()
 }
 
 func (e *mysqlViewer) OnConfigure() {

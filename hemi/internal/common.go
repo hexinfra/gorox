@@ -32,7 +32,7 @@ type logcfg struct {
 	bufSize int
 }
 
-// logger is logger for routers, apps, and svcs.
+// logger is logger for meshers, apps, and svcs.
 type logger struct {
 	file   *os.File
 	queue  chan string
@@ -127,7 +127,7 @@ func (l *logger) flush(p []byte) { l.file.Write(p) }
 // poolPiece
 var poolPiece sync.Pool
 
-func GetPiece() *Piece { // only exported to hemi, to be used by revisers.
+func GetPiece() *Piece {
 	if x := poolPiece.Get(); x == nil {
 		piece := new(Piece)
 		piece.pool = true // other pieces are not pooled.

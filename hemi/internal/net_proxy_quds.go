@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterQUICDealer("qudsProxy", func(name string, stage *Stage, router *QUICRouter) QUICDealer {
+	RegisterQUICDealer("qudsProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealer {
 		d := new(qudsProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -21,18 +21,18 @@ type qudsProxy struct {
 	QUICDealer_
 	// Assocs
 	stage   *Stage
-	router  *QUICRouter
+	mesher  *QUICMesher
 	backend *QUDSBackend
 	// States
 }
 
-func (d *qudsProxy) onCreate(name string, stage *Stage, router *QUICRouter) {
+func (d *qudsProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *qudsProxy) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *qudsProxy) OnConfigure() {

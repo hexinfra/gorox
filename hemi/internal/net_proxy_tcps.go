@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
 		d := new(tcpsProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -21,19 +21,19 @@ type tcpsProxy struct {
 	TCPSDealer_
 	// Assocs
 	stage   *Stage       // current stage
-	router  *TCPSRouter  // the router to which the dealer belongs
+	mesher  *TCPSMesher  // the mesher to which the dealer belongs
 	backend *TCPSBackend // if works as forward proxy, this is nil
 	// States
 	process func(*TCPSConn)
 }
 
-func (d *tcpsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *tcpsProxy) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *tcpsProxy) OnConfigure() {

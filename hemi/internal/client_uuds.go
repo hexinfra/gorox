@@ -133,7 +133,7 @@ func putXLink(link *XLink) {
 }
 
 // XLink is a client-side link to uudsNode.
-type XLink struct { // only exported to hemi
+type XLink struct {
 	// Mixins
 	conn_
 	// Link states (non-zeros)

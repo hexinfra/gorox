@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealer("mysqlProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+	RegisterTCPSDealer("mysqlProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
 		d := new(mysqlProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -25,17 +25,17 @@ type mysqlProxy struct {
 	TCPSDealer_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (d *mysqlProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *mysqlProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *mysqlProxy) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *mysqlProxy) OnConfigure() {

@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSEditor("redisViewer", func(name string, stage *Stage, router *TCPSRouter) TCPSEditor {
+	RegisterTCPSEditor("redisViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor {
 		e := new(redisViewer)
-		e.onCreate(name, stage, router)
+		e.onCreate(name, stage, mesher)
 		return e
 	})
 }
@@ -25,17 +25,17 @@ type redisViewer struct {
 	TCPSEditor_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (e *redisViewer) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (e *redisViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	e.MakeComp(name)
 	e.stage = stage
-	e.router = router
+	e.mesher = mesher
 }
 func (e *redisViewer) OnShutdown() {
-	e.router.SubDone()
+	e.mesher.SubDone()
 }
 
 func (e *redisViewer) OnConfigure() {

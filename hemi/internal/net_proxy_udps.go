@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterUDPSDealer("udpsProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealer {
+	RegisterUDPSDealer("udpsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer {
 		d := new(udpsProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -21,18 +21,18 @@ type udpsProxy struct {
 	UDPSDealer_
 	// Assocs
 	stage   *Stage
-	router  *UDPSRouter
+	mesher  *UDPSMesher
 	backend *UDPSBackend
 	// States
 }
 
-func (d *udpsProxy) onCreate(name string, stage *Stage, router *UDPSRouter) {
+func (d *udpsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *udpsProxy) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *udpsProxy) OnConfigure() {

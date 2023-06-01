@@ -93,6 +93,8 @@ type ( // core types
 	QOneway      = internal.QOneway
 	QUDSBackend  = internal.QUDSBackend
 	DConn        = internal.DConn
+	DStream      = internal.DStream
+	DOneway      = internal.DOneway
 	TCPSBackend  = internal.TCPSBackend
 	TConn        = internal.TConn
 	TUDSBackend  = internal.TUDSBackend
@@ -101,6 +103,10 @@ type ( // core types
 	ULink        = internal.ULink
 	UUDSBackend  = internal.UUDSBackend
 	XLink        = internal.XLink
+	HRPCBackend  = internal.HRPCBackend
+	HCall        = internal.HCall
+	HReq         = internal.HReq
+	HResp        = internal.HResp
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -124,15 +130,15 @@ type ( // core types
 	HRequest     = internal.HRequest
 	HResponse    = internal.HResponse
 
-	QUICRouter = internal.QUICRouter
+	QUICMesher = internal.QUICMesher
 	QUICDealer = internal.QUICDealer
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
-	TCPSRouter = internal.TCPSRouter
+	TCPSMesher = internal.TCPSMesher
 	TCPSDealer = internal.TCPSDealer
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
-	UDPSRouter = internal.UDPSRouter
+	UDPSMesher = internal.UDPSMesher
 	UDPSDealer = internal.UDPSDealer
 	UDPSEditor = internal.UDPSEditor
 	UDPSLink   = internal.UDPSLink

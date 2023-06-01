@@ -188,7 +188,7 @@ func putULink(link *ULink) {
 }
 
 // ULink is a client-side link to udpsNode.
-type ULink struct { // only exported to hemi
+type ULink struct {
 	// Mixins
 	conn_
 	// Link states (non-zeros)

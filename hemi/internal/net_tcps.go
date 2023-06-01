@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS network router.
+// TCP/TLS network mesher.
 
 package internal
 
@@ -19,34 +19,34 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
-// TCPSRouter
-type TCPSRouter struct {
+// TCPSMesher
+type TCPSMesher struct {
 	// Mixins
-	router_[*TCPSRouter, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
 }
 
-func (r *TCPSRouter) onCreate(name string, stage *Stage) {
-	r.router_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
+func (r *TCPSMesher) onCreate(name string, stage *Stage) {
+	r.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
 }
-func (r *TCPSRouter) OnShutdown() {
+func (r *TCPSMesher) OnShutdown() {
 	// We don't close(r.Shut) here.
 	for _, gate := range r.gates {
 		gate.shut()
 	}
 }
 
-func (r *TCPSRouter) OnConfigure() {
-	r.router_.onConfigure()
+func (r *TCPSMesher) OnConfigure() {
+	r.mesher_.onConfigure()
 	// configure r here
 	r.configureSubs()
 }
-func (r *TCPSRouter) OnPrepare() {
-	r.router_.onPrepare()
+func (r *TCPSMesher) OnPrepare() {
+	r.mesher_.onPrepare()
 	// prepare r here
 	r.prepareSubs()
 }
 
-func (r *TCPSRouter) createCase(name string) *tcpsCase {
+func (r *TCPSMesher) createCase(name string) *tcpsCase {
 	if r.hasCase(name) {
 		UseExitln("conflicting case with a same name")
 	}
@@ -57,7 +57,7 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 	return kase
 }
 
-func (r *TCPSRouter) serve() { // goroutine
+func (r *TCPSMesher) serve() { // goroutine
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
 		gate.init(r, id)
@@ -81,7 +81,7 @@ func (r *TCPSRouter) serve() { // goroutine
 		r.logger.Close()
 	}
 	if IsDebug(2) {
-		Printf("tcpsRouter=%s done\n", r.Name())
+		Printf("tcpsMesher=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }
@@ -91,14 +91,14 @@ type tcpsGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 	gate *net.TCPListener // the real gate. set after open
 }
 
-func (g *tcpsGate) init(router *TCPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
-	g.router = router
+func (g *tcpsGate) init(mesher *TCPSMesher, id int32) {
+	g.Gate_.Init(mesher.stage, id, mesher.address, mesher.maxConnsPerGate)
+	g.mesher = mesher
 }
 
 func (g *tcpsGate) open() error {
@@ -138,7 +138,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				g.justClose(tcpConn)
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
+			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
 			if IsDebug(1) {
 				Printf("%+v\n", tcpsConn)
 			}
@@ -150,7 +150,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 	if IsDebug(2) {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
-	g.router.SubDone()
+	g.mesher.SubDone()
 }
 func (g *tcpsGate) serveTLS() { // goroutine
 	connID := int64(0)
@@ -167,12 +167,12 @@ func (g *tcpsGate) serveTLS() { // goroutine
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			tlsConn := tls.Server(tcpConn, g.router.tlsConfig)
+			tlsConn := tls.Server(tcpConn, g.mesher.tlsConfig)
 			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 				g.justClose(tlsConn)
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.router, g, tlsConn, nil)
+			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
 			go tcpsConn.execute() // tcpsConn is put to pool in execute()
 			connID++
 		}
@@ -181,7 +181,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	if IsDebug(2) {
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
-	g.router.SubDone()
+	g.mesher.SubDone()
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
@@ -226,7 +226,7 @@ type TCPSEditor_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSRouter, TCPSDealer, TCPSEditor]
+	case_[*TCPSMesher, TCPSDealer, TCPSEditor]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -304,14 +304,14 @@ func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
-func getTCPSConn(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+func getTCPSConn(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
 	var conn *TCPSConn
 	if x := poolTCPSConn.Get(); x == nil {
 		conn = new(TCPSConn)
 	} else {
 		conn = x.(*TCPSConn)
 	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
+	conn.onGet(id, stage, mesher, gate, netConn, rawConn)
 	return conn
 }
 func putTCPSConn(conn *TCPSConn) {
@@ -319,7 +319,7 @@ func putTCPSConn(conn *TCPSConn) {
 	poolTCPSConn.Put(conn)
 }
 
-// TCPSConn is the TCP/TLS connection coming from TCPSRouter.
+// TCPSConn is the TCP/TLS connection coming from TCPSMesher.
 type TCPSConn struct {
 	// Conn states (stocks)
 	stockInput [8192]byte // for c.input
@@ -327,7 +327,7 @@ type TCPSConn struct {
 	// Conn states (non-zeros)
 	id        int64           // connection id
 	stage     *Stage          // current stage
-	router    *TCPSRouter     // from router
+	mesher    *TCPSMesher     // from mesher
 	gate      *tcpsGate       // from gate
 	netConn   net.Conn        // the connection (TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
@@ -342,10 +342,10 @@ type tcpsConn0 struct {
 	nEditors int8
 }
 
-func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.stage = stage
-	c.router = router
+	c.mesher = mesher
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -355,7 +355,7 @@ func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsG
 }
 func (c *TCPSConn) onPut() {
 	c.stage = nil
-	c.router = nil
+	c.mesher = nil
 	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
@@ -368,7 +368,7 @@ func (c *TCPSConn) onPut() {
 }
 
 func (c *TCPSConn) execute() { // goroutine
-	for _, kase := range c.router.cases {
+	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue
 		}
@@ -422,7 +422,7 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if c.router.TLSMode() {
+	if c.mesher.TLSMode() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

@@ -52,8 +52,8 @@ func (f *HRPCOutgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-// hrpcBackend
-type hrpcBackend struct {
+// HRPCBackend
+type HRPCBackend struct {
 }
 
 // hrpcNode

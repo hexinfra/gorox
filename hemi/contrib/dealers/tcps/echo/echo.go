@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealer("echoDealer", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+	RegisterTCPSDealer("echoDealer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
 		d := new(echoDealer)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -25,17 +25,17 @@ type echoDealer struct {
 	TCPSDealer_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (d *echoDealer) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *echoDealer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *echoDealer) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *echoDealer) OnConfigure() {

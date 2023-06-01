@@ -28,13 +28,13 @@ const ( // component list
 	compFixture               // clock, fcache, resolv, http1Outgate, tcpsOutgate, ...
 	compRunner                // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
-	compQUICRouter            // quicRouter
+	compQUICMesher            // quicMesher
 	compQUICDealer            // quicProxy, ...
 	compQUICEditor            // ...
-	compTCPSRouter            // tcpsRouter
+	compTCPSMesher            // tcpsMesher
 	compTCPSDealer            // tcpsProxy, ...
 	compTCPSEditor            // ...
-	compUDPSRouter            // udpsRouter
+	compUDPSMesher            // udpsMesher
 	compUDPSDealer            // udpsProxy, ...
 	compUDPSEditor            // ...
 	compCase                  // case
@@ -52,9 +52,9 @@ const ( // component list
 
 var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
 	"stage":      compStage,
-	"quicRouter": compQUICRouter,
-	"tcpsRouter": compTCPSRouter,
-	"udpsRouter": compUDPSRouter,
+	"quicMesher": compQUICMesher,
+	"tcpsMesher": compTCPSMesher,
+	"udpsMesher": compUDPSMesher,
 	"case":       compCase,
 	"app":        compApp,
 	"rule":       compRule,
@@ -82,12 +82,12 @@ var (
 	creatorsLock       sync.RWMutex
 	runnerCreators     = make(map[string]func(name string, stage *Stage) Runner) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
-	quicDealerCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICDealer)
-	quicEditorCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICEditor)
-	tcpsDealerCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSDealer)
-	tcpsEditorCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSEditor)
-	udpsDealerCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSDealer)
-	udpsEditorCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSEditor)
+	quicDealerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealer)
+	quicEditorCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICEditor)
+	tcpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer)
+	tcpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor)
+	udpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer)
+	udpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
@@ -103,22 +103,22 @@ func RegisterRunner(sign string, create func(name string, stage *Stage) Runner) 
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterQUICDealer(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICDealer) {
+func RegisterQUICDealer(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealer) {
 	_registerComponent1(sign, compQUICDealer, quicDealerCreators, create)
 }
-func RegisterQUICEditor(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICEditor) {
+func RegisterQUICEditor(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICEditor) {
 	_registerComponent1(sign, compQUICEditor, quicEditorCreators, create)
 }
-func RegisterTCPSDealer(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSDealer) {
+func RegisterTCPSDealer(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer) {
 	_registerComponent1(sign, compTCPSDealer, tcpsDealerCreators, create)
 }
-func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSEditor) {
+func RegisterTCPSEditor(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor) {
 	_registerComponent1(sign, compTCPSEditor, tcpsEditorCreators, create)
 }
-func RegisterUDPSDealer(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSDealer) {
+func RegisterUDPSDealer(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer) {
 	_registerComponent1(sign, compUDPSDealer, udpsDealerCreators, create)
 }
-func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSEditor) {
+func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor) {
 	_registerComponent1(sign, compUDPSEditor, udpsEditorCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
@@ -372,9 +372,9 @@ type Stage struct {
 	fixtures     compDict[fixture]     // indexed by sign
 	runners      compDict[Runner]      // indexed by runnerName
 	backends     compDict[Backend]     // indexed by backendName
-	quicRouters  compDict[*QUICRouter] // indexed by routerName
-	tcpsRouters  compDict[*TCPSRouter] // indexed by routerName
-	udpsRouters  compDict[*UDPSRouter] // indexed by routerName
+	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
+	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
+	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
 	staters      compDict[Stater]      // indexed by staterName
 	cachers      compDict[Cacher]      // indexed by cacherName
 	apps         compDict[*App]        // indexed by appName
@@ -421,9 +421,9 @@ func (s *Stage) onCreate() {
 
 	s.runners = make(compDict[Runner])
 	s.backends = make(compDict[Backend])
-	s.quicRouters = make(compDict[*QUICRouter])
-	s.tcpsRouters = make(compDict[*TCPSRouter])
-	s.udpsRouters = make(compDict[*UDPSRouter])
+	s.quicMeshers = make(compDict[*QUICMesher])
+	s.tcpsMeshers = make(compDict[*TCPSMesher])
+	s.udpsMeshers = make(compDict[*UDPSMesher])
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
 	s.apps = make(compDict[*App])
@@ -458,11 +458,11 @@ func (s *Stage) OnShutdown() {
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
-	// routers
-	s.IncSub(len(s.udpsRouters) + len(s.tcpsRouters) + len(s.quicRouters))
-	s.udpsRouters.goWalk((*UDPSRouter).OnShutdown)
-	s.tcpsRouters.goWalk((*TCPSRouter).OnShutdown)
-	s.quicRouters.goWalk((*QUICRouter).OnShutdown)
+	// meshers
+	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
+	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
+	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
+	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
 	s.WaitSubs()
 
 	// backends
@@ -552,9 +552,9 @@ func (s *Stage) OnConfigure() {
 	s.fixtures.walk(fixture.OnConfigure)
 	s.runners.walk(Runner.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
-	s.quicRouters.walk((*QUICRouter).OnConfigure)
-	s.tcpsRouters.walk((*TCPSRouter).OnConfigure)
-	s.udpsRouters.walk((*UDPSRouter).OnConfigure)
+	s.quicMeshers.walk((*QUICMesher).OnConfigure)
+	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
+	s.udpsMeshers.walk((*UDPSMesher).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
 	s.apps.walk((*App).OnConfigure)
@@ -573,9 +573,9 @@ func (s *Stage) OnPrepare() {
 	s.fixtures.walk(fixture.OnPrepare)
 	s.runners.walk(Runner.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
-	s.quicRouters.walk((*QUICRouter).OnPrepare)
-	s.tcpsRouters.walk((*TCPSRouter).OnPrepare)
-	s.udpsRouters.walk((*UDPSRouter).OnPrepare)
+	s.quicMeshers.walk((*QUICMesher).OnPrepare)
+	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
+	s.udpsMeshers.walk((*UDPSMesher).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
 	s.apps.walk((*App).OnPrepare)
@@ -610,35 +610,35 @@ func (s *Stage) createBackend(sign string, name string) Backend {
 	s.backends[name] = backend
 	return backend
 }
-func (s *Stage) createQUICRouter(name string) *QUICRouter {
-	if s.QUICRouter(name) != nil {
-		UseExitf("conflicting quicRouter with a same name '%s'\n", name)
+func (s *Stage) createQUICMesher(name string) *QUICMesher {
+	if s.QUICMesher(name) != nil {
+		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
 	}
-	router := new(QUICRouter)
-	router.onCreate(name, s)
-	router.setShell(router)
-	s.quicRouters[name] = router
-	return router
+	mesher := new(QUICMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.quicMeshers[name] = mesher
+	return mesher
 }
-func (s *Stage) createTCPSRouter(name string) *TCPSRouter {
-	if s.TCPSRouter(name) != nil {
-		UseExitf("conflicting tcpsRouter with a same name '%s'\n", name)
+func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
+	if s.TCPSMesher(name) != nil {
+		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
 	}
-	router := new(TCPSRouter)
-	router.onCreate(name, s)
-	router.setShell(router)
-	s.tcpsRouters[name] = router
-	return router
+	mesher := new(TCPSMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.tcpsMeshers[name] = mesher
+	return mesher
 }
-func (s *Stage) createUDPSRouter(name string) *UDPSRouter {
-	if s.UDPSRouter(name) != nil {
-		UseExitf("conflicting udpsRouter with a same name '%s'\n", name)
+func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
+	if s.UDPSMesher(name) != nil {
+		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
 	}
-	router := new(UDPSRouter)
-	router.onCreate(name, s)
-	router.setShell(router)
-	s.udpsRouters[name] = router
-	return router
+	mesher := new(UDPSMesher)
+	mesher.onCreate(name, s)
+	mesher.setShell(mesher)
+	s.udpsMeshers[name] = mesher
+	return mesher
 }
 func (s *Stage) createStater(sign string, name string) Stater {
 	if s.Stater(name) != nil {
@@ -728,9 +728,9 @@ func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Runner(name string) Runner          { return s.runners[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
-func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
-func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
-func (s *Stage) UDPSRouter(name string) *UDPSRouter { return s.udpsRouters[name] }
+func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
+func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
+func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
@@ -786,7 +786,7 @@ func (s *Stage) Start(id int32) {
 	s.startFixtures() // go fixture.run()
 	s.startRunners()  // go runner.Run()
 	s.startBackends() // go backend.maintain()
-	s.startRouters()  // go router.serve()
+	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
 	s.startApps()     // go app.maintain()
@@ -846,24 +846,24 @@ func (s *Stage) startBackends() {
 		go backend.Maintain()
 	}
 }
-func (s *Stage) startRouters() {
-	for _, quicRouter := range s.quicRouters {
+func (s *Stage) startMeshers() {
+	for _, quicMesher := range s.quicMeshers {
 		if IsDebug(1) {
-			Printf("quicRouter=%s go serve()\n", quicRouter.Name())
+			Printf("quicMesher=%s go serve()\n", quicMesher.Name())
 		}
-		go quicRouter.serve()
+		go quicMesher.serve()
 	}
-	for _, tcpsRouter := range s.tcpsRouters {
+	for _, tcpsMesher := range s.tcpsMeshers {
 		if IsDebug(1) {
-			Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
+			Printf("tcpsMesher=%s go serve()\n", tcpsMesher.Name())
 		}
-		go tcpsRouter.serve()
+		go tcpsMesher.serve()
 	}
-	for _, udpsRouter := range s.udpsRouters {
+	for _, udpsMesher := range s.udpsMeshers {
 		if IsDebug(1) {
-			Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
+			Printf("udpsMesher=%s go serve()\n", udpsMesher.Name())
 		}
-		go udpsRouter.serve()
+		go udpsMesher.serve()
 	}
 }
 func (s *Stage) startStaters() {
@@ -1512,7 +1512,7 @@ type Gate interface {
 	shut() error
 }
 
-// Gate_ is a mixin for router gates and server gates.
+// Gate_ is a mixin for mesher gates and server gates.
 type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns

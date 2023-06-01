@@ -253,7 +253,7 @@ func putTConn(conn *TConn) {
 }
 
 // TConn is a client-side connection to tcpsNode.
-type TConn struct { // only exported to hemi
+type TConn struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)

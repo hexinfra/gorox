@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSEditor("pgsqlViewer", func(name string, stage *Stage, router *TCPSRouter) TCPSEditor {
+	RegisterTCPSEditor("pgsqlViewer", func(name string, stage *Stage, mesher *TCPSMesher) TCPSEditor {
 		e := new(pgsqlViewer)
-		e.onCreate(name, stage, router)
+		e.onCreate(name, stage, mesher)
 		return e
 	})
 }
@@ -25,17 +25,17 @@ type pgsqlViewer struct {
 	TCPSEditor_
 	// Assocs
 	stage  *Stage
-	router *TCPSRouter
+	mesher *TCPSMesher
 	// States
 }
 
-func (e *pgsqlViewer) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (e *pgsqlViewer) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	e.MakeComp(name)
 	e.stage = stage
-	e.router = router
+	e.mesher = mesher
 }
 func (e *pgsqlViewer) OnShutdown() {
-	e.router.SubDone()
+	e.mesher.SubDone()
 }
 
 func (e *pgsqlViewer) OnConfigure() {

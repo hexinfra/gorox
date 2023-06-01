@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterTCPSDealer("tudsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealer {
+	RegisterTCPSDealer("tudsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
 		d := new(tudsProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(name, stage, mesher)
 		return d
 	})
 }
@@ -21,18 +21,18 @@ type tudsProxy struct {
 	TCPSDealer_
 	// Assocs
 	stage   *Stage       // current stage
-	router  *TCPSRouter  // the router to which the dealer belongs
+	mesher  *TCPSMesher  // the mesher to which the dealer belongs
 	backend *TUDSBackend // the tuds backend
 	// States
 }
 
-func (d *tudsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+func (d *tudsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.router = router
+	d.mesher = mesher
 }
 func (d *tudsProxy) OnShutdown() {
-	d.router.SubDone()
+	d.mesher.SubDone()
 }
 
 func (d *tudsProxy) OnConfigure() {

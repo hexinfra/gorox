@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC network router.
+// QUIC network mesher.
 
 package internal
 
@@ -14,34 +14,34 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
-// QUICRouter
-type QUICRouter struct {
+// QUICMesher
+type QUICMesher struct {
 	// Mixins
-	router_[*QUICRouter, *quicGate, QUICDealer, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICEditor, *quicCase]
 }
 
-func (r *QUICRouter) onCreate(name string, stage *Stage) {
-	r.router_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
+func (r *QUICMesher) onCreate(name string, stage *Stage) {
+	r.mesher_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
 }
-func (r *QUICRouter) OnShutdown() {
+func (r *QUICMesher) OnShutdown() {
 	// We don't close(r.Shut) here.
 	for _, gate := range r.gates {
 		gate.shut()
 	}
 }
 
-func (r *QUICRouter) OnConfigure() {
-	r.router_.onConfigure()
+func (r *QUICMesher) OnConfigure() {
+	r.mesher_.onConfigure()
 	// TODO: configure r
 	r.configureSubs()
 }
-func (r *QUICRouter) OnPrepare() {
-	r.router_.onPrepare()
+func (r *QUICMesher) OnPrepare() {
+	r.mesher_.onPrepare()
 	// TODO: prepare r
 	r.prepareSubs()
 }
 
-func (r *QUICRouter) createCase(name string) *quicCase {
+func (r *QUICMesher) createCase(name string) *quicCase {
 	if r.hasCase(name) {
 		UseExitln("conflicting case with a same name")
 	}
@@ -52,7 +52,7 @@ func (r *QUICRouter) createCase(name string) *quicCase {
 	return kase
 }
 
-func (r *QUICRouter) serve() { // goroutine
+func (r *QUICMesher) serve() { // goroutine
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quicGate)
 		gate.init(r, id)
@@ -72,7 +72,7 @@ func (r *QUICRouter) serve() { // goroutine
 		r.logger.Close()
 	}
 	if IsDebug(2) {
-		Printf("quicRouter=%s done\n", r.Name())
+		Printf("quicMesher=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
 }
@@ -82,14 +82,14 @@ type quicGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	router *QUICRouter
+	mesher *QUICMesher
 	// States
 	gate *quix.Gate // the real gate. set after open
 }
 
-func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
-	g.router = router
+func (g *quicGate) init(mesher *QUICMesher, id int32) {
+	g.Gate_.Init(mesher.stage, id, mesher.address, mesher.maxConnsPerGate)
+	g.mesher = mesher
 }
 
 func (g *quicGate) open() error {
@@ -106,7 +106,7 @@ func (g *quicGate) serve() { // goroutine
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.router.SubDone()
+	g.mesher.SubDone()
 }
 
 func (g *quicGate) justClose(quicConn *quix.Conn) {
@@ -148,7 +148,7 @@ type QUICEditor_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICRouter, QUICDealer, QUICEditor]
+	case_[*QUICMesher, QUICDealer, QUICEditor]
 	// States
 	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }
@@ -219,14 +219,14 @@ func (c *quicCase) execute(conn *QUICConn) (processed bool) {
 // poolQUICConn
 var poolQUICConn sync.Pool
 
-func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) *QUICConn {
+func getQUICConn(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) *QUICConn {
 	var conn *QUICConn
 	if x := poolQUICConn.Get(); x == nil {
 		conn = new(QUICConn)
 	} else {
 		conn = x.(*QUICConn)
 	}
-	conn.onGet(id, stage, router, gate, quicConn)
+	conn.onGet(id, stage, mesher, gate, quicConn)
 	return conn
 }
 func putQUICConn(conn *QUICConn) {
@@ -234,14 +234,14 @@ func putQUICConn(conn *QUICConn) {
 	poolQUICConn.Put(conn)
 }
 
-// QUICConn is the QUIC connection coming from QUICRouter.
+// QUICConn is the QUIC connection coming from QUICMesher.
 type QUICConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id       int64
 	stage    *Stage // current stage
-	router   *QUICRouter
+	mesher   *QUICMesher
 	gate     *quicGate
 	quicConn *quix.Conn
 	// Conn states (zeros)
@@ -251,23 +251,23 @@ type quicConn0 struct {
 	editors [32]uint8 // editor ids which will apply on this conn. indexed by editor order
 }
 
-func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quicConn *quix.Conn) {
+func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConn *quix.Conn) {
 	c.id = id
 	c.stage = stage
-	c.router = router
+	c.mesher = mesher
 	c.gate = gate
 	c.quicConn = quicConn
 }
 func (c *QUICConn) onPut() {
 	c.stage = nil
-	c.router = nil
+	c.mesher = nil
 	c.gate = nil
 	c.quicConn = nil
 	c.quicConn0 = quicConn0{}
 }
 
 func (c *QUICConn) execute() { // goroutine
-	for _, kase := range c.router.cases {
+	for _, kase := range c.mesher.cases {
 		if !kase.isMatch(c) {
 			continue
 		}

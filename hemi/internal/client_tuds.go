@@ -252,7 +252,7 @@ func putXConn(conn *XConn) {
 }
 
 // XConn is a client-side connection to tudsNode.
-type XConn struct { // only exported to hemi
+type XConn struct {
 	// Mixins
 	conn_
 	// Conn states (non-zeros)

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web incoming and outgoing messages.
+// General Web incoming and outgoing messages implementation.
 
 package internal
 
@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -1485,7 +1484,7 @@ func (r *webIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-const ( // Web incoming content text kinds
+const ( // web incoming content text kinds
 	webContentTextNone  = iota // must be 0
 	webContentTextInput        // refers to r.input
 	webContentTextPool         // fetched from pool
@@ -1971,104 +1970,3 @@ var ( // web outgoing message errors
 	webOutMixedContent  = errors.New("mixed content mode")
 	webOutTrailerFailed = errors.New("add trailer failed")
 )
-
-var webTemplate = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
-var webControls = [...][]byte{ // size: 512*24B=12K. for both HTTP/2 and HTTP/3
-	// 1XX
-	StatusContinue:           []byte(":status 100"),
-	StatusSwitchingProtocols: []byte(":status 101"),
-	StatusProcessing:         []byte(":status 102"),
-	StatusEarlyHints:         []byte(":status 103"),
-	// 2XX
-	StatusOK:                         []byte(":status 200"),
-	StatusCreated:                    []byte(":status 201"),
-	StatusAccepted:                   []byte(":status 202"),
-	StatusNonAuthoritativeInfomation: []byte(":status 203"),
-	StatusNoContent:                  []byte(":status 204"),
-	StatusResetContent:               []byte(":status 205"),
-	StatusPartialContent:             []byte(":status 206"),
-	StatusMultiStatus:                []byte(":status 207"),
-	StatusAlreadyReported:            []byte(":status 208"),
-	StatusIMUsed:                     []byte(":status 226"),
-	// 3XX
-	StatusMultipleChoices:   []byte(":status 300"),
-	StatusMovedPermanently:  []byte(":status 301"),
-	StatusFound:             []byte(":status 302"),
-	StatusSeeOther:          []byte(":status 303"),
-	StatusNotModified:       []byte(":status 304"),
-	StatusUseProxy:          []byte(":status 305"),
-	StatusTemporaryRedirect: []byte(":status 307"),
-	StatusPermanentRedirect: []byte(":status 308"),
-	// 4XX
-	StatusBadRequest:                  []byte(":status 400"),
-	StatusUnauthorized:                []byte(":status 401"),
-	StatusPaymentRequired:             []byte(":status 402"),
-	StatusForbidden:                   []byte(":status 403"),
-	StatusNotFound:                    []byte(":status 404"),
-	StatusMethodNotAllowed:            []byte(":status 405"),
-	StatusNotAcceptable:               []byte(":status 406"),
-	StatusProxyAuthenticationRequired: []byte(":status 407"),
-	StatusRequestTimeout:              []byte(":status 408"),
-	StatusConflict:                    []byte(":status 409"),
-	StatusGone:                        []byte(":status 410"),
-	StatusLengthRequired:              []byte(":status 411"),
-	StatusPreconditionFailed:          []byte(":status 412"),
-	StatusContentTooLarge:             []byte(":status 413"),
-	StatusURITooLong:                  []byte(":status 414"),
-	StatusUnsupportedMediaType:        []byte(":status 415"),
-	StatusRangeNotSatisfiable:         []byte(":status 416"),
-	StatusExpectationFailed:           []byte(":status 417"),
-	StatusMisdirectedRequest:          []byte(":status 421"),
-	StatusUnprocessableEntity:         []byte(":status 422"),
-	StatusLocked:                      []byte(":status 423"),
-	StatusFailedDependency:            []byte(":status 424"),
-	StatusTooEarly:                    []byte(":status 425"),
-	StatusUpgradeRequired:             []byte(":status 426"),
-	StatusPreconditionRequired:        []byte(":status 428"),
-	StatusTooManyRequests:             []byte(":status 429"),
-	StatusRequestHeaderFieldsTooLarge: []byte(":status 431"),
-	StatusUnavailableForLegalReasons:  []byte(":status 451"),
-	// 5XX
-	StatusInternalServerError:           []byte(":status 500"),
-	StatusNotImplemented:                []byte(":status 501"),
-	StatusBadGateway:                    []byte(":status 502"),
-	StatusServiceUnavailable:            []byte(":status 503"),
-	StatusGatewayTimeout:                []byte(":status 504"),
-	StatusHTTPVersionNotSupported:       []byte(":status 505"),
-	StatusVariantAlsoNegotiates:         []byte(":status 506"),
-	StatusInsufficientStorage:           []byte(":status 507"),
-	StatusLoopDetected:                  []byte(":status 508"),
-	StatusNotExtended:                   []byte(":status 510"),
-	StatusNetworkAuthenticationRequired: []byte(":status 511"),
-}
-
-var webErrorPages = func() map[int16][]byte {
-	const template = `<!doctype html>
-<html lang="en">
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta charset="utf-8">
-<title>%d %s</title>
-<style type="text/css">
-body{text-align:center;}
-header{font-size:72pt;}
-main{font-size:36pt;}
-footer{padding:20px;}
-</style>
-</head>
-<body>
-	<header>%d</header>
-	<main>%s</main>
-	<footer>Powered by Gorox</footer>
-</body>
-</html>`
-	pages := make(map[int16][]byte)
-	for status, control := range http1Controls {
-		if status < 400 || control == nil {
-			continue
-		}
-		phrase := control[len("HTTP/1.1 XXX ") : len(control)-2]
-		pages[int16(status)] = []byte(fmt.Sprintf(template, status, phrase, status, phrase))
-	}
-	return pages
-}()

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// AJP proxy handlet passes web requests to backend AJP servers and cache responses.
+// AJP proxy implementation.
 
 package internal
 
@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// ajpProxy handlet
+// ajpProxy handlet passes web requests to backend AJP servers and cache responses.
 type ajpProxy struct {
 	// Mixins
 	Handlet_

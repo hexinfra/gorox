@@ -5,7 +5,7 @@
 
 // HRPC protocol elements.
 
-// HRPC is a request/response RPC protocol.
-// HRPC is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
+// HRPC is a request/response RPC protocol designed for IDC.
+// HRPC is under design, maybe we'll build it upon QUIC without TLS.
 
 package internal

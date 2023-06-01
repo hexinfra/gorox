@@ -374,8 +374,8 @@ func (r *H3Request) finalizeUnsized() error {
 	return nil
 }
 
-func (r *H3Request) addedHeaders() []byte { return nil }
-func (r *H3Request) fixedHeaders() []byte { return nil }
+func (r *H3Request) addedHeaders() []byte { return nil } // TODO
+func (r *H3Request) fixedHeaders() []byte { return nil } // TODO
 
 // H3Response is the client-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing

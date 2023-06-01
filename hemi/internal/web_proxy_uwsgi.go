@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI proxy handlet passes web requests to backend uWSGI servers and cache responses.
+// UWSGI proxy implementation.
 
 package internal
 
@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// uwsgiProxy handlet
+// uwsgiProxy handlet passes web requests to backend uWSGI servers and cache responses.
 type uwsgiProxy struct {
 	// Mixins
 	Handlet_

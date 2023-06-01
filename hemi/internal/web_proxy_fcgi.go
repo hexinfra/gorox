@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI proxy handlet passes web requests to backend FCGI servers and cache responses.
+// FCGI proxy implementation.
 
 package internal
 
@@ -20,7 +20,7 @@ func init() {
 	})
 }
 
-// fcgiProxy handlet
+// fcgiProxy handlet passes web requests to backend FCGI servers and cache responses.
 type fcgiProxy struct {
 	// Mixins
 	Handlet_

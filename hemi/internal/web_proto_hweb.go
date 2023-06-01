@@ -5,8 +5,8 @@
 
 // HWEB protocol elements.
 
-// HWEB is an HTTP gateway protocol without WebSocket, TCP Tunnel, and UDP Tunnel support.
-// HWEB is under design, maybe we'll build it upon QUIC or Homa (https://homa-transport.atlassian.net/wiki/spaces/HOMA/overview).
+// HWEB is a request/response Web protocol designed for IDC.
+// HWEB is under design, maybe we'll build it upon QUIC without TLS.
 
 package internal
 

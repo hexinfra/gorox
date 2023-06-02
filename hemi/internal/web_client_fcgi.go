@@ -31,7 +31,7 @@ import (
 // poolFCGIExchan
 var poolFCGIExchan sync.Pool
 
-func getFCGIExchan(proxy *fcgiProxy, conn *TConn) *fcgiExchan {
+func getFCGIExchan(proxy *fcgiProxy, conn wireConn) *fcgiExchan {
 	var exchan *fcgiExchan
 	if x := poolFCGIExchan.Get(); x == nil {
 		exchan = new(fcgiExchan)
@@ -60,12 +60,12 @@ type fcgiExchan struct {
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
 	proxy  *fcgiProxy // associated proxy
-	conn   *TConn     // associated conn
+	conn   wireConn   // associated conn
 	region Region     // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn *TConn) {
+func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn wireConn) {
 	x.proxy = proxy
 	x.conn = conn
 	x.region.Init()

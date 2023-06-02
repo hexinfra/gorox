@@ -820,29 +820,3 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 	*/
 	return true
 }
-
-// Storer component is the interface to storages of HTTP caching. See RFC 9111.
-type Storer interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // goroutine
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Storer_
-type Storer_ struct {
-	// Mixins
-	Component_
-}
-
-// Hobject is an HTTP object in storer
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}

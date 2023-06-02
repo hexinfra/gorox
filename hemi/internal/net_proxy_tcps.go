@@ -89,7 +89,7 @@ func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
 
 func (d *tcpsProxy) reverse(conn *TCPSConn) { // reverse
 	// TODO
-	tConn, err := d.backend.Dial()
+	tConn, err := d.backend.DialTCPS()
 	if err != nil {
 		return
 	}

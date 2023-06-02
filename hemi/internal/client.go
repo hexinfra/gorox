@@ -10,6 +10,7 @@ package internal
 import (
 	"crypto/tls"
 	"errors"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -166,6 +167,16 @@ type Backend interface {
 	client
 	// Methods
 	Maintain() // goroutine
+}
+
+// wireBackend
+type wireBackend interface {
+	// Imports
+	Backend
+	// Methods
+	Dial() (wireConn, error)
+	FetchConn() (wireConn, error)
+	StoreConn(conn wireConn)
 }
 
 // Backend_ is the mixin for backends.
@@ -355,6 +366,25 @@ type Conn interface {
 	setNext(next Conn)
 	isAlive() bool
 	closeConn()
+}
+
+// wireConn
+type wireConn interface {
+	// Imports
+	Conn
+	// Methods
+	SetWriteDeadline(deadline time.Time) error
+	SetReadDeadline(deadline time.Time) error
+	Write(p []byte) (n int, err error)
+	Writev(vector *net.Buffers) (int64, error)
+	Read(p []byte) (n int, err error)
+	ReadFull(p []byte) (n int, err error)
+	ReadAtLeast(p []byte, min int) (n int, err error)
+	CloseWrite() error
+	Close() error
+	MakeTempName(p []byte, unixTime int64) (from int, edge int)
+	IsBroken() bool
+	MarkBroken()
 }
 
 // Conn_ is the mixin for client conns.

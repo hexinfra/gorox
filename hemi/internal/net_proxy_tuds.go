@@ -59,7 +59,7 @@ func (d *tudsProxy) OnPrepare() {
 
 func (d *tudsProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
 	// TODO
-	xConn, err := d.backend.Dial()
+	xConn, err := d.backend.DialTUDS()
 	if err != nil {
 		return
 	}

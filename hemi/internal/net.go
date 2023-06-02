@@ -11,21 +11,8 @@ import (
 	"bytes"
 )
 
+// _mesher
 type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
-	Component
-}
-type _gate interface { // *quicGate, *tcpsGate, *udpsGate
-	open() error
-	shut() error
-}
-type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
-	Component
-}
-type _editor interface { // QUICEditor, TCPSEditor, UDPSEditor
-	Component
-	identifiable
-}
-type _case interface { // *quicCase, *tcpsCase, *udpsCase
 	Component
 }
 
@@ -146,6 +133,28 @@ func (m *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {
 	if m.logger != nil {
 		m.logger.Logf(format, args...)
 	}
+}
+
+// _gate
+type _gate interface { // *quicGate, *tcpsGate, *udpsGate
+	open() error
+	shut() error
+}
+
+// _dealer
+type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
+	Component
+}
+
+// _editor
+type _editor interface { // QUICEditor, TCPSEditor, UDPSEditor
+	Component
+	identifiable
+}
+
+// _case
+type _case interface { // *quicCase, *tcpsCase, *udpsCase
+	Component
 }
 
 // case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.

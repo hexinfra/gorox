@@ -117,16 +117,20 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 	return node
 }
 
-func (b *TCPSBackend) Dial() (*TConn, error) {
+func (b *TCPSBackend) Dial() (wireConn, error) { return b.DialTCPS() }
+func (b *TCPSBackend) DialTCPS() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *TCPSBackend) FetchConn() (*TConn, error) {
+func (b *TCPSBackend) FetchConn() (wireConn, error) { return b.FetchTConn() }
+func (b *TCPSBackend) FetchTConn() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *TCPSBackend) StoreConn(tConn *TConn) {
+
+func (b *TCPSBackend) StoreConn(conn wireConn) { b.StoreTConn(conn.(*TConn)) }
+func (b *TCPSBackend) StoreTConn(tConn *TConn) {
 	tConn.node.storeConn(tConn)
 }
 

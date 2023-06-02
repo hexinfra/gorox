@@ -7,7 +7,7 @@ Roadmap
   * [TODO] gzip reviser.
   * [TODO] http/2 support.
   * [TODO] http/3 support.
-  * [TODO] http cache support.
+  * [TODO] storer support.
   * [TODO] web mvc framework. requires a strong standard like jakarta ee.
   * [TODO] documentation.
   * [TODO] official websites.

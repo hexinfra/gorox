@@ -29,7 +29,7 @@ type ajpProxy struct {
 	stage   *Stage       // current stage
 	app     *App         // the app to which the proxy belongs
 	backend *TCPSBackend // the ajp backend to pass to
-	cacher  Cacher       // the cacher which is used by this proxy
+	storer  Storer       // the storer which is used by this proxy
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -66,16 +66,16 @@ func (h *ajpProxy) OnConfigure() {
 		UseExitln("toBackend is required for ajpProxy")
 	}
 
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	// withStorer
+	if v, ok := h.Find("withStorer"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+			if storer := h.stage.Storer(name); storer == nil {
+				UseExitf("unknown storer: '%s'\n", name)
 			} else {
-				h.cacher = cacher
+				h.storer = storer
 			}
 		} else {
-			UseExitln("invalid withCacher")
+			UseExitln("invalid withStorer")
 		}
 	}
 
@@ -113,7 +113,7 @@ func (h *ajpProxy) OnPrepare() {
 }
 
 func (h *ajpProxy) IsProxy() bool { return true }
-func (h *ajpProxy) IsCache() bool { return h.cacher != nil }
+func (h *ajpProxy) IsCache() bool { return h.storer != nil }
 
 func (h *ajpProxy) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation

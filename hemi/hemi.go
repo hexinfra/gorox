@@ -26,7 +26,7 @@ var ( // registers
 	RegisterUDPSEditor = internal.RegisterUDPSEditor
 
 	RegisterStater = internal.RegisterStater
-	RegisterCacher = internal.RegisterCacher
+	RegisterStorer = internal.RegisterStorer
 
 	RegisterAppInit = internal.RegisterAppInit
 	RegisterHandlet = internal.RegisterHandlet
@@ -162,7 +162,7 @@ type ( // core types
 	Stater  = internal.Stater
 	Session = internal.Session
 
-	Cacher  = internal.Cacher
+	Storer  = internal.Storer
 	Hobject = internal.Hobject
 
 	App      = internal.App
@@ -201,7 +201,7 @@ type ( // core mixins
 	UDPSEditor_ = internal.UDPSEditor_
 
 	Stater_ = internal.Stater_
-	Cacher_ = internal.Cacher_
+	Storer_ = internal.Storer_
 
 	Handlet_ = internal.Handlet_
 	Reviser_ = internal.Reviser_

@@ -28,7 +28,7 @@ COMPONENTS
       editor (...)
       case [*]
     stater (localStater, redisStater, ...)
-    cacher (localCacher, redisCacher, ...)
+    storer (localStorer, redisStorer, ...)
     app [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

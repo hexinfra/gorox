@@ -11,9 +11,6 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mysql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/access"
@@ -49,4 +46,7 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/redis"
+	_ "github.com/hexinfra/gorox/hemi/contrib/storers/local"
+	_ "github.com/hexinfra/gorox/hemi/contrib/storers/mem"
+	_ "github.com/hexinfra/gorox/hemi/contrib/storers/redis"
 )

@@ -29,7 +29,7 @@ type fcgiProxy struct {
 	stage   *Stage       // current stage
 	app     *App         // the app to which the proxy belongs
 	backend *TCPSBackend // the fcgi backend to pass to
-	cacher  Cacher       // the cacher which is used by this proxy
+	storer  Storer       // the storer which is used by this proxy
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -75,16 +75,16 @@ func (h *fcgiProxy) OnConfigure() {
 		UseExitln("toBackend is required for fcgiProxy")
 	}
 
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	// withStorer
+	if v, ok := h.Find("withStorer"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+			if storer := h.stage.Storer(name); storer == nil {
+				UseExitf("unknown storer: '%s'\n", name)
 			} else {
-				h.cacher = cacher
+				h.storer = storer
 			}
 		} else {
-			UseExitln("invalid withCacher")
+			UseExitln("invalid withStorer")
 		}
 	}
 
@@ -136,7 +136,7 @@ func (h *fcgiProxy) OnPrepare() {
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }
-func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *fcgiProxy) IsCache() bool { return h.storer != nil }
 
 func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse only
 	var (

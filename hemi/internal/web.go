@@ -821,8 +821,8 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 	return true
 }
 
-// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
-type Cacher interface {
+// Storer component is the interface to storages of HTTP caching. See RFC 9111.
+type Storer interface {
 	// Imports
 	Component
 	// Methods
@@ -832,13 +832,13 @@ type Cacher interface {
 	Del(key []byte) bool
 }
 
-// Cacher_
-type Cacher_ struct {
+// Storer_
+type Storer_ struct {
 	// Mixins
 	Component_
 }
 
-// Hobject is an HTTP object in cacher
+// Hobject is an HTTP object in storer
 type Hobject struct {
 	// TODO
 	uri      []byte

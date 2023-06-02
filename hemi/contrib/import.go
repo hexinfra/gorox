@@ -9,8 +9,6 @@ package contrib
 
 import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
-	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/echo"
@@ -34,4 +32,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/staters/local"
+	_ "github.com/hexinfra/gorox/hemi/contrib/storers/local"
+	_ "github.com/hexinfra/gorox/hemi/contrib/storers/mem"
 )

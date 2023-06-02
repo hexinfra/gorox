@@ -15,7 +15,7 @@ type exchanProxy_ struct {
 	stage   *Stage  // current stage
 	app     *App    // the app to which the proxy belongs
 	backend Backend // if works as forward proxy, this is nil
-	cacher  Cacher  // the cacher which is used by this proxy
+	storer  Storer  // the storer which is used by this proxy
 	// States
 	hostname            []byte      // hostname used in ":authority" and "host" header
 	colonPort           []byte      // colonPort used in ":authority" and "host" header
@@ -65,16 +65,16 @@ func (h *exchanProxy_) onConfigure() {
 		UseExitln("forward proxy can be bound to default app only")
 	}
 
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	// withStorer
+	if v, ok := h.Find("withStorer"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+			if storer := h.stage.Storer(name); storer == nil {
+				UseExitf("unknown storer: '%s'\n", name)
 			} else {
-				h.cacher = cacher
+				h.storer = storer
 			}
 		} else {
-			UseExitln("invalid withCacher")
+			UseExitln("invalid withStorer")
 		}
 	}
 
@@ -98,7 +98,7 @@ func (h *exchanProxy_) onPrepare() {
 }
 
 func (h *exchanProxy_) IsProxy() bool { return true }
-func (h *exchanProxy_) IsCache() bool { return h.cacher != nil }
+func (h *exchanProxy_) IsCache() bool { return h.storer != nil }
 
 // socketProxy_ is the mixin for sock[1-3]Proxy.
 type socketProxy_ struct {

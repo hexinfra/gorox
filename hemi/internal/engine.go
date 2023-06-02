@@ -317,8 +317,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseUDPSMesher(stage)
 		case compStater:
 			c.parseStater(current, stage)
-		case compCacher:
-			c.parseCacher(current, stage)
+		case compStorer:
+			c.parseStorer(current, stage)
 		case compApp:
 			c.parseApp(current, stage)
 		case compSvc:
@@ -605,8 +605,8 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 func (c *config) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
-func (c *config) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
-	parseComponent0(c, sign, stage, stage.createCacher)
+func (c *config) parseStorer(sign *token, stage *Stage) { // xxxStorer <name> {}
+	parseComponent0(c, sign, stage, stage.createStorer)
 }
 func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 	appName := c.forwardExpect(tokenString)
@@ -923,7 +923,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 	value.kind, value.data = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // runner, backend, stater, cacher, server, cronjob
+func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // runner, backend, stater, storer, server, cronjob
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)

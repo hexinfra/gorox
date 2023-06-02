@@ -36,7 +36,7 @@ const ( // component list
 	compUDPSEditor            // ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
-	compCacher                // localCacher, redisCacher, ...
+	compStorer                // localStorer, redisStorer, ...
 	compApp                   // app
 	compHandlet               // static, ...
 	compReviser               // gzipReviser, wrapReviser, ...
@@ -86,7 +86,7 @@ var (
 	udpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer)
 	udpsEditorCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSEditor)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
-	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
+	storerCreators     = make(map[string]func(name string, stage *Stage) Storer)
 	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
@@ -121,8 +121,8 @@ func RegisterUDPSEditor(sign string, create func(name string, stage *Stage, mesh
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
 	_registerComponent0(sign, compStater, staterCreators, create)
 }
-func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
-	_registerComponent0(sign, compCacher, cacherCreators, create)
+func RegisterStorer(sign string, create func(name string, stage *Stage) Storer) {
+	_registerComponent0(sign, compStorer, storerCreators, create)
 }
 func RegisterHandlet(sign string, create func(name string, stage *Stage, app *App) Handlet) {
 	_registerComponent1(sign, compHandlet, handletCreators, create)
@@ -140,7 +140,7 @@ func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
-func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // runner, backend, stater, cacher, server, cronjob
+func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // runner, backend, stater, storer, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -376,7 +376,7 @@ type Stage struct {
 	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
 	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
 	staters      compDict[Stater]      // indexed by staterName
-	cachers      compDict[Cacher]      // indexed by cacherName
+	storers      compDict[Storer]      // indexed by storerName
 	apps         compDict[*App]        // indexed by appName
 	svcs         compDict[*Svc]        // indexed by svcName
 	servers      compDict[Server]      // indexed by serverName
@@ -431,7 +431,7 @@ func (s *Stage) onCreate() {
 	s.tcpsMeshers = make(compDict[*TCPSMesher])
 	s.udpsMeshers = make(compDict[*UDPSMesher])
 	s.staters = make(compDict[Stater])
-	s.cachers = make(compDict[Cacher])
+	s.storers = make(compDict[Storer])
 	s.apps = make(compDict[*App])
 	s.svcs = make(compDict[*Svc])
 	s.servers = make(compDict[Server])
@@ -458,9 +458,9 @@ func (s *Stage) OnShutdown() {
 	s.apps.goWalk((*App).OnShutdown)
 	s.WaitSubs()
 
-	// cachers & staters
-	s.IncSub(len(s.cachers) + len(s.staters))
-	s.cachers.goWalk(Cacher.OnShutdown)
+	// storers & staters
+	s.IncSub(len(s.storers) + len(s.staters))
+	s.storers.goWalk(Storer.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
@@ -565,7 +565,7 @@ func (s *Stage) OnConfigure() {
 	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
 	s.udpsMeshers.walk((*UDPSMesher).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
-	s.cachers.walk(Cacher.OnConfigure)
+	s.storers.walk(Storer.OnConfigure)
 	s.apps.walk((*App).OnConfigure)
 	s.svcs.walk((*Svc).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
@@ -586,7 +586,7 @@ func (s *Stage) OnPrepare() {
 	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
 	s.udpsMeshers.walk((*UDPSMesher).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
-	s.cachers.walk(Cacher.OnPrepare)
+	s.storers.walk(Storer.OnPrepare)
 	s.apps.walk((*App).OnPrepare)
 	s.svcs.walk((*Svc).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
@@ -662,18 +662,18 @@ func (s *Stage) createStater(sign string, name string) Stater {
 	s.staters[name] = stater
 	return stater
 }
-func (s *Stage) createCacher(sign string, name string) Cacher {
-	if s.Cacher(name) != nil {
-		UseExitf("conflicting cacher with a same name '%s'\n", name)
+func (s *Stage) createStorer(sign string, name string) Storer {
+	if s.Storer(name) != nil {
+		UseExitf("conflicting storer with a same name '%s'\n", name)
 	}
-	create, ok := cacherCreators[sign]
+	create, ok := storerCreators[sign]
 	if !ok {
-		UseExitln("unknown cacher type: " + sign)
+		UseExitln("unknown storer type: " + sign)
 	}
-	cacher := create(name, s)
-	cacher.setShell(cacher)
-	s.cachers[name] = cacher
-	return cacher
+	storer := create(name, s)
+	storer.setShell(storer)
+	s.storers[name] = storer
+	return storer
 }
 func (s *Stage) createApp(name string) *App {
 	if s.App(name) != nil {
@@ -744,7 +744,7 @@ func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name]
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
 func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
-func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
+func (s *Stage) Storer(name string) Storer          { return s.storers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
 func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
@@ -800,7 +800,7 @@ func (s *Stage) Start(id int32) {
 	s.startBackends() // go backend.maintain()
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
-	s.startCachers()  // go cacher.Maintain()
+	s.startStorers()  // go storer.Maintain()
 	s.startApps()     // go app.maintain()
 	s.startSvcs()     // go svc.maintain()
 	s.startServers()  // go server.Serve()
@@ -886,12 +886,12 @@ func (s *Stage) startStaters() {
 		go stater.Maintain()
 	}
 }
-func (s *Stage) startCachers() {
-	for _, cacher := range s.cachers {
+func (s *Stage) startStorers() {
+	for _, storer := range s.storers {
 		if IsDebug(1) {
-			Printf("cacher=%s go Maintain()\n", cacher.Name())
+			Printf("storer=%s go Maintain()\n", storer.Name())
 		}
-		go cacher.Maintain()
+		go storer.Maintain()
 	}
 }
 func (s *Stage) startApps() {

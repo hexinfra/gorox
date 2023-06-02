@@ -3,6 +3,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
 
   * Conn and Conn_ are now exported.
   * Cachers are renamed as Storers.
+  * FCGI, AJP, uwsgi now supports unix domain sockets.
 
 v0.1.5                                                        (2023-06-02 UTC+8)
 ================================================================================

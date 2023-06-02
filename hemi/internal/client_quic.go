@@ -161,7 +161,7 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) *QConn {
+func getQConn(id int64, client qClient, node *quicNode, quicConn *quix.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
@@ -189,7 +189,7 @@ type QConn struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) {
+func (c *QConn) onGet(id int64, client qClient, node *quicNode, quicConn *quix.Conn) {
 	c.Conn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
@@ -203,7 +203,7 @@ func (c *QConn) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
+func (c *QConn) getClient() qClient { return c.client.(qClient) }
 
 func (c *QConn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams

@@ -167,7 +167,7 @@ func (n *uudsNode) storeLink(xLink *XLink) {
 // poolXLink
 var poolXLink sync.Pool
 
-func getXLink(id int64, client gramClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
+func getXLink(id int64, client uClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
 	var link *XLink
 	if x := poolXLink.Get(); x == nil {
 		link = new(XLink)
@@ -194,7 +194,7 @@ type XLink struct {
 	broken atomic.Bool // is link broken?
 }
 
-func (l *XLink) onGet(id int64, client gramClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
+func (l *XLink) onGet(id int64, client uClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
 	l.Conn_.onGet(id, client)
 	l.node = node
 	l.unixConn = unixConn
@@ -208,7 +208,7 @@ func (l *XLink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *XLink) getClient() gramClient { return l.client.(gramClient) }
+func (l *XLink) getClient() uClient { return l.client.(uClient) }
 
 func (l *XLink) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {

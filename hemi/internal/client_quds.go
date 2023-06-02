@@ -161,7 +161,7 @@ func (n *qudsNode) storeConn(dConn *DConn) {
 // poolDConn
 var poolDConn sync.Pool
 
-func getDConn(id int64, client quicClient, node *qudsNode, quicConn *quix.Conn) *DConn {
+func getDConn(id int64, client qClient, node *qudsNode, quicConn *quix.Conn) *DConn {
 	var conn *DConn
 	if x := poolDConn.Get(); x == nil {
 		conn = new(DConn)
@@ -189,7 +189,7 @@ type DConn struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *DConn) onGet(id int64, client quicClient, node *qudsNode, quicConn *quix.Conn) {
+func (c *DConn) onGet(id int64, client qClient, node *qudsNode, quicConn *quix.Conn) {
 	c.Conn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
@@ -201,6 +201,30 @@ func (c *DConn) onPut() {
 	c.quicConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
+}
+
+func (c *DConn) getClient() qClient { return c.client.(qClient) }
+
+func (c *DConn) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.maxStreams
+}
+
+func (c *DConn) isBroken() bool { return c.broken.Load() }
+func (c *DConn) markBroken()    { c.broken.Store(true) }
+
+func (c *DConn) FetchStream() *DStream {
+	// TODO
+	return nil
+}
+func (c *DConn) StoreStream(stream *DStream) {
+	// TODO
+}
+func (c *DConn) FetchOneway() *DOneway {
+	// TODO
+	return nil
+}
+func (c *DConn) StoreOneway(oneway *DOneway) {
+	// TODO
 }
 
 // poolDStream
@@ -237,6 +261,15 @@ func (s *DStream) onEnd() {
 	s.quicStream = nil
 }
 
+func (s *DStream) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *DStream) Read(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+
 // poolDOneway
 var poolDOneway sync.Pool
 
@@ -269,4 +302,13 @@ func (s *DOneway) onUse(conn *DConn, quicOneway *quix.Oneway) {
 func (s *DOneway) onEnd() {
 	s.conn = nil
 	s.quicOneway = nil
+}
+
+func (s *DOneway) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *DOneway) Read(p []byte) (n int, err error) {
+	// TODO
+	return
 }

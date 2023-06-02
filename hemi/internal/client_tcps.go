@@ -235,7 +235,7 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, client wireClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, client tClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
@@ -256,7 +256,7 @@ type TConn struct {
 	Conn_
 	// Conn states (non-zeros)
 	node       *tcpsNode       // associated node if client is TCPSBackend
-	netConn    net.Conn        // TCP, TLS
+	netConn    net.Conn        // *TCPConn, *tls.Conn
 	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP
 	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)
@@ -266,7 +266,7 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, client wireClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *TConn) onGet(id int64, client tClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.Conn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
@@ -284,7 +284,7 @@ func (c *TConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *TConn) getClient() wireClient { return c.client.(wireClient) }
+func (c *TConn) getClient() tClient { return c.client.(tClient) }
 
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }

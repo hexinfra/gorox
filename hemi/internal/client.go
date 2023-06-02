@@ -28,24 +28,24 @@ type client interface {
 	nextConnID() int64
 }
 
-// quicClient is the interface for QUICOutgate, QUDSOutgate, QUICBackend, and QUDSBackend.
-type quicClient interface {
+// qClient is the interface for QUICOutgate, QUDSOutgate, QUICBackend, and QUDSBackend.
+type qClient interface {
 	// Imports
 	client
 	streamHolder
 	// Methods
 }
 
-// wireClient is the interface for TCPSOutgate, TUDSOutgate, TCPSBackend, and TUDSBackend.
-type wireClient interface {
+// tClient is the interface for TCPSOutgate, TUDSOutgate, TCPSBackend, and TUDSBackend.
+type tClient interface {
 	// Imports
 	client
 	streamHolder
 	// Methods
 }
 
-// gramClient is the interface for UDPSOutgate, UUDSOutgate, UDPSBackend, and UUDSBackend.
-type gramClient interface {
+// uClient is the interface for UDPSOutgate, UUDSOutgate, UDPSBackend, and UUDSBackend.
+type uClient interface {
 	// Imports
 	client
 	// Methods
@@ -167,16 +167,6 @@ type Backend interface {
 	client
 	// Methods
 	Maintain() // goroutine
-}
-
-// wireBackend
-type wireBackend interface {
-	// Imports
-	Backend
-	// Methods
-	Dial() (wireConn, error)
-	FetchConn() (wireConn, error)
-	StoreConn(conn wireConn)
 }
 
 // Backend_ is the mixin for backends.
@@ -368,25 +358,6 @@ type Conn interface {
 	closeConn()
 }
 
-// wireConn
-type wireConn interface {
-	// Imports
-	Conn
-	// Methods
-	SetWriteDeadline(deadline time.Time) error
-	SetReadDeadline(deadline time.Time) error
-	Write(p []byte) (n int, err error)
-	Writev(vector *net.Buffers) (int64, error)
-	Read(p []byte) (n int, err error)
-	ReadFull(p []byte) (n int, err error)
-	ReadAtLeast(p []byte, min int) (n int, err error)
-	CloseWrite() error
-	Close() error
-	MakeTempName(p []byte, unixTime int64) (from int, edge int)
-	IsBroken() bool
-	MarkBroken()
-}
-
 // Conn_ is the mixin for client conns.
 type Conn_ struct {
 	// Conn states (non-zeros)
@@ -415,3 +386,28 @@ func (c *Conn_) getNext() Conn     { return c.next }
 func (c *Conn_) setNext(next Conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }
+
+// wireBackend
+type wireBackend interface {
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	Dial() (wireConn, error)
+	FetchConn() (wireConn, error)
+	StoreConn(conn wireConn)
+}
+
+// wireConn
+type wireConn interface {
+	SetWriteDeadline(deadline time.Time) error
+	SetReadDeadline(deadline time.Time) error
+	Write(p []byte) (n int, err error)
+	Writev(vector *net.Buffers) (int64, error)
+	Read(p []byte) (n int, err error)
+	ReadFull(p []byte) (n int, err error)
+	ReadAtLeast(p []byte, min int) (n int, err error)
+	CloseWrite() error
+	Close() error
+	MakeTempName(p []byte, unixTime int64) (from int, edge int)
+	IsBroken() bool
+	MarkBroken()
+}

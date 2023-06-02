@@ -78,6 +78,7 @@ type ( // core types
 	Runner = internal.Runner
 
 	QUICOutgate  = internal.QUICOutgate
+	QUDSOutgate  = internal.QUDSOutgate
 	TCPSOutgate  = internal.TCPSOutgate
 	TUDSOutgate  = internal.TUDSOutgate
 	UDPSOutgate  = internal.UDPSOutgate

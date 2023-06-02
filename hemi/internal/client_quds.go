@@ -17,12 +17,55 @@ type qudsClient interface {
 	streamHolder
 }
 
+const signQUDSOutgate = "qudsOutgate"
+
+func createQUDSOutgate(stage *Stage) *QUDSOutgate {
+	quds := new(QUDSOutgate)
+	quds.onCreate(stage)
+	quds.setShell(quds)
+	return quds
+}
+
 // QUDSOutgate component.
 type QUDSOutgate struct {
 	// Mixins
 	outgate_
 	streamHolder_
 	// States
+}
+
+func (f *QUDSOutgate) onCreate(stage *Stage) {
+	f.outgate_.onCreate(signQUDSOutgate, stage)
+}
+
+func (f *QUDSOutgate) OnConfigure() {
+	f.outgate_.onConfigure()
+	f.streamHolder_.onConfigure(f, 1000)
+}
+func (f *QUDSOutgate) OnPrepare() {
+	f.outgate_.onPrepare()
+	f.streamHolder_.onPrepare(f)
+}
+
+func (f *QUDSOutgate) run() { // goroutine
+	f.Loop(time.Second, func(now time.Time) {
+		// TODO
+	})
+	if IsDebug(2) {
+		Println("qudsOutgate done")
+	}
+	f.stage.SubDone()
+}
+
+func (f *QUDSOutgate) Dial(address string) (*DConn, error) {
+	// TODO
+	return nil, nil
+}
+func (f *QUDSOutgate) FetchConn(address string) {
+	// TODO
+}
+func (f *QUDSOutgate) StoreConn(dConn *DConn) {
+	// TODO
 }
 
 // QUDSBackend component.
@@ -35,10 +78,37 @@ type QUDSBackend struct {
 	health any // TODO
 }
 
+func (b *QUDSBackend) onCreate(name string, stage *Stage) {
+	b.Backend_.onCreate(name, stage, b)
+	b.loadBalancer_.init()
+}
+
 func (b *QUDSBackend) OnConfigure() {
-	// TODO
+	b.Backend_.onConfigure()
+	b.streamHolder_.onConfigure(b, 1000)
+	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUDSBackend) OnPrepare() {
+	b.Backend_.onPrepare()
+	b.streamHolder_.onPrepare(b)
+	b.loadBalancer_.onPrepare(len(b.nodes))
+}
+
+func (b *QUDSBackend) createNode(id int32) *qudsNode {
+	node := new(qudsNode)
+	node.init(id, b)
+	return node
+}
+
+func (b *QUDSBackend) Dial() (*DConn, error) {
+	// TODO
+	return nil, nil
+}
+func (b *QUDSBackend) FetchConn() (*DConn, error) {
+	// TODO
+	return nil, nil
+}
+func (b *QUDSBackend) StoreConn(dConn *DConn) {
 	// TODO
 }
 
@@ -51,6 +121,11 @@ type qudsNode struct {
 	// States
 }
 
+func (n *qudsNode) init(id int32, backend *QUDSBackend) {
+	n.Node_.init(id)
+	n.backend = backend
+}
+
 func (n *qudsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
@@ -60,6 +135,20 @@ func (n *qudsNode) Maintain() { // goroutine
 		Printf("qudsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
+}
+
+func (n *qudsNode) dial() (*DConn, error) {
+	// TODO
+	return nil, nil
+}
+func (n *qudsNode) fetchConn() (*DConn, error) {
+	// Note: A DConn can be used concurrently, limited by maxStreams.
+	// TODO
+	return nil, nil
+}
+func (n *qudsNode) storeConn(dConn *DConn) {
+	// Note: A DConn can be used concurrently, limited by maxStreams.
+	// TODO
 }
 
 // DConn is a client-side connection to qudsNode.

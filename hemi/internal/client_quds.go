@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+func init() {
+	registerFixture(signQUDSOutgate)
+	RegisterBackend("qudsBackend", func(name string, stage *Stage) Backend {
+		b := new(QUDSBackend)
+		b.onCreate(name, stage)
+		return b
+	})
+}
+
 // qudsClient is the interface for QUDSOutgate and QUDSBackend.
 type qudsClient interface {
 	client

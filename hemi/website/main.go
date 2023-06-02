@@ -73,8 +73,8 @@ OPTIONS
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
-  "-cmdui" apply to "serve" and "recmd".
-  "-webui" apply to "serve" and "reweb".
+  "-cmdui" applies to "serve" and "recmd".
+  "-webui" applies to "serve" and "reweb".
   Other options apply to "serve" only.
 
 `

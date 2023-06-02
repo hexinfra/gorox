@@ -17,6 +17,7 @@ import (
 )
 
 func init() {
+	registerFixture(signTUDSOutgate)
 	RegisterBackend("tudsBackend", func(name string, stage *Stage) Backend {
 		b := new(TUDSBackend)
 		b.onCreate(name, stage)

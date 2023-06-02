@@ -368,6 +368,7 @@ type Stage struct {
 	hwebOutgate  *HWEBOutgate          // for fast accessing
 	quicOutgate  *QUICOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
+	tudsOutgate  *TUDSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
 	runners      compDict[Runner]      // indexed by runnerName
@@ -404,6 +405,7 @@ func (s *Stage) onCreate() {
 	s.hwebOutgate = createHWEBOutgate(s)
 	s.quicOutgate = createQUICOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
+	s.tudsOutgate = createTUDSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
 
 	s.fixtures = make(compDict[fixture])
@@ -417,6 +419,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signHWEBOutgate] = s.hwebOutgate
 	s.fixtures[signQUICOutgate] = s.quicOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
+	s.fixtures[signTUDSOutgate] = s.tudsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
 
 	s.runners = make(compDict[Runner])
@@ -484,6 +487,7 @@ func (s *Stage) OnShutdown() {
 	go s.hwebOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.tudsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
 	s.WaitSubs()
 
@@ -723,6 +727,7 @@ func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
 func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
+func (s *Stage) TUDSOutgate() *TUDSOutgate   { return s.tudsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }

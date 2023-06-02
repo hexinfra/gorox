@@ -79,6 +79,7 @@ type ( // core types
 
 	QUICOutgate  = internal.QUICOutgate
 	TCPSOutgate  = internal.TCPSOutgate
+	TUDSOutgate  = internal.TUDSOutgate
 	UDPSOutgate  = internal.UDPSOutgate
 	HRPCOutgate  = internal.HRPCOutgate
 	HTTP1Outgate = internal.HTTP1Outgate

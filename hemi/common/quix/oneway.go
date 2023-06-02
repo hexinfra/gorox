@@ -13,8 +13,8 @@ import (
 
 // Oneway
 type Oneway struct {
-	conn *Conn
-	id   int64
+	connection *Connection
+	id         int64
 }
 
 func (o *Oneway) SetReadDeadline(deadline time.Time) error {

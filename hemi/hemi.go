@@ -92,14 +92,14 @@ type ( // core types
 	Backend = internal.Backend
 
 	QUICBackend = internal.QUICBackend
-	QConn       = internal.QConn
+	QConnection = internal.QConnection
 	QStream     = internal.QStream
 	QOneway     = internal.QOneway
 
 	QUDSBackend = internal.QUDSBackend
-	UConn       = internal.UConn
-	UStream     = internal.UStream
-	UOneway     = internal.UOneway
+	XConnection = internal.XConnection
+	XStream     = internal.XStream
+	XOneway     = internal.XOneway
 
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
@@ -144,10 +144,10 @@ type ( // core types
 	HRequest    = internal.HRequest
 	HResponse   = internal.HResponse
 
-	QUICMesher = internal.QUICMesher
-	QUICDealer = internal.QUICDealer
-	QUICEditor = internal.QUICEditor
-	QUICConn   = internal.QUICConn
+	QUICMesher     = internal.QUICMesher
+	QUICDealer     = internal.QUICDealer
+	QUICEditor     = internal.QUICEditor
+	QUICConnection = internal.QUICConnection
 
 	TCPSMesher = internal.TCPSMesher
 	TCPSDealer = internal.TCPSDealer

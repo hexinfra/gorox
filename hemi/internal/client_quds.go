@@ -64,14 +64,14 @@ func (f *QUDSOutgate) run() { // goroutine
 	f.stage.SubDone()
 }
 
-func (f *QUDSOutgate) Dial(address string) (*UConn, error) {
+func (f *QUDSOutgate) Dial(address string) (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
 func (f *QUDSOutgate) FetchConn(address string) {
 	// TODO
 }
-func (f *QUDSOutgate) StoreConn(uConn *UConn) {
+func (f *QUDSOutgate) StoreConn(xConnection *XConnection) {
 	// TODO
 }
 
@@ -107,15 +107,15 @@ func (b *QUDSBackend) createNode(id int32) *qudsNode {
 	return node
 }
 
-func (b *QUDSBackend) Dial() (*UConn, error) {
+func (b *QUDSBackend) Dial() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUDSBackend) FetchConn() (*UConn, error) {
+func (b *QUDSBackend) FetchConn() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUDSBackend) StoreConn(uConn *UConn) {
+func (b *QUDSBackend) StoreConn(xConnection *XConnection) {
 	// TODO
 }
 
@@ -144,171 +144,171 @@ func (n *qudsNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
-func (n *qudsNode) dial() (*UConn, error) {
+func (n *qudsNode) dial() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (n *qudsNode) fetchConn() (*UConn, error) {
-	// Note: A UConn can be used concurrently, limited by maxStreams.
+func (n *qudsNode) fetchConn() (*XConnection, error) {
+	// Note: An XConnection can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *qudsNode) storeConn(uConn *UConn) {
-	// Note: A UConn can be used concurrently, limited by maxStreams.
+func (n *qudsNode) storeConn(xConnection *XConnection) {
+	// Note: An XConnection can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
-// poolUConn
-var poolUConn sync.Pool
+// poolXConnection
+var poolXConnection sync.Pool
 
-func getUConn(id int64, client qClient, node *qudsNode, quicConn *quix.Conn) *UConn {
-	var conn *UConn
-	if x := poolUConn.Get(); x == nil {
-		conn = new(UConn)
+func getXConnection(id int64, client qClient, node *qudsNode, quicConnection *quix.Connection) *XConnection {
+	var connection *XConnection
+	if x := poolXConnection.Get(); x == nil {
+		connection = new(XConnection)
 	} else {
-		conn = x.(*UConn)
+		connection = x.(*XConnection)
 	}
-	conn.onGet(id, client, node, quicConn)
-	return conn
+	connection.onGet(id, client, node, quicConnection)
+	return connection
 }
-func putUConn(conn *UConn) {
-	conn.onPut()
-	poolUConn.Put(conn)
+func putXConnection(connection *XConnection) {
+	connection.onPut()
+	poolXConnection.Put(connection)
 }
 
-// UConn is a client-side connection to qudsNode.
-type UConn struct {
+// XConnection is a client-side connection to qudsNode.
+type XConnection struct {
 	// Mixins
 	Conn_
-	// Conn states (non-zeros)
-	node       *qudsNode // associated node if client is QUDSBackend
-	quicConn   *quix.Conn
-	maxStreams int32 // how many streams are allowed on this conn?
-	// Conn states (zeros)
+	// Connection states (non-zeros)
+	node           *qudsNode // associated node if client is QUDSBackend
+	quicConnection *quix.Connection
+	maxStreams     int32 // how many streams are allowed on this connection?
+	// Connection states (zeros)
 	usedStreams atomic.Int32 // how many streams has been used?
-	broken      atomic.Bool  // is conn broken?
+	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *UConn) onGet(id int64, client qClient, node *qudsNode, quicConn *quix.Conn) {
+func (c *XConnection) onGet(id int64, client qClient, node *qudsNode, quicConnection *quix.Connection) {
 	c.Conn_.onGet(id, client)
 	c.node = node
-	c.quicConn = quicConn
+	c.quicConnection = quicConnection
 	c.maxStreams = client.MaxStreamsPerConn()
 }
-func (c *UConn) onPut() {
+func (c *XConnection) onPut() {
 	c.Conn_.onPut()
 	c.node = nil
-	c.quicConn = nil
+	c.quicConnection = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
 
-func (c *UConn) getClient() qClient { return c.client.(qClient) }
+func (c *XConnection) getClient() qClient { return c.client.(qClient) }
 
-func (c *UConn) reachLimit() bool {
+func (c *XConnection) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams
 }
 
-func (c *UConn) isBroken() bool { return c.broken.Load() }
-func (c *UConn) markBroken()    { c.broken.Store(true) }
+func (c *XConnection) isBroken() bool { return c.broken.Load() }
+func (c *XConnection) markBroken()    { c.broken.Store(true) }
 
-func (c *UConn) FetchStream() *UStream {
+func (c *XConnection) FetchStream() *XStream {
 	// TODO
 	return nil
 }
-func (c *UConn) StoreStream(stream *UStream) {
+func (c *XConnection) StoreStream(stream *XStream) {
 	// TODO
 }
-func (c *UConn) FetchOneway() *UOneway {
+func (c *XConnection) FetchOneway() *XOneway {
 	// TODO
 	return nil
 }
-func (c *UConn) StoreOneway(oneway *UOneway) {
+func (c *XConnection) StoreOneway(oneway *XOneway) {
 	// TODO
 }
 
-// poolUStream
-var poolUStream sync.Pool
+// poolXStream
+var poolXStream sync.Pool
 
-func getUStream(conn *UConn, quicStream *quix.Stream) *UStream {
-	var stream *UStream
-	if x := poolUStream.Get(); x == nil {
-		stream = new(UStream)
+func getXStream(connection *XConnection, quicStream *quix.Stream) *XStream {
+	var stream *XStream
+	if x := poolXStream.Get(); x == nil {
+		stream = new(XStream)
 	} else {
-		stream = x.(*UStream)
+		stream = x.(*XStream)
 	}
-	stream.onUse(conn, quicStream)
+	stream.onUse(connection, quicStream)
 	return stream
 }
-func putUStream(stream *UStream) {
+func putXStream(stream *XStream) {
 	stream.onEnd()
-	poolUStream.Put(stream)
+	poolXStream.Put(stream)
 }
 
-// UStream is a bidirectional stream of UConn.
-type UStream struct {
+// XStream is a bidirectional stream of XConnection.
+type XStream struct {
 	// TODO
-	conn       *UConn
+	connection *XConnection
 	quicStream *quix.Stream
 }
 
-func (s *UStream) onUse(conn *UConn, quicStream *quix.Stream) {
-	s.conn = conn
+func (s *XStream) onUse(connection *XConnection, quicStream *quix.Stream) {
+	s.connection = connection
 	s.quicStream = quicStream
 }
-func (s *UStream) onEnd() {
-	s.conn = nil
+func (s *XStream) onEnd() {
+	s.connection = nil
 	s.quicStream = nil
 }
 
-func (s *UStream) Write(p []byte) (n int, err error) {
+func (s *XStream) Write(p []byte) (n int, err error) {
 	// TODO
 	return
 }
-func (s *UStream) Read(p []byte) (n int, err error) {
+func (s *XStream) Read(p []byte) (n int, err error) {
 	// TODO
 	return
 }
 
-// poolUOneway
-var poolUOneway sync.Pool
+// poolXOneway
+var poolXOneway sync.Pool
 
-func getUOneway(conn *UConn, quicOneway *quix.Oneway) *UOneway {
-	var oneway *UOneway
-	if x := poolUOneway.Get(); x == nil {
-		oneway = new(UOneway)
+func getXOneway(connection *XConnection, quicOneway *quix.Oneway) *XOneway {
+	var oneway *XOneway
+	if x := poolXOneway.Get(); x == nil {
+		oneway = new(XOneway)
 	} else {
-		oneway = x.(*UOneway)
+		oneway = x.(*XOneway)
 	}
-	oneway.onUse(conn, quicOneway)
+	oneway.onUse(connection, quicOneway)
 	return oneway
 }
-func putUOneway(oneway *UOneway) {
+func putXOneway(oneway *XOneway) {
 	oneway.onEnd()
-	poolUOneway.Put(oneway)
+	poolXOneway.Put(oneway)
 }
 
-// UOneway is a unidirectional stream of UConn.
-type UOneway struct {
+// XOneway is a unidirectional stream of XConnection.
+type XOneway struct {
 	// TODO
-	conn       *UConn
+	connection *XConnection
 	quicOneway *quix.Oneway
 }
 
-func (s *UOneway) onUse(conn *UConn, quicOneway *quix.Oneway) {
-	s.conn = conn
+func (s *XOneway) onUse(connection *XConnection, quicOneway *quix.Oneway) {
+	s.connection = connection
 	s.quicOneway = quicOneway
 }
-func (s *UOneway) onEnd() {
-	s.conn = nil
+func (s *XOneway) onEnd() {
+	s.connection = nil
 	s.quicOneway = nil
 }
 
-func (s *UOneway) Write(p []byte) (n int, err error) {
+func (s *XOneway) Write(p []byte) (n int, err error) {
 	// TODO
 	return
 }
-func (s *UOneway) Read(p []byte) (n int, err error) {
+func (s *XOneway) Read(p []byte) (n int, err error) {
 	// TODO
 	return
 }

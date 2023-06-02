@@ -22,7 +22,7 @@ func (g *Gate) Open() error {
 	// reuseport by default
 	return nil
 }
-func (g *Gate) Accept() (*Conn, error) {
+func (g *Gate) Accept() (*Connection, error) {
 	return nil, nil
 }
 func (g *Gate) Close() error {

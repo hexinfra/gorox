@@ -146,14 +146,14 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, client webClient, node *http3Node, quicConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, client webClient, node *http3Node, quicConnection *quix.Connection) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
 	} else {
 		conn = x.(*H3Conn)
 	}
-	conn.onGet(id, client, node, quicConn)
+	conn.onGet(id, client, node, quicConnection)
 	return conn
 }
 func putH3Conn(conn *H3Conn) {
@@ -168,21 +168,21 @@ type H3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *http3Node
-	quicConn *quix.Conn // the underlying quic conn
+	node           *http3Node
+	quicConnection *quix.Connection // the underlying quic connection
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quicConn *quix.Conn) {
+func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quicConnection *quix.Connection) {
 	c.clientConn_.onGet(id, client)
 	c.node = node
-	c.quicConn = quicConn
+	c.quicConnection = quicConnection
 }
 func (c *H3Conn) onPut() {
 	c.clientConn_.onPut()
 	c.node = nil
-	c.quicConn = nil
+	c.quicConnection = nil
 	c.activeStreams = 0
 }
 
@@ -200,7 +200,7 @@ func (c *H3Conn) Close() error { // only used by clients of dial
 	return nil
 }
 
-func (c *H3Conn) closeConn() { c.quicConn.Close() } // used by codes which use fetch/store
+func (c *H3Conn) closeConn() { c.quicConnection.Close() } // used by codes which use fetch/store
 
 // poolH3Stream
 var poolH3Stream sync.Pool

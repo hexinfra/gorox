@@ -56,7 +56,7 @@ func (d *qudsProxy) OnConfigure() {
 func (d *qudsProxy) OnPrepare() {
 }
 
-func (d *qudsProxy) Deal(conn *QUICConn, stream *QUICStream) (next bool) { // reverse only
+func (d *qudsProxy) Deal(connection *QUICConnection, stream *QUICStream) (next bool) { // reverse only
 	// TODO
 	return
 }

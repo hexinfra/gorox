@@ -100,7 +100,7 @@ func (g *http3Gate) shut() error {
 func (g *http3Gate) serve() { // goroutine
 	connID := int64(0)
 	for {
-		quicConn, err := g.gate.Accept()
+		quicConnection, err := g.gate.Accept()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -110,9 +110,9 @@ func (g *http3Gate) serve() { // goroutine
 		}
 		g.IncSub(1)
 		if g.ReachLimit() {
-			g.justClose(quicConn)
+			g.justClose(quicConnection)
 		} else {
-			http3Conn := getHTTP3Conn(connID, g.server, g, quicConn)
+			http3Conn := getHTTP3Conn(connID, g.server, g, quicConnection)
 			go http3Conn.serve() // http3Conn is put to pool in serve()
 			connID++
 		}
@@ -124,22 +124,22 @@ func (g *http3Gate) serve() { // goroutine
 	g.server.SubDone()
 }
 
-func (g *http3Gate) justClose(quicConn *quix.Conn) {
-	quicConn.Close()
+func (g *http3Gate) justClose(quicConnection *quix.Connection) {
+	quicConnection.Close()
 	g.onConnectionClosed()
 }
 
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, server *http3Server, gate *http3Gate, quicConn *quix.Conn) *http3Conn {
+func getHTTP3Conn(id int64, server *http3Server, gate *http3Gate, quicConnection *quix.Connection) *http3Conn {
 	var conn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		conn = new(http3Conn)
 	} else {
 		conn = x.(*http3Conn)
 	}
-	conn.onGet(id, server, gate, quicConn)
+	conn.onGet(id, server, gate, quicConnection)
 	return conn
 }
 func putHTTP3Conn(conn *http3Conn) {
@@ -154,9 +154,9 @@ type http3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quicConn *quix.Conn        // the quic conn
-	frames   *http3Frames      // ...
-	table    http3DynamicTable // ...
+	quicConnection *quix.Connection  // the quic connection
+	frames         *http3Frames      // ...
+	table          http3DynamicTable // ...
 	// Conn states (zeros)
 	streams    [http3MaxActiveStreams]*http3Stream // active (open, remoteClosed, localClosed) streams
 	http3Conn0                                     // all values must be zero by default in this struct!
@@ -167,9 +167,9 @@ type http3Conn0 struct { // for fast reset, entirely
 	pFore      uint32 // incoming frame part (header or payload) ends at c.frames.buf[c.pFore]
 }
 
-func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicConn *quix.Conn) {
+func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicConnection *quix.Connection) {
 	c.serverConn_.onGet(id, server, gate)
-	c.quicConn = quicConn
+	c.quicConnection = quicConnection
 	if c.frames == nil {
 		c.frames = getHTTP3Frames()
 		c.frames.incRef()
@@ -177,7 +177,7 @@ func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quicCo
 }
 func (c *http3Conn) onPut() {
 	c.serverConn_.onPut()
-	c.quicConn = nil
+	c.quicConnection = nil
 	// c.frames is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*http3Stream{}
@@ -202,7 +202,7 @@ func (c *http3Conn) setWriteDeadline(deadline time.Time) error {
 }
 
 func (c *http3Conn) closeConn() {
-	c.quicConn.Close()
+	c.quicConnection.Close()
 	c.gate.onConnectionClosed()
 }
 

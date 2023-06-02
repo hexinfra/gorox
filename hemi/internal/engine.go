@@ -154,8 +154,8 @@ func _newConfig() *config {
 		// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
 		"transport": 2, // tcp/udp, tls/dtls
 
-		// quic conn vars. keep sync with quicConnVariables in net_quic.go
-		// quic stream vars. keep sync with quicConnVariables in net_quic.go
+		// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
+		// quic stream vars. keep sync with quicConnectionVariables in net_quic.go
 
 		// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
 		"serverName": 3,

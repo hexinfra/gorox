@@ -26,10 +26,10 @@ type ajpProxy struct {
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage       // current stage
-	app     *App         // the app to which the proxy belongs
-	backend *TCPSBackend // the ajp backend to pass to
-	storer  Storer       // the storer which is used by this proxy
+	stage   *Stage      // current stage
+	app     *App        // the app to which the proxy belongs
+	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
+	storer  Storer      // the storer which is used by this proxy
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -54,10 +54,10 @@ func (h *ajpProxy) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
-				h.backend = tcpsBackend
+			} else if wireBackend, ok := backend.(wireBackend); ok {
+				h.backend = wireBackend
 			} else {
-				UseExitf("incorrect backend '%s' for ajpProxy, must be TCPSBackend\n", name)
+				UseExitf("incorrect backend '%s' for ajpProxy, must be TCPSBackend or TUDSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")

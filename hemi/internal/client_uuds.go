@@ -241,4 +241,4 @@ func (l *XLink) Close() error { // only used by clients of dial
 	return unixConn.Close()
 }
 
-func (l *XLink) closeConn() { l.unixConn.Close() } // used by codes other than dial
+func (l *XLink) closeConn() { l.unixConn.Close() } // used by codes which use fetch/store

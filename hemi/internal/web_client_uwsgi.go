@@ -17,7 +17,7 @@ import (
 // poolUWSGIExchan
 var poolUWSGIExchan sync.Pool
 
-func getUWSGIExchan(proxy *uwsgiProxy, conn *TConn) *uwsgiExchan {
+func getUWSGIExchan(proxy *uwsgiProxy, conn wireConn) *uwsgiExchan {
 	var exchan *uwsgiExchan
 	if x := poolUWSGIExchan.Get(); x == nil {
 		exchan = new(uwsgiExchan)
@@ -43,7 +43,7 @@ type uwsgiExchan struct {
 	response uwsgiResponse // the uwsgi response
 }
 
-func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn *TConn) {
+func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn wireConn) {
 }
 func (x *uwsgiExchan) onEnd() {
 }

@@ -345,4 +345,4 @@ func (c *TConn) Close() error { // only used by clients of dial
 	return netConn.Close()
 }
 
-func (c *TConn) closeConn() { c.netConn.Close() } // used by codes other than dial
+func (c *TConn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store

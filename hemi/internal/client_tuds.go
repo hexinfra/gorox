@@ -338,4 +338,4 @@ func (c *XConn) Close() error { // only used by clients of dial
 	return unixConn.Close()
 }
 
-func (c *XConn) closeConn() { c.unixConn.Close() } // used by codes other than dial
+func (c *XConn) closeConn() { c.unixConn.Close() } // used by codes which use fetch/store

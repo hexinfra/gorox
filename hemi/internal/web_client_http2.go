@@ -235,7 +235,7 @@ func (c *H2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.netConn, p, n)
 }
 
-func (c *H2Conn) closeConn() { c.netConn.Close() } // used by codes other than dial
+func (c *H2Conn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store
 
 // poolH2Stream
 var poolH2Stream sync.Pool

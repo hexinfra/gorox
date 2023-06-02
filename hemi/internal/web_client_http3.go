@@ -200,7 +200,7 @@ func (c *H3Conn) Close() error { // only used by clients of dial
 	return nil
 }
 
-func (c *H3Conn) closeConn() { c.quicConn.Close() } // used by codes other than dial
+func (c *H3Conn) closeConn() { c.quicConn.Close() } // used by codes which use fetch/store
 
 // poolH3Stream
 var poolH3Stream sync.Pool

@@ -283,7 +283,7 @@ func (c *H1Conn) Close() error { // only used by clients of dial
 	return netConn.Close()
 }
 
-func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes other than dial
+func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store
 
 // H1Stream is the client-side HTTP/1 stream.
 type H1Stream struct {

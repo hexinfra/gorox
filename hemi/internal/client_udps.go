@@ -241,4 +241,4 @@ func (l *ULink) Close() error { // only used by clients of dial
 	return udpConn.Close()
 }
 
-func (l *ULink) closeConn() { l.udpConn.Close() } // used by codes other than dial
+func (l *ULink) closeConn() { l.udpConn.Close() } // used by codes which use fetch/store

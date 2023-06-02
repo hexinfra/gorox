@@ -26,7 +26,7 @@ import (
 // poolAJPExchan
 var poolAJPExchan sync.Pool
 
-func getAJPExchan(proxy *ajpProxy, conn *TConn) *ajpExchan {
+func getAJPExchan(proxy *ajpProxy, conn wireConn) *ajpExchan {
 	var exchan *ajpExchan
 	if x := poolAJPExchan.Get(); x == nil {
 		exchan = new(ajpExchan)
@@ -52,7 +52,7 @@ type ajpExchan struct {
 	response ajpResponse // the ajp response
 }
 
-func (x *ajpExchan) onUse(proxy *ajpProxy, conn *TConn) {
+func (x *ajpExchan) onUse(proxy *ajpProxy, conn wireConn) {
 }
 func (x *ajpExchan) onEnd() {
 }

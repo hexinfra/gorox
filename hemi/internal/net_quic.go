@@ -183,10 +183,12 @@ var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnectio
 	"==": (*quicCase).equalMatch,
 	"^=": (*quicCase).prefixMatch,
 	"$=": (*quicCase).suffixMatch,
+	"*=": (*quicCase).containMatch,
 	"~=": (*quicCase).regexpMatch,
 	"!=": (*quicCase).notEqualMatch,
 	"!^": (*quicCase).notPrefixMatch,
 	"!$": (*quicCase).notSuffixMatch,
+	"!*": (*quicCase).notContainMatch,
 	"!~": (*quicCase).notRegexpMatch,
 }
 
@@ -199,6 +201,9 @@ func (c *quicCase) prefixMatch(connection *QUICConnection, value []byte) bool { 
 func (c *quicCase) suffixMatch(connection *QUICConnection, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
+func (c *quicCase) containMatch(connection *QUICConnection, value []byte) bool { // value *= patterns
+	return c.case_.containMatch(value)
+}
 func (c *quicCase) regexpMatch(connection *QUICConnection, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
@@ -210,6 +215,9 @@ func (c *quicCase) notPrefixMatch(connection *QUICConnection, value []byte) bool
 }
 func (c *quicCase) notSuffixMatch(connection *QUICConnection, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
+}
+func (c *quicCase) notContainMatch(connection *QUICConnection, value []byte) bool { // value !* patterns
+	return c.case_.notContainMatch(value)
 }
 func (c *quicCase) notRegexpMatch(connection *QUICConnection, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)

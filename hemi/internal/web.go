@@ -635,6 +635,7 @@ var ruleMatchers = map[string]struct {
 	"==": {(*Rule).equalMatch, false},
 	"^=": {(*Rule).prefixMatch, false},
 	"$=": {(*Rule).suffixMatch, false},
+	"*=": {(*Rule).containMatch, false},
 	"~=": {(*Rule).regexpMatch, false},
 	"-f": {(*Rule).fileMatch, true},
 	"-d": {(*Rule).dirMatch, true},
@@ -644,6 +645,7 @@ var ruleMatchers = map[string]struct {
 	"!=": {(*Rule).notEqualMatch, false},
 	"!^": {(*Rule).notPrefixMatch, false},
 	"!$": {(*Rule).notSuffixMatch, false},
+	"!*": {(*Rule).notContainMatch, false},
 	"!~": {(*Rule).notRegexpMatch, false},
 	"!f": {(*Rule).notFileMatch, true},
 	"!d": {(*Rule).notDirMatch, true},
@@ -669,6 +671,14 @@ func (r *Rule) prefixMatch(req Request, value []byte) bool { // value ^= pattern
 func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= patterns
 	for _, pattern := range r.patterns {
 		if bytes.HasSuffix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patterns
+	for _, pattern := range r.patterns {
+		if bytes.Contains(value, pattern) {
 			return true
 		}
 	}
@@ -723,6 +733,14 @@ func (r *Rule) notPrefixMatch(req Request, value []byte) bool { // value !^ patt
 func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patterns
 	for _, pattern := range r.patterns {
 		if bytes.HasSuffix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* patterns
+	for _, pattern := range r.patterns {
+		if bytes.Contains(value, pattern) {
 			return false
 		}
 	}

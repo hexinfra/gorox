@@ -196,10 +196,12 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []b
 	"==": (*udpsCase).equalMatch,
 	"^=": (*udpsCase).prefixMatch,
 	"$=": (*udpsCase).suffixMatch,
+	"*=": (*udpsCase).containMatch,
 	"~=": (*udpsCase).regexpMatch,
 	"!=": (*udpsCase).notEqualMatch,
 	"!^": (*udpsCase).notPrefixMatch,
 	"!$": (*udpsCase).notSuffixMatch,
+	"!*": (*udpsCase).notContainMatch,
 	"!~": (*udpsCase).notRegexpMatch,
 }
 
@@ -212,6 +214,9 @@ func (c *udpsCase) prefixMatch(link *UDPSLink, value []byte) bool { // value ^= 
 func (c *udpsCase) suffixMatch(link *UDPSLink, value []byte) bool { // value $= patterns
 	return c.case_.suffixMatch(value)
 }
+func (c *udpsCase) containMatch(link *UDPSLink, value []byte) bool { // value *= patterns
+	return c.case_.containMatch(value)
+}
 func (c *udpsCase) regexpMatch(link *UDPSLink, value []byte) bool { // value ~= patterns
 	return c.case_.regexpMatch(value)
 }
@@ -223,6 +228,9 @@ func (c *udpsCase) notPrefixMatch(link *UDPSLink, value []byte) bool { // value 
 }
 func (c *udpsCase) notSuffixMatch(link *UDPSLink, value []byte) bool { // value !$ patterns
 	return c.case_.notSuffixMatch(value)
+}
+func (c *udpsCase) notContainMatch(link *UDPSLink, value []byte) bool { // value !* patterns
+	return c.case_.notContainMatch(value)
 }
 func (c *udpsCase) notRegexpMatch(link *UDPSLink, value []byte) bool { // value !~ patterns
 	return c.case_.notRegexpMatch(value)

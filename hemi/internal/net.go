@@ -223,6 +223,14 @@ func (c *case_[M, D, E]) suffixMatch(value []byte) bool {
 	}
 	return false
 }
+func (c *case_[M, D, E]) containMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.Contains(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
 func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
 	// TODO
 	return false
@@ -251,7 +259,15 @@ func (c *case_[M, D, E]) notSuffixMatch(value []byte) bool {
 	}
 	return true
 }
+func (c *case_[M, D, E]) notContainMatch(value []byte) bool {
+	for _, pattern := range c.patterns {
+		if bytes.Contains(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
 func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
 	// TODO
-	return false
+	return true
 }

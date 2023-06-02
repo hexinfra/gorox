@@ -1070,8 +1070,8 @@ func (l *lexer) scan() []token {
 				tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.text[from+1 : l.index]})
 				break
 			}
-			fallthrough
-		case '^', '*', '~': // ^=, $=, *=, ~=
+			fallthrough // $=
+		case '^', '*', '~': // ^=, *=, ~=
 			if l.mustNext() != '=' {
 				panic(fmt.Errorf("lexer: unknown character %c (ascii %v) in line %d (%s)\n", b, b, line, l.file))
 			}

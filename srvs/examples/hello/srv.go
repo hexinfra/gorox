@@ -130,9 +130,9 @@ func (g *helloGate) serve() { // goroutine
 
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.onConnectionClosed()
+	g.onConnClosed()
 }
-func (g *helloGate) onConnectionClosed() {
+func (g *helloGate) onConnClosed() {
 	g.DecConns()
 	g.SubDone()
 }
@@ -190,5 +190,5 @@ func (c *helloConn) serve() { // goroutine
 
 func (c *helloConn) closeConn() {
 	c.netConn.Close()
-	c.gate.onConnectionClosed()
+	c.gate.onConnClosed()
 }

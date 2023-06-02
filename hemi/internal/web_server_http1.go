@@ -232,7 +232,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.onConnectionClosed()
+	g.onConnClosed()
 }
 
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
@@ -347,7 +347,7 @@ func (c *http1Conn) closeConn() {
 		time.Sleep(time.Second)
 	}
 	c.netConn.Close()
-	c.gate.onConnectionClosed()
+	c.gate.onConnClosed()
 }
 
 // http1Stream is the server-side HTTP/1 stream.

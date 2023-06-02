@@ -145,7 +145,7 @@ type webGate interface {
 	// Imports
 	Gate
 	// Methods
-	onConnectionClosed()
+	onConnClosed()
 }
 
 // webGate_ is the mixin for http[x3]Gate and hwebGate.
@@ -154,7 +154,7 @@ type webGate_ struct {
 	Gate_
 }
 
-func (g *webGate_) onConnectionClosed() {
+func (g *webGate_) onConnClosed() {
 	g.DecConns()
 	g.SubDone()
 }

@@ -68,10 +68,10 @@ func (f *QUICOutgate) Dial(address string) (*QConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (f *QUICOutgate) FetchConn(address string) {
+func (f *QUICOutgate) FetchConnection(address string) {
 	// TODO
 }
-func (f *QUICOutgate) StoreConn(qConnection *QConnection) {
+func (f *QUICOutgate) StoreConnection(qConnection *QConnection) {
 	// TODO
 }
 
@@ -111,11 +111,11 @@ func (b *QUICBackend) Dial() (*QConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUICBackend) FetchConn() (*QConnection, error) {
+func (b *QUICBackend) FetchConnection() (*QConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUICBackend) StoreConn(qConnection *QConnection) {
+func (b *QUICBackend) StoreConnection(qConnection *QConnection) {
 	// TODO
 }
 
@@ -148,12 +148,12 @@ func (n *quicNode) dial() (*QConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (n *quicNode) fetchConn() (*QConnection, error) {
+func (n *quicNode) fetchConnection() (*QConnection, error) {
 	// Note: A QConnection can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *quicNode) storeConn(qConnection *QConnection) {
+func (n *quicNode) storeConnection(qConnection *QConnection) {
 	// Note: A QConnection can be used concurrently, limited by maxStreams.
 	// TODO
 }

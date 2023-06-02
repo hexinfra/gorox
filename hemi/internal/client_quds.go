@@ -68,10 +68,10 @@ func (f *QUDSOutgate) Dial(address string) (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (f *QUDSOutgate) FetchConn(address string) {
+func (f *QUDSOutgate) FetchConnection(address string) {
 	// TODO
 }
-func (f *QUDSOutgate) StoreConn(xConnection *XConnection) {
+func (f *QUDSOutgate) StoreConnection(xConnection *XConnection) {
 	// TODO
 }
 
@@ -111,11 +111,11 @@ func (b *QUDSBackend) Dial() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUDSBackend) FetchConn() (*XConnection, error) {
+func (b *QUDSBackend) FetchConnection() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUDSBackend) StoreConn(xConnection *XConnection) {
+func (b *QUDSBackend) StoreConnection(xConnection *XConnection) {
 	// TODO
 }
 
@@ -148,12 +148,12 @@ func (n *qudsNode) dial() (*XConnection, error) {
 	// TODO
 	return nil, nil
 }
-func (n *qudsNode) fetchConn() (*XConnection, error) {
+func (n *qudsNode) fetchConnection() (*XConnection, error) {
 	// Note: An XConnection can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *qudsNode) storeConn(xConnection *XConnection) {
+func (n *qudsNode) storeConnection(xConnection *XConnection) {
 	// Note: An XConnection can be used concurrently, limited by maxStreams.
 	// TODO
 }

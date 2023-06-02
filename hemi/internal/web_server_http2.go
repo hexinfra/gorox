@@ -790,7 +790,7 @@ func (c *http2Conn) closeConn() {
 		Printf("conn=%d connClosed by serve()\n", c.id)
 	}
 	c.netConn.Close()
-	c.gate.onConnectionClosed()
+	c.gate.onConnClosed()
 }
 
 // poolHTTP2Stream is the server-side HTTP/2 stream pool.

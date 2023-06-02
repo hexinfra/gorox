@@ -131,9 +131,9 @@ func (g *echoGate) serve() { // goroutine
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.onConnectionClosed()
+	g.onConnClosed()
 }
-func (g *echoGate) onConnectionClosed() {
+func (g *echoGate) onConnClosed() {
 	g.DecConns()
 	g.SubDone()
 }
@@ -193,5 +193,5 @@ func (c *echoConn) serve() { // goroutine
 
 func (c *echoConn) closeConn() {
 	c.netConn.Close()
-	c.gate.onConnectionClosed()
+	c.gate.onConnClosed()
 }

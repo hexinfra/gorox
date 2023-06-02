@@ -186,9 +186,9 @@ func (g *tcpsGate) serveTLS() { // goroutine
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.onConnectionClosed()
+	g.onConnClosed()
 }
-func (g *tcpsGate) onConnectionClosed() {
+func (g *tcpsGate) onConnClosed() {
 	g.DecConns()
 	g.SubDone()
 }
@@ -434,7 +434,7 @@ func (c *TCPSConn) closeWrite() {
 
 func (c *TCPSConn) closeConn() {
 	c.netConn.Close()
-	c.gate.onConnectionClosed()
+	c.gate.onConnClosed()
 }
 
 func (c *TCPSConn) unsafeVariable(index int16) []byte {

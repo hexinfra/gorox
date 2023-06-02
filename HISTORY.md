@@ -1,7 +1,11 @@
-v?.?.?                                                        (2023-??-?? UTC+8)
+v0.1.5                                                        (2023-06-02 UTC+8)
 ================================================================================
 
   * hemi/gosites is now renamed as hemi/website.
+  * Added quds, tuds, and uuds support.
+  * Routers are renamed as meshers.
+  * Mappers are renamed as routers.
+  * hemi/internal is reorganized entirely.
 
 v0.1.4                                                        (2023-05-22 UTC+8)
 ================================================================================

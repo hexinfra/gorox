@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const Version = "0.1.5-dev"
+const Version = "0.1.5"
 
 var _debug atomic.Int32 // debug level
 
@@ -124,15 +124,15 @@ func exitf(exitCode int, prefix, format string, args ...any) {
 	os.Exit(exitCode)
 }
 
-func ApplyText(text string) (*Stage, error) {
+func FromText(text string) (*Stage, error) {
 	_checkDirs()
 	c := _newConfig()
-	return c.applyText(text)
+	return c.fromText(text)
 }
-func ApplyFile(base string, file string) (*Stage, error) {
+func FromFile(base string, file string) (*Stage, error) {
 	_checkDirs()
 	c := _newConfig()
-	return c.applyFile(base, file)
+	return c.fromFile(base, file)
 }
 func _checkDirs() {
 	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tempDir.Load() == nil || _varsDir.Load() == nil {
@@ -196,7 +196,7 @@ func (c *config) init(constants map[string]string, varCodes map[string]int16, si
 	c.signedComps = signedComps
 }
 
-func (c *config) applyText(text string) (stage *Stage, err error) {
+func (c *config) fromText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -207,7 +207,7 @@ func (c *config) applyText(text string) (stage *Stage, err error) {
 	c.evaluate()
 	return c.parse()
 }
-func (c *config) applyFile(base string, path string) (stage *Stage, err error) {
+func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)

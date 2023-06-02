@@ -18,7 +18,7 @@ func Main() {
 	hemi.SetTempDir(system.ExeDir + "/temp")
 	hemi.SetVarsDir(system.ExeDir + "/vars")
 
-	stage, err := hemi.ApplyText("stage{}")
+	stage, err := hemi.FromText("stage{}")
 	if err != nil {
 		fmt.Println(err.Error())
 		return

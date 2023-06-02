@@ -45,7 +45,7 @@ func Main(token string) {
 	}
 
 	// Register succeeded. Now start the initial stage
-	curStage, err = hemi.ApplyFile(configBase, configFile)
+	curStage, err = hemi.FromFile(configBase, configFile)
 	if err != nil {
 		common.Crash(err.Error())
 	}

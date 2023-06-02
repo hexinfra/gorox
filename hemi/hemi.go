@@ -68,8 +68,8 @@ var ( // core funcs
 	EnvExitln = internal.EnvExitln
 	EnvExitf  = internal.EnvExitf
 
-	ApplyFile = internal.ApplyFile
-	ApplyText = internal.ApplyText
+	FromFile = internal.FromFile
+	FromText = internal.FromText
 )
 
 type ( // core types

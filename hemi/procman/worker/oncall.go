@@ -21,7 +21,7 @@ var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
-		newStage, err := hemi.ApplyFile(configBase, configFile)
+		newStage, err := hemi.FromFile(configBase, configFile)
 		if err != nil {
 			hemi.Errorln(err.Error())
 			resp.Flag = 500

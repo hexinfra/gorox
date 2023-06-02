@@ -89,58 +89,71 @@ type ( // core types
 	HTTP3Outgate = internal.HTTP3Outgate
 	HWEBOutgate  = internal.HWEBOutgate
 
-	Backend      = internal.Backend
-	QUICBackend  = internal.QUICBackend
-	QConn        = internal.QConn
-	QStream      = internal.QStream
-	QOneway      = internal.QOneway
-	QUDSBackend  = internal.QUDSBackend
-	DConn        = internal.DConn
-	DStream      = internal.DStream
-	DOneway      = internal.DOneway
-	TCPSBackend  = internal.TCPSBackend
-	TConn        = internal.TConn
-	TUDSBackend  = internal.TUDSBackend
-	XConn        = internal.XConn
-	UDPSBackend  = internal.UDPSBackend
-	ULink        = internal.ULink
-	UUDSBackend  = internal.UUDSBackend
-	XLink        = internal.XLink
-	HRPCBackend  = internal.HRPCBackend
-	HCall        = internal.HCall
-	HReq         = internal.HReq
-	HResp        = internal.HResp
+	Backend = internal.Backend
+
+	QUICBackend = internal.QUICBackend
+	QConn       = internal.QConn
+	QStream     = internal.QStream
+	QOneway     = internal.QOneway
+
+	QUDSBackend = internal.QUDSBackend
+	DConn       = internal.DConn
+	DStream     = internal.DStream
+	DOneway     = internal.DOneway
+
+	TCPSBackend = internal.TCPSBackend
+	TConn       = internal.TConn
+
+	TUDSBackend = internal.TUDSBackend
+	XConn       = internal.XConn
+
+	UDPSBackend = internal.UDPSBackend
+	ULink       = internal.ULink
+
+	UUDSBackend = internal.UUDSBackend
+	XLink       = internal.XLink
+
+	HRPCBackend = internal.HRPCBackend
+	HCall       = internal.HCall
+	HReq        = internal.HReq
+	HResp       = internal.HResp
+
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
 	H1Request    = internal.H1Request
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
+
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
 	H2Request    = internal.H2Request
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
+
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
 	H3Request    = internal.H3Request
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
-	HWEBBackend  = internal.HWEBBackend
-	HExchan      = internal.HExchan
-	HRequest     = internal.HRequest
-	HResponse    = internal.HResponse
+
+	HWEBBackend = internal.HWEBBackend
+	HExchan     = internal.HExchan
+	HRequest    = internal.HRequest
+	HResponse   = internal.HResponse
 
 	QUICMesher = internal.QUICMesher
 	QUICDealer = internal.QUICDealer
 	QUICEditor = internal.QUICEditor
 	QUICConn   = internal.QUICConn
+
 	TCPSMesher = internal.TCPSMesher
 	TCPSDealer = internal.TCPSDealer
 	TCPSEditor = internal.TCPSEditor
 	TCPSConn   = internal.TCPSConn
+
 	UDPSMesher = internal.UDPSMesher
 	UDPSDealer = internal.UDPSDealer
 	UDPSEditor = internal.UDPSEditor

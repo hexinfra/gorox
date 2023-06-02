@@ -179,7 +179,7 @@ func putQConn(conn *QConn) {
 // QConn is a client-side connection to quicNode.
 type QConn struct {
 	// Mixins
-	conn_
+	Conn_
 	// Conn states (non-zeros)
 	node       *quicNode // associated node if client is QUICBackend
 	quicConn   *quix.Conn
@@ -190,13 +190,13 @@ type QConn struct {
 }
 
 func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quicConn *quix.Conn) {
-	c.conn_.onGet(id, client)
+	c.Conn_.onGet(id, client)
 	c.node = node
 	c.quicConn = quicConn
 	c.maxStreams = client.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
-	c.conn_.onPut()
+	c.Conn_.onPut()
 	c.node = nil
 	c.quicConn = nil
 	c.usedStreams.Store(0)

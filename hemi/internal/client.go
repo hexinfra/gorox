@@ -269,8 +269,8 @@ type Node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		head conn // head element
-		tail conn // tail element
+		head Conn // head element
+		tail Conn // tail element
 		qnty int  // size of the list
 	}
 }
@@ -288,7 +288,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() conn {
+func (n *Node_) pullConn() Conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -302,7 +302,7 @@ func (n *Node_) pullConn() conn {
 	list.qnty--
 	return conn
 }
-func (n *Node_) pushConn(conn conn) {
+func (n *Node_) pushConn(conn Conn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -337,18 +337,18 @@ func (n *Node_) shut() {
 
 var errNodeDown = errors.New("node is down")
 
-// conn is the client conns.
-type conn interface {
-	getNext() conn
-	setNext(next conn)
+// Conn is the client conns.
+type Conn interface {
+	getNext() Conn
+	setNext(next Conn)
 	isAlive() bool
 	closeConn()
 }
 
-// conn_ is the mixin for client conns.
-type conn_ struct {
+// Conn_ is the mixin for client conns.
+type Conn_ struct {
 	// Conn states (non-zeros)
-	next   conn      // the linked-list
+	next   Conn      // the linked-list
 	id     int64     // the conn id
 	client client    // associated client
 	expire time.Time // when the conn is considered expired
@@ -357,19 +357,19 @@ type conn_ struct {
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *conn_) onGet(id int64, client client) {
+func (c *Conn_) onGet(id int64, client client) {
 	c.id = id
 	c.client = client
 	c.expire = time.Now().Add(client.AliveTimeout())
 }
-func (c *conn_) onPut() {
+func (c *Conn_) onPut() {
 	c.client = nil
 	c.expire = time.Time{}
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
 
-func (c *conn_) getNext() conn     { return c.next }
-func (c *conn_) setNext(next conn) { c.next = next }
+func (c *Conn_) getNext() Conn     { return c.next }
+func (c *Conn_) setNext(next Conn) { c.next = next }
 
-func (c *conn_) isAlive() bool { return time.Now().Before(c.expire) }
+func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }

@@ -185,7 +185,7 @@ func putXLink(link *XLink) {
 // XLink needs redesign, maybe datagram?
 type XLink struct {
 	// Mixins
-	conn_
+	Conn_
 	// Link states (non-zeros)
 	node     *uudsNode       // associated node if client is UUDSBackend
 	unixConn *net.UnixConn   // unix conn
@@ -195,13 +195,13 @@ type XLink struct {
 }
 
 func (l *XLink) onGet(id int64, client gramClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
-	l.conn_.onGet(id, client)
+	l.Conn_.onGet(id, client)
 	l.node = node
 	l.unixConn = unixConn
 	l.rawConn = rawConn
 }
 func (l *XLink) onPut() {
-	l.conn_.onPut()
+	l.Conn_.onPut()
 	l.node = nil
 	l.unixConn = nil
 	l.rawConn = nil

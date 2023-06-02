@@ -8,7 +8,11 @@
 package internal
 
 import (
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
 func init() {
@@ -154,22 +158,115 @@ func (n *qudsNode) storeConn(dConn *DConn) {
 	// TODO
 }
 
+// poolDConn
+var poolDConn sync.Pool
+
+func getDConn(id int64, client quicClient, node *qudsNode, quicConn *quix.Conn) *DConn {
+	var conn *DConn
+	if x := poolDConn.Get(); x == nil {
+		conn = new(DConn)
+	} else {
+		conn = x.(*DConn)
+	}
+	conn.onGet(id, client, node, quicConn)
+	return conn
+}
+func putDConn(conn *DConn) {
+	conn.onPut()
+	poolDConn.Put(conn)
+}
+
 // DConn is a client-side connection to qudsNode.
 type DConn struct {
 	// Mixins
-	conn_
+	Conn_
 	// Conn states (non-zeros)
+	node       *qudsNode // associated node if client is QUDSBackend
+	quicConn   *quix.Conn
+	maxStreams int32 // how many streams are allowed on this conn?
 	// Conn states (zeros)
+	usedStreams atomic.Int32 // how many streams has been used?
+	broken      atomic.Bool  // is conn broken?
+}
+
+func (c *DConn) onGet(id int64, client quicClient, node *qudsNode, quicConn *quix.Conn) {
+	c.Conn_.onGet(id, client)
+	c.node = node
+	c.quicConn = quicConn
+	c.maxStreams = client.MaxStreamsPerConn()
+}
+func (c *DConn) onPut() {
+	c.Conn_.onPut()
+	c.node = nil
+	c.quicConn = nil
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
+}
+
+// poolDStream
+var poolDStream sync.Pool
+
+func getDStream(conn *DConn, quicStream *quix.Stream) *DStream {
+	var stream *DStream
+	if x := poolDStream.Get(); x == nil {
+		stream = new(DStream)
+	} else {
+		stream = x.(*DStream)
+	}
+	stream.onUse(conn, quicStream)
+	return stream
+}
+func putDStream(stream *DStream) {
+	stream.onEnd()
+	poolDStream.Put(stream)
 }
 
 // DStream is a bidirectional stream of DConn.
 type DStream struct {
 	// TODO
-	conn *DConn
+	conn       *DConn
+	quicStream *quix.Stream
+}
+
+func (s *DStream) onUse(conn *DConn, quicStream *quix.Stream) {
+	s.conn = conn
+	s.quicStream = quicStream
+}
+func (s *DStream) onEnd() {
+	s.conn = nil
+	s.quicStream = nil
+}
+
+// poolDOneway
+var poolDOneway sync.Pool
+
+func getDOneway(conn *DConn, quicOneway *quix.Oneway) *DOneway {
+	var oneway *DOneway
+	if x := poolDOneway.Get(); x == nil {
+		oneway = new(DOneway)
+	} else {
+		oneway = x.(*DOneway)
+	}
+	oneway.onUse(conn, quicOneway)
+	return oneway
+}
+func putDOneway(oneway *DOneway) {
+	oneway.onEnd()
+	poolDOneway.Put(oneway)
 }
 
 // DOneway is a unidirectional stream of DConn.
 type DOneway struct {
 	// TODO
-	conn *DConn
+	conn       *DConn
+	quicOneway *quix.Oneway
+}
+
+func (s *DOneway) onUse(conn *DConn, quicOneway *quix.Oneway) {
+	s.conn = conn
+	s.quicOneway = quicOneway
+}
+func (s *DOneway) onEnd() {
+	s.conn = nil
+	s.quicOneway = nil
 }

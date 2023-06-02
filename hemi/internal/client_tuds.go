@@ -249,7 +249,7 @@ func putXConn(conn *XConn) {
 // XConn is a client-side connection to tudsNode.
 type XConn struct {
 	// Mixins
-	conn_
+	Conn_
 	// Conn states (non-zeros)
 	node       *tudsNode       // associated node if client is TUDSBackend
 	unixConn   *net.UnixConn   // unix conn
@@ -263,14 +263,14 @@ type XConn struct {
 }
 
 func (c *XConn) onGet(id int64, client wireClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
-	c.conn_.onGet(id, client)
+	c.Conn_.onGet(id, client)
 	c.node = node
 	c.unixConn = unixConn
 	c.rawConn = rawConn
 	c.maxStreams = client.MaxStreamsPerConn()
 }
 func (c *XConn) onPut() {
-	c.conn_.onPut()
+	c.Conn_.onPut()
 	c.node = nil
 	c.unixConn = nil
 	c.rawConn = nil

@@ -110,7 +110,7 @@ type clientConn interface {
 // clientConn_ is the mixin for H[1-3]Conn.
 type clientConn_ struct {
 	// Mixins
-	conn_
+	Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -121,10 +121,10 @@ type clientConn_ struct {
 }
 
 func (c *clientConn_) onGet(id int64, client webClient) {
-	c.conn_.onGet(id, client)
+	c.Conn_.onGet(id, client)
 }
 func (c *clientConn_) onPut() {
-	c.conn_.onPut()
+	c.Conn_.onPut()
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.broken.Store(false)

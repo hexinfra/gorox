@@ -185,7 +185,7 @@ func putULink(link *ULink) {
 // ULink needs redesign, maybe datagram?
 type ULink struct {
 	// Mixins
-	conn_
+	Conn_
 	// Link states (non-zeros)
 	node    *udpsNode       // associated node if client is UDPSBackend
 	udpConn *net.UDPConn    // udp conn
@@ -195,13 +195,13 @@ type ULink struct {
 }
 
 func (l *ULink) onGet(id int64, client gramClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	l.conn_.onGet(id, client)
+	l.Conn_.onGet(id, client)
 	l.node = node
 	l.udpConn = udpConn
 	l.rawConn = rawConn
 }
 func (l *ULink) onPut() {
-	l.conn_.onPut()
+	l.Conn_.onPut()
 	l.node = nil
 	l.udpConn = nil
 	l.rawConn = nil

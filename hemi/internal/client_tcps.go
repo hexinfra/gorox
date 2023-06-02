@@ -26,12 +26,6 @@ func init() {
 	})
 }
 
-// tcpsClient is the interface for TCPSOutgate and TCPSBackend.
-type tcpsClient interface {
-	client
-	streamHolder
-}
-
 const signTCPSOutgate = "tcpsOutgate"
 
 func createTCPSOutgate(stage *Stage) *TCPSOutgate {
@@ -237,7 +231,7 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, client wireClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
@@ -268,7 +262,7 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *TConn) onGet(id int64, client wireClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.conn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
@@ -286,7 +280,7 @@ func (c *TConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
+func (c *TConn) getClient() wireClient { return c.client.(wireClient) }
 
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }

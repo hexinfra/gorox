@@ -24,11 +24,6 @@ func init() {
 	})
 }
 
-// udpsClient is the interface for UDPSOutgate and UDPSBackend.
-type udpsClient interface {
-	client
-}
-
 const signUDPSOutgate = "udpsOutgate"
 
 func createUDPSOutgate(stage *Stage) *UDPSOutgate {
@@ -172,7 +167,7 @@ func (n *udpsNode) storeLink(uLink *ULink) {
 // poolULink
 var poolULink sync.Pool
 
-func getULink(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
+func getULink(id int64, client gramClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
 	var link *ULink
 	if x := poolULink.Get(); x == nil {
 		link = new(ULink)
@@ -199,7 +194,7 @@ type ULink struct {
 	broken atomic.Bool // is link broken?
 }
 
-func (l *ULink) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+func (l *ULink) onGet(id int64, client gramClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
 	l.conn_.onGet(id, client)
 	l.node = node
 	l.udpConn = udpConn
@@ -213,7 +208,7 @@ func (l *ULink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *ULink) getClient() udpsClient { return l.client.(udpsClient) }
+func (l *ULink) getClient() gramClient { return l.client.(gramClient) }
 
 func (l *ULink) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {

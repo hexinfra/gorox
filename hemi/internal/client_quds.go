@@ -20,12 +20,6 @@ func init() {
 	})
 }
 
-// qudsClient is the interface for QUDSOutgate and QUDSBackend.
-type qudsClient interface {
-	client
-	streamHolder
-}
-
 const signQUDSOutgate = "qudsOutgate"
 
 func createQUDSOutgate(stage *Stage) *QUDSOutgate {

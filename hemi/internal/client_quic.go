@@ -24,12 +24,6 @@ func init() {
 	})
 }
 
-// quicClient is the interface for QUICOutgate and QUICBackend.
-type quicClient interface {
-	client
-	streamHolder
-}
-
 const signQUICOutgate = "quicOutgate"
 
 func createQUICOutgate(stage *Stage) *QUICOutgate {

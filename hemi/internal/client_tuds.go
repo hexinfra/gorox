@@ -25,12 +25,6 @@ func init() {
 	})
 }
 
-// tudsClient is the interface for TUDSOutgate and TUDSBackend.
-type tudsClient interface {
-	client
-	streamHolder
-}
-
 const signTUDSOutgate = "tudsOutgate"
 
 func createTUDSOutgate(stage *Stage) *TUDSOutgate {
@@ -237,7 +231,7 @@ func (n *tudsNode) closeConn(xConn *XConn) {
 // poolXConn
 var poolXConn sync.Pool
 
-func getXConn(id int64, client tudsClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XConn {
+func getXConn(id int64, client wireClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XConn {
 	var conn *XConn
 	if x := poolXConn.Get(); x == nil {
 		conn = new(XConn)
@@ -268,7 +262,7 @@ type XConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *XConn) onGet(id int64, client tudsClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
+func (c *XConn) onGet(id int64, client wireClient, node *tudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
 	c.conn_.onGet(id, client)
 	c.node = node
 	c.unixConn = unixConn
@@ -286,7 +280,7 @@ func (c *XConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *XConn) getClient() tudsClient { return c.client.(tudsClient) }
+func (c *XConn) getClient() wireClient { return c.client.(wireClient) }
 
 func (c *XConn) UnixConn() *net.UnixConn { return c.unixConn }
 

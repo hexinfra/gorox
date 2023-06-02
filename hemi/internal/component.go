@@ -370,6 +370,7 @@ type Stage struct {
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	tudsOutgate  *TUDSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
+	uudsOutgate  *UUDSOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
 	runners      compDict[Runner]      // indexed by runnerName
 	backends     compDict[Backend]     // indexed by backendName
@@ -407,6 +408,7 @@ func (s *Stage) onCreate() {
 	s.tcpsOutgate = createTCPSOutgate(s)
 	s.tudsOutgate = createTUDSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
+	s.uudsOutgate = createUUDSOutgate(s)
 
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
@@ -421,6 +423,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signTUDSOutgate] = s.tudsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
+	s.fixtures[signUUDSOutgate] = s.uudsOutgate
 
 	s.runners = make(compDict[Runner])
 	s.backends = make(compDict[Backend])
@@ -479,7 +482,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	// fixtures
-	s.IncSub(7)
+	s.IncSub(10)
 	go s.hrpcOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.http1Outgate.OnShutdown() // we don't treat this as goroutine
 	go s.http2Outgate.OnShutdown() // we don't treat this as goroutine
@@ -489,6 +492,7 @@ func (s *Stage) OnShutdown() {
 	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.tudsOutgate.OnShutdown()  // we don't treat this as goroutine
 	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.uudsOutgate.OnShutdown()  // we don't treat this as goroutine
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -729,6 +733,7 @@ func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) TUDSOutgate() *TUDSOutgate   { return s.tudsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
+func (s *Stage) UUDSOutgate() *UUDSOutgate   { return s.uudsOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Runner(name string) Runner          { return s.runners[name] }

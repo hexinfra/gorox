@@ -74,7 +74,7 @@ func (f *UDPSOutgate) FetchLink(address string, tlsMode bool) (*ULink, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UDPSOutgate) StoreLink(link *ULink) {
+func (f *UDPSOutgate) StoreLink(uLink *ULink) {
 	// TODO
 }
 

@@ -16,11 +16,66 @@ import (
 )
 
 func init() {
+	registerFixture(signUUDSOutgate)
 	RegisterBackend("uudsBackend", func(name string, stage *Stage) Backend {
 		b := new(UUDSBackend)
 		b.onCreate(name, stage)
 		return b
 	})
+}
+
+// uudsClient is the interface for UUDSOutgate and UUDSBackend.
+type uudsClient interface {
+	client
+}
+
+const signUUDSOutgate = "uudsOutgate"
+
+func createUUDSOutgate(stage *Stage) *UUDSOutgate {
+	uuds := new(UUDSOutgate)
+	uuds.onCreate(stage)
+	uuds.setShell(uuds)
+	return uuds
+}
+
+// UUDSOutgate component.
+type UUDSOutgate struct {
+	// Mixins
+	outgate_
+	// States
+}
+
+func (f *UUDSOutgate) onCreate(stage *Stage) {
+	f.outgate_.onCreate(signUUDSOutgate, stage)
+}
+
+func (f *UUDSOutgate) OnConfigure() {
+	f.outgate_.onConfigure()
+}
+func (f *UUDSOutgate) OnPrepare() {
+	f.outgate_.onConfigure()
+}
+
+func (f *UUDSOutgate) run() { // goroutine
+	f.Loop(time.Second, func(now time.Time) {
+		// TODO
+	})
+	if IsDebug(2) {
+		Println("uudsOutgate done")
+	}
+	f.stage.SubDone()
+}
+
+func (f *UUDSOutgate) Dial(address string, tlsMode bool) (*XLink, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UUDSOutgate) FetchLink(address string, tlsMode bool) (*XLink, error) {
+	// TODO
+	return nil, nil
+}
+func (f *UUDSOutgate) StoreLink(xLink *XLink) {
+	// TODO
 }
 
 // UUDSBackend component.
@@ -117,14 +172,14 @@ func (n *uudsNode) storeLink(xLink *XLink) {
 // poolXLink
 var poolXLink sync.Pool
 
-func getXLink(id int64, backend *UUDSBackend, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
+func getXLink(id int64, client uudsClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) *XLink {
 	var link *XLink
 	if x := poolXLink.Get(); x == nil {
 		link = new(XLink)
 	} else {
 		link = x.(*XLink)
 	}
-	link.onGet(id, backend, node, unixConn, rawConn)
+	link.onGet(id, client, node, unixConn, rawConn)
 	return link
 }
 func putXLink(link *XLink) {
@@ -144,8 +199,8 @@ type XLink struct {
 	broken atomic.Bool // is link broken?
 }
 
-func (l *XLink) onGet(id int64, backend *UUDSBackend, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
-	l.conn_.onGet(id, backend)
+func (l *XLink) onGet(id int64, client uudsClient, node *uudsNode, unixConn *net.UnixConn, rawConn syscall.RawConn) {
+	l.conn_.onGet(id, client)
 	l.node = node
 	l.unixConn = unixConn
 	l.rawConn = rawConn
@@ -158,7 +213,7 @@ func (l *XLink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *XLink) getBackend() *UUDSBackend { return l.client.(*UUDSBackend) }
+func (l *XLink) getClient() uudsClient { return l.client.(uudsClient) }
 
 func (l *XLink) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {

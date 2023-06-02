@@ -348,7 +348,7 @@ type conn interface {
 // conn_ is the mixin for client conns.
 type conn_ struct {
 	// Conn states (non-zeros)
-	next   conn      // the link
+	next   conn      // the linked-list
 	id     int64     // the conn id
 	client client    // associated client
 	expire time.Time // when the conn is considered expired

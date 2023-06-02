@@ -15,7 +15,7 @@ import (
 type rpcServer interface {
 	Server
 
-	LinkSvcs()
+	BindSvcs()
 }
 
 // rpcServer_
@@ -42,13 +42,13 @@ func (s *rpcServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 }
 
-func (s *rpcServer_) LinkSvcs() {
+func (s *rpcServer_) BindSvcs() {
 	for _, svcName := range s.forSvcs {
 		svc := s.stage.Svc(svcName)
 		if svc == nil {
 			continue
 		}
-		svc.LinkServer(s.shell.(rpcServer))
+		svc.BindServer(s.shell.(rpcServer))
 		// TODO: use hash table?
 		for _, hostname := range svc.exactHostnames {
 			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})

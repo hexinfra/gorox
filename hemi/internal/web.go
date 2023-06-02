@@ -25,7 +25,7 @@ type App struct {
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this app
-	servers  []webServer       // linked web servers. may be empty
+	servers  []webServer       // bound web servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
@@ -330,7 +330,7 @@ func (a *App) Logf(format string, args ...any) {
 	}
 }
 
-func (a *App) linkServer(server webServer) { a.servers = append(a.servers, server) }
+func (a *App) bindServer(server webServer) { a.servers = append(a.servers, server) }
 
 func (a *App) maintain() { // goroutine
 	a.Loop(time.Second, func(now time.Time) {

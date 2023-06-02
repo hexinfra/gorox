@@ -32,7 +32,7 @@ type webServer interface {
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 
-	linkApps()
+	bindApps()
 	findApp(hostname []byte) *App
 }
 
@@ -81,7 +81,7 @@ func (s *webServer_) onPrepare(shell Component) {
 	s.contentSaver_.onPrepare(shell, 0755)
 }
 
-func (s *webServer_) linkApps() {
+func (s *webServer_) bindApps() {
 	for _, appName := range s.forApps {
 		app := s.stage.App(appName)
 		if app == nil {
@@ -100,7 +100,7 @@ func (s *webServer_) linkApps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		app.linkServer(s.shell.(webServer))
+		app.bindServer(s.shell.(webServer))
 		if app.isDefault {
 			s.defaultApp = app
 		}

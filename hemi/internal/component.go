@@ -789,8 +789,8 @@ func (s *Stage) Start(id int32) {
 		UseExitln(err.Error())
 	}
 
-	s.linkServerApps()
-	s.linkServerSvcs()
+	s.bindServerApps()
+	s.bindServerSvcs()
 
 	// Prepare all components
 	if err := s.prepare(); err != nil {
@@ -816,23 +816,23 @@ func (s *Stage) Quit() {
 	}
 }
 
-func (s *Stage) linkServerApps() {
+func (s *Stage) bindServerApps() {
 	if IsDebug(1) {
-		Println("link apps to web servers")
+		Println("bind apps to web servers")
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
-			webServer.linkApps()
+			webServer.bindApps()
 		}
 	}
 }
-func (s *Stage) linkServerSvcs() {
+func (s *Stage) bindServerSvcs() {
 	if IsDebug(1) {
-		Println("link svcs to rpc servers")
+		Println("bind svcs to rpc servers")
 	}
 	for _, server := range s.servers {
 		if rpcServer, ok := server.(rpcServer); ok {
-			rpcServer.LinkSvcs()
+			rpcServer.BindSvcs()
 		}
 	}
 }

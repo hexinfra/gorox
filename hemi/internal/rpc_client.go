@@ -36,11 +36,36 @@ func (f *rpcOutgate_) onPrepare(shell Component) {
 }
 
 // rpcBackend_
-type rpcBackend_ struct {
+type rpcBackend_[N Node] struct {
+	// Mixins
+	Backend_[N]
+	// States
+	health any // TODO
+}
+
+func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+	b.Backend_.onCreate(name, stage, creator)
+}
+
+func (b *rpcBackend_[N]) onConfigure(shell Component) {
+	b.Backend_.onConfigure()
+	if b.tlsConfig != nil {
+		b.tlsConfig.InsecureSkipVerify = true
+	}
+}
+func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
+	b.Backend_.onPrepare()
 }
 
 // rpcNode_
 type rpcNode_ struct {
+	// Mixins
+	Node_
+	// States
+}
+
+func (n *rpcNode_) init(id int32) {
+	n.Node_.init(id)
 }
 
 // clientCall_

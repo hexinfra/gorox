@@ -13,6 +13,11 @@ import (
 
 func init() {
 	registerFixture(signHRPCOutgate)
+	RegisterBackend("hrpcBackend", func(name string, stage *Stage) Backend {
+		b := new(HRPCBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 const signHRPCOutgate = "hrpcOutgate"
@@ -54,10 +59,51 @@ func (f *HRPCOutgate) run() { // goroutine
 
 // HRPCBackend
 type HRPCBackend struct {
+	// Mixins
+	rpcBackend_[*hrpcNode]
+	// States
+}
+
+func (b *HRPCBackend) onCreate(name string, stage *Stage) {
+	b.rpcBackend_.onCreate(name, stage, b)
+}
+
+func (b *HRPCBackend) OnConfigure() {
+	b.rpcBackend_.onConfigure(b)
+}
+func (b *HRPCBackend) OnPrepare() {
+	b.rpcBackend_.onPrepare(b, len(b.nodes))
+}
+
+func (b *HRPCBackend) createNode(id int32) *hrpcNode {
+	node := new(hrpcNode)
+	node.init(id, b)
+	return node
 }
 
 // hrpcNode
 type hrpcNode struct {
+	// Mixins
+	rpcNode_
+	// Assocs
+	backend *HRPCBackend
+	// States
+}
+
+func (n *hrpcNode) init(id int32, backend *HRPCBackend) {
+	n.rpcNode_.init(id)
+	n.backend = backend
+}
+
+func (n *hrpcNode) Maintain() { // goroutine
+	n.Loop(time.Second, func(now time.Time) {
+		// TODO: health check
+	})
+	// TODO: wait for all conns
+	if IsDebug(2) {
+		Printf("hrpcNode=%d done\n", n.id)
+	}
+	n.backend.SubDone()
 }
 
 // HCall is the client-side HRPC call.

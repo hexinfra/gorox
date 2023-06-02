@@ -182,7 +182,7 @@ func putULink(link *ULink) {
 	poolULink.Put(link)
 }
 
-// ULink is a client-side link to udpsNode.
+// ULink needs redesign, maybe datagram?
 type ULink struct {
 	// Mixins
 	conn_

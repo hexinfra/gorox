@@ -182,7 +182,7 @@ func putXLink(link *XLink) {
 	poolXLink.Put(link)
 }
 
-// XLink is a client-side link to uudsNode.
+// XLink needs redesign, maybe datagram?
 type XLink struct {
 	// Mixins
 	conn_

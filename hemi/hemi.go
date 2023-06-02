@@ -97,9 +97,9 @@ type ( // core types
 	QOneway     = internal.QOneway
 
 	QUDSBackend = internal.QUDSBackend
-	DConn       = internal.DConn
-	DStream     = internal.DStream
-	DOneway     = internal.DOneway
+	UConn       = internal.UConn
+	UStream     = internal.UStream
+	UOneway     = internal.UOneway
 
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn

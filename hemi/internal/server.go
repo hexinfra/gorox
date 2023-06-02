@@ -17,9 +17,10 @@ import (
 
 // Server component.
 type Server interface {
+	// Imports
 	Component
+	// Methods
 	Serve() // goroutine
-
 	Stage() *Stage
 	TLSMode() bool
 	ColonPort() string
@@ -123,9 +124,9 @@ func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates.
 type Gate interface {
+	// Methods
 	ID() int32
 	IsShut() bool
-
 	shut() error
 }
 

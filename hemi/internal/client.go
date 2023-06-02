@@ -17,6 +17,8 @@ import (
 
 // client is the interface for outgates and backends.
 type client interface {
+	// Imports
+	// Methods
 	Stage() *Stage
 	TLSMode() bool
 	WriteTimeout() time.Duration
@@ -27,19 +29,25 @@ type client interface {
 
 // quicClient is the interface for QUICOutgate, QUDSOutgate, QUICBackend, and QUDSBackend.
 type quicClient interface {
+	// Imports
 	client
 	streamHolder
+	// Methods
 }
 
 // wireClient is the interface for TCPSOutgate, TUDSOutgate, TCPSBackend, and TUDSBackend.
 type wireClient interface {
+	// Imports
 	client
 	streamHolder
+	// Methods
 }
 
 // gramClient is the interface for UDPSOutgate, UUDSOutgate, UDPSBackend, and UUDSBackend.
 type gramClient interface {
+	// Imports
 	client
+	// Methods
 }
 
 // client_ is a mixin for outgates and backends.
@@ -120,6 +128,7 @@ func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
 // outgate
 type outgate interface {
+	// Methods
 	servedConns() int64
 	servedStreams() int64
 }
@@ -152,9 +161,10 @@ func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
 // Backend is a group of nodes.
 type Backend interface {
+	// Imports
 	Component
 	client
-
+	// Methods
 	Maintain() // goroutine
 }
 
@@ -249,6 +259,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 
 // Node is a member of backend.
 type Node interface {
+	// Methods
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
@@ -339,6 +350,7 @@ var errNodeDown = errors.New("node is down")
 
 // Conn is the client conns.
 type Conn interface {
+	// Methods
 	getNext() Conn
 	setNext(next Conn)
 	isAlive() bool

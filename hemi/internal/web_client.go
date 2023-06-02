@@ -17,9 +17,11 @@ import (
 
 // webClient is the interface for web outgates and web backends.
 type webClient interface {
+	// Imports
 	client
 	streamHolder
 	contentSaver
+	// Methods
 	MaxContentSize() int64 // allowed
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration

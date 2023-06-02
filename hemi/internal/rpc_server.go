@@ -13,8 +13,9 @@ import (
 
 // rpcServer
 type rpcServer interface {
+	// Imports
 	Server
-
+	// Methods
 	BindSvcs()
 }
 
@@ -87,6 +88,7 @@ func (s *rpcServer_) findSvc(hostname []byte) *Svc {
 
 // rpcGate
 type rpcGate interface {
+	// Imports
 	Gate
 }
 

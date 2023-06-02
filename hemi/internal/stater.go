@@ -9,7 +9,9 @@ package internal
 
 // Stater component is the interface to storages of HTTP states. See RFC 6265.
 type Stater interface {
+	// Imports
 	Component
+	// Methods
 	Maintain() // goroutine
 	Set(sid []byte, session *Session)
 	Get(sid []byte) (session *Session)

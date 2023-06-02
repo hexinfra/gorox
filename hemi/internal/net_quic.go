@@ -119,7 +119,9 @@ func (g *quicGate) onConnectionClosed() {
 
 // QUICDealer
 type QUICDealer interface {
+	// Imports
 	Component
+	// Methods
 	Deal(conn *QUICConn, stream *QUICStream) (next bool)
 }
 
@@ -132,8 +134,10 @@ type QUICDealer_ struct {
 
 // QUICEditor
 type QUICEditor interface {
+	// Imports
 	Component
 	identifiable
+	// Methods
 	OnInput(conn *QUICConn, data []byte) (next bool)
 }
 

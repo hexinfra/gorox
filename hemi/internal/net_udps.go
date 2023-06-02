@@ -132,7 +132,9 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 
 // UDPSDealer
 type UDPSDealer interface {
+	// Imports
 	Component
+	// Methods
 	Deal(link *UDPSLink) (next bool)
 }
 
@@ -145,8 +147,10 @@ type UDPSDealer_ struct {
 
 // UDPSEditor
 type UDPSEditor interface {
+	// Imports
 	Component
 	identifiable
+	// Methods
 	OnInput(link *UDPSLink, data []byte) (next bool)
 }
 

@@ -22,6 +22,7 @@ import (
 
 // webKeeper is a webServer or webClient which keeps its connections and streams.
 type webKeeper interface {
+	// Methods
 	Stage() *Stage
 	TLSMode() bool
 	ReadTimeout() time.Duration  // timeout of a read operation

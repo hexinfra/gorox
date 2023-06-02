@@ -24,14 +24,14 @@ import (
 
 // webServer is the interface for *http[x3]Server and *hwebServer.
 type webServer interface {
+	// Imports
 	Server
 	streamHolder
 	contentSaver
-
+	// Methods
 	MaxContentSize() int64 // allowed
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
-
 	bindApps()
 	findApp(hostname []byte) *App
 }
@@ -142,7 +142,9 @@ func (s *webServer_) findApp(hostname []byte) *App {
 
 // webGate is the interface for *http[x3]Gate and *hwebGate.
 type webGate interface {
+	// Imports
 	Gate
+	// Methods
 	onConnectionClosed()
 }
 

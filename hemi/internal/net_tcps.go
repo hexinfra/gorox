@@ -195,7 +195,9 @@ func (g *tcpsGate) onConnectionClosed() {
 
 // TCPSDealer
 type TCPSDealer interface {
+	// Imports
 	Component
+	// Methods
 	Deal(conn *TCPSConn) (next bool)
 }
 
@@ -208,9 +210,10 @@ type TCPSDealer_ struct {
 
 // TCPSEditor
 type TCPSEditor interface {
+	// Imports
 	Component
 	identifiable
-
+	// Methods
 	OnInput(conn *TCPSConn, kind int8)
 	OnOutput(conn *TCPSConn, kind int8)
 }

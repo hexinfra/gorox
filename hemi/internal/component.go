@@ -1015,6 +1015,8 @@ func (s *Stage) ProfBlock() {
 //
 // Runners are plugins or addons for Gorox. Users can create their own runners.
 type Runner interface {
+	// Imports
 	Component
+	// Methods
 	Run() // goroutine
 }

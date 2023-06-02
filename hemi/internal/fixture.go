@@ -15,6 +15,8 @@ package internal
 //
 // Fixtures are singletons in stage.
 type fixture interface {
+	// Imports
 	Component
+	// Methods
 	run() // goroutine
 }

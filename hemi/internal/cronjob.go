@@ -9,7 +9,9 @@ package internal
 
 // Cronjob component
 type Cronjob interface {
+	// Imports
 	Component
+	// Methods
 	Schedule() // goroutine
 }
 

@@ -10,7 +10,8 @@ package internal
 // ThriftBridge is the interface for all Thrift server bridges.
 // Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
 type ThriftBridge interface {
+	// Imports
 	rpcServer
-
+	// Methods
 	ThriftServer() any // may be a thrift.TServer?
 }

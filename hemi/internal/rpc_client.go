@@ -9,7 +9,9 @@ package internal
 
 // rpcClient
 type rpcClient interface {
+	// Imports
 	client
+	// Methods
 }
 
 // rpcOutgate_

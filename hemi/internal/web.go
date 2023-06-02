@@ -393,7 +393,9 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 
 // Handlet component handles the incoming request and gives an outgoing response if the request is handled.
 type Handlet interface {
+	// Imports
 	Component
+	// Methods
 	IsProxy() bool // proxies and origins are different, we must differentiate them
 	IsCache() bool // caches and proxies are different, we must differentiate them
 	Handle(req Request, resp Response) (next bool)
@@ -447,21 +449,18 @@ type Router interface {
 
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
+	// Imports
 	Component
 	identifiable
-
-	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
-
+	// Methods
+	Rank() int8                            // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 	BeforeRecv(req Request, resp Response) // for sized content
 	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
-
 	BeforeDraw(req Request, resp Response) // for unsized content
 	OnDraw(req Request, resp Response, chain Chain) (Chain, bool)
 	FinishDraw(req Request, resp Response) // for unsized content
-
 	BeforeSend(req Request, resp Response) // for sized content
 	OnSend(req Request, resp Response, content *Chain)
-
 	BeforeEcho(req Request, resp Response) // for unsized content
 	OnEcho(req Request, resp Response, chunks *Chain)
 	FinishEcho(req Request, resp Response) // for unsized content
@@ -477,7 +476,9 @@ type Reviser_ struct {
 
 // Socklet component handles the websocket.
 type Socklet interface {
+	// Imports
 	Component
+	// Methods
 	IsProxy() bool // proxys and origins are different, we must differentiate them
 	Serve(req Request, sock Socket)
 }
@@ -822,7 +823,9 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 
 // Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
+	// Imports
 	Component
+	// Methods
 	Maintain() // goroutine
 	Set(key []byte, hobject *Hobject)
 	Get(key []byte) (hobject *Hobject)

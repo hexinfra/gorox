@@ -159,6 +159,18 @@ func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte
 	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
 		return false
 	}
+	if !r._addMetaParam(fcgiBytesRequestScheme, req.UnsafeScheme()) { // REQUEST_SCHEME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRequestURI, req.UnsafeURI()) { // REQUEST_URI
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesServerName, req.UnsafeHostname()) { // SERVER_NAME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRedirectStatus, fcgiBytes200) { // REDIRECT_STATUS
+		return false
+	}
 	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
@@ -1276,6 +1288,7 @@ var ( // request param names
 var ( // request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
+	fcgiBytes200    = []byte("200")
 )
 
 const ( // response header hashes

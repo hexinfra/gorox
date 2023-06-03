@@ -732,7 +732,7 @@ var ( // fcgi request errors
 // poolFCGIRecords
 var poolFCGIRecords sync.Pool
 
-const fcgiMaxRecords = fcgiHeaderSize + _64K1 + fcgiMaxPadding // max record = header + max payload + max padding
+const fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding // max record = header + max payload + max padding
 
 func getFCGIRecords() []byte {
 	if x := poolFCGIRecords.Get(); x == nil {
@@ -1454,16 +1454,17 @@ var ( // fcgi response errors
 
 //////////////////////////////////////// FCGI protocol elements ////////////////////////////////////////
 
-// FCGI Record = FCGI Header(8) + payload + padding
+// FCGI Record = FCGI Header(8) + payload[65535] + padding[255]
 // FCGI Header = version(1) + type(1) + requestId(2) + payloadLen(2) + paddingLen(1) + reserved(1)
-
-const ( // fcgi constants
-	fcgiHeaderSize = 8
-	fcgiMaxPadding = 255
-)
 
 // Discrete records are standalone.
 // Streamed records end with an empty record (payloadLen=0).
+
+const ( // fcgi constants
+	fcgiHeaderSize = 8
+	fcgiMaxPayload = _64K1
+	fcgiMaxPadding = 255
+)
 
 var ( // request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes
@@ -1485,13 +1486,13 @@ var ( // request records
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
-	}
+	} // end of params
 	fcgiEmptyStdin = []byte{ // 8 bytes
 		1, 5, // version, FCGI_STDIN
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
-	}
+	} // end of stdins
 )
 
 var ( // request param names
@@ -1501,7 +1502,7 @@ var ( // request param names
 	fcgiBytesDocumentRoot     = []byte("DOCUMENT_ROOT")
 	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
 	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
-	fcgiBytesHTTP_            = []byte("HTTP_")
+	fcgiBytesHTTP_            = []byte("HTTP_") // prefix
 	fcgiBytesHTTPS            = []byte("HTTPS")
 	fcgiBytesPathInfo         = []byte("PATH_INFO")
 	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")

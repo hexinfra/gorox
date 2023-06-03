@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"regexp"
 )
 
 // _mesher
@@ -169,6 +170,7 @@ type case_[M _mesher, D _dealer, E _editor] struct {
 	general  bool  // general match?
 	varCode  int16 // the variable code
 	patterns [][]byte
+	regexps  []*regexp.Regexp
 }
 
 func (c *case_[M, D, E]) onCreate(name string, mesher M) {
@@ -186,11 +188,18 @@ func (c *case_[M, D, E]) OnConfigure() {
 	}
 	cond := c.info.(caseCond)
 	c.varCode = cond.varCode
+	isRegexp := cond.compare == "~=" || cond.compare == "!~"
 	for _, pattern := range cond.patterns {
 		if pattern == "" {
 			UseExitln("empty case cond pattern")
 		}
-		c.patterns = append(c.patterns, []byte(pattern))
+		if !isRegexp {
+			c.patterns = append(c.patterns, []byte(pattern))
+		} else if exp, err := regexp.Compile(pattern); err == nil {
+			c.regexps = append(c.regexps, exp)
+		} else {
+			UseExitln(err.Error())
+		}
 	}
 }
 func (c *case_[M, D, E]) OnPrepare() {
@@ -232,7 +241,11 @@ func (c *case_[M, D, E]) containMatch(value []byte) bool {
 	return false
 }
 func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
-	// TODO
+	for _, exp := range c.regexps {
+		if exp.Match(value) {
+			return true
+		}
+	}
 	return false
 }
 func (c *case_[M, D, E]) notEqualMatch(value []byte) bool {
@@ -268,6 +281,10 @@ func (c *case_[M, D, E]) notContainMatch(value []byte) bool {
 	return true
 }
 func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
-	// TODO
+	for _, exp := range c.regexps {
+		if exp.Match(value) {
+			return false
+		}
+	}
 	return true
 }

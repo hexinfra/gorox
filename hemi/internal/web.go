@@ -12,6 +12,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -508,6 +509,7 @@ type Rule struct {
 	returnText []byte   // ...
 	varCode    int16    // the variable code
 	patterns   [][]byte // condition patterns
+	regexps    []*regexp.Regexp
 	matcher    func(rule *Rule, req Request, value []byte) bool
 }
 
@@ -525,11 +527,18 @@ func (r *Rule) OnConfigure() {
 	} else {
 		cond := r.info.(ruleCond)
 		r.varCode = cond.varCode
+		isRegexp := cond.compare == "~=" || cond.compare == "!~"
 		for _, pattern := range cond.patterns {
 			if pattern == "" {
 				UseExitln("empty rule cond pattern")
 			}
-			r.patterns = append(r.patterns, []byte(pattern))
+			if !isRegexp {
+				r.patterns = append(r.patterns, []byte(pattern))
+			} else if exp, err := regexp.Compile(pattern); err == nil {
+				r.regexps = append(r.regexps, exp)
+			} else {
+				UseExitln(err.Error())
+			}
 		}
 		if matcher, ok := ruleMatchers[cond.compare]; ok {
 			r.matcher = matcher.matcher
@@ -685,7 +694,11 @@ func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patter
 	return false
 }
 func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
-	// TODO(diogin): implementation
+	for _, exp := range r.regexps {
+		if exp.Match(value) {
+			return true
+		}
+	}
 	return false
 }
 func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
@@ -747,7 +760,11 @@ func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* pat
 	return true
 }
 func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
-	// TODO(diogin): implementation
+	for _, exp := range r.regexps {
+		if exp.Match(value) {
+			return false
+		}
+	}
 	return true
 }
 func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f

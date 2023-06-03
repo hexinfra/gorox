@@ -848,11 +848,9 @@ type caseCond struct {
 
 // ruleCond is the rule condition.
 type ruleCond struct {
-	varCode   int16    // see varCodes
-	logicType int8     // 0:no-logic 1:and 2:or
-	compType  int8     // todo, undefined. for fast comparison
-	compare   string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
-	patterns  []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+	varCode  int16    // see varCodes
+	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
+	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }
 
 // lexer

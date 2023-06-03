@@ -66,7 +66,7 @@ func (a *App) OnShutdown() {
 }
 
 func (a *App) OnConfigure() {
-	a.contentSaver_.onConfigure(a, TempDir()+"/apps/"+a.name)
+	a.contentSaver_.onConfigure(a, TempDir()+"/web/apps/"+a.name)
 
 	// hostnames
 	if v, ok := a.Find("hostnames"); ok {

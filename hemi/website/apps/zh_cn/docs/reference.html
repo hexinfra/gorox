@@ -806,7 +806,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 
 	app "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
-		.saveContentFilesDir = %tempDir + "/apps/name"
+		.saveContentFilesDir = %tempDir + "/web/apps/name"
 		.webRoot = %baseDir + "/apps/proxy/root"
 		.accessLog = [
 			"logFile": %logsDir + "/apps/zh_cn.log",
@@ -849,7 +849,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/apps/name"
+						默认值：%tempDir + "/web/apps/name"
 						取值范围：-
 				</code>
 				</li>
@@ -1302,7 +1302,7 @@ stage {
 				<li>
 					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法： .saveContentFilesDir = "path"  
-						默认值：%tempDir + "/fcgi/fpm"
+						默认值：%tempDir + "/web/fcgi/fpm"
 					</code>
 				</li>
 

@@ -34,4 +34,5 @@ logs/
 temp/
 vars/
 
-/develop
+/develop/develop
+/website/website

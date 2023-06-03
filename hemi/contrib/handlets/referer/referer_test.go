@@ -74,7 +74,7 @@ func TestCheckRule(t *testing.T) {
 		{`~\.gorox\.`, nil},
 		{`~.*`, nil},
 		{`~.*/app`, nil},
-		{`~(?-i)gorox.net`, nil},
+		{`~(?-i)gorox.dev`, nil},
 		{`~]\`, errors.New("false")},
 	}
 

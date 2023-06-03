@@ -21,21 +21,21 @@ const ( // version codes. keep sync with ../hemi.go
 )
 
 var ( // version strings and byteses
-	stringHTTP1_0      = "HTTP/1.0"
-	stringHTTP1_1      = "HTTP/1.1"
-	stringHTTP2        = "HTTP/2"
-	stringHTTP3        = "HTTP/3"
-	bytesHTTP1_0       = []byte(stringHTTP1_0)
-	bytesHTTP1_1       = []byte(stringHTTP1_1)
-	bytesHTTP2         = []byte(stringHTTP2)
-	bytesHTTP3         = []byte(stringHTTP3)
-	httpVersionStrings = [...]string{
+	stringHTTP1_0     = "HTTP/1.0"
+	stringHTTP1_1     = "HTTP/1.1"
+	stringHTTP2       = "HTTP/2"
+	stringHTTP3       = "HTTP/3"
+	bytesHTTP1_0      = []byte(stringHTTP1_0)
+	bytesHTTP1_1      = []byte(stringHTTP1_1)
+	bytesHTTP2        = []byte(stringHTTP2)
+	bytesHTTP3        = []byte(stringHTTP3)
+	webVersionStrings = [...]string{
 		Version1_0: stringHTTP1_0,
 		Version1_1: stringHTTP1_1,
 		Version2:   stringHTTP2,
 		Version3:   stringHTTP3,
 	}
-	httpVersionByteses = [...][]byte{
+	webVersionByteses = [...][]byte{
 		Version1_0: bytesHTTP1_0,
 		Version1_1: bytesHTTP1_1,
 		Version2:   bytesHTTP2,
@@ -49,15 +49,15 @@ const ( // scheme codes. keep sync with ../hemi.go
 )
 
 var ( // scheme strings and byteses
-	stringHTTP        = "http"
-	stringHTTPS       = "https"
-	bytesHTTP         = []byte(stringHTTP)
-	bytesHTTPS        = []byte(stringHTTPS)
-	httpSchemeStrings = [...]string{
+	stringHTTP       = "http"
+	stringHTTPS      = "https"
+	bytesHTTP        = []byte(stringHTTP)
+	bytesHTTPS       = []byte(stringHTTPS)
+	webSchemeStrings = [...]string{
 		SchemeHTTP:  stringHTTP,
 		SchemeHTTPS: stringHTTPS,
 	}
-	httpSchemeByteses = [...][]byte{
+	webSchemeByteses = [...][]byte{
 		SchemeHTTP:  bytesHTTP,
 		SchemeHTTPS: bytesHTTPS,
 	}
@@ -75,8 +75,8 @@ const ( // method codes. keep sync with ../hemi.go
 )
 
 var ( // method hash table
-	httpMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
-	httpMethodTable = [8]struct {
+	webMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
+	webMethodTable = [8]struct {
 		hash uint16
 		from uint8
 		edge uint8
@@ -91,7 +91,7 @@ var ( // method hash table
 		6: {435, 18, 24, MethodDELETE},
 		7: {367, 41, 46, MethodTRACE},
 	}
-	httpMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
+	webMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
 )
 
 const ( // status codes. keep sync with ../hemi.go
@@ -163,11 +163,11 @@ const ( // status codes. keep sync with ../hemi.go
 	StatusNetworkAuthenticationRequired = 511
 )
 
-const ( // misc http types
-	httpTargetOrigin    = 0 // must be 0
-	httpTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]
-	httpTargetAuthority = 2 // hostname:port
-	httpTargetAsterisk  = 3 // *
+const ( // misc web types
+	webTargetOrigin    = 0 // must be 0
+	webTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]
+	webTargetAuthority = 2 // hostname:port
+	webTargetAsterisk  = 3 // *
 
 	httpSectionControl  = 0 // must be 0
 	httpSectionHeaders  = 1
@@ -180,9 +180,14 @@ const ( // misc http types
 	httpCodingGzip     = 3
 	httpCodingBrotli   = 4
 
-	httpFormNotForm    = 0 // must be 0
-	httpFormURLEncoded = 1 // application/x-www-form-urlencoded
-	httpFormMultipart  = 2 // multipart/form-data
+	webFormNotForm    = 0 // must be 0
+	webFormURLEncoded = 1 // application/x-www-form-urlencoded
+	webFormMultipart  = 2 // multipart/form-data
+
+	webContentTextNone  = 0 // must be 0
+	webContentTextInput = 1 // refers to r.input
+	webContentTextPool  = 2 // fetched from pool
+	webContentTextMake  = 3 // direct make
 )
 
 const ( // hashes of http fields. value is calculated by adding all ASCII values.

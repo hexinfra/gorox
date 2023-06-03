@@ -400,7 +400,7 @@ type serverRequest_ struct { // incoming. needs parsing
 }
 type serverRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
-	targetForm      int8     // http request-target form. see httpTargetXXX
+	targetForm      int8     // request-target form. see webTargetXXX
 	asteriskOptions bool     // OPTIONS *?
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
@@ -499,8 +499,8 @@ func (r *serverRequest_) onEnd() { // for zeros
 func (r *serverRequest_) App() *App { return r.app }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
-func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
 func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
 func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
 
@@ -512,13 +512,13 @@ func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPO
 func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
 func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
+	if m := webMethodTable[webMethodFind(hash)]; m.hash == hash && bytes.Equal(webMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
 
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
-func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
+func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
 
 func (r *serverRequest_) Authority() string       { return string(r.UnsafeAuthority()) }
 func (r *serverRequest_) UnsafeAuthority() []byte { return r.input[r.authority.from:r.authority.edge] }
@@ -852,7 +852,7 @@ func (r *serverRequest_) examineHead() bool {
 			contentType := header.dataAt(r.input)
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
-				r.formKind = httpFormURLEncoded
+				r.formKind = webFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
 				for i := header.params.from; i < header.params.edge; i++ {
 					param := &r.extras[i]
@@ -864,16 +864,16 @@ func (r *serverRequest_) examineHead() bool {
 						// bchars := bcharsnospace / " "
 						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
 						r.boundary = boundary
-						r.formKind = httpFormMultipart
+						r.formKind = webFormMultipart
 						break
 					}
 				}
-				if r.formKind != httpFormMultipart {
+				if r.formKind != webFormMultipart {
 					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
 					return false
 				}
 			}
-			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
+			if r.formKind != webFormNotForm && r.nContentCodings > 0 {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
 				return false
 			}
@@ -1692,20 +1692,20 @@ func (r *serverRequest_) unsetHost() { // used by proxies
 func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsUnsized() }
 func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
 func (r *serverRequest_) UnsafeContent() []byte {
-	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
+	if r.formKind == webFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
 	return r.unsafeContent()
 }
 
 func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
-	if r.formKind == httpFormNotForm || r.formReceived {
+	if r.formKind == webFormNotForm || r.formReceived {
 		return
 	}
 	r.formReceived = true
 	r.forms.from = uint8(len(r.primes))
 	r.forms.edge = r.forms.from
-	if r.formKind == httpFormURLEncoded { // application/x-www-form-urlencoded
+	if r.formKind == webFormURLEncoded { // application/x-www-form-urlencoded
 		r._loadURLEncodedForm()
 	} else { // multipart/form-data
 		r._recvMultipartForm()

@@ -303,8 +303,8 @@ func (r *webIn_) IsHTTP1_1() bool       { return r.versionCode == Version1_1 }
 func (r *webIn_) IsHTTP1() bool         { return r.versionCode <= Version1_1 }
 func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
-func (r *webIn_) Version() string       { return httpVersionStrings[r.versionCode] }
-func (r *webIn_) UnsafeVersion() []byte { return httpVersionByteses[r.versionCode] }
+func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
+func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
 
 func (r *webIn_) addHeader(header *pair) bool { // as prime
 	if edge, ok := r._addPrime(header); ok {
@@ -1484,13 +1484,6 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 func (r *webIn_) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
-
-const ( // web incoming content text kinds
-	webContentTextNone  = iota // must be 0
-	webContentTextInput        // refers to r.input
-	webContentTextPool         // fetched from pool
-	webContentTextMake         // direct make
-)
 
 var ( // web incoming message errors
 	webInBadChunk = errors.New("bad chunk")

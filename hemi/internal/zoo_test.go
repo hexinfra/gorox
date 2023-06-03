@@ -23,14 +23,14 @@ func TestHTTPMethods(t *testing.T) {
 		"OPTIONS": MethodOPTIONS,
 		"TRACE":   MethodTRACE,
 	}
-	methods := bytes.Split(httpMethodBytes, []byte(" "))
+	methods := bytes.Split(webMethodBytes, []byte(" "))
 	for _, method := range methods {
 		hash := bytesHash(method)
-		m := httpMethodTable[httpMethodFind(hash)]
+		m := webMethodTable[webMethodFind(hash)]
 		if m.hash != hash {
 			t.Error("invalid hash")
 		}
-		if !bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
+		if !bytes.Equal(webMethodBytes[m.from:m.edge], method) {
 			t.Error("invalid from edge")
 		}
 		if m.code != methodCodes[string(method)] {

@@ -43,8 +43,8 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.StringVar(&common.LogsDir, "logs", "", "")
 	flag.StringVar(&common.TempDir, "temp", "", "")
 	flag.StringVar(&common.VarsDir, "vars", "", "")
-	flag.StringVar(&common.OutFile, "out", "", "")
-	flag.StringVar(&common.ErrFile, "err", "", "")
+	flag.StringVar(&common.OutFile, "stdout", "", "")
+	flag.StringVar(&common.ErrFile, "stderr", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -131,21 +131,21 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 				}
 				return osFile
 			}
-			outFile := newFile(common.OutFile, ".out", os.Stdout)
-			errFile := newFile(common.ErrFile, ".err", os.Stderr)
+			stdout := newFile(common.OutFile, ".out", os.Stdout)
+			stderr := newFile(common.ErrFile, ".err", os.Stderr)
 			devNull, err := os.Open(os.DevNull)
 			if err != nil {
 				common.Crash(err.Error())
 			}
 			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
 				Env:   []string{"_GOROX_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-				Files: []*os.File{devNull, outFile, errFile},
+				Files: []*os.File{devNull, stdout, stderr},
 				Sys:   system.DaemonSysAttr(),
 			}); err == nil { // leader process started
 				process.Release()
 				devNull.Close()
-				outFile.Close()
-				errFile.Close()
+				stdout.Close()
+				stderr.Close()
 			} else {
 				common.Crash(err.Error())
 			}

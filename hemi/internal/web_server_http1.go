@@ -427,7 +427,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	}
 
 	// Exchan mode.
-	if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+	if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 		req.maxContentSize = app.maxUploadContentSize
 	} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
 		req.maxContentSize = int64(app.maxMemoryContentSize)
@@ -667,7 +667,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 	// request-target = absolute-form / origin-form / authority-form / asterisk-form
 	if b := r.input[r.pFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
 		if b != '/' { // absolute-form
-			r.targetForm = httpTargetAbsolute
+			r.targetForm = webTargetAbsolute
 			// absolute-form = absolute-URI
 			// absolute-URI = scheme ":" hier-part [ "?" query ]
 			// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
@@ -744,7 +744,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				return false
 			}
 			if b == ' ' { // ends of request-target
-				// Don't treat this as httpTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
+				// Don't treat this as webTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
 				if r.methodCode == MethodOPTIONS {
 					// OPTIONS http://www.example.org:8001 HTTP/1.1
 					r.asteriskOptions = true
@@ -904,7 +904,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		}
 		r.cleanPath()
 	} else if b == '*' { // OPTIONS *, asterisk-form
-		r.targetForm = httpTargetAsterisk
+		r.targetForm = webTargetAsterisk
 		// RFC 7230 (section 5.3.4):
 		// The asterisk-form of request-target is only used for a server-wide
 		// OPTIONS request (Section 4.3.7 of [RFC7231]).
@@ -926,7 +926,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 		// If the request-target is in authority-form or asterisk-form, the
 		// effective request URI's combined path and query component is empty.
 	} else { // r.methodCode == MethodCONNECT, authority-form
-		r.targetForm = httpTargetAuthority
+		r.targetForm = webTargetAuthority
 		// RFC 7230 (section 5.3.3. authority-form:
 		// The authority-form of request-target is only used for CONNECT
 		// requests (Section 4.3.6 of [RFC7231]).

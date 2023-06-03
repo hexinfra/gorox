@@ -2,9 +2,11 @@ v?.?.?                                                        (2023-??-?? UTC+8)
 ================================================================================
 
   * Conn and Conn_ are now exported.
-  * Cachers are renamed as Storers.
+  * Cachers are renamed as storers.
   * FCGI, AJP, uwsgi now supports unix domain sockets.
   * Add contains and not contains support for cases and rules.
+  * Add regexp conditions in cases and rules.
+  * Option "-out" and "-err" are changed to "-stdout" and "-stderr".
 
 v0.1.5                                                        (2023-06-02 UTC+8)
 ================================================================================

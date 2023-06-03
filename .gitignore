@@ -34,8 +34,6 @@ logs/
 temp/
 vars/
 
-/gomake
-
 /goben
 /gorox
 /myrox

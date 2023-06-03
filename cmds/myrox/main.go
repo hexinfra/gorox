@@ -67,8 +67,8 @@ OPTIONS
   -logs   <path>    # logs directory to use
   -temp   <path>    # temp directory to use
   -vars   <path>    # vars directory to use
-  -out    <path>    # daemon's stdout file (default: myrox.out in logs dir)
-  -err    <path>    # daemon's stderr file (default: myrox.err in logs dir)
+  -stdout <path>    # daemon's stdout file (default: myrox.out in logs dir)
+  -stderr <path>    # daemon's stderr file (default: myrox.err in logs dir)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.

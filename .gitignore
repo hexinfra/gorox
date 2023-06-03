@@ -4,14 +4,20 @@
 *.err
 *.exe
 *.exe~
+*.gz
 *.lib
 *.log
 *.mine
+*.o
 *.out
 *.prof
+*.psd
+*.pyc
+*.rar
 *.so
 *.swp
 *.test
+*.zip
 
 .DS_Store
 .Spotlight-V100

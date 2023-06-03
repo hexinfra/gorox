@@ -27,15 +27,12 @@ func createResolv(stage *Stage) *resolvFixture {
 // resolvFixture
 type resolvFixture struct {
 	// Mixins
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	fixture_
 	// States
 }
 
 func (f *resolvFixture) onCreate(stage *Stage) {
-	f.MakeComp(signResolv)
-	f.stage = stage
+	f.fixture_.onCreate(signResolv, stage)
 }
 func (f *resolvFixture) OnShutdown() {
 	close(f.Shut)

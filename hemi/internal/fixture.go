@@ -20,3 +20,16 @@ type fixture interface {
 	// Methods
 	run() // goroutine
 }
+
+// fixture_
+type fixture_ struct {
+	// Mixins
+	Component_
+	// Assocs
+	stage *Stage // current stage
+}
+
+func (f *fixture_) onCreate(name string, stage *Stage) {
+	f.MakeComp(name)
+	f.stage = stage
+}

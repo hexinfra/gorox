@@ -83,7 +83,7 @@ func (h *exchanProxy_) onConfigure() {
 	// colonPort
 	h.ConfigureBytes("colonPort", &h.colonPort, nil, nil)
 	// viaName
-	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox) // via: gorox
+	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox)
 	// bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent

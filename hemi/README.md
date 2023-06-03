@@ -38,11 +38,11 @@ prepare  +-----------+---------------+----------------+     v
 Dependencies
 ------------
 
-A program (i.e. Gorox) using Hemi typically has following dependencies:
+A program using Hemi typically has following dependencies:
 
 ```
   +-------------------------------------------------------------+
-  |                            <gorox>                          |
+  |                           <program>                         |
   +-------------+-------------------------------+----------+----+
                 |                               |          |
                 v                               v          v

@@ -105,7 +105,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			} else {
 				fmt.Fprintln(os.Stderr, err.Error())
 			}
-		} else if token, ok := os.LookupEnv("_GOROX_"); ok { // run leader process as daemon
+		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
 			if token == "leader" { // leader daemon
 				system.DaemonInit()
 				leader.Main()
@@ -138,7 +138,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 				common.Crash(err.Error())
 			}
 			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-				Env:   []string{"_GOROX_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 				Files: []*os.File{devNull, stdout, stderr},
 				Sys:   system.DaemonSysAttr(),
 			}); err == nil { // leader process started

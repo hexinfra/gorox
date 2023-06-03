@@ -1013,7 +1013,7 @@ func (s *Stage) ProfBlock() {
 
 // Runner component.
 //
-// Runners are plugins or addons for Gorox. Users can create their own runners.
+// Runners are plugins or addons for Hemi. Users can create their own runners.
 type Runner interface {
 	// Imports
 	Component

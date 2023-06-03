@@ -317,6 +317,6 @@ func (l *UDPSLink) unsafeVariable(index int16) []byte {
 }
 
 // udpsLinkVariables
-var udpsLinkVariables = [...]func(*UDPSLink) []byte{ // keep sync with varCodes in engine.go
+var udpsLinkVariables = [...]func(*UDPSLink) []byte{ // keep sync with varCodes in config.go
 	// TODO
 }

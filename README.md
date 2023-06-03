@@ -6,7 +6,7 @@ Welcome to Gorox!
 Gorox is an advanced Web server, App server, RPC framework, and network proxy.
 It can be used as:
 
-  * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, FCGI, uwsgi, AJP)
+  * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, AJP, FCGI, uwsgi)
   * Web Proxy Server (HTTP, WebSocket, Tunneling, Forward, Reverse, Caching)
   * App Server for Go (Applications, Frameworks)
   * RPC Framework for Go (HRPC, gRPC, Thrift)
@@ -81,7 +81,7 @@ Now visit http://localhost:3080 to check if it works. To exit server gracefully:
 
 For more actions and options, run:
 
-    shell> ./gorox -h
+    shell> ./gorox help
 
 To install, move the whole Gorox directory to where you like. To uninstall,
 remove the whole Gorox directory.

@@ -179,8 +179,8 @@ type ( // core types
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
 
-	Svc    = internal.Svc
-	Bundle = internal.Bundle
+	Svc     = internal.Svc
+	Bundlet = internal.Bundlet
 
 	Server = internal.Server
 

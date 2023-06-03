@@ -7,6 +7,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Add contains and not contains support for cases and rules.
   * Add regexp conditions in cases and rules.
   * Option "-out" and "-err" are changed to "-stdout" and "-stderr".
+  * hemi/website is merged into Gorox.
 
 v0.1.5                                                        (2023-06-02 UTC+8)
 ================================================================================

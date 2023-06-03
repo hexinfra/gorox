@@ -8,6 +8,8 @@
 package apps
 
 import (
+	_ "github.com/hexinfra/gorox/apps/examples/en_us"
 	_ "github.com/hexinfra/gorox/apps/examples/forum"
 	_ "github.com/hexinfra/gorox/apps/examples/hello"
+	_ "github.com/hexinfra/gorox/apps/examples/zh_cn"
 )

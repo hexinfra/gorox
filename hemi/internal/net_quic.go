@@ -176,7 +176,7 @@ func (c *quicCase) isMatch(connection *QUICConnection) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, connection, connection.unsafeVariable(c.varCode))
+	return c.matcher(c, connection, connection.unsafeVariable(c.varIndex))
 }
 
 var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnection, value []byte) bool{
@@ -301,7 +301,7 @@ func (c *QUICConnection) unsafeVariable(index int16) []byte {
 }
 
 // quicConnectionVariables
-var quicConnectionVariables = [...]func(*QUICConnection) []byte{ // keep sync with varCodes in config.go
+var quicConnectionVariables = [...]func(*QUICConnection) []byte{ // keep sync with varIndexes in config.go
 	// TODO
 }
 
@@ -319,6 +319,6 @@ func (s *QUICStream) Read(p []byte) (n int, err error) {
 }
 
 // quicStreamVariables
-var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
+var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varIndexes in config.go
 	// TODO
 }

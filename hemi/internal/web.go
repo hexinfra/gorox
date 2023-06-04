@@ -507,7 +507,7 @@ type Rule struct {
 	logAccess  bool     // enable booking for this rule?
 	returnCode int16    // ...
 	returnText []byte   // ...
-	varCode    int16    // the variable code
+	varIndex   int16    // the variable code
 	patterns   [][]byte // condition patterns
 	regexps    []*regexp.Regexp
 	matcher    func(rule *Rule, req Request, value []byte) bool
@@ -526,7 +526,7 @@ func (r *Rule) OnConfigure() {
 		r.general = true
 	} else {
 		cond := r.info.(ruleCond)
-		r.varCode = cond.varCode
+		r.varIndex = cond.varIndex
 		isRegexp := cond.compare == "~=" || cond.compare == "!~"
 		for _, pattern := range cond.patterns {
 			if pattern == "" {
@@ -634,7 +634,7 @@ func (r *Rule) isMatch(req Request) bool {
 	if r.general {
 		return true
 	}
-	return r.matcher(r, req, req.unsafeVariable(r.varCode))
+	return r.matcher(r, req, req.unsafeVariable(r.varIndex))
 }
 
 var ruleMatchers = map[string]struct {

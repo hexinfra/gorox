@@ -60,7 +60,7 @@ func newConfig() *config {
 type config struct {
 	// States
 	constants   map[string]string // defined constants
-	varCodes    map[string]int16  // defined var codes
+	varIndexes  map[string]int16  // defined var indexes
 	signedComps map[string]int16  // defined signed comps
 	tokens      []token           // the token list
 	index       int               // token index
@@ -68,9 +68,9 @@ type config struct {
 	counter     int               // the name for components without a name
 }
 
-func (c *config) init(constants map[string]string, varCodes map[string]int16, signedComps map[string]int16) {
+func (c *config) init(constants map[string]string, varIndexes map[string]int16, signedComps map[string]int16) {
 	c.constants = constants
-	c.varCodes = varCodes
+	c.varIndexes = varIndexes
 	c.signedComps = signedComps
 }
 
@@ -117,7 +117,7 @@ func (c *config) evaluate() {
 				token.text = text
 			}
 		case tokenVariable: // evaluate variable codes
-			if code, ok := c.varCodes[token.text]; ok {
+			if code, ok := c.varIndexes[token.text]; ok {
 				token.info = code
 			}
 		}
@@ -451,7 +451,7 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	if c.currentIs(tokenFSCheck) {
 		panic(errors.New("config error: fs check is not allowed in case"))
 	}
-	cond := caseCond{varCode: variable.info}
+	cond := caseCond{varIndex: variable.info}
 	compare := c.expect(tokenCompare)
 	patterns := []string{}
 	if current := c.forward(); current.kind == tokenString {
@@ -569,7 +569,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 func (c *config) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
-	cond := ruleCond{varCode: variable.info}
+	cond := ruleCond{varIndex: variable.info}
 	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
@@ -841,14 +841,14 @@ func parseComponent2[T Component](c *config, sign *token, app *App, create func(
 
 // caseCond is the case condition.
 type caseCond struct {
-	varCode  int16    // see varCodes
+	varIndex int16    // see varIndexes
 	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
 	patterns []string // ...
 }
 
 // ruleCond is the rule condition.
 type ruleCond struct {
-	varCode  int16    // see varCodes
+	varIndex int16    // see varIndexes
 	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }

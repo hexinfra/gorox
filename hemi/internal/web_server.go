@@ -2411,7 +2411,7 @@ func (r *serverRequest_) unsafeVariable(index int16) []byte {
 	return serverRequestVariables[index](r)
 }
 
-var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes in config.go
+var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varIndexes in config.go
 	(*serverRequest_).UnsafeMethod,      // method
 	(*serverRequest_).UnsafeScheme,      // scheme
 	(*serverRequest_).UnsafeAuthority,   // authority

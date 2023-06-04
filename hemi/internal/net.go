@@ -168,7 +168,7 @@ type case_[M _mesher, D _dealer, E _editor] struct {
 	editors []E // editors contained
 	// States
 	general  bool  // general match?
-	varCode  int16 // the variable code
+	varIndex int16 // the variable code
 	patterns [][]byte
 	regexps  []*regexp.Regexp
 }
@@ -187,7 +187,7 @@ func (c *case_[M, D, E]) OnConfigure() {
 		return
 	}
 	cond := c.info.(caseCond)
-	c.varCode = cond.varCode
+	c.varIndex = cond.varIndex
 	isRegexp := cond.compare == "~=" || cond.compare == "!~"
 	for _, pattern := range cond.patterns {
 		if pattern == "" {

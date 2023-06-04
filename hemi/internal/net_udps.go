@@ -189,7 +189,7 @@ func (c *udpsCase) isMatch(link *UDPSLink) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, link, link.unsafeVariable(c.varCode))
+	return c.matcher(c, link, link.unsafeVariable(c.varIndex))
 }
 
 var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []byte) bool{
@@ -317,6 +317,6 @@ func (l *UDPSLink) unsafeVariable(index int16) []byte {
 }
 
 // udpsLinkVariables
-var udpsLinkVariables = [...]func(*UDPSLink) []byte{ // keep sync with varCodes in config.go
+var udpsLinkVariables = [...]func(*UDPSLink) []byte{ // keep sync with varIndexes in config.go
 	// TODO
 }

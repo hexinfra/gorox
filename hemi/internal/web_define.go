@@ -169,16 +169,16 @@ const ( // misc web types
 	webTargetAuthority = 2 // hostname:port
 	webTargetAsterisk  = 3 // *
 
-	httpSectionControl  = 0 // must be 0
-	httpSectionHeaders  = 1
-	httpSectionContent  = 2
-	httpSectionTrailers = 3
+	webSectionControl  = 0 // must be 0
+	webSectionHeaders  = 1
+	webSectionContent  = 2
+	webSectionTrailers = 3
 
-	httpCodingIdentity = 0 // must be 0
-	httpCodingCompress = 1
-	httpCodingDeflate  = 2 // this is in fact zlib format
-	httpCodingGzip     = 3
-	httpCodingBrotli   = 4
+	webCodingIdentity = 0 // must be 0
+	webCodingCompress = 1
+	webCodingDeflate  = 2 // this is in fact zlib format
+	webCodingGzip     = 3
+	webCodingBrotli   = 4
 
 	webFormNotForm    = 0 // must be 0
 	webFormURLEncoded = 1 // application/x-www-form-urlencoded

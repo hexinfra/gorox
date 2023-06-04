@@ -18,6 +18,7 @@ type rpcClient interface {
 type rpcOutgate_ struct {
 	// Mixins
 	outgate_
+	rpcKeeper_
 	// States
 }
 
@@ -39,6 +40,7 @@ func (f *rpcOutgate_) onPrepare(shell Component) {
 type rpcBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
+	rpcKeeper_
 	// States
 	health any // TODO
 }

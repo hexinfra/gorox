@@ -77,6 +77,7 @@ func (s *webServer_) onConfigure(shell Component) {
 }
 func (s *webServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
+	s.webKeeper_.onPrepare(shell)
 	s.streamHolder_.onPrepare(shell)
 	s.contentSaver_.onPrepare(shell, 0755)
 }
@@ -833,7 +834,7 @@ func (r *serverRequest_) examineHead() bool {
 			return false
 		}
 		if r.nContentCodings > 0 { // have content-encoding
-			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
+			if r.nContentCodings > 1 || r.contentCodings[0] != webCodingGzip {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
 				return false
 			}

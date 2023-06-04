@@ -788,7 +788,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	imme            span     // immediate bytes in r.input that belongs to content, not headers
 	hasExtra        [8]bool  // see kindXXX for indexes
 	inputEdge       int32    // edge position of r.input
-	receiving       int8     // currently receiving. see httpSectionXXX
+	receiving       int8     // currently receiving. see webSectionXXX
 	contentTextKind int8     // kind of current r.contentText. see webContentTextXXX
 	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
@@ -1055,7 +1055,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		// r.pFore is now at the next header or end of headers.
 		header.hash, header.flags = 0, 0 // reset for next header
 	}
-	r.receiving = httpSectionContent
+	r.receiving = webSectionContent
 	// Skip end of headers
 	r.pFore++
 	// Now the head is received, and r.pFore is at the beginning of content (if exists).

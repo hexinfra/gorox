@@ -20,9 +20,9 @@ func (r *http1In_) growHead1() bool { // HTTP/1 is not a binary protocol, we don
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
-			if r.receiving == httpSectionControl {
+			if r.receiving == webSectionControl {
 				r.headResult = StatusURITooLong
-			} else { // httpSectionHeaders
+			} else { // webSectionHeaders
 				r.headResult = StatusRequestHeaderFieldsTooLarge
 			}
 			return false
@@ -172,7 +172,7 @@ func (r *http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 		// r.pFore is now at the next header or end of headers.
 		header.hash, header.flags = 0, 0 // reset for next header
 	}
-	r.receiving = httpSectionContent
+	r.receiving = webSectionContent
 	// Skip end of headers
 	r.pFore++
 	// Now the head is received, and r.pFore is at the beginning of content (if exists) or next message (if exists and is pipelined).
@@ -315,7 +315,7 @@ func (r *http1In_) _readUnsizedContent1() (p []byte, err error) {
 					goto badRead
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
-				r.receiving = httpSectionTrailers
+				r.receiving = webSectionTrailers
 				if !r.recvTrailers1() || !r.examineTail() {
 					goto badRead
 				}

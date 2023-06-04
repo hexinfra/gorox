@@ -66,6 +66,9 @@ func (k *webKeeper_) onConfigure(shell Component, sendTimeout time.Duration, rec
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
+func (k *webKeeper_) onPrepare(shell Component) {
+	// Currently nothing
+}
 
 func (k *webKeeper_) RecvTimeout() time.Duration { return k.recvTimeout }
 func (k *webKeeper_) SendTimeout() time.Duration { return k.sendTimeout }
@@ -145,8 +148,8 @@ type webIn_ struct { // incoming. needs parsing
 	stockExtras [30]pair   // for r.extras
 	// Stream states (controlled)
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
-	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX. values: none compress deflate gzip br
-	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX. values: identity(none) compress deflate gzip br
+	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see webCodingXXX. values: none compress deflate gzip br
+	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see webCodingXXX. values: identity(none) compress deflate gzip br
 	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
@@ -181,7 +184,7 @@ type webIn0 struct { // for fast reset, entirely
 	dateTime         int64   // parsed unix time of date
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
-	receiving        int8    // currently receiving. see httpSectionXXX
+	receiving        int8    // currently receiving. see webSectionXXX
 	headers          zone    // headers ->r.primes
 	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
@@ -732,16 +735,16 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 		var coding uint8
 		if bytes.Equal(data, bytesGzip) {
 			r.acceptGzip = true
-			coding = httpCodingGzip
+			coding = webCodingGzip
 		} else if bytes.Equal(data, bytesBrotli) {
 			r.acceptBrotli = true
-			coding = httpCodingBrotli
+			coding = webCodingBrotli
 		} else if bytes.Equal(data, bytesDeflate) {
-			coding = httpCodingDeflate
+			coding = webCodingDeflate
 		} else if bytes.Equal(data, bytesCompress) {
-			coding = httpCodingCompress
+			coding = webCodingCompress
 		} else if bytes.Equal(data, bytesIdentity) {
-			coding = httpCodingIdentity
+			coding = webCodingIdentity
 		} else {
 			// Empty or unknown content-coding, ignored
 			continue
@@ -787,13 +790,13 @@ func (r *webIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool
 		bytesToLower(data)
 		var coding uint8
 		if bytes.Equal(data, bytesGzip) {
-			coding = httpCodingGzip
+			coding = webCodingGzip
 		} else if bytes.Equal(data, bytesBrotli) {
-			coding = httpCodingBrotli
+			coding = webCodingBrotli
 		} else if bytes.Equal(data, bytesDeflate) { // this is in fact zlib format
-			coding = httpCodingDeflate // some non-conformant implementations send the "deflate" compressed data without the zlib wrapper :(
+			coding = webCodingDeflate // some non-conformant implementations send the "deflate" compressed data without the zlib wrapper :(
 		} else if bytes.Equal(data, bytesCompress) {
-			coding = httpCodingCompress
+			coding = webCodingCompress
 		} else {
 			// RFC 7231 (section 3.1.2.2):
 			// An origin server MAY respond with a status code of 415 (Unsupported

@@ -330,7 +330,7 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 			return http2ErrorProtocol
 		}
 		req = &stream.request
-		req.receiving = httpSectionTrailers
+		req.receiving = webSectionTrailers
 		if !c._decodeFields(inFrame.effective(), req.joinTrailers) {
 			return http2ErrorCompression
 		}

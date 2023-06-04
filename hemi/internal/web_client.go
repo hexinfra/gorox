@@ -52,6 +52,7 @@ func (f *webOutgate_) onConfigure(shell Component) {
 }
 func (f *webOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
+	f.webKeeper_.onPrepare(shell)
 	f.streamHolder_.onPrepare(shell)
 	f.contentSaver_.onPrepare(shell, 0755)
 }
@@ -85,6 +86,7 @@ func (b *webBackend_[N]) onConfigure(shell Component) {
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.onPrepare()
+	b.webKeeper_.onPrepare(shell)
 	b.streamHolder_.onPrepare(shell)
 	b.contentSaver_.onPrepare(shell, 0755)
 	b.loadBalancer_.onPrepare(numNodes)

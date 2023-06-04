@@ -1002,7 +1002,7 @@ beforeVersion: // r.pFore is at ' '.
 		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
 		return false
 	}
-	r.receiving = httpSectionHeaders
+	r.receiving = webSectionHeaders
 	// Skip '\n'
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false

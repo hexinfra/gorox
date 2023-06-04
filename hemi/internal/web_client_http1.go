@@ -616,7 +616,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 			return false
 		}
 	}
-	r.receiving = httpSectionHeaders
+	r.receiving = webSectionHeaders
 	// Skip '\n'
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false

@@ -1,25 +1,25 @@
 Roadmap
 =======
 
-  * [TODO] mesher system design and implementation.
-  * [TODO] rpc framework design and implementation.
-  * [TODO] reviser design and implementation.
+  * [TODO] net system design and implementation.
+  * [TODO] rpc system design and implementation.
+  * [TODO] web reviser design and implementation.
   * [TODO] myrox design and implementation.
-  * [TODO] websocket support.
-  * [TODO] http/2 support.
-  * [TODO] http/3 support.
-  * [TODO] storer support.
-  * [TODO] tcptun support.
-  * [TODO] udptun support.
-  * [TODO] web mvc framework. requires a strong standard like jakarta ee.
+  * [TODO] websocket implementation.
+  * [TODO] http/2 implementation.
+  * [TODO] quic and http/3 implementation.
+  * [TODO] storer implementation.
+  * [TODO] tcptun implementation.
+  * [TODO] udptun implementation.
+  * [TODO] web application framework implementation.
   * [TODO] documentation.
-  * [TODO] official websites.
-  * [TODO] logger.
+  * [TODO] official websites, english and chinese.
+  * [TODO] logger implementation.
   * [TODO] goben design and implementation.
   * [TODO] more unit tests.
   * [TODO] black/white box tests.
-  * [TODO] ktls support.
   * [TODO] online parsing for forms.
   * [TODO] fetch config through url.
+  * [TODO] ktls support?
   * [TODO] ...
 

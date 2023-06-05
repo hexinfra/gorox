@@ -7,65 +7,59 @@
 
 package internal
 
-// hwebIn_ is used by hwebRequest and HResponse.
-type hwebIn_ = webIn_
-
-func (r *hwebIn_) readContentH() (p []byte, err error) {
+func (r *webIn_) readContentH() (p []byte, err error) {
 	return
 }
 
-// hwebOut_ is used by hwebResponse and HRequest.
-type hwebOut_ = webOut_
-
-func (r *hwebOut_) addHeaderH(name []byte, value []byte) bool {
+func (r *webOut_) addHeaderH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) headerH(name []byte) (value []byte, ok bool) {
+func (r *webOut_) headerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hwebOut_) hasHeaderH(name []byte) bool {
+func (r *webOut_) hasHeaderH(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) delHeaderH(name []byte) (deleted bool) {
+func (r *webOut_) delHeaderH(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *hwebOut_) delHeaderAtH(o uint8) {
+func (r *webOut_) delHeaderAtH(o uint8) {
 	// TODO
 }
 
-func (r *hwebOut_) sendChainH() error {
+func (r *webOut_) sendChainH() error {
 	return nil
 }
 
-func (r *hwebOut_) echoHeadersH() error {
+func (r *webOut_) echoHeadersH() error {
 	// TODO
 	return nil
 }
-func (r *hwebOut_) echoChainH() error {
+func (r *webOut_) echoChainH() error {
 	// TODO
 	return nil
 }
 
-func (r *hwebOut_) addTrailerH(name []byte, value []byte) bool {
+func (r *webOut_) addTrailerH(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *hwebOut_) trailerH(name []byte) (value []byte, ok bool) {
+func (r *webOut_) trailerH(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *hwebOut_) trailersH() []byte {
+func (r *webOut_) trailersH() []byte {
 	// TODO
 	return nil
 }
 
-func (r *hwebOut_) passBytesH(p []byte) error { return r.writeBytesH(p) }
+func (r *webOut_) passBytesH(p []byte) error { return r.writeBytesH(p) }
 
-func (r *hwebOut_) finalizeUnsizedH() error {
+func (r *webOut_) finalizeUnsizedH() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -73,18 +67,18 @@ func (r *hwebOut_) finalizeUnsizedH() error {
 	return nil
 }
 
-func (r *hwebOut_) writeHeadersH() error { // used by echo and pass
+func (r *webOut_) writeHeadersH() error { // used by echo and pass
 	// TODO
 	return nil
 }
-func (r *hwebOut_) writePieceH(piece *Piece, unsized bool) error {
+func (r *webOut_) writePieceH(piece *Piece, unsized bool) error {
 	// TODO
 	return nil
 }
-func (r *hwebOut_) writeBytesH(p []byte) error {
+func (r *webOut_) writeBytesH(p []byte) error {
 	// TODO
 	return nil
 }
-func (r *hwebOut_) writeVectorH() error {
+func (r *webOut_) writeVectorH() error {
 	return nil
 }

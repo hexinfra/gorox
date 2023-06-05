@@ -7,16 +7,10 @@
 
 package internal
 
-// hrpcIn_ is used by hrpcReq and HResp.
-type hrpcIn_ = rpcIn_
-
-func (r *hrpcIn_) readContentH() {
+func (r *rpcIn_) readContentH() {
 	// TODO
 }
 
-// hrpcOut_ is used by hrpcResp and HReq.
-type hrpcOut_ = rpcOut_
-
-func (r *hrpcOut_) writeBytesH() {
+func (r *rpcOut_) writeBytesH() {
 	// TODO
 }

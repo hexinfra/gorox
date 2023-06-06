@@ -2,6 +2,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
 ================================================================================
 
   * Max debug level is now 0-3.
+  * hemi.IsDebug() is changed to hemi.Debug().
   * Fix FCGI bug that large content is truncated.
 
 v0.1.6                                                        (2023-06-06 UTC+8)

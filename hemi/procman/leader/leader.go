@@ -50,7 +50,7 @@ func myroxClient() {
 	// TODO
 	roxChan := make(chan *msgx.Message)
 	_ = roxChan
-	hemi.Println("[leader] myrox: TODO")
+	hemi.Println("[leader] myroxClient: TODO")
 }
 
 var (

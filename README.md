@@ -15,10 +15,7 @@ It can be used as:
   * Service Mesh
   * ... and more through its highly extensible compoments design!
 
-There is also a controller program called Myrox which is distributed with Gorox
-and can be used to manage your Gorox cluster optionally.
-
-For more details about Gorox and Myrox, please see: https://gorox.io/ .
+For more details about Gorox, please see: https://gorox.io/ .
 
 
 Motivation

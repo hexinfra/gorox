@@ -5,7 +5,6 @@ Roadmap
   * [TODO] rpc system design and implementation.
   * [TODO] web rewrite handler design and implementation.
   * [TODO] web reviser design and implementation.
-  * [TODO] myrox design and implementation.
   * [TODO] websocket implementation.
   * [TODO] http/2 implementation.
   * [TODO] quic and http/3 implementation.

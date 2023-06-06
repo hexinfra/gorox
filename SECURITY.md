@@ -4,4 +4,4 @@ Please report any security issue or crash report to:
 
 Your issue will be triaged and coped with appropriately.
 
-Thank you in advance for helping to keep Hemi secure!
+Thank you in advance for helping to keep Gorox secure!

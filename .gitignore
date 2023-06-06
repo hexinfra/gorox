@@ -34,5 +34,6 @@ logs/
 temp/
 vars/
 
+/develop/develop
 /goben
 /gorox

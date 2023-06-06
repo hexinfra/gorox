@@ -1,4 +1,0 @@
-Code of Conduct
-===============
-
-  TODO

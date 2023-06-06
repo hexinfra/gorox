@@ -11,8 +11,8 @@ It can be used as:
   * App Server for Go (Applications, Frameworks)
   * RPC Framework for Go (HRPC, gRPC, Thrift)
   * Layer 4 Proxy Server (QUIC, TCP/TLS, UDP/DTLS)
+  * Service Mesh (Data Plane)
   * API Gateway
-  * Service Mesh
   * ... and more through its highly extensible compoments design!
 
 For more details about Gorox, please see: https://gorox.io/ .
@@ -196,7 +196,7 @@ the roles in "gorox cluster":
   * sidecar2  : A sidecar for svc2,
   * job1      : A background application in Gorox doing something periodically.
 
-The whole gorox cluster can alternatively be managed by a Myrox instance, which
+The whole Gorox cluster can alternatively be managed by a Myrox instance, which
 behaves like the control plane in Service Mesh. In this configuration, all Gorox
 instances in the cluster connect to Myrox and are under its control.
 

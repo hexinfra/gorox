@@ -49,7 +49,7 @@ func (s *memStorer) Maintain() { // goroutine
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("memStorer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()

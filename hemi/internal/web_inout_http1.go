@@ -636,7 +636,7 @@ func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev
 	vector[0] = r.shell.control()
 	vector[1] = r.shell.addedHeaders()
 	vector[2] = r.shell.fixedHeaders()
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		if r.asRequest {
 			Printf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
 		} else {
@@ -754,7 +754,7 @@ func (r *webOut_) writeHeaders1() error { // used by echo and pass
 	r.vector[0] = r.shell.control()
 	r.vector[1] = r.shell.addedHeaders()
 	r.vector[2] = r.shell.fixedHeaders()
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		if r.asRequest {
 			Printf("[H1Stream=%d]", r.stream.(*H1Stream).conn.id)
 		} else {

@@ -47,7 +47,7 @@ func (f *resolvFixture) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("resolv done")
 	}
 	f.stage.SubDone()

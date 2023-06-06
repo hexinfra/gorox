@@ -37,7 +37,7 @@ func (p *http2Frames) getRef() int32 { return p.ref.Load() }
 func (p *http2Frames) incRef()       { p.ref.Add(1) }
 func (p *http2Frames) decRef() {
 	if p.ref.Add(-1) == 0 {
-		if IsDebug(1) {
+		if Debug() >= 1 {
 			Printf("putHTTP2Frames ref=%d\n", p.ref.Load())
 		}
 		putHTTP2Frames(p)

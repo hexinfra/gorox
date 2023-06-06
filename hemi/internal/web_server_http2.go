@@ -191,7 +191,7 @@ serve:
 	Printf("conn=%d c.serve() quit\n", c.id)
 }
 func (c *http2Conn) receive() { // goroutine
-	if IsDebug(1) {
+	if Debug() >= 1 {
 		defer Printf("conn=%d c.receive() quit\n", c.id)
 	}
 	for { // each incoming frame
@@ -545,7 +545,7 @@ func (c *http2Conn) findStream(streamID uint32) *http2Stream {
 	if index == http2MaxActiveStreams { // not found.
 		return nil
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
 	}
 	return c.streams[index]
@@ -559,7 +559,7 @@ func (c *http2Conn) joinStream(stream *http2Stream) {
 	if index == http2MaxActiveStreams { // this should not happen
 		BugExitln("joinStream cannot find an empty slot")
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.id, index)
 	}
 	stream.index = index
@@ -571,7 +571,7 @@ func (c *http2Conn) quitStream(streamID uint32) {
 	if stream == nil {
 		BugExitln("quitStream cannot find the stream")
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("conn=%d quitStream=%d at %d\n", c.id, streamID, stream.index)
 	}
 	c.streams[stream.index] = nil
@@ -625,7 +625,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 			return nil, err
 		}
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("conn=%d <--- %+v\n", c.id, inFrame)
 	}
 	return inFrame, nil
@@ -653,10 +653,10 @@ func (c *http2Conn) growFrame(size uint32) error {
 }
 func (c *http2Conn) fillFrames(size uint32) error {
 	n, err := c.readAtLeast(c.frames.buf[c.framesEdge:], int(size))
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
 	}
-	if err != nil && IsDebug(2) {
+	if err != nil && Debug() >= 2 {
 		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	c.framesEdge += uint32(n)
@@ -750,7 +750,7 @@ func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
 	}
 	c.vector[0] = header
 	n, err := c.writev(&c.vector)
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
 		Printf("conn=%d ---> %+v\n", c.id, outFrame)
 	}
@@ -786,7 +786,7 @@ func (c *http2Conn) writev(vector *net.Buffers) (int64, error) {
 }
 
 func (c *http2Conn) closeConn() {
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("conn=%d connClosed by serve()\n", c.id)
 	}
 	c.netConn.Close()
@@ -859,7 +859,7 @@ func (s *http2Stream) onEnd() { // for zeros
 
 func (s *http2Stream) execute() { // goroutine
 	// TODO ...
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("stream processing...")
 	}
 	putHTTP2Stream(s)

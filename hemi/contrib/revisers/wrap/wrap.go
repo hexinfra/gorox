@@ -68,7 +68,7 @@ func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
 func (r *wrapReviser) OnSend(req Request, resp Response, content *Chain) { // sized
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		piece := GetPiece()
 		piece.SetText([]byte("d"))
 		content.PushTail(piece)
@@ -87,12 +87,12 @@ func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
 
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("BeforeEcho")
 	}
 }
 func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		piece := GetPiece()
 		piece.SetText([]byte("c"))
 		chunks.PushTail(piece)
@@ -100,7 +100,7 @@ func (r *wrapReviser) OnEcho(req Request, resp Response, chunks *Chain) { // uns
 }
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
 	// TODO
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("FinishEcho")
 	}
 }

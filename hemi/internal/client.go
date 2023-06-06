@@ -252,7 +252,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 		node.shut()
 	}
 	b.WaitSubs() // nodes
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("backend=%s done\n", b.Name())
 	}
 	b.stage.SubDone()

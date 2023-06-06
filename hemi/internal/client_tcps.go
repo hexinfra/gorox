@@ -60,7 +60,7 @@ func (f *TCPSOutgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("tcpsOutgate done")
 	}
 	f.stage.SubDone()
@@ -157,14 +157,14 @@ func (n *tcpsNode) Maintain() { // goroutine
 		n.IncSub(0 - size)
 	}
 	n.WaitSubs() // conns
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
 func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsNode=%d dial %s\n", n.id, n.address)
 	}
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
@@ -172,7 +172,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 		n.markDown()
 		return nil, err
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -214,12 +214,12 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
-		if IsDebug(2) {
+		if Debug() >= 2 {
 			Printf("TConn[node=%d id=%d] closed\n", tConn.node.id, tConn.id)
 		}
 		n.closeConn(tConn)
 	} else {
-		if IsDebug(2) {
+		if Debug() >= 2 {
 			Printf("TConn[node=%d id=%d] pushed\n", tConn.node.id, tConn.id)
 		}
 		n.pushConn(tConn)

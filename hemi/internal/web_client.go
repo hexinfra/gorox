@@ -470,7 +470,7 @@ func (r *clientResponse_) examineHead() bool {
 			return false
 		}
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))

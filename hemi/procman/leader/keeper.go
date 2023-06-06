@@ -35,7 +35,7 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 
 	worker := newWorker(connKey)
 	worker.start(configBase, configFile, dieChan)
-	if hemi.IsDebug(1) {
+	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] worker process id=%d started\n", worker.pid())
 	}
 	keeperChan <- nil // reply that we have created the worker.
@@ -55,7 +55,7 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 					dieChan2 := make(chan int)
 					worker2 := newWorker(connKey)
 					worker2.start(configBase, configFile, dieChan2)
-					if hemi.IsDebug(1) {
+					if hemi.Debug() >= 1 {
 						hemi.Printf("[leader] new worker process id=%d started\n", worker2.pid())
 					}
 					// Quit old worker
@@ -63,7 +63,7 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 					worker.tell(req)
 					worker.closeConn()
 					<-dieChan
-					if hemi.IsDebug(1) {
+					if hemi.Debug() >= 1 {
 						hemi.Printf("[leader] old worker process id=%d exited\n", worker.pid())
 					}
 					// Use new worker

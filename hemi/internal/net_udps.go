@@ -76,7 +76,7 @@ func (m *UDPSMesher) serve() { // goroutine
 	if m.logger != nil {
 		m.logger.Close()
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("udpsMesher=%s done\n", m.Name())
 	}
 	m.stage.SubDone()

@@ -49,7 +49,7 @@ func (j *statCronjob) Schedule() { // goroutine
 	j.Loop(time.Minute, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("statCronjob=%s done\n", j.Name())
 	}
 	j.stage.SubDone()

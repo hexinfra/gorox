@@ -58,7 +58,7 @@ func (f *QUICOutgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("quicOutgate done")
 	}
 	f.stage.SubDone()
@@ -138,7 +138,7 @@ func (n *quicNode) Maintain() { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("quicNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()

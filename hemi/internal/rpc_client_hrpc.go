@@ -51,7 +51,7 @@ func (f *HRPCOutgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("hrpcOutgate done")
 	}
 	f.stage.SubDone()
@@ -100,7 +100,7 @@ func (n *hrpcNode) Maintain() { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("hrpcNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()

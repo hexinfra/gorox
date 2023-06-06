@@ -80,7 +80,7 @@ func (m *TCPSMesher) serve() { // goroutine
 	if m.logger != nil {
 		m.logger.Close()
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsMesher=%s done\n", m.Name())
 	}
 	m.stage.SubDone()
@@ -139,7 +139,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				continue
 			}
 			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
-			if IsDebug(1) {
+			if Debug() >= 1 {
 				Printf("%+v\n", tcpsConn)
 			}
 			go tcpsConn.execute() // tcpsConn is put to pool in execute()
@@ -147,7 +147,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.mesher.SubDone()
@@ -178,7 +178,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.mesher.SubDone()

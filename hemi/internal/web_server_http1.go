@@ -74,7 +74,7 @@ func (s *httpxServer) OnConfigure() {
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 
-	if IsDebug(2) { // remove this condition after HTTP/2 server is fully implemented
+	if Debug() >= 2 { // remove this condition after HTTP/2 server is fully implemented
 		// enableHTTP2
 		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, false) // TODO: change to true after HTTP/2 server is fully implemented
 		// h2cMode
@@ -112,7 +112,7 @@ func (s *httpxServer) Serve() { // goroutine
 		}
 	}
 	s.WaitSubs() // gates
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
@@ -144,7 +144,7 @@ func (g *httpxGate) open() error {
 	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
 	if err == nil {
 		g.gate = gate.(*net.TCPListener)
-		if IsDebug(1) {
+		if Debug() >= 1 {
 			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.address)
 		}
 	}
@@ -187,7 +187,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
@@ -224,7 +224,7 @@ func (g *httpxGate) serveTLS() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
 	g.server.SubDone()
@@ -502,7 +502,7 @@ func (s *http1Stream) executeExchan(app *App, req *http1Request, resp *http1Resp
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
@@ -627,7 +627,7 @@ func (r *http1Request) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }

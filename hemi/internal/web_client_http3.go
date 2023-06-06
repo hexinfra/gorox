@@ -57,7 +57,7 @@ func (f *HTTP3Outgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("http3Outgate done")
 	}
 	f.stage.SubDone()
@@ -122,7 +122,7 @@ func (n *http3Node) Maintain() { // goroutine
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("http3Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()

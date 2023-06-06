@@ -68,7 +68,7 @@ func (s *webServer_) onConfigure(shell Component) {
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
 
-	if IsDebug(2) { // remove this condition after TCPTun and UDPTun are fully implemented
+	if Debug() >= 2 { // remove this condition after TCPTun and UDPTun are fully implemented
 		// enableTCPTun
 		s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
 		// enableUDPTun
@@ -96,7 +96,7 @@ func (s *webServer_) bindApps() {
 			if err != nil {
 				UseExitln(err.Error())
 			}
-			if IsDebug(1) {
+			if Debug() >= 1 {
 				Printf("adding certificate to %s\n", s.ColonPort())
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
@@ -722,7 +722,7 @@ func (r *serverRequest_) examineHead() bool {
 			}
 		}
 	}
-	if IsDebug(3) {
+	if Debug() >= 3 {
 		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
@@ -1200,7 +1200,7 @@ func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint
 		r.zones.acceptLanguage.from = from
 	}
 	r.zones.acceptLanguage.edge = edge
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		/*
 			for i := from; i < edge; i++ {
 				// NOTE: test pair.kind == kindHeader
@@ -1863,7 +1863,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		}
 		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
-			if IsDebug(2) {
+			if Debug() >= 2 {
 				Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
@@ -2074,12 +2074,12 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			part.upload.typeSize, part.upload.typeFrom = uint8(part.type_.size()), part.type_.from
 			part.upload.pathSize, part.upload.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
-				if IsDebug(2) {
+				if Debug() >= 2 {
 					Println("OPENED")
 				}
 				part.osFile = osFile
 			} else {
-				if IsDebug(2) {
+				if Debug() >= 2 {
 					Println(err.Error())
 				}
 				part.osFile = nil
@@ -2122,7 +2122,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				if mode == 1 { // file part ends
 					r.addUpload(&part.upload)
 					part.osFile.Close()
-					if IsDebug(2) {
+					if Debug() >= 2 {
 						Println("CLOSED")
 					}
 				}

@@ -71,7 +71,7 @@ func (f *clockFixture) run() { // goroutine
 		date |= int64(weekday) << 8
 		f.date.Store(date)
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("clock done")
 	}
 	f.stage.SubDone()

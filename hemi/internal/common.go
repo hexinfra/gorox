@@ -69,7 +69,7 @@ func (p *Piece) closeFile() {
 		p.file.Close()
 	}
 	p.file = nil
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		if p.shut {
 			Println("file closed in Piece.closeFile()")
 		} else {
@@ -158,7 +158,7 @@ type Chain struct { // 24 bytes
 }
 
 func (c *Chain) free() {
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("chain.free() called, qnty=%d\n", c.qnty)
 	}
 	if c.qnty == 0 {

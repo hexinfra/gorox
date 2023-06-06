@@ -49,7 +49,7 @@ func (r *demoRunner) Run() { // goroutine
 	r.Loop(time.Second, func(now time.Time) {
 		fmt.Printf("i'm runner %s\n", r.Name())
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("demoRunner=%s done\n", r.Name())
 	}
 	r.stage.SubDone()

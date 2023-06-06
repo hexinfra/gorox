@@ -19,8 +19,8 @@ const Version = "0.1.7-dev"
 
 var _debug atomic.Int32 // debug level
 
-func SetDebug(level int32)     { _debug.Store(level) }
-func IsDebug(level int32) bool { return _debug.Load() >= level }
+func SetDebug(level int32) { _debug.Store(level) }
+func Debug() int32         { return _debug.Load() }
 
 var (
 	_baseOnce sync.Once    // protects _baseDir

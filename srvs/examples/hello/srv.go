@@ -64,7 +64,7 @@ func (s *helloServer) Serve() { // goroutine
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("helloServer=%s done\n", s.Name())
 	}
 	s.Stage().SubDone()
@@ -122,7 +122,7 @@ func (g *helloGate) serve() { // goroutine
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("helloGate=%d done\n", g.ID())
 	}
 	g.server.SubDone()

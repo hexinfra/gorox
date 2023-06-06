@@ -64,7 +64,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		outgate2 := h.stage.http2Outgate
 		conn2, err2 = outgate2.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err2 != nil {
-			if IsDebug(1) {
+			if Debug() >= 1 {
 				Println(err2.Error())
 			}
 			resp.SendBadGateway(nil)
@@ -75,7 +75,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		backend2 := h.backend.(*HTTP2Backend)
 		conn2, err2 = backend2.FetchConn()
 		if err2 != nil {
-			if IsDebug(1) {
+			if Debug() >= 1 {
 				Println(err2.Error())
 			}
 			resp.SendBadGateway(nil)

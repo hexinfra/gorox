@@ -63,7 +63,7 @@ func (f *HTTP1Outgate) run() { // goroutine
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Println("http1Outgate done")
 	}
 	f.stage.SubDone()
@@ -146,7 +146,7 @@ func (n *http1Node) Maintain() { // goroutine
 		n.IncSub(0 - size)
 	}
 	n.WaitSubs() // conns
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("http1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
@@ -171,7 +171,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -195,12 +195,12 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 }
 func (n *http1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
-		if IsDebug(2) {
+		if Debug() >= 2 {
 			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
 		}
 		n.closeConn(h1Conn)
 	} else {
-		if IsDebug(2) {
+		if Debug() >= 2 {
 			Printf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.id, h1Conn.id)
 		}
 		n.pushConn(h1Conn)
@@ -539,7 +539,7 @@ func (r *H1Response) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if IsDebug(2) {
+	if Debug() >= 2 {
 		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
 	}
 }

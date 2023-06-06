@@ -42,7 +42,7 @@ var ( // registers
 
 var ( // core funcs
 	SetDebug = internal.SetDebug
-	IsDebug  = internal.IsDebug
+	Debug    = internal.Debug
 
 	SetBaseDir = internal.SetBaseDir
 	SetLogsDir = internal.SetLogsDir

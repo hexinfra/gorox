@@ -23,7 +23,7 @@ import (
 func Main() {
 	// Check worker's config
 	configBase, configFile := common.GetConfig()
-	if hemi.IsDebug(1) {
+	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
 	}
 	if _, err := hemi.FromFile(configBase, configFile); err != nil {
@@ -60,14 +60,14 @@ var (
 
 func webuiServer() {
 	webChan = make(chan *msgx.Message)
-	if hemi.IsDebug(1) {
+	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
 	}
 	// TODO
 }
 
 func cmduiServer() {
-	if hemi.IsDebug(1) {
+	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
 	}
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
@@ -79,13 +79,13 @@ func cmduiServer() {
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
 		if err != nil {
-			if hemi.IsDebug(1) {
+			if hemi.Debug() >= 1 {
 				hemi.Println("[leader] accept error: " + err.Error())
 			}
 			continue
 		}
 		if err = cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			if hemi.IsDebug(1) {
+			if hemi.Debug() >= 1 {
 				hemi.Println("[leader]: SetReadDeadline error: " + err.Error())
 			}
 			goto closeNext
@@ -93,13 +93,13 @@ func cmduiServer() {
 		if req, err = msgx.Recv(cmdConn, 16<<20); err != nil {
 			goto closeNext
 		}
-		if hemi.IsDebug(1) {
+		if hemi.Debug() >= 1 {
 			hemi.Printf("[leader] recv: %+v\n", req)
 		}
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
-				if hemi.IsDebug(1) {
+				if hemi.Debug() >= 1 {
 					hemi.Println("[leader] received stop")
 				}
 				common.Stop() // worker will stop immediately after msgConn is closed
@@ -111,7 +111,7 @@ func cmduiServer() {
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					cmdGate.Close()
 					cmdGate = newGate
-					if hemi.IsDebug(1) {
+					if hemi.Debug() >= 1 {
 						hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
 					}
 					goto closeNext
@@ -135,7 +135,7 @@ func cmduiServer() {
 				cmdChan <- req
 				resp = <-cmdChan
 			}
-			if hemi.IsDebug(1) {
+			if hemi.Debug() >= 1 {
 				hemi.Printf("[leader] send: %+v\n", resp)
 			}
 			msgx.Send(cmdConn, resp)

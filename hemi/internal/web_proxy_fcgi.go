@@ -1395,7 +1395,8 @@ func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err 
 	}
 	// FCGI header is now immediate.
 	payloadLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
-	recordSize := fcgiHeaderSize + payloadLen + int32(r.records[r.recordsFrom+6]) // with padding
+	paddingLen := int32(r.records[r.recordsFrom+6])
+	recordSize := fcgiHeaderSize + payloadLen + paddingLen // with padding
 	// Is the whole record immediate?
 	if recordSize > remainSize { // no, we need to make it immediate by reading the missing bytes
 		// Shoud we switch to a larger r.records?
@@ -1417,7 +1418,7 @@ func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err 
 	from = r.recordsFrom + fcgiHeaderSize
 	edge = from + payloadLen // payload edge, ignoring padding
 	if IsDebug(2) {
-		Printf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s]\n", kind, from, edge, r.records[from:edge])
+		Printf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s] paddingLen=%d\n", kind, from, edge, r.records[from:edge], paddingLen)
 	}
 	// Clean up positions for next call.
 	if recordSize == remainSize { // all remain data are consumed, so reset positions

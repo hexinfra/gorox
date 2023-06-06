@@ -56,7 +56,7 @@ ACTION
 OPTIONS
 -------
 
-  -debug  <level>   # debug level (default: 0, means disable. max: 2)
+  -debug  <level>   # debug level (default: 0, means disable. max: 3)
   -target <addr>    # leader address to tell or call (default: 127.0.0.1:9527)
   -cmdui  <addr>    # listen address of leader cmdui (default: 127.0.0.1:9527)
   -webui  <addr>    # listen address of leader webui (default: 127.0.0.1:9528)

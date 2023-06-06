@@ -722,7 +722,7 @@ func (r *serverRequest_) examineHead() bool {
 			}
 		}
 	}
-	if IsDebug(2) {
+	if IsDebug(3) {
 		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]

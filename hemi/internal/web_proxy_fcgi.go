@@ -926,10 +926,10 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 	freeSize := int32(cap(r.input)) - r.inputEdge
 	haveSize := r.stdoutEdge - r.stdoutFrom
 	copy(r.input[r.inputEdge:], r.records[r.stdoutFrom:r.stdoutEdge])
-	if freeSize < haveSize { // too much data
+	if freeSize < haveSize { // stdout data is too much to be placed in r.input
 		r.inputEdge += freeSize
 		r.stdoutFrom += freeSize
-	} else { // freeSize >= haveSize, take all stdout data
+	} else { // freeSize >= haveSize, we have taken all stdout data into r.input
 		r.inputEdge += haveSize
 		r.stdoutFrom, r.stdoutEdge = 0, 0
 	}
@@ -1224,7 +1224,7 @@ func (r *fcgiResponse) cleanInput() {
 	if r.hasContent() {
 		r.imme.set(r.pFore, r.inputEdge)
 		// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
-	} else if _, _, err := r.fcgiRecvStdout(); err != io.EOF { // no content, receive endRequest
+	} else if _, _, err := r.fcgiRecvStdout(); err != io.EOF { // no content. must receive an endRequest
 		r.headResult, r.failReason = StatusBadRequest, "bad endRequest"
 	}
 }
@@ -1284,6 +1284,11 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 	if r.imme.notEmpty() {
 		p, err = r.input[r.imme.from:r.imme.edge], nil
 		r.imme.zero()
+		return
+	}
+	if r.stdoutFrom != r.stdoutEdge {
+		p, err = r.records[r.stdoutFrom:r.stdoutEdge], nil
+		r.stdoutFrom, r.stdoutEdge = 0, 0
 		return
 	}
 	if from, edge, err := r.fcgiRecvStdout(); from != edge {

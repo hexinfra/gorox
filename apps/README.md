@@ -3,10 +3,10 @@ directory, but many related apps can be grouped into a container directory.
 
 Some builtin apps are:
 
-  examples/en_us/    - English version of official website.
-  examples/hello/    - An example "hello, world" app.
-  examples/forum/    - An example forum app.
-  examples/zh_en/    - Chinese version of official website.
+  examples/chinese/    - Chinese version of official website.
+  examples/english/    - English version of official website.
+  examples/hello/      - An example "hello, world" app.
+  examples/forum/      - An example forum app.
 
 To add a new static app named "foo":
 

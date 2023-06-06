@@ -5,7 +5,7 @@
 
 // The official website in Chinese.
 
-package zh_cn
+package chinese
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	RegisterAppInit("zh_cn", func(app *App) error {
+	RegisterAppInit("chinese", func(app *App) error {
 		logic := app.Handlet("logic")
 		if logic == nil {
 			return errors.New("no handlet named 'logic' in app config file")

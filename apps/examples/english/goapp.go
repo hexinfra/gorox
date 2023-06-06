@@ -5,7 +5,7 @@
 
 // The official website in English.
 
-package en_us
+package english
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	RegisterAppInit("en_us", func(app *App) error {
+	RegisterAppInit("english", func(app *App) error {
 		logic := app.Handlet("logic")
 		if logic == nil {
 			return errors.New("no handlet named 'logic' in app config file")

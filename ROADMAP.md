@@ -13,7 +13,7 @@ Roadmap
   * [TODO] udptun implementation.
   * [TODO] web application framework implementation.
   * [TODO] documentation.
-  * [TODO] official websites, english and chinese.
+  * [TODO] official websites.
   * [TODO] logger implementation.
   * [TODO] goben design and implementation.
   * [TODO] more unit tests.

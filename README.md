@@ -101,13 +101,13 @@ Documentation
 
 View Gorox documentation online:
 
-  * English version: https://gorox.io/docs
   * Chinese version: https://www.gorox.io/docs
+  * English version: https://gorox.io/docs
 
 Or view locally (ensure your local Gorox is started):
 
-  * English version: http://gorox.net:3080/docs
   * Chinese version: http://www.gorox.net:3080/docs
+  * English version: http://gorox.net:3080/docs
 
 
 Layout
@@ -240,8 +240,8 @@ contact him through Twitter: @diogin.
 
 The official website of the Gorox project is at:
 
-  * English version: https://gorox.io/
   * Chinese version: https://www.gorox.io/
+  * English version: https://gorox.io/
 
 
 License

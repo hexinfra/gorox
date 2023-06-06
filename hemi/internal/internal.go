@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const Version = "0.1.6-dev"
+const Version = "0.1.6"
 
 var _debug atomic.Int32 // debug level
 

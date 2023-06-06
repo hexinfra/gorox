@@ -1360,13 +1360,13 @@ recv:
 		return from, edge, nil
 	}
 	if kind == fcgiKindStderr {
-		if Debug() >= 2 && edge > from {
-			Printf("fcgi stderr=%s\n", r.records[from:edge])
+		if edge > from && Debug() >= 2 {
+			Printf("fcgi stderr=[%s]\n", r.records[from:edge])
 		}
 		goto recv
 	}
 	switch kind {
-	case fcgiKindStdout: // emptyStdout
+	case fcgiKindStdout: // must be emptyStdout
 		for { // receive until endRequest
 			kind, from, edge, err = r.fcgiRecvRecord()
 			if kind == fcgiKindEndRequest {
@@ -1377,8 +1377,8 @@ recv:
 				return 0, 0, fcgiReadBadRecord
 			}
 			// Must be stderr.
-			if Debug() >= 2 && edge > from {
-				Printf("fcgi stderr=%s\n", r.records[from:edge])
+			if edge > from && Debug() >= 2 {
+				Printf("fcgi stderr=[%s]\n", r.records[from:edge])
 			}
 		}
 	case fcgiKindEndRequest:
@@ -1440,7 +1440,7 @@ func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is 
 	}
 	// We now have enough space to grow.
 	n, err := r.exchan.readAtLeast(r.records[r.recordsEdge:], size)
-	if err != nil {
+	if err != nil { // since we *HAVE* to grow, short read is considered as an error
 		return 0, err
 	}
 	r.recordsEdge += int32(n)

@@ -23,7 +23,7 @@ import (
 var keeperChan chan chan *msgx.Message
 
 func workerKeeper(configBase string, configFile string) { // goroutine
-	dieChan := make(chan int) // dead worker go through this channel
+	dieChan := make(chan int) // dead worker goes through this channel
 
 	rand.Seed(time.Now().UnixNano())
 	const chars = "0123456789"

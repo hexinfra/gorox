@@ -64,11 +64,11 @@ If build failed, set CGO_ENABLED=0 and build again:
 
 After you have successfully built binaries from source, or have downloaded and
 uncompressed the official binary distributions, you can run Gorox as a daemon
-(if not, remove the "-daemon" option):
+(remove the "-daemon" option if you don't like to run as a daemon):
 
     shell> ./gorox serve -daemon
 
-To ensure the leader and the worker process are both started:
+To ensure the leader and the worker process have been both started:
 
     shell> ./gorox pids
 
@@ -80,7 +80,7 @@ For more actions and options, run:
 
     shell> ./gorox help
 
-To install, move the whole Gorox directory to where you like. To uninstall,
+To install, move the whole Gorox directory to where you like. To uninstall, just
 remove the whole Gorox directory.
 
 

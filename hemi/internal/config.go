@@ -110,15 +110,21 @@ func (c *config) evaluate() {
 		case tokenIdentifier: // some identifiers are components
 			if comp, ok := c.signedComps[token.text]; ok {
 				token.code = comp
+			} else {
+				// TODO
 			}
 		case tokenConstant: // evaluate constants
 			if text, ok := c.constants[token.text]; ok {
 				token.kind = tokenString
 				token.text = text
+			} else {
+				// TODO
 			}
 		case tokenVariable: // evaluate variable indexes
 			if index, ok := c.varIndexes[token.text]; ok {
 				token.code = index
+			} else {
+				// TODO
 			}
 		}
 	}
@@ -569,7 +575,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 func (c *config) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
-	cond := ruleCond{varIndex: variable.code}
+	cond := ruleCond{varIndex: variable.code, varName: variable.text}
 	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
@@ -849,6 +855,7 @@ type caseCond struct {
 // ruleCond is the rule condition.
 type ruleCond struct {
 	varIndex int16    // see varIndexes
+	varName  string   // variable name
 	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }

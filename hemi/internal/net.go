@@ -168,7 +168,7 @@ type case_[M _mesher, D _dealer, E _editor] struct {
 	editors []E // editors contained
 	// States
 	general  bool  // general match?
-	varIndex int16 // the variable code
+	varIndex int16 // the variable index
 	patterns [][]byte
 	regexps  []*regexp.Regexp
 }

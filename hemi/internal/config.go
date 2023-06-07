@@ -100,7 +100,7 @@ func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
 func (c *config) show() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
-		fmt.Printf("kind=%16s info=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
+		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.code, token.line, token.file, token.text)
 	}
 }
 func (c *config) evaluate() {
@@ -109,16 +109,16 @@ func (c *config) evaluate() {
 		switch token.kind {
 		case tokenIdentifier: // some identifiers are components
 			if comp, ok := c.signedComps[token.text]; ok {
-				token.info = comp
+				token.code = comp
 			}
 		case tokenConstant: // evaluate constants
 			if text, ok := c.constants[token.text]; ok {
 				token.kind = tokenString
 				token.text = text
 			}
-		case tokenVariable: // evaluate variable codes
-			if code, ok := c.varIndexes[token.text]; ok {
-				token.info = code
+		case tokenVariable: // evaluate variable indexes
+			if index, ok := c.varIndexes[token.text]; ok {
+				token.code = index
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func (c *config) newName() string {
 }
 
 func (c *config) parse() (stage *Stage, err error) {
-	if current := c.current(); current.kind == tokenIdentifier && current.info == compStage {
+	if current := c.current(); current.kind == tokenIdentifier && current.code == compStage {
 		stage = createStage()
 		stage.setParent(nil)
 		c.parseStage(stage)
@@ -180,7 +180,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compFixture:
 			c.parseFixture(current, stage)
 		case compRunner:
@@ -243,7 +243,7 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compQUICDealer:
 			c.parseQUICDealer(current, mesher, nil)
 		case compQUICEditor:
@@ -289,7 +289,7 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compQUICDealer:
 			c.parseQUICDealer(current, mesher, kase)
 		case compQUICEditor:
@@ -316,7 +316,7 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compTCPSDealer:
 			c.parseTCPSDealer(current, mesher, nil)
 		case compTCPSEditor:
@@ -362,7 +362,7 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compTCPSDealer:
 			c.parseTCPSDealer(current, mesher, kase)
 		case compTCPSEditor:
@@ -389,7 +389,7 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compUDPSDealer:
 			c.parseUDPSDealer(current, mesher, nil)
 		case compUDPSEditor:
@@ -435,7 +435,7 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compUDPSDealer:
 			c.parseUDPSDealer(current, mesher, kase)
 		case compUDPSEditor:
@@ -451,7 +451,7 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	if c.currentIs(tokenFSCheck) {
 		panic(errors.New("config error: fs check is not allowed in case"))
 	}
-	cond := caseCond{varIndex: variable.info}
+	cond := caseCond{varIndex: variable.code}
 	compare := c.expect(tokenCompare)
 	patterns := []string{}
 	if current := c.forward(); current.kind == tokenString {
@@ -503,7 +503,7 @@ func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compHandlet:
 			c.parseHandlet(current, app, nil)
 		case compReviser:
@@ -554,7 +554,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		if current.kind != tokenIdentifier {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
-		switch current.info {
+		switch current.code {
 		case compHandlet:
 			c.parseHandlet(current, app, rule)
 		case compReviser:
@@ -569,7 +569,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 func (c *config) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
-	cond := ruleCond{varIndex: variable.info}
+	cond := ruleCond{varIndex: variable.code}
 	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
@@ -1087,7 +1087,7 @@ func (l *lexer) _loadURL(base string, file string) string {
 // token is a token in config file.
 type token struct { // 40 bytes
 	kind int16  // tokenXXX
-	info int16  // comp for identifiers, or code for variables
+	code int16  // comp for identifiers, or index for variables
 	line int32  // at line number
 	file string // file path
 	text string // text literal

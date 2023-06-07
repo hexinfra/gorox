@@ -507,7 +507,7 @@ type Rule struct {
 	logAccess  bool     // enable booking for this rule?
 	returnCode int16    // ...
 	returnText []byte   // ...
-	varIndex   int16    // the variable code
+	varIndex   int16    // the variable index
 	patterns   [][]byte // condition patterns
 	regexps    []*regexp.Regexp
 	matcher    func(rule *Rule, req Request, value []byte) bool

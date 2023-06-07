@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// A simple forum app.
+// A simple forums app.
 
-package forum
+package forums
 
 import (
 	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
@@ -14,20 +14,20 @@ import (
 )
 
 func init() {
-	RegisterAppInit("forum", func(app *App) error {
+	RegisterAppInit("forums", func(app *App) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("forumHandlet", func(name string, stage *Stage, app *App) Handlet {
-		h := new(forumHandlet)
+	RegisterHandlet("forumsHandlet", func(name string, stage *Stage, app *App) Handlet {
+		h := new(forumsHandlet)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-type forumHandlet struct {
+type forumsHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
@@ -36,18 +36,18 @@ type forumHandlet struct {
 	// States
 }
 
-func (h *forumHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *forumsHandlet) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *forumHandlet) OnShutdown() {
+func (h *forumsHandlet) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *forumHandlet) OnConfigure() {
+func (h *forumsHandlet) OnConfigure() {
 }
-func (h *forumHandlet) OnPrepare() {
+func (h *forumsHandlet) OnPrepare() {
 	r := simple.New()
 
 	r.GET("/", h.index)
@@ -55,14 +55,14 @@ func (h *forumHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *forumHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *forumsHandlet) Handle(req Request, resp Response) (next bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return
 }
-func (h *forumHandlet) notFound(req Request, resp Response) {
+func (h *forumsHandlet) notFound(req Request, resp Response) {
 	resp.Send("oops, target not found!")
 }
 
-func (h *forumHandlet) index(req Request, resp Response) {
-	resp.Send("forum index")
+func (h *forumsHandlet) index(req Request, resp Response) {
+	resp.Send("forums index")
 }

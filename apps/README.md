@@ -5,8 +5,8 @@ Some builtin apps are:
 
   examples/chinese/    - Chinese version of official website.
   examples/english/    - English version of official website.
+  examples/forums/     - An example forums app.
   examples/hello/      - An example "hello, world" app.
-  examples/forum/      - An example forum app.
 
 To add a new static app named "foo":
 

@@ -725,28 +725,9 @@ func (r *fcgiRequest) _tooSlow() bool {
 }
 
 var ( // fcgi request errors
-	fcgiWriteTooSlow = errors.New("fcgi write too slow")
-	fcgiWriteBroken  = errors.New("fcgi write broken")
+	fcgiWriteTooSlow = errors.New("fcgi: write too slow")
+	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
-
-// poolFCGIRecords
-var poolFCGIRecords sync.Pool
-
-const fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding // max record = header + max payload + max padding
-
-func getFCGIRecords() []byte {
-	if x := poolFCGIRecords.Get(); x == nil {
-		return make([]byte, fcgiMaxRecords)
-	} else {
-		return x.([]byte)
-	}
-}
-func putFCGIRecords(records []byte) {
-	if cap(records) != fcgiMaxRecords {
-		BugExitln("fcgi: bad records")
-	}
-	poolFCGIRecords.Put(records)
-}
 
 // fcgiResponse must implements webIn and clientResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
@@ -1468,9 +1449,28 @@ var ( // fcgi response errors
 
 const ( // fcgi constants
 	fcgiHeaderSize = 8
-	fcgiMaxPayload = _64K1
+	fcgiMaxPayload = 65535
 	fcgiMaxPadding = 255
 )
+
+// poolFCGIRecords
+var poolFCGIRecords sync.Pool
+
+const fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding
+
+func getFCGIRecords() []byte {
+	if x := poolFCGIRecords.Get(); x == nil {
+		return make([]byte, fcgiMaxRecords)
+	} else {
+		return x.([]byte)
+	}
+}
+func putFCGIRecords(records []byte) {
+	if cap(records) != fcgiMaxRecords {
+		BugExitln("fcgi: bad records")
+	}
+	poolFCGIRecords.Put(records)
+}
 
 var ( // request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes

@@ -77,47 +77,43 @@ type ( // core types
 
 	Runner = internal.Runner
 
-	QUICOutgate  = internal.QUICOutgate
-	QUDSOutgate  = internal.QUDSOutgate
-	TCPSOutgate  = internal.TCPSOutgate
-	TUDSOutgate  = internal.TUDSOutgate
-	UDPSOutgate  = internal.UDPSOutgate
-	UUDSOutgate  = internal.UUDSOutgate
-	HRPCOutgate  = internal.HRPCOutgate
-	HTTP1Outgate = internal.HTTP1Outgate
-	HTTP2Outgate = internal.HTTP2Outgate
-	HTTP3Outgate = internal.HTTP3Outgate
-	HWEBOutgate  = internal.HWEBOutgate
-
 	Backend = internal.Backend
 
+	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend
 	QConnection = internal.QConnection
 	QStream     = internal.QStream
 	QOneway     = internal.QOneway
 
+	QUDSOutgate = internal.QUDSOutgate
 	QUDSBackend = internal.QUDSBackend
 	XConnection = internal.XConnection
 	XStream     = internal.XStream
 	XOneway     = internal.XOneway
 
+	TCPSOutgate = internal.TCPSOutgate
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
 
+	TUDSOutgate = internal.TUDSOutgate
 	TUDSBackend = internal.TUDSBackend
 	XConn       = internal.XConn
 
+	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
 	ULink       = internal.ULink
 
+	UUDSOutgate = internal.UUDSOutgate
 	UUDSBackend = internal.UUDSBackend
 	XLink       = internal.XLink
 
+	HRPCOutgate = internal.HRPCOutgate
 	HRPCBackend = internal.HRPCBackend
 	HCall       = internal.HCall
 	HReq        = internal.HReq
 	HResp       = internal.HResp
 
+	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -125,6 +121,7 @@ type ( // core types
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
 
+	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
@@ -132,6 +129,7 @@ type ( // core types
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
 
+	HTTP3Outgate = internal.HTTP3Outgate
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
@@ -139,6 +137,7 @@ type ( // core types
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
 
+	HWEBOutgate = internal.HWEBOutgate
 	HWEBBackend = internal.HWEBBackend
 	HExchan     = internal.HExchan
 	HRequest    = internal.HRequest
@@ -195,8 +194,10 @@ type ( // core mixins
 
 	QUICDealer_ = internal.QUICDealer_
 	QUICEditor_ = internal.QUICEditor_
+
 	TCPSDealer_ = internal.TCPSDealer_
 	TCPSEditor_ = internal.TCPSEditor_
+
 	UDPSDealer_ = internal.UDPSDealer_
 	UDPSEditor_ = internal.UDPSEditor_
 

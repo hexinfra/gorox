@@ -1080,6 +1080,8 @@ func (t token) name() string { return tokenNames[t.kind] }
 const ( // token list. if you change this list, change in tokenNames too.
 	// Component
 	tokenComponent = 1 + iota // stage, httpxServer, ...
+	// Properties
+	tokenProperty // .listen, .maxSize, ...
 	// Operators
 	tokenLeftBrace    // {
 	tokenRightBrace   // }
@@ -1095,10 +1097,6 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
 	tokenAND          // &&
 	tokenOR           // ||
-	// Properties
-	tokenProperty // .listen, .maxSize, ...
-	// Variables
-	tokenVariable // $method, $path, ...
 	// Values
 	tokenBool     // true, false
 	tokenInteger  // 123, 16K, 256M, ...
@@ -1106,11 +1104,15 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenDuration // 1s, 2m, 3h, 4d, ...
 	tokenList     // lists: (...)
 	tokenDict     // dicts: [...]
+	// Variables
+	tokenVariable // $method, $path, ...
 )
 
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
 	// Component
 	tokenComponent: "component",
+	// Properties
+	tokenProperty: "property",
 	// Operators
 	tokenLeftBrace:    "leftBrace",
 	tokenRightBrace:   "rightBrace",
@@ -1126,10 +1128,6 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenFSCheck:      "fsCheck",
 	tokenAND:          "and",
 	tokenOR:           "or",
-	// Properties
-	tokenProperty: "property",
-	// Variables
-	tokenVariable: "variable",
 	// Value literals
 	tokenBool:     "bool",
 	tokenInteger:  "integer",
@@ -1137,6 +1135,8 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenDuration: "duration",
 	tokenList:     "list",
 	tokenDict:     "dict",
+	// Variables
+	tokenVariable: "variable",
 }
 
 var ( // solos

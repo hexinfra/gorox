@@ -1759,7 +1759,7 @@ http1Proxy {
 		.tlsMode = false
 		.readTimeout = 60s
 		.writeTimeout = 60s
-		// .numGates = runtime.NumCPU() ; 不可配置，设置为cpu的核心数。
+		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConnsPerGate = 100000
 		.forApps = ("example_com")
 		.enableTCPTun = false
@@ -1802,9 +1802,9 @@ http1Proxy {
 				</li>
 
 				<li>
-					<p>.numGates 同时监听连接的线程数据量，默认 CPU 的核心数，目前不可配置</p>
+					<p>.numGates 同时监听连接的 listen socket 数量，默认为 CPU 的核心数</p>
 					<code>语法：.numGates = runtime.NumCPU()
-						默认值：runtime.NumCPU() // 目前不可配置
+						默认值：runtime.NumCPU()
 						取值范围： (0s, 10m]
 					</code>
 				</li>

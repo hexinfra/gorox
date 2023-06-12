@@ -122,12 +122,12 @@ func _exitf(exitCode int, prefix, format string, args ...any) {
 
 func FromText(text string) (*Stage, error) {
 	_checkDirs()
-	c := newConfig()
+	var c config
 	return c.fromText(text)
 }
 func FromFile(base string, file string) (*Stage, error) {
 	_checkDirs()
-	c := newConfig()
+	var c config
 	return c.fromFile(base, file)
 }
 func _checkDirs() {

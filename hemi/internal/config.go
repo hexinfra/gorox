@@ -47,29 +47,13 @@ var varIndexes = map[string]int16{
 	"contentType": 9, // application/json
 }
 
-func newConfig() *config {
-	c := new(config)
-	c.init(map[string]string{
-		"baseDir": BaseDir(),
-		"logsDir": LogsDir(),
-		"tempDir": TempDir(),
-		"varsDir": VarsDir(),
-	})
-	return c
-}
-
 // config applies configuration and creates a new stage.
 type config struct {
 	// States
-	constants map[string]string // defined constants
-	tokens    []token           // the token list
-	index     int               // token index
-	limit     int               // limit of token index
-	counter   int               // the name for components without a name
-}
-
-func (c *config) init(constants map[string]string) {
-	c.constants = constants
+	tokens  []token // the token list
+	index   int     // token index
+	limit   int     // limit of token index
+	counter int     // the name for components without a name
 }
 
 func (c *config) fromText(text string) (stage *Stage, err error) {
@@ -80,7 +64,6 @@ func (c *config) fromText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	c.eval()
 	return c.parse()
 }
 func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
@@ -91,7 +74,6 @@ func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	c.eval()
 	return c.parse()
 }
 
@@ -99,18 +81,6 @@ func (c *config) show() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
 		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.code, token.line, token.file, token.text)
-	}
-}
-func (c *config) eval() {
-	for i := 0; i < len(c.tokens); i++ {
-		if token := &c.tokens[i]; token.kind == tokenConstant {
-			if text, ok := c.constants[token.text]; ok {
-				token.kind = tokenString
-				token.text = text
-			} else {
-				// TODO
-			}
-		}
 	}
 }
 
@@ -927,7 +897,21 @@ func (l *lexer) scan() []token {
 			}
 		case '%': // %constant
 			l.nextAlnums()
-			tokens = append(tokens, token{tokenConstant, 0, line, l.file, l.text[from+1 : l.index]})
+			name := l.text[from+1 : l.index]
+			var value string
+			switch name {
+			case "baseDir":
+				value = BaseDir()
+			case "logsDir":
+				value = LogsDir()
+			case "tempDir":
+				value = TempDir()
+			case "varsDir":
+				value = VarsDir()
+			default:
+				panic(fmt.Errorf("lexer: '%%%s' is not a valid constant in line %d (%s)\n", name, line, l.file))
+			}
+			tokens = append(tokens, token{tokenString, 0, line, l.file, value})
 		case '.': // .property
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenProperty, 0, line, l.file, l.text[from+1 : l.index]})
@@ -939,7 +923,6 @@ func (l *lexer) scan() []token {
 					tokens = append(tokens, token{tokenVariable, index, line, l.file, name})
 					break
 				} else {
-					// TODO
 					panic(fmt.Errorf("lexer: '$%s' is not a valid variable in line %d (%s)\n", name, line, l.file))
 				}
 			}
@@ -983,12 +966,12 @@ func (l *lexer) scan() []token {
 				l.index++
 			} else if byteIsAlpha(b) { // 'a-zA-Z'
 				l.nextAlnums() // '0-9a-zA-Z'
-				if word := l.text[from:l.index]; word == "true" || word == "false" {
-					tokens = append(tokens, token{tokenBool, 0, line, l.file, word})
-				} else if comp, ok := signedComps[word]; ok {
-					tokens = append(tokens, token{tokenComponent, comp, line, l.file, word})
+				if identifier := l.text[from:l.index]; identifier == "true" || identifier == "false" {
+					tokens = append(tokens, token{tokenBool, 0, line, l.file, identifier})
+				} else if comp, ok := signedComps[identifier]; ok {
+					tokens = append(tokens, token{tokenComponent, comp, line, l.file, identifier})
 				} else {
-					panic(fmt.Errorf("lexer: '%s' is not a valid component in line %d (%s)\n", word, line, l.file))
+					panic(fmt.Errorf("lexer: '%s' is not a valid component in line %d (%s)\n", identifier, line, l.file))
 				}
 			} else if byteIsDigit(b) { // '0-9'
 				l.nextDigits()
@@ -1112,8 +1095,6 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
 	tokenAND          // &&
 	tokenOR           // ||
-	// Constants
-	tokenConstant // %baseDir, %logsDir, %tempDir, %varsDir
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
 	// Variables
@@ -1145,8 +1126,6 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenFSCheck:      "fsCheck",
 	tokenAND:          "and",
 	tokenOR:           "or",
-	// Constants
-	tokenConstant: "constant",
 	// Properties
 	tokenProperty: "property",
 	// Variables

@@ -695,8 +695,8 @@ func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patter
 	return false
 }
 func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
-	for _, exp := range r.regexps {
-		if exp.Match(value) {
+	for _, regexp := range r.regexps {
+		if regexp.Match(value) {
 			return true
 		}
 	}
@@ -761,8 +761,8 @@ func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* pat
 	return true
 }
 func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
-	for _, exp := range r.regexps {
-		if exp.Match(value) {
+	for _, regexp := range r.regexps {
+		if regexp.Match(value) {
 			return false
 		}
 	}

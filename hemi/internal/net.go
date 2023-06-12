@@ -241,8 +241,8 @@ func (c *case_[M, D, E]) containMatch(value []byte) bool {
 	return false
 }
 func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
-	for _, exp := range c.regexps {
-		if exp.Match(value) {
+	for _, regexp := range c.regexps {
+		if regexp.Match(value) {
 			return true
 		}
 	}
@@ -281,8 +281,8 @@ func (c *case_[M, D, E]) notContainMatch(value []byte) bool {
 	return true
 }
 func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
-	for _, exp := range c.regexps {
-		if exp.Match(value) {
+	for _, regexp := range c.regexps {
+		if regexp.Match(value) {
 			return false
 		}
 	}

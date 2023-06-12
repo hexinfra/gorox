@@ -142,8 +142,8 @@ func (x *HExchan) onUse(node *hwebNode, id int32) { // for non-zeros
 	x.clientStream_.onUse()
 	x.node = node
 	x.id = id
-	x.request.onUse(Version3)
-	x.response.onUse(Version3)
+	x.request.onUse(Version2)
+	x.response.onUse(Version2)
 }
 func (x *HExchan) onEnd() { // for zeros
 	x.response.onEnd()

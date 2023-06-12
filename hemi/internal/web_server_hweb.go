@@ -124,8 +124,8 @@ type hwebExchan0 struct { // for fast reset, entirely
 func (x *hwebExchan) onUse(gate *hwebGate) { // for non-zeros
 	x.serverStream_.onUse()
 	x.gate = gate
-	x.request.onUse(Version3)
-	x.response.onUse(Version3)
+	x.request.onUse(Version2)
+	x.response.onUse(Version2)
 }
 func (x *hwebExchan) onEnd() { // for zeros
 	x.response.onEnd()
@@ -254,7 +254,7 @@ func (r *hwebResponse) pass1xx(resp clientResponse) bool { // used by proxies
 	// TODO
 	// For next use.
 	r.onEnd()
-	r.onUse(Version3)
+	r.onUse(Version2)
 	return false
 }
 func (r *hwebResponse) passHeaders() error       { return r.writeHeadersH() }

@@ -189,7 +189,8 @@ func (c *udpsCase) isMatch(link *UDPSLink) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, link, link.unsafeVariable(c.varIndex))
+	value := link.unsafeVariable(c.varIndex)
+	return c.matcher(c, link, value)
 }
 
 var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []byte) bool{
@@ -312,7 +313,7 @@ func (l *UDPSLink) closeConn() {
 	l.udpConn.Close()
 }
 
-func (l *UDPSLink) unsafeVariable(index int16) []byte {
+func (l *UDPSLink) unsafeVariable(index int16) (value []byte) {
 	return udpsLinkVariables[index](l)
 }
 

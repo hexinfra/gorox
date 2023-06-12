@@ -253,7 +253,8 @@ func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, conn, conn.unsafeVariable(c.varIndex))
+	value := conn.unsafeVariable(c.varIndex)
+	return c.matcher(c, conn, value)
 }
 
 var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
@@ -445,7 +446,7 @@ func (c *TCPSConn) closeConn() {
 	c.gate.onConnClosed()
 }
 
-func (c *TCPSConn) unsafeVariable(index int16) []byte {
+func (c *TCPSConn) unsafeVariable(index int16) (value []byte) {
 	return tcpsConnVariables[index](c)
 }
 

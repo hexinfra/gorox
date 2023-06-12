@@ -176,7 +176,8 @@ func (c *quicCase) isMatch(connection *QUICConnection) bool {
 	if c.general {
 		return true
 	}
-	return c.matcher(c, connection, connection.unsafeVariable(c.varIndex))
+	value := connection.unsafeVariable(c.varIndex)
+	return c.matcher(c, connection, value)
 }
 
 var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnection, value []byte) bool{
@@ -296,7 +297,7 @@ func (c *QUICConnection) Close() error {
 	return nil
 }
 
-func (c *QUICConnection) unsafeVariable(index int16) []byte {
+func (c *QUICConnection) unsafeVariable(index int16) (value []byte) {
 	return quicConnectionVariables[index](c)
 }
 

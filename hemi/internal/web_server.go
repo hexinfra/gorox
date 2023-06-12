@@ -378,7 +378,7 @@ type Request interface {
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
-	unsafeVariable(index int16) []byte
+	unsafeVariable(index int16) (value []byte)
 }
 
 // serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
@@ -2408,7 +2408,7 @@ func (r *serverRequest_) hookReviser(reviser Reviser) {
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-func (r *serverRequest_) unsafeVariable(index int16) []byte {
+func (r *serverRequest_) unsafeVariable(index int16) (value []byte) {
 	return serverRequestVariables[index](r)
 }
 

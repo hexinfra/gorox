@@ -17,6 +17,36 @@ import (
 	"time"
 )
 
+var varIndexes = map[string]int16{
+	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
+	"srcHost": 0,
+	"srcPort": 1,
+
+	// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
+	"transport": 2, // tcp/udp, tls/dtls
+
+	// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
+	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
+
+	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
+	"serverName": 3,
+	"nextProto":  4,
+
+	// udps link vars. keep sync with udpsLinkVariables in net_udps.go
+
+	// web request vars. keep sync with serverRequestVariables in web_server.go
+	"method":      0, // GET, POST, ...
+	"scheme":      1, // http, https
+	"authority":   2, // example.com, example.org:8080
+	"hostname":    3, // example.com, example.org
+	"colonPort":   4, // :80, :8080
+	"path":        5, // /abc, /def/
+	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
+	"encodedPath": 7, // /abc, /%cc%dd
+	"queryString": 8, // ?x=y, ?y=z&z=%ff
+	"contentType": 9, // application/json
+}
+
 func newConfig() *config {
 	c := new(config)
 	c.init(map[string]string{
@@ -24,54 +54,22 @@ func newConfig() *config {
 		"logsDir": LogsDir(),
 		"tempDir": TempDir(),
 		"varsDir": VarsDir(),
-	}, map[string]int16{
-		// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
-		"srcHost": 0,
-		"srcPort": 1,
-
-		// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
-		"transport": 2, // tcp/udp, tls/dtls
-
-		// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
-		// quic stream vars. keep sync with quicConnectionVariables in net_quic.go
-
-		// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
-		"serverName": 3,
-		"nextProto":  4,
-
-		// udps link vars. keep sync with udpsLinkVariables in net_udps.go
-
-		// http request vars. keep sync with serverRequestVariables in web_server.go
-		"method":      0, // GET, POST, ...
-		"scheme":      1, // http, https
-		"authority":   2, // example.com, example.org:8080
-		"hostname":    3, // example.com, example.org
-		"colonPort":   4, // :80, :8080
-		"path":        5, // /abc, /def/
-		"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
-		"encodedPath": 7, // /abc, /%cc%dd
-		"queryString": 8, // ?x=y, ?y=z&z=%ff
-		"contentType": 9, // application/json
-	}, signedComps)
+	})
 	return c
 }
 
 // config applies configuration and creates a new stage.
 type config struct {
 	// States
-	constants   map[string]string // defined constants
-	varIndexes  map[string]int16  // defined var indexes
-	signedComps map[string]int16  // defined signed comps
-	tokens      []token           // the token list
-	index       int               // token index
-	limit       int               // limit of token index
-	counter     int               // the name for components without a name
+	constants map[string]string // defined constants
+	tokens    []token           // the token list
+	index     int               // token index
+	limit     int               // limit of token index
+	counter   int               // the name for components without a name
 }
 
-func (c *config) init(constants map[string]string, varIndexes map[string]int16, signedComps map[string]int16) {
+func (c *config) init(constants map[string]string) {
 	c.constants = constants
-	c.varIndexes = varIndexes
-	c.signedComps = signedComps
 }
 
 func (c *config) fromText(text string) (stage *Stage, err error) {
@@ -82,7 +80,7 @@ func (c *config) fromText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	c.evaluate()
+	c.eval()
 	return c.parse()
 }
 func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
@@ -93,7 +91,7 @@ func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	c.evaluate()
+	c.eval()
 	return c.parse()
 }
 
@@ -103,26 +101,12 @@ func (c *config) show() {
 		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.code, token.line, token.file, token.text)
 	}
 }
-func (c *config) evaluate() {
+func (c *config) eval() {
 	for i := 0; i < len(c.tokens); i++ {
-		token := &c.tokens[i]
-		switch token.kind {
-		case tokenIdentifier: // some identifiers are components
-			if comp, ok := c.signedComps[token.text]; ok {
-				token.code = comp
-			} else {
-				// TODO
-			}
-		case tokenConstant: // evaluate constants
+		if token := &c.tokens[i]; token.kind == tokenConstant {
 			if text, ok := c.constants[token.text]; ok {
 				token.kind = tokenString
 				token.text = text
-			} else {
-				// TODO
-			}
-		case tokenVariable: // evaluate variable indexes
-			if index, ok := c.varIndexes[token.text]; ok {
-				token.code = index
 			} else {
 				// TODO
 			}
@@ -163,7 +147,7 @@ func (c *config) newName() string {
 }
 
 func (c *config) parse() (stage *Stage, err error) {
-	if current := c.current(); current.kind == tokenIdentifier && current.code == compStage {
+	if current := c.current(); current.kind == tokenComponent && current.code == compStage {
 		stage = createStage()
 		stage.setParent(nil)
 		c.parseStage(stage)
@@ -183,7 +167,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseAssign(current, stage)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -246,7 +230,7 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			c.parseAssign(current, mesher)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -292,7 +276,7 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 			c.parseAssign(current, kase)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -319,7 +303,7 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			c.parseAssign(current, mesher)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -365,7 +349,7 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 			c.parseAssign(current, kase)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -392,7 +376,7 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			c.parseAssign(current, mesher)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -438,7 +422,7 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 			c.parseAssign(current, kase)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -506,7 +490,7 @@ func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 			c.parseAssign(current, app)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -557,7 +541,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 			c.parseAssign(current, rule)
 			continue
 		}
-		if current.kind != tokenIdentifier {
+		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 		switch current.code {
@@ -950,8 +934,14 @@ func (l *lexer) scan() []token {
 		case '$': // $variable
 			if !l.nextIs('=') {
 				l.nextAlnums()
-				tokens = append(tokens, token{tokenVariable, 0, line, l.file, l.text[from+1 : l.index]})
-				break
+				name := l.text[from+1 : l.index]
+				if index, ok := varIndexes[name]; ok {
+					tokens = append(tokens, token{tokenVariable, index, line, l.file, name})
+					break
+				} else {
+					// TODO
+					panic(fmt.Errorf("lexer: '$%s' is not a valid variable in line %d (%s)\n", name, line, l.file))
+				}
 			}
 			fallthrough // $=
 		case '^', '*', '~': // ^=, *=, ~=
@@ -991,14 +981,16 @@ func (l *lexer) scan() []token {
 			if kind := soloKinds[b]; kind != 0 { // kind starts from 1
 				tokens = append(tokens, token{kind, 0, line, l.file, soloTexts[b]})
 				l.index++
-			} else if byteIsAlpha(b) {
-				l.nextAlnums()
-				if identifier := l.text[from:l.index]; identifier == "true" || identifier == "false" {
-					tokens = append(tokens, token{tokenBool, 0, line, l.file, identifier})
+			} else if byteIsAlpha(b) { // 'a-zA-Z'
+				l.nextAlnums() // '0-9a-zA-Z'
+				if word := l.text[from:l.index]; word == "true" || word == "false" {
+					tokens = append(tokens, token{tokenBool, 0, line, l.file, word})
+				} else if comp, ok := signedComps[word]; ok {
+					tokens = append(tokens, token{tokenComponent, comp, line, l.file, word})
 				} else {
-					tokens = append(tokens, token{tokenIdentifier, 0, line, l.file, identifier})
+					panic(fmt.Errorf("lexer: '%s' is not a valid component in line %d (%s)\n", word, line, l.file))
 				}
-			} else if byteIsDigit(b) {
+			} else if byteIsDigit(b) { // '0-9'
 				l.nextDigits()
 				digits := true
 				if l.index < l.limit {
@@ -1094,7 +1086,7 @@ func (l *lexer) _loadURL(base string, file string) string {
 // token is a token in config file.
 type token struct { // 40 bytes
 	kind int16  // tokenXXX
-	code int16  // comp for identifiers, or index for variables
+	code int16  // compXXX for components, or index for variables
 	line int32  // at line number
 	file string // file path
 	text string // text literal
@@ -1103,8 +1095,8 @@ type token struct { // 40 bytes
 func (t token) name() string { return tokenNames[t.kind] }
 
 const ( // token list. if you change this list, change in tokenNames too.
-	// Identifier
-	tokenIdentifier = 1 + iota // stage, apps, httpxServer, ...
+	// Component
+	tokenComponent = 1 + iota // stage, httpxServer, ...
 	// Operators
 	tokenLeftBrace    // {
 	tokenRightBrace   // }
@@ -1136,8 +1128,8 @@ const ( // token list. if you change this list, change in tokenNames too.
 )
 
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
-	// Identifier
-	tokenIdentifier: "identifier",
+	// Component
+	tokenComponent: "component",
 	// Operators
 	tokenLeftBrace:    "leftBrace",
 	tokenRightBrace:   "rightBrace",

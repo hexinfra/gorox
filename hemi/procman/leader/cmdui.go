@@ -54,7 +54,7 @@ func cmduiServer() {
 				if hemi.Debug() >= 1 {
 					hemi.Println("[leader] received stop")
 				}
-				common.Stop() // worker will stop immediately after msgConn is closed
+				common.Stop() // worker will stop immediately after admConn is closed
 			case common.ComdRecmd:
 				newAddr := req.Get("newAddr") // succeeding cmduiAddr
 				if newAddr == "" {

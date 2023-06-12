@@ -105,7 +105,7 @@ func workerKeeper(configBase string, configFile string) { // goroutine
 type worker struct {
 	process *os.Process
 	connKey string
-	msgConn net.Conn
+	admConn net.Conn
 	lastDie time.Time
 }
 
@@ -133,8 +133,8 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	}
 	w.process = process
 
-	// Accept msgConn from worker
-	msgConn, err := tmpGate.Accept()
+	// Accept admConn from worker
+	admConn, err := tmpGate.Accept()
 	if err != nil {
 		common.Crash(err.Error())
 	}
@@ -142,20 +142,20 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	// Close temporary gate
 	tmpGate.Close()
 
-	// Now that msgConn is established, we register worker process
-	loginReq, err := msgx.Recv(msgConn, 16<<10)
+	// Now that admConn is established, we register worker process
+	loginReq, err := msgx.Recv(admConn, 16<<10)
 	if err != nil || loginReq.Get("connKey") != w.connKey {
 		common.Crash("bad worker")
 	}
-	if err := msgx.Send(msgConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
+	if err := msgx.Send(admConn, msgx.NewMessage(loginReq.Comd, loginReq.Flag, map[string]string{
 		"configBase": configBase,
 		"configFile": configFile,
 	})); err != nil {
 		common.Crash("send worker failed: " + err.Error())
 	}
 
-	// Register succeed, save msgConn and start waiting
-	w.msgConn = msgConn
+	// Register succeed, save admConn and start waiting
+	w.admConn = admConn
 	go w.watch(dieChan)
 }
 func (w *worker) watch(dieChan chan int) { // goroutine
@@ -166,9 +166,9 @@ func (w *worker) watch(dieChan chan int) { // goroutine
 	dieChan <- stat.ExitCode()
 }
 
-func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.msgConn, req) }
+func (w *worker) tell(req *msgx.Message) { msgx.Tell(w.admConn, req) }
 func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
-	resp, err := msgx.Call(w.msgConn, req, 16<<20)
+	resp, err := msgx.Call(w.admConn, req, 16<<20)
 	if err != nil {
 		resp = msgx.NewMessage(req.Comd, 0, nil)
 		resp.Flag = 0xffff
@@ -179,4 +179,4 @@ func (w *worker) call(req *msgx.Message) (resp *msgx.Message) {
 
 func (w *worker) pid() int { return w.process.Pid }
 
-func (w *worker) closeConn() { w.msgConn.Close() }
+func (w *worker) closeConn() { w.admConn.Close() }

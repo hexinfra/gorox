@@ -29,13 +29,13 @@ func Main(token string) {
 	}
 
 	// Contact leader process
-	msgConn, err := net.Dial("tcp", parts[0]) // ip:port
+	admConn, err := net.Dial("tcp", parts[0]) // ip:port
 	if err != nil {
 		common.Crash("dial leader failed: " + err.Error())
 	}
 
 	// Register worker to leader
-	if loginResp, err := msgx.Call(msgConn, msgx.NewMessage(0, 0, map[string]string{
+	if loginResp, err := msgx.Call(admConn, msgx.NewMessage(0, 0, map[string]string{
 		"connKey": parts[1],
 	}), 16<<20); err == nil {
 		configBase = loginResp.Get("configBase")
@@ -53,7 +53,7 @@ func Main(token string) {
 
 	// Stage started, now waiting for leader's commands.
 	for { // each message from leader process
-		req, err := msgx.Recv(msgConn, 16<<20)
+		req, err := msgx.Recv(admConn, 16<<20)
 		if err != nil { // leader must be gone
 			break
 		}
@@ -65,7 +65,7 @@ func Main(token string) {
 			} else {
 				resp.Flag = 404
 			}
-			if msgx.Send(msgConn, resp) != nil { // leader must be gone
+			if msgx.Send(admConn, resp) != nil { // leader must be gone
 				break
 			}
 		} else if onTell, ok := onTells[req.Comd]; ok {

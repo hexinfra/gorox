@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// This is a hello app showing how to use Gorox App server to host an app.
+// This is a hello webapp showing how to use Gorox Webapp server to host a webapp.
 
 package hello
 

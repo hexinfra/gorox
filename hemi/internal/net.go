@@ -22,7 +22,7 @@ type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
 	// Mixins
 	Server_
 	// Assocs
-	gates   []G         // gates opened
+	gates   []G         // a mesher has many gates opened
 	dealers compDict[D] // defined dealers. indexed by name
 	editors compDict[E] // defined editors. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?

@@ -11,7 +11,7 @@ worker 进程
     每个 backend 有多个 node.Maintain() 并发
   多个 mesher.serve() 并发
     每个 mesher 有多个 gate.serve() 并发
-      每个 gate 有多个 conn.execute() 并发
+      每个 gate 有多个 gate.execute(conn) 并发
   多个 stater.Maintain() 并发
   多个 storer.Maintain() 并发
   多个 app.maintain() 并发

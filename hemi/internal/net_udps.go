@@ -82,7 +82,7 @@ func (m *UDPSMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
-// udpsGate
+// udpsGate is an opening gate of UDPSMesher.
 type udpsGate struct {
 	// Mixins
 	// Assocs
@@ -124,6 +124,19 @@ func (g *udpsGate) serveTLS() { // goroutine
 		time.Sleep(time.Second)
 	}
 	g.mesher.SubDone()
+}
+
+func (g *udpsGate) execute(link *UDPSLink) { // goroutine
+	for _, kase := range g.mesher.cases {
+		if !kase.isMatch(link) {
+			continue
+		}
+		if processed := kase.execute(link); processed {
+			break
+		}
+	}
+	link.closeConn()
+	putUDPSLink(link)
 }
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {
@@ -288,19 +301,6 @@ func (l *UDPSLink) onPut() {
 	l.gate = nil
 	l.udpConn = nil
 	l.rawConn = nil
-}
-
-func (l *UDPSLink) execute() { // goroutine
-	for _, kase := range l.mesher.cases {
-		if !kase.isMatch(l) {
-			continue
-		}
-		if processed := kase.execute(l); processed {
-			break
-		}
-	}
-	l.closeConn()
-	putUDPSLink(l)
 }
 
 func (l *UDPSLink) Close() error {

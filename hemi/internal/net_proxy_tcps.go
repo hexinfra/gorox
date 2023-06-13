@@ -37,7 +37,7 @@ func (d *tcpsProxy) OnShutdown() {
 }
 
 func (d *tcpsProxy) OnConfigure() {
-	d.process = d.reverse
+	d.process = d.relay
 	isReverse := true
 	// proxyMode
 	if v, ok := d.Find("proxyMode"); ok {
@@ -87,7 +87,7 @@ func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
 	// TODO
 }
 
-func (d *tcpsProxy) reverse(conn *TCPSConn) { // reverse
+func (d *tcpsProxy) relay(conn *TCPSConn) { // reverse
 	// TODO
 	tConn, err := d.backend.DialTCPS()
 	if err != nil {

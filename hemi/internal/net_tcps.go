@@ -86,7 +86,7 @@ func (m *TCPSMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
-// tcpsGate
+// tcpsGate is an opening gate of TCPSMesher.
 type tcpsGate struct {
 	// Mixins
 	Gate_
@@ -138,11 +138,11 @@ func (g *tcpsGate) serveTCP() { // goroutine
 				g.justClose(tcpConn)
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
+			conn := getTCPSConn(connID, g.stage, g.mesher, g, tcpConn, rawConn)
 			if Debug() >= 1 {
-				Printf("%+v\n", tcpsConn)
+				Printf("%+v\n", conn)
 			}
-			go tcpsConn.execute() // tcpsConn is put to pool in execute()
+			go g.execute(conn) // conn is put to pool in execute()
 			connID++
 		}
 	}
@@ -172,8 +172,8 @@ func (g *tcpsGate) serveTLS() { // goroutine
 				g.justClose(tlsConn)
 				continue
 			}
-			tcpsConn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
-			go tcpsConn.execute() // tcpsConn is put to pool in execute()
+			conn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
+			go g.execute(conn) // conn is put to pool in execute()
 			connID++
 		}
 	}
@@ -182,6 +182,19 @@ func (g *tcpsGate) serveTLS() { // goroutine
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.mesher.SubDone()
+}
+
+func (g *tcpsGate) execute(conn *TCPSConn) { // goroutine
+	for _, kase := range g.mesher.cases {
+		if !kase.isMatch(conn) {
+			continue
+		}
+		if processed := kase.execute(conn); processed {
+			break
+		}
+	}
+	conn.closeConn()
+	putTCPSConn(conn)
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
@@ -377,19 +390,6 @@ func (c *TCPSConn) onPut() {
 		c.input = nil
 	}
 	c.tcpsConn0 = tcpsConn0{}
-}
-
-func (c *TCPSConn) execute() { // goroutine
-	for _, kase := range c.mesher.cases {
-		if !kase.isMatch(c) {
-			continue
-		}
-		if processed := kase.execute(c); processed {
-			break
-		}
-	}
-	c.closeConn()
-	putTCPSConn(c)
 }
 
 func (c *TCPSConn) hookEditor(editor TCPSEditor) {

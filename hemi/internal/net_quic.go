@@ -77,7 +77,7 @@ func (m *QUICMesher) serve() { // goroutine
 	m.stage.SubDone()
 }
 
-// quicGate
+// quicGate is an opening gate of QUICMesher.
 type quicGate struct {
 	// Mixins
 	Gate_
@@ -107,6 +107,19 @@ func (g *quicGate) serve() { // goroutine
 		time.Sleep(time.Second)
 	}
 	g.mesher.SubDone()
+}
+
+func (g *quicGate) execute(connection *QUICConnection) { // goroutine
+	for _, kase := range g.mesher.cases {
+		if !kase.isMatch(connection) {
+			continue
+		}
+		if processed := kase.execute(connection); processed {
+			break
+		}
+	}
+	connection.Close()
+	putQUICConnection(connection)
 }
 
 func (g *quicGate) justClose(quicConnection *quix.Connection) {
@@ -277,19 +290,6 @@ func (c *QUICConnection) onPut() {
 	c.gate = nil
 	c.quicConnection = nil
 	c.quicConnection0 = quicConnection0{}
-}
-
-func (c *QUICConnection) execute() { // goroutine
-	for _, kase := range c.mesher.cases {
-		if !kase.isMatch(c) {
-			continue
-		}
-		if processed := kase.execute(c); processed {
-			break
-		}
-	}
-	c.Close()
-	putQUICConnection(c)
 }
 
 func (c *QUICConnection) Close() error {

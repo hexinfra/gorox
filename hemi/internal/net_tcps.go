@@ -206,21 +206,6 @@ func (g *tcpsGate) onConnClosed() {
 	g.SubDone()
 }
 
-// TCPSFilter
-type TCPSFilter interface {
-	// Imports
-	Component
-	// Methods
-	Deal(conn *TCPSConn) (next bool)
-}
-
-// TCPSFilter_
-type TCPSFilter_ struct {
-	// Mixins
-	Component_
-	// States
-}
-
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
@@ -297,12 +282,32 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value 
 }
 
 func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, filter := range c.filters {
-		if next := filter.Deal(conn); !next {
-			return true
+	/*
+		for _, filter := range c.filters {
+			if next := filter.Deal(conn); !next {
+				return true
+			}
 		}
-	}
+	*/
 	return false
+}
+
+// TCPSFilter
+type TCPSFilter interface {
+	// Imports
+	Component
+	// Methods
+	OnDial()
+	OnInput() (next bool)
+	OnOutput() (next bool)
+	OnClose()
+}
+
+// TCPSFilter_
+type TCPSFilter_ struct {
+	// Mixins
+	Component_
+	// States
 }
 
 // poolTCPSConn

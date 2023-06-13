@@ -45,7 +45,13 @@ func (f *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *pgsqlProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
-	// TODO
-	return false
+func (f *pgsqlProxy) OnDial() {
+}
+func (f *pgsqlProxy) OnInput() (next bool) {
+	return
+}
+func (f *pgsqlProxy) OnOutput() (next bool) {
+	return
+}
+func (f *pgsqlProxy) OnClose() {
 }

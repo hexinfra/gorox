@@ -45,7 +45,13 @@ func (f *accessFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *accessFilter) Deal(conn *TCPSConn) (next bool) {
-	// TODO
-	return false
+func (f *accessFilter) OnDial() {
+}
+func (f *accessFilter) OnInput() (next bool) {
+	return
+}
+func (f *accessFilter) OnOutput() (next bool) {
+	return
+}
+func (f *accessFilter) OnClose() {
 }

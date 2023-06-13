@@ -24,7 +24,6 @@ type tcpsProxy struct {
 	mesher  *TCPSMesher  // the mesher to which the filter belongs
 	backend *TCPSBackend // if works as forward proxy, this is nil
 	// States
-	process func(*TCPSConn)
 }
 
 func (f *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
@@ -37,17 +36,14 @@ func (f *tcpsProxy) OnShutdown() {
 }
 
 func (f *tcpsProxy) OnConfigure() {
-	f.process = f.relay
 	isReverse := true
 	// proxyMode
 	if v, ok := f.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok {
 			switch mode {
 			case "socks": // SOCKS
-				f.process = f.socks
 				isReverse = false
 			case "https": // HTTP CONNECT
-				f.process = f.https
 				isReverse = false
 			}
 		} else {
@@ -75,23 +71,13 @@ func (f *tcpsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (f *tcpsProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
-	f.process(conn)
-	return false
+func (f *tcpsProxy) OnDial() {
 }
-
-func (f *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
-	// TODO
+func (f *tcpsProxy) OnInput() (next bool) {
+	return
 }
-func (f *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
-	// TODO
+func (f *tcpsProxy) OnOutput() (next bool) {
+	return
 }
-
-func (f *tcpsProxy) relay(conn *TCPSConn) { // reverse
-	// TODO
-	tConn, err := f.backend.DialTCPS()
-	if err != nil {
-		return
-	}
-	defer tConn.Close()
+func (f *tcpsProxy) OnClose() {
 }

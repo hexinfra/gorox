@@ -130,21 +130,6 @@ func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
 }
 
-// QUICFilter
-type QUICFilter interface {
-	// Imports
-	Component
-	// Methods
-	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
-}
-
-// QUICFilter_
-type QUICFilter_ struct {
-	// Mixins
-	Component_
-	// States
-}
-
 // quicCase
 type quicCase struct {
 	// Mixins
@@ -223,6 +208,21 @@ func (c *quicCase) notRegexpMatch(connection *QUICConnection, value []byte) bool
 func (c *quicCase) execute(connection *QUICConnection) (processed bool) {
 	// TODO
 	return false
+}
+
+// QUICFilter
+type QUICFilter interface {
+	// Imports
+	Component
+	// Methods
+	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
+}
+
+// QUICFilter_
+type QUICFilter_ struct {
+	// Mixins
+	Component_
+	// States
 }
 
 // poolQUICConnection

@@ -45,7 +45,13 @@ func (f *echoFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *echoFilter) Deal(conn *TCPSConn) (next bool) {
-	// TODO
-	return false
+func (f *echoFilter) OnDial() {
+}
+func (f *echoFilter) OnInput() (next bool) {
+	return
+}
+func (f *echoFilter) OnOutput() (next bool) {
+	return
+}
+func (f *echoFilter) OnClose() {
 }

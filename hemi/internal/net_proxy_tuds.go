@@ -57,12 +57,13 @@ func (f *tudsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (f *tudsProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
-	// TODO
-	xConn, err := f.backend.DialTUDS()
-	if err != nil {
-		return
-	}
-	defer xConn.Close()
-	return false
+func (f *tudsProxy) OnDial() {
+}
+func (f *tudsProxy) OnInput() (next bool) {
+	return
+}
+func (f *tudsProxy) OnOutput() (next bool) {
+	return
+}
+func (f *tudsProxy) OnClose() {
 }

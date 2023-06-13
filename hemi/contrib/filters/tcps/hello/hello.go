@@ -45,9 +45,15 @@ func (f *helloFilter) OnPrepare() {
 	// TODO
 }
 
-func (d *helloFilter) Deal(conn *TCPSConn) (next bool) {
-	conn.Send(helloBytes)
-	return false
+func (f *helloFilter) OnDial() {
+}
+func (f *helloFilter) OnInput() (next bool) {
+	return
+}
+func (f *helloFilter) OnOutput() (next bool) {
+	return
+}
+func (f *helloFilter) OnClose() {
 }
 
 var (

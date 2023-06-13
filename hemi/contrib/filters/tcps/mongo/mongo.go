@@ -45,7 +45,13 @@ func (f *mongoProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *mongoProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
-	// TODO
-	return false
+func (f *mongoProxy) OnDial() {
+}
+func (f *mongoProxy) OnInput() (next bool) {
+	return
+}
+func (f *mongoProxy) OnOutput() (next bool) {
+	return
+}
+func (f *mongoProxy) OnClose() {
 }

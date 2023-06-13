@@ -45,7 +45,13 @@ func (f *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *mysqlProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
-	// TODO
-	return false
+func (f *mysqlProxy) OnDial() {
+}
+func (f *mysqlProxy) OnInput() (next bool) {
+	return
+}
+func (f *mysqlProxy) OnOutput() (next bool) {
+	return
+}
+func (f *mysqlProxy) OnClose() {
 }

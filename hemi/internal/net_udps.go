@@ -143,21 +143,6 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
 
-// UDPSFilter
-type UDPSFilter interface {
-	// Imports
-	Component
-	// Methods
-	Deal(link *UDPSLink) (next bool)
-}
-
-// UDPSFilter_
-type UDPSFilter_ struct {
-	// Mixins
-	Component_
-	// States
-}
-
 // udpsCase
 type udpsCase struct {
 	// Mixins
@@ -236,6 +221,21 @@ func (c *udpsCase) notRegexpMatch(link *UDPSLink, value []byte) bool { // value 
 func (c *udpsCase) execute(link *UDPSLink) (processed bool) {
 	// TODO
 	return false
+}
+
+// UDPSFilter
+type UDPSFilter interface {
+	// Imports
+	Component
+	// Methods
+	Deal(link *UDPSLink) (next bool)
+}
+
+// UDPSFilter_
+type UDPSFilter_ struct {
+	// Mixins
+	Component_
+	// States
 }
 
 // poolUDPSLink

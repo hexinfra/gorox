@@ -45,7 +45,13 @@ func (f *redisProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *redisProxy) Deal(conn *TCPSConn) (next bool) { // reverse only
-	// TODO
-	return false
+func (f *redisProxy) OnDial() {
+}
+func (f *redisProxy) OnInput() (next bool) {
+	return
+}
+func (f *redisProxy) OnOutput() (next bool) {
+	return
+}
+func (f *redisProxy) OnClose() {
 }

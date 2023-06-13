@@ -8,17 +8,17 @@
 package internal
 
 func init() {
-	RegisterQUICDealer("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealer {
-		d := new(quicProxy)
-		d.onCreate(name, stage, mesher)
-		return d
+	RegisterQUICFilter("quicProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICFilter {
+		f := new(quicProxy)
+		f.onCreate(name, stage, mesher)
+		return f
 	})
 }
 
 // quicProxy passes QUIC connections to backend QUIC server.
 type quicProxy struct {
 	// Mixins
-	QUICDealer_
+	QUICFilter_
 	// Assocs
 	stage   *Stage
 	mesher  *QUICMesher
@@ -26,23 +26,23 @@ type quicProxy struct {
 	// States
 }
 
-func (d *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
-	d.MakeComp(name)
-	d.stage = stage
-	d.mesher = mesher
+func (f *quicProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+	f.MakeComp(name)
+	f.stage = stage
+	f.mesher = mesher
 }
-func (d *quicProxy) OnShutdown() {
-	d.mesher.SubDone()
+func (f *quicProxy) OnShutdown() {
+	f.mesher.SubDone()
 }
 
-func (d *quicProxy) OnConfigure() {
+func (f *quicProxy) OnConfigure() {
 	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
+	if v, ok := f.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
+			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if quicBackend, ok := backend.(*QUICBackend); ok {
-				d.backend = quicBackend
+				f.backend = quicBackend
 			} else {
 				UseExitf("incorrect backend '%s' for quicProxy\n", name)
 			}
@@ -53,10 +53,10 @@ func (d *quicProxy) OnConfigure() {
 		UseExitln("toBackend is required for quicProxy")
 	}
 }
-func (d *quicProxy) OnPrepare() {
+func (f *quicProxy) OnPrepare() {
 }
 
-func (d *quicProxy) Deal(connection *QUICConnection, stream *QUICStream) (next bool) { // reverse only
+func (f *quicProxy) Deal(connection *QUICConnection, stream *QUICStream) (next bool) { // reverse only
 	// TODO
 	return
 }

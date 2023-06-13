@@ -24,7 +24,7 @@ COMPONENTS
     runner (...)
     backend (http1Backend, tcpsBackend, ...)
     mesher (quicMesher, tcpsMesher, udpsMesher)
-      dealer (...)
+      filter (...)
       case [*]
     stater (localStater, redisStater, ...)
     storer (localStorer, redisStorer, ...)

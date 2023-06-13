@@ -26,11 +26,11 @@ const ( // component list
 	compRunner                // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICMesher            // quicMesher
-	compQUICDealer            // quicProxy, ...
+	compQUICFilter            // quicProxy, ...
 	compTCPSMesher            // tcpsMesher
-	compTCPSDealer            // tcpsProxy, ...
+	compTCPSFilter            // tcpsProxy, ...
 	compUDPSMesher            // udpsMesher
-	compUDPSDealer            // udpsProxy, ...
+	compUDPSFilter            // udpsProxy, ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compStorer                // localStorer, redisStorer, ...
@@ -76,9 +76,9 @@ var (
 	creatorsLock       sync.RWMutex
 	runnerCreators     = make(map[string]func(name string, stage *Stage) Runner) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
-	quicDealerCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealer)
-	tcpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer)
-	udpsDealerCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer)
+	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
+	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
+	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	storerCreators     = make(map[string]func(name string, stage *Stage) Storer)
 	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
@@ -94,14 +94,14 @@ func RegisterRunner(sign string, create func(name string, stage *Stage) Runner) 
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterQUICDealer(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealer) {
-	_registerComponent1(sign, compQUICDealer, quicDealerCreators, create)
+func RegisterQUICFilter(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICFilter) {
+	_registerComponent1(sign, compQUICFilter, quicFilterCreators, create)
 }
-func RegisterTCPSDealer(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer) {
-	_registerComponent1(sign, compTCPSDealer, tcpsDealerCreators, create)
+func RegisterTCPSFilter(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter) {
+	_registerComponent1(sign, compTCPSFilter, tcpsFilterCreators, create)
 }
-func RegisterUDPSDealer(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealer) {
-	_registerComponent1(sign, compUDPSDealer, udpsDealerCreators, create)
+func RegisterUDPSFilter(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter) {
+	_registerComponent1(sign, compUDPSFilter, udpsFilterCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
 	_registerComponent0(sign, compStater, staterCreators, create)
@@ -135,7 +135,7 @@ func _registerComponent0[T Component](sign string, comp int16, creators map[stri
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealer, handlet, reviser, socklet
+func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // filter, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 

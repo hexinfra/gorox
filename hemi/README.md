@@ -21,7 +21,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     | e | [tcps] | <gate><conn> |  <gate><conn>  |     |
    |     | r | [udps] +--------------+----------------+     |
    |     | v | mesher |              | app(*) handlet |     |
-   |     | e | dealer |              | socklet reviser|     |
+   |     | e | filter |              | socklet reviser|     |
    |     | r |  case  |   svc(*)     |    rule        |     |
    |     |(*)|        |          +---+--+      +------+     |
    |     |   |        |          |stater|      |storer|     |

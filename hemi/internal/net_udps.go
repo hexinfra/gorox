@@ -18,11 +18,11 @@ import (
 // UDPSMesher
 type UDPSMesher struct {
 	// Mixins
-	mesher_[*UDPSMesher, *udpsGate, UDPSDealer, *udpsCase]
+	mesher_[*UDPSMesher, *udpsGate, UDPSFilter, *udpsCase]
 }
 
 func (m *UDPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, udpsDealerCreators)
+	m.mesher_.onCreate(name, stage, udpsFilterCreators)
 }
 func (m *UDPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -69,9 +69,9 @@ func (m *UDPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, cases
+	m.WaitSubs() // filters, cases
 
 	if m.logger != nil {
 		m.logger.Close()
@@ -143,16 +143,16 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
 
-// UDPSDealer
-type UDPSDealer interface {
+// UDPSFilter
+type UDPSFilter interface {
 	// Imports
 	Component
 	// Methods
 	Deal(link *UDPSLink) (next bool)
 }
 
-// UDPSDealer_
-type UDPSDealer_ struct {
+// UDPSFilter_
+type UDPSFilter_ struct {
 	// Mixins
 	Component_
 	// States
@@ -161,7 +161,7 @@ type UDPSDealer_ struct {
 // udpsCase
 type udpsCase struct {
 	// Mixins
-	case_[*UDPSMesher, UDPSDealer]
+	case_[*UDPSMesher, UDPSFilter]
 	// States
 	matcher func(kase *udpsCase, link *UDPSLink, value []byte) bool
 }

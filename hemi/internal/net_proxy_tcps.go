@@ -8,46 +8,46 @@
 package internal
 
 func init() {
-	RegisterTCPSDealer("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealer {
-		d := new(tcpsProxy)
-		d.onCreate(name, stage, mesher)
-		return d
+	RegisterTCPSFilter("tcpsProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter {
+		f := new(tcpsProxy)
+		f.onCreate(name, stage, mesher)
+		return f
 	})
 }
 
 // tcpsProxy passes TCP/TLS connections to another/backend TCP/TLS server.
 type tcpsProxy struct {
 	// Mixins
-	TCPSDealer_
+	TCPSFilter_
 	// Assocs
 	stage   *Stage       // current stage
-	mesher  *TCPSMesher  // the mesher to which the dealer belongs
+	mesher  *TCPSMesher  // the mesher to which the filter belongs
 	backend *TCPSBackend // if works as forward proxy, this is nil
 	// States
 	process func(*TCPSConn)
 }
 
-func (d *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
-	d.MakeComp(name)
-	d.stage = stage
-	d.mesher = mesher
+func (f *tcpsProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+	f.MakeComp(name)
+	f.stage = stage
+	f.mesher = mesher
 }
-func (d *tcpsProxy) OnShutdown() {
-	d.mesher.SubDone()
+func (f *tcpsProxy) OnShutdown() {
+	f.mesher.SubDone()
 }
 
-func (d *tcpsProxy) OnConfigure() {
-	d.process = d.relay
+func (f *tcpsProxy) OnConfigure() {
+	f.process = f.relay
 	isReverse := true
 	// proxyMode
-	if v, ok := d.Find("proxyMode"); ok {
+	if v, ok := f.Find("proxyMode"); ok {
 		if mode, ok := v.String(); ok {
 			switch mode {
 			case "socks": // SOCKS
-				d.process = d.socks
+				f.process = f.socks
 				isReverse = false
 			case "https": // HTTP CONNECT
-				d.process = d.https
+				f.process = f.https
 				isReverse = false
 			}
 		} else {
@@ -55,12 +55,12 @@ func (d *tcpsProxy) OnConfigure() {
 		}
 	}
 	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
+	if v, ok := f.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
+			if backend := f.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
-				d.backend = tcpsBackend
+				f.backend = tcpsBackend
 			} else {
 				UseExitf("incorrect backend '%s' for tcpsProxy\n", name)
 			}
@@ -71,25 +71,25 @@ func (d *tcpsProxy) OnConfigure() {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }
-func (d *tcpsProxy) OnPrepare() {
+func (f *tcpsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *tcpsProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
-	d.process(conn)
+func (f *tcpsProxy) Deal(conn *TCPSConn) (next bool) { // forward or reverse
+	f.process(conn)
 	return false
 }
 
-func (d *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
+func (f *tcpsProxy) socks(conn *TCPSConn) { // SOCKS
 	// TODO
 }
-func (d *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
+func (f *tcpsProxy) https(conn *TCPSConn) { // HTTP CONNECT
 	// TODO
 }
 
-func (d *tcpsProxy) relay(conn *TCPSConn) { // reverse
+func (f *tcpsProxy) relay(conn *TCPSConn) { // reverse
 	// TODO
-	tConn, err := d.backend.DialTCPS()
+	tConn, err := f.backend.DialTCPS()
 	if err != nil {
 		return
 	}

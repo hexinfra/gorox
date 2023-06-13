@@ -17,11 +17,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICDealer, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICFilter, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicDealerCreators)
+	m.mesher_.onCreate(name, stage, quicFilterCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -64,9 +64,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, cases
+	m.WaitSubs() // filters, cases
 
 	if m.logger != nil {
 		m.logger.Close()
@@ -130,16 +130,16 @@ func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
 }
 
-// QUICDealer
-type QUICDealer interface {
+// QUICFilter
+type QUICFilter interface {
 	// Imports
 	Component
 	// Methods
 	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
 }
 
-// QUICDealer_
-type QUICDealer_ struct {
+// QUICFilter_
+type QUICFilter_ struct {
 	// Mixins
 	Component_
 	// States
@@ -148,7 +148,7 @@ type QUICDealer_ struct {
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICDealer]
+	case_[*QUICMesher, QUICFilter]
 	// States
 	matcher func(kase *quicCase, connection *QUICConnection, value []byte) bool
 }

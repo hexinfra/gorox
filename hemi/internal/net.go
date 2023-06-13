@@ -18,67 +18,67 @@ type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
 }
 
 // mesher_ is the mixin for *QUICMesher, *TCPSMesher, *UDPSMesher.
-type mesher_[M _mesher, G _gate, D _dealer, C _case] struct {
+type mesher_[M _mesher, G _gate, F _filter, C _case] struct {
 	// Mixins
 	Server_
 	// Assocs
 	gates   []G         // a mesher has many gates opened
-	dealers compDict[D] // defined dealers. indexed by name
+	filters compDict[F] // defined filters. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	dealerCreators map[string]func(name string, stage *Stage, mesher M) D
+	filterCreators map[string]func(name string, stage *Stage, mesher M) F
 	accessLog      *logcfg // ...
 	logger         *logger // mesher access logger
 }
 
-func (m *mesher_[M, G, D, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, M) D) {
+func (m *mesher_[M, G, F, C]) onCreate(name string, stage *Stage, filterCreators map[string]func(string, *Stage, M) F) {
 	m.Server_.OnCreate(name, stage)
-	m.dealers = make(compDict[D])
-	m.dealerCreators = dealerCreators
+	m.filters = make(compDict[F])
+	m.filterCreators = filterCreators
 }
 
-func (m *mesher_[M, G, D, C]) shutdownSubs() { // cases, dealers
+func (m *mesher_[M, G, F, C]) shutdownSubs() { // cases, filters
 	m.cases.walk(C.OnShutdown)
-	m.dealers.walk(D.OnShutdown)
+	m.filters.walk(F.OnShutdown)
 }
 
-func (m *mesher_[M, G, D, C]) onConfigure() {
+func (m *mesher_[M, G, F, C]) onConfigure() {
 	m.Server_.OnConfigure()
 
 	// accessLog, TODO
 }
-func (m *mesher_[M, G, D, C]) configureSubs() { // dealers, cases
-	m.dealers.walk(D.OnConfigure)
+func (m *mesher_[M, G, F, C]) configureSubs() { // filters, cases
+	m.filters.walk(F.OnConfigure)
 	m.cases.walk(C.OnConfigure)
 }
 
-func (m *mesher_[M, G, D, C]) onPrepare() {
+func (m *mesher_[M, G, F, C]) onPrepare() {
 	m.Server_.OnPrepare()
 	if m.accessLog != nil {
 		//m.logger = newLogger(m.accessLog.logFile, m.accessLog.rotate)
 	}
 }
-func (m *mesher_[M, G, D, C]) prepareSubs() { // dealers, cases
-	m.dealers.walk(D.OnPrepare)
+func (m *mesher_[M, G, F, C]) prepareSubs() { // filters, cases
+	m.filters.walk(F.OnPrepare)
 	m.cases.walk(C.OnPrepare)
 }
 
-func (m *mesher_[M, G, D, C]) createDealer(sign string, name string) D {
-	if _, ok := m.dealers[name]; ok {
-		UseExitln("conflicting dealer with a same name in mesher")
+func (m *mesher_[M, G, F, C]) createFilter(sign string, name string) F {
+	if _, ok := m.filters[name]; ok {
+		UseExitln("conflicting filter with a same name in mesher")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := m.dealerCreators[sign]
+	create, ok := m.filterCreators[sign]
 	if !ok {
-		UseExitln("unknown dealer sign: " + sign)
+		UseExitln("unknown filter sign: " + sign)
 	}
-	dealer := create(name, m.stage, m.shell.(M))
-	dealer.setShell(dealer)
-	m.dealers[name] = dealer
-	return dealer
+	filter := create(name, m.stage, m.shell.(M))
+	filter.setShell(filter)
+	m.filters[name] = filter
+	return filter
 }
-func (m *mesher_[M, G, D, C]) hasCase(name string) bool {
+func (m *mesher_[M, G, F, C]) hasCase(name string) bool {
 	for _, kase := range m.cases {
 		if kase.Name() == name {
 			return true
@@ -87,17 +87,17 @@ func (m *mesher_[M, G, D, C]) hasCase(name string) bool {
 	return false
 }
 
-func (m *mesher_[M, G, D, C]) Log(str string) {
+func (m *mesher_[M, G, F, C]) Log(str string) {
 	if m.logger != nil {
 		m.logger.Log(str)
 	}
 }
-func (m *mesher_[M, G, D, C]) Logln(str string) {
+func (m *mesher_[M, G, F, C]) Logln(str string) {
 	if m.logger != nil {
 		m.logger.Logln(str)
 	}
 }
-func (m *mesher_[M, G, D, C]) Logf(format string, args ...any) {
+func (m *mesher_[M, G, F, C]) Logf(format string, args ...any) {
 	if m.logger != nil {
 		m.logger.Logf(format, args...)
 	}
@@ -109,8 +109,8 @@ type _gate interface { // *quicGate, *tcpsGate, *udpsGate
 	shut() error
 }
 
-// _dealer
-type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
+// _filter
+type _filter interface { // QUICFilter, TCPSFilter, UDPSFilter
 	Component
 }
 
@@ -120,12 +120,12 @@ type _case interface { // *quicCase, *tcpsCase, *udpsCase
 }
 
 // case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
-type case_[M _mesher, D _dealer] struct {
+type case_[M _mesher, F _filter] struct {
 	// Mixins
 	Component_
 	// Assocs
 	mesher  M   // associated mesher
-	dealers []D // dealers contained
+	filters []F // filters contained
 	// States
 	general  bool  // general match?
 	varIndex int16 // the variable index
@@ -133,15 +133,15 @@ type case_[M _mesher, D _dealer] struct {
 	regexps  []*regexp.Regexp
 }
 
-func (c *case_[M, D]) onCreate(name string, mesher M) {
+func (c *case_[M, F]) onCreate(name string, mesher M) {
 	c.MakeComp(name)
 	c.mesher = mesher
 }
-func (c *case_[M, D]) OnShutdown() {
+func (c *case_[M, F]) OnShutdown() {
 	c.mesher.SubDone()
 }
 
-func (c *case_[M, D]) OnConfigure() {
+func (c *case_[M, F]) OnConfigure() {
 	if c.info == nil {
 		c.general = true
 		return
@@ -162,12 +162,12 @@ func (c *case_[M, D]) OnConfigure() {
 		}
 	}
 }
-func (c *case_[M, D]) OnPrepare() {
+func (c *case_[M, F]) OnPrepare() {
 }
 
-func (c *case_[M, D]) addDealer(dealer D) { c.dealers = append(c.dealers, dealer) }
+func (c *case_[M, F]) addFilter(filter F) { c.filters = append(c.filters, filter) }
 
-func (c *case_[M, D]) equalMatch(value []byte) bool {
+func (c *case_[M, F]) equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return true
@@ -175,7 +175,7 @@ func (c *case_[M, D]) equalMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D]) prefixMatch(value []byte) bool {
+func (c *case_[M, F]) prefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return true
@@ -183,7 +183,7 @@ func (c *case_[M, D]) prefixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D]) suffixMatch(value []byte) bool {
+func (c *case_[M, F]) suffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return true
@@ -191,7 +191,7 @@ func (c *case_[M, D]) suffixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D]) containMatch(value []byte) bool {
+func (c *case_[M, F]) containMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return true
@@ -199,7 +199,7 @@ func (c *case_[M, D]) containMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D]) regexpMatch(value []byte) bool {
+func (c *case_[M, F]) regexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return true
@@ -207,7 +207,7 @@ func (c *case_[M, D]) regexpMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D]) notEqualMatch(value []byte) bool {
+func (c *case_[M, F]) notEqualMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return false
@@ -215,7 +215,7 @@ func (c *case_[M, D]) notEqualMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D]) notPrefixMatch(value []byte) bool {
+func (c *case_[M, F]) notPrefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return false
@@ -223,7 +223,7 @@ func (c *case_[M, D]) notPrefixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D]) notSuffixMatch(value []byte) bool {
+func (c *case_[M, F]) notSuffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return false
@@ -231,7 +231,7 @@ func (c *case_[M, D]) notSuffixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D]) notContainMatch(value []byte) bool {
+func (c *case_[M, F]) notContainMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return false
@@ -239,7 +239,7 @@ func (c *case_[M, D]) notContainMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D]) notRegexpMatch(value []byte) bool {
+func (c *case_[M, F]) notRegexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return false

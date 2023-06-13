@@ -22,11 +22,11 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSFilter, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsDealerCreators)
+	m.mesher_.onCreate(name, stage, tcpsFilterCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -73,9 +73,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.cases))
+	m.IncSub(len(m.filters) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, cases
+	m.WaitSubs() // filters, cases
 
 	if m.logger != nil {
 		m.logger.Close()
@@ -206,16 +206,16 @@ func (g *tcpsGate) onConnClosed() {
 	g.SubDone()
 }
 
-// TCPSDealer
-type TCPSDealer interface {
+// TCPSFilter
+type TCPSFilter interface {
 	// Imports
 	Component
 	// Methods
 	Deal(conn *TCPSConn) (next bool)
 }
 
-// TCPSDealer_
-type TCPSDealer_ struct {
+// TCPSFilter_
+type TCPSFilter_ struct {
 	// Mixins
 	Component_
 	// States
@@ -224,7 +224,7 @@ type TCPSDealer_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSDealer]
+	case_[*TCPSMesher, TCPSFilter]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -297,8 +297,8 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value 
 }
 
 func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, dealer := range c.dealers {
-		if next := dealer.Deal(conn); !next {
+	for _, filter := range c.filters {
+		if next := filter.Deal(conn); !next {
 			return true
 		}
 	}

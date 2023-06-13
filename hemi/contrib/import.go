@@ -14,7 +14,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/tcps/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealers/udps/dns"
-	_ "github.com/hexinfra/gorox/hemi/contrib/editors/tcps/mysql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/access"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/favicon"
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/hostname"

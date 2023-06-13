@@ -206,8 +206,6 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		switch current.code {
 		case compQUICDealer:
 			c.parseQUICDealer(current, mesher, nil)
-		case compQUICEditor:
-			c.parseQUICEditor(current, mesher, nil)
 		case compCase:
 			c.parseQUICCase(mesher)
 		default:
@@ -217,9 +215,6 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 }
 func (c *config) parseQUICDealer(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqDealer <name> {}, qqqDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
-}
-func (c *config) parseQUICEditor(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqEditor <name> {}, qqqEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -252,8 +247,6 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		switch current.code {
 		case compQUICDealer:
 			c.parseQUICDealer(current, mesher, kase)
-		case compQUICEditor:
-			c.parseQUICEditor(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -279,8 +272,6 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		switch current.code {
 		case compTCPSDealer:
 			c.parseTCPSDealer(current, mesher, nil)
-		case compTCPSEditor:
-			c.parseTCPSEditor(current, mesher, nil)
 		case compCase:
 			c.parseTCPSCase(mesher)
 		default:
@@ -290,9 +281,6 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 }
 func (c *config) parseTCPSDealer(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealer <name> {}, tttDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
-}
-func (c *config) parseTCPSEditor(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttEditor <name> {}, tttEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -325,8 +313,6 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		switch current.code {
 		case compTCPSDealer:
 			c.parseTCPSDealer(current, mesher, kase)
-		case compTCPSEditor:
-			c.parseTCPSEditor(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -352,8 +338,6 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		switch current.code {
 		case compUDPSDealer:
 			c.parseUDPSDealer(current, mesher, nil)
-		case compUDPSEditor:
-			c.parseUDPSEditor(current, mesher, nil)
 		case compCase:
 			c.parseUDPSCase(mesher)
 		default:
@@ -363,9 +347,6 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 }
 func (c *config) parseUDPSDealer(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealer <name> {}, uuuDealer {}
 	parseComponent1(c, sign, mesher, mesher.createDealer, kase, kase.addDealer)
-}
-func (c *config) parseUDPSEditor(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuEditor <name> {}, uuuEditor {}
-	parseComponent1(c, sign, mesher, mesher.createEditor, kase, kase.addEditor)
 }
 func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -398,8 +379,6 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		switch current.code {
 		case compUDPSDealer:
 			c.parseUDPSDealer(current, mesher, kase)
-		case compUDPSEditor:
-			c.parseUDPSEditor(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -768,7 +747,7 @@ func parseComponent0[T Component](c *config, sign *token, stage *Stage, create f
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer, editor
+func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealer
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text

@@ -17,11 +17,11 @@ import (
 // QUICMesher
 type QUICMesher struct {
 	// Mixins
-	mesher_[*QUICMesher, *quicGate, QUICDealer, QUICEditor, *quicCase]
+	mesher_[*QUICMesher, *quicGate, QUICDealer, *quicCase]
 }
 
 func (m *QUICMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, quicDealerCreators, quicEditorCreators)
+	m.mesher_.onCreate(name, stage, quicDealerCreators)
 }
 func (m *QUICMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -64,9 +64,9 @@ func (m *QUICMesher) serve() { // goroutine
 		go gate.serve()
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // dealers, cases
 
 	if m.logger != nil {
 		m.logger.Close()
@@ -145,27 +145,10 @@ type QUICDealer_ struct {
 	// States
 }
 
-// QUICEditor
-type QUICEditor interface {
-	// Imports
-	Component
-	identifiable
-	// Methods
-	OnInput(connection *QUICConnection, data []byte) (next bool)
-}
-
-// QUICEditor_
-type QUICEditor_ struct {
-	// Mixins
-	Component_
-	identifiable_
-	// States
-}
-
 // quicCase
 type quicCase struct {
 	// Mixins
-	case_[*QUICMesher, QUICDealer, QUICEditor]
+	case_[*QUICMesher, QUICDealer]
 	// States
 	matcher func(kase *quicCase, connection *QUICConnection, value []byte) bool
 }
@@ -274,7 +257,6 @@ type QUICConnection struct {
 	quicConnection0
 }
 type quicConnection0 struct {
-	editors [32]uint8 // editor ids which will apply on this connection. indexed by editor order
 }
 
 func (c *QUICConnection) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConnection *quix.Connection) {

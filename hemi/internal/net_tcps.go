@@ -22,11 +22,11 @@ import (
 // TCPSMesher
 type TCPSMesher struct {
 	// Mixins
-	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, TCPSEditor, *tcpsCase]
+	mesher_[*TCPSMesher, *tcpsGate, TCPSDealer, *tcpsCase]
 }
 
 func (m *TCPSMesher) onCreate(name string, stage *Stage) {
-	m.mesher_.onCreate(name, stage, tcpsDealerCreators, tcpsEditorCreators)
+	m.mesher_.onCreate(name, stage, tcpsDealerCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
 	// We don't close(m.Shut) here.
@@ -73,9 +73,9 @@ func (m *TCPSMesher) serve() { // goroutine
 		}
 	}
 	m.WaitSubs() // gates
-	m.IncSub(len(m.dealers) + len(m.editors) + len(m.cases))
+	m.IncSub(len(m.dealers) + len(m.cases))
 	m.shutdownSubs()
-	m.WaitSubs() // dealers, editors, cases
+	m.WaitSubs() // dealers, cases
 
 	if m.logger != nil {
 		m.logger.Close()
@@ -221,28 +221,10 @@ type TCPSDealer_ struct {
 	// States
 }
 
-// TCPSEditor
-type TCPSEditor interface {
-	// Imports
-	Component
-	identifiable
-	// Methods
-	OnInput(conn *TCPSConn, kind int8)
-	OnOutput(conn *TCPSConn, kind int8)
-}
-
-// TCPSEditor_
-type TCPSEditor_ struct {
-	// Mixins
-	Component_
-	identifiable_
-	// States
-}
-
 // tcpsCase
 type tcpsCase struct {
 	// Mixins
-	case_[*TCPSMesher, TCPSDealer, TCPSEditor]
+	case_[*TCPSMesher, TCPSDealer]
 	// States
 	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
 }
@@ -315,9 +297,6 @@ func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value 
 }
 
 func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	for _, editor := range c.editors {
-		conn.hookEditor(editor)
-	}
 	for _, dealer := range c.dealers {
 		if next := dealer.Deal(conn); !next {
 			return true
@@ -363,8 +342,6 @@ type TCPSConn struct {
 	tcpsConn0
 }
 type tcpsConn0 struct {
-	editors  [32]uint8 // editor ids which will apply on this conn. indexed by editor order
-	nEditors int8
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -392,22 +369,11 @@ func (c *TCPSConn) onPut() {
 	c.tcpsConn0 = tcpsConn0{}
 }
 
-func (c *TCPSConn) hookEditor(editor TCPSEditor) {
-	if c.nEditors == int8(len(c.editors)) {
-		BugExitln("hook too many editors")
-	}
-	c.editors[c.nEditors] = editor.ID()
-	c.nEditors++
-}
-
 func (c *TCPSConn) Recv() (p []byte, err error) { // p == nil means EOF
 	// TODO: deadline
 	n, err := c.netConn.Read(c.input)
 	if n > 0 {
 		p = c.input[:n]
-		if c.nEditors > 0 { // TODO
-		} else {
-		}
 	}
 	if err != nil {
 		c._checkClose()
@@ -420,9 +386,6 @@ func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
 		c.closeWrite()
 		c._checkClose()
 	} else {
-		if c.nEditors > 0 { // TODO
-		} else {
-		}
 		_, err = c.netConn.Write(p)
 	}
 	return

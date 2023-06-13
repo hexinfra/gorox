@@ -18,62 +18,52 @@ type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
 }
 
 // mesher_ is the mixin for *QUICMesher, *TCPSMesher, *UDPSMesher.
-type mesher_[M _mesher, G _gate, D _dealer, E _editor, C _case] struct {
+type mesher_[M _mesher, G _gate, D _dealer, C _case] struct {
 	// Mixins
 	Server_
 	// Assocs
 	gates   []G         // a mesher has many gates opened
 	dealers compDict[D] // defined dealers. indexed by name
-	editors compDict[E] // defined editors. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	dealerCreators map[string]func(name string, stage *Stage, mesher M) D
-	editorCreators map[string]func(name string, stage *Stage, mesher M) E
 	accessLog      *logcfg // ...
 	logger         *logger // mesher access logger
-	editorsByID    [256]E  // for fast searching. position 0 is not used
-	nEditors       uint8   // used number of editorsByID in this mesher
 }
 
-func (m *mesher_[M, G, D, E, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, M) D, editorCreators map[string]func(string, *Stage, M) E) {
+func (m *mesher_[M, G, D, C]) onCreate(name string, stage *Stage, dealerCreators map[string]func(string, *Stage, M) D) {
 	m.Server_.OnCreate(name, stage)
 	m.dealers = make(compDict[D])
-	m.editors = make(compDict[E])
 	m.dealerCreators = dealerCreators
-	m.editorCreators = editorCreators
-	m.nEditors = 1 // position 0 is not used
 }
 
-func (m *mesher_[M, G, D, E, C]) shutdownSubs() { // cases, editors, dealers
+func (m *mesher_[M, G, D, C]) shutdownSubs() { // cases, dealers
 	m.cases.walk(C.OnShutdown)
-	m.editors.walk(E.OnShutdown)
 	m.dealers.walk(D.OnShutdown)
 }
 
-func (m *mesher_[M, G, D, E, C]) onConfigure() {
+func (m *mesher_[M, G, D, C]) onConfigure() {
 	m.Server_.OnConfigure()
 
 	// accessLog, TODO
 }
-func (m *mesher_[M, G, D, E, C]) configureSubs() { // dealers, editors, cases
+func (m *mesher_[M, G, D, C]) configureSubs() { // dealers, cases
 	m.dealers.walk(D.OnConfigure)
-	m.editors.walk(E.OnConfigure)
 	m.cases.walk(C.OnConfigure)
 }
 
-func (m *mesher_[M, G, D, E, C]) onPrepare() {
+func (m *mesher_[M, G, D, C]) onPrepare() {
 	m.Server_.OnPrepare()
 	if m.accessLog != nil {
 		//m.logger = newLogger(m.accessLog.logFile, m.accessLog.rotate)
 	}
 }
-func (m *mesher_[M, G, D, E, C]) prepareSubs() { // dealers, editors, cases
+func (m *mesher_[M, G, D, C]) prepareSubs() { // dealers, cases
 	m.dealers.walk(D.OnPrepare)
-	m.editors.walk(E.OnPrepare)
 	m.cases.walk(C.OnPrepare)
 }
 
-func (m *mesher_[M, G, D, E, C]) createDealer(sign string, name string) D {
+func (m *mesher_[M, G, D, C]) createDealer(sign string, name string) D {
 	if _, ok := m.dealers[name]; ok {
 		UseExitln("conflicting dealer with a same name in mesher")
 	}
@@ -88,28 +78,7 @@ func (m *mesher_[M, G, D, E, C]) createDealer(sign string, name string) D {
 	m.dealers[name] = dealer
 	return dealer
 }
-func (m *mesher_[M, G, D, E, C]) createEditor(sign string, name string) E {
-	if m.nEditors == 255 {
-		UseExitln("cannot create editor: too many editors in one mesher")
-	}
-	if _, ok := m.editors[name]; ok {
-		UseExitln("conflicting editor with a same name in mesher")
-	}
-	creatorsLock.RLock()
-	defer creatorsLock.RUnlock()
-	create, ok := m.editorCreators[sign]
-	if !ok {
-		UseExitln("unknown editor sign: " + sign)
-	}
-	editor := create(name, m.stage, m.shell.(M))
-	editor.setShell(editor)
-	editor.setID(m.nEditors)
-	m.editors[name] = editor
-	m.editorsByID[m.nEditors] = editor
-	m.nEditors++
-	return editor
-}
-func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
+func (m *mesher_[M, G, D, C]) hasCase(name string) bool {
 	for _, kase := range m.cases {
 		if kase.Name() == name {
 			return true
@@ -118,19 +87,17 @@ func (m *mesher_[M, G, D, E, C]) hasCase(name string) bool {
 	return false
 }
 
-func (m *mesher_[M, G, D, E, C]) editorByID(id uint8) E { return m.editorsByID[id] }
-
-func (m *mesher_[M, G, D, E, C]) Log(str string) {
+func (m *mesher_[M, G, D, C]) Log(str string) {
 	if m.logger != nil {
 		m.logger.Log(str)
 	}
 }
-func (m *mesher_[M, G, D, E, C]) Logln(str string) {
+func (m *mesher_[M, G, D, C]) Logln(str string) {
 	if m.logger != nil {
 		m.logger.Logln(str)
 	}
 }
-func (m *mesher_[M, G, D, E, C]) Logf(format string, args ...any) {
+func (m *mesher_[M, G, D, C]) Logf(format string, args ...any) {
 	if m.logger != nil {
 		m.logger.Logf(format, args...)
 	}
@@ -147,25 +114,18 @@ type _dealer interface { // QUICDealer, TCPSDealer, UDPSDealer
 	Component
 }
 
-// _editor
-type _editor interface { // QUICEditor, TCPSEditor, UDPSEditor
-	Component
-	identifiable
-}
-
 // _case
 type _case interface { // *quicCase, *tcpsCase, *udpsCase
 	Component
 }
 
 // case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
-type case_[M _mesher, D _dealer, E _editor] struct {
+type case_[M _mesher, D _dealer] struct {
 	// Mixins
 	Component_
 	// Assocs
 	mesher  M   // associated mesher
 	dealers []D // dealers contained
-	editors []E // editors contained
 	// States
 	general  bool  // general match?
 	varIndex int16 // the variable index
@@ -173,15 +133,15 @@ type case_[M _mesher, D _dealer, E _editor] struct {
 	regexps  []*regexp.Regexp
 }
 
-func (c *case_[M, D, E]) onCreate(name string, mesher M) {
+func (c *case_[M, D]) onCreate(name string, mesher M) {
 	c.MakeComp(name)
 	c.mesher = mesher
 }
-func (c *case_[M, D, E]) OnShutdown() {
+func (c *case_[M, D]) OnShutdown() {
 	c.mesher.SubDone()
 }
 
-func (c *case_[M, D, E]) OnConfigure() {
+func (c *case_[M, D]) OnConfigure() {
 	if c.info == nil {
 		c.general = true
 		return
@@ -202,13 +162,12 @@ func (c *case_[M, D, E]) OnConfigure() {
 		}
 	}
 }
-func (c *case_[M, D, E]) OnPrepare() {
+func (c *case_[M, D]) OnPrepare() {
 }
 
-func (c *case_[M, D, E]) addDealer(dealer D) { c.dealers = append(c.dealers, dealer) }
-func (c *case_[M, D, E]) addEditor(editor E) { c.editors = append(c.editors, editor) }
+func (c *case_[M, D]) addDealer(dealer D) { c.dealers = append(c.dealers, dealer) }
 
-func (c *case_[M, D, E]) equalMatch(value []byte) bool {
+func (c *case_[M, D]) equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return true
@@ -216,7 +175,7 @@ func (c *case_[M, D, E]) equalMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) prefixMatch(value []byte) bool {
+func (c *case_[M, D]) prefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return true
@@ -224,7 +183,7 @@ func (c *case_[M, D, E]) prefixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) suffixMatch(value []byte) bool {
+func (c *case_[M, D]) suffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return true
@@ -232,7 +191,7 @@ func (c *case_[M, D, E]) suffixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) containMatch(value []byte) bool {
+func (c *case_[M, D]) containMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return true
@@ -240,7 +199,7 @@ func (c *case_[M, D, E]) containMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
+func (c *case_[M, D]) regexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return true
@@ -248,7 +207,7 @@ func (c *case_[M, D, E]) regexpMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, D, E]) notEqualMatch(value []byte) bool {
+func (c *case_[M, D]) notEqualMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return false
@@ -256,7 +215,7 @@ func (c *case_[M, D, E]) notEqualMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D, E]) notPrefixMatch(value []byte) bool {
+func (c *case_[M, D]) notPrefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return false
@@ -264,7 +223,7 @@ func (c *case_[M, D, E]) notPrefixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D, E]) notSuffixMatch(value []byte) bool {
+func (c *case_[M, D]) notSuffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return false
@@ -272,7 +231,7 @@ func (c *case_[M, D, E]) notSuffixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D, E]) notContainMatch(value []byte) bool {
+func (c *case_[M, D]) notContainMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return false
@@ -280,7 +239,7 @@ func (c *case_[M, D, E]) notContainMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, D, E]) notRegexpMatch(value []byte) bool {
+func (c *case_[M, D]) notRegexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return false

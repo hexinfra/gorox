@@ -25,7 +25,6 @@ COMPONENTS
     backend (http1Backend, tcpsBackend, ...)
     mesher (quicMesher, tcpsMesher, udpsMesher)
       dealer (...)
-      editor (...)
       case [*]
     stater (localStater, redisStater, ...)
     storer (localStorer, redisStorer, ...)

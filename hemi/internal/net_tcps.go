@@ -297,10 +297,9 @@ type TCPSFilter interface {
 	// Imports
 	Component
 	// Methods
-	OnDial()
-	OnInput() (next bool)
-	OnOutput() (next bool)
-	OnClose()
+	OnSetup(conn *TCPSConn) (next bool)
+	OnInput(buf *Buffer, end bool) (next bool)
+	OnOutput(buf *Buffer, end bool) (next bool)
 }
 
 // TCPSFilter_

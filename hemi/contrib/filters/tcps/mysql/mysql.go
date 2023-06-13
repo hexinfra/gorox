@@ -45,13 +45,12 @@ func (f *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *mysqlProxy) OnDial() {
-}
-func (f *mysqlProxy) OnInput() (next bool) {
+func (f *mysqlProxy) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *mysqlProxy) OnOutput() (next bool) {
+func (f *mysqlProxy) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *mysqlProxy) OnClose() {
+func (f *mysqlProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

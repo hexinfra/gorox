@@ -45,13 +45,12 @@ func (f *redisProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *redisProxy) OnDial() {
-}
-func (f *redisProxy) OnInput() (next bool) {
+func (f *redisProxy) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *redisProxy) OnOutput() (next bool) {
+func (f *redisProxy) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *redisProxy) OnClose() {
+func (f *redisProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

@@ -45,15 +45,14 @@ func (f *helloFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *helloFilter) OnDial() {
-}
-func (f *helloFilter) OnInput() (next bool) {
+func (f *helloFilter) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *helloFilter) OnOutput() (next bool) {
+func (f *helloFilter) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *helloFilter) OnClose() {
+func (f *helloFilter) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }
 
 var (

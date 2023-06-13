@@ -57,13 +57,12 @@ func (f *tudsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (f *tudsProxy) OnDial() {
-}
-func (f *tudsProxy) OnInput() (next bool) {
+func (f *tudsProxy) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *tudsProxy) OnOutput() (next bool) {
+func (f *tudsProxy) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *tudsProxy) OnClose() {
+func (f *tudsProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

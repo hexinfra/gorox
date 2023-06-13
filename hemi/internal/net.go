@@ -247,3 +247,8 @@ func (c *case_[M, F]) notRegexpMatch(value []byte) bool {
 	}
 	return true
 }
+
+// Buffer
+type Buffer struct {
+	// TODO
+}

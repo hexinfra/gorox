@@ -45,13 +45,12 @@ func (f *mongoProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *mongoProxy) OnDial() {
-}
-func (f *mongoProxy) OnInput() (next bool) {
+func (f *mongoProxy) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *mongoProxy) OnOutput() (next bool) {
+func (f *mongoProxy) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *mongoProxy) OnClose() {
+func (f *mongoProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

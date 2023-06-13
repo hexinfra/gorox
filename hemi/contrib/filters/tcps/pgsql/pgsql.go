@@ -45,13 +45,12 @@ func (f *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (f *pgsqlProxy) OnDial() {
-}
-func (f *pgsqlProxy) OnInput() (next bool) {
+func (f *pgsqlProxy) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *pgsqlProxy) OnOutput() (next bool) {
+func (f *pgsqlProxy) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *pgsqlProxy) OnClose() {
+func (f *pgsqlProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

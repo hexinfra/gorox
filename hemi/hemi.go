@@ -148,6 +148,8 @@ type ( // core types
 	TCPSFilter = internal.TCPSFilter
 	TCPSConn   = internal.TCPSConn
 
+	Buffer = internal.Buffer
+
 	UDPSMesher = internal.UDPSMesher
 	UDPSFilter = internal.UDPSFilter
 	UDPSLink   = internal.UDPSLink

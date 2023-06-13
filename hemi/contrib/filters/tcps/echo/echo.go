@@ -45,13 +45,19 @@ func (f *echoFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *echoFilter) OnDial() {
-}
-func (f *echoFilter) OnInput() (next bool) {
+func (f *echoFilter) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *echoFilter) OnOutput() (next bool) {
+func (f *echoFilter) OnInput(buf *Buffer, end bool) (next bool) {
+	/*
+		conn := buf.Conn()
+		conn.Write(buf.Data())
+		if end {
+			conn.CloseWrite()
+		}
+	*/
 	return
 }
-func (f *echoFilter) OnClose() {
+func (f *echoFilter) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

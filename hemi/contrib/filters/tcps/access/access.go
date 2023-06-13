@@ -45,13 +45,12 @@ func (f *accessFilter) OnPrepare() {
 	// TODO
 }
 
-func (f *accessFilter) OnDial() {
-}
-func (f *accessFilter) OnInput() (next bool) {
+func (f *accessFilter) OnSetup(conn *TCPSConn) (next bool) {
 	return
 }
-func (f *accessFilter) OnOutput() (next bool) {
+func (f *accessFilter) OnInput(buf *Buffer, end bool) (next bool) {
 	return
 }
-func (f *accessFilter) OnClose() {
+func (f *accessFilter) OnOutput(buf *Buffer, end bool) (next bool) {
+	return
 }

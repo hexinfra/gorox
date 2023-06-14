@@ -6,6 +6,6 @@
 // HRPC protocol elements.
 
 // HRPC is a request/response RPC protocol designed for IDC.
-// HRPC is under design, maybe we'll build it upon QUIC without TLS.
+// HRPC is under design, maybe we'll build it upon QUIC.
 
 package internal

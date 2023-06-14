@@ -6,7 +6,7 @@
 // HWEB protocol elements.
 
 // HWEB is a request/response Web protocol designed for IDC.
-// HWEB is under design, maybe we'll build it upon QUIC without TLS.
+// HWEB is under design, the underlying transport protocol is not determined.
 
 package internal
 

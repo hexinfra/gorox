@@ -93,6 +93,70 @@ func (g *hwebGate) serve() { // goroutine
 	// TODO
 }
 
+// poolHWEBConn is the server-side HWEB connection pool.
+var poolHWEBConn sync.Pool
+
+func getHWEBConn(id int64, server *hwebServer, gate *hwebGate, tcpConn *net.TCPConn) *hwebConn {
+	var conn *hwebConn
+	if x := poolHWEBConn.Get(); x == nil {
+		conn = new(hwebConn)
+	} else {
+		conn = x.(*hwebConn)
+	}
+	conn.onGet(id, server, gate, tcpConn)
+	return conn
+}
+func putHWEBConn(conn *hwebConn) {
+	conn.onPut()
+	poolHWEBConn.Put(conn)
+}
+
+// hwebConn is the server-side HWEB connection.
+type hwebConn struct {
+	// Mixins
+	serverConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	tcpConn *net.TCPConn // the underlying tcp conn
+	// Conn states (zeros)
+	hwebConn0 // all values must be zero by default in this struct!
+}
+type hwebConn0 struct { // for fast reset, entirely
+}
+
+func (c *hwebConn) onGet(id int64, server *hwebServer, gate *hwebGate, tcpConn *net.TCPConn) {
+	c.serverConn_.onGet(id, server, gate)
+	c.tcpConn = tcpConn
+}
+func (c *hwebConn) onPut() {
+	c.serverConn_.onPut()
+	c.tcpConn = nil
+	c.hwebConn0 = hwebConn0{}
+}
+
+func (c *hwebConn) serve() { // goroutine
+	// TODO
+	// use go c.receive()?
+}
+func (c *hwebConn) receive() { // goroutine
+	// TODO
+}
+
+func (c *hwebConn) setReadDeadline(deadline time.Time) error {
+	// TODO
+	return nil
+}
+func (c *hwebConn) setWriteDeadline(deadline time.Time) error {
+	// TODO
+	return nil
+}
+
+func (c *hwebConn) closeConn() {
+	c.tcpConn.Close()
+	c.gate.onConnClosed()
+}
+
 // poolHWEBExchan
 var poolHWEBExchan sync.Pool
 

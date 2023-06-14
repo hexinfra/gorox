@@ -103,7 +103,7 @@ func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
 }
 
-// clientConn is the interface for *H[1-3]Conn.
+// clientConn is the interface for *H[1-3]Conn and *HConn.
 type clientConn interface {
 	getClient() webClient
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
@@ -111,7 +111,7 @@ type clientConn interface {
 	markBroken()
 }
 
-// clientConn_ is the mixin for H[1-3]Conn.
+// clientConn_ is the mixin for H[1-3]Conn and HConn.
 type clientConn_ struct {
 	// Mixins
 	Conn_

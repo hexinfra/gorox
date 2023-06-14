@@ -160,7 +160,7 @@ func (g *webGate_) onConnClosed() {
 	g.SubDone()
 }
 
-// serverConn is the interface for *http[1-3]Conn.
+// serverConn is the interface for *http[1-3]Conn and *hwebConn.
 type serverConn interface {
 	serve() // goroutine
 	getServer() webServer
@@ -169,7 +169,7 @@ type serverConn interface {
 	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
-// serverConn_ is the mixin for http[1-3]Conn.
+// serverConn_ is the mixin for http[1-3]Conn and hwebConn.
 type serverConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)

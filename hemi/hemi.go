@@ -136,6 +136,7 @@ type ( // core types
 
 	HWEBOutgate = internal.HWEBOutgate
 	HWEBBackend = internal.HWEBBackend
+	HConn       = internal.HConn
 	HExchan     = internal.HExchan
 	HRequest    = internal.HRequest
 	HResponse   = internal.HResponse

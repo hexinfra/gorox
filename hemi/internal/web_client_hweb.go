@@ -108,6 +108,65 @@ func (n *hwebNode) Maintain() { // goroutine
 	n.backend.SubDone()
 }
 
+// poolHConn is the client-side HWEB connection pool.
+var poolHConn sync.Pool
+
+func getHConn(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
+	var conn *HConn
+	if x := poolHConn.Get(); x == nil {
+		conn = new(HConn)
+	} else {
+		conn = x.(*HConn)
+	}
+	conn.onGet(id, client, node, tcpConn)
+	return conn
+}
+func putHConn(conn *HConn) {
+	conn.onPut()
+	poolHConn.Put(conn)
+}
+
+// HConn
+type HConn struct {
+	// Mixins
+	clientConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	node    *hwebNode
+	tcpConn *net.TCPConn // the underlying tcp conn
+	// Conn states (zeros)
+	activeExchans int32 // concurrent exchans
+}
+
+func (c *HConn) onGet(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
+	c.clientConn_.onGet(id, client)
+	c.node = node
+	c.tcpConn = tcpConn
+}
+func (c *HConn) onPut() {
+	c.clientConn_.onPut()
+	c.node = nil
+	c.tcpConn = nil
+	c.activeExchans = 0
+}
+
+func (c *HConn) FetchExchan() *HExchan {
+	// TODO: exchan.onUse()
+	return nil
+}
+func (c *HConn) StoreExchan(exchan *HExchan) {
+	// TODO
+	exchan.onEnd()
+}
+
+func (c *HConn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
+}
+
+func (c *HConn) closeConn() { c.tcpConn.Close() } // used by codes which use fetch/store
+
 // poolHExchan
 var poolHExchan sync.Pool
 

@@ -18,6 +18,7 @@ import (
 type logcfg struct {
 	logFile string
 	rotate  string
+	format  string
 	bufSize int
 }
 

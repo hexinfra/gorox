@@ -14,7 +14,7 @@ import (
 )
 
 var ( // registers
-	RegisterRunner = internal.RegisterRunner
+	RegisterAddon = internal.RegisterAddon
 
 	RegisterBackend = internal.RegisterBackend
 
@@ -72,7 +72,7 @@ var ( // core funcs
 type ( // core types
 	Stage = internal.Stage
 
-	Runner = internal.Runner
+	Addon = internal.Addon
 
 	Backend = internal.Backend
 

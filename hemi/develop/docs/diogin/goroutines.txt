@@ -6,7 +6,7 @@ leader 进程
 worker 进程
 
   多个 fixture.run() 并发
-  多个 runner.Run() 并发
+  多个 addon.Run() 并发
   多个 backend.Maintain() 并发
     每个 backend 有多个 node.Maintain() 并发
   多个 mesher.serve() 并发

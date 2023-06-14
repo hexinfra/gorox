@@ -28,7 +28,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     +---+--------+----------+------+------+------+     |
    |     |           backend <node> <conn>            |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
-   |     | o | u | t | g | a | t | e | s |   runner   |     |
+   |     | o | u | t | g | a | t | e | s |   addon    |     |
    |     +---+---+---+---+---+---+---+---+------------+     |
    |     |   clock   |     fcache    |     resolv     |     |
 prepare  +-----------+---------------+----------------+     v

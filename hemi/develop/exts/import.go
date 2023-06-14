@@ -8,6 +8,7 @@
 package exts
 
 import ( // import contrib components, vendor exts, and your exts
+	_ "github.com/hexinfra/gorox/hemi/contrib/addons/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mongo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mysql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/pgsql"
@@ -39,7 +40,6 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/wrap"
 	_ "github.com/hexinfra/gorox/hemi/contrib/routers/simple"
-	_ "github.com/hexinfra/gorox/hemi/contrib/runners/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"

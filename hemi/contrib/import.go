@@ -8,6 +8,7 @@
 package contrib
 
 import (
+	_ "github.com/hexinfra/gorox/hemi/contrib/addons/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
@@ -26,7 +27,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/gzip"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/head"
 	_ "github.com/hexinfra/gorox/hemi/contrib/revisers/wrap"
-	_ "github.com/hexinfra/gorox/hemi/contrib/runners/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/echo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/contrib/socklets/hello"

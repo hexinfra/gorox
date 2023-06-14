@@ -23,7 +23,7 @@ import (
 const ( // component list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, fcache, resolv, http1Outgate, tcpsOutgate, ...
-	compRunner                // ...
+	compAddon                 // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICMesher            // quicMesher
 	compQUICFilter            // quicProxy, ...
@@ -74,7 +74,7 @@ func registerFixture(sign string) {
 
 var (
 	creatorsLock       sync.RWMutex
-	runnerCreators     = make(map[string]func(name string, stage *Stage) Runner) // indexed by sign, same below.
+	addonCreators      = make(map[string]func(name string, stage *Stage) Addon) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
 	quicFilterCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICFilter)
 	tcpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSFilter)
@@ -88,8 +88,8 @@ var (
 	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 )
 
-func RegisterRunner(sign string, create func(name string, stage *Stage) Runner) {
-	_registerComponent0(sign, compRunner, runnerCreators, create)
+func RegisterAddon(sign string, create func(name string, stage *Stage) Addon) {
+	_registerComponent0(sign, compAddon, addonCreators, create)
 }
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
@@ -125,7 +125,7 @@ func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
-func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // runner, backend, stater, storer, server, cronjob
+func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // addon, backend, stater, storer, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -355,7 +355,7 @@ type Stage struct {
 	http3Outgate *HTTP3Outgate         // for fast accessing
 	hwebOutgate  *HWEBOutgate          // for fast accessing
 	fixtures     compDict[fixture]     // indexed by sign
-	runners      compDict[Runner]      // indexed by runnerName
+	addons       compDict[Addon]       // indexed by addonName
 	backends     compDict[Backend]     // indexed by backendName
 	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
 	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
@@ -410,7 +410,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signHTTP3Outgate] = s.http3Outgate
 	s.fixtures[signHWEBOutgate] = s.hwebOutgate
 
-	s.runners = make(compDict[Runner])
+	s.addons = make(compDict[Addon])
 	s.backends = make(compDict[Backend])
 	s.quicMeshers = make(compDict[*QUICMesher])
 	s.tcpsMeshers = make(compDict[*TCPSMesher])
@@ -461,9 +461,9 @@ func (s *Stage) OnShutdown() {
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
-	// runners
-	s.IncSub(len(s.runners))
-	s.runners.goWalk(Runner.OnShutdown)
+	// addons
+	s.IncSub(len(s.addons))
+	s.addons.goWalk(Addon.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures
@@ -544,7 +544,7 @@ func (s *Stage) OnConfigure() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
-	s.runners.walk(Runner.OnConfigure)
+	s.addons.walk(Addon.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
 	s.quicMeshers.walk((*QUICMesher).OnConfigure)
 	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
@@ -565,7 +565,7 @@ func (s *Stage) OnPrepare() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
-	s.runners.walk(Runner.OnPrepare)
+	s.addons.walk(Addon.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
 	s.quicMeshers.walk((*QUICMesher).OnPrepare)
 	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
@@ -578,18 +578,18 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createRunner(sign string, name string) Runner {
-	if s.Runner(name) != nil {
-		UseExitf("conflicting runner with a same name '%s'\n", name)
+func (s *Stage) createAddon(sign string, name string) Addon {
+	if s.Addon(name) != nil {
+		UseExitf("conflicting addon with a same name '%s'\n", name)
 	}
-	create, ok := runnerCreators[sign]
+	create, ok := addonCreators[sign]
 	if !ok {
-		UseExitln("unknown runner type: " + sign)
+		UseExitln("unknown addon type: " + sign)
 	}
-	runner := create(name, s)
-	runner.setShell(runner)
-	s.runners[name] = runner
-	return runner
+	addon := create(name, s)
+	addon.setShell(addon)
+	s.addons[name] = addon
+	return addon
 }
 func (s *Stage) createBackend(sign string, name string) Backend {
 	if s.Backend(name) != nil {
@@ -723,7 +723,7 @@ func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
 func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
 
 func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Runner(name string) Runner          { return s.runners[name] }
+func (s *Stage) Addon(name string) Addon            { return s.addons[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
 func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
@@ -781,7 +781,7 @@ func (s *Stage) Start(id int32) {
 
 	// Start all components
 	s.startFixtures() // go fixture.run()
-	s.startRunners()  // go runner.Run()
+	s.startAddons()   // go addon.Run()
 	s.startBackends() // go backend.maintain()
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
@@ -827,12 +827,12 @@ func (s *Stage) startFixtures() {
 		go fixture.run()
 	}
 }
-func (s *Stage) startRunners() {
-	for _, runner := range s.runners {
+func (s *Stage) startAddons() {
+	for _, addon := range s.addons {
 		if Debug() >= 1 {
-			Printf("runner=%s go Run()\n", runner.Name())
+			Printf("addon=%s go Run()\n", addon.Name())
 		}
-		go runner.Run()
+		go addon.Run()
 	}
 }
 func (s *Stage) startBackends() {
@@ -996,10 +996,10 @@ func (s *Stage) ProfBlock() {
 	runtime.SetBlockProfileRate(0)
 }
 
-// Runner component.
+// Addon component.
 //
-// Runners are plugins or addons for Hemi. Users can create their own runners.
-type Runner interface {
+// Addons are addons for Hemi. Users can create their own addons.
+type Addon interface {
 	// Imports
 	Component
 	// Methods

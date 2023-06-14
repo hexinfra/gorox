@@ -2803,7 +2803,7 @@ func (r *serverResponse_) endUnsized() error {
 	/*
 		if r.hasRevisers {
 			resp := r.shell.(Response)
-			for _, id := range r.revisers { // finish content
+			for _, id := range r.revisers { // finish unsized content
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}

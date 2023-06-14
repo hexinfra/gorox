@@ -831,7 +831,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
 		}
 	}
 	// Hook revisers on request and response. When receiving or sending content, these revisers will be executed.
-	for _, reviser := range r.revisers {
+	for _, reviser := range r.revisers { // hook revisers
 		req.hookReviser(reviser)
 		resp.hookReviser(reviser)
 	}

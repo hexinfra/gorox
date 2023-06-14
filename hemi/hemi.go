@@ -141,15 +141,16 @@ type ( // core types
 	HRequest    = internal.HRequest
 	HResponse   = internal.HResponse
 
+	Buffer = internal.Buffer
+
 	QUICMesher     = internal.QUICMesher
 	QUICFilter     = internal.QUICFilter
 	QUICConnection = internal.QUICConnection
+	QUICStream     = internal.QUICStream
 
 	TCPSMesher = internal.TCPSMesher
 	TCPSFilter = internal.TCPSFilter
 	TCPSConn   = internal.TCPSConn
-
-	Buffer = internal.Buffer
 
 	UDPSMesher = internal.UDPSMesher
 	UDPSFilter = internal.UDPSFilter

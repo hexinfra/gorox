@@ -268,7 +268,7 @@ type HRequest struct { // outgoing. needs building
 	// Exchan states (zeros)
 }
 
-func (r *HRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
+func (r *HRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :target = uri
 	// TODO: set :method and :uri
 	return false
 }

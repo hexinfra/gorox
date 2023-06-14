@@ -256,7 +256,7 @@ type TConn struct {
 	Conn_
 	// Conn states (non-zeros)
 	node       *tcpsNode       // associated node if client is TCPSBackend
-	netConn    net.Conn        // *TCPConn, *tls.Conn
+	netConn    net.Conn        // *net.TCPConn, *tls.Conn
 	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP
 	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)

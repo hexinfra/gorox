@@ -109,6 +109,6 @@ func (s *Svc) dispatch(req Req, resp Resp) {
 	// TODO
 }
 
-// Bundlet is a bundle of procedures in Svc.
+// Bundlet is a bundle of procedures in Svc. Bundlets are not components.
 type Bundlet interface {
 }

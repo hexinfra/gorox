@@ -258,7 +258,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 	b.stage.SubDone()
 }
 
-// Node is a member of backend.
+// Node is a member of backend. Nodes are not components.
 type Node interface {
 	// Methods
 	setAddress(address string)

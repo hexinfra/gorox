@@ -122,7 +122,7 @@ func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *Server_) NumGates() int32             { return s.numGates }
 func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 
-// Gate is the interface for all gates.
+// Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
 	ID() int32

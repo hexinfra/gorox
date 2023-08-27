@@ -33,7 +33,7 @@ type uwsgiProxy struct {
 	stage   *Stage      // current stage
 	app     *App        // the app to which the proxy belongs
 	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
-	storer  Storer      // the storer which is used by this proxy
+	cacher  Cacher      // the cacher which is used by this proxy
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -70,16 +70,16 @@ func (h *uwsgiProxy) OnConfigure() {
 		UseExitln("toBackend is required for uwsgiProxy")
 	}
 
-	// withStorer
-	if v, ok := h.Find("withStorer"); ok {
+	// withCacher
+	if v, ok := h.Find("withCacher"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if storer := h.stage.Storer(name); storer == nil {
-				UseExitf("unknown storer: '%s'\n", name)
+			if cacher := h.stage.Cacher(name); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", name)
 			} else {
-				h.storer = storer
+				h.cacher = cacher
 			}
 		} else {
-			UseExitln("invalid withStorer")
+			UseExitln("invalid withCacher")
 		}
 	}
 
@@ -117,7 +117,7 @@ func (h *uwsgiProxy) OnPrepare() {
 }
 
 func (h *uwsgiProxy) IsProxy() bool { return true }
-func (h *uwsgiProxy) IsCache() bool { return h.storer != nil }
+func (h *uwsgiProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *uwsgiProxy) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation

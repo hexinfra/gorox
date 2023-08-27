@@ -3,12 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General storer implementation.
+// General cacher implementation.
 
 package internal
 
-// Storer component is the interface to storages of HTTP caching. See RFC 9111.
-type Storer interface {
+// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
+type Cacher interface {
 	// Imports
 	Component
 	// Methods
@@ -18,13 +18,13 @@ type Storer interface {
 	Del(key []byte) bool
 }
 
-// Storer_
-type Storer_ struct {
+// Cacher_
+type Cacher_ struct {
 	// Mixins
 	Component_
 }
 
-// Hobject is an HTTP object in storer
+// Hobject is an HTTP object in cacher
 type Hobject struct {
 	// TODO
 	uri      []byte

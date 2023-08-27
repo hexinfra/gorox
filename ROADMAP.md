@@ -8,7 +8,7 @@ Roadmap
   * [TODO] websocket implementation.
   * [TODO] http/2 implementation.
   * [TODO] quic and http/3 implementation.
-  * [TODO] storer implementation.
+  * [TODO] cacher implementation.
   * [TODO] tcptun implementation.
   * [TODO] udptun implementation.
   * [TODO] web application framework implementation.

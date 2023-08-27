@@ -134,8 +134,8 @@ article table.none tr td {
 		<li>stage &gt; udpsMesher &gt; [case &gt;] udpsProxy</li>
 		<li>stage &gt; localStater</li>
 		<li>stage &gt; redisStater</li>
-		<li><a href="#stage-localStorer">stage &gt; localStorer</a></li>
-		<li><a href="#stage-redisStorer">stage &gt; redisStorer</a></li>
+		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
+		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
 		<li><a href="#stage-app">stage &gt; app</a></li>
 		<li><a href="#stage-app-rule">stage &gt; app &gt; rule</a></li>
 		<li><a href="#stage-app-accessChecker">stage &gt; app &gt; [rule &gt;] accessChecker</a></li>
@@ -750,23 +750,23 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 			</ul>
 		</li>
 
-		<li id="stage-localStorer">
-			<h4>stage &gt; localStorer</h4>
-			<p>localStorer：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
+		<li id="stage-localCacher">
+			<h4>stage &gt; localCacher</h4>
+			<p>localCacher：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
 			<ul>
 				<li>
-					<p>.storeDir 缓存目录</p>
-					<code>语法：.storeDir = "path"
-					默认值： %varsDir + "/storers/storerName"
+					<p>.cacheDir 缓存目录</p>
+					<code>语法：.cacheDir = "path"
+					默认值： %varsDir + "/cachers/cacherName"
 					取值范围：-
 				</code>
 				</li>
 			</ul>
 		</li>
 
-		<li id="stage-redisStorer">
-			<h4>stage &gt; redisStorer</h4>
-			<p>redisStorer：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
+		<li id="stage-redisCacher">
+			<h4>stage &gt; redisCacher</h4>
+			<p>redisCacher：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
 			<ul>
 				<li>
 					<p>.node redis 的服务列表。</p>
@@ -1314,8 +1314,8 @@ stage {
 				</li>
 
 				<li>
-					<p>.withStorer 选择使用 storer 的名字。</p>
-					<code>语法： .withStorer = "storerName"
+					<p>.withCacher 选择使用 cacher 的名字。</p>
+					<code>语法： .withCacher = "cacherName"
 						默认值： -  
 						取值范围：-
 					</code>
@@ -1448,8 +1448,8 @@ http1Proxy {
 					</code>
 				</li>
 				<li>
-					<p>.withStorer 选择使用 storer 的名字。</p>
-					<code>语法： .withStorer = "storerName"
+					<p>.withCacher 选择使用 cacher 的名字。</p>
+					<code>语法： .withCacher = "cacherName"
 						默认值： -  
 						取值范围：-
 					</code>

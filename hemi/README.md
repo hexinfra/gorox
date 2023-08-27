@@ -24,7 +24,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     | e | filter |              | socklet reviser|     |
    |     | r |  case  |   svc(*)     |    rule        |     |
    |     |(*)|        |          +---+--+      +------+     |
-   |     |   |        |          |stater|      |storer|     |
+   |     |   |        |          |stater|      |cacher|     |
    |     +---+--------+----------+------+------+------+     |
    |     |           backend <node> <conn>            |     |
    |     +---+---+---+---+---+---+---+---+------------+     |

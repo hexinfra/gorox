@@ -27,7 +27,7 @@ COMPONENTS
       filter (...)
       case [*]
     stater (localStater, redisStater, ...)
-    storer (localStorer, redisStorer, ...)
+    cacher (localCacher, redisCacher, ...)
     app [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

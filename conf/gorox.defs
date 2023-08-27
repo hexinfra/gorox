@@ -255,18 +255,18 @@ stage {
 
 	// staters
 	localStater "ls1" {
-		.stateDir = %varsDir + "/staters/ls"
+		.stateDir = %varsDir + "/staters/ls1"
 	}
 	redisStater "rs1" {
 	}
 
-	// storers
-	localStorer "ls1" {
-		.storeDir = %varsDir + "/storers/ls1"
+	// cachers
+	localCacher "lc1" {
+		.cacheDir = %varsDir + "/cachers/lc1"
 	}
-	memStorer "ms1" {
+	memCacher "mc1" {
 	}
-	redisStorer "rs1" {
+	redisCacher "rc1" {
 	}
 
 	// apps
@@ -344,7 +344,7 @@ stage {
 			.bufferClientContent = true
 			.bufferServerContent = true
 			.preferUnderscore = true
-			.withStorer = "storer name"
+			.withCacher = "cacher name"
 		}
 		http1Proxy "h1p1" {
 			.proxyMode = "reverse"

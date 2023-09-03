@@ -2176,7 +2176,7 @@ const ( // field flags
 // nameFrom          | ||  dataEdge                value.edge
 //   nameFrom+nameSize ||
 //            value.from|
-//                      value.from+(flags&flagQuoted)
+//                      value.from+(flags&flagQuoted), used as dataFrom
 //
 // If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
 //

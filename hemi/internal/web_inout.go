@@ -641,6 +641,8 @@ func (r *webIn_) _splitField(field *pair, fdesc *desc, p []byte) bool { // split
 		}
 		field.params = bakField.params
 		field.dataEdge = bakField.dataEdge
+	} else if numSubs == 0 {
+		field.dataEdge = field.value.edge
 	}
 	return true
 }

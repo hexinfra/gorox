@@ -17,6 +17,122 @@ import (
 	"time"
 )
 
+// Value is a value in config file.
+type Value struct { // 40 bytes
+	kind int16  // tokenXXX in values
+	line int32  // at line number
+	file string // in file
+	data any    // bools, integers, strings, durations, lists, and dicts
+}
+
+func (v *Value) IsBool() bool     { return v.kind == tokenBool }
+func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
+func (v *Value) IsString() bool   { return v.kind == tokenString }
+func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
+func (v *Value) IsList() bool     { return v.kind == tokenList }
+func (v *Value) IsDict() bool     { return v.kind == tokenDict }
+
+func (v *Value) Bool() (b bool, ok bool) {
+	b, ok = v.data.(bool)
+	return
+}
+func (v *Value) Int64() (i64 int64, ok bool) {
+	i64, ok = v.data.(int64)
+	return
+}
+func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
+	i64, ok := v.Int64()
+	i = T(i64)
+	if ok && int64(i) != i64 {
+		ok = false
+	}
+	return
+}
+func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
+func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
+func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
+func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
+func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
+func (v *Value) String() (s string, ok bool) {
+	s, ok = v.data.(string)
+	return
+}
+func (v *Value) Bytes() (p []byte, ok bool) {
+	if s, isString := v.String(); isString {
+		return []byte(s), true
+	}
+	return
+}
+func (v *Value) Duration() (d time.Duration, ok bool) {
+	d, ok = v.data.(time.Duration)
+	return
+}
+func (v *Value) List() (list []Value, ok bool) {
+	list, ok = v.data.([]Value)
+	return
+}
+func (v *Value) ListN(n int) (list []Value, ok bool) {
+	list, ok = v.data.([]Value)
+	if ok && n >= 0 && len(list) != n {
+		ok = false
+	}
+	return
+}
+func (v *Value) StringList() (list []string, ok bool) {
+	l, ok := v.data.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, s)
+			}
+		}
+	}
+	return
+}
+func (v *Value) BytesList() (list [][]byte, ok bool) {
+	l, ok := v.data.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, []byte(s))
+			}
+		}
+	}
+	return
+}
+func (v *Value) StringListN(n int) (list []string, ok bool) {
+	l, ok := v.data.([]Value)
+	if !ok {
+		return
+	}
+	if n >= 0 && len(l) != n {
+		ok = false
+		return
+	}
+	for _, value := range l {
+		if s, ok := value.String(); ok {
+			list = append(list, s)
+		}
+	}
+	return
+}
+func (v *Value) Dict() (dict map[string]Value, ok bool) {
+	dict, ok = v.data.(map[string]Value)
+	return
+}
+func (v *Value) StringDict() (dict map[string]string, ok bool) {
+	d, ok := v.data.(map[string]Value)
+	if ok {
+		dict = make(map[string]string)
+		for name, value := range d {
+			if s, ok := value.String(); ok {
+				dict[name] = s
+			}
+		}
+	}
+	return
+}
+
 var varIndexes = map[string]int16{
 	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
 	"srcHost": 0,
@@ -1142,119 +1258,3 @@ var ( // solos
 		'+': "+",
 	}
 )
-
-// Value is a value in config file.
-type Value struct { // 40 bytes
-	kind int16  // tokenXXX in values
-	line int32  // at line number
-	file string // in file
-	data any    // bools, integers, strings, durations, lists, and dicts
-}
-
-func (v *Value) IsBool() bool     { return v.kind == tokenBool }
-func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
-func (v *Value) IsString() bool   { return v.kind == tokenString }
-func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
-func (v *Value) IsList() bool     { return v.kind == tokenList }
-func (v *Value) IsDict() bool     { return v.kind == tokenDict }
-
-func (v *Value) Bool() (b bool, ok bool) {
-	b, ok = v.data.(bool)
-	return
-}
-func (v *Value) Int64() (i64 int64, ok bool) {
-	i64, ok = v.data.(int64)
-	return
-}
-func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
-	i64, ok := v.Int64()
-	i = T(i64)
-	if ok && int64(i) != i64 {
-		ok = false
-	}
-	return
-}
-func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
-func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
-func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
-func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
-func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
-func (v *Value) String() (s string, ok bool) {
-	s, ok = v.data.(string)
-	return
-}
-func (v *Value) Bytes() (p []byte, ok bool) {
-	if s, isString := v.String(); isString {
-		return []byte(s), true
-	}
-	return
-}
-func (v *Value) Duration() (d time.Duration, ok bool) {
-	d, ok = v.data.(time.Duration)
-	return
-}
-func (v *Value) List() (list []Value, ok bool) {
-	list, ok = v.data.([]Value)
-	return
-}
-func (v *Value) ListN(n int) (list []Value, ok bool) {
-	list, ok = v.data.([]Value)
-	if ok && n >= 0 && len(list) != n {
-		ok = false
-	}
-	return
-}
-func (v *Value) StringList() (list []string, ok bool) {
-	l, ok := v.data.([]Value)
-	if ok {
-		for _, value := range l {
-			if s, isString := value.String(); isString {
-				list = append(list, s)
-			}
-		}
-	}
-	return
-}
-func (v *Value) BytesList() (list [][]byte, ok bool) {
-	l, ok := v.data.([]Value)
-	if ok {
-		for _, value := range l {
-			if s, isString := value.String(); isString {
-				list = append(list, []byte(s))
-			}
-		}
-	}
-	return
-}
-func (v *Value) StringListN(n int) (list []string, ok bool) {
-	l, ok := v.data.([]Value)
-	if !ok {
-		return
-	}
-	if n >= 0 && len(l) != n {
-		ok = false
-		return
-	}
-	for _, value := range l {
-		if s, ok := value.String(); ok {
-			list = append(list, s)
-		}
-	}
-	return
-}
-func (v *Value) Dict() (dict map[string]Value, ok bool) {
-	dict, ok = v.data.(map[string]Value)
-	return
-}
-func (v *Value) StringDict() (dict map[string]string, ok bool) {
-	d, ok := v.data.(map[string]Value)
-	if ok {
-		dict = make(map[string]string)
-		for name, value := range d {
-			if s, ok := value.String(); ok {
-				dict[name] = s
-			}
-		}
-	}
-	return
-}

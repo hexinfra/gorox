@@ -23,7 +23,7 @@ type rpcServer interface {
 type rpcServer_ struct {
 	// Mixins
 	Server_
-	rpcKeeper_
+	rpcBroker_
 	// Assocs
 	gates      []rpcGate
 	defaultSvc *Svc // default svc if not found

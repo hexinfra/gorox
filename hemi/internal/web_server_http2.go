@@ -865,7 +865,7 @@ func (s *http2Stream) execute() { // goroutine
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) webKeeper() webKeeper { return s.conn.getServer() }
+func (s *http2Stream) webBroker() webBroker { return s.conn.getServer() }
 func (s *http2Stream) peerAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) writeContinue() bool { // 100 continue

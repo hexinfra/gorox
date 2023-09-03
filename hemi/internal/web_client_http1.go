@@ -314,7 +314,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.clientStream_.onEnd()
 }
 
-func (s *H1Stream) webKeeper() webKeeper { return s.conn.getClient() }
+func (s *H1Stream) webBroker() webBroker { return s.conn.getClient() }
 func (s *H1Stream) peerAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
@@ -410,7 +410,7 @@ func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) boo
 	}
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	if r.stream.webKeeper().TLSMode() {
+	if r.stream.webBroker().TLSMode() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
 		}

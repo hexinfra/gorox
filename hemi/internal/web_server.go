@@ -40,7 +40,7 @@ type webServer interface {
 type webServer_ struct {
 	// Mixins
 	Server_
-	webKeeper_
+	webBroker_
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
@@ -61,7 +61,7 @@ func (s *webServer_) onCreate(name string, stage *Stage) {
 
 func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s.webKeeper_.onConfigure(shell, 120*time.Second, 120*time.Second)
+	s.webBroker_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 0)
 	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
 
@@ -77,7 +77,7 @@ func (s *webServer_) onConfigure(shell Component) {
 }
 func (s *webServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
-	s.webKeeper_.onPrepare(shell)
+	s.webBroker_.onPrepare(shell)
 	s.streamHolder_.onPrepare(shell)
 	s.contentSaver_.onPrepare(shell, 0755)
 }
@@ -2399,7 +2399,7 @@ func (r *serverRequest_) saveContentFilesDir() string {
 	if r.app != nil {
 		return r.app.SaveContentFilesDir()
 	} else {
-		return r.stream.webKeeper().SaveContentFilesDir()
+		return r.stream.webBroker().SaveContentFilesDir()
 	}
 }
 

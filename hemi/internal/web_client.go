@@ -31,7 +31,7 @@ type webClient interface {
 type webOutgate_ struct {
 	// Mixins
 	outgate_
-	webKeeper_ // webClient
+	webBroker_ // webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -46,13 +46,13 @@ func (f *webOutgate_) onConfigure(shell Component) {
 	if f.tlsConfig != nil {
 		f.tlsConfig.InsecureSkipVerify = true
 	}
-	f.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	f.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	f.streamHolder_.onConfigure(shell, 1000)
 	f.contentSaver_.onConfigure(shell, TempDir()+"/web/outgates/"+shell.Name())
 }
 func (f *webOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
-	f.webKeeper_.onPrepare(shell)
+	f.webBroker_.onPrepare(shell)
 	f.streamHolder_.onPrepare(shell)
 	f.contentSaver_.onPrepare(shell, 0755)
 }
@@ -61,7 +61,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webKeeper_ // webClient
+	webBroker_ // webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
@@ -79,14 +79,14 @@ func (b *webBackend_[N]) onConfigure(shell Component) {
 	if b.tlsConfig != nil {
 		b.tlsConfig.InsecureSkipVerify = true
 	}
-	b.webKeeper_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
 	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.onPrepare()
-	b.webKeeper_.onPrepare(shell)
+	b.webBroker_.onPrepare(shell)
 	b.streamHolder_.onPrepare(shell)
 	b.contentSaver_.onPrepare(shell, 0755)
 	b.loadBalancer_.onPrepare(numNodes)
@@ -278,7 +278,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
-		if r.stream.webKeeper().TLSMode() {
+		if r.stream.webBroker().TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP
@@ -825,7 +825,7 @@ func (r *clientResponse_) addCookie(cookie *cookie) bool {
 }
 
 func (r *clientResponse_) saveContentFilesDir() string {
-	return r.stream.webKeeper().SaveContentFilesDir()
+	return r.stream.webBroker().SaveContentFilesDir()
 }
 
 // cookie is a "set-cookie" received from server.

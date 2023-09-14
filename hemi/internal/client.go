@@ -16,18 +16,6 @@ import (
 	"time"
 )
 
-// client is the interface for outgates and backends.
-type client interface {
-	// Imports
-	// Methods
-	Stage() *Stage
-	TLSMode() bool
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
-
 // qClient is the interface for QUICOutgate, QUDSOutgate, QUICBackend, and QUDSBackend.
 type qClient interface {
 	// Imports
@@ -49,6 +37,18 @@ type uClient interface {
 	// Imports
 	client
 	// Methods
+}
+
+// client is the interface for outgates and backends.
+type client interface {
+	// Imports
+	// Methods
+	Stage() *Stage
+	TLSMode() bool
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
 }
 
 // client_ is a mixin for outgates and backends.
@@ -159,6 +159,15 @@ func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
 
 func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
 func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
+
+// wireBackend
+type wireBackend interface {
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	Dial() (wireConn, error)
+	FetchConn() (wireConn, error)
+	StoreConn(conn wireConn)
+}
 
 // Backend is a group of nodes.
 type Backend interface {
@@ -349,6 +358,22 @@ func (n *Node_) shut() {
 
 var errNodeDown = errors.New("node is down")
 
+// wireConn
+type wireConn interface {
+	SetWriteDeadline(deadline time.Time) error
+	SetReadDeadline(deadline time.Time) error
+	Write(p []byte) (n int, err error)
+	Writev(vector *net.Buffers) (int64, error)
+	Read(p []byte) (n int, err error)
+	ReadFull(p []byte) (n int, err error)
+	ReadAtLeast(p []byte, min int) (n int, err error)
+	CloseWrite() error
+	Close() error
+	MakeTempName(p []byte, unixTime int64) (from int, edge int)
+	IsBroken() bool
+	MarkBroken()
+}
+
 // Conn is the client conns.
 type Conn interface {
 	// Methods
@@ -386,28 +411,3 @@ func (c *Conn_) getNext() Conn     { return c.next }
 func (c *Conn_) setNext(next Conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }
-
-// wireBackend
-type wireBackend interface {
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	Dial() (wireConn, error)
-	FetchConn() (wireConn, error)
-	StoreConn(conn wireConn)
-}
-
-// wireConn
-type wireConn interface {
-	SetWriteDeadline(deadline time.Time) error
-	SetReadDeadline(deadline time.Time) error
-	Write(p []byte) (n int, err error)
-	Writev(vector *net.Buffers) (int64, error)
-	Read(p []byte) (n int, err error)
-	ReadFull(p []byte) (n int, err error)
-	ReadAtLeast(p []byte, min int) (n int, err error)
-	CloseWrite() error
-	Close() error
-	MakeTempName(p []byte, unixTime int64) (from int, edge int)
-	IsBroken() bool
-	MarkBroken()
-}

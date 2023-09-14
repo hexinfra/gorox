@@ -7,7 +7,7 @@
 
 package internal
 
-// Stater component is the interface to storages of HTTP states. See RFC 6265.
+// Stater component is the interface to storages of Web/RPC states.
 type Stater interface {
 	// Imports
 	Component
@@ -24,16 +24,16 @@ type Stater_ struct {
 	Component_
 }
 
-// Session is an HTTP session in stater
+// Session is a Web/RPC session in stater
 type Session struct {
 	// TODO
 	ID     [40]byte // session id
 	Secret [40]byte // secret
-	Role   int8     // 0: default, >0: app defined values
+	Role   int8     // 0: default, >0: user defined values
 	Device int8     // terminal device type
-	state1 int8     // app defined state1
-	state2 int8     // app defined state2
-	state3 int32    // app defined state3
+	state1 int8     // user defined state1
+	state2 int8     // user defined state2
+	state3 int32    // user defined state3
 	expire int64    // unix time
 	states map[string]string
 }

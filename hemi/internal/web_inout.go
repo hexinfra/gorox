@@ -1486,7 +1486,7 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	}
 	return r.stream.setReadDeadline(now.Add(r.stream.webBroker().ReadTimeout()))
 }
-func (r *webIn_) _tooSlow() bool {
+func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
@@ -1956,7 +1956,7 @@ func (r *webOut_) _slowCheck(err error) error {
 	}
 	return err
 }
-func (r *webOut_) _tooSlow() bool {
+func (r *webOut_) _tooSlow() bool { // reports whether the speed of outgoing content is too slow
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 

@@ -501,7 +501,7 @@ func (r *serverRequest_) App() *App { return r.app }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *serverRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
-func (r *serverRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) UnsafeScheme() []byte { return webSchemeSlices[r.schemeCode] }
 func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
 func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
 

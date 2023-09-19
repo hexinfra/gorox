@@ -307,7 +307,7 @@ func (r *webIn_) IsHTTP1() bool         { return r.versionCode <= Version1_1 }
 func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
-func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
+func (r *webIn_) UnsafeVersion() []byte { return webVersionSlices[r.versionCode] }
 
 func (r *webIn_) addHeader(header *pair) bool { // as prime
 	if edge, ok := r._addPrime(header); ok {

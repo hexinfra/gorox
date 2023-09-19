@@ -1147,7 +1147,7 @@ var ( // perfect hash table for singleton response headers
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
-	header.zero() // we don't believe the value provided by fcgi application. we believe fcgi framing
+	header.zero() // we don't believe the value provided by fcgi application. we believe fcgi framing protocol
 	return true
 }
 func (r *fcgiResponse) checkContentType(header *pair, index int) bool {

@@ -4,11 +4,11 @@
 // Don't use this file as config file directly!
 
 stage {
-	.cpuFile = %tempDir + "/cpu.prof"
-	.hepFile = %tempDir + "/hep.prof"
-	.thrFile = %tempDir + "/thr.prof"
-	.grtFile = %tempDir + "/grt.prof"
-	.blkFile = %tempDir + "/blk.prof"
+	.cpuFile = %tmpsDir + "/cpu.prof"
+	.hepFile = %tmpsDir + "/hep.prof"
+	.thrFile = %tmpsDir + "/thr.prof"
+	.grtFile = %tmpsDir + "/grt.prof"
+	.blkFile = %tmpsDir + "/blk.prof"
 
 	// fixtures. fixtures are singletons
 	clock {
@@ -70,7 +70,7 @@ stage {
 		.readTimeout = 30s
 		.aliveTimeout = 5s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/outgates/http1Outgate"
+		.saveContentFilesDir = %tmpsDir + "/web/outgates/http1Outgate"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -82,7 +82,7 @@ stage {
 		.readTimeout = 30s
 		.aliveTimeout = 5s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/outgates/http2Outgate"
+		.saveContentFilesDir = %tmpsDir + "/web/outgates/http2Outgate"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -94,7 +94,7 @@ stage {
 		.readTimeout = 30s
 		.aliveTimeout = 5s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/outgates/http3Outgate"
+		.saveContentFilesDir = %tmpsDir + "/web/outgates/http3Outgate"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -116,7 +116,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/backends/h1b"
+		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -133,7 +133,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/backends/h2b"
+		.saveContentFilesDir = %tmpsDir + "/web/backends/h2b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -150,7 +150,7 @@ stage {
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/backends/h3b"
+		.saveContentFilesDir = %tmpsDir + "/web/backends/h3b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -282,7 +282,7 @@ stage {
 		.settings             = []
 		.proxyOnly            = false
 		.withStater           = "ls"
-		.saveContentFilesDir  = %tempDir + "/web/apps/a1"
+		.saveContentFilesDir  = %tmpsDir + "/web/apps/a1"
 
 		// handlets
 		accessChecker "ac1" {
@@ -334,7 +334,7 @@ stage {
 		ajpProxy "ap1" {
 		}
 		fcgiProxy "fp1" {
-			.saveContentFilesDir = %tempDir + "/web/fcgi/fp1"
+			.saveContentFilesDir = %tmpsDir + "/web/fcgi/fp1"
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s

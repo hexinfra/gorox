@@ -132,7 +132,7 @@ By default, Gorox uses these directories:
 After Gorox is started, 3 extra directories are created:
 
   * logs/ - Place running logs,
-  * temp/ - Place temp files which are safe to remove after Gorox is shutdown,
+  * tmps/ - Place temp files which are safe to remove after Gorox is shutdown,
   * vars/ - Place dynamic data files used by Gorox.
 
 

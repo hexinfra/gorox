@@ -5,6 +5,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Runner is renamed as Addon.
   * Storers are renamed as cachers.
   * Fix crash caused by empty value of some fields.
+  * Flag "-temp" changed to "-tmps".
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

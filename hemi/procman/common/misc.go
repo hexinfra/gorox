@@ -27,7 +27,7 @@ var (
 	DaemonMode bool
 	BaseDir    string
 	LogsDir    string
-	TempDir    string
+	TmpsDir    string
 	VarsDir    string
 	OutFile    string
 	ErrFile    string

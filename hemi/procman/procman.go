@@ -41,7 +41,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
 	flag.StringVar(&common.BaseDir, "base", "", "")
 	flag.StringVar(&common.LogsDir, "logs", "", "")
-	flag.StringVar(&common.TempDir, "temp", "", "")
+	flag.StringVar(&common.TmpsDir, "tmps", "", "")
 	flag.StringVar(&common.VarsDir, "vars", "", "")
 	flag.StringVar(&common.OutFile, "stdout", "", "")
 	flag.StringVar(&common.ErrFile, "stderr", "", "")
@@ -85,7 +85,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 			set(*pDir)
 		}
 		setDir(&common.LogsDir, "logs", hemi.SetLogsDir)
-		setDir(&common.TempDir, "temp", hemi.SetTempDir)
+		setDir(&common.TmpsDir, "tmps", hemi.SetTmpsDir)
 		setDir(&common.VarsDir, "vars", hemi.SetVarsDir)
 
 		if action == "check" { // dry run

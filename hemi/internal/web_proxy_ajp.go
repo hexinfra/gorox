@@ -61,7 +61,7 @@ func (h *ajpProxy) OnShutdown() {
 }
 
 func (h *ajpProxy) OnConfigure() {
-	h.contentSaver_.onConfigure(h, TempDir()+"/web/ajp/"+h.name)
+	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/ajp/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {

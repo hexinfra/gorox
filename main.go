@@ -66,7 +66,7 @@ OPTIONS
   -daemon           # run server as daemon (default: false)
   -base   <path>    # base directory of the program
   -logs   <path>    # logs directory to use
-  -temp   <path>    # temp directory to use
+  -tmps   <path>    # tmps directory to use
   -vars   <path>    # vars directory to use
   -stdout <path>    # daemon's stdout file (default: gorox.out in logs dir)
   -stderr <path>    # daemon's stderr file (default: gorox.err in logs dir)

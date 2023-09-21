@@ -43,12 +43,12 @@ var ( // core funcs
 
 	SetBaseDir = internal.SetBaseDir
 	SetLogsDir = internal.SetLogsDir
-	SetTempDir = internal.SetTempDir
+	SetTmpsDir = internal.SetTmpsDir
 	SetVarsDir = internal.SetVarsDir
 
 	BaseDir = internal.BaseDir
 	LogsDir = internal.LogsDir
-	TempDir = internal.TempDir
+	TmpsDir = internal.TmpsDir
 	VarsDir = internal.VarsDir
 
 	Print   = internal.Print

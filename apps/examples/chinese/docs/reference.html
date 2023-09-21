@@ -218,10 +218,10 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
 	 如果未指定目录，则 %baseDir 加上 logs，作为日志目录。
 
-%tempDir : 启动 gorox 时候 参数 -temps 指定的的目录，
+%tmpsDir : 启动 gorox 时候 参数 -tmps 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则 %baseDir 加上 temp，作为临时文件的目录。
+	 如果未指定目录，则 %baseDir 加上 tmps，作为临时文件的目录。
 
 %varsDir : 启动 gorox 时候 参数 -vars 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
@@ -234,39 +234,39 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		<li>
 			<p>stage 属性列表。</p>
 			<code class="pre">stage {
-	.cpuFile = %tempDir + "/cpu.prof"
-	.hepFile = %tempDir + "/hep.prof"
-	.thrFile = %tempDir + "/thr.prof"
-	.grtFile = %tempDir + "/grt.prof"
-	.blkFile = %tempDir + "/blk.prof"
+	.cpuFile = %tmpsDir + "/cpu.prof"
+	.hepFile = %tmpsDir + "/hep.prof"
+	.thrFile = %tmpsDir + "/thr.prof"
+	.grtFile = %tmpsDir + "/grt.prof"
+	.blkFile = %tmpsDir + "/blk.prof"
 }</code>
 			<ul>
 				<li>
 					<p>.cpuFile: 采集 gorox 5s 的 CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu。
 					</p>
 					<code>语法：.cpuFile = "filename"
-						默认值：%tempDir + "/cpu.prof"
+						默认值：%tmpsDir + "/cpu.prof"
 					</code>
 
 					<p>.hepFile: 采集 gorox 5s 的 heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap。</p>
 					<code>语法：.hepFile = "filename"
-						默认值：%tempDir + "/hep.prof"
+						默认值：%tmpsDir + "/hep.prof"
 					</code>
 
 					<p>.thrFile: 采集 gorox 5s 的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread。</p>
 					<code>语法：.thrFile = "filename"
-						默认值：%tempDir + "/thr.prof"
+						默认值：%tmpsDir + "/thr.prof"
 					</code>
 
 
 					<p>.grtFile: 采集 gorox 进程内所有当前 goroutine 的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine。</p>
 					<code>语法：.grtFile = "filename"
-						默认值：%tempDir + "/grt.prof"
+						默认值：%tmpsDir + "/grt.prof"
 					</code>
 
 					<p>.blkFile: 采集 gorox 5s 内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block。</p>
 					<code>语法：.blkFile = "filename"
-						默认值：%tempDir + "/blk.prof"
+						默认值：%tmpsDir + "/blk.prof"
 					</code>
 				</li>
 			</ul>
@@ -373,7 +373,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.readTimeout = 30s
 		.aliveTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/outgates/http1Outgate"
+		.saveContentFilesDir = %tmpsDir + "/web/outgates/http1Outgate"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -445,7 +445,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgates/http1Outgate"
+						默认值：%tmpsDir + "/web/outgates/http1Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -486,7 +486,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 	.readTimeout = 30s
 	.aliveTimeout = 5s
 	.maxStreamsPerConn = 1000
-	.saveContentFilesDir = %tempDir + "/web/outgates/http2Outgate"
+	.saveContentFilesDir = %tmpsDir + "/web/outgates/http2Outgate"
 	.maxContentSize = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
@@ -537,7 +537,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgates/http2Outgate"
+						默认值：%tmpsDir + "/web/outgates/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -591,7 +591,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 30],
 		)
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tempDir + "/web/backends/h1b"
+		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -674,7 +674,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/outgates/http2Outgate"
+						默认值：%tmpsDir + "/web/outgates/http2Outgate"
 						取值范围：-
 					</code>
 				</li>
@@ -806,7 +806,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 
 	app "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
-		.saveContentFilesDir = %tempDir + "/web/apps/name"
+		.saveContentFilesDir = %tmpsDir + "/web/apps/name"
 		.webRoot = %baseDir + "/apps/proxy/root"
 		.accessLog = [
 			"logFile": %logsDir + "/apps/proxy.log",
@@ -849,7 +849,7 @@ curl -x "http://127.0.0.1:3080" "http://www.gorox.io"
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tempDir + "/web/apps/name"
+						默认值：%tmpsDir + "/web/apps/name"
 						取值范围：-
 				</code>
 				</li>
@@ -1302,7 +1302,7 @@ stage {
 				<li>
 					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法： .saveContentFilesDir = "path"  
-						默认值：%tempDir + "/web/fcgi/fpm"
+						默认值：%tmpsDir + "/web/fcgi/fpm"
 					</code>
 				</li>
 

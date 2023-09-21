@@ -27,8 +27,8 @@ var (
 	_baseDir  atomic.Value // directory of the executable
 	_logsOnce sync.Once    // protects _logsDir
 	_logsDir  atomic.Value // directory of the log files
-	_tempOnce sync.Once    // protects _tempDir
-	_tempDir  atomic.Value // directory of the temp files
+	_tmpsOnce sync.Once    // protects _tmpsDir
+	_tmpsDir  atomic.Value // directory of the temp files
 	_varsOnce sync.Once    // protects _varsDir
 	_varsDir  atomic.Value // directory of the run-time data
 )
@@ -44,9 +44,9 @@ func SetLogsDir(dir string) { // only once!
 		_mkdir(dir)
 	})
 }
-func SetTempDir(dir string) { // only once!
-	_tempOnce.Do(func() {
-		_tempDir.Store(dir)
+func SetTmpsDir(dir string) { // only once!
+	_tmpsOnce.Do(func() {
+		_tmpsDir.Store(dir)
 		_mkdir(dir)
 	})
 }
@@ -65,7 +65,7 @@ func _mkdir(dir string) {
 
 func BaseDir() string { return _baseDir.Load().(string) }
 func LogsDir() string { return _logsDir.Load().(string) }
-func TempDir() string { return _tempDir.Load().(string) }
+func TmpsDir() string { return _tmpsDir.Load().(string) }
 func VarsDir() string { return _varsDir.Load().(string) }
 
 func Print(args ...any) {
@@ -131,7 +131,7 @@ func FromFile(base string, file string) (*Stage, error) {
 	return c.fromFile(base, file)
 }
 func _checkDirs() {
-	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tempDir.Load() == nil || _varsDir.Load() == nil {
-		UseExitln("baseDir, logsDir, tempDir, and varsDir must all be set")
+	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tmpsDir.Load() == nil || _varsDir.Load() == nil {
+		UseExitln("baseDir, logsDir, tmpsDir, and varsDir must all be set")
 	}
 }

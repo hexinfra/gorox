@@ -48,7 +48,7 @@ func (f *webOutgate_) onConfigure(shell Component) {
 	}
 	f.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	f.streamHolder_.onConfigure(shell, 1000)
-	f.contentSaver_.onConfigure(shell, TempDir()+"/web/outgates/"+shell.Name())
+	f.contentSaver_.onConfigure(shell, TmpsDir()+"/web/outgates/"+shell.Name())
 }
 func (f *webOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
@@ -81,7 +81,7 @@ func (b *webBackend_[N]) onConfigure(shell Component) {
 	}
 	b.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
-	b.contentSaver_.onConfigure(shell, TempDir()+"/web/backends/"+shell.Name())
+	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+shell.Name())
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {

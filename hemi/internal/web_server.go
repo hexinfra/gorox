@@ -63,7 +63,7 @@ func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.webBroker_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 0)
-	s.contentSaver_.onConfigure(shell, TempDir()+"/web/servers/"+s.name)
+	s.contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
 
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})

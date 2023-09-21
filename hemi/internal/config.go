@@ -999,8 +999,8 @@ func (l *lexer) scan() []token {
 				value = BaseDir()
 			case "logsDir":
 				value = LogsDir()
-			case "tempDir":
-				value = TempDir()
+			case "tmpsDir":
+				value = TmpsDir()
 			case "varsDir":
 				value = VarsDir()
 			default:

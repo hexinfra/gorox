@@ -15,7 +15,7 @@ import (
 func Main() {
 	hemi.SetBaseDir(system.ExeDir)
 	hemi.SetLogsDir(system.ExeDir + "/logs")
-	hemi.SetTempDir(system.ExeDir + "/temp")
+	hemi.SetTmpsDir(system.ExeDir + "/tmps")
 	hemi.SetVarsDir(system.ExeDir + "/vars")
 
 	stage, err := hemi.FromText("stage{}")

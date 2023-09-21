@@ -31,7 +31,7 @@ Thumbs.db
 local.conf
 
 logs/
-temp/
+tmps/
 vars/
 
 /hemi/develop/develop

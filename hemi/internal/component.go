@@ -500,7 +500,7 @@ func (s *Stage) OnShutdown() {
 }
 
 func (s *Stage) OnConfigure() {
-	tempDir := TempDir()
+	tmpsDir := TmpsDir()
 
 	// cpuFile
 	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) error {
@@ -508,7 +508,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".cpuFile has an invalid value")
 		}
 		return nil
-	}, tempDir+"/cpu.prof")
+	}, tmpsDir+"/cpu.prof")
 
 	// hepFile
 	s.ConfigureString("hepFile", &s.hepFile, func(value string) error {
@@ -516,7 +516,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".hepFile has an invalid value")
 		}
 		return nil
-	}, tempDir+"/hep.prof")
+	}, tmpsDir+"/hep.prof")
 
 	// thrFile
 	s.ConfigureString("thrFile", &s.thrFile, func(value string) error {
@@ -524,7 +524,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".thrFile has an invalid value")
 		}
 		return nil
-	}, tempDir+"/thr.prof")
+	}, tmpsDir+"/thr.prof")
 
 	// grtFile
 	s.ConfigureString("grtFile", &s.grtFile, func(value string) error {
@@ -532,7 +532,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".grtFile has an invalid value")
 		}
 		return nil
-	}, tempDir+"/grt.prof")
+	}, tmpsDir+"/grt.prof")
 
 	// blkFile
 	s.ConfigureString("blkFile", &s.blkFile, func(value string) error {
@@ -540,7 +540,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".blkFile has an invalid value")
 		}
 		return nil
-	}, tempDir+"/blk.prof")
+	}, tmpsDir+"/blk.prof")
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
@@ -756,7 +756,7 @@ func (s *Stage) Start(id int32) {
 		Printf("numCPU=%d\n", s.numCPU)
 		Printf("baseDir=%s\n", BaseDir())
 		Printf("logsDir=%s\n", LogsDir())
-		Printf("tempDir=%s\n", TempDir())
+		Printf("tmpsDir=%s\n", TmpsDir())
 		Printf("varsDir=%s\n", VarsDir())
 	}
 
@@ -1026,15 +1026,16 @@ type Stater_ struct {
 // Session is a Web/RPC session in stater
 type Session struct {
 	// TODO
-	ID     [40]byte // session id
-	Secret [40]byte // secret
-	Role   int8     // 0: default, >0: user defined values
-	Device int8     // terminal device type
-	state1 int8     // user defined state1
-	state2 int8     // user defined state2
-	state3 int32    // user defined state3
-	expire int64    // unix time
-	states map[string]string
+	ID      [40]byte // session id
+	Secret  [40]byte // secret key
+	Created int64    // unix time
+	Expires int64    // unix time
+	Role    int8     // 0: default, >0: user defined values
+	Device  int8     // terminal device type
+	state1  int8     // user defined state1
+	state2  int8     // user defined state2
+	state3  int32    // user defined state3
+	states  map[string]string
 }
 
 func (s *Session) init() {

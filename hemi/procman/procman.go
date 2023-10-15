@@ -21,20 +21,92 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/worker"
 )
 
-func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr string) {
+const usage = `
+%s (%s)
+================================================================================
+
+  %s [ACTION] [OPTIONS]
+
+ACTION
+------
+
+  serve      # start as server
+  check      # dry run to check config
+  test       # run as tester
+  help       # show this message
+  version    # show version info
+  advise     # show how to optimize current platform
+  pids       # call server to report pids of leader and worker
+  stop       # tell server to exit immediately
+  quit       # tell server to exit gracefully
+  leader     # call leader to report its info
+  recmd      # tell leader to reopen its cmdui interface
+  reweb      # tell leader to reopen its webui interface
+  rework     # tell leader to restart worker gracefully
+  worker     # call worker to report its info
+  reload     # call worker to reload config
+  cpu        # tell worker to perform cpu profiling
+  heap       # tell worker to perform heap profiling
+  thread     # tell worker to perform thread profiling
+  goroutine  # tell worker to perform goroutine profiling
+  block      # tell worker to perform block profiling
+
+  Only one action is allowed at a time.
+  If ACTION is not specified, the default action is "serve".
+
+OPTIONS
+-------
+
+  -debug  <level>   # debug level (default: %d. min: 0, max: 3)
+  -target <addr>    # leader address to tell or call (default: %s)
+  -cmdui  <addr>    # listen address of leader cmdui (default: %s)
+  -webui  <addr>    # listen address of leader webui (default: %s)
+  -myrox  <addr>    # myrox to use. "-cmdui" and "-webui" will be ignored if set
+  -config <config>  # path or url to worker config file
+  -single           # run server in single mode. only a process is started
+  -daemon           # run server as daemon (default: false)
+  -base   <path>    # base directory of the program
+  -logs   <path>    # logs directory to use
+  -tmps   <path>    # tmps directory to use
+  -vars   <path>    # vars directory to use
+  -stdout <path>    # daemon's stdout file (default: %s.out in logs dir)
+  -stderr <path>    # daemon's stderr file (default: %s.err in logs dir)
+
+  "-debug" applies to all actions.
+  "-target" applies to telling and calling actions only.
+  "-cmdui" applies to "serve" and "recmd".
+  "-webui" applies to "serve" and "reweb".
+  Other options apply to "serve" only.
+
+`
+
+type Setting struct {
+	Title      string
+	Program    string
+	DebugLevel int
+	CmdUIAddr  string
+	WebUIAddr  string
+	Usage      string
+}
+
+func Main(s *Setting) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
 
-	common.Program = program
+	common.Program = s.Program
 
 	flag.Usage = func() {
-		fmt.Printf(usage, hemi.Version)
+		if s.Usage == "" {
+			fmt.Printf(usage, s.Title, hemi.Version, s.Program, s.DebugLevel, s.CmdUIAddr, s.CmdUIAddr, s.WebUIAddr, s.Program, s.Program)
+		} else {
+			fmt.Println(s.Usage)
+		}
 	}
-	flag.IntVar(&common.DebugLevel, "debug", debugLevel, "")
-	flag.StringVar(&common.TargetAddr, "target", cmdAddr, "")
-	flag.StringVar(&common.CmdUIAddr, "cmdui", cmdAddr, "")
-	flag.StringVar(&common.WebUIAddr, "webui", webAddr, "")
+	flag.IntVar(&common.DebugLevel, "debug", s.DebugLevel, "")
+	flag.StringVar(&common.TargetAddr, "target", s.CmdUIAddr, "")
+	flag.StringVar(&common.CmdUIAddr, "cmdui", s.CmdUIAddr, "")
+	flag.StringVar(&common.WebUIAddr, "webui", s.WebUIAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
@@ -55,7 +127,7 @@ func Main(program string, usage string, debugLevel int, cmdAddr string, webAddr 
 
 	switch action {
 	case "help":
-		fmt.Printf(usage, hemi.Version)
+		flag.Usage()
 	case "version":
 		fmt.Println(hemi.Version)
 	case "advise":

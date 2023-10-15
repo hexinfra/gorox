@@ -8,10 +8,7 @@
 package main
 
 import (
-	"os"
-
 	"github.com/hexinfra/gorox/hemi/procman"
-	"github.com/hexinfra/gorox/test"
 
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
@@ -21,15 +18,11 @@ import (
 )
 
 func main() {
-	if len(os.Args) >= 2 && os.Args[1] == "test" {
-		test.Main()
-	} else {
-		procman.Main(&procman.Setting{
-			Title:      "Gorox",
-			Program:    "gorox",
-			DebugLevel: 0,
-			CmdUIAddr:  "127.0.0.1:9527",
-			WebUIAddr:  "127.0.0.1:9528",
-		})
-	}
+	procman.Main(&procman.Setting{
+		Title:      "Gorox",
+		Program:    "gorox",
+		DebugLevel: 0,
+		CmdUIAddr:  "127.0.0.1:9527",
+		WebUIAddr:  "127.0.0.1:9528",
+	})
 }

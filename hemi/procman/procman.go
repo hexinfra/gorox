@@ -32,7 +32,6 @@ ACTION
 
   serve      # start as server
   check      # dry run to check config
-  test       # run as tester
   help       # show this message
   version    # show version info
   advise     # show how to optimize current platform

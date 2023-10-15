@@ -1,4 +1,4 @@
-package test
+package main
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/develop/test/apps/testee"
 )
 
-func Main() {
+func main() {
 	tests := ""
 	if len(os.Args) >= 3 {
 		tests = os.Args[2]

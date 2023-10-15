@@ -7,6 +7,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Fix crash caused by empty value of some fields.
   * Flag "-temp" changed to "-tmps".
   * procmain.Main() now accepts a setting parameter.
+  * Action "test" is not integrated.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

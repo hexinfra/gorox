@@ -20,6 +20,7 @@ import (
 // Value is a value in config file.
 type Value struct { // 40 bytes
 	kind int16  // tokenXXX in values
+	code int16  // used by variables, TODO
 	line int32  // at line number
 	file string // in file
 	data any    // bools, integers, strings, durations, lists, and dicts
@@ -1173,7 +1174,7 @@ type token struct { // 40 bytes
 func (t token) name() string { return tokenNames[t.kind] }
 
 const ( // token list. if you change this list, change in tokenNames too.
-	// Component
+	// Components
 	tokenComponent = 1 + iota // stage, httpxServer, ...
 	// Properties
 	tokenProperty // .listen, .maxSize, ...
@@ -1199,12 +1200,11 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenDuration // 1s, 2m, 3h, 4d, ...
 	tokenList     // lists: (...)
 	tokenDict     // dicts: [...]
-	// Variables
 	tokenVariable // $method, $path, ...
 )
 
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
-	// Component
+	// Components
 	tokenComponent: "component",
 	// Properties
 	tokenProperty: "property",
@@ -1223,14 +1223,13 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenFSCheck:      "fsCheck",
 	tokenAND:          "and",
 	tokenOR:           "or",
-	// Value literals
+	// Values
 	tokenBool:     "bool",
 	tokenInteger:  "integer",
 	tokenString:   "string",
 	tokenDuration: "duration",
 	tokenList:     "list",
 	tokenDict:     "dict",
-	// Variables
 	tokenVariable: "variable",
 }
 

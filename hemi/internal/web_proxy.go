@@ -17,16 +17,16 @@ type exchanProxy_ struct {
 	backend Backend // if works as forward proxy, this is nil
 	cacher  Cacher  // the cacher which is used by this proxy
 	// States
-	hostname            []byte      // hostname used in ":authority" and "host" header
-	colonPort           []byte      // colonPort used in ":authority" and "host" header
-	viaName             []byte      // ...
-	isForward           bool        // reverse if false
-	bufferClientContent bool        // buffer client content into tempFile?
-	bufferServerContent bool        // buffer server content into tempFile?
-	addRequestHeaders   [][2][]byte // headers appended to client request
-	delRequestHeaders   [][]byte    // client request headers to delete
-	addResponseHeaders  [][2][]byte // headers appended to server response
-	delResponseHeaders  [][]byte    // server response headers to delete
+	hostname            []byte            // hostname used in ":authority" and "host" header
+	colonPort           []byte            // colonPort used in ":authority" and "host" header
+	viaName             []byte            // ...
+	isForward           bool              // reverse if false
+	bufferClientContent bool              // buffer client content into tempFile?
+	bufferServerContent bool              // buffer server content into tempFile?
+	addRequestHeaders   map[string]Value  // headers appended to client request
+	delRequestHeaders   [][]byte          // client request headers to delete
+	addResponseHeaders  map[string]string // headers appended to server response
+	delResponseHeaders  [][]byte          // server response headers to delete
 }
 
 func (h *exchanProxy_) onCreate(name string, stage *Stage, app *App) {
@@ -78,6 +78,15 @@ func (h *exchanProxy_) onConfigure() {
 		}
 	}
 
+	// addRequestHeaders
+	if v, ok := h.Find("addRequestHeaders"); ok {
+		if headers, ok := v.Dict(); ok {
+			h.addRequestHeaders = headers
+		} else {
+			UseExitln("invalid addRequestHeaders")
+		}
+	}
+
 	// hostname
 	h.ConfigureBytes("hostname", &h.hostname, nil, nil)
 	// colonPort
@@ -90,6 +99,8 @@ func (h *exchanProxy_) onConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
 	// delRequestHeaders
 	h.ConfigureBytesList("delRequestHeaders", &h.delRequestHeaders, nil, [][]byte{})
+	// addResponseHeaders
+	h.ConfigureStringDict("addResponseHeaders", &h.addResponseHeaders, nil, map[string]string{})
 	// delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
 }

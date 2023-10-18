@@ -127,8 +127,9 @@ type case_[M _mesher, F _filter] struct {
 	mesher  M   // associated mesher
 	filters []F // filters contained
 	// States
-	general  bool  // general match?
-	varIndex int16 // the variable index
+	general  bool   // general match?
+	varCode  int16  // the variable code
+	varName  string // the variable name
 	patterns [][]byte
 	regexps  []*regexp.Regexp
 }
@@ -147,7 +148,8 @@ func (c *case_[M, F]) OnConfigure() {
 		return
 	}
 	cond := c.info.(caseCond)
-	c.varIndex = cond.varIndex
+	c.varCode = cond.varCode
+	c.varName = cond.varName
 	isRegexp := cond.compare == "~=" || cond.compare == "!~"
 	for _, pattern := range cond.patterns {
 		if pattern == "" {

@@ -233,7 +233,7 @@ func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
 	if c.general {
 		return true
 	}
-	value := conn.unsafeVariable(c.varIndex)
+	value := conn.unsafeVariable(c.varCode, c.varName)
 	return c.matcher(c, conn, value)
 }
 
@@ -413,12 +413,12 @@ func (c *TCPSConn) closeConn() {
 	c.gate.onConnClosed()
 }
 
-func (c *TCPSConn) unsafeVariable(index int16) (value []byte) {
-	return tcpsConnVariables[index](c)
+func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {
+	return tcpsConnVariables[code](c)
 }
 
 // tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varIndexes in config.go
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
 	nil, // srcHost
 	nil, // srcPort
 	nil, // transport

@@ -353,14 +353,14 @@ stage {
 			.bufferClientContent = true
 			.bufferServerContent = true
 			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addRequestHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-			)
+			.addRequestHeaders = [
+				"x-root-id" : "xxx-xxx-xxx-xxx",
+			]
 
 			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addResponseHeaders = (
-				["cache-control" : "max-age=86400"],
-			)
+			.addResponseHeaders = [
+				"cache-control": "max-age=86400",
+			]
 		}
 		http2Proxy "h2p1" {
 			.proxyMode = "reverse"
@@ -369,14 +369,14 @@ stage {
 			.bufferClientContent = true
 			.bufferServerContent = true
 			.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addRequestHeaders = (
-				["x-root-id" : "xxx-xxx-xxx-xxx"],
-			)
+			.addRequestHeaders = [
+				"x-root-id": "xxx-xxx-xxx-xxx",
+			]
 
 			.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-			.addResponseHeaders = (
-				["cache-control" : "max-age=86400"],
-			)
+			.addResponseHeaders = [
+				"cache-control": "max-age=86400",
+			]
 		}
 		http3Proxy "h3p1" {
 		}

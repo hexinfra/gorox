@@ -18,12 +18,12 @@ import (
 )
 
 // Value is a value in config file.
-type Value struct { // 40 bytes
-	kind int16  // tokenXXX in values
-	code int16  // used by variables, TODO
-	line int32  // at line number
-	file string // in file
-	data any    // bools, integers, strings, durations, lists, and dicts
+type Value struct {
+	kind int16     // tokenXXX in values
+	code int16     // variable code if kind is tokenVariable
+	data any       // bools, integers, strings, durations, lists, and dicts
+	name string    // variable name if kind is tokenVariable
+	vars varKeeper // used by variables to find their values
 }
 
 func (v *Value) IsBool() bool     { return v.kind == tokenBool }
@@ -134,34 +134,21 @@ func (v *Value) StringDict() (dict map[string]string, ok bool) {
 	return
 }
 
-var varIndexes = map[string]int16{
-	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
-	"srcHost": 0,
-	"srcPort": 1,
+func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
 
-	// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
-	"transport": 2, // tcp/udp, tls/dtls
+func (v *Value) setKeeper(keeper varKeeper) { v.vars = keeper }
 
-	// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
-	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
+func (v *Value) BytesVar() (p []byte, ok bool) {
+	if v.kind != tokenVariable {
+		return
+	}
+	p = v.vars.unsafeVariable(v.code, v.name)
+	return p, true
+}
 
-	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
-	"serverName": 3,
-	"nextProto":  4,
-
-	// udps link vars. keep sync with udpsLinkVariables in net_udps.go
-
-	// web request vars. keep sync with serverRequestVariables in web_server.go
-	"method":      0, // GET, POST, ...
-	"scheme":      1, // http, https
-	"authority":   2, // example.com, example.org:8080
-	"hostname":    3, // example.com, example.org
-	"colonPort":   4, // :80, :8080
-	"path":        5, // /abc, /def/
-	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
-	"encodedPath": 7, // /abc, /%cc%dd
-	"queryString": 8, // ?x=y, ?y=z&z=%ff
-	"contentType": 9, // application/json
+// varKeeper holdes values of variables.
+type varKeeper interface {
+	unsafeVariable(code int16, name string) (value []byte)
 }
 
 // config applies configuration and creates a new stage.
@@ -197,7 +184,7 @@ func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
 func (c *config) show() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
-		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.code, token.line, token.file, token.text)
+		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
 
@@ -234,7 +221,7 @@ func (c *config) newName() string {
 }
 
 func (c *config) parse() (stage *Stage, err error) {
-	if current := c.current(); current.kind == tokenComponent && current.code == compStage {
+	if current := c.current(); current.kind == tokenComponent && current.info == compStage {
 		stage = createStage()
 		stage.setParent(nil)
 		c.parseStage(stage)
@@ -257,7 +244,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compFixture:
 			c.parseFixture(current, stage)
 		case compAddon:
@@ -320,7 +307,7 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compQUICFilter:
 			c.parseQUICFilter(current, mesher, nil)
 		case compCase:
@@ -361,7 +348,7 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compQUICFilter:
 			c.parseQUICFilter(current, mesher, kase)
 		default:
@@ -386,7 +373,7 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compTCPSFilter:
 			c.parseTCPSFilter(current, mesher, nil)
 		case compCase:
@@ -427,7 +414,7 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compTCPSFilter:
 			c.parseTCPSFilter(current, mesher, kase)
 		default:
@@ -452,7 +439,7 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compUDPSFilter:
 			c.parseUDPSFilter(current, mesher, nil)
 		case compCase:
@@ -493,7 +480,7 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compUDPSFilter:
 			c.parseUDPSFilter(current, mesher, kase)
 		default:
@@ -507,7 +494,7 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 	if c.currentIs(tokenFSCheck) {
 		panic(errors.New("config error: fs check is not allowed in case"))
 	}
-	cond := caseCond{varIndex: variable.code}
+	cond := caseCond{varCode: variable.info, varName: variable.text}
 	compare := c.expect(tokenCompare)
 	patterns := []string{}
 	if current := c.forward(); current.kind == tokenString {
@@ -559,7 +546,7 @@ func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compHandlet:
 			c.parseHandlet(current, app, nil)
 		case compReviser:
@@ -610,7 +597,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		if current.kind != tokenComponent {
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
-		switch current.code {
+		switch current.info {
 		case compHandlet:
 			c.parseHandlet(current, app, rule)
 		case compReviser:
@@ -625,7 +612,7 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 func (c *config) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
-	cond := ruleCond{varIndex: variable.code, varName: variable.text}
+	cond := ruleCond{varCode: variable.info, varName: variable.text}
 	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
@@ -695,8 +682,8 @@ func (c *config) parseAssign(prop *token, component Component) {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
 	c.forwardExpect(tokenEqual) // =
-	current := c.forward()
-	value := Value{line: current.line, file: current.file}
+	c.forward()
+	var value Value
 	c.parseValue(component, prop.text, &value)
 	component.setProp(prop.text, value)
 }
@@ -761,6 +748,8 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			d = time.Duration(n) * 24 * time.Hour
 		}
 		value.kind, value.data = tokenDuration, d
+	case tokenVariable: // $variable
+		value.kind, value.code, value.name, value.vars = tokenVariable, -1, current.text, nil
 	case tokenLeftParen: // (...)
 		c.parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
@@ -789,7 +778,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		// Yes.
 		c.forward() // +
 		current = c.forward()
-		str := Value{line: current.line, file: current.file}
+		var str Value
 		isString := false
 		if c.currentIs(tokenString) {
 			isString = true
@@ -821,7 +810,7 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 		if current.kind == tokenRightParen { // )
 			break
 		}
-		elem := Value{line: current.line, file: current.file}
+		var elem Value
 		c.parseValue(component, prop, &elem)
 		list = append(list, elem)
 		current = c.forward()
@@ -844,7 +833,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 		k := c.expect(tokenString)  // k
 		c.forwardExpect(tokenColon) // :
 		current = c.forward()       // v
-		v := Value{line: current.line, file: current.file}
+		var v Value
 		c.parseValue(component, prop, &v)
 		dict[k.text] = v
 		current = c.forward()
@@ -897,17 +886,48 @@ func parseComponent2[T Component](c *config, sign *token, app *App, create func(
 
 // caseCond is the case condition.
 type caseCond struct {
-	varIndex int16    // see varIndexes
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
 	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
 	patterns []string // ...
 }
 
 // ruleCond is the rule condition.
 type ruleCond struct {
-	varIndex int16    // see varIndexes
-	varName  string   // variable name
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
 	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+}
+
+var varCodes = map[string]int16{
+	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
+	"srcHost": 0,
+	"srcPort": 1,
+
+	// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
+	"transport": 2, // tcp/udp, tls/dtls
+
+	// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
+	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
+
+	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
+	"serverName": 3,
+	"nextProto":  4,
+
+	// udps link vars. keep sync with udpsLinkVariables in net_udps.go
+
+	// web request vars. keep sync with serverRequestVariables in web_server.go
+	"method":      0, // GET, POST, ...
+	"scheme":      1, // http, https
+	"authority":   2, // example.com, example.org:8080
+	"hostname":    3, // example.com, example.org
+	"colonPort":   4, // :80, :8080
+	"path":        5, // /abc, /def/
+	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
+	"encodedPath": 7, // /abc, /%cc%dd
+	"queryString": 8, // ?x=y, ?y=z&z=%ff
+	"contentType": 9, // application/json
 }
 
 // lexer
@@ -924,14 +944,12 @@ func (l *lexer) scanText(text string) []token {
 	return l.scan()
 }
 func (l *lexer) scanFile(base string, file string) []token {
+	l.text = l.load(base, file)
 	l.base, l.file = base, file
 	return l.scan()
 }
 
 func (l *lexer) scan() []token {
-	if l.file != "" {
-		l.text = l.load(l.base, l.file)
-	}
 	l.index, l.limit = 0, len(l.text)
 	var tokens []token
 	line := int32(1)
@@ -1013,14 +1031,20 @@ func (l *lexer) scan() []token {
 			tokens = append(tokens, token{tokenProperty, 0, line, l.file, l.text[from+1 : l.index]})
 		case '$': // $variable
 			if !l.nextIs('=') {
-				l.nextAlnums()
+				l.nextIdents()
 				name := l.text[from+1 : l.index]
-				if index, ok := varIndexes[name]; ok {
-					tokens = append(tokens, token{tokenVariable, index, line, l.file, name})
-					break
-				} else {
-					panic(fmt.Errorf("lexer: '$%s' is not a valid variable in line %d (%s)\n", name, line, l.file))
+				code, ok := varCodes[name]
+				if !ok {
+					p := strings.IndexByte(name, '_')
+					if p == -1 {
+						panic(fmt.Errorf("lexer: '$%s' is not a valid variable in line %d (%s)\n", name, line, l.file))
+					}
+					code = -1
+					p++ // skip '_'
+					name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
 				}
+				tokens = append(tokens, token{tokenVariable, code, line, l.file, name})
+				break
 			}
 			fallthrough // $=
 		case '^', '*', '~': // ^=, *=, ~=
@@ -1122,6 +1146,10 @@ func (l *lexer) nextAlnums() {
 	for l.index++; l.index < l.limit && byteIsAlnum(l.text[l.index]); l.index++ {
 	}
 }
+func (l *lexer) nextIdents() {
+	for l.index++; l.index < l.limit && byteIsIdent(l.text[l.index]); l.index++ {
+	}
+}
 func (l *lexer) nextDigits() {
 	for l.index++; l.index < l.limit && byteIsDigit(l.text[l.index]); l.index++ {
 	}
@@ -1165,7 +1193,7 @@ func (l *lexer) _loadURL(base string, file string) string {
 // token is a token in config file.
 type token struct { // 40 bytes
 	kind int16  // tokenXXX
-	code int16  // compXXX for components, or index for variables
+	info int16  // compXXX for components, or code for variables
 	line int32  // at line number
 	file string // file path
 	text string // text literal

@@ -646,6 +646,7 @@ func byteIsBlank(b byte) bool { return b == ' ' || b == '\t' || b == '\r' || b =
 func byteIsAlpha(b byte) bool { return b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' }
 func byteIsDigit(b byte) bool { return b >= '0' && b <= '9' }
 func byteIsAlnum(b byte) bool { return byteIsAlpha(b) || byteIsDigit(b) }
+func byteIsIdent(b byte) bool { return byteIsAlnum(b) || b == '_' }
 
 func byteFromHex(b byte) (n byte, ok bool) {
 	if b >= '0' && b <= '9' {

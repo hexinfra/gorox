@@ -16,6 +16,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -378,7 +379,7 @@ type Request interface {
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
-	unsafeVariable(index int16) (value []byte)
+	unsafeVariable(code int16, name string) (value []byte)
 }
 
 // serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
@@ -2408,11 +2409,30 @@ func (r *serverRequest_) hookReviser(reviser Reviser) {
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-func (r *serverRequest_) unsafeVariable(index int16) (value []byte) {
-	return serverRequestVariables[index](r)
+func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) {
+	if code != -1 {
+		return serverRequestVariables[code](r)
+	}
+	if strings.HasPrefix(name, serverRequestPrefixHeader) {
+		name = name[len(serverRequestPrefixHeader):]
+		if v, ok := r.UnsafeHeader(name); ok {
+			return v
+		}
+	} else if strings.HasPrefix(name, serverRequestPrefixQuery) {
+		name = name[len(serverRequestPrefixQuery):]
+		if v, ok := r.UnsafeQuery(name); ok {
+			return v
+		}
+	} else if strings.HasPrefix(name, serverRequestPrefixCookie) {
+		name = name[len(serverRequestPrefixCookie):]
+		if v, ok := r.UnsafeCookie(name); ok {
+			return v
+		}
+	}
+	return nil
 }
 
-var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varIndexes in config.go
+var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes in config.go
 	(*serverRequest_).UnsafeMethod,      // method
 	(*serverRequest_).UnsafeScheme,      // scheme
 	(*serverRequest_).UnsafeAuthority,   // authority
@@ -2424,6 +2444,12 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	(*serverRequest_).UnsafeQueryString, // queryString
 	(*serverRequest_).UnsafeContentType, // contentType
 }
+
+var (
+	serverRequestPrefixQuery  = "query_"
+	serverRequestPrefixHeader = "header_"
+	serverRequestPrefixCookie = "cookie_"
+)
 
 // Upload is a file uploaded by client.
 type Upload struct { // 48 bytes

@@ -47,19 +47,19 @@ type fcgiProxy struct {
 	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
 	cacher  Cacher      // the cacher which is used by this proxy
 	// States
-	bufferClientContent bool          // client content is buffered anyway?
-	bufferServerContent bool          // server content is buffered anyway?
-	keepConn            bool          // instructs FCGI server to keep conn?
-	preferUnderscore    bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename      []byte        // for SCRIPT_FILENAME
-	indexFile           []byte        // for indexFile
-	addRequestHeaders   [][2][]byte   // headers appended to client request
-	delRequestHeaders   [][]byte      // client request headers to delete
-	addResponseHeaders  [][2][]byte   // headers appended to server response
-	delResponseHeaders  [][]byte      // server response headers to delete
-	sendTimeout         time.Duration // timeout to send the whole request
-	recvTimeout         time.Duration // timeout to recv the whole response content
-	maxContentSize      int64         // max response content size allowed
+	bufferClientContent bool              // client content is buffered anyway?
+	bufferServerContent bool              // server content is buffered anyway?
+	keepConn            bool              // instructs FCGI server to keep conn?
+	preferUnderscore    bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
+	scriptFilename      []byte            // for SCRIPT_FILENAME
+	indexFile           []byte            // for indexFile
+	addRequestHeaders   map[string]Value  // headers appended to client request
+	delRequestHeaders   [][]byte          // client request headers to delete
+	addResponseHeaders  map[string]string // headers appended to server response
+	delResponseHeaders  [][]byte          // server response headers to delete
+	sendTimeout         time.Duration     // timeout to send the whole request
+	recvTimeout         time.Duration     // timeout to recv the whole response content
+	maxContentSize      int64             // max response content size allowed
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {

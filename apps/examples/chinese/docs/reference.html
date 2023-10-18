@@ -1428,10 +1428,10 @@ http1Proxy {
 	.bufferClientContent = true
 	.bufferServerContent = true
 	.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
-	.addRequestHeaders = (
-		["x-root-id" : "xxx-xxx-xxx-xxx"],
-		["X-Real-IP" : "$remote_addr"],
-	)
+	.addRequestHeaders = [
+		"x-root-id" : "xxx-xxx-xxx-xxx",
+		"x-real-ip" : $remoteAddr,
+	]
 }</code>
 			<ul>
 				<li>
@@ -1498,10 +1498,10 @@ http1Proxy {
 				</li>
 				<li>
 					<p> .addRequestHeaders 向后转发请求时候需要添加的 header 信息。</p>
-					<code class="pre">语法：.addRequestHeaders = (
-	   ("viaName", "goprox"),
-	   ("X-Real-IP", "xxxx"),
-   )
+					<code class="pre">语法：.addRequestHeaders = [
+	   "via": "gorox",
+	   "x-real-ip": $remoteAddr,
+   ]
 默认值： nil
 取值范围：-
 </code>

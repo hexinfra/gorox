@@ -7,6 +7,10 @@
 
 package internal
 
+import (
+	"strings"
+)
+
 // exchanProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
 type exchanProxy_ struct {
 	// Mixins
@@ -80,8 +84,21 @@ func (h *exchanProxy_) onConfigure() {
 
 	// addRequestHeaders
 	if v, ok := h.Find("addRequestHeaders"); ok {
-		if headers, ok := v.Dict(); ok {
-			h.addRequestHeaders = headers
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for name, vValue := range vHeaders {
+				if vValue.IsVariable() {
+					name := vValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vValue.Bytes(); !ok {
+					UseExitf("bad value in .addRequestHeaders")
+				}
+				addedHeaders[name] = vValue
+			}
+			h.addRequestHeaders = addedHeaders
 		} else {
 			UseExitln("invalid addRequestHeaders")
 		}

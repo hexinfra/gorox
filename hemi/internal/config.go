@@ -19,11 +19,11 @@ import (
 
 // Value is a value in config file.
 type Value struct {
-	kind int16     // tokenXXX in values
-	code int16     // variable code if kind is tokenVariable
-	data any       // bools, integers, strings, durations, lists, and dicts
-	name string    // variable name if kind is tokenVariable
-	vars varKeeper // used by variables to find their values
+	kind  int16  // tokenXXX in values
+	code  int16  // variable code if kind is tokenVariable
+	name  string // variable name if kind is tokenVariable
+	value any    // bools, integers, strings, durations, lists, and dicts
+	slice []byte // []byte of string value, to avoid the cost of []byte(s)
 }
 
 func (v *Value) IsBool() bool     { return v.kind == tokenBool }
@@ -34,11 +34,11 @@ func (v *Value) IsList() bool     { return v.kind == tokenList }
 func (v *Value) IsDict() bool     { return v.kind == tokenDict }
 
 func (v *Value) Bool() (b bool, ok bool) {
-	b, ok = v.data.(bool)
+	b, ok = v.value.(bool)
 	return
 }
 func (v *Value) Int64() (i64 int64, ok bool) {
-	i64, ok = v.data.(int64)
+	i64, ok = v.value.(int64)
 	return
 }
 func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
@@ -55,32 +55,32 @@ func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
 func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
 func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
 func (v *Value) String() (s string, ok bool) {
-	s, ok = v.data.(string)
+	s, ok = v.value.(string)
 	return
 }
 func (v *Value) Bytes() (p []byte, ok bool) {
-	if s, isString := v.String(); isString {
-		return []byte(s), true
+	if v.kind == tokenString {
+		p, ok = v.slice, true
 	}
 	return
 }
 func (v *Value) Duration() (d time.Duration, ok bool) {
-	d, ok = v.data.(time.Duration)
+	d, ok = v.value.(time.Duration)
 	return
 }
 func (v *Value) List() (list []Value, ok bool) {
-	list, ok = v.data.([]Value)
+	list, ok = v.value.([]Value)
 	return
 }
 func (v *Value) ListN(n int) (list []Value, ok bool) {
-	list, ok = v.data.([]Value)
+	list, ok = v.value.([]Value)
 	if ok && n >= 0 && len(list) != n {
 		ok = false
 	}
 	return
 }
 func (v *Value) StringList() (list []string, ok bool) {
-	l, ok := v.data.([]Value)
+	l, ok := v.value.([]Value)
 	if ok {
 		for _, value := range l {
 			if s, isString := value.String(); isString {
@@ -91,18 +91,18 @@ func (v *Value) StringList() (list []string, ok bool) {
 	return
 }
 func (v *Value) BytesList() (list [][]byte, ok bool) {
-	l, ok := v.data.([]Value)
+	l, ok := v.value.([]Value)
 	if ok {
 		for _, value := range l {
-			if s, isString := value.String(); isString {
-				list = append(list, []byte(s))
+			if value.kind == tokenString {
+				list = append(list, value.slice)
 			}
 		}
 	}
 	return
 }
 func (v *Value) StringListN(n int) (list []string, ok bool) {
-	l, ok := v.data.([]Value)
+	l, ok := v.value.([]Value)
 	if !ok {
 		return
 	}
@@ -118,11 +118,11 @@ func (v *Value) StringListN(n int) (list []string, ok bool) {
 	return
 }
 func (v *Value) Dict() (dict map[string]Value, ok bool) {
-	dict, ok = v.data.(map[string]Value)
+	dict, ok = v.value.(map[string]Value)
 	return
 }
 func (v *Value) StringDict() (dict map[string]string, ok bool) {
-	d, ok := v.data.(map[string]Value)
+	d, ok := v.value.(map[string]Value)
 	if ok {
 		dict = make(map[string]string)
 		for name, value := range d {
@@ -136,14 +136,11 @@ func (v *Value) StringDict() (dict map[string]string, ok bool) {
 
 func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
 
-func (v *Value) setKeeper(keeper varKeeper) { v.vars = keeper }
-
-func (v *Value) BytesVar() (p []byte, ok bool) {
-	if v.kind != tokenVariable {
-		return
-	}
-	p = v.vars.unsafeVariable(v.code, v.name)
-	return p, true
+func (v *Value) BytesVar(keeper varKeeper) []byte {
+	return keeper.unsafeVariable(v.code, v.name)
+}
+func (v *Value) StringVar(keeper varKeeper) string {
+	return string(keeper.unsafeVariable(v.code, v.name))
 }
 
 // varKeeper holdes values of variables.
@@ -692,7 +689,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 	current := c.current()
 	switch current.kind {
 	case tokenBool:
-		value.kind, value.data = tokenBool, current.text == "true"
+		value.kind, value.value = tokenBool, current.text == "true"
 	case tokenInteger:
 		last := current.text[len(current.text)-1]
 		if byteIsDigit(last) {
@@ -703,7 +700,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			if n64 < 0 {
 				panic(errors.New("config error: negative integers are not allowed"))
 			}
-			value.data = n64
+			value.value = n64
 		} else {
 			size, err := strconv.ParseInt(current.text[:len(current.text)-1], 10, 64)
 			if err != nil {
@@ -722,11 +719,11 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			case 'T':
 				size *= T
 			}
-			value.data = size
+			value.value = size
 		}
 		value.kind = tokenInteger
 	case tokenString:
-		value.kind, value.data = tokenString, current.text
+		value.kind, value.value, value.slice = tokenString, current.text, []byte(current.text)
 	case tokenDuration:
 		last := len(current.text) - 1
 		n, err := strconv.ParseInt(current.text[:last], 10, 64)
@@ -747,9 +744,9 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		case 'd':
 			d = time.Duration(n) * 24 * time.Hour
 		}
-		value.kind, value.data = tokenDuration, d
+		value.kind, value.value = tokenDuration, d
 	case tokenVariable: // $variable
-		value.kind, value.code, value.name, value.vars = tokenVariable, -1, current.text, nil
+		value.kind, value.code, value.name = tokenVariable, -1, current.text
 	case tokenLeftParen: // (...)
 		c.parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
@@ -760,7 +757,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		} else if valueRef, ok := component.Find(propRef); !ok {
 			panic(fmt.Errorf("config error: refer to a prop that doesn't exist in line %d\n", current.line))
 		} else {
-			value.kind, value.data = valueRef.kind, valueRef.data
+			*value = valueRef
 		}
 	default:
 		panic(fmt.Errorf("config error: expect a value, but get token %s=%s (in line %d)\n", current.name(), current.text, current.line))
@@ -789,14 +786,15 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 			} else if valueRef, ok := component.Find(propRef); !ok {
 				panic(errors.New("config error: refere to a prop that doesn't exist"))
 			} else {
-				str.kind, str.data = valueRef.kind, valueRef.data
+				str = valueRef
 				if str.kind == tokenString {
 					isString = true
 				}
 			}
 		}
 		if isString {
-			value.data = value.data.(string) + str.data.(string)
+			value.value = value.value.(string) + str.value.(string)
+			value.slice = append(value.slice, str.slice...)
 		} else {
 			panic(errors.New("config error: cannot concat string with other types. token=" + c.current().text))
 		}
@@ -820,7 +818,7 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 			panic(fmt.Errorf("config error: bad list in line %d\n", current.line))
 		}
 	}
-	value.kind, value.data = tokenList, list
+	value.kind, value.value = tokenList, list
 }
 func (c *config) parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
@@ -843,7 +841,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 			panic(fmt.Errorf("config error: bad dict in line %d\n", current.line))
 		}
 	}
-	value.kind, value.data = tokenDict, dict
+	value.kind, value.value = tokenDict, dict
 }
 
 func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // addon, backend, stater, cacher, server, cronjob
@@ -1035,13 +1033,7 @@ func (l *lexer) scan() []token {
 				name := l.text[from+1 : l.index]
 				code, ok := varCodes[name]
 				if !ok {
-					p := strings.IndexByte(name, '_')
-					if p == -1 {
-						panic(fmt.Errorf("lexer: '$%s' is not a valid variable in line %d (%s)\n", name, line, l.file))
-					}
 					code = -1
-					p++ // skip '_'
-					name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
 				}
 				tokens = append(tokens, token{tokenVariable, code, line, l.file, name})
 				break

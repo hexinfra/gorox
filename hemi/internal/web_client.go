@@ -242,7 +242,7 @@ func (r *clientRequest_) endUnsized() error {
 	return r.shell.finalizeUnsized()
 }
 
-func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte) bool { // used by proxies
+func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool { // used by proxies
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -294,14 +294,34 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	if req.HasCookies() && !r.shell.(clientRequest).copyCookies(req) {
 		return false
 	}
-	// TODO: An HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message and MAY send a Via header field in forwarded response messages.
-	// r.addHeader(viaName)
+	if !r.shell.addHeader(bytesVia, viaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+		return false
+	}
+
+	// copy added headers
+	for name, vValue := range headersToAdd {
+		var value []byte
+		if vValue.IsVariable() {
+			value = vValue.BytesVar(req)
+		} else if v, ok := vValue.Bytes(); ok {
+			value = v
+		} else {
+			// Invalid values are treated as empty
+		}
+		if !r.shell.addHeader(risky.ConstBytes(name), value) {
+			return false
+		}
+	}
 
 	// copy remaining headers from req
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.shell.insertHeader(header.hash, name, value)
 	}) {
 		return false
+	}
+
+	for _, name := range headersToDel {
+		r.shell.delHeader(name)
 	}
 
 	return true

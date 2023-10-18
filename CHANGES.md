@@ -9,6 +9,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * procmain.Main() now accepts a setting parameter.
   * Action "test" is not integrated.
   * Values can now be variables in config file.
+  * HTTP proxies now support adding and deleting request headers.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

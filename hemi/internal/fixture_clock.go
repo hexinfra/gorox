@@ -40,7 +40,7 @@ func (f *clockFixture) onCreate(stage *Stage) {
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }
 func (f *clockFixture) OnShutdown() {
-	close(f.Shut)
+	close(f.ShutChan)
 }
 
 func (f *clockFixture) OnConfigure() {

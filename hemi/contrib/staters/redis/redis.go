@@ -38,7 +38,7 @@ func (s *redisStater) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *redisStater) OnShutdown() {
-	close(s.Shut)
+	close(s.ShutChan)
 }
 
 func (s *redisStater) OnConfigure() {

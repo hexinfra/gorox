@@ -35,7 +35,7 @@ func (j *statCronjob) onCreate(name string, stage *Stage) {
 	j.stage = stage
 }
 func (j *statCronjob) OnShutdown() {
-	close(j.Shut)
+	close(j.ShutChan)
 }
 
 func (j *statCronjob) OnConfigure() {

@@ -38,7 +38,7 @@ func (s *localStater) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *localStater) OnShutdown() {
-	close(s.Shut)
+	close(s.ShutChan)
 }
 
 func (s *localStater) OnConfigure() {

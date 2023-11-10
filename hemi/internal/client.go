@@ -116,7 +116,7 @@ func (c *client_) onPrepare() {
 }
 
 func (c *client_) OnShutdown() {
-	close(c.Shut)
+	close(c.ShutChan)
 }
 
 func (c *client_) Stage() *Stage               { return c.stage }
@@ -254,7 +254,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 		b.IncSub(1)
 		go node.Maintain()
 	}
-	<-b.Shut
+	<-b.ShutChan
 
 	// Backend is told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
@@ -353,7 +353,7 @@ func (n *Node_) closeFree() int {
 }
 
 func (n *Node_) shut() {
-	close(n.Shut)
+	close(n.ShutChan)
 }
 
 var errNodeDown = errors.New("node is down")

@@ -40,7 +40,7 @@ func (s *echoServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *echoServer) OnShutdown() {
-	// We don't close(s.Shut) here.
+	// We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}

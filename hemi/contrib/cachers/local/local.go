@@ -38,7 +38,7 @@ func (c *localCacher) onCreate(name string, stage *Stage) {
 	c.stage = stage
 }
 func (c *localCacher) OnShutdown() {
-	close(c.Shut)
+	close(c.ShutChan)
 }
 
 func (c *localCacher) OnConfigure() {

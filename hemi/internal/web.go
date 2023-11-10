@@ -62,7 +62,7 @@ func (a *App) onCreate(name string, stage *Stage) {
 	a.nRevisers = 1 // position 0 is not used
 }
 func (a *App) OnShutdown() {
-	close(a.Shut)
+	close(a.ShutChan)
 }
 
 func (a *App) OnConfigure() {

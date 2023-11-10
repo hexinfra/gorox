@@ -36,7 +36,7 @@ func (j *helloCronjob) onCreate(name string, stage *Stage) {
 	j.stage = stage
 }
 func (j *helloCronjob) OnShutdown() {
-	close(j.Shut)
+	close(j.ShutChan)
 }
 
 func (j *helloCronjob) OnConfigure() {
@@ -50,7 +50,7 @@ func (j *helloCronjob) Schedule() { // goroutine
 loop:
 	for {
 		select {
-		case <-j.Shut:
+		case <-j.ShutChan:
 			break loop
 		case now := <-ticker.C:
 			fmt.Printf("hello, gorox! time=%s\n", now.String())

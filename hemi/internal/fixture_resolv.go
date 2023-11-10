@@ -35,7 +35,7 @@ func (f *resolvFixture) onCreate(stage *Stage) {
 	f.fixture_.onCreate(signResolv, stage)
 }
 func (f *resolvFixture) OnShutdown() {
-	close(f.Shut)
+	close(f.ShutChan)
 }
 
 func (f *resolvFixture) OnConfigure() {

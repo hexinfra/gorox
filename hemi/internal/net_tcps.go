@@ -29,7 +29,7 @@ func (m *TCPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, tcpsFilterCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
-	// We don't close(m.Shut) here.
+	// We don't close(m.ShutChan) here.
 	for _, gate := range m.gates {
 		gate.shut()
 	}

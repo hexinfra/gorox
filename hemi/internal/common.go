@@ -403,11 +403,11 @@ func (w *subsWaiter_) SubDone()     { w.subs.Done() }
 
 // shutdownable_
 type shutdownable_ struct {
-	Shut chan struct{} // used to notify target shutdown
+	ShutChan chan struct{} // used to notify target to shutdown
 }
 
 func (s *shutdownable_) init() {
-	s.Shut = make(chan struct{})
+	s.ShutChan = make(chan struct{})
 }
 
 func (s *shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
@@ -415,7 +415,7 @@ func (s *shutdownable_) Loop(interval time.Duration, callback func(now time.Time
 	defer ticker.Stop()
 	for {
 		select {
-		case <-s.Shut:
+		case <-s.ShutChan:
 			return
 		case now := <-ticker.C:
 			callback(now)

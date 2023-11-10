@@ -35,7 +35,7 @@ func (c *memCacher) onCreate(name string, stage *Stage) {
 	c.stage = stage
 }
 func (c *memCacher) OnShutdown() {
-	close(c.Shut)
+	close(c.ShutChan)
 }
 
 func (c *memCacher) OnConfigure() {

@@ -49,7 +49,7 @@ func (f *fcacheFixture) onCreate(stage *Stage) {
 	f.entries = make(map[string]*fcacheEntry)
 }
 func (f *fcacheFixture) OnShutdown() {
-	close(f.Shut)
+	close(f.ShutChan)
 }
 
 func (f *fcacheFixture) OnConfigure() {

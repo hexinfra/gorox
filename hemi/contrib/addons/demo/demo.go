@@ -35,7 +35,7 @@ func (a *demoAddon) onCreate(name string, stage *Stage) {
 	a.stage = stage
 }
 func (a *demoAddon) OnShutdown() {
-	close(a.Shut)
+	close(a.ShutChan)
 }
 
 func (a *demoAddon) OnConfigure() {

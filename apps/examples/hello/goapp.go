@@ -46,7 +46,7 @@ func (h *helloHandlet) OnConfigure() {
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *helloHandlet) OnPrepare() {
-	r := simple.New() // you can write your own router as long as it implements the Router interface
+	r := simple.New() // you can write your own router as long as it implements the hemi.Router interface
 
 	r.GET("/", h.index)
 	r.Map("/foo", h.handleFoo)

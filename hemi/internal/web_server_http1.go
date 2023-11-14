@@ -638,7 +638,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 	// token = 1*tchar
 	hash := uint16(0)
 	for {
-		if b := r.input[r.pFore]; httpTchar[b] != 0 {
+		if b := r.input[r.pFore]; webTchar[b] != 0 {
 			hash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
@@ -788,7 +788,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 			b := r.input[r.pFore]
 			switch state {
 			case 1: // in path
-				if httpPchar[b] == 1 { // excluding '?'
+				if webPchar[b] == 1 { // excluding '?'
 					r.arrayPush(b)
 				} else if b == '%' {
 					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG
@@ -816,7 +816,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 						return false
 					}
 					state = 3
-				} else if httpPchar[b] > 0 { // including '?'
+				} else if webPchar[b] > 0 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}
@@ -839,7 +839,7 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 					query.hash = 0 // reset for next query
 					query.nameFrom = r.arrayEdge
 					state = 2
-				} else if httpPchar[b] > 0 { // including '?'
+				} else if webPchar[b] > 0 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}

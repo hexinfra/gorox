@@ -953,7 +953,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
-			if t := httpTchar[b]; t == 1 {
+			if t := webTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower

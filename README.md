@@ -8,10 +8,10 @@ used as:
 
   * Web Proxy (Reverse, Forward, Caching, Tunneling)
   * Layer 4 Proxy (TCP/TLS, UDP/DTLS, QUIC)
-  * Service Mesh (Data Plane), API Gateway
-  * Web Server (HTTP, WebSocket, TLS, HWEB, AJP, FCGI, uwsgi)
+  * Web Server (HTTP 1/2/3, WebSocket, TLS, HWEB, AJP, FCGI, uwsgi)
   * App Server for Go (Frameworks, Applications)
   * RPC Framework for Go (HRPC, gRPC, Thrift)
+  * Service Mesh (Data Plane), API Gateway
   * ... and more through its highly extensible compoments design!
 
 For more details about Gorox, please see: https://gorox.io/ .

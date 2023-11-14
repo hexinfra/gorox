@@ -517,7 +517,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		// parameter-name = token
 		text.edge = text.from
 		for {
-			if httpTchar[p[text.edge]] == 0 {
+			if webTchar[p[text.edge]] == 0 {
 				break
 			}
 			text.edge++
@@ -564,7 +564,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 			text.edge++
 		} else { // token
 			text.from = text.edge
-			for text.edge < field.value.edge && httpTchar[p[text.edge]] != 0 {
+			for text.edge < field.value.edge && webTchar[p[text.edge]] != 0 {
 				text.edge++
 			}
 			if text.edge == text.from {

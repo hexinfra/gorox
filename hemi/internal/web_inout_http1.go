@@ -81,7 +81,7 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
-			if t := httpTchar[b]; t == 1 {
+			if t := webTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
@@ -407,7 +407,7 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 		r.pBack = r.pFore // for field-name
 		for {
 			b := r.bodyWindow[r.pFore]
-			if t := httpTchar[b]; t == 1 {
+			if t := webTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower

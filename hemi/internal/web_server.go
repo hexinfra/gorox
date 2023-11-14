@@ -1393,7 +1393,7 @@ func (r *serverRequest_) parseAuthority(from int32, edge int32, save bool) bool 
 		}
 	} else { // IPv4address or reg-name
 		for fore < edge {
-			if b := r.input[fore]; httpNchar[b] == 1 {
+			if b := r.input[fore]; webNchar[b] == 1 {
 				fore++
 			} else if b == ':' {
 				break
@@ -1449,7 +1449,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 					return false
 				}
 				state = 1
-			} else if httpTchar[b] != 0 {
+			} else if webTchar[b] != 0 {
 				cookie.hash += uint16(b)
 			} else {
 				r.headResult, r.failReason = StatusBadRequest, "invalid cookie name"
@@ -1740,7 +1740,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 					return
 				}
 				state = 3
-			} else if httpPchar[b] > 0 { // including '?'
+			} else if webPchar[b] > 0 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
@@ -1761,7 +1761,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 				form.hash = 0 // reset for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
-			} else if httpPchar[b] > 0 { // including '?'
+			} else if webPchar[b] > 0 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
@@ -1908,7 +1908,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			r.pBack = r.pFore // now r.formWindow is used for receiving field-name and onward
 			for {             // field name
 				b := r.formWindow[r.pFore]
-				if t := httpTchar[b]; t == 1 {
+				if t := webTchar[b]; t == 1 {
 					// Fast path, do nothing
 				} else if t == 2 { // A-Z
 					r.formWindow[r.pFore] = b + 0x20 // to lower
@@ -2985,7 +2985,7 @@ func (c *Cookie) Set(name string, value string) bool {
 		return false
 	}
 	for i := 0; i < len(name); i++ {
-		if b := name[i]; httpKchar[b] == 0 {
+		if b := name[i]; webKchar[b] == 0 {
 			c.invalid = true
 			return false
 		}
@@ -2994,7 +2994,7 @@ func (c *Cookie) Set(name string, value string) bool {
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	for i := 0; i < len(value); i++ {
 		b := value[i]
-		if httpKchar[b] == 1 {
+		if webKchar[b] == 1 {
 			continue
 		}
 		if b == ' ' || b == ',' {

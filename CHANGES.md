@@ -10,6 +10,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Action "test" is not integrated.
   * Values can now be variables in config file.
   * HTTP proxies now support adding and deleting request headers.
+  * ajpProxy, fcgiProxy, and uwsgiProxy are now renamed as respective relays.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

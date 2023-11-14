@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// FCGI proxy implementation.
+// FCGI relay implementation.
 
 // FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
 // And we don't use request-side chunking due to the limitation of CGI/1.1 even
@@ -29,23 +29,23 @@ import (
 )
 
 func init() {
-	RegisterHandlet("fcgiProxy", func(name string, stage *Stage, app *App) Handlet {
-		h := new(fcgiProxy)
+	RegisterHandlet("fcgiRelay", func(name string, stage *Stage, app *App) Handlet {
+		h := new(fcgiRelay)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// fcgiProxy handlet passes web requests to backend FCGI servers and cache responses.
-type fcgiProxy struct {
+// fcgiRelay handlet passes web requests to backend FCGI servers and cache responses.
+type fcgiRelay struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage      // current stage
-	app     *App        // the app to which the proxy belongs
+	app     *App        // the app to which the relay belongs
 	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
-	cacher  Cacher      // the cacher which is used by this proxy
+	cacher  Cacher      // the cacher which is used by this relay
 	// States
 	bufferClientContent bool              // client content is buffered anyway?
 	bufferServerContent bool              // server content is buffered anyway?
@@ -62,16 +62,16 @@ type fcgiProxy struct {
 	maxContentSize      int64             // max response content size allowed
 }
 
-func (h *fcgiProxy) onCreate(name string, stage *Stage, app *App) {
+func (h *fcgiRelay) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *fcgiProxy) OnShutdown() {
+func (h *fcgiRelay) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *fcgiProxy) OnConfigure() {
+func (h *fcgiRelay) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/fcgi/"+h.name)
 
 	// toBackend
@@ -82,13 +82,13 @@ func (h *fcgiProxy) OnConfigure() {
 			} else if wireBackend, ok := backend.(wireBackend); ok {
 				h.backend = wireBackend
 			} else {
-				UseExitf("incorrect backend '%s' for fcgiProxy, must be TCPSBackend or TUDSBackend\n", name)
+				UseExitf("incorrect backend '%s' for fcgiRelay, must be TCPSBackend or TUDSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for fcgiProxy")
+		UseExitln("toBackend is required for fcgiRelay")
 	}
 
 	// withCacher
@@ -147,14 +147,14 @@ func (h *fcgiProxy) OnConfigure() {
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
-func (h *fcgiProxy) OnPrepare() {
+func (h *fcgiRelay) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *fcgiProxy) IsProxy() bool { return true }
-func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *fcgiRelay) IsProxy() bool { return true }
+func (h *fcgiRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse only
 	var (
 		content  any
 		fConn    wireConn
@@ -267,7 +267,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (next bool) { // reverse 
 // poolFCGIExchan
 var poolFCGIExchan sync.Pool
 
-func getFCGIExchan(proxy *fcgiProxy, conn wireConn) *fcgiExchan {
+func getFCGIExchan(relay *fcgiRelay, conn wireConn) *fcgiExchan {
 	var exchan *fcgiExchan
 	if x := poolFCGIExchan.Get(); x == nil {
 		exchan = new(fcgiExchan)
@@ -278,7 +278,7 @@ func getFCGIExchan(proxy *fcgiProxy, conn wireConn) *fcgiExchan {
 	} else {
 		exchan = x.(*fcgiExchan)
 	}
-	exchan.onUse(proxy, conn)
+	exchan.onUse(relay, conn)
 	return exchan
 }
 func putFCGIExchan(exchan *fcgiExchan) {
@@ -295,14 +295,14 @@ type fcgiExchan struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	proxy  *fcgiProxy // associated proxy
+	relay  *fcgiRelay // associated relay
 	conn   wireConn   // associated conn
 	region Region     // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn wireConn) {
-	x.proxy = proxy
+func (x *fcgiExchan) onUse(relay *fcgiRelay, conn wireConn) {
+	x.relay = relay
 	x.conn = conn
 	x.region.Init()
 	x.request.onUse()
@@ -313,7 +313,7 @@ func (x *fcgiExchan) onEnd() {
 	x.response.onEnd()
 	x.region.Free()
 	x.conn = nil
-	x.proxy = nil
+	x.relay = nil
 }
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
@@ -367,7 +367,7 @@ func (r *fcgiRequest) onUse() {
 	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
 	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.sendTimeout = r.exchan.proxy.sendTimeout
+	r.sendTimeout = r.exchan.relay.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -457,7 +457,7 @@ func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: R
 	return r._addParam(name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
-	if !header.isUnderscore() || !r.exchan.proxy.preferUnderscore {
+	if !header.isUnderscore() || !r.exchan.relay.preferUnderscore {
 		return r._addParam(name, value, true)
 	}
 	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
@@ -669,7 +669,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.proxy.keepConn {
+	if r.exchan.relay.keepConn {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep
@@ -709,7 +709,7 @@ func (r *fcgiRequest) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.exchan.setWriteDeadline(now.Add(r.exchan.proxy.backend.WriteTimeout()))
+	return r.exchan.setWriteDeadline(now.Add(r.exchan.relay.backend.WriteTimeout()))
 }
 func (r *fcgiRequest) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
@@ -811,8 +811,8 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.exchan.proxy.recvTimeout
-	r.maxContentSize = r.exchan.proxy.maxContentSize
+	r.recvTimeout = r.exchan.relay.recvTimeout
+	r.maxContentSize = r.exchan.relay.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1304,7 +1304,7 @@ func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, val
 	return true
 }
 
-func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.proxy.SaveContentFilesDir() }
+func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.relay.SaveContentFilesDir() }
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
@@ -1320,7 +1320,7 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.exchan.setReadDeadline(now.Add(r.exchan.proxy.backend.ReadTimeout()))
+	return r.exchan.setReadDeadline(now.Add(r.exchan.relay.backend.ReadTimeout()))
 }
 func (r *fcgiResponse) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// AJP proxy implementation.
+// AJP relay implementation.
 
 // See: https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
@@ -26,23 +26,23 @@ import (
 )
 
 func init() {
-	RegisterHandlet("ajpProxy", func(name string, stage *Stage, app *App) Handlet {
-		h := new(ajpProxy)
+	RegisterHandlet("ajpRelay", func(name string, stage *Stage, app *App) Handlet {
+		h := new(ajpRelay)
 		h.onCreate(name, stage, app)
 		return h
 	})
 }
 
-// ajpProxy handlet passes web requests to backend AJP servers and cache responses.
-type ajpProxy struct {
+// ajpRelay handlet passes web requests to backend AJP servers and cache responses.
+type ajpRelay struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage      // current stage
-	app     *App        // the app to which the proxy belongs
+	app     *App        // the app to which the relay belongs
 	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
-	cacher  Cacher      // the cacher which is used by this proxy
+	cacher  Cacher      // the cacher which is used by this relay
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -51,16 +51,16 @@ type ajpProxy struct {
 	maxContentSize      int64         // max response content size allowed
 }
 
-func (h *ajpProxy) onCreate(name string, stage *Stage, app *App) {
+func (h *ajpRelay) onCreate(name string, stage *Stage, app *App) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.app = app
 }
-func (h *ajpProxy) OnShutdown() {
+func (h *ajpRelay) OnShutdown() {
 	h.app.SubDone()
 }
 
-func (h *ajpProxy) OnConfigure() {
+func (h *ajpRelay) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/ajp/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -70,13 +70,13 @@ func (h *ajpProxy) OnConfigure() {
 			} else if wireBackend, ok := backend.(wireBackend); ok {
 				h.backend = wireBackend
 			} else {
-				UseExitf("incorrect backend '%s' for ajpProxy, must be TCPSBackend or TUDSBackend\n", name)
+				UseExitf("incorrect backend '%s' for ajpRelay, must be TCPSBackend or TUDSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for ajpProxy")
+		UseExitln("toBackend is required for ajpRelay")
 	}
 
 	// withCacher
@@ -121,14 +121,14 @@ func (h *ajpProxy) OnConfigure() {
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
-func (h *ajpProxy) OnPrepare() {
+func (h *ajpRelay) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *ajpProxy) IsProxy() bool { return true }
-func (h *ajpProxy) IsCache() bool { return h.cacher != nil }
+func (h *ajpRelay) IsProxy() bool { return true }
+func (h *ajpRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *ajpProxy) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *ajpRelay) Handle(req Request, resp Response) (next bool) { // reverse only
 	// TODO: implementation
 	resp.Send("ajp")
 	return
@@ -137,7 +137,7 @@ func (h *ajpProxy) Handle(req Request, resp Response) (next bool) { // reverse o
 // poolAJPExchan
 var poolAJPExchan sync.Pool
 
-func getAJPExchan(proxy *ajpProxy, conn wireConn) *ajpExchan {
+func getAJPExchan(relay *ajpRelay, conn wireConn) *ajpExchan {
 	var exchan *ajpExchan
 	if x := poolAJPExchan.Get(); x == nil {
 		exchan = new(ajpExchan)
@@ -148,7 +148,7 @@ func getAJPExchan(proxy *ajpProxy, conn wireConn) *ajpExchan {
 	} else {
 		exchan = x.(*ajpExchan)
 	}
-	exchan.onUse(proxy, conn)
+	exchan.onUse(relay, conn)
 	return exchan
 }
 func putAJPExchan(exchan *ajpExchan) {
@@ -163,7 +163,7 @@ type ajpExchan struct {
 	response ajpResponse // the ajp response
 }
 
-func (x *ajpExchan) onUse(proxy *ajpProxy, conn wireConn) {
+func (x *ajpExchan) onUse(relay *ajpRelay, conn wireConn) {
 }
 func (x *ajpExchan) onEnd() {
 }

@@ -190,7 +190,7 @@ const ( // misc web types
 	webContentTextMake  = 3 // direct make
 )
 
-const ( // hashes of http fields. value is calculated by adding all ASCII values.
+const ( // hashes of web fields. value is calculated by adding all ASCII values.
 	// Pseudo headers
 	hashAuthority = 1059 // :authority
 	hashMethod    = 699  // :method
@@ -254,7 +254,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashWWWAuthenticate   = 1681
 )
 
-var ( // slices of http fields.
+var ( // slices of web fields.
 	// Pseudo headers
 	bytesAuthority = []byte(":authority")
 	bytesMethod    = []byte(":method")
@@ -318,11 +318,11 @@ var ( // slices of http fields.
 	bytesWWWAuthenticate   = []byte("www-authenticate")
 )
 
-const ( // hashes of misc http strings & bytes.
+const ( // hashes of misc web strings & bytes.
 	hashBoundary = 868
 )
 
-var ( // misc http strings & slices.
+var ( // misc web strings & slices.
 	// Strings
 	stringColonPort80  = ":80"
 	stringColonPort443 = ":443"
@@ -2277,7 +2277,7 @@ var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v
 	hasComment: false,
 }
 
-// desc describes an HTTP field.
+// desc describes a web field.
 type desc struct {
 	hash       uint16 // name hash
 	allowQuote bool   // allow data quote or not

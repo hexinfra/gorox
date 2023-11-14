@@ -331,9 +331,9 @@ stage {
 			]
 			.defaultType = "application/octet-stream"
 		}
-		ajpProxy "ap1" {
+		ajpRelay "ap1" {
 		}
-		fcgiProxy "fp1" {
+		fcgiRelay "fp1" {
 			.saveContentFilesDir = %tmpsDir + "/web/fcgi/fp1"
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
@@ -380,7 +380,7 @@ stage {
 		}
 		http3Proxy "h3p1" {
 		}
-		uwsgiProxy "up1" {
+		uwsgiRelay "up1" {
 		}
 
 		// revisers

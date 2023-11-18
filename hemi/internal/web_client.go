@@ -715,7 +715,7 @@ func (r *clientResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge ui
 	return true
 }
 func (r *clientResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
-	// TODO
+	// TODO; use r._checkChallenge
 	return true
 }
 func (r *clientResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -741,7 +741,7 @@ func (r *clientResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool {
 	return true
 }
 func (r *clientResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
-	// TODO
+	// TODO; use r._checkChallenge
 	return true
 }
 func (r *clientResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]

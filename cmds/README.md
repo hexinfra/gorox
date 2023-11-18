@@ -4,3 +4,4 @@ To build (take goben as an example):
 
   shell> cd ..
   shell> go build ./cmds/goben
+  shell> ls

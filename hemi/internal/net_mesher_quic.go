@@ -256,7 +256,7 @@ type QUICConnection struct {
 	// Connection states (zeros)
 	quicConnection0
 }
-type quicConnection0 struct {
+type quicConnection0 struct { // for fast reset, entirely
 }
 
 func (c *QUICConnection) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConnection *quix.Connection) {

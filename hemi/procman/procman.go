@@ -79,7 +79,7 @@ OPTIONS
 
 `
 
-type Setting struct {
+type Settings struct {
 	Title      string
 	Program    string
 	DebugLevel int
@@ -88,7 +88,7 @@ type Setting struct {
 	Usage      string
 }
 
-func Main(s *Setting) {
+func Main(s *Settings) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}

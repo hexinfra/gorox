@@ -345,7 +345,7 @@ type TCPSConn struct {
 	// Conn states (zeros)
 	tcpsConn0
 }
-type tcpsConn0 struct {
+type tcpsConn0 struct { // for fast reset, entirely
 }
 
 func (c *TCPSConn) onGet(id int64, stage *Stage, mesher *TCPSMesher, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -419,6 +419,7 @@ func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {
 
 // tcpsConnVariables
 var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
+	// TODO
 	nil, // srcHost
 	nil, // srcPort
 	nil, // transport

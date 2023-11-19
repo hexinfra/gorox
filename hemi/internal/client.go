@@ -258,7 +258,7 @@ func (b *Backend_[N]) Maintain() { // goroutine
 
 	// Backend is told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
-		node.shut()
+		node.shutdown()
 	}
 	b.WaitSubs() // nodes
 	if Debug() >= 2 {
@@ -274,7 +274,7 @@ type Node interface {
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
 	Maintain() // goroutine
-	shut()
+	shutdown()
 }
 
 // Node_ is a mixin for backend nodes.
@@ -352,7 +352,7 @@ func (n *Node_) closeFree() int {
 	return qnty
 }
 
-func (n *Node_) shut() {
+func (n *Node_) shutdown() {
 	close(n.ShutChan)
 }
 

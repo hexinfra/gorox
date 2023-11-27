@@ -130,7 +130,7 @@ By default, Gorox uses these directories:
   * svcs/ - Place your RPC services,
   * test/ - Place tests for your project.
 
-After Gorox is started, 3 extra directories are created:
+After Gorox is started, 3 extra directories will be created:
 
   * logs/ - Place running logs,
   * tmps/ - Place temp files which are safe to remove after Gorox is shutdown,

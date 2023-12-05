@@ -1,0 +1,16 @@
+http2Proxy "h2p1" {
+	.proxyMode = "reverse"
+	.toBackend = "proxy_name"
+	.viaName = "gorox"
+	.bufferClientContent = true
+	.bufferServerContent = true
+	.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+	.addRequestHeaders = [
+		"x-root-id": "xxx-xxx-xxx-xxx",
+	]
+
+	.delResponseHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
+	.addResponseHeaders = [
+		"cache-control": "max-age=86400",
+	]
+}

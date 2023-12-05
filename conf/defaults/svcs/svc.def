@@ -1,0 +1,4 @@
+svc "s1" {
+	.withStater = "Stater name"
+	.maxContentSize = 16G
+}

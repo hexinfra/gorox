@@ -1,0 +1,6 @@
+fcache {
+	.smallFileSize = 65535
+	.maxSmallFiles = 1000
+	.maxLargeFiles = 500
+	.cacheTimeout  = 1s
+}

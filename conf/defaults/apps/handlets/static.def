@@ -1,0 +1,10 @@
+static "s1" {
+	.webRoot = %baseDir + "/apps/a1/root"
+	.indexFile = "index.html"
+	.autoIndex = true
+	.mimeTypes = [
+		"jpg": "image/jpeg",
+		"jpeg": "image/jpeg",
+	]
+	.defaultType = "application/octet-stream"
+}

@@ -1,0 +1,26 @@
+tcpsMesher "tm1" {
+	.address         = string,required
+	.tlsMode         = false
+	.readTimeout     = 60s
+	.writeTimeout    = 60s
+	.numGates        = runtime.NumCPU()
+	.maxConnsPerGate = 100000
+
+	// filters
+	accessFilter "af1" {
+	}
+	echoFilter "ef1" {
+	}
+	helloFilter "hf1" {
+	}
+	mysqlProxy "mp1" {
+	}
+	pgsqlProxy "pp1" {
+	}
+	redisProxy "rp1" {
+	}
+	tcpsProxy "tp1" {
+	}
+
+	// cases
+}

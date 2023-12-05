@@ -1,0 +1,12 @@
+http3Outgate {
+	.tlsMode = false
+	.dialTimeout = 10s
+	.writeTimeout = 30s
+	.readTimeout = 30s
+	.aliveTimeout = 5s
+	.maxStreamsPerConn = 1000
+	.saveContentFilesDir = %tmpsDir + "/web/outgates/http3Outgate"
+	.maxContentSize = 1T
+	.sendTimeout = 60s
+	.recvTimeout = 60s
+}

@@ -1,0 +1,4 @@
+httpsChecker "hc1" {
+	.authority = "www.example.cpm"
+	.permanent = true
+}

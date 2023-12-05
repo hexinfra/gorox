@@ -1,0 +1,18 @@
+httpxServer "hxs1" {
+	.forApps         = ("foo", "bar")
+	.address         = string,required
+	.tlsMode         = false
+	.readTimeout     = 60s
+	.writeTimeout    = 60s
+	.numGates        = runtime.NumCPU()
+	.maxConnsPerGate = 100000
+	.enableTCPTun    = false
+	.enableUDPTun    = false
+	.maxContentSize  = 1T
+	.recvTimeout     = 120s
+	.sendTimeout     = 120s
+	.forceScheme     = ""
+	.adjustScheme    = true
+	.enableHTTP2     = false
+	.h2cMode         = false
+}

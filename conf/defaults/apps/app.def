@@ -1,0 +1,22 @@
+app "a1" {
+	.hostnames            = ("*")
+	.webRoot              = ""
+	.file404              = ""
+	.tlsCertificate       = ""
+	.tlsPrivateKey        = ""
+	.accessLog            = []
+	.maxMemoryContentSize = 16M
+	.maxUploadContentSize = 128M
+	.settings             = []
+	.proxyOnly            = false
+	.withStater           = "ls"
+	.saveContentFilesDir  = %tmpsDir + "/web/apps/a1"
+
+	// handlets
+
+	// revisers
+
+	// socklets
+
+	// rules
+}

@@ -1,0 +1,12 @@
+udpsBackend "ub1" {
+	.tlsMode = false
+	.dialTimeout = 10s
+	.writeTimeout = 30s
+	.readTimeout = 30s
+	.aliveTimeout = 5s
+	.nodes = (
+		["address": "127.0.0.1:3080", "weight": 9, "keepConns": 2],
+		["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
+	)
+	.balancer = "random"
+}

@@ -1,0 +1,13 @@
+fcgiRelay "fp1" {
+	.saveContentFilesDir = %tmpsDir + "/web/fcgi/fp1"
+	.toBackend = "php-fpm"
+	.sendTimeout = 60s
+	.recvTimeout = 60s
+	.scriptFilename = ""
+	.indexFile = "index.php"
+	.keepConn = true
+	.bufferClientContent = true
+	.bufferServerContent = true
+	.preferUnderscore = true
+	.withCacher = "cacher name"
+}

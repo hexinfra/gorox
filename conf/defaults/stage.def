@@ -1,0 +1,27 @@
+stage {
+	.cpuFile = %tmpsDir + "/cpu.prof"
+	.hepFile = %tmpsDir + "/hep.prof"
+	.thrFile = %tmpsDir + "/thr.prof"
+	.grtFile = %tmpsDir + "/grt.prof"
+	.blkFile = %tmpsDir + "/blk.prof"
+
+	// fixtures. fixtures are singletons
+
+	// addons
+
+	// backends
+
+	// meshers
+
+	// staters
+
+	// cachers
+
+	// apps
+
+	// svcs
+
+	// servers
+
+	// cronjobs
+}

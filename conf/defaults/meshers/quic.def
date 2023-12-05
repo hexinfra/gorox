@@ -1,0 +1,14 @@
+quicMesher "qm1" {
+	.address         = string,required
+	.tlsMode         = false
+	.readTimeout     = 60s
+	.writeTimeout    = 60s
+	.numGates        = runtime.NumCPU()
+	.maxConnsPerGate = 100000
+
+	// filters
+	quicProxy "qp1" {
+	}
+
+	// cases
+}

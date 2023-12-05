@@ -7,20 +7,6 @@ tcpsMesher "tm1" {
 	.maxConnsPerGate = 100000
 
 	// filters
-	accessFilter "af1" {
-	}
-	echoFilter "ef1" {
-	}
-	helloFilter "hf1" {
-	}
-	mysqlProxy "mp1" {
-	}
-	pgsqlProxy "pp1" {
-	}
-	redisProxy "rp1" {
-	}
-	tcpsProxy "tp1" {
-	}
 
 	// cases
 }

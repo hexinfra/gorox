@@ -7,10 +7,6 @@ udpsMesher "um1" {
 	.maxConnsPerGate = 100000
 
 	// filters
-	dnsFilter "df1" {
-	}
-	udpsProxy "up1" {
-	}
 
 	// cases
 }

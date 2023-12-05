@@ -7,8 +7,6 @@ quicMesher "qm1" {
 	.maxConnsPerGate = 100000
 
 	// filters
-	quicProxy "qp1" {
-	}
 
 	// cases
 }

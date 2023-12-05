@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	procman.Main(&procman.Settings{
+	procman.Main(&procman.Args{
 		Title:      "Develop",
 		Program:    "develop",
 		DebugLevel: 2,

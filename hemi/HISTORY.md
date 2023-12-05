@@ -6,7 +6,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Storers are renamed as cachers.
   * Fix crash caused by empty value of some fields.
   * Flag "-temp" changed to "-tmps".
-  * procman.Main() now accepts a settings parameter.
+  * procman.Main() now accepts an args parameter.
   * Action "test" is not integrated.
   * Values can now be variables in config file.
   * HTTP proxies now support adding and deleting request headers.

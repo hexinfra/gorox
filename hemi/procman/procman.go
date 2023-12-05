@@ -79,7 +79,7 @@ OPTIONS
 
 `
 
-type Settings struct {
+type Args struct {
 	Title      string
 	Program    string
 	DebugLevel int
@@ -88,24 +88,24 @@ type Settings struct {
 	Usage      string
 }
 
-func Main(s *Settings) {
+func Main(args *Args) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
 
-	common.Program = s.Program
+	common.Program = args.Program
 
 	flag.Usage = func() {
-		if s.Usage == "" {
-			fmt.Printf(usage, s.Title, hemi.Version, s.Program, s.DebugLevel, s.CmdUIAddr, s.CmdUIAddr, s.WebUIAddr, s.Program, s.Program)
+		if args.Usage == "" {
+			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DebugLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program)
 		} else {
-			fmt.Println(s.Usage)
+			fmt.Println(args.Usage)
 		}
 	}
-	flag.IntVar(&common.DebugLevel, "debug", s.DebugLevel, "")
-	flag.StringVar(&common.TargetAddr, "target", s.CmdUIAddr, "")
-	flag.StringVar(&common.CmdUIAddr, "cmdui", s.CmdUIAddr, "")
-	flag.StringVar(&common.WebUIAddr, "webui", s.WebUIAddr, "")
+	flag.IntVar(&common.DebugLevel, "debug", args.DebugLevel, "")
+	flag.StringVar(&common.TargetAddr, "target", args.CmdUIAddr, "")
+	flag.StringVar(&common.CmdUIAddr, "cmdui", args.CmdUIAddr, "")
+	flag.StringVar(&common.WebUIAddr, "webui", args.WebUIAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")

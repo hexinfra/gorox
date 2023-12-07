@@ -165,9 +165,9 @@ func (g *webGate_) onConnClosed() {
 type serverConn interface {
 	serve() // goroutine
 	getServer() webServer
+	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 	isBroken() bool
 	markBroken()
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
 }
 
 // serverConn_ is the mixin for http[1-3]Conn and hwebConn.

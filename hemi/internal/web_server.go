@@ -139,7 +139,7 @@ func (s *webServer_) findApp(hostname []byte) *App {
 			return prefixMap.target
 		}
 	}
-	return s.defaultApp
+	return s.defaultApp // may be nil
 }
 
 // webGate is the interface for *http[x3]Gate and *hwebGate.
@@ -154,6 +154,7 @@ type webGate interface {
 type webGate_ struct {
 	// Mixins
 	Gate_
+	// States
 }
 
 func (g *webGate_) onConnClosed() {
@@ -711,7 +712,7 @@ func (r *serverRequest_) examineHead() bool {
 		}
 	}
 	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies // make a copy. r.cookies is changed as cookie pairs below
+		cookies := r.cookies // make a copy, as r.cookies is changed as cookie pairs below
 		r.cookies.from = uint8(len(r.primes))
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
@@ -759,7 +760,7 @@ func (r *serverRequest_) examineHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
-		// Add here
+		// TODO: Add checks here
 	}
 
 	if !r.determineContentMode() {
@@ -1289,7 +1290,7 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 }
 func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode > Version1_1 {
-		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1.1"
+		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1"
 		return false
 	}
 	if r.methodCode == MethodCONNECT {
@@ -2549,7 +2550,7 @@ func (u *Upload) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.p
 func (u *Upload) Size() int64  { return u.size }
 
 func (u *Upload) MoveTo(path string) error {
-	// TODO
+	// TODO. Remember to mark as moved
 	return nil
 }
 

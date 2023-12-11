@@ -343,6 +343,7 @@ type Stage struct {
 	// Mixins
 	Component_
 	// Assocs
+	fixtures     compDict[fixture]     // indexed by sign
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
 	resolv       *resolvFixture        // for fast accessing
@@ -357,7 +358,6 @@ type Stage struct {
 	http2Outgate *HTTP2Outgate         // for fast accessing
 	http3Outgate *HTTP3Outgate         // for fast accessing
 	hwebOutgate  *HWEBOutgate          // for fast accessing
-	fixtures     compDict[fixture]     // indexed by sign
 	addons       compDict[Addon]       // indexed by addonName
 	backends     compDict[Backend]     // indexed by backendName
 	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
@@ -382,6 +382,7 @@ type Stage struct {
 func (s *Stage) onCreate() {
 	s.MakeComp("stage")
 
+	s.fixtures = make(compDict[fixture])
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
 	s.resolv = createResolv(s)
@@ -396,8 +397,6 @@ func (s *Stage) onCreate() {
 	s.http2Outgate = createHTTP2Outgate(s)
 	s.http3Outgate = createHTTP3Outgate(s)
 	s.hwebOutgate = createHWEBOutgate(s)
-
-	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolv] = s.resolv

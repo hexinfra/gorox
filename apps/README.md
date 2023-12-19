@@ -8,14 +8,14 @@ Some builtin webapps are:
   examples/forums/     - An example forums webapp.
   examples/hello/      - An example "hello, world" webapp.
 
-To add a new static webapp named "foo":
+To add a new static or configured webapp named "foo":
 
   1. Create a folder called "foo" in this directory,
   2. Create its config file "foo/webapp.conf" and configure it correctly,
   3. Put your static files in "foo/",
   4. Add webapp "foo" in "../conf/gorox.conf" and bind it to your web servers.
 
-To add a new Go app named "bar":
+To add a new Go webapp named "bar":
 
   1. Create a folder called "bar" in this directory,
   2. Create its config file "bar/goapp.conf" and configure it correctly,

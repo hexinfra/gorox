@@ -118,7 +118,6 @@ By default, Gorox uses these directories:
   * apps/ - Place your Web applications,
   * cmds/ - Place your auxiliary commands,
   * conf/ - Place configs for Gorox and your commands,
-  * data/ - Place static shared files of your project,
   * docs/ - Place docs of your project,
   * exts/ - Place extended components written for your project,
   * hemi/ - The Hemi Engine,

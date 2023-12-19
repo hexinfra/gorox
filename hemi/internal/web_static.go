@@ -38,7 +38,7 @@ type staticHandlet struct {
 	autoIndex     bool              // ...
 	mimeTypes     map[string]string // ...
 	defaultType   string            // ...
-	useAppRoot    bool              // true if webRoot is same with webapp.webRoot
+	useAppWebRoot bool              // true if webRoot is same with webapp.webRoot
 	developerMode bool              // no cache, no etag and so on if true
 }
 
@@ -63,9 +63,9 @@ func (h *staticHandlet) OnConfigure() {
 		UseExitln("webRoot is required for staticHandlet")
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
-	h.useAppRoot = h.webRoot == h.webapp.webRoot
+	h.useAppWebRoot = h.webRoot == h.webapp.webRoot
 	if Debug() >= 1 {
-		if h.useAppRoot {
+		if h.useAppWebRoot {
 			Printf("static=%s use webapp web root\n", h.Name())
 		} else {
 			Printf("static=%s NOT use webapp web root\n", h.Name())
@@ -135,7 +135,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 
 	var fullPath []byte
 	var pathSize int
-	if h.useAppRoot {
+	if h.useAppWebRoot {
 		fullPath = req.unsafeAbsPath()
 		pathSize = len(fullPath)
 	} else { // custom web root
@@ -149,7 +149,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 	if isFile {
 		openPath = fullPath[:pathSize]
 	} else { // is directory, add indexFile to openPath
-		if h.useAppRoot {
+		if h.useAppWebRoot {
 			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
 			copy(openPath, fullPath)
 			copy(openPath[pathSize:], h.indexFile)
@@ -204,7 +204,8 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 
 	modTime := entry.info.ModTime().Unix()
 	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
-	if status, pass := req.TestConditions(modTime, etag, true); pass {
+	const asOrigin = true
+	if status, pass := req.TestConditions(modTime, etag, asOrigin); pass {
 		if h.developerMode {
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
 		} else {

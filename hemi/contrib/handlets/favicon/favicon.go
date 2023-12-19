@@ -46,7 +46,8 @@ func (h *faviconHandlet) OnPrepare() {
 }
 
 func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {
-	if status, pass := req.TestConditions(faviconTime, etagBytes, true); pass {
+	const asOrigin = true
+	if status, pass := req.TestConditions(faviconTime, etagBytes, asOrigin); pass {
 		resp.SetLastModified(faviconTime)
 		resp.AddHeader("etag", etagString)
 		resp.AddContentType("image/png")

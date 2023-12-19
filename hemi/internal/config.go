@@ -157,7 +157,7 @@ type config struct {
 	counter int     // the name for components without a name
 }
 
-func (c *config) fromText(text string) (stage *Stage, err error) {
+func (c *config) bootText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -167,7 +167,7 @@ func (c *config) fromText(text string) (stage *Stage, err error) {
 	c.tokens = l.scanText(text)
 	return c.parse()
 }
-func (c *config) fromFile(base string, path string) (stage *Stage, err error) {
+func (c *config) bootFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -260,8 +260,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseCacher(current, stage)
 		case compApp:
 			c.parseApp(current, stage)
-		case compSvc:
-			c.parseSvc(current, stage)
+		case compService:
+			c.parseService(current, stage)
 		case compServer:
 			c.parseServer(current, stage)
 		case compCronjob:
@@ -646,12 +646,12 @@ func (c *config) parseRuleCond(rule *Rule) {
 	cond.compare = compare.text
 	rule.setInfo(cond)
 }
-func (c *config) parseSvc(sign *token, stage *Stage) { // svc <name> {}
-	svcName := c.forwardExpect(tokenString)
-	svc := stage.createSvc(svcName.text)
-	svc.setParent(stage)
+func (c *config) parseService(sign *token, stage *Stage) { // service <name> {}
+	serviceName := c.forwardExpect(tokenString)
+	service := stage.createService(serviceName.text)
+	service.setParent(stage)
 	c.forward()
-	c.parseLeaf(svc)
+	c.parseLeaf(service)
 }
 func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)

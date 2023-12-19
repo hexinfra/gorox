@@ -11,6 +11,8 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * Values can now be variables in config file.
   * HTTP proxies now support adding and deleting request headers.
   * ajpProxy, fcgiProxy, and uwsgiProxy are now renamed as respective relays.
+  * FromFile and FromText are renamed as BootFile and BootText respectively.
+  * Abbreviations are now differentiated from names clearly.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

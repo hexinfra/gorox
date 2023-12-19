@@ -13,7 +13,9 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/contrib"
 )
 
-var ( // registers
+// registers
+
+var (
 	RegisterAddon = internal.RegisterAddon
 
 	RegisterBackend = internal.RegisterBackend
@@ -25,19 +27,23 @@ var ( // registers
 	RegisterStater = internal.RegisterStater
 	RegisterCacher = internal.RegisterCacher
 
-	RegisterAppInit = internal.RegisterAppInit
 	RegisterHandlet = internal.RegisterHandlet
 	RegisterReviser = internal.RegisterReviser
 	RegisterSocklet = internal.RegisterSocklet
-
-	RegisterSvcInit = internal.RegisterSvcInit
 
 	RegisterServer = internal.RegisterServer
 
 	RegisterCronjob = internal.RegisterCronjob
 )
 
-var ( // core funcs
+var (
+	RegisterAppInit     = internal.RegisterAppInit
+	RegisterServiceInit = internal.RegisterServiceInit
+)
+
+// core funcs
+
+var (
 	SetDebug = internal.SetDebug
 	Debug    = internal.Debug
 
@@ -46,6 +52,11 @@ var ( // core funcs
 	SetTmpsDir = internal.SetTmpsDir
 	SetVarsDir = internal.SetVarsDir
 
+	BootFile = internal.BootFile
+	BootText = internal.BootText
+)
+
+var (
 	BaseDir = internal.BaseDir
 	LogsDir = internal.LogsDir
 	TmpsDir = internal.TmpsDir
@@ -64,16 +75,24 @@ var ( // core funcs
 	UseExitf  = internal.UseExitf
 	EnvExitln = internal.EnvExitln
 	EnvExitf  = internal.EnvExitf
-
-	FromFile = internal.FromFile
-	FromText = internal.FromText
 )
 
-type ( // core types
+// core types
+
+type (
 	Stage = internal.Stage
 
 	Addon = internal.Addon
 
+	Stater  = internal.Stater
+	Session = internal.Session
+
+	Server = internal.Server
+
+	Cronjob = internal.Cronjob
+)
+
+type (
 	Backend = internal.Backend
 
 	QUICOutgate = internal.QUICOutgate
@@ -140,7 +159,9 @@ type ( // core types
 	HExchan     = internal.HExchan
 	HRequest    = internal.HRequest
 	HResponse   = internal.HResponse
+)
 
+type (
 	Buffer = internal.Buffer
 
 	QUICMesher     = internal.QUICMesher
@@ -155,10 +176,9 @@ type ( // core types
 	UDPSMesher = internal.UDPSMesher
 	UDPSFilter = internal.UDPSFilter
 	UDPSLink   = internal.UDPSLink
+)
 
-	Stater  = internal.Stater
-	Session = internal.Session
-
+type (
 	Cacher  = internal.Cacher
 	Hobject = internal.Hobject
 
@@ -175,16 +195,14 @@ type ( // core types
 	Response = internal.Response
 	Cookie   = internal.Cookie
 	Socket   = internal.Socket
+)
 
-	Svc     = internal.Svc
+type (
+	Service = internal.Service
 	Bundlet = internal.Bundlet
-
-	Server = internal.Server
 
 	GRPCBridge   = internal.GRPCBridge   // for implementing gRPC server in exts
 	ThriftBridge = internal.ThriftBridge // for implementing Thrift server in exts
-
-	Cronjob = internal.Cronjob
 )
 
 type ( // core mixins

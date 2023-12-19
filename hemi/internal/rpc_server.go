@@ -16,7 +16,7 @@ type rpcServer interface {
 	// Imports
 	Server
 	// Methods
-	BindSvcs()
+	BindServices()
 }
 
 // rpcServer_
@@ -25,61 +25,61 @@ type rpcServer_ struct {
 	Server_
 	rpcBroker_
 	// Assocs
-	gates      []rpcGate
-	defaultSvc *Svc // default svc if not found
+	gates          []rpcGate
+	defaultService *Service // default service if not found
 	// States
-	forSvcs    []string            // for what svcs
-	exactSvcs  []*hostnameTo[*Svc] // like: ("example.com")
-	suffixSvcs []*hostnameTo[*Svc] // like: ("*.example.com")
-	prefixSvcs []*hostnameTo[*Svc] // like: ("www.example.*")
+	forServices    []string                // for what services
+	exactServices  []*hostnameTo[*Service] // like: ("example.com")
+	suffixServices []*hostnameTo[*Service] // like: ("*.example.com")
+	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
 }
 
 func (s *rpcServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 
-	// forSvcs
-	s.ConfigureStringList("forSvcs", &s.forSvcs, nil, []string{})
+	// forServices
+	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
 }
 func (s *rpcServer_) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 }
 
-func (s *rpcServer_) BindSvcs() {
-	for _, svcName := range s.forSvcs {
-		svc := s.stage.Svc(svcName)
-		if svc == nil {
+func (s *rpcServer_) BindServices() {
+	for _, serviceName := range s.forServices {
+		service := s.stage.Service(serviceName)
+		if service == nil {
 			continue
 		}
-		svc.BindServer(s.shell.(rpcServer))
+		service.BindServer(s.shell.(rpcServer))
 		// TODO: use hash table?
-		for _, hostname := range svc.exactHostnames {
-			s.exactSvcs = append(s.exactSvcs, &hostnameTo[*Svc]{hostname, svc})
+		for _, hostname := range service.exactHostnames {
+			s.exactServices = append(s.exactServices, &hostnameTo[*Service]{hostname, service})
 		}
 		// TODO: use radix trie?
-		for _, hostname := range svc.suffixHostnames {
-			s.suffixSvcs = append(s.suffixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		for _, hostname := range service.suffixHostnames {
+			s.suffixServices = append(s.suffixServices, &hostnameTo[*Service]{hostname, service})
 		}
 		// TODO: use radix trie?
-		for _, hostname := range svc.prefixHostnames {
-			s.prefixSvcs = append(s.prefixSvcs, &hostnameTo[*Svc]{hostname, svc})
+		for _, hostname := range service.prefixHostnames {
+			s.prefixServices = append(s.prefixServices, &hostnameTo[*Service]{hostname, service})
 		}
 	}
 }
-func (s *rpcServer_) findSvc(hostname []byte) *Svc {
+func (s *rpcServer_) findService(hostname []byte) *Service {
 	// TODO: use hash table?
-	for _, exactMap := range s.exactSvcs {
+	for _, exactMap := range s.exactServices {
 		if bytes.Equal(hostname, exactMap.hostname) {
 			return exactMap.target
 		}
 	}
 	// TODO: use radix trie?
-	for _, suffixMap := range s.suffixSvcs {
+	for _, suffixMap := range s.suffixServices {
 		if bytes.HasSuffix(hostname, suffixMap.hostname) {
 			return suffixMap.target
 		}
 	}
 	// TODO: use radix trie?
-	for _, prefixMap := range s.prefixSvcs {
+	for _, prefixMap := range s.prefixServices {
 		if bytes.HasPrefix(hostname, prefixMap.hostname) {
 			return prefixMap.target
 		}
@@ -107,7 +107,7 @@ type serverCall_ struct {
 
 // Req is the server-side RPC request.
 type Req interface {
-	Svc() *Svc
+	Service() *Service
 }
 
 // serverReq_

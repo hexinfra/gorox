@@ -219,9 +219,9 @@ A Gorox instance can be controlled by operators through the cmdui interface of
 leader process. Operators connect to leader, send commands, and leader executes
 the commands. Some commands are delivered to worker through admConn.
 
-Alternatively, Gorox instances can connects to a Myrox instance and delegates
-its administration to Myrox. In this way, the cmdui interface in leader process
-is disabled.
+Alternatively, Gorox instances can connect to a Myrox instance and delegate
+their administration to Myrox. In this way, the cmdui interface in the leader
+process is disabled.
 
 
 Community

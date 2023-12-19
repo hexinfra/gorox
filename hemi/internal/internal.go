@@ -120,15 +120,15 @@ func _exitf(exitCode int, prefix, format string, args ...any) {
 	os.Exit(exitCode)
 }
 
-func FromText(text string) (*Stage, error) {
+func BootText(text string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.fromText(text)
+	return c.bootText(text)
 }
-func FromFile(base string, file string) (*Stage, error) {
+func BootFile(base string, file string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.fromFile(base, file)
+	return c.bootFile(base, file)
 }
 func _checkDirs() {
 	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tmpsDir.Load() == nil || _varsDir.Load() == nil {

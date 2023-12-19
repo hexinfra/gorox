@@ -12,18 +12,18 @@ import (
 	"time"
 )
 
-// Svc is the RPC service.
-type Svc struct {
+// Service is the RPC service.
+type Service struct {
 	// Mixins
 	Component_
 	// Assocs
 	stage   *Stage      // current stage
-	stater  Stater      // the stater which is used by this svc
+	stater  Stater      // the stater which is used by this service
 	servers []rpcServer // bound rpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
 	accessLog       *logcfg            // ...
-	logger          *logger            // svc access logger
+	logger          *logger            // service access logger
 	maxContentSize  int64              // max content size allowed
 	exactHostnames  [][]byte           // like: ("example.com")
 	suffixHostnames [][]byte           // like: ("*.example.com")
@@ -31,15 +31,15 @@ type Svc struct {
 	bundlets        map[string]Bundlet // ...
 }
 
-func (s *Svc) onCreate(name string, stage *Stage) {
+func (s *Service) onCreate(name string, stage *Stage) {
 	s.MakeComp(name)
 	s.stage = stage
 }
-func (s *Svc) OnShutdown() {
+func (s *Service) OnShutdown() {
 	close(s.ShutChan)
 }
 
-func (s *Svc) OnConfigure() {
+func (s *Service) OnConfigure() {
 	// withStater
 	if v, ok := s.Find("withStater"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -61,54 +61,54 @@ func (s *Svc) OnConfigure() {
 		return errors.New(".maxContentSize has an invalid value")
 	}, _16M)
 }
-func (s *Svc) OnPrepare() {
+func (s *Service) OnPrepare() {
 	if s.accessLog != nil {
 		//s.logger = newLogger(s.accessLog.logFile, s.accessLog.rotate)
 	}
 
 	initsLock.RLock()
-	svcInit := svcInits[s.name]
+	serviceInit := serviceInits[s.name]
 	initsLock.RUnlock()
-	if svcInit != nil {
-		if err := svcInit(s); err != nil {
+	if serviceInit != nil {
+		if err := serviceInit(s); err != nil {
 			UseExitln(err.Error())
 		}
 	}
 }
 
-func (s *Svc) Log(str string) {
+func (s *Service) Log(str string) {
 	if s.logger != nil {
 		s.logger.Log(str)
 	}
 }
-func (s *Svc) Logln(str string) {
+func (s *Service) Logln(str string) {
 	if s.logger != nil {
 		s.logger.Logln(str)
 	}
 }
-func (s *Svc) Logf(format string, args ...any) {
+func (s *Service) Logf(format string, args ...any) {
 	if s.logger != nil {
 		s.logger.Logf(format, args...)
 	}
 }
 
-func (s *Svc) BindServer(server rpcServer) { s.servers = append(s.servers, server) }
-func (s *Svc) Servers() []rpcServer        { return s.servers }
+func (s *Service) BindServer(server rpcServer) { s.servers = append(s.servers, server) }
+func (s *Service) Servers() []rpcServer        { return s.servers }
 
-func (s *Svc) maintain() { // goroutine
+func (s *Service) maintain() { // goroutine
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if Debug() >= 2 {
-		Printf("svc=%s done\n", s.Name())
+		Printf("service=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
 
-func (s *Svc) dispatch(req Req, resp Resp) {
+func (s *Service) dispatch(req Req, resp Resp) {
 	// TODO
 }
 
-// Bundlet is a bundle of procedures in Svc. Bundlets are not components.
+// Bundlet is a bundle of procedures in Service. Bundlets are not components.
 type Bundlet interface {
 }

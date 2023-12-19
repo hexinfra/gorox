@@ -41,7 +41,7 @@ type webServer interface {
 type webServer_ struct {
 	// Mixins
 	Server_
-	webBroker_
+	webBroker_ // webServer
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
 	// Assocs
@@ -468,7 +468,8 @@ type serverRequest0 struct { // for fast reset, entirely
 }
 
 func (r *serverRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.webIn_.onUse(versionCode, false) // asResponse = false
+	const asResponse = false
+	r.webIn_.onUse(versionCode, asResponse)
 
 	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
 }
@@ -2652,7 +2653,8 @@ type serverResponse0 struct { // for fast reset, entirely
 }
 
 func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.webOut_.onUse(versionCode, false) // asRequest = false
+	const asRequest = false
+	r.webOut_.onUse(versionCode, asRequest)
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set

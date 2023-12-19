@@ -1,1 +1,1 @@
-This is a hello svc showing how to use Gorox RPC Framework to host a svc.
+This is a hello service showing how to use Gorox RPC Framework to host a service.

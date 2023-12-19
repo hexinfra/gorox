@@ -33,6 +33,6 @@ COMPONENTS
       reviser (gzip, head, ...)
       socklet (hello, ...)
       rule [*]
-    svc [*]
+    service [*]
     server (httpxServer, http3Server, echoServer, ...)
     cronjob (clean, stat, ...)

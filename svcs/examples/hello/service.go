@@ -3,14 +3,17 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package diogin
+// This is a hello service showing how to use Gorox RPC Framework to host a service.
+
+package hello
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {
-	RegisterSvcInit("diogin", func(svc *Svc) error {
+	// Register service initializer.
+	RegisterServiceInit("hello", func(service *Service) error {
 		return nil
 	})
 }

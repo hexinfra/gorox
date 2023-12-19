@@ -1,16 +1,16 @@
-// Copyright (c) 2020-2023 Sun Lei <valentine0401@163.com>.
+// Copyright (c) 2020-2023 Feng Wei <feng19910104@gmail.com>.
 // Copyright (c) 2022-2023 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-package sunlei
+package fengve
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {
-	RegisterSvcInit("sunlei", func(svc *Svc) error {
+	RegisterServiceInit("fengve", func(service *Service) error {
 		return nil
 	})
 }

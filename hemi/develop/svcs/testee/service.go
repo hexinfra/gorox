@@ -10,9 +10,9 @@ import (
 )
 
 func init() {
-	RegisterSvcInit("testee", func(svc *Svc) error {
+	RegisterServiceInit("testee", func(service *Service) error {
 		/*
-			ss := svc.Servers()
+			ss := service.Servers()
 			for _, s := range ss {
 				g := s.GRPCServer().(*grpc.Server)
 				pb.RegisterGreeterServer(g, &greetService{})

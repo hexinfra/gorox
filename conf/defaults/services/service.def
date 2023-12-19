@@ -1,4 +1,4 @@
-svc "s1" {
+service "s1" {
 	.withStater = "Stater name"
 	.maxContentSize = 16G
 }

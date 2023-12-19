@@ -19,7 +19,7 @@ func Main() {
 	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
 	}
-	if _, err := hemi.FromFile(configBase, configFile); err != nil {
+	if _, err := hemi.BootFile(configBase, configFile); err != nil {
 		common.Crash("leader: " + err.Error())
 	}
 

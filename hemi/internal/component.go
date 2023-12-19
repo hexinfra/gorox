@@ -42,7 +42,7 @@ const ( // component list
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
-	compSvc                   // svc
+	compService               // service
 	compServer                // httpxServer, echoServer, ...
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
@@ -55,7 +55,7 @@ var signedComps = map[string]int16{ // static comps. more dynamic comps are sign
 	"case":       compCase,
 	"app":        compApp,
 	"rule":       compRule,
-	"svc":        compSvc,
+	"service":    compService,
 }
 
 func signComp(sign string, comp int16) {
@@ -150,9 +150,9 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 }
 
 var (
-	initsLock sync.RWMutex
-	appInits  = make(map[string]func(app *App) error) // indexed by app name.
-	svcInits  = make(map[string]func(svc *Svc) error) // indexed by svc name.
+	initsLock    sync.RWMutex
+	appInits     = make(map[string]func(app *App) error)         // indexed by app name.
+	serviceInits = make(map[string]func(service *Service) error) // indexed by service name.
 )
 
 func RegisterAppInit(name string, init func(app *App) error) {
@@ -160,9 +160,9 @@ func RegisterAppInit(name string, init func(app *App) error) {
 	appInits[name] = init
 	initsLock.Unlock()
 }
-func RegisterSvcInit(name string, init func(svc *Svc) error) {
+func RegisterServiceInit(name string, init func(service *Service) error) {
 	initsLock.Lock()
-	svcInits[name] = init
+	serviceInits[name] = init
 	initsLock.Unlock()
 }
 
@@ -366,7 +366,7 @@ type Stage struct {
 	staters      compDict[Stater]      // indexed by staterName
 	cachers      compDict[Cacher]      // indexed by cacherName
 	apps         compDict[*App]        // indexed by appName
-	svcs         compDict[*Svc]        // indexed by svcName
+	services     compDict[*Service]    // indexed by serviceName
 	servers      compDict[Server]      // indexed by serverName
 	cronjobs     compDict[Cronjob]     // indexed by cronjobName
 	// States
@@ -420,7 +420,7 @@ func (s *Stage) onCreate() {
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
 	s.apps = make(compDict[*App])
-	s.svcs = make(compDict[*Svc])
+	s.services = make(compDict[*Service])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
 }
@@ -439,9 +439,9 @@ func (s *Stage) OnShutdown() {
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
-	// svcs & apps
-	s.IncSub(len(s.svcs) + len(s.apps))
-	s.svcs.goWalk((*Svc).OnShutdown)
+	// services & apps
+	s.IncSub(len(s.services) + len(s.apps))
+	s.services.goWalk((*Service).OnShutdown)
 	s.apps.goWalk((*App).OnShutdown)
 	s.WaitSubs()
 
@@ -554,7 +554,7 @@ func (s *Stage) OnConfigure() {
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
 	s.apps.walk((*App).OnConfigure)
-	s.svcs.walk((*Svc).OnConfigure)
+	s.services.walk((*Service).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
@@ -575,7 +575,7 @@ func (s *Stage) OnPrepare() {
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
 	s.apps.walk((*App).OnPrepare)
-	s.svcs.walk((*Svc).OnPrepare)
+	s.services.walk((*Service).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
@@ -672,15 +672,15 @@ func (s *Stage) createApp(name string) *App {
 	s.apps[name] = app
 	return app
 }
-func (s *Stage) createSvc(name string) *Svc {
-	if s.Svc(name) != nil {
-		UseExitf("conflicting svc with a same name '%s'\n", name)
+func (s *Stage) createService(name string) *Service {
+	if s.Service(name) != nil {
+		UseExitf("conflicting service with a same name '%s'\n", name)
 	}
-	svc := new(Svc)
-	svc.onCreate(name, s)
-	svc.setShell(svc)
-	s.svcs[name] = svc
-	return svc
+	service := new(Service)
+	service.onCreate(name, s)
+	service.setShell(service)
+	s.services[name] = service
+	return service
 }
 func (s *Stage) createServer(sign string, name string) Server {
 	if s.Server(name) != nil {
@@ -733,7 +733,7 @@ func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name]
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) App(name string) *App               { return s.apps[name] }
-func (s *Stage) Svc(name string) *Svc               { return s.svcs[name] }
+func (s *Stage) Service(name string) *Service       { return s.services[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
 
@@ -774,7 +774,7 @@ func (s *Stage) Start(id int32) {
 	}
 
 	s.bindServerApps()
-	s.bindServerSvcs()
+	s.bindServerServices()
 
 	// Prepare all components
 	if err := s.prepare(); err != nil {
@@ -789,7 +789,7 @@ func (s *Stage) Start(id int32) {
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
 	s.startApps()     // go app.maintain()
-	s.startSvcs()     // go svc.maintain()
+	s.startServices() // go service.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 }
@@ -810,13 +810,13 @@ func (s *Stage) bindServerApps() {
 		}
 	}
 }
-func (s *Stage) bindServerSvcs() {
+func (s *Stage) bindServerServices() {
 	if Debug() >= 1 {
-		Println("bind svcs to rpc servers")
+		Println("bind services to rpc servers")
 	}
 	for _, server := range s.servers {
 		if rpcServer, ok := server.(rpcServer); ok {
-			rpcServer.BindSvcs()
+			rpcServer.BindServices()
 		}
 	}
 }
@@ -889,12 +889,12 @@ func (s *Stage) startApps() {
 		go app.maintain()
 	}
 }
-func (s *Stage) startSvcs() {
-	for _, svc := range s.svcs {
+func (s *Stage) startServices() {
+	for _, service := range s.services {
 		if Debug() >= 1 {
-			Printf("svc=%s go maintain()\n", svc.Name())
+			Printf("service=%s go maintain()\n", service.Name())
 		}
-		go svc.maintain()
+		go service.maintain()
 	}
 }
 func (s *Stage) startServers() {

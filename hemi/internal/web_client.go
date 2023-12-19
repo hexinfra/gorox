@@ -197,7 +197,8 @@ type clientRequest0 struct { // for fast reset, entirely
 }
 
 func (r *clientRequest_) onUse(versionCode uint8) { // for non-zeros
-	r.webOut_.onUse(versionCode, true) // asRequest = true
+	const asRequest = true
+	r.webOut_.onUse(versionCode, asRequest)
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
@@ -246,14 +247,12 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
-	var uri []byte
+	uri := req.UnsafeURI()
 	if req.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
-	} else {
-		uri = req.UnsafeURI()
 	}
 	if !r.shell.(clientRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
@@ -467,7 +466,8 @@ type clientResponse0 struct { // for fast reset, entirely
 }
 
 func (r *clientResponse_) onUse(versionCode uint8) { // for non-zeros
-	r.webIn_.onUse(versionCode, true) // asResponse = true
+	const asResponse = true
+	r.webIn_.onUse(versionCode, asResponse)
 
 	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }

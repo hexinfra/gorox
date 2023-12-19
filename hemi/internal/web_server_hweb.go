@@ -212,9 +212,9 @@ func (x *hwebExchan) writeContinue() bool { // 100 continue
 	return false
 }
 
-func (x *hwebExchan) executeExchan(app *App, req *hwebRequest, resp *hwebResponse) { // request & response
+func (x *hwebExchan) executeExchan(webapp *Webapp, req *hwebRequest, resp *hwebResponse) { // request & response
 	// TODO
-	//app.dispatchHandlet(req, resp)
+	//webapp.dispatchHandlet(req, resp)
 }
 func (x *hwebExchan) serveAbnormal(req *hwebRequest, resp *hwebResponse) { // 4xx & 5xx
 	// TODO

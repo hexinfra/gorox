@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterAppInit("fengve", func(app *App) error {
+	RegisterWebappInit("fengve", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("fengveHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("fengveHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(fengveHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -30,18 +30,18 @@ type fengveHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *fengveHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *fengveHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *fengveHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *fengveHandlet) OnConfigure() {

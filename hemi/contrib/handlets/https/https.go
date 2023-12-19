@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("httpsChecker", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("httpsChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(httpsChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -24,20 +24,20 @@ type httpsChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	permanent bool
 	authority string
 }
 
-func (h *httpsChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *httpsChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *httpsChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *httpsChecker) OnConfigure() {

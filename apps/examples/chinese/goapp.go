@@ -15,10 +15,10 @@ import (
 )
 
 func init() {
-	RegisterAppInit("chinese", func(app *App) error {
-		logic := app.Handlet("logic")
+	RegisterWebappInit("chinese", func(webapp *Webapp) error {
+		logic := webapp.Handlet("logic")
 		if logic == nil {
-			return errors.New("no handlet named 'logic' in app config file")
+			return errors.New("no handlet named 'logic' in webapp config file")
 		}
 		sitex, ok := logic.(*Sitex) // must be Sitex handlet.
 		if !ok {

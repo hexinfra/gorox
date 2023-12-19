@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("helloHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("helloHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(helloHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -26,19 +26,19 @@ type helloHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage // current stage
-	app   *App   // associated app
+	stage  *Stage  // current stage
+	webapp *Webapp // associated webapp
 	// States
 	example string // an example config entry
 }
 
-func (h *helloHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *helloHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *helloHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *helloHandlet) OnConfigure() {

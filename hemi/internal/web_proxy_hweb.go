@@ -8,9 +8,9 @@
 package internal
 
 func init() {
-	RegisterHandlet("hwebProxy", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("hwebProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(hwebProxy)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -22,11 +22,11 @@ type hwebProxy struct {
 	// States
 }
 
-func (h *hwebProxy) onCreate(name string, stage *Stage, app *App) {
-	h.exchanProxy_.onCreate(name, stage, app)
+func (h *hwebProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.exchanProxy_.onCreate(name, stage, webapp)
 }
 func (h *hwebProxy) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *hwebProxy) OnConfigure() {

@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("gzipReviser", func(name string, stage *Stage, app *App) Reviser {
+	RegisterReviser("gzipReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(gzipReviser)
-		r.onCreate(name, stage, app)
+		r.onCreate(name, stage, webapp)
 		return r
 	})
 }
@@ -27,21 +27,21 @@ type gzipReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	compressLevel  int
 	minLength      int64
 	onContentTypes []string
 }
 
-func (r *gzipReviser) onCreate(name string, stage *Stage, app *App) {
+func (r *gzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.MakeComp(name)
 	r.stage = stage
-	r.app = app
+	r.webapp = webapp
 }
 func (r *gzipReviser) OnShutdown() {
-	r.app.SubDone()
+	r.webapp.SubDone()
 }
 
 func (r *gzipReviser) OnConfigure() {

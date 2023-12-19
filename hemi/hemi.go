@@ -37,7 +37,7 @@ var (
 )
 
 var (
-	RegisterAppInit     = internal.RegisterAppInit
+	RegisterWebappInit  = internal.RegisterWebappInit
 	RegisterServiceInit = internal.RegisterServiceInit
 )
 
@@ -182,7 +182,7 @@ type (
 	Cacher  = internal.Cacher
 	Hobject = internal.Hobject
 
-	App      = internal.App
+	Webapp   = internal.Webapp
 	Handlet  = internal.Handlet
 	Handle   = internal.Handle
 	Router   = internal.Router

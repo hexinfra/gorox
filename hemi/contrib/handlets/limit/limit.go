@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("limitChecker", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("limitChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(limitChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -24,18 +24,18 @@ type limitChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *limitChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *limitChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *limitChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *limitChecker) OnConfigure() {

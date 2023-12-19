@@ -930,14 +930,14 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 				r.contentTextKind = webContentTextMake
 			}
 			if _, err := io.ReadFull(contentFile, r.contentText[:r.receivedSize]); err != nil {
-				// TODO: r.app.log
+				// TODO: r.webapp.log
 			}
 		}
 		contentFile.Close()
 		if Debug() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(contentFile.Name()); err != nil {
-			// TODO: r.app.log
+			// TODO: r.webapp.log
 		}
 	case error: // i/o error or unexpected EOF
 		// TODO: log error?

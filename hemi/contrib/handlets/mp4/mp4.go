@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("mp4Handlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("mp4Handlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(mp4Handlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -24,18 +24,18 @@ type mp4Handlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *mp4Handlet) onCreate(name string, stage *Stage, app *App) {
+func (h *mp4Handlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *mp4Handlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *mp4Handlet) OnConfigure() {

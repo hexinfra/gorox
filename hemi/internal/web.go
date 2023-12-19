@@ -18,14 +18,14 @@ import (
 	"time"
 )
 
-// App is the Web application.
-type App struct {
+// Webapp is the Web application.
+type Webapp struct {
 	// Mixins
 	Component_
 	contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	stage    *Stage            // current stage
-	stater   Stater            // the stater which is used by this app
+	stater   Stater            // the stater which is used by this webapp
 	servers  []webServer       // bound web servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
@@ -39,21 +39,21 @@ type App struct {
 	tlsCertificate       string            // tls certificate file, in pem format
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            *logcfg           // ...
-	logger               *logger           // app access logger
+	logger               *logger           // webapp access logger
 	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
-	settings             map[string]string // app settings defined and used by users
+	settings             map[string]string // webapp settings defined and used by users
 	settingsLock         sync.RWMutex      // protects settings
-	isDefault            bool              // is this app a default app?
-	proxyOnly            bool              // is this app a proxy-only app?
+	isDefault            bool              // is this webapp a default webapp?
+	proxyOnly            bool              // is this webapp a proxy-only webapp?
 	exactHostnames       [][]byte          // like: ("example.com")
 	suffixHostnames      [][]byte          // like: ("*.example.com")
 	prefixHostnames      [][]byte          // like: ("www.example.*")
 	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
-	nRevisers            uint8             // used number of revisersByID in this app
+	nRevisers            uint8             // used number of revisersByID in this webapp
 }
 
-func (a *App) onCreate(name string, stage *Stage) {
+func (a *Webapp) onCreate(name string, stage *Stage) {
 	a.MakeComp(name)
 	a.stage = stage
 	a.handlets = make(compDict[Handlet])
@@ -61,12 +61,12 @@ func (a *App) onCreate(name string, stage *Stage) {
 	a.socklets = make(compDict[Socklet])
 	a.nRevisers = 1 // position 0 is not used
 }
-func (a *App) OnShutdown() {
+func (a *Webapp) OnShutdown() {
 	close(a.ShutChan)
 }
 
-func (a *App) OnConfigure() {
-	a.contentSaver_.onConfigure(a, TmpsDir()+"/web/apps/"+a.name)
+func (a *Webapp) OnConfigure() {
+	a.contentSaver_.onConfigure(a, TmpsDir()+"/web/webapps/"+a.name)
 
 	// hostnames
 	if v, ok := a.Find("hostnames"); ok {
@@ -107,7 +107,7 @@ func (a *App) OnConfigure() {
 			}
 		}
 	} else {
-		UseExitln("app.hostnames is required")
+		UseExitln("webapp.hostnames is required")
 	}
 
 	// webRoot
@@ -168,12 +168,12 @@ func (a *App) OnConfigure() {
 	if a.proxyOnly {
 		for _, handlet := range a.handlets {
 			if !handlet.IsProxy() {
-				UseExitln("cannot bind non-proxy handlets to a proxy-only app")
+				UseExitln("cannot bind non-proxy handlets to a proxy-only webapp")
 			}
 		}
 		for _, socklet := range a.socklets {
 			if !socklet.IsProxy() {
-				UseExitln("cannot bind non-proxy socklets to a proxy-only app")
+				UseExitln("cannot bind non-proxy socklets to a proxy-only webapp")
 			}
 		}
 	}
@@ -197,7 +197,7 @@ func (a *App) OnConfigure() {
 	a.socklets.walk(Socklet.OnConfigure)
 	a.rules.walk((*Rule).OnConfigure)
 }
-func (a *App) OnPrepare() {
+func (a *Webapp) OnPrepare() {
 	a.contentSaver_.onPrepare(a, 0755)
 
 	if a.accessLog != nil {
@@ -216,22 +216,22 @@ func (a *App) OnPrepare() {
 	a.rules.walk((*Rule).OnPrepare)
 
 	initsLock.RLock()
-	appInit := appInits[a.name]
+	webappInit := webappInits[a.name]
 	initsLock.RUnlock()
-	if appInit != nil {
-		if err := appInit(a); err != nil {
+	if webappInit != nil {
+		if err := webappInit(a); err != nil {
 			UseExitln(err.Error())
 		}
 	}
 
 	if len(a.rules) == 0 {
-		Printf("no rules defined for app: '%s'\n", a.name)
+		Printf("no rules defined for webapp: '%s'\n", a.name)
 	}
 }
 
-func (a *App) createHandlet(sign string, name string) Handlet {
+func (a *Webapp) createHandlet(sign string, name string) Handlet {
 	if a.Handlet(name) != nil {
-		UseExitln("conflicting handlet with a same name in app")
+		UseExitln("conflicting handlet with a same name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := handletCreators[sign]
@@ -244,12 +244,12 @@ func (a *App) createHandlet(sign string, name string) Handlet {
 	a.handlets[name] = handlet
 	return handlet
 }
-func (a *App) createReviser(sign string, name string) Reviser {
+func (a *Webapp) createReviser(sign string, name string) Reviser {
 	if a.nRevisers == 255 {
-		UseExitln("cannot create reviser: too many revisers in one app")
+		UseExitln("cannot create reviser: too many revisers in one webapp")
 	}
 	if a.Reviser(name) != nil {
-		UseExitln("conflicting reviser with a same name in app")
+		UseExitln("conflicting reviser with a same name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := reviserCreators[sign]
@@ -265,9 +265,9 @@ func (a *App) createReviser(sign string, name string) Reviser {
 	a.nRevisers++
 	return reviser
 }
-func (a *App) createSocklet(sign string, name string) Socklet {
+func (a *Webapp) createSocklet(sign string, name string) Socklet {
 	if a.Socklet(name) != nil {
-		UseExitln("conflicting socklet with a same name in app")
+		UseExitln("conflicting socklet with a same name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := sockletCreators[sign]
@@ -280,7 +280,7 @@ func (a *App) createSocklet(sign string, name string) Socklet {
 	a.socklets[name] = socklet
 	return socklet
 }
-func (a *App) createRule(name string) *Rule {
+func (a *Webapp) createRule(name string) *Rule {
 	if a.Rule(name) != nil {
 		UseExitln("conflicting rule with a same name")
 	}
@@ -291,10 +291,10 @@ func (a *App) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *App) Handlet(name string) Handlet { return a.handlets[name] }
-func (a *App) Reviser(name string) Reviser { return a.revisers[name] }
-func (a *App) Socklet(name string) Socklet { return a.socklets[name] }
-func (a *App) Rule(name string) *Rule {
+func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
+func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }
+func (a *Webapp) Socklet(name string) Socklet { return a.socklets[name] }
+func (a *Webapp) Rule(name string) *Rule {
 	for _, rule := range a.rules {
 		if rule.name == name {
 			return rule
@@ -303,37 +303,37 @@ func (a *App) Rule(name string) *Rule {
 	return nil
 }
 
-func (a *App) AddSetting(name string, value string) {
+func (a *Webapp) AddSetting(name string, value string) {
 	a.settingsLock.Lock()
 	a.settings[name] = value
 	a.settingsLock.Unlock()
 }
-func (a *App) Setting(name string) (value string, ok bool) {
+func (a *Webapp) Setting(name string) (value string, ok bool) {
 	a.settingsLock.RLock()
 	value, ok = a.settings[name]
 	a.settingsLock.RUnlock()
 	return
 }
 
-func (a *App) Log(str string) {
+func (a *Webapp) Log(str string) {
 	if a.logger != nil {
 		a.logger.Log(str)
 	}
 }
-func (a *App) Logln(str string) {
+func (a *Webapp) Logln(str string) {
 	if a.logger != nil {
 		a.logger.Logln(str)
 	}
 }
-func (a *App) Logf(format string, args ...any) {
+func (a *Webapp) Logf(format string, args ...any) {
 	if a.logger != nil {
 		a.logger.Logf(format, args...)
 	}
 }
 
-func (a *App) bindServer(server webServer) { a.servers = append(a.servers, server) }
+func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
 
-func (a *App) maintain() { // goroutine
+func (a *Webapp) maintain() { // goroutine
 	a.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -349,14 +349,14 @@ func (a *App) maintain() { // goroutine
 		a.logger.Close()
 	}
 	if Debug() >= 2 {
-		Printf("app=%s done\n", a.Name())
+		Printf("webapp=%s done\n", a.Name())
 	}
 	a.stage.SubDone()
 }
 
-func (a *App) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
+func (a *Webapp) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
 
-func (a *App) dispatchHandlet(req Request, resp Response) {
+func (a *Webapp) dispatchHandlet(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
@@ -372,10 +372,10 @@ func (a *App) dispatchHandlet(req Request, resp Response) {
 			return
 		}
 	}
-	// If we reach here, it means the stream is not processed by any rule in this app.
+	// If we reach here, it means the stream is not processed by any rule in this webapp.
 	resp.SendNotFound(a.text404)
 }
-func (a *App) dispatchSocklet(req Request, sock Socket) {
+func (a *Webapp) dispatchSocklet(req Request, sock Socket) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -388,7 +388,7 @@ func (a *App) dispatchSocklet(req Request, sock Socket) {
 			return
 		}
 	}
-	// If we reach here, it means the socket is not processed by any rule in this app.
+	// If we reach here, it means the socket is not processed by any rule in this webapp.
 	sock.Close()
 }
 
@@ -500,10 +500,10 @@ type Rule struct {
 	// Mixins
 	Component_
 	// Assocs
-	app      *App      // associated app
-	handlets []Handlet // handlets in this rule. NOTICE: handlets are sub components of app, not rule
-	revisers []Reviser // revisers in this rule. NOTICE: revisers are sub components of app, not rule
-	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of app, not rule
+	webapp   *Webapp   // associated webapp
+	handlets []Handlet // handlets in this rule. NOTICE: handlets are sub components of webapp, not rule
+	revisers []Reviser // revisers in this rule. NOTICE: revisers are sub components of webapp, not rule
+	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of webapp, not rule
 	// States
 	general    bool     // general match?
 	logAccess  bool     // enable booking for this rule?
@@ -516,12 +516,12 @@ type Rule struct {
 	matcher    func(rule *Rule, req Request, value []byte) bool
 }
 
-func (r *Rule) onCreate(name string, app *App) {
+func (r *Rule) onCreate(name string, webapp *Webapp) {
 	r.MakeComp(name)
-	r.app = app
+	r.webapp = webapp
 }
 func (r *Rule) OnShutdown() {
-	r.app.SubDone()
+	r.webapp.SubDone()
 }
 
 func (r *Rule) OnConfigure() {
@@ -546,8 +546,8 @@ func (r *Rule) OnConfigure() {
 		}
 		if matcher, ok := ruleMatchers[cond.compare]; ok {
 			r.matcher = matcher.matcher
-			if matcher.fsCheck && r.app.webRoot == "" {
-				UseExitln("can't do fs check since app's webRoot is empty. you must set webRoot for app")
+			if matcher.fsCheck && r.webapp.webRoot == "" {
+				UseExitln("can't do fs check since webapp's webRoot is empty. you must set webRoot for the webapp")
 			}
 		} else {
 			UseExitln("unknown compare in rule condition")
@@ -577,7 +577,7 @@ func (r *Rule) OnConfigure() {
 		}
 		if names, ok := v.StringList(); ok {
 			for _, name := range names {
-				if handlet := r.app.Handlet(name); handlet != nil {
+				if handlet := r.webapp.Handlet(name); handlet != nil {
 					r.handlets = append(r.handlets, handlet)
 				} else {
 					UseExitf("handlet '%s' does not exist\n", name)
@@ -595,7 +595,7 @@ func (r *Rule) OnConfigure() {
 		}
 		if names, ok := v.StringList(); ok {
 			for _, name := range names {
-				if reviser := r.app.Reviser(name); reviser != nil {
+				if reviser := r.webapp.Reviser(name); reviser != nil {
 					r.revisers = append(r.revisers, reviser)
 				} else {
 					UseExitf("reviser '%s' does not exist\n", name)
@@ -616,7 +616,7 @@ func (r *Rule) OnConfigure() {
 		}
 		if names, ok := v.StringList(); ok {
 			for _, name := range names {
-				if socklet := r.app.Socklet(name); socklet != nil {
+				if socklet := r.webapp.Socklet(name); socklet != nil {
 					r.socklets = append(r.socklets, socklet)
 				} else {
 					UseExitf("socklet '%s' does not exist\n", name)

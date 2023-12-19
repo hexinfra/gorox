@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("ssiReviser", func(name string, stage *Stage, app *App) Reviser {
+	RegisterReviser("ssiReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(ssiReviser)
-		r.onCreate(name, stage, app)
+		r.onCreate(name, stage, webapp)
 		return r
 	})
 }
@@ -27,19 +27,19 @@ type ssiReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	rank int8
 }
 
-func (r *ssiReviser) onCreate(name string, stage *Stage, app *App) {
+func (r *ssiReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.MakeComp(name)
 	r.stage = stage
-	r.app = app
+	r.webapp = webapp
 }
 func (r *ssiReviser) OnShutdown() {
-	r.app.SubDone()
+	r.webapp.SubDone()
 }
 
 func (r *ssiReviser) OnConfigure() {

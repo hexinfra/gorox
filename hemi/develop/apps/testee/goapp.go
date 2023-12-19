@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterAppInit("testee", func(app *App) error {
+	RegisterWebappInit("testee", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("testeeHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("testeeHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(testeeHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -30,18 +30,18 @@ type testeeHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *testeeHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *testeeHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *testeeHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *testeeHandlet) OnConfigure() {

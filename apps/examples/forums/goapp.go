@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// A simple forums app.
+// A simple forums webapp.
 
 package forums
 
@@ -14,15 +14,15 @@ import (
 )
 
 func init() {
-	RegisterAppInit("forums", func(app *App) error {
+	RegisterWebappInit("forums", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("forumsHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("forumsHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(forumsHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -31,18 +31,18 @@ type forumsHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *forumsHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *forumsHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *forumsHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *forumsHandlet) OnConfigure() {

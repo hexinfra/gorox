@@ -28,7 +28,7 @@ COMPONENTS
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)
-    app [*]
+    webapp [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)
       socklet (hello, ...)

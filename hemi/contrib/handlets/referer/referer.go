@@ -21,9 +21,9 @@ var (
 )
 
 func init() {
-	RegisterHandlet("refererChecker", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("refererChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(refererChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -33,8 +33,8 @@ type refererChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	serverNames     [][]byte
 	serverNameRules []*refererRule
@@ -44,13 +44,13 @@ type refererChecker struct {
 	IsBlocked bool
 }
 
-func (h *refererChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *refererChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *refererChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *refererChecker) OnConfigure() {

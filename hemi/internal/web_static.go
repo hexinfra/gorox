@@ -17,9 +17,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("static", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("static", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(staticHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type staticHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage // current stage
-	app   *App
+	stage  *Stage // current stage
+	webapp *Webapp
 	// States
 	webRoot       string            // root dir for the web
 	aliasTo       []string          // from is an alias to to
@@ -38,17 +38,17 @@ type staticHandlet struct {
 	autoIndex     bool              // ...
 	mimeTypes     map[string]string // ...
 	defaultType   string            // ...
-	useAppRoot    bool              // true if webRoot is same with app.webRoot
+	useAppRoot    bool              // true if webRoot is same with webapp.webRoot
 	developerMode bool              // no cache, no etag and so on if true
 }
 
-func (h *staticHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *staticHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *staticHandlet) OnConfigure() {
@@ -63,12 +63,12 @@ func (h *staticHandlet) OnConfigure() {
 		UseExitln("webRoot is required for staticHandlet")
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
-	h.useAppRoot = h.webRoot == h.app.webRoot
+	h.useAppRoot = h.webRoot == h.webapp.webRoot
 	if Debug() >= 1 {
 		if h.useAppRoot {
-			Printf("static=%s use app web root\n", h.Name())
+			Printf("static=%s use webapp web root\n", h.Name())
 		} else {
-			Printf("static=%s NOT use app web root\n", h.Name())
+			Printf("static=%s NOT use webapp web root\n", h.Name())
 		}
 	}
 
@@ -172,7 +172,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		entry, err = fcache.newEntry(string(openPath))
 		if err != nil {
 			if !os.IsNotExist(err) {
-				h.app.Logf("open file error=%s\n", err.Error())
+				h.webapp.Logf("open file error=%s\n", err.Error())
 				resp.SendInternalServerError(nil)
 			} else if isFile { // file not found
 				resp.SendNotFound(nil)
@@ -181,7 +181,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 					h.listDir(file, resp)
 					file.Close()
 				} else if !os.IsNotExist(err) {
-					h.app.Logf("open file error=%s\n", err.Error())
+					h.webapp.Logf("open file error=%s\n", err.Error())
 					resp.SendInternalServerError(nil)
 				} else { // directory not found
 					resp.SendNotFound(nil)

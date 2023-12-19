@@ -17,9 +17,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("uwsgiRelay", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("uwsgiRelay", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(uwsgiRelay)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -31,7 +31,7 @@ type uwsgiRelay struct {
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage      // current stage
-	app     *App        // the app to which the relay belongs
+	webapp  *Webapp     // the webapp to which the relay belongs
 	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
 	cacher  Cacher      // the cacher which is used by this relay
 	// States
@@ -42,13 +42,13 @@ type uwsgiRelay struct {
 	maxContentSize      int64         // max response content size allowed
 }
 
-func (h *uwsgiRelay) onCreate(name string, stage *Stage, app *App) {
+func (h *uwsgiRelay) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *uwsgiRelay) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *uwsgiRelay) OnConfigure() {

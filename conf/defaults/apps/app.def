@@ -1,4 +1,4 @@
-app "a1" {
+webapp "a1" {
 	.hostnames            = ("*")
 	.webRoot              = ""
 	.file404              = ""
@@ -10,7 +10,7 @@ app "a1" {
 	.settings             = []
 	.proxyOnly            = false
 	.withStater           = "ls"
-	.saveContentFilesDir  = %tmpsDir + "/web/apps/a1"
+	.saveContentFilesDir  = %tmpsDir + "/web/webapps/a1"
 
 	// handlets
 

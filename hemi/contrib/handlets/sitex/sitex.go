@@ -17,9 +17,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("sitex", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("sitex", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(Sitex)
-		h.OnCreate(name, stage, app)
+		h.OnCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -29,23 +29,23 @@ type Sitex struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	sites         map[string]*Site // name -> site
 	rdbms         string           // relational database
 	hostnameSites map[string]*Site // hostname -> site, for routing
 }
 
-func (h *Sitex) OnCreate(name string, stage *Stage, app *App) { // exported
+func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) { // exported
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 	h.hostnameSites = make(map[string]*Site)
 	h.sites = make(map[string]*Site)
 }
 func (h *Sitex) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *Sitex) OnConfigure() {
@@ -85,7 +85,7 @@ func (h *Sitex) OnConfigure() {
 				UseExitln("viewDir must be string")
 			}
 		} else {
-			site.viewDir = BaseDir() + "/apps/" + h.app.Name() + "/" + name + "/view"
+			site.viewDir = BaseDir() + "/apps/" + h.webapp.Name() + "/" + name + "/view"
 		}
 		site.settings = make(map[string]string)
 		if vSettings, ok := siteDict["settings"]; ok {
@@ -102,7 +102,7 @@ func (h *Sitex) OnPrepare() {
 	// TODO
 }
 
-func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.
+func (h *Sitex) RegisterSite(name string, pack any) { // called on webapp init.
 	if site, ok := h.sites[name]; ok {
 		site.pack = reflect.TypeOf(pack)
 	} else {
@@ -110,8 +110,8 @@ func (h *Sitex) RegisterSite(name string, pack any) { // called on app init.
 	}
 }
 
-func (h *Sitex) Stage() *Stage { return h.stage }
-func (h *Sitex) App() *App     { return h.app }
+func (h *Sitex) Stage() *Stage   { return h.stage }
+func (h *Sitex) Webapp() *Webapp { return h.webapp }
 
 func (h *Sitex) Handle(req Request, resp Response) (next bool) {
 	site := h.hostnameSites[req.Hostname()]

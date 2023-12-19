@@ -406,15 +406,15 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		req.schemeCode = SchemeHTTP
 	}
 
-	app := server.findApp(req.UnsafeHostname())
+	webapp := server.findApp(req.UnsafeHostname())
 
-	if app == nil || (!app.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
-		req.headResult, req.failReason = StatusNotFound, "target app is not found in this server"
+	if webapp == nil || (!webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
+		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
 		s.serveAbnormal(req, resp)
 		return
 	}
-	req.app = app
-	resp.app = app
+	req.webapp = webapp
+	resp.webapp = webapp
 
 	if req.upgradeSocket { // socket mode?
 		if req.expectContinue && !s.writeContinue() {
@@ -428,15 +428,15 @@ func (s *http1Stream) execute(conn *http1Conn) {
 
 	// Exchan mode.
 	if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-		req.maxContentSize = app.maxUploadContentSize
+		req.maxContentSize = webapp.maxUploadContentSize
 	} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
-		req.maxContentSize = int64(app.maxMemoryContentSize)
+		req.maxContentSize = int64(webapp.maxMemoryContentSize)
 	}
 	if req.contentSize > req.maxContentSize {
 		if req.expectContinue {
 			req.headResult = StatusExpectationFailed
 		} else {
-			req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds app's limit"
+			req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
 		}
 		s.serveAbnormal(req, resp)
 		return
@@ -454,7 +454,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
-	s.executeExchan(app, req, resp)
+	s.executeExchan(webapp, req, resp)
 
 	if s.isBroken() {
 		s.conn.keepConn = false // i/o error
@@ -489,8 +489,8 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	return false
 }
 
-func (s *http1Stream) executeExchan(app *App, req *http1Request, resp *http1Response) { // request & response
-	app.dispatchHandlet(req, resp)
+func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
+	webapp.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
 	} else if resp.isUnsized() { // end unsized content and write trailers (if exist)

@@ -2155,7 +2155,7 @@ const ( // pair places
 const ( // field flags
 	flagParsed     = 0b10000000 // data and params are parsed or not
 	flagSingleton  = 0b01000000 // singleton or not. mainly used by proxies
-	flagSubField   = 0b00100000 // sub field or not. mainly used by apps
+	flagSubField   = 0b00100000 // sub field or not. mainly used by webapps
 	flagLiteral    = 0b00010000 // keep literal or not. used in HTTP/2 and HTTP/3
 	flagPseudo     = 0b00001000 // pseudo header or not. used in HTTP/2 and HTTP/3
 	flagUnderscore = 0b00000100 // name contains '_' or not. some proxies need this information

@@ -37,7 +37,7 @@ const ( // component list
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
-	compApp                   // app
+	compWebapp                // webapp
 	compHandlet               // static, ...
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
@@ -53,7 +53,7 @@ var signedComps = map[string]int16{ // static comps. more dynamic comps are sign
 	"tcpsMesher": compTCPSMesher,
 	"udpsMesher": compUDPSMesher,
 	"case":       compCase,
-	"app":        compApp,
+	"webapp":     compWebapp,
 	"rule":       compRule,
 	"service":    compService,
 }
@@ -84,9 +84,9 @@ var (
 	udpsFilterCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
-	handletCreators    = make(map[string]func(name string, stage *Stage, app *App) Handlet)
-	reviserCreators    = make(map[string]func(name string, stage *Stage, app *App) Reviser)
-	sockletCreators    = make(map[string]func(name string, stage *Stage, app *App) Socklet)
+	handletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Handlet)
+	reviserCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Reviser)
+	sockletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Socklet)
 	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
 	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 )
@@ -112,13 +112,13 @@ func RegisterStater(sign string, create func(name string, stage *Stage) Stater) 
 func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
 	_registerComponent0(sign, compCacher, cacherCreators, create)
 }
-func RegisterHandlet(sign string, create func(name string, stage *Stage, app *App) Handlet) {
+func RegisterHandlet(sign string, create func(name string, stage *Stage, webapp *Webapp) Handlet) {
 	_registerComponent1(sign, compHandlet, handletCreators, create)
 }
-func RegisterReviser(sign string, create func(name string, stage *Stage, app *App) Reviser) {
+func RegisterReviser(sign string, create func(name string, stage *Stage, webapp *Webapp) Reviser) {
 	_registerComponent1(sign, compReviser, reviserCreators, create)
 }
-func RegisterSocklet(sign string, create func(name string, stage *Stage, app *App) Socklet) {
+func RegisterSocklet(sign string, create func(name string, stage *Stage, webapp *Webapp) Socklet) {
 	_registerComponent1(sign, compSocklet, sockletCreators, create)
 }
 func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
@@ -151,13 +151,13 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 
 var (
 	initsLock    sync.RWMutex
-	appInits     = make(map[string]func(app *App) error)         // indexed by app name.
+	webappInits  = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
 	serviceInits = make(map[string]func(service *Service) error) // indexed by service name.
 )
 
-func RegisterAppInit(name string, init func(app *App) error) {
+func RegisterWebappInit(name string, init func(webapp *Webapp) error) {
 	initsLock.Lock()
-	appInits[name] = init
+	webappInits[name] = init
 	initsLock.Unlock()
 }
 func RegisterServiceInit(name string, init func(service *Service) error) {
@@ -365,7 +365,7 @@ type Stage struct {
 	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
 	staters      compDict[Stater]      // indexed by staterName
 	cachers      compDict[Cacher]      // indexed by cacherName
-	apps         compDict[*App]        // indexed by appName
+	webapps      compDict[*Webapp]     // indexed by webappName
 	services     compDict[*Service]    // indexed by serviceName
 	servers      compDict[Server]      // indexed by serverName
 	cronjobs     compDict[Cronjob]     // indexed by cronjobName
@@ -419,7 +419,7 @@ func (s *Stage) onCreate() {
 	s.udpsMeshers = make(compDict[*UDPSMesher])
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
-	s.apps = make(compDict[*App])
+	s.webapps = make(compDict[*Webapp])
 	s.services = make(compDict[*Service])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
@@ -439,10 +439,10 @@ func (s *Stage) OnShutdown() {
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
-	// services & apps
-	s.IncSub(len(s.services) + len(s.apps))
+	// services & webapps
+	s.IncSub(len(s.services) + len(s.webapps))
 	s.services.goWalk((*Service).OnShutdown)
-	s.apps.goWalk((*App).OnShutdown)
+	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.WaitSubs()
 
 	// cachers & staters
@@ -553,7 +553,7 @@ func (s *Stage) OnConfigure() {
 	s.udpsMeshers.walk((*UDPSMesher).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
-	s.apps.walk((*App).OnConfigure)
+	s.webapps.walk((*Webapp).OnConfigure)
 	s.services.walk((*Service).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
@@ -574,7 +574,7 @@ func (s *Stage) OnPrepare() {
 	s.udpsMeshers.walk((*UDPSMesher).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
-	s.apps.walk((*App).OnPrepare)
+	s.webapps.walk((*Webapp).OnPrepare)
 	s.services.walk((*Service).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
@@ -662,15 +662,15 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	s.cachers[name] = cacher
 	return cacher
 }
-func (s *Stage) createApp(name string) *App {
-	if s.App(name) != nil {
-		UseExitf("conflicting app with a same name '%s'\n", name)
+func (s *Stage) createWebapp(name string) *Webapp {
+	if s.Webapp(name) != nil {
+		UseExitf("conflicting webapp with a same name '%s'\n", name)
 	}
-	app := new(App)
-	app.onCreate(name, s)
-	app.setShell(app)
-	s.apps[name] = app
-	return app
+	webapp := new(Webapp)
+	webapp.onCreate(name, s)
+	webapp.setShell(webapp)
+	s.webapps[name] = webapp
+	return webapp
 }
 func (s *Stage) createService(name string) *Service {
 	if s.Service(name) != nil {
@@ -732,7 +732,7 @@ func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name]
 func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) App(name string) *App               { return s.apps[name] }
+func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
 func (s *Stage) Service(name string) *Service       { return s.services[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
@@ -773,7 +773,7 @@ func (s *Stage) Start(id int32) {
 		UseExitln(err.Error())
 	}
 
-	s.bindServerApps()
+	s.bindServerWebapps()
 	s.bindServerServices()
 
 	// Prepare all components
@@ -788,7 +788,7 @@ func (s *Stage) Start(id int32) {
 	s.startMeshers()  // go mesher.serve()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
-	s.startApps()     // go app.maintain()
+	s.startWebapps()  // go webapp.maintain()
 	s.startServices() // go service.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
@@ -800,9 +800,9 @@ func (s *Stage) Quit() {
 	}
 }
 
-func (s *Stage) bindServerApps() {
+func (s *Stage) bindServerWebapps() {
 	if Debug() >= 1 {
-		Println("bind apps to web servers")
+		Println("bind webapps to web servers")
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
@@ -881,12 +881,12 @@ func (s *Stage) startCachers() {
 		go cacher.Maintain()
 	}
 }
-func (s *Stage) startApps() {
-	for _, app := range s.apps {
+func (s *Stage) startWebapps() {
+	for _, webapp := range s.webapps {
 		if Debug() >= 1 {
-			Printf("app=%s go maintain()\n", app.Name())
+			Printf("webapp=%s go maintain()\n", webapp.Name())
 		}
-		go app.maintain()
+		go webapp.maintain()
 	}
 }
 func (s *Stage) startServices() {

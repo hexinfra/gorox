@@ -280,9 +280,9 @@ func (s *http3Stream) writeContinue() bool { // 100 continue
 	return false
 }
 
-func (s *http3Stream) executeExchan(app *App, req *http3Request, resp *http3Response) { // request & response
+func (s *http3Stream) executeExchan(webapp *Webapp, req *http3Request, resp *http3Response) { // request & response
 	// TODO
-	app.dispatchHandlet(req, resp)
+	webapp.dispatchHandlet(req, resp)
 }
 func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { // 4xx & 5xx
 	// TODO

@@ -13,9 +13,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("headReviser", func(name string, stage *Stage, app *App) Reviser {
+	RegisterReviser("headReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(headReviser)
-		r.onCreate(name, stage, app)
+		r.onCreate(name, stage, webapp)
 		return r
 	})
 }
@@ -25,8 +25,8 @@ type headReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	addRequest  map[string]string
 	delRequest  []string
@@ -34,13 +34,13 @@ type headReviser struct {
 	delResponse []string
 }
 
-func (r *headReviser) onCreate(name string, stage *Stage, app *App) {
+func (r *headReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.MakeComp(name)
 	r.stage = stage
-	r.app = app
+	r.webapp = webapp
 }
 func (r *headReviser) OnShutdown() {
-	r.app.SubDone()
+	r.webapp.SubDone()
 }
 
 func (r *headReviser) OnConfigure() {

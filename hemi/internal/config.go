@@ -258,8 +258,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseStater(current, stage)
 		case compCacher:
 			c.parseCacher(current, stage)
-		case compApp:
-			c.parseApp(current, stage)
+		case compWebapp:
+			c.parseWebapp(current, stage)
 		case compService:
 			c.parseService(current, stage)
 		case compServer:
@@ -526,10 +526,10 @@ func (c *config) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
 func (c *config) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
-func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
-	appName := c.forwardExpect(tokenString)
-	app := stage.createApp(appName.text)
-	app.setParent(stage)
+func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
+	webappName := c.forwardExpect(tokenString)
+	webapp := stage.createWebapp(webappName.text)
+	webapp.setParent(stage)
 	c.forwardExpect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -537,38 +537,38 @@ func (c *config) parseApp(sign *token, stage *Stage) { // app <name> {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, app)
+			c.parseAssign(current, webapp)
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in app\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in webapp\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compHandlet:
-			c.parseHandlet(current, app, nil)
+			c.parseHandlet(current, webapp, nil)
 		case compReviser:
-			c.parseReviser(current, app, nil)
+			c.parseReviser(current, webapp, nil)
 		case compSocklet:
-			c.parseSocklet(current, app, nil)
+			c.parseSocklet(current, webapp, nil)
 		case compRule:
-			c.parseRule(app)
+			c.parseRule(webapp)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in app\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in webapp\n", current.text))
 		}
 	}
 }
-func (c *config) parseHandlet(sign *token, app *App, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
-	parseComponent2(c, sign, app, app.createHandlet, rule, rule.addHandlet)
+func (c *config) parseHandlet(sign *token, webapp *Webapp, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+	parseComponent2(c, sign, webapp, webapp.createHandlet, rule, rule.addHandlet)
 }
-func (c *config) parseReviser(sign *token, app *App, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
-	parseComponent2(c, sign, app, app.createReviser, rule, rule.addReviser)
+func (c *config) parseReviser(sign *token, webapp *Webapp, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
+	parseComponent2(c, sign, webapp, webapp.createReviser, rule, rule.addReviser)
 }
-func (c *config) parseSocklet(sign *token, app *App, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
-	parseComponent2(c, sign, app, app.createSocklet, rule, rule.addSocklet)
+func (c *config) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
+	parseComponent2(c, sign, webapp, webapp.createSocklet, rule, rule.addSocklet)
 }
-func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
-	rule := app.createRule(c.newName()) // use a temp name by default
-	rule.setParent(app)
+func (c *config) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
+	rule := webapp.createRule(c.newName()) // use a temp name by default
+	rule.setParent(webapp)
 	c.forward()
 	if !c.currentIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
 		if c.currentIs(tokenString) { // rule <name> {}, rule <name> <cond> {}
@@ -596,11 +596,11 @@ func (c *config) parseRule(app *App) { // rule <name> {}, rule <name> <cond> {},
 		}
 		switch current.info {
 		case compHandlet:
-			c.parseHandlet(current, app, rule)
+			c.parseHandlet(current, webapp, rule)
 		case compReviser:
-			c.parseReviser(current, app, rule)
+			c.parseReviser(current, webapp, rule)
 		case compSocklet:
-			c.parseSocklet(current, app, rule)
+			c.parseSocklet(current, webapp, rule)
 		default:
 			panic(fmt.Errorf("config error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
@@ -866,7 +866,7 @@ func parseComponent1[M Component, T Component, C any](c *config, sign *token, me
 	}
 	c.parseLeaf(component)
 }
-func parseComponent2[T Component](c *config, sign *token, app *App, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+func parseComponent2[T Component](c *config, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text
@@ -875,7 +875,7 @@ func parseComponent2[T Component](c *config, sign *token, app *App, create func(
 		name = c.newName()
 	}
 	component := create(sign.text, name)
-	component.setParent(app)
+	component.setParent(webapp)
 	if rule != nil { // in rule
 		assign(component)
 	}

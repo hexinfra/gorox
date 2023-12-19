@@ -8,14 +8,14 @@
 package internal
 
 func init() {
-	RegisterHandlet("http3Proxy", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("http3Proxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(http3Proxy)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
-	RegisterSocklet("sock3Proxy", func(name string, stage *Stage, app *App) Socklet {
+	RegisterSocklet("sock3Proxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(sock3Proxy)
-		s.onCreate(name, stage, app)
+		s.onCreate(name, stage, webapp)
 		return s
 	})
 }
@@ -27,11 +27,11 @@ type http3Proxy struct {
 	// States
 }
 
-func (h *http3Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.exchanProxy_.onCreate(name, stage, app)
+func (h *http3Proxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.exchanProxy_.onCreate(name, stage, webapp)
 }
 func (h *http3Proxy) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *http3Proxy) OnConfigure() {
@@ -188,11 +188,11 @@ type sock3Proxy struct {
 	// States
 }
 
-func (s *sock3Proxy) onCreate(name string, stage *Stage, app *App) {
-	s.socketProxy_.onCreate(name, stage, app)
+func (s *sock3Proxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	s.socketProxy_.onCreate(name, stage, webapp)
 }
 func (s *sock3Proxy) OnShutdown() {
-	s.app.SubDone()
+	s.webapp.SubDone()
 }
 
 func (s *sock3Proxy) OnConfigure() {

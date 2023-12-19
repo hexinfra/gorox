@@ -13,9 +13,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("gunzipReviser", func(name string, stage *Stage, app *App) Reviser {
+	RegisterReviser("gunzipReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(gunzipReviser)
-		r.onCreate(name, stage, app)
+		r.onCreate(name, stage, webapp)
 		return r
 	})
 }
@@ -25,19 +25,19 @@ type gunzipReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	onContentTypes []string
 }
 
-func (r *gunzipReviser) onCreate(name string, stage *Stage, app *App) {
+func (r *gunzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.MakeComp(name)
 	r.stage = stage
-	r.app = app
+	r.webapp = webapp
 }
 func (r *gunzipReviser) OnShutdown() {
-	r.app.SubDone()
+	r.webapp.SubDone()
 }
 
 func (r *gunzipReviser) OnConfigure() {

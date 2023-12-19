@@ -34,7 +34,7 @@ type webServer interface {
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 	bindApps()
-	findApp(hostname []byte) *App
+	findApp(hostname []byte) *Webapp
 }
 
 // webServer_ is a mixin for http[x3]Server and hwebServer.
@@ -43,17 +43,17 @@ type webServer_ struct {
 	Server_
 	webBroker_ // webServer
 	streamHolder_
-	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to app, we use app's contentSaver_.
+	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to a webapp, we use webapp's contentSaver_.
 	// Assocs
 	gates      []webGate
-	defaultApp *App // default app if not found
+	defaultApp *Webapp // default webapp if not found
 	// States
-	forApps      []string            // for what apps
-	exactApps    []*hostnameTo[*App] // like: ("example.com")
-	suffixApps   []*hostnameTo[*App] // like: ("*.example.com")
-	prefixApps   []*hostnameTo[*App] // like: ("www.example.*")
-	enableTCPTun bool                // allow CONNECT method?
-	enableUDPTun bool                // allow upgrade: connect-udp?
+	forApps      []string               // for what webapps
+	exactApps    []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixApps   []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixApps   []*hostnameTo[*Webapp] // like: ("www.example.*")
+	enableTCPTun bool                   // allow CONNECT method?
+	enableUDPTun bool                   // allow upgrade: connect-udp?
 }
 
 func (s *webServer_) onCreate(name string, stage *Stage) {
@@ -84,16 +84,16 @@ func (s *webServer_) onPrepare(shell Component) {
 }
 
 func (s *webServer_) bindApps() {
-	for _, appName := range s.forApps {
-		app := s.stage.App(appName)
-		if app == nil {
+	for _, webappName := range s.forApps {
+		webapp := s.stage.Webapp(webappName)
+		if webapp == nil {
 			continue
 		}
 		if s.tlsConfig != nil {
-			if app.tlsCertificate == "" || app.tlsPrivateKey == "" {
-				UseExitln("apps that bound to tls server must have certificates and private keys")
+			if webapp.tlsCertificate == "" || webapp.tlsPrivateKey == "" {
+				UseExitln("webapps that bound to tls server must have certificates and private keys")
 			}
-			certificate, err := tls.LoadX509KeyPair(app.tlsCertificate, app.tlsPrivateKey)
+			certificate, err := tls.LoadX509KeyPair(webapp.tlsCertificate, webapp.tlsPrivateKey)
 			if err != nil {
 				UseExitln(err.Error())
 			}
@@ -102,25 +102,25 @@ func (s *webServer_) bindApps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		app.bindServer(s.shell.(webServer))
-		if app.isDefault {
-			s.defaultApp = app
+		webapp.bindServer(s.shell.(webServer))
+		if webapp.isDefault {
+			s.defaultApp = webapp
 		}
 		// TODO: use hash table?
-		for _, hostname := range app.exactHostnames {
-			s.exactApps = append(s.exactApps, &hostnameTo[*App]{hostname, app})
+		for _, hostname := range webapp.exactHostnames {
+			s.exactApps = append(s.exactApps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 		// TODO: use radix trie?
-		for _, hostname := range app.suffixHostnames {
-			s.suffixApps = append(s.suffixApps, &hostnameTo[*App]{hostname, app})
+		for _, hostname := range webapp.suffixHostnames {
+			s.suffixApps = append(s.suffixApps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 		// TODO: use radix trie?
-		for _, hostname := range app.prefixHostnames {
-			s.prefixApps = append(s.prefixApps, &hostnameTo[*App]{hostname, app})
+		for _, hostname := range webapp.prefixHostnames {
+			s.prefixApps = append(s.prefixApps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 	}
 }
-func (s *webServer_) findApp(hostname []byte) *App {
+func (s *webServer_) findApp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -232,7 +232,7 @@ func (s *serverStream_) serveUDPTun() {
 // Request is the interface for *http[1-3]Request and *hwebRequest.
 type Request interface {
 	PeerAddr() net.Addr
-	App() *App
+	Webapp() *Webapp
 
 	VersionCode() uint8
 	IsHTTP1_0() bool
@@ -395,9 +395,9 @@ type serverRequest_ struct { // incoming. needs parsing
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
 	path           []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath        []byte      // app.webRoot + r.UnsafePath(). if app.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	absPath        []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	app            *App        // target app of this request. set before processing stream
+	webapp         *Webapp     // target webapp of this request. set before processing stream
 	formWindow     []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	serverRequest0             // all values must be zero by default in this struct!
 }
@@ -485,7 +485,7 @@ func (r *serverRequest_) onEnd() { // for zeros
 			path = risky.WeakString(r.array[upload.pathFrom : upload.pathFrom+int32(upload.pathSize)])
 		}
 		if err := os.Remove(path); err != nil {
-			r.app.Logf("failed to remove uploaded file: %s, error: %s\n", path, err.Error())
+			r.webapp.Logf("failed to remove uploaded file: %s, error: %s\n", path, err.Error())
 		}
 	}
 	r.uploads = nil
@@ -493,14 +493,14 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.path = nil
 	r.absPath = nil
 	r.pathInfo = nil
-	r.app = nil
+	r.webapp = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.serverRequest0 = serverRequest0{}
 
 	r.webIn_.onEnd()
 }
 
-func (r *serverRequest_) App() *App { return r.app }
+func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *serverRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
@@ -634,10 +634,10 @@ func (r *serverRequest_) cleanPath() {
 }
 func (r *serverRequest_) unsafeAbsPath() []byte { return r.absPath }
 func (r *serverRequest_) makeAbsPath() {
-	if r.app.webRoot == "" { // if app's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
+	if r.webapp.webRoot == "" { // if webapp's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
 		return
 	}
-	webRoot := r.app.webRoot
+	webRoot := r.webapp.webRoot
 	r.absPath = r.UnsafeMake(len(webRoot) + len(r.UnsafePath()))
 	n := copy(r.absPath, webRoot)
 	copy(r.absPath[n:], r.UnsafePath())
@@ -1818,7 +1818,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
-		case tempFile: // [0, r.app.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
+		case tempFile: // [0, r.webapp.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
 			r.contentFile = content.(*os.File)
 			if r.receivedSize == 0 {
 				return // unsized content can be empty
@@ -2007,7 +2007,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 						part.base.edge = r.arrayEdge
 
 						part.path.from = r.arrayEdge
-						if !r.arrayCopy(risky.ConstBytes(r.app.SaveContentFilesDir())) { // add "/path/to/"
+						if !r.arrayCopy(risky.ConstBytes(r.webapp.SaveContentFilesDir())) { // add "/path/to/"
 							r.stream.markBroken()
 							return
 						}
@@ -2387,7 +2387,7 @@ func (r *serverRequest_) arrayCopy(p []byte) bool {
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
-		if r.app != nil && edge > r.app.maxMemoryContentSize {
+		if r.webapp != nil && edge > r.webapp.maxMemoryContentSize {
 			return false
 		}
 		if !r._growArray(int32(len(p))) {
@@ -2399,8 +2399,8 @@ func (r *serverRequest_) arrayCopy(p []byte) bool {
 }
 
 func (r *serverRequest_) saveContentFilesDir() string {
-	if r.app != nil {
-		return r.app.SaveContentFilesDir()
+	if r.webapp != nil {
+		return r.webapp.SaveContentFilesDir()
 	} else {
 		return r.stream.webBroker().SaveContentFilesDir()
 	}
@@ -2641,8 +2641,8 @@ type serverResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	app             *App // associated app
-	serverResponse0      // all values must be zero by default in this struct!
+	webapp          *Webapp // associated webapp
+	serverResponse0         // all values must be zero by default in this struct!
 }
 type serverResponse0 struct { // for fast reset, entirely
 	indexes struct {
@@ -2660,7 +2660,7 @@ func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
 	r.unixTimes.lastModified = -1 // not set
 }
 func (r *serverResponse_) onEnd() { // for zeros
-	r.app = nil
+	r.webapp = nil
 	r.serverResponse0 = serverResponse0{}
 	r.webOut_.onEnd()
 }
@@ -2772,14 +2772,14 @@ func (r *serverResponse_) doSend() error {
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}
-				reviser := r.app.reviserByID(id)
+				reviser := r.webapp.reviserByID(id)
 				reviser.BeforeSend(resp.Request(), resp)
 			}
 			for _, id := range r.revisers { // revise sized content
 				if id == 0 {
 					continue
 				}
-				reviser := r.app.reviserByID(id)
+				reviser := r.webapp.reviserByID(id)
 				reviser.OnSend(resp.Request(), resp, &r.chain)
 			}
 			// Because r.chain may be altered/replaced by revisers, content size must be recalculated
@@ -2800,7 +2800,7 @@ func (r *serverResponse_) beforeRevise() {
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
-			reviser := r.app.reviserByID(id)
+			reviser := r.webapp.reviserByID(id)
 			reviser.BeforeEcho(resp.Request(), resp)
 		}
 	*/
@@ -2818,7 +2818,7 @@ func (r *serverResponse_) doEcho() error {
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}
-				reviser := r.app.reviserByID(id)
+				reviser := r.webapp.reviserByID(id)
 				reviser.OnEcho(resp.Request(), resp, &r.chain)
 			}
 		}
@@ -2836,7 +2836,7 @@ func (r *serverResponse_) endUnsized() error {
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}
-				reviser := r.app.reviserByID(id)
+				reviser := r.webapp.reviserByID(id)
 				reviser.FinishEcho(resp.Request(), resp)
 			}
 		}

@@ -22,7 +22,7 @@ type logcfg struct {
 	bufSize int
 }
 
-// logger is logger for meshers, apps, and services.
+// logger is logger for meshers, webapps, and services.
 type logger struct {
 	file   *os.File
 	queue  chan string

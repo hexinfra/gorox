@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterAppInit("sunlei", func(app *App) error {
+	RegisterWebappInit("sunlei", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("sunleiHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("sunleiHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(sunleiHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -30,18 +30,18 @@ type sunleiHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *sunleiHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *sunleiHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *sunleiHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *sunleiHandlet) OnConfigure() {

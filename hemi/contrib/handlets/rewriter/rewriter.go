@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("rewriter", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("rewriter", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(rewriterChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -24,18 +24,18 @@ type rewriterChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *rewriterChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *rewriterChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *rewriterChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *rewriterChecker) OnConfigure() {

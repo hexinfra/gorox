@@ -8,14 +8,14 @@
 package internal
 
 func init() {
-	RegisterHandlet("http2Proxy", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("http2Proxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(http2Proxy)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
-	RegisterSocklet("sock2Proxy", func(name string, stage *Stage, app *App) Socklet {
+	RegisterSocklet("sock2Proxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(sock2Proxy)
-		s.onCreate(name, stage, app)
+		s.onCreate(name, stage, webapp)
 		return s
 	})
 }
@@ -27,11 +27,11 @@ type http2Proxy struct {
 	// States
 }
 
-func (h *http2Proxy) onCreate(name string, stage *Stage, app *App) {
-	h.exchanProxy_.onCreate(name, stage, app)
+func (h *http2Proxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.exchanProxy_.onCreate(name, stage, webapp)
 }
 func (h *http2Proxy) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *http2Proxy) OnConfigure() {
@@ -188,11 +188,11 @@ type sock2Proxy struct {
 	// States
 }
 
-func (s *sock2Proxy) onCreate(name string, stage *Stage, app *App) {
-	s.socketProxy_.onCreate(name, stage, app)
+func (s *sock2Proxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	s.socketProxy_.onCreate(name, stage, webapp)
 }
 func (s *sock2Proxy) OnShutdown() {
-	s.app.SubDone()
+	s.webapp.SubDone()
 }
 
 func (s *sock2Proxy) OnConfigure() {

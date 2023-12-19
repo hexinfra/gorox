@@ -24,9 +24,9 @@ const (
 )
 
 func init() {
-	RegisterHandlet("accessChecker", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("accessChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(accessChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -36,8 +36,8 @@ type accessChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	allow []string // allows access for the specified network or address.
 	deny  []string // denies access for the specified network or address.
@@ -46,13 +46,13 @@ type accessChecker struct {
 	denyRules  []*ipRule
 }
 
-func (h *accessChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *accessChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *accessChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *accessChecker) OnConfigure() {

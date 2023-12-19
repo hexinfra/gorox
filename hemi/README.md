@@ -16,11 +16,11 @@ The logical architecture of a stage in Hemi engine looks like this:
    ^     +--------------------------------------------+  shutdown
    |     |                cronjob(*)                  |     |
    |     +---+--------+--------------+----------------+     |
-   |     |   |        |     rpc[+]   |     web[+]     |     |
-   |     | s | [quic] |     server   |     server     |     |
+   |     |   |        |    rpc[+]    |     web[+]     |     |
+   |     | s | [quic] |    server    |     server     |     |
    |     | e | [tcps] | <gate><conn> |  <gate><conn>  |     |
    |     | r | [udps] +--------------+----------------+     |
-   |     | v | mesher |              | app(*) handlet |     |
+   |     | v | mesher |              |webapp(*)handlet|     |
    |     | e | filter |              | socklet reviser|     |
    |     | r |  case  |  service(*)  |    rule        |     |
    |     |(*)|        |          +---+--+      +------+     |

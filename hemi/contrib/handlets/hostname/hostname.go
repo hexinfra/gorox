@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("hostnameChecker", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("hostnameChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(hostnameChecker)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -24,20 +24,20 @@ type hostnameChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 	hostname  string
 	permanent bool
 }
 
-func (h *hostnameChecker) onCreate(name string, stage *Stage, app *App) {
+func (h *hostnameChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *hostnameChecker) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *hostnameChecker) OnConfigure() {

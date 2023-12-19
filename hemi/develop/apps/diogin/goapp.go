@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterAppInit("diogin", func(app *App) error {
+	RegisterWebappInit("diogin", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("dioginHandlet", func(name string, stage *Stage, app *App) Handlet {
+	RegisterHandlet("dioginHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(dioginHandlet)
-		h.onCreate(name, stage, app)
+		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
@@ -30,18 +30,18 @@ type dioginHandlet struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage *Stage
-	app   *App
+	stage  *Stage
+	webapp *Webapp
 	// States
 }
 
-func (h *dioginHandlet) onCreate(name string, stage *Stage, app *App) {
+func (h *dioginHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 func (h *dioginHandlet) OnShutdown() {
-	h.app.SubDone()
+	h.webapp.SubDone()
 }
 
 func (h *dioginHandlet) OnConfigure() {

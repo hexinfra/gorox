@@ -17,7 +17,7 @@ type exchanProxy_ struct {
 	Handlet_
 	// Assocs
 	stage   *Stage  // current stage
-	app     *App    // the app to which the proxy belongs
+	webapp  *Webapp // the webapp to which the proxy belongs
 	backend Backend // if works as forward proxy, this is nil
 	cacher  Cacher  // the cacher which is used by this proxy
 	// States
@@ -33,10 +33,10 @@ type exchanProxy_ struct {
 	delResponseHeaders  [][]byte          // server response headers to delete
 }
 
-func (h *exchanProxy_) onCreate(name string, stage *Stage, app *App) {
+func (h *exchanProxy_) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
-	h.app = app
+	h.webapp = webapp
 }
 
 func (h *exchanProxy_) onConfigure() {
@@ -65,8 +65,8 @@ func (h *exchanProxy_) onConfigure() {
 	} else if !h.isForward {
 		UseExitln("toBackend is required for reverse proxy")
 	}
-	if h.isForward && !h.app.isDefault {
-		UseExitln("forward proxy can be bound to default app only")
+	if h.isForward && !h.webapp.isDefault {
+		UseExitln("forward proxy can be bound to default webapp only")
 	}
 
 	// withCacher
@@ -134,16 +134,16 @@ type socketProxy_ struct {
 	Socklet_
 	// Assocs
 	stage   *Stage  // current stage
-	app     *App    // the app to which the proxy belongs
+	webapp  *Webapp // the webapp to which the proxy belongs
 	backend Backend // if works as forward proxy, this is nil
 	// States
 	isForward bool // reverse if false
 }
 
-func (s *socketProxy_) onCreate(name string, stage *Stage, app *App) {
+func (s *socketProxy_) onCreate(name string, stage *Stage, webapp *Webapp) {
 	s.MakeComp(name)
 	s.stage = stage
-	s.app = app
+	s.webapp = webapp
 }
 
 func (s *socketProxy_) onConfigure() {
@@ -172,8 +172,8 @@ func (s *socketProxy_) onConfigure() {
 	} else if !s.isForward {
 		UseExitln("toBackend is required for reverse proxy")
 	}
-	if s.isForward && !s.app.isDefault {
-		UseExitln("forward proxy can be bound to default app only")
+	if s.isForward && !s.webapp.isDefault {
+		UseExitln("forward proxy can be bound to default webapp only")
 	}
 }
 func (s *socketProxy_) onPrepare() {

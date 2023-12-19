@@ -67,13 +67,13 @@ func TestCheckRule(t *testing.T) {
 		{"gorox.com", nil},
 		{"www.gorox.*", nil},
 		{"gorox.*", nil},
-		{"gorox.*/app", nil},
-		{"www.gorox.com/app", nil},
-		{"www.gorox.com:8080/app", nil},
-		{"http://www.gorox.com:8080/app", errors.New("false")},
+		{"gorox.*/api", nil},
+		{"www.gorox.com/api", nil},
+		{"www.gorox.com:8080/api", nil},
+		{"http://www.gorox.com:8080/api", errors.New("false")},
 		{`~\.gorox\.`, nil},
 		{`~.*`, nil},
-		{`~.*/app`, nil},
+		{`~.*/api`, nil},
 		{`~(?-i)gorox.dev`, nil},
 		{`~]\`, errors.New("false")},
 	}
@@ -98,8 +98,8 @@ func TestOnPrepare(t *testing.T) {
 			&refererRule{suffixMatch, []byte("*.gorox.com"), nil, nil},
 		},
 		{
-			[]byte("*.gorox.com/app"),
-			&refererRule{suffixMatch, []byte("*.gorox.com"), []byte("/app"), nil},
+			[]byte("*.gorox.com/api"),
+			&refererRule{suffixMatch, []byte("*.gorox.com"), []byte("/api"), nil},
 		},
 
 		{

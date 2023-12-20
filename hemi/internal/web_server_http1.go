@@ -5,7 +5,7 @@
 
 // HTTP/1 server implementation.
 
-// Both HTTP/1.0 and HTTP/1.1 are supported. For simplicity, HTTP/1.1 pipelining is recognized but not optimized.
+// Both HTTP/1.0 and HTTP/1.1 are supported. For simplicity, HTTP/1.1 pipelining is supported but not optimized.
 
 package internal
 
@@ -406,7 +406,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		req.schemeCode = SchemeHTTP
 	}
 
-	webapp := server.findApp(req.UnsafeHostname())
+	webapp := server.findWebapp(req.UnsafeHostname())
 
 	if webapp == nil || (!webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"

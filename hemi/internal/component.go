@@ -723,8 +723,8 @@ func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
 func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
 func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
+func (s *Stage) fixture(sign string) fixture { return s.fixtures[sign] }
 
-func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Addon(name string) Addon            { return s.addons[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
@@ -806,7 +806,7 @@ func (s *Stage) bindServerWebapps() {
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
-			webServer.bindApps()
+			webServer.bindWebapps()
 		}
 	}
 }

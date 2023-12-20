@@ -69,7 +69,7 @@ WEB SERVER -> WEB PROXY -> WEB CLIENT
 
   * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in client side.
   * we support revisers in server side, but we don't support revisers in client side.
-  * HTTP/1.1 pipelining is recognized in server side, but not optimized.
+  * HTTP/1.1 pipelining is supported in server side, but not optimized.
   * HTTP/1.1 pipelining is not used in client side.
   * in HTTP/2 server side, streams are started passively (by receiving a HEADERS frame).
   * in HTTP/2 client side, streams are started actively.

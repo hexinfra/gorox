@@ -303,6 +303,8 @@ func (a *Webapp) Rule(name string) *Rule {
 	return nil
 }
 
+func (a *Webapp) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
+
 func (a *Webapp) AddSetting(name string, value string) {
 	a.settingsLock.Lock()
 	a.settings[name] = value
@@ -353,8 +355,6 @@ func (a *Webapp) maintain() { // goroutine
 	}
 	a.stage.SubDone()
 }
-
-func (a *Webapp) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
 
 func (a *Webapp) dispatchHandlet(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {

@@ -105,10 +105,11 @@ func (s *Service) maintain() { // goroutine
 	s.stage.SubDone()
 }
 
-func (s *Service) dispatch(req Req, resp Resp) {
+func (s *Service) dispatchBundlet(req Req, resp Resp) {
 	// TODO
 }
 
-// Bundlet is a bundle of procedures in Service. Bundlets are not components.
+// Bundlet is a bundle of procedures in a Service. A Service may has many Bundlets.
+// Bundlets are not components.
 type Bundlet interface {
 }

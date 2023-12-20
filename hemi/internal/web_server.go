@@ -33,8 +33,8 @@ type webServer interface {
 	MaxContentSize() int64 // allowed
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
-	bindApps()
-	findApp(hostname []byte) *Webapp
+	bindWebapps()
+	findWebapp(hostname []byte) *Webapp
 }
 
 // webServer_ is a mixin for http[x3]Server and hwebServer.
@@ -83,7 +83,7 @@ func (s *webServer_) onPrepare(shell Component) {
 	s.contentSaver_.onPrepare(shell, 0755)
 }
 
-func (s *webServer_) bindApps() {
+func (s *webServer_) bindWebapps() {
 	for _, webappName := range s.forApps {
 		webapp := s.stage.Webapp(webappName)
 		if webapp == nil {
@@ -120,7 +120,7 @@ func (s *webServer_) bindApps() {
 		}
 	}
 }
-func (s *webServer_) findApp(hostname []byte) *Webapp {
+func (s *webServer_) findWebapp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {

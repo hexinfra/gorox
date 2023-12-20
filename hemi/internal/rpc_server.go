@@ -91,38 +91,45 @@ func (s *rpcServer_) findService(hostname []byte) *Service {
 type rpcGate interface {
 	// Imports
 	Gate
+	// TODO
 }
 
 // rpcGate_
 type rpcGate_ struct {
 	// Mixins
 	Gate_
+	// TODO
 }
 
 // serverCall_
 type serverCall_ struct {
 	// Mixins
 	rpcCall_
+	// TODO
 }
 
 // Req is the server-side RPC request.
 type Req interface {
 	Service() *Service
+	// TODO
 }
 
 // serverReq_
 type serverReq_ struct {
 	// Mixins
 	rpcIn_
+	// TODO
 }
 
 // Resp is the server-side RPC response.
 type Resp interface {
 	Req() Req
+	// TODO
 }
 
 // serverResp_
 type serverResp_ struct {
 	// Mixins
 	rpcOut_
+	// TODO
 }

@@ -154,7 +154,7 @@ func (h *fcgiRelay) OnPrepare() {
 func (h *fcgiRelay) IsProxy() bool { return true }
 func (h *fcgiRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) { // reverse only
 	var (
 		content  any
 		fConn    wireConn
@@ -169,7 +169,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 			// exchan is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
-			return
+			return true
 		}
 	}
 
@@ -184,7 +184,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 	}
 	if fErr != nil {
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 
 	fExchan := getFCGIExchan(h, fConn)
@@ -194,7 +194,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 	if !fReq.copyHeadFrom(req, h.scriptFilename, h.indexFile) {
 		fExchan.markBroken()
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 	if hasContent && !h.bufferClientContent && !req.IsUnsized() {
 		fErr = fReq.pass(req)
@@ -204,7 +204,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 	if fErr != nil {
 		fExchan.markBroken()
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 
 	fResp := &fExchan.response
@@ -213,7 +213,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 		if fResp.headResult != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
 			fExchan.markBroken()
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		if fResp.status >= StatusOK {
 			break
@@ -222,14 +222,14 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 		if req.VersionCode() == Version1_0 {
 			fExchan.markBroken()
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.pass1xx(fResp) {
 			fExchan.markBroken()
-			return
+			return true
 		}
 		fResp.onEnd()
 		fResp.onUse()
@@ -244,24 +244,24 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (next bool) { // reverse 
 		if fContent == nil { // take failed
 			// fExchan is marked as broken
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 	}
 
 	if !resp.copyHeadFrom(fResp, nil) { // viaName = nil
 		fExchan.markBroken()
-		return
+		return true
 	}
 	if fHasContent && !h.bufferServerContent {
 		if err := resp.pass(fResp); err != nil {
 			fExchan.markBroken()
-			return
+			return true
 		}
 	} else if err := resp.post(fContent, false); err != nil { // false means no trailers
-		return
+		return true
 	}
 
-	return
+	return true
 }
 
 // poolFCGIExchan

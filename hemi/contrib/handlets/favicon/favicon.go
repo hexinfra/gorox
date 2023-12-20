@@ -45,7 +45,7 @@ func (h *faviconHandlet) OnPrepare() {
 	// TODO
 }
 
-func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *faviconHandlet) Handle(req Request, resp Response) (handled bool) {
 	const asOrigin = true
 	if status, pass := req.TestConditions(faviconTime, etagBytes, asOrigin); pass {
 		resp.SetLastModified(faviconTime)
@@ -59,7 +59,7 @@ func (h *faviconHandlet) Handle(req Request, resp Response) (next bool) {
 		}
 		resp.SendBytes(nil)
 	}
-	return
+	return true
 }
 
 var (

@@ -97,7 +97,7 @@ func (h *refererChecker) OnPrepare() {
 	}
 }
 
-func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
+func (h *refererChecker) Handle(req Request, resp Response) (handled bool) {
 	var (
 		hostname, path []byte
 		index          = -1
@@ -106,12 +106,12 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 	refererURL, ok := req.UnsafeHeader("referer")
 	if !ok {
 		if h.NoneReferer {
-			return true
+			return false
 		}
 		goto forbidden
 	}
 	if h.IsBlocked || len(h.serverNameRules) == 0 {
-		return true
+		return false
 	}
 
 	hostname, path, schemeLen = getHostNameAndPath(refererURL)
@@ -127,20 +127,20 @@ func (h *refererChecker) Handle(req Request, resp Response) (next bool) {
 
 		if rule.matchType == regexpMatch {
 			if rule.match(refererURL[schemeLen:]) {
-				return true
+				return false
 			}
 		} else if rule.match(hostname) {
 			if len(rule.path) > 0 && !bytes.HasPrefix(path, rule.path) {
-				return false
+				goto forbidden
 			}
-			return true
+			return false
 		}
 	}
 
 forbidden:
 	resp.SetStatus(StatusForbidden)
 	resp.SendBytes(nil)
-	return false
+	return true
 }
 
 func checkRule(rules [][]byte) error {

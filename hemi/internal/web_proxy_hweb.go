@@ -36,8 +36,9 @@ func (h *hwebProxy) OnPrepare() {
 	h.exchanProxy_.onPrepare()
 }
 
-func (h *hwebProxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
+func (h *hwebProxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	// TODO
 	// hResp.onUse(Version2)
-	return
+	resp.Send("hweb")
+	return true
 }

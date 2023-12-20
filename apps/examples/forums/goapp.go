@@ -55,9 +55,9 @@ func (h *forumsHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *forumsHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *forumsHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return
+	return true
 }
 func (h *forumsHandlet) notFound(req Request, resp Response) {
 	resp.Send("oops, target not found!")

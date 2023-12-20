@@ -41,7 +41,7 @@ func (h *http2Proxy) OnPrepare() {
 	h.exchanProxy_.onPrepare()
 }
 
-func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
+func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	var (
 		content  any
 		conn2    *H2Conn
@@ -56,7 +56,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
-			return
+			return true
 		}
 	}
 
@@ -68,7 +68,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err2.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer conn2.closeConn() // TODO
 	} else { // reverse
@@ -79,7 +79,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err2.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer backend2.StoreConn(conn2)
 	}
@@ -93,7 +93,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	if !req2.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
 		stream2.markBroken()
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
@@ -117,7 +117,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if err2 != nil {
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 
 	resp2 := stream2.Response()
@@ -130,7 +130,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			} else {
 				resp.SendBadGateway(nil)
 			}
-			return
+			return true
 		}
 		if resp2.Status() >= StatusOK {
 			break
@@ -141,7 +141,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.pass1xx(resp2) {
 			stream2.markBroken()
-			return
+			return true
 		}
 		resp2.onEnd()
 		resp2.onUse(Version2)
@@ -156,13 +156,13 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if content2 == nil { // take failed
 			// stream2 is marked as broken
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 	}
 
 	if !resp.copyHeadFrom(resp2, nil) { // viaName = nil
 		stream2.markBroken()
-		return
+		return true
 	}
 	if !hasContent2 || h.bufferServerContent {
 		hasTrailers2 := resp2.HasTrailers()
@@ -170,15 +170,15 @@ func (h *http2Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			if hasTrailers2 {
 				stream2.markBroken()
 			}
-			return
+			return true
 		} else if hasTrailers2 && !resp.copyTailFrom(resp2) {
-			return
+			return true
 		}
 	} else if err := resp.pass(resp2); err != nil {
 		stream2.markBroken()
-		return
+		return true
 	}
-	return
+	return true
 }
 
 // sock2Proxy socklet passes websockets to another/backend WebSocket/2 servers.

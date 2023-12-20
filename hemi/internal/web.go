@@ -399,7 +399,7 @@ type Handlet interface {
 	// Methods
 	IsProxy() bool // proxies and origins are different, we must differentiate them
 	IsCache() bool // caches and proxies are different, we must differentiate them
-	Handle(req Request, resp Response) (next bool)
+	Handle(req Request, resp Response) (handled bool)
 }
 
 // Handlet_ is the mixin for all handlets.
@@ -839,7 +839,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
 	}
 	// Execute handlets
 	for _, handlet := range r.handlets {
-		if next := handlet.Handle(req, resp); !next { // request is handled and a response is sent
+		if handled := handlet.Handle(req, resp); handled { // request is handled and a response is sent
 			return true
 		}
 	}

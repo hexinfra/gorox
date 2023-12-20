@@ -127,10 +127,10 @@ func (h *staticHandlet) OnPrepare() {
 	}
 }
 
-func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if req.MethodCode()&(MethodGET|MethodHEAD) == 0 {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
-		return
+		return true
 	}
 
 	var fullPath []byte
@@ -189,14 +189,14 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 			} else { // not auto index
 				resp.SendForbidden(nil)
 			}
-			return
+			return true
 		}
 	}
 	if entry.isDir() {
 		resp.SetStatus(StatusFound)
 		resp.AddDirectoryRedirection()
 		resp.SendBytes(nil)
-		return
+		return true
 	}
 	if entry.isLarge() {
 		defer entry.decRef()
@@ -241,7 +241,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (next bool) {
 		resp.SendBytes(nil)
 	}
 
-	return
+	return true
 }
 
 func (h *staticHandlet) listDir(dir *os.File, resp Response) {

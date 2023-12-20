@@ -128,10 +128,10 @@ func (h *ajpRelay) OnPrepare() {
 func (h *ajpRelay) IsProxy() bool { return true }
 func (h *ajpRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *ajpRelay) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *ajpRelay) Handle(req Request, resp Response) (handled bool) { // reverse only
 	// TODO: implementation
 	resp.Send("ajp")
-	return
+	return true
 }
 
 // poolAJPExchan

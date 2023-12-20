@@ -53,9 +53,9 @@ func (h *fengveHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *fengveHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *fengveHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return
+	return true
 }
 func (h *fengveHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")

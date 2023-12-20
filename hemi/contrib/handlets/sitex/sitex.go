@@ -113,13 +113,13 @@ func (h *Sitex) RegisterSite(name string, pack any) { // called on webapp init.
 func (h *Sitex) Stage() *Stage   { return h.stage }
 func (h *Sitex) Webapp() *Webapp { return h.webapp }
 
-func (h *Sitex) Handle(req Request, resp Response) (next bool) {
+func (h *Sitex) Handle(req Request, resp Response) (handled bool) {
 	site := h.hostnameSites[req.Hostname()]
 	if site == nil {
 		site = h.hostnameSites["*"]
 		if site == nil {
 			resp.SendNotFound(nil)
-			return
+			return true
 		}
 	}
 
@@ -140,7 +140,7 @@ func (h *Sitex) Handle(req Request, resp Response) (next bool) {
 
 	if site.pack == nil {
 		site.show(req, resp, page)
-		return
+		return true
 	}
 
 	rPack := reflect.New(site.pack)
@@ -160,7 +160,7 @@ func (h *Sitex) Handle(req Request, resp Response) (next bool) {
 	} else {
 		site.show(req, resp, page)
 	}
-	return
+	return true
 }
 
 // Site

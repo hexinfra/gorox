@@ -77,9 +77,9 @@ func (h *accessChecker) OnPrepare() {
 }
 
 // priority: ip > ip/24 > ip/16 > all
-func (h *accessChecker) Handle(req Request, resp Response) (next bool) {
+func (h *accessChecker) Handle(req Request, resp Response) (handled bool) {
 	if len(h.denyRules) == 0 {
-		return true
+		return false
 	}
 	var (
 		ip        = addressToIP(req.PeerAddr().String())
@@ -91,7 +91,7 @@ func (h *accessChecker) Handle(req Request, resp Response) (next bool) {
 
 	for _, rule := range h.allowRules {
 		if ip.Equal(rule.ip) {
-			return true
+			return false
 		}
 		if rule.cidr != nil && rule.rank > allowRank && rule.cidr.Contains(ip) {
 			allowRank = rule.rank
@@ -120,16 +120,16 @@ func (h *accessChecker) Handle(req Request, resp Response) (next bool) {
 	}
 
 	if allowRank > denyRank {
-		return true
+		return false
 	}
 	if allowRank == denyRank && bytes.Compare(allowMask, denyMask) == 1 {
-		return true
+		return false
 	}
 
 forbidden:
 	resp.SetStatus(StatusForbidden)
 	resp.SendBytes(nil)
-	return false
+	return true
 }
 
 func (h *accessChecker) parseRule(rules []string) []*ipRule {

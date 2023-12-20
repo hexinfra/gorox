@@ -59,9 +59,9 @@ func (h *hostnameChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {
+func (h *hostnameChecker) Handle(req Request, resp Response) (handled bool) {
 	if req.Hostname() == h.hostname {
-		return true
+		return false
 	}
 	// Not hostname, redirect it.
 	if h.permanent {
@@ -71,5 +71,5 @@ func (h *hostnameChecker) Handle(req Request, resp Response) (next bool) {
 	}
 	resp.AddHostnameRedirection(h.hostname)
 	resp.SendBytes(nil)
-	return false
+	return true
 }

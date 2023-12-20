@@ -45,7 +45,7 @@ func (h *webdavHandlet) OnPrepare() {
 	// TODO
 }
 
-func (h *webdavHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *webdavHandlet) Handle(req Request, resp Response) (handled bool) {
 	resp.SendBytes([]byte("not implemented yet"))
-	return
+	return true
 }

@@ -52,9 +52,9 @@ func (h *testeeHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *testeeHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *testeeHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return
+	return true
 }
 func (h *testeeHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")

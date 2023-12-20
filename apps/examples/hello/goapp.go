@@ -54,9 +54,9 @@ func (h *helloHandlet) OnPrepare() {
 	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
 }
 
-func (h *helloHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *helloHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return // request is handled, next = false
+	return true
 }
 func (h *helloHandlet) notFound(req Request, resp Response) {
 	resp.Send("oops, target not found!")

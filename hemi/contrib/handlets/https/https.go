@@ -50,9 +50,9 @@ func (h *httpsChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {
+func (h *httpsChecker) Handle(req Request, resp Response) (handled bool) {
 	if req.IsHTTPS() {
-		return true
+		return false
 	}
 	// Not https, redirect it.
 	if h.permanent {
@@ -62,5 +62,5 @@ func (h *httpsChecker) Handle(req Request, resp Response) (next bool) {
 	}
 	resp.AddHTTPSRedirection(h.authority)
 	resp.SendBytes(nil)
-	return false
+	return true
 }

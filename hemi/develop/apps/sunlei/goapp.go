@@ -52,9 +52,9 @@ func (h *sunleiHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *sunleiHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *sunleiHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return
+	return true
 }
 func (h *sunleiHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")

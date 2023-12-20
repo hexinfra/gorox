@@ -36,8 +36,8 @@ package internal
 
 // On connection established, client sends an init record, then server sends one, too.
 // Whenever a client kicks a new request, it must use the least unused exchanID starting from 1.
-// A exchanID is considered as unused after a response with this exchanID was received entirely.
-// If concurrent exchans exceeds the limit set in init record, server can close the connection.
+// An exchanID is considered as unused after a response with this exchanID was received entirely.
+// If the number of concurrent exchans exceeds the limit set in init record, server can close the connection.
 
 const ( // record types
 	hwebTypeINIT = 0 // contains connection settings

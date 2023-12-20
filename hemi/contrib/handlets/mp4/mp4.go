@@ -45,8 +45,8 @@ func (h *mp4Handlet) OnPrepare() {
 	// TODO
 }
 
-func (h *mp4Handlet) Handle(req Request, resp Response) (next bool) {
+func (h *mp4Handlet) Handle(req Request, resp Response) (handled bool) {
 	// TODO
 	resp.SendBytes(nil)
-	return
+	return true
 }

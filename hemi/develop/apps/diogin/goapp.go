@@ -52,9 +52,9 @@ func (h *dioginHandlet) OnPrepare() {
 	h.UseRouter(h, r)
 }
 
-func (h *dioginHandlet) Handle(req Request, resp Response) (next bool) {
+func (h *dioginHandlet) Handle(req Request, resp Response) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
-	return
+	return true
 }
 func (h *dioginHandlet) notFound(req Request, resp Response) {
 	resp.Send("handle not found!")

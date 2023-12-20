@@ -41,7 +41,7 @@ func (h *http1Proxy) OnPrepare() {
 	h.exchanProxy_.onPrepare()
 }
 
-func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
+func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	var (
 		content  any
 		conn1    *H1Conn
@@ -56,7 +56,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
-			return
+			return true
 		}
 	}
 
@@ -68,7 +68,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err1.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer conn1.Close()
 	} else { // reverse
@@ -79,7 +79,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err1.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer backend1.StoreConn(conn1)
 	}
@@ -93,7 +93,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	if !req1.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
 		stream1.markBroken()
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
@@ -117,7 +117,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if err1 != nil {
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 
 	resp1 := stream1.Response()
@@ -130,7 +130,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			} else {
 				resp.SendBadGateway(nil)
 			}
-			return
+			return true
 		}
 		if resp1.Status() >= StatusOK {
 			if resp1.keepAlive == 0 {
@@ -142,14 +142,14 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if req.VersionCode() == Version1_0 {
 			stream1.markBroken()
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.pass1xx(resp1) {
 			stream1.markBroken()
-			return
+			return true
 		}
 		resp1.onEnd()
 		resp1.onUse(Version1_1)
@@ -164,13 +164,13 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if content1 == nil { // take failed
 			// stream1 is marked as broken
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 	}
 
 	if !resp.copyHeadFrom(resp1, nil) { // viaName = nil
 		stream1.markBroken()
-		return
+		return true
 	}
 	if !hasContent1 || h.bufferServerContent {
 		hasTrailers1 := resp1.HasTrailers()
@@ -178,15 +178,15 @@ func (h *http1Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			if hasTrailers1 {
 				stream1.markBroken()
 			}
-			return
+			return true
 		} else if hasTrailers1 && !resp.copyTailFrom(resp1) {
-			return
+			return true
 		}
 	} else if err := resp.pass(resp1); err != nil {
 		stream1.markBroken()
-		return
+		return true
 	}
-	return
+	return true
 }
 
 // sock1Proxy socklet passes websockets to another/backend WebSocket/1 servers.

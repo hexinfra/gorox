@@ -45,7 +45,7 @@ func (h *rewriterChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *rewriterChecker) Handle(req Request, resp Response) (next bool) {
+func (h *rewriterChecker) Handle(req Request, resp Response) (handled bool) {
 	// TODO
-	return true
+	return false
 }

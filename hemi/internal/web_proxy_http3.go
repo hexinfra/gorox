@@ -41,7 +41,7 @@ func (h *http3Proxy) OnPrepare() {
 	h.exchanProxy_.onPrepare()
 }
 
-func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward or reverse
+func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	var (
 		content  any
 		conn3    *H3Conn
@@ -56,7 +56,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
-			return
+			return true
 		}
 	}
 
@@ -68,7 +68,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err3.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer conn3.closeConn() // TODO
 	} else { // reverse
@@ -79,7 +79,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 				Println(err3.Error())
 			}
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 		defer backend3.StoreConn(conn3)
 	}
@@ -93,7 +93,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	if !req3.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
 		stream3.markBroken()
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
@@ -117,7 +117,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 	}
 	if err3 != nil {
 		resp.SendBadGateway(nil)
-		return
+		return true
 	}
 
 	resp3 := stream3.Response()
@@ -130,7 +130,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			} else {
 				resp.SendBadGateway(nil)
 			}
-			return
+			return true
 		}
 		if resp3.Status() >= StatusOK {
 			break
@@ -141,7 +141,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		// need not forward the corresponding 100 (Continue) response(s).
 		if !resp.pass1xx(resp3) {
 			stream3.markBroken()
-			return
+			return true
 		}
 		resp3.onEnd()
 		resp3.onUse(Version3)
@@ -156,13 +156,13 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 		if content3 == nil { // take failed
 			// stream3 is marked as broken
 			resp.SendBadGateway(nil)
-			return
+			return true
 		}
 	}
 
 	if !resp.copyHeadFrom(resp3, nil) { // viaName = nil
 		stream3.markBroken()
-		return
+		return true
 	}
 	if !hasContent3 || h.bufferServerContent {
 		hasTrailers3 := resp3.HasTrailers()
@@ -170,15 +170,15 @@ func (h *http3Proxy) Handle(req Request, resp Response) (next bool) { // forward
 			if hasTrailers3 {
 				stream3.markBroken()
 			}
-			return
+			return true
 		} else if hasTrailers3 && !resp.copyTailFrom(resp3) {
-			return
+			return true
 		}
 	} else if err := resp.pass(resp3); err != nil {
 		stream3.markBroken()
-		return
+		return true
 	}
-	return
+	return true
 }
 
 // sock3Proxy socklet passes websockets to another/backend WebSocket/3 servers.

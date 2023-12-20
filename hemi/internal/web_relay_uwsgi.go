@@ -119,10 +119,10 @@ func (h *uwsgiRelay) OnPrepare() {
 func (h *uwsgiRelay) IsProxy() bool { return true }
 func (h *uwsgiRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *uwsgiRelay) Handle(req Request, resp Response) (next bool) { // reverse only
+func (h *uwsgiRelay) Handle(req Request, resp Response) (handled bool) { // reverse only
 	// TODO: implementation
 	resp.Send("uwsgi")
-	return
+	return true
 }
 
 // poolUWSGIExchan

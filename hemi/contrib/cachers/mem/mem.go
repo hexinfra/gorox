@@ -55,10 +55,10 @@ func (c *memCacher) Maintain() { // goroutine
 	c.stage.SubDone()
 }
 
-func (c *memCacher) Set(key []byte, hobject *Hobject) {
+func (c *memCacher) Set(key []byte, webject *Webject) {
 	// TODO
 }
-func (c *memCacher) Get(key []byte) (hobject *Hobject) {
+func (c *memCacher) Get(key []byte) (webject *Webject) {
 	// TODO
 	return
 }

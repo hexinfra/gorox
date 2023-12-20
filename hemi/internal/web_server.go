@@ -1609,38 +1609,30 @@ func (r *serverRequest_) EvalConditions(modTime int64, etag []byte, asOrigin boo
 	}
 	// See RFC 9110 (section 13.2.2).
 	if asOrigin { // proxies may ignore if-match and if-unmodified-since.
-		if r.ifMatch != 0 {
-			if r._evalIfMatch(etag) {
-				goto next
+		if r.ifMatch != 0 { // if-match is present
+			if !r._evalIfMatch(etag) {
+				return StatusPreconditionFailed, false
 			}
-			return StatusPreconditionFailed, false
-		} else if r.indexes.ifUnmodifiedSince != 0 { // now if-match is not present
-			if r._evalIfUnmodifiedSince(modTime) {
-				goto next
+		} else if r.indexes.ifUnmodifiedSince != 0 { // if-match is not present
+			if !r._evalIfUnmodifiedSince(modTime) {
+				return StatusPreconditionFailed, false
 			}
-			return StatusPreconditionFailed, false
 		}
 	}
-next:
 	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 {
-		if r._evalIfNoneMatch(etag) {
-			goto over
+	if r.ifNoneMatch != 0 { // if-none-match is present
+		if !r._evalIfNoneMatch(etag) {
+			if getOrHead {
+				return StatusNotModified, false
+			} else {
+				return StatusPreconditionFailed, false
+			}
 		}
-		if getOrHead {
+	} else if getOrHead && r.indexes.ifModifiedSince != 0 { // if-none-match is not present
+		if !r._evalIfModifiedSince(modTime) {
 			return StatusNotModified, false
-		} else {
-			return StatusPreconditionFailed, false
 		}
 	}
-	// Now if-none-match is not present.
-	if getOrHead && r.indexes.ifModifiedSince != 0 {
-		if r._evalIfModifiedSince(modTime) {
-			goto over
-		}
-		return StatusNotModified, false
-	}
-over:
 	return StatusOK, true
 }
 func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {

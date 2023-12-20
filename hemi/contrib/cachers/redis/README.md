@@ -1,1 +1,1 @@
-Redis cacher stores hobjects in Redis servers.
+Redis cacher stores webjects in Redis servers.

@@ -166,7 +166,7 @@ const ( // status codes. keep sync with ../hemi.go
 
 const ( // misc web types
 	webTargetOrigin    = 0 // must be 0
-	webTargetAbsolute  = 1 // scheme "://" host [ ":" port ] path-abempty [ "?" query ]
+	webTargetAbsolute  = 1 // scheme "://" hostname [ ":" port ] path-abempty [ "?" query ]
 	webTargetAuthority = 2 // hostname:port
 	webTargetAsterisk  = 3 // *
 
@@ -2134,7 +2134,29 @@ type pair struct { // 24 bytes
 	dataEdge int32  // fields only. data ends at
 }
 
-func (p *pair) zero() { *p = pair{} }
+// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
+//
+//                                 [         params         )
+//                     [               value                )
+//        [   name   )  [  data   )  [    param1    )[param2)
+//       +--------------------------------------------------+
+//       |accept-type: "text/plain"; charset="utf-8";lang=en|
+//       +--------------------------------------------------+
+//        ^          ^ ^^         ^                         ^
+//        |          | ||         |                         |
+// nameFrom          | ||         dataEdge                  |
+//   nameFrom+nameSize ||                                   |
+//            value.from|                          value.edge
+//                      |
+//                      dataFrom=value.from+(flags&flagQuoted)
+//
+// For dataFrom, if data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
+//
+// A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
+//
+// +-----------------------------------------------------------------------------------------------------------------+
+// |accept-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
+// +-----------------------------------------------------------------------------------------------------------------+
 
 const ( // pair kinds
 	kindUnknown = iota
@@ -2164,29 +2186,7 @@ const ( // field flags
 	flagQuoted     = 0b00000001 // data is quoted or not. for non comma-value field only. MUST be 0b00000001
 )
 
-// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
-//
-//                                 [         params         )
-//                     [               value                )
-//        [   name   )  [  data   )  [    param1    )[param2)
-//       +--------------------------------------------------+
-//       |accept-type: "text/plain"; charset="utf-8";lang=en|
-//       +--------------------------------------------------+
-//        ^          ^ ^^         ^                         ^
-//        |          | ||         |                         |
-// nameFrom          | ||         dataEdge                  |
-//   nameFrom+nameSize ||                                   |
-//            value.from|                          value.edge
-//                      |
-//                      dataFrom=value.from+(flags&flagQuoted)
-//
-// For dataFrom, if data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
-//
-// A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
-//
-// +-----------------------------------------------------------------------------------------------------------------+
-// |accept-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
-// +-----------------------------------------------------------------------------------------------------------------+
+func (p *pair) zero() { *p = pair{} }
 
 func (p *pair) nameAt(t []byte) []byte { return t[p.nameFrom : p.nameFrom+int32(p.nameSize)] }
 func (p *pair) nameEqualString(t []byte, x string) bool {
@@ -2296,7 +2296,7 @@ type para struct { // 16 bytes
 
 // rang defines a range.
 type rang struct { // 16 bytes
-	from, last int64 // [from-last], inclusive
+	from, last int64 // [from,last], inclusive
 }
 
 // poolPiece

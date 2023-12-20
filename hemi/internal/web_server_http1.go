@@ -5,7 +5,7 @@
 
 // HTTP/1 server implementation.
 
-// Both HTTP/1.0 and HTTP/1.1 are supported. For simplicity, HTTP/1.1 pipelining is supported but not optimized.
+// Both HTTP/1.0 and HTTP/1.1 are supported. For simplicity, HTTP/1.1 pipelining, which is rarely used, is supported but not optimized.
 
 package internal
 
@@ -523,7 +523,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	} else {
 		content = risky.ConstBytes(req.failReason)
 	}
-	// Use response as a dumb struct, don't use its methods (like Send) to send anything here!
+	// Use response as a dumb struct here, don't use its methods (like Send) to send anything!
 	resp.status = status
 	resp.AddHeaderBytes(bytesContentType, bytesTypeHTMLUTF8)
 	resp.contentSize = int64(len(content))
@@ -541,7 +541,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	resp.vector[0] = resp.control()
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
-	// Ignore any error, as the connection is closed anyway.
+	// Ignore any error, as the connection will be closed anyway.
 	if s.setWriteDeadline(time.Now().Add(conn.server.WriteTimeout())) == nil {
 		s.writev(&resp.vector)
 	}
@@ -1016,7 +1016,7 @@ func (r *http1Request) cleanInput() {
 		r.contentReceived = true   // we treat it as "received"
 		r.formReceived = true      // set anyway
 		if r.pFore < r.inputEdge { // still has data, stream is pipelined
-			r.inputNext = r.pFore // mark the beginning of next request
+			r.inputNext = r.pFore // mark the beginning of the next request
 		} else { // r.pFore == r.inputEdge, no data anymore
 			r.inputNext, r.inputEdge = 0, 0 // reset
 		}

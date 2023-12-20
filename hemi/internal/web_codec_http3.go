@@ -7,6 +7,8 @@
 
 package internal
 
+// HTTP/3 incoming
+
 func (r *webIn_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
@@ -17,6 +19,8 @@ func (r *webIn_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
+
+// HTTP/3 outgoing
 
 func (r *webOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO

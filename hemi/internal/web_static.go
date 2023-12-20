@@ -205,7 +205,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	modTime := entry.info.ModTime().Unix()
 	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
 	const asOrigin = true
-	if status, pass := req.TestConditions(modTime, etag, asOrigin); pass {
+	if status, normal := req.EvalConditions(modTime, etag, asOrigin); normal {
 		if h.developerMode {
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
 		} else {

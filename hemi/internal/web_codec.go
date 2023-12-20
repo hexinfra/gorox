@@ -23,8 +23,8 @@ import (
 // webBroker is a webServer or webClient which keeps its connections and streams.
 type webBroker interface {
 	// Methods
-	Stage() *Stage
-	TLSMode() bool
+	Stage() *Stage               // current stage
+	TLSMode() bool               // works in TLS mode?
 	ReadTimeout() time.Duration  // timeout of a read operation
 	WriteTimeout() time.Duration // timeout of a write operation
 	RecvTimeout() time.Duration  // timeout to recv the whole message content
@@ -91,8 +91,8 @@ type webStream interface {
 	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 
-	isBroken() bool // if either side is broken, then the stream is broken
-	markBroken()
+	isBroken() bool // if either side of the stream is broken, then it is broken
+	markBroken()    // mark stream as broken
 }
 
 // webStream_ is the mixin for http[1-3]Stream, hwebExchan, H[1-3]Stream, and HExchan.
@@ -234,7 +234,7 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.bodyResult = StatusOK
 }
 func (r *webIn_) onEnd() { // for zeros
-	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, so responses are not pipelined.
+	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, incoming responses are not pipelined.
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
 		}
@@ -246,7 +246,7 @@ func (r *webIn_) onEnd() { // for zeros
 	if r.arrayKind == arrayKindPool {
 		PutNK(r.array)
 	}
-	r.array = nil // other array kinds are only references, just reset.
+	r.array = nil // array of other kinds is only a reference, so just reset.
 	if cap(r.primes) != cap(r.stockPrimes) {
 		putPairs(r.primes)
 		r.primes = nil
@@ -282,7 +282,7 @@ func (r *webIn_) onEnd() { // for zeros
 	if r.contentTextKind == webContentTextPool {
 		PutNK(r.contentText)
 	}
-	r.contentText = nil // other content text kinds are only references, just reset.
+	r.contentText = nil // contentText of other kinds is only a reference, so just reset.
 
 	if r.contentFile != nil {
 		r.contentFile.Close()
@@ -1107,7 +1107,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->.
 	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
 		return false
 	}
-	if edge <= int32(cap(r.array)) {
+	if edge <= int32(cap(r.array)) { // existing array is enough
 		return true
 	}
 	arrayKind := r.arrayKind
@@ -1537,7 +1537,7 @@ type webOut_ struct { // outgoing. needs building
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of outgoing content. -1: not set, -2: unsized, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
-	asRequest   bool          // use message as request?
+	asRequest   bool          // use webOut as request?
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)

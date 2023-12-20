@@ -181,3 +181,29 @@ func (s *socketProxy_) onPrepare() {
 }
 
 func (s *socketProxy_) IsProxy() bool { return true }
+
+// Cacher component is the interface to storages of Web caching. See RFC 9111.
+type Cacher interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // goroutine
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_
+type Cacher_ struct {
+	// Mixins
+	Component_
+}
+
+// Hobject is an HTTP object in cacher
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}

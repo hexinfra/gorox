@@ -293,8 +293,8 @@ type Request interface {
 	ContentSize() int64
 	AcceptTrailers() bool
 
-	TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) // to test preconditons intentionally
-	TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool)                 // to test preconditons intentionally
+	EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) // to test preconditons intentionally
+	EvalRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)                  // to test preconditons intentionally
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -1602,35 +1602,50 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 	return true
 }
 
-func (r *serverRequest_) TestConditions(modTime int64, etag []byte, asOrigin bool) (status int16, pass bool) { // to test preconditons intentionally
+func (r *serverRequest_) EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test preconditons intentionally
 	// Get etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
 	}
 	// See RFC 9110 (section 13.2.2).
-	if asOrigin { // proxies ignore these tests.
-		if r.ifMatch != 0 && !r._testIfMatch(etag) {
+	if asOrigin { // proxies may ignore if-match and if-unmodified-since.
+		if r.ifMatch != 0 {
+			if r._evalIfMatch(etag) {
+				goto next
+			}
 			return StatusPreconditionFailed, false
-		}
-		if r.ifMatch == 0 && r.indexes.ifUnmodifiedSince != 0 && !r._testIfUnmodifiedSince(modTime) {
+		} else if r.indexes.ifUnmodifiedSince != 0 { // now if-match is not present
+			if r._evalIfUnmodifiedSince(modTime) {
+				goto next
+			}
 			return StatusPreconditionFailed, false
 		}
 	}
+next:
 	getOrHead := r.methodCode&(MethodGET|MethodHEAD) != 0
-	if r.ifNoneMatch != 0 && !r._testIfNoneMatch(etag) {
+	if r.ifNoneMatch != 0 {
+		if r._evalIfNoneMatch(etag) {
+			goto over
+		}
 		if getOrHead {
 			return StatusNotModified, false
 		} else {
 			return StatusPreconditionFailed, false
 		}
 	}
-	if getOrHead && r.ifNoneMatch == 0 && r.indexes.ifModifiedSince != 0 && !r._testIfModifiedSince(modTime) {
+	// Now if-none-match is not present.
+	if getOrHead && r.indexes.ifModifiedSince != 0 {
+		if r._evalIfModifiedSince(modTime) {
+			goto over
+		}
 		return StatusNotModified, false
 	}
+over:
 	return StatusOK, true
 }
-func (r *serverRequest_) _testIfMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {
 	if r.ifMatch == -1 { // *
+		// If the field value is "*", the condition is true if the origin server has a current representation for the target resource.
 		return true
 	}
 	for i := r.zones.ifMatch.from; i < r.zones.ifMatch.edge; i++ {
@@ -1640,14 +1655,16 @@ func (r *serverRequest_) _testIfMatch(etag []byte) (pass bool) {
 		}
 		data := header.dataAt(r.input)
 		if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
+			// If the field value is a list of entity tags, the condition is true if any of the listed tags match the entity tag of the selected representation.
 			return true
 		}
 	}
 	// TODO: extra?
 	return false
 }
-func (r *serverRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 	if r.ifNoneMatch == -1 { // *
+		// If the field value is "*", the condition is false if the origin server has a current representation for the target resource.
 		return false
 	}
 	for i := r.zones.ifNoneMatch.from; i < r.zones.ifNoneMatch.edge; i++ {
@@ -1656,36 +1673,41 @@ func (r *serverRequest_) _testIfNoneMatch(etag []byte) (pass bool) {
 			continue
 		}
 		if bytes.Equal(header.valueAt(r.input), etag) {
+			// If the field value is a list of entity tags, the condition is false if one of the listed tags matches the entity tag of the selected representation.
 			return false
 		}
 	}
 	// TODO: extra?
 	return true
 }
-func (r *serverRequest_) _testIfModifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfModifiedSince(modTime int64) (pass bool) {
+	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is false.
 	return modTime > r.unixTimes.ifModifiedSince
 }
-func (r *serverRequest_) _testIfUnmodifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfUnmodifiedSince(modTime int64) (pass bool) {
+	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is true.
 	return modTime <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *serverRequest_) TestIfRanges(modTime int64, etag []byte, asOrigin bool) (pass bool) {
+func (r *serverRequest_) EvalRanges(modTime int64, etag []byte, asOrigin bool) (partial bool) {
 	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
-		if (r.unixTimes.ifRange == 0 && r._testIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._testIfRangeTime(modTime)) {
+		if (r.unixTimes.ifRange == 0 && r._evalIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._evalIfRangeTime(modTime)) {
 			return true // StatusPartialContent
 		}
 	}
 	return false // StatusOK
 }
-func (r *serverRequest_) _testIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange]
+func (r *serverRequest_) _evalIfRangeETag(etag []byte) (pass bool) {
+	ifRange := &r.primes[r.indexes.ifRange] // TODO: extra?
 	data := ifRange.dataAt(r.input)
 	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
+		// If the entity-tag validator provided exactly matches the ETag field value for the selected representation using the strong comparison function (Section 8.8.3.2), the condition is true.
 		return true
 	}
 	return false
 }
-func (r *serverRequest_) _testIfRangeTime(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfRangeTime(modTime int64) (pass bool) {
+	// If the HTTP-date validator provided exactly matches the Last-Modified field value for the selected representation, the condition is true.
 	return r.unixTimes.ifRange == modTime
 }
 

@@ -13,6 +13,8 @@ import (
 	"net"
 )
 
+// HTTP/1 incoming
+
 func (r *webIn_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
@@ -524,6 +526,8 @@ func (r *webIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we do
 	// err != nil. TODO: log err
 	return false
 }
+
+// HTTP/1 outgoing
 
 func (r *webOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {

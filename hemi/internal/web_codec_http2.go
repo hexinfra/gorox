@@ -7,6 +7,8 @@
 
 package internal
 
+// HTTP/2 incoming
+
 func (r *webIn_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
@@ -28,6 +30,8 @@ func (r *webIn_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
+
+// HTTP/2 outgoing
 
 func (r *webOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO

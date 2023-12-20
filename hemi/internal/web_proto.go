@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"sync"
 )
@@ -2166,19 +2167,20 @@ const ( // field flags
 // If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
 //
 //                                 [         params         )
-//                     [             value                  )
+//                     [               value                )
 //        [   name   )  [  data   )  [    param1    )[param2)
 //       +--------------------------------------------------+
 //       |accept-type: "text/plain"; charset="utf-8";lang=en|
 //       +--------------------------------------------------+
 //        ^          ^ ^^         ^                         ^
 //        |          | ||         |                         |
-// nameFrom          | ||  dataEdge                value.edge
-//   nameFrom+nameSize ||
-//            value.from|
-//                      value.from+(flags&flagQuoted), used as dataFrom
+// nameFrom          | ||         dataEdge                  |
+//   nameFrom+nameSize ||                                   |
+//            value.from|                          value.edge
+//                      |
+//                      dataFrom=value.from+(flags&flagQuoted)
 //
-// If data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
+// For dataFrom, if data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
 //
 // A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
 //
@@ -2295,4 +2297,200 @@ type para struct { // 16 bytes
 // rang defines a range.
 type rang struct { // 16 bytes
 	from, last int64 // [from-last], inclusive
+}
+
+// poolPiece
+var poolPiece sync.Pool
+
+func GetPiece() *Piece {
+	if x := poolPiece.Get(); x == nil {
+		piece := new(Piece)
+		piece.pool = true // other pieces are not pooled.
+		return piece
+	} else {
+		return x.(*Piece)
+	}
+}
+func putPiece(piece *Piece) {
+	poolPiece.Put(piece)
+}
+
+// Piece is a member of content chain.
+type Piece struct { // 64 bytes
+	next *Piece   // next piece
+	pool bool     // true if this piece is got from poolPiece. don't change this after set
+	shut bool     // close file on free()?
+	kind int8     // 0:text 1:*os.File
+	_    [5]byte  // padding
+	text []byte   // text
+	file *os.File // file
+	size int64    // size of text or file
+	time int64    // file mod time
+}
+
+func (p *Piece) zero() {
+	p.closeFile()
+	p.next = nil
+	p.shut = false
+	p.kind = 0
+	p.text = nil
+	p.size = 0
+	p.time = 0
+}
+func (p *Piece) closeFile() {
+	if p.IsText() {
+		return
+	}
+	if p.shut {
+		p.file.Close()
+	}
+	p.file = nil
+	if Debug() >= 2 {
+		if p.shut {
+			Println("file closed in Piece.closeFile()")
+		} else {
+			Println("file NOT closed in Piece.closeFile()")
+		}
+	}
+}
+
+func (p *Piece) copyTo(buffer []byte) error { // buffer is large enough, and p is a file.
+	if p.IsText() {
+		BugExitln("copyTo when piece is text")
+	}
+	sizeRead := int64(0)
+	for {
+		if sizeRead == p.size {
+			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := p.size - sizeRead; sizeLeft < readSize {
+			readSize = sizeLeft
+		}
+		n, err := p.file.ReadAt(buffer[:readSize], sizeRead)
+		sizeRead += int64(n)
+		if err != nil && sizeRead != p.size {
+			return err
+		}
+	}
+}
+
+func (p *Piece) Next() *Piece { return p.next }
+
+func (p *Piece) IsText() bool { return p.kind == 0 }
+func (p *Piece) IsFile() bool { return p.kind == 1 }
+
+func (p *Piece) SetText(text []byte) {
+	p.closeFile()
+	p.shut = false
+	p.kind = 0
+	p.text = text
+	p.size = int64(len(text))
+	p.time = 0
+}
+func (p *Piece) SetFile(file *os.File, info os.FileInfo, shut bool) {
+	p.closeFile()
+	p.shut = shut
+	p.kind = 1
+	p.text = nil
+	p.file = file
+	p.size = info.Size()
+	p.time = info.ModTime().Unix()
+}
+
+func (p *Piece) Text() []byte {
+	if !p.IsText() {
+		BugExitln("piece is not text")
+	}
+	if p.size == 0 {
+		return nil
+	}
+	return p.text
+}
+func (p *Piece) File() *os.File {
+	if !p.IsFile() {
+		BugExitln("piece is not file")
+	}
+	return p.file
+}
+
+/*
+func (p *Piece) ToText() error {
+	if p.IsText() {
+		return nil
+	}
+	text := make([]byte, p.size)
+	num, err := io.ReadFull(p.file, text) // TODO: convT()?
+	p.SetText(text[:num])
+	return err
+}
+*/
+
+// Chain is a linked-list of pieces.
+type Chain struct { // 24 bytes
+	head *Piece
+	tail *Piece
+	qnty int
+}
+
+func (c *Chain) free() {
+	if Debug() >= 2 {
+		Printf("chain.free() called, qnty=%d\n", c.qnty)
+	}
+	if c.qnty == 0 {
+		return
+	}
+	piece := c.head
+	c.head, c.tail = nil, nil
+	qnty := 0
+	for piece != nil {
+		next := piece.next
+		piece.zero()
+		if piece.pool { // only put those got from poolPiece because they are not fixed
+			putPiece(piece)
+		}
+		qnty++
+		piece = next
+	}
+	if qnty != c.qnty {
+		BugExitf("bad chain: qnty=%d c.qnty=%d\n", qnty, c.qnty)
+	}
+	c.qnty = 0
+}
+
+func (c *Chain) NumPieces() int { return c.qnty }
+func (c *Chain) Size() (int64, bool) {
+	size := int64(0)
+	for piece := c.head; piece != nil; piece = piece.next {
+		size += piece.size
+		if size < 0 {
+			return 0, false
+		}
+	}
+	return size, true
+}
+
+func (c *Chain) PushHead(piece *Piece) {
+	if piece == nil {
+		return
+	}
+	if c.qnty == 0 {
+		c.head, c.tail = piece, piece
+	} else {
+		piece.next = c.head
+		c.head = piece
+	}
+	c.qnty++
+}
+func (c *Chain) PushTail(piece *Piece) {
+	if piece == nil {
+		return
+	}
+	if c.qnty == 0 {
+		c.head, c.tail = piece, piece
+	} else {
+		c.tail.next = piece
+		c.tail = piece
+	}
+	c.qnty++
 }

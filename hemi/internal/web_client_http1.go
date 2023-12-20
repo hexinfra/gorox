@@ -315,7 +315,7 @@ func (s *H1Stream) onEnd() { // for zeros
 }
 
 func (s *H1Stream) webBroker() webBroker { return s.conn.getClient() }
-func (s *H1Stream) peerAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
+func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
 func (s *H1Stream) Response() *H1Response { return &s.response }

@@ -41,7 +41,7 @@ type webServer interface {
 type webServer_ struct {
 	// Mixins
 	Server_
-	webBroker_ // webServer
+	webBroker_ // as webServer
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to a webapp, we use webapp's contentSaver_.
 	// Assocs
@@ -63,7 +63,7 @@ func (s *webServer_) onCreate(name string, stage *Stage) {
 func (s *webServer_) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.webBroker_.onConfigure(shell, 120*time.Second, 120*time.Second)
-	s.streamHolder_.onConfigure(shell, 0)
+	s.streamHolder_.onConfigure(shell, 1000)
 	s.contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
 
 	// forApps
@@ -231,7 +231,7 @@ func (s *serverStream_) serveUDPTun() {
 
 // Request is the interface for *http[1-3]Request and *hwebRequest.
 type Request interface {
-	PeerAddr() net.Addr
+	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
 	VersionCode() uint8

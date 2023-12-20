@@ -213,7 +213,7 @@ func (x *HExchan) onEnd() { // for zeros
 }
 
 func (x *HExchan) webBroker() webBroker { return nil } // TODO
-func (x *HExchan) peerAddr() net.Addr   { return nil } // TODO
+func (x *HExchan) remoteAddr() net.Addr { return nil } // TODO
 
 func (x *HExchan) Request() *HRequest   { return &x.request }
 func (x *HExchan) Response() *HResponse { return &x.response }

@@ -205,7 +205,7 @@ func (x *hwebExchan) execute() { // goroutine
 }
 
 func (x *hwebExchan) webBroker() webBroker { return nil } // TODO
-func (x *hwebExchan) peerAddr() net.Addr   { return nil } // TODO
+func (x *hwebExchan) remoteAddr() net.Addr { return nil } // TODO
 
 func (x *hwebExchan) writeContinue() bool { // 100 continue
 	// TODO

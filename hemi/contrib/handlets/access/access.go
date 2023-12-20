@@ -82,7 +82,7 @@ func (h *accessChecker) Handle(req Request, resp Response) (handled bool) {
 		return false
 	}
 	var (
-		ip        = addressToIP(req.PeerAddr().String())
+		ip        = addressToIP(req.RemoteAddr().String())
 		allowRank = -1
 		denyRank  = -1
 		allowMask []byte

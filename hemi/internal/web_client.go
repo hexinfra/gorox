@@ -31,7 +31,7 @@ type webClient interface {
 type webOutgate_ struct {
 	// Mixins
 	outgate_
-	webBroker_ // webClient
+	webBroker_ // as webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -61,7 +61,7 @@ func (f *webOutgate_) onPrepare(shell Component) {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webBroker_ // webClient
+	webBroker_ // as webClient
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_

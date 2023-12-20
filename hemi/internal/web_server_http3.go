@@ -273,7 +273,7 @@ func (s *http3Stream) execute() { // goroutine
 }
 
 func (s *http3Stream) webBroker() webBroker { return s.conn.getServer() }
-func (s *http3Stream) peerAddr() net.Addr   { return nil } // TODO
+func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO

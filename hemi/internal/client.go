@@ -160,15 +160,6 @@ func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
 func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
 func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
-// wireBackend
-type wireBackend interface {
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	Dial() (wireConn, error)
-	FetchConn() (wireConn, error)
-	StoreConn(conn wireConn)
-}
-
 // Backend is a group of nodes.
 type Backend interface {
 	// Imports
@@ -176,6 +167,15 @@ type Backend interface {
 	client
 	// Methods
 	Maintain() // goroutine
+}
+
+// wireBackend
+type wireBackend interface {
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	Dial() (wireConn, error)
+	FetchConn() (wireConn, error)
+	StoreConn(conn wireConn)
 }
 
 // Backend_ is the mixin for backends.
@@ -358,6 +358,15 @@ func (n *Node_) shutdown() {
 
 var errNodeDown = errors.New("node is down")
 
+// Conn is the client conns.
+type Conn interface {
+	// Methods
+	getNext() Conn
+	setNext(next Conn)
+	isAlive() bool
+	closeConn()
+}
+
 // wireConn
 type wireConn interface {
 	SetWriteDeadline(deadline time.Time) error
@@ -372,15 +381,6 @@ type wireConn interface {
 	MakeTempName(p []byte, unixTime int64) (from int, edge int)
 	IsBroken() bool
 	MarkBroken()
-}
-
-// Conn is the client conns.
-type Conn interface {
-	// Methods
-	getNext() Conn
-	setNext(next Conn)
-	isAlive() bool
-	closeConn()
 }
 
 // Conn_ is the mixin for client conns.

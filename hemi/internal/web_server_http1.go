@@ -475,7 +475,7 @@ func (s *http1Stream) onEnd() { // for zeros
 }
 
 func (s *http1Stream) webBroker() webBroker { return s.conn.getServer() }
-func (s *http1Stream) peerAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
+func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.

@@ -77,7 +77,7 @@ func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
 // webStream is the interface for *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, and *HExchan.
 type webStream interface {
 	webBroker() webBroker
-	peerAddr() net.Addr
+	remoteAddr() net.Addr
 
 	buffer256() []byte
 	unsafeMake(size int) []byte
@@ -298,7 +298,7 @@ func (r *webIn_) onEnd() { // for zeros
 }
 
 func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
-func (r *webIn_) PeerAddr() net.Addr         { return r.stream.peerAddr() }
+func (r *webIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
 func (r *webIn_) VersionCode() uint8    { return r.versionCode }
 func (r *webIn_) IsHTTP1_0() bool       { return r.versionCode == Version1_0 }

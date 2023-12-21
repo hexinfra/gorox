@@ -392,6 +392,15 @@ func (a *Webapp) dispatchSocklet(req Request, sock Socket) {
 	sock.Close()
 }
 
+// Handle is a function which handles web request and gives web response.
+type Handle func(req Request, resp Response)
+
+// Router performs request mapping in handlets.
+type Router interface {
+	FindHandle(req Request) Handle // firstly
+	HandleName(req Request) string // secondly
+}
+
 // Handlet component handles the incoming request and gives an outgoing response if the request is handled.
 type Handlet interface {
 	// Imports
@@ -439,15 +448,6 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	}
 }
 
-// Handle is a function which can handle http request and gives http response.
-type Handle func(req Request, resp Response)
-
-// Router performs request mapping in handlets.
-type Router interface {
-	FindHandle(req Request) Handle // firstly
-	HandleName(req Request) string // secondly
-}
-
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	// Imports
@@ -455,13 +455,13 @@ type Reviser interface {
 	identifiable
 	// Methods
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
-
+	// TODO
 	BeforeRecv(req Request, resp Response) // for sized content
 	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
 	BeforeDraw(req Request, resp Response) // for unsized content
 	OnDraw(req Request, resp Response, chain Chain) (Chain, bool)
 	FinishDraw(req Request, resp Response) // for unsized content
-
+	// TODO
 	BeforeSend(req Request, resp Response) // for sized content
 	OnSend(req Request, resp Response, content *Chain)
 	BeforeEcho(req Request, resp Response) // for unsized content
@@ -642,149 +642,6 @@ func (r *Rule) isMatch(req Request) bool {
 	return r.matcher(r, req, value)
 }
 
-var ruleMatchers = map[string]struct {
-	matcher func(rule *Rule, req Request, value []byte) bool
-	fsCheck bool
-}{
-	"==": {(*Rule).equalMatch, false},
-	"^=": {(*Rule).prefixMatch, false},
-	"$=": {(*Rule).suffixMatch, false},
-	"*=": {(*Rule).containMatch, false},
-	"~=": {(*Rule).regexpMatch, false},
-	"-f": {(*Rule).fileMatch, true},
-	"-d": {(*Rule).dirMatch, true},
-	"-e": {(*Rule).existMatch, true},
-	"-D": {(*Rule).dirMatchIncludingWebRoot, true},
-	"-E": {(*Rule).existMatchIncludingWebRoot, true},
-	"!=": {(*Rule).notEqualMatch, false},
-	"!^": {(*Rule).notPrefixMatch, false},
-	"!$": {(*Rule).notSuffixMatch, false},
-	"!*": {(*Rule).notContainMatch, false},
-	"!~": {(*Rule).notRegexpMatch, false},
-	"!f": {(*Rule).notFileMatch, true},
-	"!d": {(*Rule).notDirMatch, true},
-	"!e": {(*Rule).notExistMatch, true},
-}
-
-func (r *Rule) equalMatch(req Request, value []byte) bool { // value == patterns
-	for _, pattern := range r.patterns {
-		if bytes.Equal(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) prefixMatch(req Request, value []byte) bool { // value ^= patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patterns
-	for _, pattern := range r.patterns {
-		if bytes.Contains(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
-	for _, regexp := range r.regexps {
-		if regexp.Match(value) {
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
-	pathInfo := req.getPathInfo()
-	return pathInfo != nil && !pathInfo.IsDir()
-}
-func (r *Rule) dirMatch(req Request, value []byte) bool { // value -d
-	if len(value) == 1 && value[0] == '/' {
-		// webRoot is not included and thus not treated as dir
-		return false
-	}
-	return r.dirMatchIncludingWebRoot(req, value)
-}
-func (r *Rule) existMatch(req Request, value []byte) bool { // value -e
-	if len(value) == 1 && value[0] == '/' {
-		// webRoot is not included and thus not treated as exist
-		return false
-	}
-	return r.existMatchIncludingWebRoot(req, value)
-}
-func (r *Rule) dirMatchIncludingWebRoot(req Request, _ []byte) bool { // value -D
-	pathInfo := req.getPathInfo()
-	return pathInfo != nil && pathInfo.IsDir()
-}
-func (r *Rule) existMatchIncludingWebRoot(req Request, _ []byte) bool { // value -E
-	pathInfo := req.getPathInfo()
-	return pathInfo != nil
-}
-func (r *Rule) notEqualMatch(req Request, value []byte) bool { // value != patterns
-	for _, pattern := range r.patterns {
-		if bytes.Equal(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (r *Rule) notPrefixMatch(req Request, value []byte) bool { // value !^ patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* patterns
-	for _, pattern := range r.patterns {
-		if bytes.Contains(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
-	for _, regexp := range r.regexps {
-		if regexp.Match(value) {
-			return false
-		}
-	}
-	return true
-}
-func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f
-	pathInfo := req.getPathInfo()
-	return pathInfo == nil || pathInfo.IsDir()
-}
-func (r *Rule) notDirMatch(req Request, value []byte) bool { // value !d
-	pathInfo := req.getPathInfo()
-	return pathInfo == nil || !pathInfo.IsDir()
-}
-func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
-	pathInfo := req.getPathInfo()
-	return pathInfo == nil
-}
-
 func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
 	if r.returnCode != 0 {
 		resp.SetStatus(r.returnCode)
@@ -859,4 +716,147 @@ func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
 		r.socklet.Serve(req, sock)
 	*/
 	return true
+}
+
+func (r *Rule) equalMatch(req Request, value []byte) bool { // value == patterns
+	for _, pattern := range r.patterns {
+		if bytes.Equal(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) prefixMatch(req Request, value []byte) bool { // value ^= patterns
+	for _, pattern := range r.patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= patterns
+	for _, pattern := range r.patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patterns
+	for _, pattern := range r.patterns {
+		if bytes.Contains(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
+	for _, regexp := range r.regexps {
+		if regexp.Match(value) {
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
+	pathInfo := req.getPathInfo()
+	return pathInfo != nil && !pathInfo.IsDir()
+}
+func (r *Rule) dirMatch(req Request, value []byte) bool { // value -d
+	if len(value) == 1 && value[0] == '/' {
+		// webRoot is not included and thus not treated as dir
+		return false
+	}
+	return r.dirMatchWithWebRoot(req, value)
+}
+func (r *Rule) existMatch(req Request, value []byte) bool { // value -e
+	if len(value) == 1 && value[0] == '/' {
+		// webRoot is not included and thus not treated as exist
+		return false
+	}
+	return r.existMatchWithWebRoot(req, value)
+}
+func (r *Rule) dirMatchWithWebRoot(req Request, _ []byte) bool { // value -D
+	pathInfo := req.getPathInfo()
+	return pathInfo != nil && pathInfo.IsDir()
+}
+func (r *Rule) existMatchWithWebRoot(req Request, _ []byte) bool { // value -E
+	pathInfo := req.getPathInfo()
+	return pathInfo != nil
+}
+func (r *Rule) notEqualMatch(req Request, value []byte) bool { // value != patterns
+	for _, pattern := range r.patterns {
+		if bytes.Equal(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notPrefixMatch(req Request, value []byte) bool { // value !^ patterns
+	for _, pattern := range r.patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patterns
+	for _, pattern := range r.patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* patterns
+	for _, pattern := range r.patterns {
+		if bytes.Contains(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
+	for _, regexp := range r.regexps {
+		if regexp.Match(value) {
+			return false
+		}
+	}
+	return true
+}
+func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f
+	pathInfo := req.getPathInfo()
+	return pathInfo == nil || pathInfo.IsDir()
+}
+func (r *Rule) notDirMatch(req Request, value []byte) bool { // value !d
+	pathInfo := req.getPathInfo()
+	return pathInfo == nil || !pathInfo.IsDir()
+}
+func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
+	pathInfo := req.getPathInfo()
+	return pathInfo == nil
+}
+
+var ruleMatchers = map[string]struct {
+	matcher func(rule *Rule, req Request, value []byte) bool
+	fsCheck bool
+}{
+	"==": {(*Rule).equalMatch, false},
+	"^=": {(*Rule).prefixMatch, false},
+	"$=": {(*Rule).suffixMatch, false},
+	"*=": {(*Rule).containMatch, false},
+	"~=": {(*Rule).regexpMatch, false},
+	"-f": {(*Rule).fileMatch, true},
+	"-d": {(*Rule).dirMatch, true},
+	"-e": {(*Rule).existMatch, true},
+	"-D": {(*Rule).dirMatchWithWebRoot, true},
+	"-E": {(*Rule).existMatchWithWebRoot, true},
+	"!=": {(*Rule).notEqualMatch, false},
+	"!^": {(*Rule).notPrefixMatch, false},
+	"!$": {(*Rule).notSuffixMatch, false},
+	"!*": {(*Rule).notContainMatch, false},
+	"!~": {(*Rule).notRegexpMatch, false},
+	"!f": {(*Rule).notFileMatch, true},
+	"!d": {(*Rule).notDirMatch, true},
+	"!e": {(*Rule).notExistMatch, true},
 }

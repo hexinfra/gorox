@@ -671,7 +671,7 @@ func (r *clientResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8
 	}
 	for i := from; i < edge; i++ {
 		data := pairs[i].dataAt(r.input)
-		bytesToLower(data)
+		bytesToLower(data) // range unit names are case-insensitive
 		if bytes.Equal(data, bytesBytes) {
 			r.acceptBytes = true
 		} else {

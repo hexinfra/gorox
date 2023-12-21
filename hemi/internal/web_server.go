@@ -390,7 +390,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	// Stream states (stocks)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
-	ranges [2]rang // parsed range fields. at most two range fields are allowed. controlled by r.nRanges
+	ranges [2]rang // parsed range fields. at most 2 range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
@@ -950,13 +950,12 @@ func (r *serverRequest_) checkAuthorization(header *pair, index uint8) bool { //
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
-	if r.indexes.authorization == 0 {
-		r.indexes.authorization = index
-		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization"
+	if r.indexes.authorization != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization header"
 		return false
 	}
+	r.indexes.authorization = index
+	return true
 }
 func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
 	if header.value.isEmpty() {
@@ -1002,7 +1001,7 @@ func (r *serverRequest_) checkIfModifiedSince(header *pair, index uint8) bool { 
 }
 func (r *serverRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header"
 		return false
 	}
 	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
@@ -1019,21 +1018,22 @@ func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
-	if r.indexes.proxyAuthorization == 0 {
-		r.indexes.proxyAuthorization = index
-		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization"
+	if r.indexes.proxyAuthorization != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization header"
 		return false
 	}
+	r.indexes.proxyAuthorization = index
+	return true
 }
 func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
+		// A server MUST ignore a Range header field received with a request method that is unrecognized or for which range handling is not defined.
+		// For this specification, GET is the only method for which range handling is defined.
 		r._delPrime(index)
 		return true
 	}
 	if r.nRanges > 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated range"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated range header"
 		return false
 	}
 	// Range        = range-unit "=" range-set
@@ -1152,13 +1152,12 @@ badRange:
 	return false
 }
 func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
-	if r.indexes.userAgent == 0 {
-		r.indexes.userAgent = index
-		return true
-	} else {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent"
+	if r.indexes.userAgent != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header"
 		return false
 	}
+	r.indexes.userAgent = index
+	return true
 }
 func (r *serverRequest_) _addRange(from int64, last int64) bool {
 	if r.nRanges == int8(cap(r.ranges)) {

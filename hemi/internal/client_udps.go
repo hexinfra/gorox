@@ -143,6 +143,7 @@ func (n *udpsNode) link() (*ULink, error) {
 	// TODO
 	return nil, nil
 }
+
 func (n *udpsNode) fetchLink() (*ULink, error) {
 	link := n.pullConn()
 	if link != nil {

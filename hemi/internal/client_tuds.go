@@ -148,12 +148,12 @@ func (n *tudsNode) init(id int32, backend *TUDSBackend) {
 }
 
 func (n *tudsNode) setAddress(address string) {
+	n.Node_.setAddress(address)
 	unixAddr, err := net.ResolveUnixAddr("unix", address)
 	if err != nil {
 		UseExitln(err.Error())
 		return
 	}
-	n.Node_.setAddress(address)
 	n.unixAddr = unixAddr
 }
 

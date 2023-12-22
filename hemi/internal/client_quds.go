@@ -133,6 +133,11 @@ func (n *qudsNode) init(id int32, backend *QUDSBackend) {
 	n.backend = backend
 }
 
+func (n *qudsNode) setAddress(address string) {
+	n.Node_.setAddress(address)
+	// TODO
+}
+
 func (n *qudsNode) Maintain() { // goroutine
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check

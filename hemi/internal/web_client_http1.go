@@ -166,7 +166,11 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return nil, errNodeDown
 	}
 
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	network := "tcp"
+	if n.uds {
+		network = "unix"
+	}
+	netConn, err := net.DialTimeout(network, n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -175,7 +179,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	if n.backend.tlsMode {
+	if n.backend.tlsMode && !n.uds {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
@@ -184,7 +188,15 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		n.IncSub(1)
 		return getH1Conn(connID, n.backend, n, tlsConn, nil), nil
 	} else {
-		rawConn, err := netConn.(*net.TCPConn).SyscallConn()
+		var (
+			rawConn syscall.RawConn
+			err     error
+		)
+		if n.uds {
+			rawConn, err = netConn.(*net.UnixConn).SyscallConn()
+		} else {
+			rawConn, err = netConn.(*net.TCPConn).SyscallConn()
+		}
 		if err != nil {
 			netConn.Close()
 			return nil, err
@@ -248,8 +260,8 @@ type H1Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node     *http1Node      // associated node if client is http backend
-	netConn  net.Conn        // the connection (TCP/TLS)
-	rawConn  syscall.RawConn // used when netConn is TCP
+	netConn  net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn  syscall.RawConn // used when netConn is TCP or UDS
 	keepConn bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }

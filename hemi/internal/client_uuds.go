@@ -121,11 +121,22 @@ type uudsNode struct {
 	// Assocs
 	backend *UUDSBackend
 	// States
+	unixAddr *net.UnixAddr
 }
 
 func (n *uudsNode) init(id int32, backend *UUDSBackend) {
 	n.Node_.init(id)
 	n.backend = backend
+}
+
+func (n *uudsNode) setAddress(address string) {
+	n.Node_.setAddress(address)
+	unixAddr, err := net.ResolveUnixAddr("unixgram", address)
+	if err != nil {
+		UseExitln(err.Error())
+		return
+	}
+	n.unixAddr = unixAddr
 }
 
 func (n *uudsNode) Maintain() { // goroutine
@@ -143,6 +154,7 @@ func (n *uudsNode) link() (*XLink, error) {
 	// TODO
 	return nil, nil
 }
+
 func (n *uudsNode) fetchLink() (*XLink, error) {
 	link := n.pullConn()
 	if link != nil {

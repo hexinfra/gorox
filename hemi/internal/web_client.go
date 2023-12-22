@@ -9,6 +9,7 @@ package internal
 
 import (
 	"bytes"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -97,10 +98,18 @@ type webNode_ struct {
 	// Mixins
 	Node_
 	// States
+	uds bool // use unix domain socket?
 }
 
 func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
+}
+
+func (n *webNode_) setAddress(address string) {
+	n.Node_.setAddress(address)
+	if _, err := os.Stat(address); err == nil {
+		n.uds = true
+	}
 }
 
 // clientConn is the interface for *H[1-3]Conn and *HConn.

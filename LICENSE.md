@@ -1,5 +1,5 @@
-Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.  
-Copyright (c) 2022-2023 HexInfra Co., Ltd.  
+Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.  
+Copyright (c) 2022-2024 HexInfra Co., Ltd.  
 All rights reserved.  
 
 Redistribution and use in source and binary forms, with or without

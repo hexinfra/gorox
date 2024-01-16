@@ -1,5 +1,5 @@
-// Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.
-// Copyright (c) 2022-2023 HexInfra Co., Ltd.
+// Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
+// Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
@@ -293,8 +293,8 @@ type Request interface {
 	ContentSize() int64
 	AcceptTrailers() bool
 
-	EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) // to test preconditons intentionally
-	EvalRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)                  // to test preconditons intentionally
+	EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
+	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -1680,8 +1680,8 @@ func (r *serverRequest_) _evalIfUnmodifiedSince(modTime int64) (pass bool) {
 	return modTime <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *serverRequest_) EvalRanges(modTime int64, etag []byte, asOrigin bool) (partial bool) {
-	if r.methodCode == MethodGET && r.nRanges > 0 && r.indexes.ifRange != 0 {
+func (r *serverRequest_) EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool) {
+	if r.methodCode == MethodGET && r.indexes.ifRange != 0 && r.nRanges > 0 {
 		if (r.unixTimes.ifRange == 0 && r._evalIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._evalIfRangeTime(modTime)) {
 			return true // StatusPartialContent
 		}

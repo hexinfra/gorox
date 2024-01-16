@@ -1,5 +1,5 @@
-// Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.
-// Copyright (c) 2022-2023 HexInfra Co., Ltd.
+// Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
+// Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
@@ -58,11 +58,14 @@ func (f *tudsProxy) OnPrepare() {
 }
 
 func (f *tudsProxy) OnSetup(conn *TCPSConn) (next bool) {
+	// TODO
 	return
 }
 func (f *tudsProxy) OnInput(buf *Buffer, end bool) (next bool) {
+	// TODO
 	return
 }
 func (f *tudsProxy) OnOutput(buf *Buffer, end bool) (next bool) {
+	// TODO
 	return
 }

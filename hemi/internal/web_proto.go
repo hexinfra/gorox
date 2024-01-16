@@ -1,5 +1,5 @@
-// Copyright (c) 2020-2023 Zhang Jingcheng <diogin@gmail.com>.
-// Copyright (c) 2022-2023 HexInfra Co., Ltd.
+// Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
+// Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
@@ -321,6 +321,8 @@ var ( // slices of web fields.
 
 const ( // hashes of misc web strings & bytes.
 	hashBoundary = 868
+	hashFilename = 833
+	hashName     = 417
 )
 
 var ( // misc web strings & slices.
@@ -2101,6 +2103,24 @@ var webHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for 
 	},
 }
 
+// defaultDesc
+var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
+	allowQuote: true,
+	allowEmpty: false,
+	allowParam: true,
+	hasComment: false,
+}
+
+// desc describes a web field.
+type desc struct {
+	hash       uint16 // name hash
+	allowQuote bool   // allow data quote or not
+	allowEmpty bool   // allow empty data or not
+	allowParam bool   // allow parameters or not
+	hasComment bool   // has comment or not
+	name       []byte // field name
+}
+
 // poolPairs
 var poolPairs sync.Pool
 
@@ -2269,24 +2289,6 @@ func (p *pair) show(place []byte) {
 		flags = append(flags, "nothing")
 	}
 	Printf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
-}
-
-// defaultDesc
-var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
-	allowQuote: true,
-	allowEmpty: false,
-	allowParam: true,
-	hasComment: false,
-}
-
-// desc describes a web field.
-type desc struct {
-	hash       uint16 // name hash
-	allowQuote bool   // allow data quote or not
-	allowEmpty bool   // allow empty data or not
-	allowParam bool   // allow parameters or not
-	hasComment bool   // has comment or not
-	name       []byte // field name
 }
 
 // para is a name-value parameter in multipart/form-data.

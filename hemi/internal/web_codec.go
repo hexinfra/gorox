@@ -154,14 +154,14 @@ type webIn_ struct { // incoming. needs parsing
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
 	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array          []byte        // store dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
-	maxContentSize int64         // max content size allowed for current message. if content is unsized, size is calculated when receiving
-	contentSize    int64         // info of incoming content. >=0: content size, -1: no content, -2: unsized content
+	maxContentSize int64         // max content size allowed for current message. if content is unsized, size will be calculated on receiving
+	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: unsized content
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse     bool          // treat the incoming message as response?
+	asResponse     bool          // treat this message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	_              byte          // padding
 	headResult     int16         // result of receiving message head. values are same as http status for convenience
@@ -169,7 +169,7 @@ type webIn_ struct { // incoming. needs parsing
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
-	recvTime    time.Time // the time when receiving message
+	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
@@ -180,11 +180,11 @@ type webIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtra         [8]bool // see kindXXX for indexes
-	dateTime         int64   // parsed unix time of date
+	hasExtra         [8]bool // has extra pairs? see kindXXX for indexes
+	dateTime         int64   // parsed unix time of the date header
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
-	receiving        int8    // currently receiving. see webSectionXXX
+	receiving        int8    // what section of the message are we currently receiving. see webSectionXXX
 	headers          zone    // headers ->r.primes
 	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?

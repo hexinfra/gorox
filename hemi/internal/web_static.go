@@ -205,13 +205,14 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	modTime := entry.info.ModTime().Unix()
 	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
 	const asOrigin = true
-	if status, normal := req.EvalConditions(modTime, etag, asOrigin); normal {
+	if status, normal := req.EvalPreconditions(modTime, etag, asOrigin); normal {
 		if h.developerMode {
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
 		} else {
 			resp.SetLastModified(modTime)
 			resp.AddHeaderBytes(bytesETag, etag)
 		}
+		// TODO: uncomment the following line after we have implemented range requests
 		//resp.AddHeader(bytesAcceptRange, bytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)

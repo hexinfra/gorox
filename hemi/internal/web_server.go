@@ -293,7 +293,7 @@ type Request interface {
 	ContentSize() int64
 	AcceptTrailers() bool
 
-	EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
+	EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
 
 	AddCookie(name string, value string) bool
@@ -1601,7 +1601,7 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 	return true
 }
 
-func (r *serverRequest_) EvalConditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test preconditons intentionally
+func (r *serverRequest_) EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
 	// Get etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
@@ -1668,7 +1668,7 @@ func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 			return false
 		}
 	}
-	// TODO: extra?
+	// TODO: r.extras?
 	return true
 }
 func (r *serverRequest_) _evalIfModifiedSince(modTime int64) (pass bool) {

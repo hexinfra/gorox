@@ -21,7 +21,7 @@ const ( // version codes. keep sync with ../hemi.go
 	Version3   = 3
 )
 
-var ( // version strings and slices
+var ( // version strings and btrings
 	stringHTTP1_0     = "HTTP/1.0"
 	stringHTTP1_1     = "HTTP/1.1"
 	stringHTTP2       = "HTTP/2"
@@ -36,7 +36,7 @@ var ( // version strings and slices
 		Version2:   stringHTTP2,
 		Version3:   stringHTTP3,
 	}
-	webVersionSlices = [...][]byte{
+	webVersionBtrings = [...][]byte{
 		Version1_0: bytesHTTP1_0,
 		Version1_1: bytesHTTP1_1,
 		Version2:   bytesHTTP2,
@@ -49,7 +49,7 @@ const ( // scheme codes. keep sync with ../hemi.go
 	SchemeHTTPS = 1
 )
 
-var ( // scheme strings and slices
+var ( // scheme strings and btrings
 	stringHTTP       = "http"
 	stringHTTPS      = "https"
 	bytesHTTP        = []byte(stringHTTP)
@@ -58,7 +58,7 @@ var ( // scheme strings and slices
 		SchemeHTTP:  stringHTTP,
 		SchemeHTTPS: stringHTTPS,
 	}
-	webSchemeSlices = [...][]byte{
+	webSchemeBtrings = [...][]byte{
 		SchemeHTTP:  bytesHTTP,
 		SchemeHTTPS: bytesHTTPS,
 	}
@@ -255,7 +255,7 @@ const ( // hashes of web fields. value is calculated by adding all ASCII values.
 	hashWWWAuthenticate   = 1681
 )
 
-var ( // slices of web fields.
+var ( // btrings of web fields.
 	// Pseudo headers
 	bytesAuthority = []byte(":authority")
 	bytesMethod    = []byte(":method")
@@ -325,13 +325,13 @@ const ( // hashes of misc web strings & bytes.
 	hashName     = 417
 )
 
-var ( // misc web strings & slices.
+var ( // misc web strings & btrings.
 	// Strings
 	stringColonPort80  = ":80"
 	stringColonPort443 = ":443"
 	stringSlash        = "/"
 	stringAsterisk     = "*"
-	// Slices
+	// Btrings
 	bytesColonPort80    = []byte(stringColonPort80)
 	bytesColonPort443   = []byte(stringColonPort443)
 	bytesSlash          = []byte(stringSlash)
@@ -361,7 +361,7 @@ var ( // misc web strings & slices.
 	bytesTrailers       = []byte("trailers")
 	bytesWebSocket      = []byte("websocket")
 	bytesGorox          = []byte("gorox")
-	// HTTP/2 and HTTP/3 slices, TODO
+	// HTTP/2 and HTTP/3 btrings, TODO
 	bytesSchemeHTTP           = []byte(":scheme http")
 	bytesSchemeHTTPS          = []byte(":scheme https")
 	bytesFixedRequestHeaders  = []byte("user-agent gorox")

@@ -7,7 +7,7 @@
 
 package internal
 
-var ( // HTTP/1 slices
+var ( // HTTP/1 btrings
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
 	http1BytesConnectionClose      = []byte("connection: close\r\n")
 	http1BytesConnectionKeepAlive  = []byte("connection: keep-alive\r\n")

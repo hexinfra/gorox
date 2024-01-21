@@ -495,22 +495,22 @@ func stringHash(s string) uint16 {
 	return hash
 }
 
-func slicesSort(slices [][]byte) {
-	for i := 1; i < len(slices); i++ {
-		elem := slices[i]
+func btringsSort(btrings [][]byte) {
+	for i := 1; i < len(btrings); i++ {
+		elem := btrings[i]
 		j := i
-		for j > 0 && bytes.Compare(slices[j-1], elem) > 0 {
-			slices[j] = slices[j-1]
+		for j > 0 && bytes.Compare(btrings[j-1], elem) > 0 {
+			btrings[j] = btrings[j-1]
 			j--
 		}
-		slices[j] = elem
+		btrings[j] = elem
 	}
 }
-func slicesFind(slices [][]byte, elem []byte) bool {
-	from, last := 0, len(slices)-1
+func btringsFind(btrings [][]byte, elem []byte) bool {
+	from, last := 0, len(btrings)-1
 	for from <= last {
 		mid := from + (last-from)/2
-		if result := bytes.Compare(slices[mid], elem); result == 0 {
+		if result := bytes.Compare(btrings[mid], elem); result == 0 {
 			return true
 		} else if result < 0 {
 			from = mid + 1

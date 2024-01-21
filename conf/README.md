@@ -1,1 +1,1 @@
-Place config files for Gorox and your cmds.
+Place config files for Gorox and your auxiliary commands.

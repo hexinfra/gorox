@@ -72,8 +72,8 @@ func (h *accessChecker) OnPrepare() {
 	h.denyRules = h.parseRule(h.deny)
 
 	// sort by priority
-	sort.Sort(ipRuleSlice(h.allowRules))
-	sort.Sort(ipRuleSlice(h.denyRules))
+	sort.Sort(ipRules(h.allowRules))
+	sort.Sort(ipRules(h.denyRules))
 }
 
 // priority: ip > ip/24 > ip/16 > all
@@ -167,11 +167,11 @@ func (r *ipRule) String() string {
 	return "unkown"
 }
 
-type ipRuleSlice []*ipRule
+type ipRules []*ipRule
 
-func (s ipRuleSlice) Len() int      { return len(s) }
-func (s ipRuleSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-func (s ipRuleSlice) Less(i, j int) bool {
+func (s ipRules) Len() int      { return len(s) }
+func (s ipRules) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s ipRules) Less(i, j int) bool {
 	if s[i].rank > s[j].rank {
 		return true
 	}

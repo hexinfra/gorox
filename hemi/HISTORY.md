@@ -13,6 +13,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * ajpProxy, fcgiProxy, and uwsgiProxy are now renamed as respective relays.
   * FromFile and FromText are renamed as BootFile and BootText respectively.
   * Abbreviations are now differentiated from names clearly.
+  * Directory "cmds/" is now renamed as "bins/".
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

@@ -116,7 +116,7 @@ Layout
 By default, Gorox uses these directories:
 
   * apps/ - Place your Web applications,
-  * cmds/ - Place your auxiliary commands,
+  * bins/ - Place your auxiliary commands,
   * conf/ - Place configs for Gorox and your commands,
   * docs/ - Place docs of your project,
   * exts/ - Place extended components written for your project,

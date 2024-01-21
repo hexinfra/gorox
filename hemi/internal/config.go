@@ -23,7 +23,7 @@ type Value struct {
 	code  int16  // variable code if kind is tokenVariable
 	name  string // variable name if kind is tokenVariable
 	value any    // bools, integers, strings, durations, lists, and dicts
-	slice []byte // []byte of string value, to avoid the cost of []byte(s)
+	bytes []byte // []byte of string value, to avoid the cost of []byte(s)
 }
 
 func (v *Value) IsBool() bool     { return v.kind == tokenBool }
@@ -60,7 +60,7 @@ func (v *Value) String() (s string, ok bool) {
 }
 func (v *Value) Bytes() (p []byte, ok bool) {
 	if v.kind == tokenString {
-		p, ok = v.slice, true
+		p, ok = v.bytes, true
 	}
 	return
 }
@@ -95,7 +95,7 @@ func (v *Value) BytesList() (list [][]byte, ok bool) {
 	if ok {
 		for _, value := range l {
 			if value.kind == tokenString {
-				list = append(list, value.slice)
+				list = append(list, value.bytes)
 			}
 		}
 	}
@@ -723,7 +723,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		}
 		value.kind = tokenInteger
 	case tokenString:
-		value.kind, value.value, value.slice = tokenString, current.text, []byte(current.text)
+		value.kind, value.value, value.bytes = tokenString, current.text, []byte(current.text)
 	case tokenDuration:
 		last := len(current.text) - 1
 		n, err := strconv.ParseInt(current.text[:last], 10, 64)
@@ -794,7 +794,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		}
 		if isString {
 			value.value = value.value.(string) + str.value.(string)
-			value.slice = append(value.slice, str.slice...)
+			value.bytes = append(value.bytes, str.bytes...)
 		} else {
 			panic(errors.New("config error: cannot concat string with other types. token=" + c.current().text))
 		}

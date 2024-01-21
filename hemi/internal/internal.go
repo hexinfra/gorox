@@ -96,7 +96,7 @@ func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
 }
 
-const ( // exit codes. keep sync with ../hemi.go
+const ( // exit codes. keep sync with ../export.go
 	CodeBug = 20
 	CodeUse = 21
 	CodeEnv = 22

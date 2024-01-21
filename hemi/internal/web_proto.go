@@ -14,14 +14,14 @@ import (
 	"sync"
 )
 
-const ( // version codes. keep sync with ../hemi.go
+const ( // version codes. keep sync with ../export.go
 	Version1_0 = 0 // must be 0
 	Version1_1 = 1
 	Version2   = 2
 	Version3   = 3
 )
 
-var ( // version strings and btrings
+var ( // version strings and byteses
 	stringHTTP1_0     = "HTTP/1.0"
 	stringHTTP1_1     = "HTTP/1.1"
 	stringHTTP2       = "HTTP/2"
@@ -36,7 +36,7 @@ var ( // version strings and btrings
 		Version2:   stringHTTP2,
 		Version3:   stringHTTP3,
 	}
-	webVersionBtrings = [...][]byte{
+	webVersionByteses = [...][]byte{
 		Version1_0: bytesHTTP1_0,
 		Version1_1: bytesHTTP1_1,
 		Version2:   bytesHTTP2,
@@ -44,12 +44,12 @@ var ( // version strings and btrings
 	}
 )
 
-const ( // scheme codes. keep sync with ../hemi.go
+const ( // scheme codes. keep sync with ../export.go
 	SchemeHTTP  = 0 // must be 0
 	SchemeHTTPS = 1
 )
 
-var ( // scheme strings and btrings
+var ( // scheme strings and byteses
 	stringHTTP       = "http"
 	stringHTTPS      = "https"
 	bytesHTTP        = []byte(stringHTTP)
@@ -58,13 +58,13 @@ var ( // scheme strings and btrings
 		SchemeHTTP:  stringHTTP,
 		SchemeHTTPS: stringHTTPS,
 	}
-	webSchemeBtrings = [...][]byte{
+	webSchemeByteses = [...][]byte{
 		SchemeHTTP:  bytesHTTP,
 		SchemeHTTPS: bytesHTTPS,
 	}
 )
 
-const ( // method codes. keep sync with ../hemi.go
+const ( // method codes. keep sync with ../export.go
 	MethodGET     = 0x00000001
 	MethodHEAD    = 0x00000002
 	MethodPOST    = 0x00000004
@@ -95,7 +95,7 @@ var ( // method hash table
 	webMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
 )
 
-const ( // status codes. keep sync with ../hemi.go
+const ( // status codes. keep sync with ../export.go
 	// 1XX
 	StatusContinue           = 100
 	StatusSwitchingProtocols = 101
@@ -255,7 +255,7 @@ const ( // hashes of web fields. value is calculated by adding all ASCII values.
 	hashWWWAuthenticate   = 1681
 )
 
-var ( // btrings of web fields.
+var ( // byteses of web fields.
 	// Pseudo headers
 	bytesAuthority = []byte(":authority")
 	bytesMethod    = []byte(":method")
@@ -325,13 +325,13 @@ const ( // hashes of misc web strings & bytes.
 	hashName     = 417
 )
 
-var ( // misc web strings & btrings.
+var ( // misc web strings & byteses.
 	// Strings
 	stringColonPort80  = ":80"
 	stringColonPort443 = ":443"
 	stringSlash        = "/"
 	stringAsterisk     = "*"
-	// Btrings
+	// Byteses
 	bytesColonPort80    = []byte(stringColonPort80)
 	bytesColonPort443   = []byte(stringColonPort443)
 	bytesSlash          = []byte(stringSlash)
@@ -361,7 +361,7 @@ var ( // misc web strings & btrings.
 	bytesTrailers       = []byte("trailers")
 	bytesWebSocket      = []byte("websocket")
 	bytesGorox          = []byte("gorox")
-	// HTTP/2 and HTTP/3 btrings, TODO
+	// HTTP/2 and HTTP/3 byteses, TODO
 	bytesSchemeHTTP           = []byte(":scheme http")
 	bytesSchemeHTTPS          = []byte(":scheme https")
 	bytesFixedRequestHeaders  = []byte("user-agent gorox")

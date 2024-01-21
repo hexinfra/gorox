@@ -180,7 +180,7 @@ type (
 
 type (
 	Cacher  = internal.Cacher
-	Webject = internal.Webject
+	Wobject = internal.Wobject
 
 	Webapp   = internal.Webapp
 	Handlet  = internal.Handlet

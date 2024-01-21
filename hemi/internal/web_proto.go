@@ -319,7 +319,7 @@ var ( // byteses of web fields.
 	bytesWWWAuthenticate   = []byte("www-authenticate")
 )
 
-const ( // hashes of misc web strings & bytes.
+const ( // hashes of misc web strings & byteses.
 	hashBoundary = 868
 	hashFilename = 833
 	hashName     = 417
@@ -2238,7 +2238,7 @@ func (p *pair) isQuoted() bool     { return p.flags&flagQuoted > 0 }
 func (p *pair) dataAt(t []byte) []byte { return t[p.value.from+int32(p.flags&flagQuoted) : p.dataEdge] }
 func (p *pair) dataEmpty() bool        { return p.value.from+int32(p.flags&flagQuoted) == p.dataEdge }
 
-func (p *pair) show(place []byte) {
+func (p *pair) show(place []byte) { // TODO: optimize, or simply remove
 	var kind string
 	switch p.kind {
 	case kindQuery:

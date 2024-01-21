@@ -1916,7 +1916,7 @@ func (r *webOut_) growTrailer(size int) (from int, edge int, ok bool) { // heade
 	}
 	return r._growFields(size)
 }
-func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used by both growHeader and growTrailer as they are not used at the same time
+func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used by growHeader first and growTrailer later as they are not manipulated at the same time
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")
 	}

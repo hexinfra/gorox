@@ -787,7 +787,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 		contentLanguage zone
 		_               [4]byte // padding
 	}
-	unixTimes struct { // parsed unix times
+	unixTimes struct { // parsed unix times in seconds
 		date         int64 // parsed unix time of date
 		expires      int64 // parsed unix time of expires
 		lastModified int64 // parsed unix time of last-modified

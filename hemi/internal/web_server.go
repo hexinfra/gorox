@@ -444,7 +444,7 @@ type serverRequest0 struct { // for fast reset, entirely
 		xForwardedFor  zone
 		_              [4]byte // padding
 	}
-	unixTimes struct { // parsed unixTimes
+	unixTimes struct { // parsed unix times in seconds
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
 		ifRange           int64 // parsed unix time of if-range if is http-date format
 		ifUnmodifiedSince int64 // parsed unix time of if-unmodified-since
@@ -2649,7 +2649,7 @@ type serverResponse_ struct { // outgoing. needs building
 	// Stream states (non-zeros)
 	status    int16    // 200, 302, 404, 500, ...
 	start     [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
-	unixTimes struct {
+	unixTimes struct { // in seconds
 		expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}

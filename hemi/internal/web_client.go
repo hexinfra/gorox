@@ -189,7 +189,7 @@ type clientRequest_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	unixTimes struct {
+	unixTimes struct { // in seconds
 		ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
@@ -456,7 +456,7 @@ type clientResponse0 struct { // for fast reset, entirely
 		vary   zone
 		_      [2]byte // padding
 	}
-	unixTimes struct { // parsed unix times
+	unixTimes struct { // parsed unix times in seconds
 		expires      int64 // parsed unix time of expires
 		lastModified int64 // parsed unix time of last-modified
 	}

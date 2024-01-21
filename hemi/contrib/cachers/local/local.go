@@ -67,10 +67,10 @@ func (c *localCacher) Maintain() { // goroutine
 	c.stage.SubDone()
 }
 
-func (c *localCacher) Set(key []byte, webject *Webject) {
+func (c *localCacher) Set(key []byte, wobject *Wobject) {
 	// TODO
 }
-func (c *localCacher) Get(key []byte) (webject *Webject) {
+func (c *localCacher) Get(key []byte) (wobject *Wobject) {
 	// TODO
 	return
 }

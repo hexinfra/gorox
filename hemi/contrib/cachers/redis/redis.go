@@ -58,10 +58,10 @@ func (c *redisCacher) Maintain() { // goroutine
 	c.stage.SubDone()
 }
 
-func (c *redisCacher) Set(key []byte, webject *Webject) {
+func (c *redisCacher) Set(key []byte, wobject *Wobject) {
 	// TODO
 }
-func (c *redisCacher) Get(key []byte) (webject *Webject) {
+func (c *redisCacher) Get(key []byte) (wobject *Wobject) {
 	// TODO
 	return
 }

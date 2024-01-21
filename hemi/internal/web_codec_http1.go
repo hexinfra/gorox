@@ -769,7 +769,7 @@ func (r *webOut_) writeHeaders1() error { // used by echo and pass
 	if err := r.writeVector1(); err != nil {
 		return err
 	}
-	r.fieldsEdge = 0 // now r.fields is used by trailers (if any), so reset it.
+	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
 func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {

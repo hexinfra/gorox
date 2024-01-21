@@ -17,8 +17,8 @@ type Cacher interface {
 	Component
 	// Methods
 	Maintain() // goroutine
-	Set(key []byte, webject *Webject)
-	Get(key []byte) (webject *Webject)
+	Set(key []byte, wobject *Wobject)
+	Get(key []byte) (wobject *Wobject)
 	Del(key []byte) bool
 }
 
@@ -30,8 +30,8 @@ type Cacher_ struct {
 	// States
 }
 
-// Webject is a Web object in Cacher.
-type Webject struct {
+// Wobject is a Web object in Cacher.
+type Wobject struct {
 	// TODO
 	uri      []byte
 	headers  any

@@ -127,7 +127,7 @@ func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
 func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
 
-// outgate
+// outgate is the interface for outgates.
 type outgate interface {
 	// Methods
 	servedConns() int64

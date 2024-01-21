@@ -1,1 +1,1 @@
-Memory cacher stores webjects in memory.
+Memory cacher stores wobjects in memory.

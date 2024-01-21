@@ -92,6 +92,7 @@ func (r *webOut_) finalizeUnsized2() error {
 
 func (r *webOut_) writeHeaders2() error { // used by echo and pass
 	// TODO
+	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
 func (r *webOut_) writePiece2(piece *Piece, unsized bool) error {

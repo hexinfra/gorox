@@ -1019,7 +1019,7 @@ type Stater interface {
 	Del(sid []byte) bool
 }
 
-// Stater_
+// Stater_ is the mixin for all staters.
 type Stater_ struct {
 	// Mixins
 	Component_
@@ -1163,7 +1163,7 @@ type Gate interface {
 	shut() error
 }
 
-// Gate_ is a mixin for mesher gates and server gates.
+// Gate_ is the mixin for mesher gates and server gates.
 type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns

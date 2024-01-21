@@ -32,7 +32,7 @@ type rpcIn interface {
 	// TODO
 }
 
-// rpcIn_ is a mixin for serverReq_ and clientResp_.
+// rpcIn_ is the mixin for serverReq_ and clientResp_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
@@ -44,7 +44,7 @@ type rpcOut interface {
 	// TODO
 }
 
-// rpcOut_ is a mixin for serverResp_ and clientReq_.
+// rpcOut_ is the mixin for serverResp_ and clientReq_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

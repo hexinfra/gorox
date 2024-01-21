@@ -21,7 +21,7 @@ type fixture interface {
 	run() // goroutine
 }
 
-// fixture_
+// fixture_ is the mixin for all fixtures.
 type fixture_ struct {
 	// Mixins
 	Component_

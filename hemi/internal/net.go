@@ -119,7 +119,7 @@ type _case interface { // *quicCase, *tcpsCase, *udpsCase
 	Component
 }
 
-// case_ is a mixin for *quicCase, *tcpsCase, *udpsCase.
+// case_ is the mixin for *quicCase, *tcpsCase, *udpsCase.
 type case_[M _mesher, F _filter] struct {
 	// Mixins
 	Component_

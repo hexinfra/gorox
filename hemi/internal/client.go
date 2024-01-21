@@ -51,7 +51,7 @@ type client interface {
 	nextConnID() int64
 }
 
-// client_ is a mixin for outgates and backends.
+// client_ is the mixin for outgates and backends.
 type client_ struct {
 	// Mixins
 	Component_
@@ -277,7 +277,7 @@ type Node interface {
 	shutdown()
 }
 
-// Node_ is a mixin for backend nodes.
+// Node_ is the mixin for backend nodes.
 type Node_ struct {
 	// Mixins
 	subsWaiter_ // usually for conns

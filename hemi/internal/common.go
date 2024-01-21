@@ -146,7 +146,7 @@ func (s *streamHolder_) onPrepare(shell Component) {
 
 func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
 
-// loadBalancer_
+// loadBalancer_ is a mixin.
 type loadBalancer_ struct {
 	// States
 	balancer  string       // roundRobin, ipHash, random, ...
@@ -196,7 +196,7 @@ func (b *loadBalancer_) getNextByRandom() int64 {
 	return rand.Int63n(b.numNodes)
 }
 
-// subsWaiter_
+// subsWaiter_ is a mixin.
 type subsWaiter_ struct {
 	subs sync.WaitGroup
 }
@@ -205,7 +205,7 @@ func (w *subsWaiter_) IncSub(n int) { w.subs.Add(n) }
 func (w *subsWaiter_) WaitSubs()    { w.subs.Wait() }
 func (w *subsWaiter_) SubDone()     { w.subs.Done() }
 
-// shutdownable_
+// shutdownable_ is a mixin.
 type shutdownable_ struct {
 	ShutChan chan struct{} // used to notify target to shutdown
 }

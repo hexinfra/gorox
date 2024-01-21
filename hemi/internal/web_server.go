@@ -37,7 +37,7 @@ type webServer interface {
 	findWebapp(hostname []byte) *Webapp
 }
 
-// webServer_ is a mixin for http[x3]Server and hwebServer.
+// webServer_ is the mixin for http[x3]Server and hwebServer.
 type webServer_ struct {
 	// Mixins
 	Server_

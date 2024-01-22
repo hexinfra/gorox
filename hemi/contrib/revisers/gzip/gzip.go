@@ -68,31 +68,23 @@ func (r *gzipReviser) Rank() int8 { return RankGzip }
 func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
 	return
 }
-func (r *gzipReviser) OnRecv(req Request, resp Response, chain Chain) (Chain, bool) { // sized
-	return chain, true
+func (r *gzipReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
+	return true
 }
-
-func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
-	// TODO
-}
-func (r *gzipReviser) OnSend(req Request, resp Response, content *Chain) { // sized
-	// TODO
-}
-
 func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // unsized
 	return
-}
-func (r *gzipReviser) OnDraw(req Request, resp Response, chain Chain) (Chain, bool) { // unsized
-	return chain, true
 }
 func (r *gzipReviser) FinishDraw(req Request, resp Response) { // unsized
 	return
 }
 
+func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
+	// TODO
+}
 func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // unsized
 	// TODO
 }
-func (r *gzipReviser) OnEcho(req Request, resp Response, chunks *Chain) { // unsized
+func (r *gzipReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
 	// TODO
 }
 func (r *gzipReviser) FinishEcho(req Request, resp Response) { // unsized

@@ -235,7 +235,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) { // rever
 		fResp.onUse()
 	}
 
-	fHasContent := false
+	fHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
 	if req.MethodCode() != MethodHEAD {
 		fHasContent = fResp.hasContent()
 	}
@@ -1212,7 +1212,7 @@ func (r *fcgiResponse) cleanInput() {
 
 func (r *fcgiResponse) hasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
-	if r.status == StatusNoContent || r.status == StatusNotModified {
+	if r.status < StatusOK || r.status == StatusNoContent || r.status == StatusNotModified {
 		return false
 	}
 	// All other responses do include content, although that content might be of zero length.

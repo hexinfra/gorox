@@ -812,7 +812,7 @@ func (r *clientResponse_) forCookies(callback func(cookie *pair, name []byte, va
 func (r *clientResponse_) HasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)
 	// responses do not include content.
-	if r.status == StatusNoContent || r.status == StatusNotModified {
+	if r.status < StatusOK || r.status == StatusNoContent || r.status == StatusNotModified {
 		return false
 	}
 	// All other responses do include content, although that content might

@@ -2783,6 +2783,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	r.contentSize = int64(len(content))
 	return r.shell.sendChain()
 }
+
 func (r *serverResponse_) doSend() error {
 	/*
 		if r.hasRevisers {

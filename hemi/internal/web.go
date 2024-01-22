@@ -455,17 +455,15 @@ type Reviser interface {
 	identifiable
 	// Methods
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
-	// TODO
+
 	BeforeRecv(req Request, resp Response) // for sized content
-	OnRecv(req Request, resp Response, chain Chain) (Chain, bool)
 	BeforeDraw(req Request, resp Response) // for unsized content
-	OnDraw(req Request, resp Response, chain Chain) (Chain, bool)
+	OnInput(req Request, resp Response, chain *Chain) bool
 	FinishDraw(req Request, resp Response) // for unsized content
-	// TODO
+
 	BeforeSend(req Request, resp Response) // for sized content
-	OnSend(req Request, resp Response, content *Chain)
 	BeforeEcho(req Request, resp Response) // for unsized content
-	OnEcho(req Request, resp Response, chunks *Chain)
+	OnOutput(req Request, resp Response, chain *Chain)
 	FinishEcho(req Request, resp Response) // for unsized content
 }
 

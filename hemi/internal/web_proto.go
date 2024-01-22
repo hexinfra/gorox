@@ -2296,8 +2296,8 @@ type para struct { // 16 bytes
 	name, value span
 }
 
-// rang defines a range.
-type rang struct { // 16 bytes
+// Range defines a range.
+type Range struct { // 16 bytes
 	from, last int64 // [from,last], inclusive
 }
 

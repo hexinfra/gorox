@@ -181,8 +181,8 @@ type serverConn_ struct {
 	server webServer // the server to which the conn belongs
 	gate   webGate   // the gate to which the conn belongs
 	// Conn states (zeros)
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
+	lastRead  time.Time // deadline of last read operation
+	lastWrite time.Time // deadline of last write operation
 }
 
 func (c *serverConn_) onGet(id int64, server webServer, gate webGate) {
@@ -290,7 +290,7 @@ type Request interface {
 
 	EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
-	ExamineRange(size int64) (satisfiable bool)
+	ExamineRanges(size int64) (ranges []Range, satisfiable bool)
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -366,7 +366,6 @@ type Request interface {
 	delHopHeaders()
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	getRanges() []rang
 	unsetHost()
 	takeContent() any
 	readContent() (p []byte, err error)
@@ -386,7 +385,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	// Stream states (stocks)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
-	ranges [2]rang // parsed range fields. at most 2 range fields are allowed. controlled by r.nRanges
+	ranges [2]Range // parsed range fields. at most 2 range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
@@ -1048,7 +1047,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 		r.headResult, r.failReason = StatusBadRequest, "empty range-set"
 		return false
 	}
-	var from, last int64 // inclusive
+	var from, last int64 // [from-last], inclusive, begins from 0
 	state := 0           // select int-range or suffix-range
 	for i, n := 0, len(rangeSet); i < n; i++ {
 		b := rangeSet[i]
@@ -1160,7 +1159,7 @@ func (r *serverRequest_) _addRange(from int64, last int64) bool {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
 	}
-	r.ranges[r.nRanges] = rang{from, last}
+	r.ranges[r.nRanges] = Range{from, last}
 	r.nRanges++
 	return true
 }
@@ -1522,12 +1521,6 @@ func (r *serverRequest_) UnsafeUserAgent() []byte {
 	}
 	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
-func (r *serverRequest_) getRanges() []rang {
-	if r.nRanges == 0 {
-		return nil
-	}
-	return r.ranges[:r.nRanges]
-}
 
 func (r *serverRequest_) addCookie(cookie *pair) bool { // as prime
 	if edge, ok := r._addPrime(cookie); ok {
@@ -1698,9 +1691,14 @@ func (r *serverRequest_) _evalIfRangeTime(modTime int64) (pass bool) {
 	return r.unixTimes.ifRange == modTime
 }
 
-func (r *serverRequest_) ExamineRange(size int64) (satisfiable bool) {
-	// TODO
-	return false
+func (r *serverRequest_) ExamineRanges(size int64) (ranges []Range, satisfiable bool) {
+	for i := int8(0); i < r.nRanges; i++ {
+		// TODO: examinations
+		if rang := r.ranges[i]; rang.last >= size {
+			return nil, false
+		}
+	}
+	return r.ranges[:r.nRanges], true
 }
 
 func (r *serverRequest_) unsetHost() { // used by proxies

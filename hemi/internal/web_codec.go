@@ -84,6 +84,10 @@ type webConn interface {
 
 // webConn_ is the mixin for serverConn_ and clientConn_.
 type webConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
 	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
 	usedStreams atomic.Int32 // num of streams served
 	broken      atomic.Bool  // is conn broken?
@@ -1738,6 +1742,10 @@ func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeou
 
 func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
+func (r *webOut_) SendBytesRanges(content []byte, ranges []Range) error {
+	// TODO
+	return nil
+}
 func (r *webOut_) SendJSON(content any) error {
 	// TODO: optimize performance
 	r.appendContentType(bytesTypeJSON)
@@ -1758,6 +1766,10 @@ func (r *webOut_) SendFile(contentPath string) error {
 		return err
 	}
 	return r.sendFile(file, info, true) // true to close on end
+}
+func (r *webOut_) SendFileRanges(contentPath string, ranges []Range) error {
+	// TODO
+	return nil
 }
 
 func (r *webOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }
@@ -1860,6 +1872,10 @@ func (r *webOut_) sendText(content []byte) error {
 	r.contentSize = int64(len(content)) // original size, may be revised
 	return r.shell.doSend()
 }
+func (r *webOut_) sendTextRanges(content []byte, ranges []Range) error {
+	// TODO
+	return nil
+}
 func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
 		return err
@@ -1868,6 +1884,10 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // original size, may be revised
 	return r.shell.doSend()
+}
+func (r *webOut_) sendFileRanges(content *os.File, info os.FileInfo, shut bool, ranges []Range) error {
+	// TODO
+	return nil
 }
 func (r *webOut_) _beforeSend() error {
 	if r.isSent {

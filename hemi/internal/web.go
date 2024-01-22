@@ -44,7 +44,7 @@ type Webapp struct {
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
 	settings             map[string]string // webapp settings defined and used by users
 	settingsLock         sync.RWMutex      // protects settings
-	isDefault            bool              // is this webapp a default webapp?
+	isDefault            bool              // is this webapp the default webapp of its belonging web servers?
 	proxyOnly            bool              // is this webapp a proxy-only webapp?
 	exactHostnames       [][]byte          // like: ("example.com")
 	suffixHostnames      [][]byte          // like: ("*.example.com")

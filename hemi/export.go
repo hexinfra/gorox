@@ -187,6 +187,7 @@ type (
 	Handle   = internal.Handle
 	Router   = internal.Router
 	Reviser  = internal.Reviser
+	Range    = internal.Range
 	Piece    = internal.Piece
 	Socklet  = internal.Socklet
 	Rule     = internal.Rule

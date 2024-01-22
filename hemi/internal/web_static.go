@@ -203,7 +203,8 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	}
 
 	modTime := entry.info.ModTime().Unix()
-	etag, _ := resp.MakeETagFrom(modTime, entry.info.Size()) // with ""
+	size := entry.info.Size()
+	etag, _ := resp.MakeETagFrom(modTime, size) // with ""
 	const asOrigin = true
 	if status, normal := req.EvalPreconditions(modTime, etag, asOrigin); normal {
 		if h.developerMode {
@@ -212,8 +213,6 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			resp.SetLastModified(modTime)
 			resp.AddHeaderBytes(bytesETag, etag)
 		}
-		// TODO: uncomment the following line after we have implemented range requests
-		//resp.AddHeader(bytesAcceptRange, bytesBytes)
 		contentType := h.defaultType
 		filePath := risky.WeakString(openPath)
 		if p := strings.LastIndex(filePath, "."); p >= 0 {
@@ -222,17 +221,31 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 				contentType = mimeType
 			}
 		}
-		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
-		if entry.isSmall() {
-			if Debug() >= 2 {
-				Println("static send text")
+		// TODO: uncomment the following line after we have implemented range requests
+		//resp.AddHeaderBytes(bytesAcceptRange, bytesBytes)
+		if req.HasRanges() {
+			if ranges := req.ExamineRanges(size); ranges == nil {
+				// TODO: add content-range
+				resp.SendRangeNotSatisfiable(nil)
+			} else {
+				if len(ranges) == 1 { // only one part
+					resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+				} else { // multiple parts
+					resp.AddHeaderBytes(bytesContentType, bytesMultipartRanges)
+				}
+				if entry.isSmall() {
+					resp.sendTextRanges(entry.text, ranges)
+				} else {
+					resp.sendFileRanges(entry.file, entry.info, false, ranges)
+				}
 			}
-			resp.sendText(entry.text)
 		} else {
-			if Debug() >= 2 {
-				Println("static send file")
+			resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+			if entry.isSmall() {
+				resp.sendText(entry.text)
+			} else {
+				resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
 			}
-			resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
 		}
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)

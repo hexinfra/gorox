@@ -290,7 +290,9 @@ type Request interface {
 
 	EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
-	ExamineRanges(size int64) (ranges []Range, satisfiable bool)
+
+	HasRanges() bool
+	ExamineRanges(size int64) []Range
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -1691,14 +1693,15 @@ func (r *serverRequest_) _evalIfRangeTime(modTime int64) (pass bool) {
 	return r.unixTimes.ifRange == modTime
 }
 
-func (r *serverRequest_) ExamineRanges(size int64) (ranges []Range, satisfiable bool) {
+func (r *serverRequest_) HasRanges() bool { return false } // TODO, use r.nRanges
+func (r *serverRequest_) ExamineRanges(contentSize int64) []Range {
 	for i := int8(0); i < r.nRanges; i++ {
 		// TODO: examinations
-		if rang := r.ranges[i]; rang.last >= size {
-			return nil, false
+		if rang := r.ranges[i]; rang.last >= contentSize {
+			return nil
 		}
 	}
-	return r.ranges[:r.nRanges], true
+	return r.ranges[:r.nRanges]
 }
 
 func (r *serverRequest_) unsetHost() { // used by proxies
@@ -2602,6 +2605,7 @@ type Response interface {
 	SendForbidden(content []byte) error                      // 403
 	SendNotFound(content []byte) error                       // 404
 	SendMethodNotAllowed(allow string, content []byte) error // 405
+	SendRangeNotSatisfiable(content []byte) error            // 416
 	SendInternalServerError(content []byte) error            // 500
 	SendNotImplemented(content []byte) error                 // 501
 	SendBadGateway(content []byte) error                     // 502
@@ -2622,8 +2626,10 @@ type Response interface {
 	setConnectionClose()
 	copyHeadFrom(resp clientResponse, viaName []byte) bool // used by proxies
 	sendText(content []byte) error
+	sendTextRanges(content []byte, ranges []Range) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendChain() error                                             // content
+	sendFileRanges(content *os.File, info os.FileInfo, shut bool, ranges []Range) error
+	sendChain() error // content
 	echoHeaders() error
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
@@ -2746,6 +2752,9 @@ func (r *serverResponse_) SendNotFound(content []byte) error { // 404
 func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
 	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
+}
+func (r *serverResponse_) SendRangeNotSatisfiable(content []byte) error { // 416
+	return r.sendError(StatusRangeNotSatisfiable, content)
 }
 func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500
 	return r.sendError(StatusInternalServerError, content)

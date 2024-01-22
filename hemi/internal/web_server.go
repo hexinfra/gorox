@@ -308,7 +308,7 @@ type Request interface {
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 
 	HasContent() bool // true if content exists
-	IsUnsized() bool  // true if content exists and is not sized
+	IsVague() bool    // true if content exists and is not sized
 	Content() string
 
 	AddForm(name string, value string) bool
@@ -827,7 +827,7 @@ func (r *serverRequest_) examineHead() bool {
 			r.headResult, r.failReason = StatusLengthRequired, "POST and PUT must contain a content"
 			return false
 		}
-	} else { // content exists (sized or unsized)
+	} else { // content exists (sized or vague)
 		// Content is not allowed in some methods, according to RFC 7231.
 		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
 			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
@@ -1708,7 +1708,7 @@ func (r *serverRequest_) unsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
 
-func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsUnsized() }
+func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }
 func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
 func (r *serverRequest_) UnsafeContent() []byte {
 	if r.formKind == webFormMultipart { // loading multipart form into memory is not allowed!
@@ -1833,10 +1833,10 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
-		case tempFile: // [0, r.webapp.maxUploadContentSize]. case happens when sized content > 64K1, or content is unsized.
+		case tempFile: // [0, r.webapp.maxUploadContentSize]. case happens when sized content > 64K1, or content is vague.
 			r.contentFile = content.(*os.File)
 			if r.receivedSize == 0 {
-				return // unsized content can be empty
+				return // vague content can be empty
 			}
 			// We need a window to read and parse. An adaptive r.formWindow is used
 			if r.receivedSize <= _4K {
@@ -2633,8 +2633,8 @@ type Response interface {
 	echoHeaders() error
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
-	endUnsized() error
-	finalizeUnsized() error
+	endVague() error
+	finalizeVague() error
 	pass1xx(resp clientResponse) bool         // used by proxies
 	pass(resp webIn) error                    // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
@@ -2835,7 +2835,7 @@ func (r *serverResponse_) doEcho() error {
 	/*
 		if r.hasRevisers {
 			resp := r.shell.(Response)
-			for _, id := range r.revisers { // revise unsized content
+			for _, id := range r.revisers { // revise vague content
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}
@@ -2846,14 +2846,14 @@ func (r *serverResponse_) doEcho() error {
 	*/
 	return r.shell.echoChain()
 }
-func (r *serverResponse_) endUnsized() error {
+func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
 	/*
 		if r.hasRevisers {
 			resp := r.shell.(Response)
-			for _, id := range r.revisers { // finish unsized content
+			for _, id := range r.revisers { // finish vague content
 				if id == 0 { // id of effective reviser is ensured to be > 0
 					continue
 				}
@@ -2862,7 +2862,7 @@ func (r *serverResponse_) endUnsized() error {
 			}
 		}
 	*/
-	return r.shell.finalizeUnsized()
+	return r.shell.finalizeVague()
 }
 
 func (r *serverResponse_) copyHeadFrom(resp clientResponse, viaName []byte) bool { // used by proxies

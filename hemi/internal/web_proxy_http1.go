@@ -102,7 +102,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 			if !req1.copyTailFrom(req) {
 				stream1.markBroken()
 				err1 = webOutTrailerFailed
-			} else if err1 = req1.endUnsized(); err1 != nil {
+			} else if err1 = req1.endVague(); err1 != nil {
 				stream1.markBroken()
 			}
 		} else if hasTrailers {
@@ -110,8 +110,8 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 		}
 	} else if err1 = req1.pass(req); err1 != nil {
 		stream1.markBroken()
-	} else if req1.isUnsized() { // write last chunk and trailers (if exist)
-		if err1 = req1.endUnsized(); err1 != nil {
+	} else if req1.isVague() { // write last chunk and trailers (if exist)
+		if err1 = req1.endVague(); err1 != nil {
 			stream1.markBroken()
 		}
 	}

@@ -149,7 +149,7 @@ func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 // webIn is the interface for *http[1-3]Request, *hwebRequest, *H[1-3]Response, and *HResponse. Used as shell by webIn_.
 type webIn interface {
 	ContentSize() int64
-	IsUnsized() bool
+	IsVague() bool
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
 	HasTrailers() bool
@@ -180,8 +180,8 @@ type webIn_ struct { // incoming. needs parsing
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	recvTimeout    time.Duration // timeout to recv the whole message content
-	maxContentSize int64         // max content size allowed for current message. if content is unsized, size will be calculated on receiving
-	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: unsized content
+	maxContentSize int64         // max content size allowed for current message. if content is vague, size will be calculated on receiving
+	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
 	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat this message as response?
 	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
@@ -227,7 +227,7 @@ type webIn0 struct { // for fast reset, entirely
 	zVia             zone    // zone of via headers in r.primes. may not be continuous
 	contentReceived  bool    // is content received? if message has no content, it is true (received)
 	contentTextKind  int8    // kind of current r.contentText if it is text. see webContentTextXXX
-	receivedSize     int64   // bytes of currently received content. used by both sized & unsized content receiver
+	receivedSize     int64   // bytes of currently received content. used by both sized & vague content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
 	cFore            int32   // for parsing chunked elements. HTTP/1.1 chunked only
@@ -681,7 +681,7 @@ func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is unsized
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is vague
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -894,15 +894,15 @@ func (r *webIn_) determineContentMode() bool {
 			r.headResult, r.failReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}
-		r.contentSize = -2 // unsized
+		r.contentSize = -2 // vague
 	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
 		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
-		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as unsized
+		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as vague
 	}
 	return true
 }
-func (r *webIn_) markUnsized()    { r.contentSize = -2 }
-func (r *webIn_) IsUnsized() bool { return r.contentSize == -2 }
+func (r *webIn_) markVague()    { r.contentSize = -2 }
+func (r *webIn_) IsVague() bool { return r.contentSize == -2 }
 
 func (r *webIn_) ContentSize() int64 { return r.contentSize }
 func (r *webIn_) UnsafeContentLength() []byte {
@@ -938,16 +938,16 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = webContentTextPool
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		contentFile := content.(*os.File)
-		if r.receivedSize == 0 { // unsized content can has 0 size
+		if r.receivedSize == 0 { // vague content can has 0 size
 			r.contentText = r.input
 			r.contentTextKind = webContentTextInput
 		} else { // r.receivedSize > 0
-			if r.receivedSize <= _64K1 { // must be unsized content because sized content is a []byte if <= _64K1
+			if r.receivedSize <= _64K1 { // must be vague content because sized content is a []byte if <= _64K1
 				r.contentText = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
 				r.contentTextKind = webContentTextPool
-			} else { // r.receivedSize > 64K1, content can be sized or unsized. just alloc
+			} else { // r.receivedSize > 64K1, content can be sized or vague. just alloc
 				r.contentText = make([]byte, r.receivedSize)
 				r.contentTextKind = webContentTextMake
 			}
@@ -979,7 +979,7 @@ func (r *webIn_) takeContent() any { // used by proxies
 		r.contentText = content
 		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
 		return r.contentText[0:r.receivedSize]
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -992,7 +992,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 	switch content := r.recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is unsized.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		if content != fakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
@@ -1001,7 +1001,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or unsized content)
+func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webBroker().ReadTimeout())); err != nil {
 			return err
@@ -1020,7 +1020,7 @@ func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content 
 		}
 		r.receivedSize += int64(n)
 		return contentText // []byte, fetched from pool
-	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when unsized. save to tempFile and return the file
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when vague. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
 			return err
@@ -1538,7 +1538,7 @@ type webOut interface {
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	trailer(name []byte) (value []byte, ok bool)
-	finalizeUnsized() error
+	finalizeVague() error
 	passHeaders() error       // used by proxies
 	passBytes(p []byte) error // used by proxies
 }
@@ -1557,7 +1557,7 @@ type webOut_ struct { // outgoing. needs building
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message
-	contentSize int64         // info of outgoing content. -1: not set, -2: unsized, >=0: size
+	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // use webOut as request?
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
@@ -1671,10 +1671,10 @@ func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte
 	return hash, true, buffer[:n]
 }
 
-func (r *webOut_) markUnsized()    { r.contentSize = -2 }
-func (r *webOut_) isUnsized() bool { return r.contentSize == -2 }
-func (r *webOut_) markSent()       { r.isSent = true }
-func (r *webOut_) IsSent() bool    { return r.isSent }
+func (r *webOut_) markVague()    { r.contentSize = -2 }
+func (r *webOut_) isVague() bool { return r.contentSize == -2 }
+func (r *webOut_) markSent()     { r.isSent = true }
+func (r *webOut_) IsSent() bool  { return r.isSent }
 
 func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
@@ -1807,7 +1807,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 
 func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content directly
 	pass := r.shell.passBytes
-	if in.IsUnsized() || r.hasRevisers { // if we need to revise, we always use unsized no matter the original content is sized or unsized
+	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
 	} else { // in is sized and there are no revisers, use passBytes
 		r.isSent = true
@@ -1842,7 +1842,7 @@ func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content dire
 }
 func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
 	if contentText, ok := content.([]byte); ok {
-		if hasTrailers { // if (in the future) we supports taking unsized content in buffer, this happens
+		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
 			return r.echoText(contentText)
 		} else {
 			return r.sendText(contentText)
@@ -1853,7 +1853,7 @@ func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies
 			contentFile.Close()
 			return err
 		}
-		if hasTrailers { // we must use unsized
+		if hasTrailers { // we must use vague
 			return r.echoFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
 		} else {
 			return r.sendFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
@@ -1937,7 +1937,7 @@ func (r *webOut_) _beforeEcho() error {
 		return webOutMixedContent
 	}
 	r.markSent()
-	r.markUnsized()
+	r.markVague()
 	/*
 		if r.hasRevisers {
 			r.shell.beforeRevise()

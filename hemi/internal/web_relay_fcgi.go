@@ -10,7 +10,7 @@
 // though FCGI can do that through its framing protocol. Perhaps most FCGI
 // applications don't implement this feature either.
 
-// In response side, FCGI applications mostly use "unsized" output.
+// In response side, FCGI applications mostly use "vague" output.
 
 // To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 
@@ -163,7 +163,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) { // rever
 	)
 
 	hasContent := req.HasContent()
-	if hasContent && (h.bufferClientContent || req.IsUnsized()) { // including size 0
+	if hasContent && (h.bufferClientContent || req.IsVague()) { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
 			// exchan is marked as broken
@@ -196,7 +196,7 @@ func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) { // rever
 		resp.SendBadGateway(nil)
 		return true
 	}
-	if hasContent && !h.bufferClientContent && !req.IsUnsized() {
+	if hasContent && !h.bufferClientContent && !req.IsVague() {
 		fErr = fReq.pass(req)
 	} else { // nil, []byte, tempFile
 		fErr = fReq.post(content)
@@ -537,7 +537,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. unsized content must use post(), as we don't use request-side chunking
+func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. vague content must use post(), as we don't use request-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -575,7 +575,7 @@ func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. 
 	}
 	return r._writeBytes(fcgiEmptyStdin)
 }
-func (r *fcgiRequest) post(content any) error { // nil, []byte, and *os.File. for bufferClientContent or unsized Request content
+func (r *fcgiRequest) post(content any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
 	if contentText, ok := content.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
 	} else if contentFile, ok := content.(*os.File); ok { // file
@@ -1059,8 +1059,8 @@ func (r *fcgiResponse) addPrime(prime *pair) bool {
 
 func (r *fcgiResponse) Status() int16 { return r.status }
 
-func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is unsized by default. we trust in framing protocol
-func (r *fcgiResponse) IsUnsized() bool    { return true } // fcgi is unsized by default. we trust in framing protocol
+func (r *fcgiResponse) ContentSize() int64 { return -2 }   // fcgi is vague by default. we trust in framing protocol
+func (r *fcgiResponse) IsVague() bool      { return true } // fcgi is vague by default. we trust in framing protocol
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
@@ -1204,7 +1204,7 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 func (r *fcgiResponse) cleanInput() {
 	if r.hasContent() {
 		r.imme.set(r.pFore, r.inputEdge)
-		// We don't know the size of unsized content. Let content receiver to decide & clean r.input.
+		// We don't know the size of vague content. Let content receiver to decide & clean r.input.
 	} else if _, _, err := r.fcgiRecvStdout(); err != io.EOF { // no content. must receive an endRequest
 		r.headResult, r.failReason = StatusBadRequest, "bad endRequest"
 	}
@@ -1218,7 +1218,7 @@ func (r *fcgiResponse) hasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of unsized content
+func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r.recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)

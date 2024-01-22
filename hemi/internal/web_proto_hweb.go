@@ -80,7 +80,7 @@ exchan=1 (sized output):
     <-- record=DATA exchanID=1 bodySize=6     body=[hello,]
     <-- record=DATA exchanID=1 bodySize=6     body=[world!] // endMessage=1
 
-exchan=2 (unsized output):
+exchan=2 (vague output):
 
     --> record=HEAD exchanID=2 bodySize=?     body=[:method=POST :target=/abc?d=e host=example.com:8081 content-length=90]
     --> record=DATA exchanID=2 bodySize=90    body=[...90...] // endMessage=1

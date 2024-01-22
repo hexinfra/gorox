@@ -493,8 +493,8 @@ func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *htt
 	webapp.dispatchHandlet(req, resp)
 	if !resp.IsSent() { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
-	} else if resp.isUnsized() { // end unsized content and write trailers (if exist)
-		resp.endUnsized()
+	} else if resp.isVague() { // end vague content and write trailers (if exist)
+		resp.endVague()
 	}
 	if !req.contentReceived { // content exists but is not used, we receive and drop it here
 		req.dropContent()
@@ -1022,7 +1022,7 @@ func (r *http1Request) cleanInput() {
 		}
 		return
 	}
-	// content exists (sized or unsized)
+	// content exists (sized or vague)
 	r.imme.set(r.pFore, r.inputEdge)
 	if r.contentSize >= 0 { // sized mode
 		immeSize := int64(r.imme.size())
@@ -1043,8 +1043,8 @@ func (r *http1Request) cleanInput() {
 		if r.contentSize == 0 {
 			r.formReceived = true // no content means no form, so mark it as "received"
 		}
-	} else { // unsized mode
-		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.
+	} else { // vague mode
+		// We don't know the size of vague content. Let chunked receivers to decide & clean r.input.
 	}
 }
 
@@ -1223,7 +1223,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	}
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
-			if !r.isUnsized() { // content-length: >=0\r\n
+			if !r.isVague() { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
@@ -1247,9 +1247,9 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
 }
-func (r *http1Response) finalizeUnsized() error {
+func (r *http1Response) finalizeVague() error {
 	if r.request.VersionCode() == Version1_1 {
-		return r.finalizeUnsized1()
+		return r.finalizeVague1()
 	}
 	return nil // HTTP/1.0 does nothing.
 }

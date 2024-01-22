@@ -403,7 +403,7 @@ func (r *http3Response) passBytes(p []byte) error { return r.passBytes3(p) }
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *http3Response) finalizeUnsized() error {
+func (r *http3Response) finalizeVague() error {
 	// TODO
 	return nil
 }

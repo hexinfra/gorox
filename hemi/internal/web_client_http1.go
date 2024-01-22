@@ -505,7 +505,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	}
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
-			if r.isUnsized() { // transfer-encoding: chunked\r\n
+			if r.isVague() { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for length
@@ -521,7 +521,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *H1Request) finalizeUnsized() error { return r.finalizeUnsized1() }
+func (r *H1Request) finalizeVague() error { return r.finalizeVague1() }
 
 func (r *H1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
@@ -655,7 +655,7 @@ func (r *H1Response) cleanInput() {
 		}
 		return
 	}
-	// content exists (sized or unsized)
+	// content exists (sized or vague)
 	r.imme.set(r.pFore, r.inputEdge)
 	if r.contentSize >= 0 { // sized mode
 		if immeSize := int64(r.imme.size()); immeSize >= r.contentSize {
@@ -667,8 +667,8 @@ func (r *H1Response) cleanInput() {
 			r.contentText = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
 			r.contentTextKind = webContentTextInput
 		}
-	} else { // unsized mode
-		// We don't know the size of unsized content. Let chunked receivers to decide & clean r.input.
+	} else { // vague mode
+		// We don't know the size of vague content. Let chunked receivers to decide & clean r.input.
 	}
 }
 

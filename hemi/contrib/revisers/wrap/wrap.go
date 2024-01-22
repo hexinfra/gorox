@@ -60,20 +60,20 @@ func (r *wrapReviser) Rank() int8 { return r.rank }
 func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // unsized
+func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *wrapReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
 	return true
 }
-func (r *wrapReviser) FinishDraw(req Request, resp Response) { // unsized
+func (r *wrapReviser) FinishDraw(req Request, resp Response) { // vague
 	// TODO
 }
 
 func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // unsized
+func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 	if Debug() >= 2 {
 		Println("BeforeEcho")
@@ -86,7 +86,7 @@ func (r *wrapReviser) OnOutput(req Request, resp Response, chain *Chain) { // si
 		chain.PushTail(piece)
 	}
 }
-func (r *wrapReviser) FinishEcho(req Request, resp Response) { // unsized
+func (r *wrapReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO
 	if Debug() >= 2 {
 		Println("FinishEcho")

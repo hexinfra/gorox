@@ -403,7 +403,7 @@ func (r *H2Request) passBytes(p []byte) error { return r.passBytes2(p) }
 func (r *H2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *H2Request) finalizeUnsized() error {
+func (r *H2Request) finalizeVague() error {
 	// TODO
 	return nil
 }

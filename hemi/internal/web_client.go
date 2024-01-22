@@ -239,11 +239,11 @@ func (r *clientRequest_) doEcho() error {
 	defer r.chain.free()
 	return r.shell.echoChain()
 }
-func (r *clientRequest_) endUnsized() error {
+func (r *clientRequest_) endVague() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	return r.shell.finalizeUnsized()
+	return r.shell.finalizeVague()
 }
 
 func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool { // used by proxies
@@ -817,7 +817,7 @@ func (r *clientResponse_) HasContent() bool {
 	}
 	// All other responses do include content, although that content might
 	// be of zero length.
-	return r.contentSize >= 0 || r.IsUnsized()
+	return r.contentSize >= 0 || r.IsVague()
 }
 func (r *clientResponse_) Content() string       { return string(r.unsafeContent()) }
 func (r *clientResponse_) UnsafeContent() []byte { return r.unsafeContent() }

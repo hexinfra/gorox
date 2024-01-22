@@ -60,24 +60,24 @@ func (r *ssiReviser) Rank() int8 { return r.rank }
 func (r *ssiReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *ssiReviser) BeforeDraw(req Request, resp Response) { // unsized
+func (r *ssiReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *ssiReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
 	return true
 }
-func (r *ssiReviser) FinishDraw(req Request, resp Response) { // unsized
+func (r *ssiReviser) FinishDraw(req Request, resp Response) { // vague
 	// TODO
 }
 
 func (r *ssiReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *ssiReviser) BeforeEcho(req Request, resp Response) { // unsized
+func (r *ssiReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *ssiReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
 }
-func (r *ssiReviser) FinishEcho(req Request, resp Response) { // unsized
+func (r *ssiReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO
 }

@@ -71,23 +71,23 @@ func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
 func (r *gzipReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
 	return true
 }
-func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // unsized
+func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // vague
 	return
 }
-func (r *gzipReviser) FinishDraw(req Request, resp Response) { // unsized
+func (r *gzipReviser) FinishDraw(req Request, resp Response) { // vague
 	return
 }
 
 func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // unsized
+func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *gzipReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
 	// TODO
 }
-func (r *gzipReviser) FinishEcho(req Request, resp Response) { // unsized
+func (r *gzipReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO
 }
 

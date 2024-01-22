@@ -102,7 +102,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 			if !req2.copyTailFrom(req) {
 				stream2.markBroken()
 				err2 = webOutTrailerFailed
-			} else if err2 = req2.endUnsized(); err2 != nil {
+			} else if err2 = req2.endVague(); err2 != nil {
 				stream2.markBroken()
 			}
 		} else if hasTrailers {
@@ -110,8 +110,8 @@ func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 		}
 	} else if err2 = req2.pass(req); err2 != nil {
 		stream2.markBroken()
-	} else if req2.isUnsized() { // write last chunk and trailers (if exist)
-		if err2 = req2.endUnsized(); err2 != nil {
+	} else if req2.isVague() { // write last chunk and trailers (if exist)
+		if err2 = req2.endVague(); err2 != nil {
 			stream2.markBroken()
 		}
 	}

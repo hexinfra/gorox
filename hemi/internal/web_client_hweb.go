@@ -310,7 +310,7 @@ func (r *HRequest) passBytes(p []byte) error { return r.passBytesH(p) }
 func (r *HRequest) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *HRequest) finalizeUnsized() error {
+func (r *HRequest) finalizeVague() error {
 	// TODO
 	return nil
 }

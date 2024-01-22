@@ -327,7 +327,7 @@ func (r *hwebResponse) passBytes(p []byte) error { return r.passBytesH(p) }
 func (r *hwebResponse) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *hwebResponse) finalizeUnsized() error {
+func (r *hwebResponse) finalizeVague() error {
 	// TODO
 	return nil
 }

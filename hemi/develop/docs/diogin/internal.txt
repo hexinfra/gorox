@@ -55,8 +55,8 @@ NOTES
 
   * messages are composed of control, headers, [content, [trailers]].
   * control & headers is called head, and it must be small (<=16K).
-  * contents, if exist (perhaps of zero size), may be large (>64K1) or small (<=64K1), sized or unsized.
-  * trailers must be small (<=16K), and only exist when contents exist and are unsized.
+  * contents, if exist (perhaps of zero size), may be large (>64K1) or small (<=64K1), sized or vague.
+  * trailers must be small (<=16K), and only exist when contents exist and are vague.
   * incoming messages need parsing.
   * outgoing messages need building.
   * adding headers to incoming messages: apply + check.

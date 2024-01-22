@@ -82,7 +82,7 @@ func (r *webOut_) trailers2() []byte {
 
 func (r *webOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
 
-func (r *webOut_) finalizeUnsized2() error {
+func (r *webOut_) finalizeVague2() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -95,7 +95,7 @@ func (r *webOut_) writeHeaders2() error { // used by echo and pass
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *webOut_) writePiece2(piece *Piece, unsized bool) error {
+func (r *webOut_) writePiece2(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }

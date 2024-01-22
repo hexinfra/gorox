@@ -1011,7 +1011,7 @@ func (r *http2Response) passBytes(p []byte) error { return r.passBytes2(p) }
 func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *http2Response) finalizeUnsized() error {
+func (r *http2Response) finalizeVague() error {
 	// TODO
 	return nil
 }

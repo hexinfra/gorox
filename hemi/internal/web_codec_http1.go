@@ -183,8 +183,8 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 func (r *webIn_) readContent1() (p []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContent1()
-	} else { // unsized. must be -2. -1 (no content) is excluded priorly
-		return r._readUnsizedContent1()
+	} else { // vague. must be -2. -1 (no content) is excluded priorly
+		return r._readVagueContent1()
 	}
 }
 func (r *webIn_) _readSizedContent1() (p []byte, err error) {
@@ -224,7 +224,7 @@ func (r *webIn_) _readSizedContent1() (p []byte, err error) {
 	}
 	return nil, err
 }
-func (r *webIn_) _readUnsizedContent1() (p []byte, err error) {
+func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
@@ -321,7 +321,7 @@ func (r *webIn_) _readUnsizedContent1() (p []byte, err error) {
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
-			r.cFore++ // now the whole unsized content is received and r.cFore is immediately after the unsized content.
+			r.cFore++ // now the whole vague content is received and r.cFore is immediately after the vague content.
 			// Now we have found the end of current message, so determine r.inputNext and r.inputEdge.
 			if r.cFore < r.chunkEdge { // still has data, stream is pipelined
 				r.overChunked = true                            // so r.bodyWindow will be used as r.input on stream ends
@@ -739,7 +739,7 @@ func (r *webOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Head
 
 func (r *webOut_) passBytes1(p []byte) error { return r.writeBytes1(p) }
 
-func (r *webOut_) finalizeUnsized1() error {
+func (r *webOut_) finalizeVague1() error {
 	if r.nTrailers == 1 { // no trailers
 		r.vector = r.fixedVector[0:1]
 		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n

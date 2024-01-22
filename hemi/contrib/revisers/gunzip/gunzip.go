@@ -53,24 +53,24 @@ func (r *gunzipReviser) Rank() int8 { return RankGunzip }
 func (r *gunzipReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *gunzipReviser) BeforeDraw(req Request, resp Response) { // unsized
+func (r *gunzipReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *gunzipReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
 	return true
 }
-func (r *gunzipReviser) FinishDraw(req Request, resp Response) { // unsized
+func (r *gunzipReviser) FinishDraw(req Request, resp Response) { // vague
 	// TODO
 }
 
 func (r *gunzipReviser) BeforeSend(req Request, resp Response) { // sized
 	// TODO
 }
-func (r *gunzipReviser) BeforeEcho(req Request, resp Response) { // unsized
+func (r *gunzipReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
 func (r *gunzipReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
 }
-func (r *gunzipReviser) FinishEcho(req Request, resp Response) { // unsized
+func (r *gunzipReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO
 }

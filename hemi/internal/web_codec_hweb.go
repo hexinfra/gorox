@@ -63,7 +63,7 @@ func (r *webOut_) trailersH() []byte {
 
 func (r *webOut_) passBytesH(p []byte) error { return r.writeBytesH(p) }
 
-func (r *webOut_) finalizeUnsizedH() error {
+func (r *webOut_) finalizeVagueH() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -75,7 +75,7 @@ func (r *webOut_) writeHeadersH() error { // used by echo and pass
 	// TODO
 	return nil
 }
-func (r *webOut_) writePieceH(piece *Piece, unsized bool) error {
+func (r *webOut_) writePieceH(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }

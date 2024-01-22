@@ -369,7 +369,7 @@ func (r *H3Request) passBytes(p []byte) error { return r.passBytes3(p) }
 func (r *H3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *H3Request) finalizeUnsized() error {
+func (r *H3Request) finalizeVague() error {
 	// TODO
 	return nil
 }

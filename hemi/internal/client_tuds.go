@@ -115,19 +115,19 @@ func (b *TUDSBackend) createNode(id int32) *tudsNode {
 	return node
 }
 
-func (b *TUDSBackend) Dial() (wireConn, error) { return b.DialTUDS() }
+func (b *TUDSBackend) Dial() (wConn, error) { return b.DialTUDS() }
 func (b *TUDSBackend) DialTUDS() (*XConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *TUDSBackend) FetchConn() (wireConn, error) { return b.FetchXConn() }
+func (b *TUDSBackend) FetchConn() (wConn, error) { return b.FetchXConn() }
 func (b *TUDSBackend) FetchXConn() (*XConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 
-func (b *TUDSBackend) StoreConn(conn wireConn) { b.StoreXConn(conn.(*XConn)) }
+func (b *TUDSBackend) StoreConn(conn wConn) { b.StoreXConn(conn.(*XConn)) }
 func (b *TUDSBackend) StoreXConn(xConn *XConn) {
 	xConn.node.storeConn(xConn)
 }

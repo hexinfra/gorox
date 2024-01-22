@@ -17,7 +17,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -164,15 +163,17 @@ func (g *webGate_) onConnClosed() {
 
 // serverConn is the interface for *http[1-3]Conn and *hwebConn.
 type serverConn interface {
+	// Imports
+	webConn
+	// Methods
 	serve() // goroutine
 	getServer() webServer
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
-	isBroken() bool
-	markBroken()
 }
 
 // serverConn_ is the mixin for http[1-3]Conn and hwebConn.
 type serverConn_ struct {
+	// Mixins
+	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -182,9 +183,6 @@ type serverConn_ struct {
 	// Conn states (zeros)
 	lastRead    time.Time    // deadline of last read operation
 	lastWrite   time.Time    // deadline of last write operation
-	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
-	usedStreams atomic.Int32 // num of streams served
-	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *serverConn_) onGet(id int64, server webServer, gate webGate) {
@@ -208,9 +206,6 @@ func (c *serverConn_) getGate() webGate     { return c.gate }
 func (c *serverConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *serverConn_) isBroken() bool { return c.broken.Load() }
-func (c *serverConn_) markBroken()    { c.broken.Store(true) }
 
 // serverStream_ is the mixin for http[1-3]Stream and hwebExchan.
 type serverStream_ struct {
@@ -295,6 +290,7 @@ type Request interface {
 
 	EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
+	ExamineRange(size int64) (satisfiable bool)
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -1702,6 +1698,11 @@ func (r *serverRequest_) _evalIfRangeTime(modTime int64) (pass bool) {
 	return r.unixTimes.ifRange == modTime
 }
 
+func (r *serverRequest_) ExamineRange(size int64) (satisfiable bool) {
+	// TODO
+	return false
+}
+
 func (r *serverRequest_) unsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
@@ -2721,8 +2722,7 @@ func (r *serverResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, b
 	etag := p[1:]
 	n := i64ToHex(modTime, etag)
 	etag[n] = '-'
-	n++
-	if n > 13 {
+	if n++; n > 13 {
 		return nil, false
 	}
 	n = 1 + n + i64ToHex(fileSize, etag[n:])

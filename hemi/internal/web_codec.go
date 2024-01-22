@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -73,6 +74,23 @@ func (b *webBroker_) onPrepare(shell Component) {
 func (b *webBroker_) RecvTimeout() time.Duration { return b.recvTimeout }
 func (b *webBroker_) SendTimeout() time.Duration { return b.sendTimeout }
 func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
+
+// webConn is the interface for serverConn and clientConn.
+type webConn interface {
+	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
+	isBroken() bool
+	markBroken()
+}
+
+// webConn_ is the mixin for serverConn_ and clientConn_.
+type webConn_ struct {
+	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
+	usedStreams atomic.Int32 // num of streams served
+	broken      atomic.Bool  // is conn broken?
+}
+
+func (c *webConn_) isBroken() bool { return c.broken.Load() }
+func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
 // webStream is the interface for *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, and *HExchan.
 type webStream interface {
@@ -1492,7 +1510,7 @@ func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming cont
 
 var ( // web incoming message errors
 	webInBadChunk = errors.New("bad chunk")
-	webInTooSlow  = errors.New("http incoming too slow")
+	webInTooSlow  = errors.New("web incoming too slow")
 )
 
 // webOut is the interface for *http[1-3]Response, *hwebResponse, *H[1-3]Request, and *HRequest. Used as shell by webOut_.
@@ -1684,7 +1702,7 @@ func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) 
 	if unixTime < 0 {
 		return false
 	}
-	if *pUnixTime == -2 { // set through general api
+	if *pUnixTime == -2 { // was set through general api, must delete it
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}

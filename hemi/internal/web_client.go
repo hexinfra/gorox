@@ -10,7 +10,6 @@ package internal
 import (
 	"bytes"
 	"os"
-	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -114,23 +113,21 @@ func (n *webNode_) setAddress(address string) {
 
 // clientConn is the interface for *H[1-3]Conn and *HConn.
 type clientConn interface {
+	// Imports
+	webConn
+	// Methods
 	getClient() webClient
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
-	isBroken() bool
-	markBroken()
 }
 
 // clientConn_ is the mixin for H[1-3]Conn and HConn.
 type clientConn_ struct {
 	// Mixins
 	Conn_
+	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	counter     atomic.Int64 // used to make temp name
-	usedStreams atomic.Int32 // how many streams has been used?
-	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *clientConn_) onGet(id int64, client webClient) {
@@ -152,9 +149,6 @@ func (c *clientConn_) reachLimit() bool {
 func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *clientConn_) isBroken() bool { return c.broken.Load() }
-func (c *clientConn_) markBroken()    { c.broken.Store(true) }
 
 // clientStream_ is the mixin for H[1-3]Stream and HExchan.
 type clientStream_ struct {
@@ -200,8 +194,8 @@ type clientRequest0 struct { // for fast reset, entirely
 	indexes struct {
 		host              uint8
 		ifModifiedSince   uint8
-		ifRange           uint8
 		ifUnmodifiedSince uint8
+		ifRange           uint8
 	}
 }
 
@@ -374,11 +368,11 @@ func (r *clientRequest_) appendHost(host []byte) (ok bool) {
 func (r *clientRequest_) appendIfModifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
-func (r *clientRequest_) appendIfRange(ifRange []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
-}
 func (r *clientRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
+}
+func (r *clientRequest_) appendIfRange(ifRange []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 
 func (r *clientRequest_) removeHeader(hash uint16, name []byte) bool {
@@ -397,11 +391,11 @@ func (r *clientRequest_) deleteHost() (deleted bool) {
 func (r *clientRequest_) deleteIfModifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
-func (r *clientRequest_) deleteIfRange() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.ifRange)
-}
 func (r *clientRequest_) deleteIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+}
+func (r *clientRequest_) deleteIfRange() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
 func (r *clientRequest_) copyTailFrom(req Request) bool { // used by proxies

@@ -30,10 +30,10 @@ type uwsgiRelay struct {
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage      // current stage
-	webapp  *Webapp     // the webapp to which the relay belongs
-	backend wireBackend // the *TCPSBackend or *TUDSBackend to pass to
-	cacher  Cacher      // the cacher which is used by this relay
+	stage   *Stage   // current stage
+	webapp  *Webapp  // the webapp to which the relay belongs
+	backend wBackend // the *TCPSBackend or *TUDSBackend to pass to
+	cacher  Cacher   // the cacher which is used by this relay
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -58,8 +58,8 @@ func (h *uwsgiRelay) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if wireBackend, ok := backend.(wireBackend); ok {
-				h.backend = wireBackend
+			} else if wBackend, ok := backend.(wBackend); ok {
+				h.backend = wBackend
 			} else {
 				UseExitf("incorrect backend '%s' for uwsgiRelay, must be TCPSBackend or TUDSBackend\n", name)
 			}
@@ -128,7 +128,7 @@ func (h *uwsgiRelay) Handle(req Request, resp Response) (handled bool) { // reve
 // poolUWSGIExchan
 var poolUWSGIExchan sync.Pool
 
-func getUWSGIExchan(relay *uwsgiRelay, conn wireConn) *uwsgiExchan {
+func getUWSGIExchan(relay *uwsgiRelay, conn wConn) *uwsgiExchan {
 	var exchan *uwsgiExchan
 	if x := poolUWSGIExchan.Get(); x == nil {
 		exchan = new(uwsgiExchan)
@@ -154,7 +154,7 @@ type uwsgiExchan struct {
 	response uwsgiResponse // the uwsgi response
 }
 
-func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn wireConn) {
+func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn wConn) {
 }
 func (x *uwsgiExchan) onEnd() {
 }

@@ -39,6 +39,31 @@ type uClient interface {
 	// Methods
 }
 
+// wBackend is the interface for TCPSBackend and TUDSBackend.
+type wBackend interface {
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	Dial() (wConn, error)
+	FetchConn() (wConn, error)
+	StoreConn(conn wConn)
+}
+
+// wConn is the interface for TConn and XConn.
+type wConn interface {
+	SetWriteDeadline(deadline time.Time) error
+	SetReadDeadline(deadline time.Time) error
+	Write(p []byte) (n int, err error)
+	Writev(vector *net.Buffers) (int64, error)
+	Read(p []byte) (n int, err error)
+	ReadFull(p []byte) (n int, err error)
+	ReadAtLeast(p []byte, min int) (n int, err error)
+	CloseWrite() error
+	Close() error
+	MakeTempName(p []byte, unixTime int64) (from int, edge int)
+	IsBroken() bool
+	MarkBroken()
+}
+
 // client is the interface for outgates and backends.
 type client interface {
 	// Imports
@@ -167,15 +192,6 @@ type Backend interface {
 	client
 	// Methods
 	Maintain() // goroutine
-}
-
-// wireBackend
-type wireBackend interface {
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	Dial() (wireConn, error)
-	FetchConn() (wireConn, error)
-	StoreConn(conn wireConn)
 }
 
 // Backend_ is the mixin for backends.
@@ -365,22 +381,6 @@ type Conn interface {
 	setNext(next Conn)
 	isAlive() bool
 	closeConn()
-}
-
-// wireConn
-type wireConn interface {
-	SetWriteDeadline(deadline time.Time) error
-	SetReadDeadline(deadline time.Time) error
-	Write(p []byte) (n int, err error)
-	Writev(vector *net.Buffers) (int64, error)
-	Read(p []byte) (n int, err error)
-	ReadFull(p []byte) (n int, err error)
-	ReadAtLeast(p []byte, min int) (n int, err error)
-	CloseWrite() error
-	Close() error
-	MakeTempName(p []byte, unixTime int64) (from int, edge int)
-	IsBroken() bool
-	MarkBroken()
 }
 
 // Conn_ is the mixin for client conns.

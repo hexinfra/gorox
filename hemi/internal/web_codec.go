@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web incoming and outgoing messages implementation.
+// General Web incoming and outgoing messages implementation. See RFC 9110 and 9111.
 
 package internal
 
@@ -88,8 +88,8 @@ type webConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	counter     atomic.Int64 // together with id, used to generate a random number as uploaded file's path
-	usedStreams atomic.Int32 // num of streams served
+	counter     atomic.Int64 // can be used to generate a random number
+	usedStreams atomic.Int32 // num of streams served or used
 	broken      atomic.Bool  // is conn broken?
 }
 
@@ -1575,8 +1575,8 @@ type webOut0 struct { // for fast reset, entirely
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
-	oContentType  uint8  // position of content-type in r.edges
-	oDate         uint8  // position of date in r.edges
+	iContentType  uint8  // position of content-type in r.edges
+	iDate         uint8  // position of date in r.edges
 }
 
 func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
@@ -1677,14 +1677,14 @@ func (r *webOut_) markSent()       { r.isSent = true }
 func (r *webOut_) IsSent() bool    { return r.isSent }
 
 func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
-	return r._appendSingleton(&r.oContentType, bytesContentType, contentType)
+	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
 func (r *webOut_) appendDate(date []byte) (ok bool) {
-	return r._appendSingleton(&r.oDate, bytesDate, date)
+	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 
-func (r *webOut_) deleteContentType() (deleted bool) { return r._deleteSingleton(&r.oContentType) }
-func (r *webOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.oDate) }
+func (r *webOut_) deleteContentType() (deleted bool) { return r._deleteSingleton(&r.iContentType) }
+func (r *webOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
 
 func (r *webOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
 	if *pIndex > 0 || !r.shell.addHeader(name, value) {
@@ -1740,7 +1740,11 @@ func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 
 func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
+func (r *webOut_) Send(content string) error { return r.sendText(risky.ConstBytes(content)) }
+func (r *webOut_) SendRanges(content string, ranges []Range) error {
+	// TODO
+	return nil
+}
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
 func (r *webOut_) SendBytesRanges(content []byte, ranges []Range) error {
 	// TODO

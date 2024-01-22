@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/1 client implementation.
+// HTTP/1 client implementation. See RFC 9112.
 
 // Only HTTP/1.1 is used. For simplicity, HTTP/1.1 pipelining is not used.
 
@@ -514,7 +514,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			}
 		}
 		// content-type: application/octet-stream\r\n
-		if r.oContentType == 0 {
+		if r.iContentType == 0 {
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
 		}
 	}

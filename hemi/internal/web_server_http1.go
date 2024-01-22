@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/1 server implementation.
+// HTTP/1 server implementation. See RFC 9112.
 
 // Both HTTP/1.0 and HTTP/1.1 are supported. For simplicity, HTTP/1.1 pipelining, which is rarely used, is supported but not optimized.
 
@@ -1210,7 +1210,7 @@ func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.oDate == 0 {
+	if r.iDate == 0 {
 		r.fieldsEdge += uint16(r.stream.webBroker().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -1237,7 +1237,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
-		if r.oContentType == 0 {
+		if r.iContentType == 0 {
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}

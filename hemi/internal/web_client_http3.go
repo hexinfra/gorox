@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/3 client implementation.
+// HTTP/3 client implementation. See RFC 9114 and 9204.
 
 // For simplicity, HTTP/3 Server Push is not supported.
 

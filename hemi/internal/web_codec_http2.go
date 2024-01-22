@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/2 incoming message and outgoing message implementation.
+// HTTP/2 incoming message and outgoing message implementation. See RFC 9113 and 7541.
 
 package internal
 

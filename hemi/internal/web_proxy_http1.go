@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/1 proxy implementation.
+// HTTP/1 proxy implementation. See RFC 9112.
 
 package internal
 

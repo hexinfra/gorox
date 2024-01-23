@@ -991,7 +991,7 @@ func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer2(name)
 }
 
-func (r *http2Response) pass1xx(resp clientResponse) bool { // used by proxies
+func (r *http2Response) pass1xx(resp response) bool { // used by proxies
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

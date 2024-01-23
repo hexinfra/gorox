@@ -729,7 +729,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse must implements webIn and clientResponse interface.
+// fcgiResponse must implements webIn and response interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

@@ -198,11 +198,11 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		defer entry.decRef()
 	}
 
-	modTime := entry.info.ModTime().Unix()
+	date := entry.info.ModTime().Unix()
 	size := entry.info.Size()
-	etag, _ := resp.MakeETagFrom(modTime, size) // with ""
+	etag, _ := resp.MakeETagFrom(date, size) // with ""
 	const asOrigin = true
-	if status, normal := req.EvalPreconditions(modTime, etag, asOrigin); !normal { // not modified, or precondition failed
+	if status, normal := req.EvalPreconditions(date, etag, asOrigin); !normal { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {
 			resp.AddHeaderBytes(bytesETag, etag)
@@ -214,7 +214,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if h.developerMode {
 		resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
 	} else {
-		resp.SetLastModified(modTime)
+		resp.SetLastModified(date)
 		resp.AddHeaderBytes(bytesETag, etag)
 	}
 	contentType := h.defaultType
@@ -266,8 +266,8 @@ func (h *staticHandlet) listDir(dir *os.File, resp Response) {
 	for _, fi := range fis {
 		name := fi.Name()
 		size := strconv.FormatInt(fi.Size(), 10)
-		modTime := fi.ModTime().String()
-		line := `<tr><td><a href="` + staticHTMLEscape(name) + `">` + staticHTMLEscape(name) + `</a></td><td>` + size + `</td><td>` + modTime + `</td></tr>`
+		date := fi.ModTime().String()
+		line := `<tr><td><a href="` + staticHTMLEscape(name) + `">` + staticHTMLEscape(name) + `</a></td><td>` + size + `</td><td>` + date + `</td></tr>`
 		resp.Echo(line)
 	}
 	resp.Echo("</table>")

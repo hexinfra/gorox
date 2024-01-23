@@ -167,8 +167,8 @@ func (s *clientStream_) startUDPTun() {
 	// TODO: upgrade connect-udp
 }
 
-// clientRequest is the interface for *H[1-3]Request and *HRequest.
-type clientRequest interface {
+// request is the interface for *H[1-3]Request and *HRequest.
+type request interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -179,7 +179,7 @@ type clientRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
-	response clientResponse // the corresponding response
+	response response // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -210,10 +210,10 @@ func (r *clientRequest_) onEnd() { // for zeros
 	r.webOut_.onEnd()
 }
 
-func (r *clientRequest_) Response() clientResponse { return r.response }
+func (r *clientRequest_) Response() response { return r.response }
 
 func (r *clientRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(clientRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
+	return r.shell.(request).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
 }
 func (r *clientRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -257,7 +257,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.shell.(clientRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -273,7 +273,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 			if len(colonPort) == 0 {
 				colonPort = req.UnsafeColonPort()
 			}
-			if !r.shell.(clientRequest).setAuthority(hostname, colonPort) {
+			if !r.shell.(request).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -293,7 +293,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(clientRequest).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
 		return false
 	}
 	if !r.shell.addHeader(bytesVia, viaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -409,8 +409,8 @@ type upload struct {
 	// TODO
 }
 
-// clientResponse is the interface for *H[1-3]Response and *HResponse.
-type clientResponse interface {
+// response is the interface for *H[1-3]Response and *HResponse.
+type response interface {
 	Status() int16
 	delHopHeaders()
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
@@ -896,8 +896,8 @@ func (c *cookie) sameSiteAt(t []byte) []byte {
 func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
 func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-// clientSocket is the interface for *H[1-3]Socket.
-type clientSocket interface {
+// socket is the interface for *H[1-3]Socket.
+type socket interface {
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
@@ -906,7 +906,7 @@ type clientSocket interface {
 // clientSocket_ is the mixin for H[1-3]Socket.
 type clientSocket_ struct {
 	// Assocs
-	shell clientSocket // the concrete socket
+	shell socket // the concrete socket
 	// Stream states (zeros)
 }
 

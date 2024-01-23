@@ -288,8 +288,8 @@ type Request interface {
 	ContentSize() int64
 	AcceptTrailers() bool
 
-	EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool)
-	EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool)
+	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
+	EvalIfRanges(date int64, etag []byte, asOrigin bool) (partial bool)
 
 	HasRanges() bool
 	ExamineRanges(size int64) []Range
@@ -1001,8 +1001,8 @@ func (r *serverRequest_) checkIfRange(header *pair, index uint8) bool { // If-Ra
 		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header"
 		return false
 	}
-	if modTime, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
-		r.unixTimes.ifRange = modTime
+	if date, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+		r.unixTimes.ifRange = date
 	}
 	r.indexes.ifRange = index
 	return true
@@ -1516,6 +1516,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 }
 
 func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *serverRequest_) HasRanges() bool      { return false } // TODO, use r.nRanges > 0
 func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
 func (r *serverRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
@@ -1592,7 +1593,7 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 	return true
 }
 
-func (r *serverRequest_) EvalPreconditions(modTime int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
+func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
 	// Get etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
@@ -1604,7 +1605,7 @@ func (r *serverRequest_) EvalPreconditions(modTime int64, etag []byte, asOrigin 
 				return StatusPreconditionFailed, false
 			}
 		} else if r.indexes.ifUnmodifiedSince != 0 { // if-match is not present
-			if !r._evalIfUnmodifiedSince(modTime) {
+			if !r._evalIfUnmodifiedSince(date) {
 				return StatusPreconditionFailed, false
 			}
 		}
@@ -1619,7 +1620,7 @@ func (r *serverRequest_) EvalPreconditions(modTime int64, etag []byte, asOrigin 
 			}
 		}
 	} else if getOrHead && r.indexes.ifModifiedSince != 0 { // if-none-match is not present
-		if !r._evalIfModifiedSince(modTime) {
+		if !r._evalIfModifiedSince(date) {
 			return StatusNotModified, false
 		}
 	}
@@ -1636,12 +1637,12 @@ func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {
 			continue
 		}
 		data := header.dataAt(r.input)
-		if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
+		if size := len(data); !(size >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[size-1] == '"') && bytes.Equal(data, etag) {
 			// If the field value is a list of entity tags, the condition is true if any of the listed tags match the entity tag of the selected representation.
 			return true
 		}
 	}
-	// TODO: extra?
+	// TODO: r.extras?
 	return false
 }
 func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
@@ -1662,41 +1663,45 @@ func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 	// TODO: r.extras?
 	return true
 }
-func (r *serverRequest_) _evalIfModifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfModifiedSince(date int64) (pass bool) {
 	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is false.
-	return modTime > r.unixTimes.ifModifiedSince
+	return date > r.unixTimes.ifModifiedSince
 }
-func (r *serverRequest_) _evalIfUnmodifiedSince(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfUnmodifiedSince(date int64) (pass bool) {
 	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is true.
-	return modTime <= r.unixTimes.ifUnmodifiedSince
+	return date <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *serverRequest_) EvalIfRanges(modTime int64, etag []byte, asOrigin bool) (partial bool) {
-	if r.methodCode == MethodGET && r.indexes.ifRange != 0 && r.nRanges > 0 {
-		if (r.unixTimes.ifRange == 0 && r._evalIfRangeETag(etag)) || (r.unixTimes.ifRange != 0 && r._evalIfRangeTime(modTime)) {
-			return true // StatusPartialContent
-		}
+func (r *serverRequest_) EvalIfRanges(date int64, etag []byte, asOrigin bool) (partial bool) {
+	if r.methodCode != MethodGET || r.indexes.ifRange == 0 || r.nRanges == 0 {
+		return false
 	}
-	return false // StatusOK
+	if r.unixTimes.ifRange == 0 {
+		if r._evalIfRangeETag(etag) {
+			return true
+		}
+	} else if r._evalIfRangeDate(date) {
+		return true
+	}
+	return false
 }
 func (r *serverRequest_) _evalIfRangeETag(etag []byte) (pass bool) {
-	ifRange := &r.primes[r.indexes.ifRange] // TODO: extra?
+	ifRange := &r.primes[r.indexes.ifRange] // TODO: r.extras?
 	data := ifRange.dataAt(r.input)
-	if dataSize := len(data); !(dataSize >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[dataSize-1] == '"') && bytes.Equal(data, etag) {
+	if size := len(data); !(size >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[size-1] == '"') && bytes.Equal(data, etag) {
 		// If the entity-tag validator provided exactly matches the ETag field value for the selected representation using the strong comparison function (Section 8.8.3.2), the condition is true.
 		return true
 	}
 	return false
 }
-func (r *serverRequest_) _evalIfRangeTime(modTime int64) (pass bool) {
+func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	// If the HTTP-date validator provided exactly matches the Last-Modified field value for the selected representation, the condition is true.
-	return r.unixTimes.ifRange == modTime
+	return r.unixTimes.ifRange == date
 }
 
-func (r *serverRequest_) HasRanges() bool { return false } // TODO, use r.nRanges
 func (r *serverRequest_) ExamineRanges(contentSize int64) []Range {
 	for i := int8(0); i < r.nRanges; i++ {
-		// TODO: examinations
+		// TODO: examinations and convert from and last into usable values
 		if rang := r.ranges[i]; rang.last >= contentSize {
 			return nil
 		}
@@ -2577,7 +2582,7 @@ type Response interface {
 	SetStatus(status int16) error
 	Status() int16
 
-	MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) // with `""`
+	MakeETagFrom(date int64, size int64) ([]byte, bool) // with `""`
 	SetExpires(expires int64) bool
 	SetLastModified(lastModified int64) bool
 	AddContentType(contentType string) bool
@@ -2624,7 +2629,7 @@ type Response interface {
 	hasHeader(name []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHeadFrom(resp clientResponse, viaName []byte) bool // used by proxies
+	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
 	sendText(content []byte) error
 	sendTextRanges(content []byte, ranges []Range) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
@@ -2635,10 +2640,10 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	finalizeVague() error
-	pass1xx(resp clientResponse) bool         // used by proxies
+	pass1xx(resp response) bool               // used by proxies
 	pass(resp webIn) error                    // used by proxies
 	post(content any, hasTrailers bool) error // used by proxies
-	copyTailFrom(resp clientResponse) bool    // used by proxies
+	copyTailFrom(resp response) bool          // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2717,19 +2722,19 @@ func (r *serverResponse_) SetStatus(status int16) error {
 }
 func (r *serverResponse_) Status() int16 { return r.status }
 
-func (r *serverResponse_) MakeETagFrom(modTime int64, fileSize int64) ([]byte, bool) { // with ""
-	if modTime < 0 || fileSize < 0 {
+func (r *serverResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { // with ""
+	if date < 0 || size < 0 {
 		return nil, false
 	}
 	p := r.unsafeMake(32)
 	p[0] = '"'
 	etag := p[1:]
-	n := i64ToHex(modTime, etag)
+	n := i64ToHex(date, etag)
 	etag[n] = '-'
 	if n++; n > 13 {
 		return nil, false
 	}
-	n = 1 + n + i64ToHex(fileSize, etag[n:])
+	n = 1 + n + i64ToHex(size, etag[n:])
 	p[n] = '"'
 	return p[0 : n+1], true
 }
@@ -2868,7 +2873,7 @@ func (r *serverResponse_) endVague() error {
 	return r.shell.finalizeVague()
 }
 
-func (r *serverResponse_) copyHeadFrom(resp clientResponse, viaName []byte) bool { // used by proxies
+func (r *serverResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2944,7 +2949,7 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) copyTailFrom(resp clientResponse) bool { // used by proxies
+func (r *serverResponse_) copyTailFrom(resp response) bool { // used by proxies
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

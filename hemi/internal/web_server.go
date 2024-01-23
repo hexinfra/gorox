@@ -289,7 +289,7 @@ type Request interface {
 	AcceptTrailers() bool
 
 	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
-	EvalIfRanges(date int64, etag []byte, asOrigin bool) (partial bool)
+	EvalIfRanges(date int64, etag []byte, asOrigin bool) (ranged bool)
 
 	HasRanges() bool
 	ExamineRanges(size int64) []Range
@@ -1050,7 +1050,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 		return false
 	}
 	var from, last int64 // [from-last], inclusive, begins from 0
-	state := 0           // select int-range or suffix-range
+	state := 0
 	for i, n := 0, len(rangeSet); i < n; i++ {
 		b := rangeSet[i]
 		switch state {
@@ -1069,7 +1069,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
 					from = from*10 + int64(b-'0')
-					if from < 0 {
+					if from < 0 { // overflow
 						goto badRange
 					}
 				} else if b == '-' {
@@ -1083,13 +1083,12 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 			if b >= '0' && b <= '9' { // last-pos
 				last = int64(b - '0')
 				state = 3 // first-pos "-" last-pos
-			} else if b == ',' || b == ' ' { // not
-				// got: first-pos "-"
+			} else if b == ',' || b == ' ' { // got: first-pos "-"
 				last = -1
 				if !r._addRange(from, last) {
 					return false
 				}
-				state = 0
+				state = 0 // select int-range or suffix-range
 			} else {
 				goto badRange
 			}
@@ -1097,18 +1096,18 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
 					last = last*10 + int64(b-'0')
-					if last < 0 {
+					if last < 0 { // overflow
 						goto badRange
 					}
-				} else if b == ',' || b == ' ' {
+				} else if b == ',' || b == ' ' { // got: first-pos "-" last-pos
+					// An int-range is invalid if the last-pos value is present and less than the first-pos.
 					if from > last {
 						goto badRange
 					}
-					// got: first-pos "-" last-pos
 					if !r._addRange(from, last) {
 						return false
 					}
-					state = 0
+					state = 0 // select int-range or suffix-range
 					break
 				} else {
 					goto badRange
@@ -1118,15 +1117,14 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
 					last = last*10 + int64(b-'0')
-					if last < 0 {
+					if last < 0 { // overflow
 						goto badRange
 					}
-				} else if b == ',' || b == ' ' {
-					// got: "-" suffix-length
+				} else if b == ',' || b == ' ' { // got: "-" suffix-length
 					if !r._addRange(from, last) {
 						return false
 					}
-					state = 0
+					state = 0 // select int-range or suffix-range
 					break
 				} else {
 					goto badRange
@@ -1594,7 +1592,7 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 }
 
 func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
-	// Get etag without ""
+	// Get effective etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
 	}
@@ -1604,7 +1602,7 @@ func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin boo
 			if !r._evalIfMatch(etag) {
 				return StatusPreconditionFailed, false
 			}
-		} else if r.indexes.ifUnmodifiedSince != 0 { // if-match is not present
+		} else if r.indexes.ifUnmodifiedSince != 0 { // if-match is not present and if-unmodified-since is present
 			if !r._evalIfUnmodifiedSince(date) {
 				return StatusPreconditionFailed, false
 			}
@@ -1619,7 +1617,7 @@ func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin boo
 				return StatusPreconditionFailed, false
 			}
 		}
-	} else if getOrHead && r.indexes.ifModifiedSince != 0 { // if-none-match is not present
+	} else if getOrHead && r.indexes.ifModifiedSince != 0 { // if-none-match is not present and if-modified-since is present
 		if !r._evalIfModifiedSince(date) {
 			return StatusNotModified, false
 		}
@@ -1672,7 +1670,7 @@ func (r *serverRequest_) _evalIfUnmodifiedSince(date int64) (pass bool) {
 	return date <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *serverRequest_) EvalIfRanges(date int64, etag []byte, asOrigin bool) (partial bool) {
+func (r *serverRequest_) EvalIfRanges(date int64, etag []byte, asOrigin bool) (ranged bool) {
 	if r.methodCode != MethodGET || r.indexes.ifRange == 0 || r.nRanges == 0 {
 		return false
 	}
@@ -1699,11 +1697,31 @@ func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	return r.unixTimes.ifRange == date
 }
 
-func (r *serverRequest_) ExamineRanges(contentSize int64) []Range {
+func (r *serverRequest_) ExamineRanges(contentSize int64) []Range { // returned ranges are converted to the format of [from:edge)
 	for i := int8(0); i < r.nRanges; i++ {
-		// TODO: examinations and convert from and last into usable values
-		if rang := r.ranges[i]; rang.last >= contentSize {
-			return nil
+		if rang := &r.ranges[i]; rang.from == -1 { // "-" suffix-length, the last `suffix-length` bytes
+			if rang.last == 0 {
+				return nil
+			}
+			if rang.last >= contentSize {
+				rang.from = 0
+			} else {
+				rang.from = contentSize - rang.last
+			}
+			rang.last = contentSize
+		} else { // first-pos "-" [ last-pos ]
+			if rang.from >= contentSize {
+				return nil
+			}
+			if rang.last == -1 { // first-pos "-", to the end if last-pos is not present
+				rang.last = contentSize
+			} else { // first-pos "-" last-pos
+				if rang.last >= contentSize {
+					rang.last = contentSize
+				} else {
+					rang.last++
+				}
+			}
 		}
 	}
 	return r.ranges[:r.nRanges]

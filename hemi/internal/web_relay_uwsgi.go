@@ -152,12 +152,33 @@ type uwsgiExchan struct {
 	// Assocs
 	request  uwsgiRequest  // the uwsgi request
 	response uwsgiResponse // the uwsgi response
+	// Exchan states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	relay  *uwsgiRelay // associated relay
+	conn   wConn       // associated conn
+	region Region      // a region-based memory pool
+	// Exchan states (zeros)
 }
 
 func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn wConn) {
+	x.relay = relay
+	x.conn = conn
+	x.region.Init()
+	x.request.onUse()
+	x.response.onUse()
 }
 func (x *uwsgiExchan) onEnd() {
+	x.request.onEnd()
+	x.response.onEnd()
+	x.region.Free()
+	x.conn = nil
+	x.relay = nil
 }
+
+func (x *uwsgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *uwsgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
@@ -166,10 +187,24 @@ type uwsgiRequest struct { // outgoing. needs building
 	response *uwsgiResponse
 }
 
+func (r *uwsgiRequest) onUse() {
+	// TODO
+}
+func (r *uwsgiRequest) onEnd() {
+	// TODO
+}
+
 // uwsgiResponse
 type uwsgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *uwsgiExchan
+}
+
+func (r *uwsgiResponse) onUse() {
+	// TODO
+}
+func (r *uwsgiResponse) onEnd() {
+	// TODO
 }
 
 //////////////////////////////////////// UWSGI protocol elements ////////////////////////////////////////

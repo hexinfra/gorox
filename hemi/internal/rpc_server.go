@@ -11,6 +11,24 @@ import (
 	"bytes"
 )
 
+// GRPCBridge is the interface for all gRPC server bridges.
+// Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
+type GRPCBridge interface {
+	// Imports
+	rpcServer
+	// Methods
+	GRPCServer() any // may be a *grpc.Server
+}
+
+// ThriftBridge is the interface for all Thrift server bridges.
+// Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
+type ThriftBridge interface {
+	// Imports
+	rpcServer
+	// Methods
+	ThriftServer() any // may be a thrift.TServer?
+}
+
 // rpcServer
 type rpcServer interface {
 	// Imports

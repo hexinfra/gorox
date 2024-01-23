@@ -161,16 +161,11 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 
 	fcache := h.stage.Fcache()
 	entry, err := fcache.getEntry(openPath)
-	if err == nil {
-		if Debug() >= 1 {
-			Println("entry HIT")
-		}
-	} else { // entry not exist
+	if err != nil { // entry does not exist
 		if Debug() >= 1 {
 			Println("entry MISS")
 		}
-		entry, err = fcache.newEntry(string(openPath))
-		if err != nil {
+		if entry, err = fcache.newEntry(string(openPath)); err != nil {
 			if !os.IsNotExist(err) {
 				h.webapp.Logf("open file error=%s\n", err.Error())
 				resp.SendInternalServerError(nil)
@@ -198,6 +193,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		resp.SendBytes(nil)
 		return true
 	}
+
 	if entry.isLarge() {
 		defer entry.decRef()
 	}
@@ -206,53 +202,54 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	size := entry.info.Size()
 	etag, _ := resp.MakeETagFrom(modTime, size) // with ""
 	const asOrigin = true
-	if status, normal := req.EvalPreconditions(modTime, etag, asOrigin); normal {
-		if h.developerMode {
-			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
-		} else {
-			resp.SetLastModified(modTime)
-			resp.AddHeaderBytes(bytesETag, etag)
-		}
-		contentType := h.defaultType
-		filePath := risky.WeakString(openPath)
-		if p := strings.LastIndex(filePath, "."); p >= 0 {
-			ext := filePath[p+1:]
-			if mimeType, ok := h.mimeTypes[ext]; ok {
-				contentType = mimeType
-			}
-		}
-		// TODO: uncomment the following line after we have implemented range requests
-		//resp.AddHeaderBytes(bytesAcceptRange, bytesBytes)
-		if req.HasRanges() {
-			if ranges := req.ExamineRanges(size); ranges == nil {
-				// TODO: add content-range
-				resp.SendRangeNotSatisfiable(nil)
-			} else {
-				if len(ranges) == 1 { // only one part
-					resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
-				} else { // multiple parts
-					resp.AddHeaderBytes(bytesContentType, bytesMultipartRanges)
-				}
-				if entry.isSmall() {
-					resp.sendTextRanges(entry.text, ranges)
-				} else {
-					resp.sendFileRanges(entry.file, entry.info, false, ranges)
-				}
-			}
-		} else {
-			resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
-			if entry.isSmall() {
-				resp.sendText(entry.text)
-			} else {
-				resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
-			}
-		}
-	} else { // not modified, or precondition failed
+	if status, normal := req.EvalPreconditions(modTime, etag, asOrigin); !normal { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {
 			resp.AddHeaderBytes(bytesETag, etag)
 		}
 		resp.SendBytes(nil)
+		return true
+	}
+
+	if h.developerMode {
+		resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
+	} else {
+		resp.SetLastModified(modTime)
+		resp.AddHeaderBytes(bytesETag, etag)
+	}
+	contentType := h.defaultType
+	filePath := risky.WeakString(openPath)
+	if p := strings.LastIndex(filePath, "."); p >= 0 {
+		ext := filePath[p+1:]
+		if mimeType, ok := h.mimeTypes[ext]; ok {
+			contentType = mimeType
+		}
+	}
+	// TODO: uncomment the following line after we have implemented range requests
+	//resp.AddHeaderBytes(bytesAcceptRange, bytesBytes)
+	if !req.HasRanges() { // no suggested ranges
+		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+		if entry.isSmall() {
+			resp.sendText(entry.text)
+		} else {
+			resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
+		}
+		return true
+	}
+
+	if ranges := req.ExamineRanges(size); ranges != nil { // ranges are satisfiable
+		if len(ranges) == 1 { // only one part
+			resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+		} else { // multiple parts
+			resp.AddHeaderBytes(bytesContentType, bytesMultipartRanges)
+		}
+		if entry.isSmall() {
+			resp.sendTextRanges(entry.text, ranges)
+		} else {
+			resp.sendFileRanges(entry.file, entry.info, false, ranges)
+		}
+	} else { // ranges are not satisfiable
+		resp.SendRangeNotSatisfiable(size, nil)
 	}
 
 	return true

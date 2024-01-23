@@ -23,6 +23,48 @@ import (
 	"time"
 )
 
+const ( // array kinds
+	arrayKindStock = iota // refers to stock buffer. must be 0
+	arrayKindPool         // got from sync.Pool
+	arrayKindMake         // made from make([]byte)
+)
+
+// fakeFile
+var fakeFile _fakeFile
+
+func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
+	// TODO: improvement
+	stageID &= 0x7f
+	connID &= 0xffff
+	unixTime &= 0xffffffff
+	counter &= 0xff
+	// stageID(8) | connID(16) | seconds(32) | counter(8)
+	i64 := stageID<<56 | connID<<40 | unixTime<<8 | counter
+	return i64ToDec(i64, p)
+}
+
+// hostnameTo
+type hostnameTo[T Component] struct {
+	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
+	target   T
+}
+
+// tempFile is used to temporarily save request/response content in local file system.
+type tempFile interface {
+	Name() string // used by os.Remove()
+	Write(p []byte) (n int, err error)
+	Seek(offset int64, whence int) (ret int64, err error)
+	Close() error
+}
+
+// _fakeFile implements tempFile.
+type _fakeFile struct{}
+
+func (f _fakeFile) Name() string                           { return "" }
+func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
+func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
+func (f _fakeFile) Close() error                           { return nil }
+
 // Region
 type Region struct { // 512B
 	blocks [][]byte  // the blocks. [<stocks>/make]
@@ -70,25 +112,6 @@ func (r *Region) Free() {
 		r.blocks = nil
 	}
 }
-
-// tempFile is used to temporarily save request/response content in local file system.
-type tempFile interface {
-	Name() string // used by os.Remove()
-	Write(p []byte) (n int, err error)
-	Seek(offset int64, whence int) (ret int64, err error)
-	Close() error
-}
-
-// fakeFile
-var fakeFile _fakeFile
-
-// _fakeFile implements tempFile.
-type _fakeFile struct{}
-
-func (f _fakeFile) Name() string                           { return "" }
-func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
-func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
-func (f _fakeFile) Close() error                           { return nil }
 
 // contentSaver
 type contentSaver interface {
@@ -274,29 +297,6 @@ func (s *span) sub(delta int32) {
 	}
 }
 
-// hostnameTo
-type hostnameTo[T Component] struct {
-	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	target   T
-}
-
-func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
-	// TODO: improvement
-	stageID &= 0x7f
-	connID &= 0xffff
-	unixTime &= 0xffffffff
-	counter &= 0xff
-	// stageID(8) | connID(16) | seconds(32) | counter(8)
-	i64 := stageID<<56 | connID<<40 | unixTime<<8 | counter
-	return i64ToDec(i64, p)
-}
-
-const ( // array kinds
-	arrayKindStock = iota // refers to stock buffer. must be 0
-	arrayKindPool         // got from sync.Pool
-	arrayKindMake         // made from make([]byte)
-)
-
 const ( // units
 	K = 1 << 10
 	M = 1 << 20
@@ -336,14 +336,6 @@ var ( // pools
 func Get4K() []byte   { return getNK(&pool4K, _4K) }
 func Get16K() []byte  { return getNK(&pool16K, _16K) }
 func Get64K1() []byte { return getNK(&pool64K1, _64K1) }
-func getNK(pool *sync.Pool, size int) []byte {
-	if x := pool.Get(); x == nil {
-		return make([]byte, size)
-	} else {
-		return x.([]byte)
-	}
-}
-
 func GetNK(n int64) []byte {
 	if n <= _4K {
 		return getNK(&pool4K, _4K)
@@ -351,6 +343,13 @@ func GetNK(n int64) []byte {
 		return getNK(&pool16K, _16K)
 	} else { // n > _16K
 		return getNK(&pool64K1, _64K1)
+	}
+}
+func getNK(pool *sync.Pool, size int) []byte {
+	if x := pool.Get(); x == nil {
+		return make([]byte, size)
+	} else {
+		return x.([]byte)
 	}
 }
 func PutNK(p []byte) {

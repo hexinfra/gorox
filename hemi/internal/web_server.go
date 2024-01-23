@@ -257,7 +257,7 @@ type Request interface {
 	ColonPort() string // :port
 
 	URI() string         // /encodedPath?queryString
-	Path() string        // /path
+	Path() string        // /decodedPath
 	EncodedPath() string // /encodedPath
 	QueryString() string // including '?' if query string exists, otherwise empty
 
@@ -2601,15 +2601,15 @@ type Response interface {
 	SendBytes(content []byte) error
 	SendJSON(content any) error
 	SendFile(contentPath string) error
-	SendBadRequest(content []byte) error                     // 400
-	SendForbidden(content []byte) error                      // 403
-	SendNotFound(content []byte) error                       // 404
-	SendMethodNotAllowed(allow string, content []byte) error // 405
-	SendRangeNotSatisfiable(content []byte) error            // 416
-	SendInternalServerError(content []byte) error            // 500
-	SendNotImplemented(content []byte) error                 // 501
-	SendBadGateway(content []byte) error                     // 502
-	SendGatewayTimeout(content []byte) error                 // 504
+	SendBadRequest(content []byte) error                             // 400
+	SendForbidden(content []byte) error                              // 403
+	SendNotFound(content []byte) error                               // 404
+	SendMethodNotAllowed(allow string, content []byte) error         // 405
+	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
+	SendInternalServerError(content []byte) error                    // 500
+	SendNotImplemented(content []byte) error                         // 501
+	SendBadGateway(content []byte) error                             // 502
+	SendGatewayTimeout(content []byte) error                         // 504
 
 	Echo(chunk string) error
 	EchoBytes(chunk []byte) error
@@ -2753,7 +2753,10 @@ func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) err
 	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
-func (r *serverResponse_) SendRangeNotSatisfiable(content []byte) error { // 416
+func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
+	sizeBuffer := r.stream.buffer256() // enough for contentSize
+	from, edge := i64ToDec(contentSize, sizeBuffer)
+	r.AddHeaderBytes(bytesContentRange, sizeBuffer[from:edge])
 	return r.sendError(StatusRangeNotSatisfiable, content)
 }
 func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500

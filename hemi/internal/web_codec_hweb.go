@@ -31,11 +31,12 @@ func (r *webOut_) delHeaderH(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeaderAtH(o uint8) {
+func (r *webOut_) delHeaderAtH(i uint8) {
 	// TODO
 }
 
 func (r *webOut_) sendChainH() error {
+	// TODO
 	return nil
 }
 

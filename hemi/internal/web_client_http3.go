@@ -340,7 +340,7 @@ func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHe
 func (r *H3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
 func (r *H3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
 func (r *H3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *H3Request) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
+func (r *H3Request) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
 
 func (r *H3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie

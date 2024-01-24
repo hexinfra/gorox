@@ -210,13 +210,6 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		resp.SendBytes(nil)
 		return true
 	}
-
-	if h.developerMode {
-		resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate")) // TODO
-	} else {
-		resp.SetLastModified(date)
-		resp.AddHeaderBytes(bytesETag, etag)
-	}
 	contentType := h.defaultType
 	filePath := risky.WeakString(openPath)
 	if p := strings.LastIndex(filePath, "."); p >= 0 {
@@ -225,33 +218,26 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			contentType = mimeType
 		}
 	}
-	// TODO: uncomment the following line after we have implemented range requests
-	//resp.AddHeaderBytes(bytesAcceptRange, bytesBytes)
-	if !req.HasRanges() { // no suggested ranges
+	if !req.HasRanges() || req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin) {
 		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
-		if entry.isSmall() {
-			resp.sendText(entry.text)
+		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
+		if h.developerMode { // TODO
+			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
 		} else {
-			resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
+			resp.AddHeaderBytes(bytesETag, etag)
+			resp.SetLastModified(date)
 		}
-		return true
-	}
-
-	if ranges := req.ExamineRanges(size); ranges != nil { // ranges are satisfiable
-		if len(ranges) == 1 { // only one part
-			resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
-		} else { // multiple parts
-			resp.AddHeaderBytes(bytesContentType, bytesMultipartRanges)
-		}
-		if entry.isSmall() {
-			resp.sendTextRanges(entry.text, ranges)
-		} else {
-			resp.sendFileRanges(entry.file, entry.info, false, ranges)
-		}
-	} else { // ranges are not satisfiable
+	} else if ranges := req.ExamineRanges(size); ranges == nil { // ranges are not satisfiable
 		resp.SendRangeNotSatisfiable(size, nil)
+		return true
+	} else { // ranges are satisfiable
+		resp.useRanges(ranges, contentType)
 	}
-
+	if entry.isSmall() {
+		resp.sendText(entry.text)
+	} else {
+		resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
+	}
 	return true
 }
 
@@ -273,9 +259,7 @@ func (h *staticHandlet) listDir(dir *os.File, resp Response) {
 	resp.Echo("</table>")
 }
 
-func staticHTMLEscape(s string) string {
-	return staticHTMLEscaper.Replace(s)
-}
+func staticHTMLEscape(s string) string { return staticHTMLEscaper.Replace(s) }
 
 var staticHTMLEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 

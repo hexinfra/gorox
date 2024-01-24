@@ -56,7 +56,8 @@ func (r *gunzipReviser) BeforeRecv(req Request, resp Response) { // sized
 func (r *gunzipReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *gunzipReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
+func (r *gunzipReviser) OnInput(req Request, resp Response, chain *Chain) bool {
+	// TODO
 	return true
 }
 func (r *gunzipReviser) FinishDraw(req Request, resp Response) { // vague
@@ -69,7 +70,8 @@ func (r *gunzipReviser) BeforeSend(req Request, resp Response) { // sized
 func (r *gunzipReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *gunzipReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
+func (r *gunzipReviser) OnOutput(req Request, resp Response, chain *Chain) {
+	// TODO
 }
 func (r *gunzipReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO

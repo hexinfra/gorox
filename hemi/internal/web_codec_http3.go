@@ -38,7 +38,7 @@ func (r *webOut_) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeaderAt3(o uint8) {
+func (r *webOut_) delHeaderAt3(i uint8) {
 	// TODO
 }
 

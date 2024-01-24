@@ -350,7 +350,7 @@ func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.a
 func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
 func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
 func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *http3Response) delHeaderAt(o uint8)                        { r.delHeaderAt3(o) }
+func (r *http3Response) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
 
 func (r *http3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO

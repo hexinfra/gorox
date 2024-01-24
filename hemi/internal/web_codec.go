@@ -1524,7 +1524,7 @@ type webOut interface {
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	delHeader(name []byte) (deleted bool)
-	delHeaderAt(o uint8)
+	delHeaderAt(i uint8)
 	insertHeader(hash uint16, name []byte, value []byte) bool
 	removeHeader(hash uint16, name []byte) (deleted bool)
 	addedHeaders() []byte
@@ -1564,6 +1564,8 @@ type webOut_ struct { // outgoing. needs building
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
 	sendTime    time.Time   // the time when first send operation is performed
+	ranges      []Range     // if content is ranged, this is set
+	rangeType   string      // if content is ranged, this is the content type for each range
 	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
 	fixedVector [4][]byte   // for sending/echoing message. reset after stream
 	webOut0                 // all values must be zero by default in this struct!
@@ -1592,10 +1594,12 @@ func (r *webOut_) onEnd() { // for zeros
 		PutNK(r.fields)
 		r.fields = nil
 	}
-	// r.piece is reset in echo(), and will be reset below if send() is used. double free doesn't matter
+	// r.piece was reset in echo(), and will be reset here if send() was used. double free doesn't matter
 	r.chain.free()
 
 	r.sendTime = time.Time{}
+	r.ranges = nil
+	r.rangeType = ""
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
 	r.webOut0 = webOut0{}
@@ -1740,16 +1744,8 @@ func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 
 func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *webOut_) Send(content string) error { return r.sendText(risky.ConstBytes(content)) }
-func (r *webOut_) SendRanges(content string, ranges []Range) error {
-	// TODO
-	return nil
-}
+func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
-func (r *webOut_) SendBytesRanges(content []byte, ranges []Range) error {
-	// TODO
-	return nil
-}
 func (r *webOut_) SendJSON(content any) error {
 	// TODO: optimize performance
 	r.appendContentType(bytesTypeJSON)
@@ -1770,10 +1766,6 @@ func (r *webOut_) SendFile(contentPath string) error {
 		return err
 	}
 	return r.sendFile(file, info, true) // true to close on end
-}
-func (r *webOut_) SendFileRanges(contentPath string, ranges []Range) error {
-	// TODO
-	return nil
 }
 
 func (r *webOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }
@@ -1867,18 +1859,19 @@ func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies
 	}
 }
 
+func (r *webOut_) useRanges(ranges []Range, rangeType string) {
+	r.ranges = ranges
+	r.rangeType = rangeType
+}
+
 func (r *webOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
-	r.contentSize = int64(len(content)) // original size, may be revised
+	r.contentSize = int64(len(content)) // initial size, may be changed by revisers
 	return r.shell.doSend()
-}
-func (r *webOut_) sendTextRanges(content []byte, ranges []Range) error {
-	// TODO
-	return nil
 }
 func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
@@ -1886,12 +1879,8 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 	}
 	r.piece.SetFile(content, info, shut)
 	r.chain.PushTail(&r.piece)
-	r.contentSize = info.Size() // original size, may be revised
+	r.contentSize = info.Size() // initial size, may be changed by revisers
 	return r.shell.doSend()
-}
-func (r *webOut_) sendFileRanges(content *os.File, info os.FileInfo, shut bool, ranges []Range) error {
-	// TODO
-	return nil
 }
 func (r *webOut_) _beforeSend() error {
 	if r.isSent {

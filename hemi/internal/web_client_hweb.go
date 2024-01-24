@@ -281,7 +281,7 @@ func (r *HRequest) addHeader(name []byte, value []byte) bool   { return r.addHea
 func (r *HRequest) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
 func (r *HRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
 func (r *HRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
-func (r *HRequest) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+func (r *HRequest) delHeaderAt(i uint8)                        { r.delHeaderAtH(i) }
 
 func (r *HRequest) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie

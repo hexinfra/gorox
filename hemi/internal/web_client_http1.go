@@ -448,7 +448,7 @@ func (r *H1Request) addHeader(name []byte, value []byte) bool   { return r.addHe
 func (r *H1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
 func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
 func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *H1Request) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
+func (r *H1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
 func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -508,7 +508,7 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 			if r.isVague() { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else { // content-length: >=0\r\n
-				sizeBuffer := r.stream.buffer256() // enough for length
+				sizeBuffer := r.stream.buffer256() // enough for content-length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			}

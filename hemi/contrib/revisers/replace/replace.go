@@ -63,7 +63,8 @@ func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // sized
 func (r *replaceReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *replaceReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
+func (r *replaceReviser) OnInput(req Request, resp Response, chain *Chain) bool {
+	// TODO
 	return true
 }
 func (r *replaceReviser) FinishDraw(req Request, resp Response) { // vague
@@ -76,7 +77,8 @@ func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
 func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *replaceReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
+func (r *replaceReviser) OnOutput(req Request, resp Response, chain *Chain) {
+	// TODO
 }
 func (r *replaceReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO

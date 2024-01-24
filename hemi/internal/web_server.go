@@ -283,15 +283,16 @@ type Request interface {
 	HasHeader(name string) bool
 	DelHeader(name string) (deleted bool)
 
-	UserAgent() string
 	ContentType() string
 	ContentSize() int64
 	AcceptTrailers() bool
+	HasRanges() bool
+	HasIfRange() bool
+	UserAgent() string
 
 	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
-	EvalIfRanges(date int64, etag []byte, asOrigin bool) (ranged bool)
+	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
 
-	HasRanges() bool
 	ExamineRanges(size int64) []Range
 
 	AddCookie(name string, value string) bool
@@ -387,7 +388,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	// Stream states (stocks)
 	stockUploads [2]Upload // for r.uploads. 96B
 	// Stream states (controlled)
-	ranges [2]Range // parsed range fields. at most 2 range fields are allowed. controlled by r.nRanges
+	ranges [4]Range // parsed range fields. at most 4 range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
 	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
 	// Stream states (zeros)
@@ -1514,7 +1515,8 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 }
 
 func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *serverRequest_) HasRanges() bool      { return false } // TODO, use r.nRanges > 0
+func (r *serverRequest_) HasRanges() bool      { return r.nRanges > 0 }
+func (r *serverRequest_) HasIfRange() bool     { return r.indexes.ifRange != 0 }
 func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
 func (r *serverRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
@@ -1670,10 +1672,7 @@ func (r *serverRequest_) _evalIfUnmodifiedSince(date int64) (pass bool) {
 	return date <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *serverRequest_) EvalIfRanges(date int64, etag []byte, asOrigin bool) (ranged bool) {
-	if r.methodCode != MethodGET || r.indexes.ifRange == 0 || r.nRanges == 0 {
-		return false
-	}
+func (r *serverRequest_) EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool) {
 	if r.unixTimes.ifRange == 0 {
 		if r._evalIfRangeETag(etag) {
 			return true
@@ -1697,9 +1696,11 @@ func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	return r.unixTimes.ifRange == date
 }
 
-func (r *serverRequest_) ExamineRanges(contentSize int64) []Range { // returned ranges are converted to the format of [from:edge)
+func (r *serverRequest_) ExamineRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
+	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
-		if rang := &r.ranges[i]; rang.from == -1 { // "-" suffix-length, the last `suffix-length` bytes
+		rang := &r.ranges[i]
+		if rang.from == -1 { // "-" suffix-length, the last `suffix-length` bytes
 			if rang.last == 0 {
 				return nil
 			}
@@ -1722,6 +1723,10 @@ func (r *serverRequest_) ExamineRanges(contentSize int64) []Range { // returned 
 					rang.last++
 				}
 			}
+		}
+		rangedSize += rang.last - rang.from
+		if rangedSize > contentSize { // possible attack
+			return nil
 		}
 	}
 	return r.ranges[:r.nRanges]
@@ -1813,16 +1818,16 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 				return
 			}
 		default: // expecting HEXDIG
-			half, ok := byteFromHex(b)
+			nybble, ok := byteFromHex(b)
 			if !ok {
 				r.bodyResult, r.failReason = StatusBadRequest, "invalid pct encoding"
 				return
 			}
 			if state&0xf == 0xf { // expecting the first HEXDIG
-				octet = half << 4
+				octet = nybble << 4
 				state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
 			} else { // expecting the second HEXDIG
-				octet |= half
+				octet |= nybble
 				if state == 0x20 { // in name
 					form.hash += uint16(octet)
 				}
@@ -2648,11 +2653,10 @@ type Response interface {
 	delHeader(name []byte) bool
 	setConnectionClose()
 	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
+	useRanges(ranges []Range, rangeType string)
 	sendText(content []byte) error
-	sendTextRanges(content []byte, ranges []Range) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendFileRanges(content *os.File, info os.FileInfo, shut bool, ranges []Range) error
-	sendChain() error // content
+	sendChain() error                                             // content
 	echoHeaders() error
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
@@ -2777,9 +2781,12 @@ func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) err
 	return r.sendError(StatusMethodNotAllowed, content)
 }
 func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
-	sizeBuffer := r.stream.buffer256() // enough for contentSize
-	from, edge := i64ToDec(contentSize, sizeBuffer)
-	r.AddHeaderBytes(bytesContentRange, sizeBuffer[from:edge])
+	buffer := r.stream.buffer256()
+	n := copy(buffer, bytesBytesStarSlash)
+	p := buffer[n:]
+	from, edge := i64ToDec(contentSize, p)
+	copy(buffer[n:], p[from:edge])
+	r.AddHeaderBytes(bytesContentRange, buffer[:n+(edge-from)])
 	return r.sendError(StatusRangeNotSatisfiable, content)
 }
 func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500
@@ -2794,6 +2801,7 @@ func (r *serverResponse_) SendBadGateway(content []byte) error { // 502
 func (r *serverResponse_) SendGatewayTimeout(content []byte) error { // 504
 	return r.sendError(StatusGatewayTimeout, content)
 }
+
 func (r *serverResponse_) sendError(status int16, content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
@@ -2811,38 +2819,36 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 }
 
 func (r *serverResponse_) doSend() error {
-	/*
-		if r.hasRevisers {
-			resp := r.shell.(Response)
-			// Travel through revisers
-			for _, id := range r.revisers { // revise headers
-				if id == 0 { // id of effective reviser is ensured to be > 0
-					continue
-				}
-				reviser := r.webapp.reviserByID(id)
-				reviser.BeforeSend(resp.Request(), resp)
+	if r.hasRevisers {
+		resp := r.shell.(Response)
+		// Travel through revisers
+		for _, id := range r.revisers { // revise headers
+			if id == 0 { // id of effective reviser is ensured to be > 0
+				continue
 			}
-			for _, id := range r.revisers { // revise sized content
-				if id == 0 {
-					continue
-				}
-				reviser := r.webapp.reviserByID(id)
-				reviser.OnSend(resp.Request(), resp, &r.chain)
-			}
-			// Because r.chain may be altered/replaced by revisers, content size must be recalculated
-			if contentSize, ok := r.chain.Size(); ok {
-				r.contentSize = contentSize
-			} else {
-				return webOutTooLarge
-			}
+			reviser := r.webapp.reviserByID(id)
+			reviser.BeforeSend(resp.Request(), resp)
 		}
-	*/
+		for _, id := range r.revisers { // revise sized content
+			if id == 0 {
+				continue
+			}
+			reviser := r.webapp.reviserByID(id)
+			reviser.OnOutput(resp.Request(), resp, &r.chain)
+		}
+		// Because r.chain may be altered/replaced by revisers, content size must be recalculated
+		if contentSize, ok := r.chain.Size(); ok {
+			r.contentSize = contentSize
+		} else {
+			return webOutTooLarge
+		}
+	}
 	return r.shell.sendChain()
 }
 
 func (r *serverResponse_) beforeRevise() {
-	/*
-		resp := r.shell.(Response)
+	resp := r.shell.(Response)
+	if r.hasRevisers {
 		for _, id := range r.revisers { // revise headers
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2850,7 +2856,7 @@ func (r *serverResponse_) beforeRevise() {
 			reviser := r.webapp.reviserByID(id)
 			reviser.BeforeEcho(resp.Request(), resp)
 		}
-	*/
+	}
 }
 func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {
@@ -2858,36 +2864,32 @@ func (r *serverResponse_) doEcho() error {
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
-	/*
-		if r.hasRevisers {
-			resp := r.shell.(Response)
-			for _, id := range r.revisers { // revise vague content
-				if id == 0 { // id of effective reviser is ensured to be > 0
-					continue
-				}
-				reviser := r.webapp.reviserByID(id)
-				reviser.OnEcho(resp.Request(), resp, &r.chain)
+	if r.hasRevisers {
+		resp := r.shell.(Response)
+		for _, id := range r.revisers { // revise vague content
+			if id == 0 { // id of effective reviser is ensured to be > 0
+				continue
 			}
+			reviser := r.webapp.reviserByID(id)
+			reviser.OnOutput(resp.Request(), resp, &r.chain)
 		}
-	*/
+	}
 	return r.shell.echoChain()
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	/*
-		if r.hasRevisers {
-			resp := r.shell.(Response)
-			for _, id := range r.revisers { // finish vague content
-				if id == 0 { // id of effective reviser is ensured to be > 0
-					continue
-				}
-				reviser := r.webapp.reviserByID(id)
-				reviser.FinishEcho(resp.Request(), resp)
+	if r.hasRevisers {
+		resp := r.shell.(Response)
+		for _, id := range r.revisers { // finish vague content
+			if id == 0 { // id of effective reviser is ensured to be > 0
+				continue
 			}
+			reviser := r.webapp.reviserByID(id)
+			reviser.FinishEcho(resp.Request(), resp)
 		}
-	*/
+	}
 	return r.shell.finalizeVague()
 }
 

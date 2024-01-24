@@ -66,15 +66,19 @@ func (r *gzipReviser) OnPrepare() {
 func (r *gzipReviser) Rank() int8 { return RankGzip }
 
 func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
+	// TODO
 	return
 }
-func (r *gzipReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
+func (r *gzipReviser) OnInput(req Request, resp Response, chain *Chain) bool {
+	// TODO
 	return true
 }
 func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // vague
+	// TODO
 	return
 }
 func (r *gzipReviser) FinishDraw(req Request, resp Response) { // vague
+	// TODO
 	return
 }
 
@@ -84,7 +88,7 @@ func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
 func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *gzipReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
+func (r *gzipReviser) OnOutput(req Request, resp Response, chain *Chain) {
 	// TODO
 }
 func (r *gzipReviser) FinishEcho(req Request, resp Response) { // vague

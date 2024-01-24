@@ -856,16 +856,16 @@ func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-
 				if b == ' ' { // end of request-target
 					break uri
 				}
-				half, ok := byteFromHex(b)
+				nybble, ok := byteFromHex(b)
 				if !ok {
 					r.headResult, r.failReason = StatusBadRequest, "invalid pct encoding"
 					return false
 				}
 				if state&0xf == 0xf { // Expecting the first HEXDIG
-					octet = half << 4
+					octet = nybble << 4
 					state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
 				} else { // Expecting the second HEXDIG
-					octet |= half
+					octet |= nybble
 					if state == 0x20 { // in name
 						query.hash += uint16(octet)
 					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
@@ -1078,7 +1078,7 @@ func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.a
 func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
 func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
 func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *http1Response) delHeaderAt(o uint8)                        { r.delHeaderAt1(o) }
+func (r *http1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
 func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
@@ -1224,7 +1224,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n
-				sizeBuffer := r.stream.buffer256() // enough for length
+				sizeBuffer := r.stream.buffer256() // enough for content-length
 				from, edge := i64ToDec(r.contentSize, sizeBuffer)
 				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n

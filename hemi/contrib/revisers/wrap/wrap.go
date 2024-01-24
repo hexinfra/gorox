@@ -63,7 +63,8 @@ func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // sized
 func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *wrapReviser) OnInput(req Request, resp Response, chain *Chain) bool { // sized
+func (r *wrapReviser) OnInput(req Request, resp Response, chain *Chain) bool {
+	// TODO
 	return true
 }
 func (r *wrapReviser) FinishDraw(req Request, resp Response) { // vague
@@ -79,7 +80,7 @@ func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // vague
 		Println("BeforeEcho")
 	}
 }
-func (r *wrapReviser) OnOutput(req Request, resp Response, chain *Chain) { // sized
+func (r *wrapReviser) OnOutput(req Request, resp Response, chain *Chain) {
 	if Debug() >= 2 {
 		piece := GetPiece()
 		piece.SetText([]byte("d"))

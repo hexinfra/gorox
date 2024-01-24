@@ -594,15 +594,15 @@ func (r *webOut_) delHeader1(name []byte) (deleted bool) {
 	}
 	return
 }
-func (r *webOut_) delHeaderAt1(o uint8) {
-	if o == 0 {
-		BugExitln("delHeaderAt1: o == 0")
+func (r *webOut_) delHeaderAt1(i uint8) {
+	if i == 0 {
+		BugExitln("delHeaderAt1: i == 0 which must not happen")
 	}
-	from := r.edges[o-1]
-	edge := r.edges[o]
+	from := r.edges[i-1]
+	edge := r.edges[i]
 	size := edge - from
 	copy(r.fields[from:], r.fields[edge:])
-	for j := o + 1; j < r.nHeaders; j++ {
+	for j := i + 1; j < r.nHeaders; j++ {
 		r.edges[j] -= size
 	}
 	r.fieldsEdge -= size
@@ -626,20 +626,24 @@ func (r *webOut_) _addFixedHeader1(name []byte, value []byte) { // used by final
 }
 
 func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
-	// TODO: ranged content support. check r.asRequest. only applies for response
-	r.shell.finalizeHeaders()
-	var vector [][]byte // waiting for write
-	if r.forbidContent {
-		vector = r.fixedVector[0:3]
-		r.chain.free()
-	} else if nPieces := r.chain.NumPieces(); nPieces == 1 { // content chain has exactly one piece
-		vector = r.fixedVector[0:4]
-	} else { // nPieces >= 2
-		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
+	return r._sendEntireChain1()
+	// TODO
+	nRanges := len(r.ranges)
+	if nRanges == 0 {
+		return r._sendEntireChain1()
 	}
-	vector[0] = r.shell.control()
-	vector[1] = r.shell.addedHeaders()
-	vector[2] = r.shell.fixedHeaders()
+	if !r.asRequest {
+		r.shell.(Response).SetStatus(StatusPartialContent)
+	}
+	if nRanges == 1 {
+		return r._sendSingleRange1()
+	} else {
+		return r._sendMultiRanges1()
+	}
+}
+func (r *webOut_) _sendEntireChain1() error {
+	r.shell.finalizeHeaders()
+	vector := r._prepareVector1() // waiting to write
 	if Debug() >= 2 {
 		if r.asRequest {
 			Printf("[H1Stream=%d]=======> ", r.stream.(*H1Stream).conn.id)
@@ -653,7 +657,7 @@ func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev
 		if piece.size == 0 {
 			continue
 		}
-		if piece.IsText() {
+		if piece.IsText() { // plain text
 			vector[vEdge] = piece.Text()
 			vEdge++
 		} else if piece.size <= _16K { // small file, <= 16K
@@ -690,6 +694,76 @@ func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev
 		return r.writeVector1()
 	}
 	return nil
+}
+func (r *webOut_) _sendSingleRange1() error {
+	r.AddContentType(r.rangeType)
+	r.shell.finalizeHeaders()
+	vector := r._prepareVector1() // waiting to write
+	vFrom, vEdge := 0, 3
+	for piece := r.chain.head; piece != nil; piece = piece.next {
+		if piece.size == 0 {
+			continue
+		}
+		if piece.IsText() { // plain text
+			vector[vEdge] = piece.Text()
+			vEdge++
+		} else if piece.size <= _16K { // small file, <= 16K
+			buffer := GetNK(piece.size) // 4K/16K
+			if err := piece.copyTo(buffer); err != nil {
+				r.stream.markBroken()
+				PutNK(buffer)
+				return err
+			}
+			vector[vEdge] = buffer[0:piece.size]
+			vEdge++
+			r.vector = vector[vFrom:vEdge]
+			if err := r.writeVector1(); err != nil {
+				PutNK(buffer)
+				return err
+			}
+			PutNK(buffer)
+			vFrom, vEdge = 0, 0
+		} else { // large file, > 16K
+			if vFrom < vEdge {
+				r.vector = vector[vFrom:vEdge]
+				if err := r.writeVector1(); err != nil { // texts
+					return err
+				}
+				vFrom, vEdge = 0, 0
+			}
+			if err := r.writePiece1(piece, false); err != nil { // the file
+				return err
+			}
+		}
+	}
+	if vFrom < vEdge {
+		r.vector = vector[vFrom:vEdge]
+		return r.writeVector1()
+	}
+	return nil
+}
+func (r *webOut_) _sendMultiRanges1() error {
+	buffer := r.stream.buffer256()
+	n := copy(buffer, bytesMultipartRanges)
+	n += copy(buffer[n:], "xsd3lxT9b5c")
+	r.AddHeaderBytes(bytesContentType, buffer[:n])
+	// TODO
+	return nil
+}
+func (r *webOut_) _prepareVector1() [][]byte {
+	var vector [][]byte // waiting for write
+	if r.forbidContent {
+		vector = r.fixedVector[0:3]
+		r.chain.free()
+	} else if nPieces := r.chain.NumPieces(); nPieces == 1 { // content chain has exactly one piece
+		vector = r.fixedVector[0:4]
+	} else { // nPieces >= 2
+		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
+	}
+	vector[0] = r.shell.control()
+	vector[1] = r.shell.addedHeaders()
+	vector[2] = r.shell.fixedHeaders()
+	return vector
 }
 
 func (r *webOut_) echoChain1(chunked bool) error { // TODO: coalesce?
@@ -792,45 +866,45 @@ func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {
 			r.vector[0] = piece.Text()
 		}
 		return r.writeVector1()
-	} else { // file piece
-		buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
-		defer PutNK(buffer)
-		sizeRead := int64(0)
-		for { // we don't use sendfile(2).
-			if sizeRead == piece.size {
-				return nil
-			}
-			readSize := int64(cap(buffer))
-			if sizeLeft := piece.size - sizeRead; sizeLeft < readSize {
-				readSize = sizeLeft
-			}
-			n, err := piece.file.ReadAt(buffer[:readSize], sizeRead)
-			sizeRead += int64(n)
-			if err != nil && sizeRead != piece.size {
-				r.stream.markBroken()
-				return err
-			}
-			if err = r._beforeWrite(); err != nil {
-				r.stream.markBroken()
-				return err
-			}
-			if chunked { // use HTTP/1.1 chunked mode
-				sizeBuffer := r.stream.buffer256()
-				k := i64ToHex(int64(n), sizeBuffer)
-				sizeBuffer[k] = '\r'
-				sizeBuffer[k+1] = '\n'
-				k += 2
-				r.vector = r.fixedVector[0:3]
-				r.vector[0] = sizeBuffer[:k]
-				r.vector[1] = buffer[:n]
-				r.vector[2] = sizeBuffer[k-2 : k]
-				_, err = r.stream.writev(&r.vector)
-			} else { // HTTP/1.0, or identity content
-				_, err = r.stream.write(buffer[0:n])
-			}
-			if err = r._slowCheck(err); err != nil {
-				return err
-			}
+	}
+	// file piece. we don't use sendfile(2).
+	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
+	defer PutNK(buffer)
+	sizeRead := int64(0)
+	for {
+		if sizeRead == piece.size {
+			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := piece.size - sizeRead; sizeLeft < readSize {
+			readSize = sizeLeft
+		}
+		n, err := piece.file.ReadAt(buffer[:readSize], sizeRead)
+		sizeRead += int64(n)
+		if err != nil && sizeRead != piece.size {
+			r.stream.markBroken()
+			return err
+		}
+		if err = r._beforeWrite(); err != nil {
+			r.stream.markBroken()
+			return err
+		}
+		if chunked { // use HTTP/1.1 chunked mode
+			sizeBuffer := r.stream.buffer256()
+			k := i64ToHex(int64(n), sizeBuffer)
+			sizeBuffer[k] = '\r'
+			sizeBuffer[k+1] = '\n'
+			k += 2
+			r.vector = r.fixedVector[0:3]
+			r.vector[0] = sizeBuffer[:k]
+			r.vector[1] = buffer[:n]
+			r.vector[2] = sizeBuffer[k-2 : k]
+			_, err = r.stream.writev(&r.vector)
+		} else { // HTTP/1.0, or identity content
+			_, err = r.stream.write(buffer[0:n])
+		}
+		if err = r._slowCheck(err); err != nil {
+			return err
 		}
 	}
 }

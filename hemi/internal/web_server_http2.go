@@ -958,7 +958,7 @@ func (r *http2Response) addHeader(name []byte, value []byte) bool   { return r.a
 func (r *http2Response) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
 func (r *http2Response) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
 func (r *http2Response) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *http2Response) delHeaderAt(o uint8)                        { r.delHeaderAt2(o) }
+func (r *http2Response) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
 
 func (r *http2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO

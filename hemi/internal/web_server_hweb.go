@@ -274,7 +274,7 @@ func (r *hwebResponse) addHeader(name []byte, value []byte) bool   { return r.ad
 func (r *hwebResponse) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
 func (r *hwebResponse) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
 func (r *hwebResponse) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
-func (r *hwebResponse) delHeaderAt(o uint8)                        { r.delHeaderAtH(o) }
+func (r *hwebResponse) delHeaderAt(i uint8)                        { r.delHeaderAtH(i) }
 
 func (r *hwebResponse) AddHTTPSRedirection(authority string) bool {
 	// TODO

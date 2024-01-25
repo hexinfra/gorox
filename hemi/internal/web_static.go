@@ -231,7 +231,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		resp.SendRangeNotSatisfiable(size, nil)
 		return true
 	} else { // ranges are satisfiable
-		resp.useRanges(ranges, contentType)
+		resp.employRanges(ranges, contentType)
 	}
 	if entry.isSmall() {
 		resp.sendText(entry.text)

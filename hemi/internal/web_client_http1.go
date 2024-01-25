@@ -451,7 +451,7 @@ func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHe
 func (r *H1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
 func (r *H1Request) AddCookie(name string, value string) bool {
-	// TODO. need some space to place the cookie
+	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
 func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header

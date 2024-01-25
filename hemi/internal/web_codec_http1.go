@@ -766,7 +766,7 @@ func (r *webOut_) _prepareVector1() [][]byte {
 	return vector
 }
 
-func (r *webOut_) echoChain1(chunked bool) error { // TODO: coalesce?
+func (r *webOut_) echoChain1(chunked bool) error { // TODO: coalesce text pieces?
 	for piece := r.chain.head; piece != nil; piece = piece.next {
 		if err := r.writePiece1(piece, chunked); err != nil {
 			return err
@@ -809,7 +809,7 @@ func (r *webOut_) trailer1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *webOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not present at the same time, so after headers is sent, r.fields is used by trailers.
+func (r *webOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
 
 func (r *webOut_) passBytes1(p []byte) error { return r.writeBytes1(p) }
 
@@ -908,20 +908,6 @@ func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {
 		}
 	}
 }
-func (r *webOut_) writeBytes1(p []byte) error {
-	if r.stream.isBroken() {
-		return webOutWriteBroken
-	}
-	if len(p) == 0 {
-		return nil
-	}
-	if err := r._beforeWrite(); err != nil {
-		r.stream.markBroken()
-		return err
-	}
-	_, err := r.stream.write(p)
-	return r._slowCheck(err)
-}
 func (r *webOut_) writeVector1() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
@@ -934,5 +920,19 @@ func (r *webOut_) writeVector1() error {
 		return err
 	}
 	_, err := r.stream.writev(&r.vector)
+	return r._slowCheck(err)
+}
+func (r *webOut_) writeBytes1(p []byte) error {
+	if r.stream.isBroken() {
+		return webOutWriteBroken
+	}
+	if len(p) == 0 {
+		return nil
+	}
+	if err := r._beforeWrite(); err != nil {
+		r.stream.markBroken()
+		return err
+	}
+	_, err := r.stream.write(p)
 	return r._slowCheck(err)
 }

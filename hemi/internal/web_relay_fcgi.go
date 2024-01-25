@@ -1094,7 +1094,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 			return false
 		}
 		if header.isCommaValue() { // has sub headers, check them
-			if !mh.check(r, r.extras, extraFrom, len(r.extras)) {
+			if extraEdge := len(r.extras); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}

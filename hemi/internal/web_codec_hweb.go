@@ -40,10 +40,6 @@ func (r *webOut_) sendChainH() error {
 	return nil
 }
 
-func (r *webOut_) echoHeadersH() error {
-	// TODO
-	return nil
-}
 func (r *webOut_) echoChainH() error {
 	// TODO
 	return nil
@@ -80,10 +76,10 @@ func (r *webOut_) writePieceH(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *webOut_) writeBytesH(p []byte) error {
-	// TODO
+func (r *webOut_) writeVectorH() error {
 	return nil
 }
-func (r *webOut_) writeVectorH() error {
+func (r *webOut_) writeBytesH(p []byte) error {
+	// TODO
 	return nil
 }

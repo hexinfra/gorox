@@ -228,10 +228,13 @@ func (r *clientRequest_) SetIfUnmodifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
-func (r *clientRequest_) doSend() error { return r.shell.sendChain() }
+func (r *clientRequest_) beforeSend() {} // revising is not supported in client side.
+func (r *clientRequest_) doSend() error { // revising is not supported in client side.
+	return r.shell.sendChain()
+}
 
-func (r *clientRequest_) beforeRevise() {} // revising is not supported in client side.
-func (r *clientRequest_) doEcho() error {
+func (r *clientRequest_) beforeEcho() {} // revising is not supported in client side.
+func (r *clientRequest_) doEcho() error { // revising is not supported in client side.
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -239,11 +242,80 @@ func (r *clientRequest_) doEcho() error {
 	defer r.chain.free()
 	return r.shell.echoChain()
 }
-func (r *clientRequest_) endVague() error {
+func (r *clientRequest_) endVague() error { // revising is not supported in client side.
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
 	return r.shell.finalizeVague()
+}
+
+var ( // perfect hash table for request critical headers
+	clientRequestCriticalHeaderTable = [12]struct {
+		hash uint16
+		name []byte
+		fAdd func(*clientRequest_, []byte) (ok bool)
+		fDel func(*clientRequest_) (deleted bool)
+	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
+		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted
+		1:  {hashConnection, bytesConnection, nil, nil},       // restricted
+		2:  {hashIfRange, bytesIfRange, (*clientRequest_).appendIfRange, (*clientRequest_).deleteIfRange},
+		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted
+		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*clientRequest_).appendIfModifiedSince, (*clientRequest_).deleteIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*clientRequest_).appendIfUnmodifiedSince, (*clientRequest_).deleteIfUnmodifiedSince},
+		6:  {hashHost, bytesHost, (*clientRequest_).appendHost, (*clientRequest_).deleteHost},
+		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
+		8:  {hashContentType, bytesContentType, (*clientRequest_).appendContentType, (*clientRequest_).deleteContentType},
+		9:  {hashCookie, bytesCookie, nil, nil}, // restricted
+		10: {hashDate, bytesDate, (*clientRequest_).appendDate, (*clientRequest_).deleteDate},
+		11: {hashVia, bytesVia, nil, nil}, // restricted
+	}
+	clientRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
+)
+
+func (r *clientRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
+	h := &clientRequestCriticalHeaderTable[clientRequestCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(h.name, name) {
+		if h.fAdd == nil { // mainly because this header is restricted to insert
+			return true // pretend to be successful
+		}
+		return h.fAdd(r, value)
+	}
+	return r.shell.addHeader(name, value)
+}
+func (r *clientRequest_) appendHost(host []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.host, bytesHost, host)
+}
+func (r *clientRequest_) appendIfModifiedSince(since []byte) (ok bool) {
+	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
+}
+func (r *clientRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
+	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
+}
+func (r *clientRequest_) appendIfRange(ifRange []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
+}
+
+func (r *clientRequest_) removeHeader(hash uint16, name []byte) bool {
+	h := &clientRequestCriticalHeaderTable[clientRequestCriticalHeaderFind(hash)]
+	if h.hash == hash && bytes.Equal(h.name, name) {
+		if h.fDel == nil { // mainly because this header is restricted to remove
+			return true // pretend to be successful
+		}
+		return h.fDel(r)
+	}
+	return r.shell.delHeader(name)
+}
+func (r *clientRequest_) deleteHost() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.host)
+}
+func (r *clientRequest_) deleteIfModifiedSince() (deleted bool) {
+	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
+}
+func (r *clientRequest_) deleteIfUnmodifiedSince() (deleted bool) {
+	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+}
+func (r *clientRequest_) deleteIfRange() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
 func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool { // used by proxies
@@ -289,7 +361,7 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 			return false
 		}
 	} else {
-		// we have no way to set scheme in HTTP/1 unless we use absolute-form, which is a risk that many servers may not support it.
+		// we have no way to set scheme in HTTP/1 unless we use absolute-form, which is a risk as many servers may not support it.
 	}
 
 	// copy selective forbidden headers (including cookie) from req
@@ -328,76 +400,6 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 
 	return true
 }
-
-var ( // perfect hash table for request critical headers
-	clientRequestCriticalHeaderTable = [12]struct {
-		hash uint16
-		name []byte
-		fAdd func(*clientRequest_, []byte) (ok bool)
-		fDel func(*clientRequest_) (deleted bool)
-	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
-		0:  {hashContentLength, bytesContentLength, nil, nil}, // forbidden
-		1:  {hashConnection, bytesConnection, nil, nil},       // forbidden
-		2:  {hashIfRange, bytesIfRange, (*clientRequest_).appendIfRange, (*clientRequest_).deleteIfRange},
-		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // forbidden
-		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*clientRequest_).appendIfModifiedSince, (*clientRequest_).deleteIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*clientRequest_).appendIfUnmodifiedSince, (*clientRequest_).deleteIfUnmodifiedSince},
-		6:  {hashHost, bytesHost, (*clientRequest_).appendHost, (*clientRequest_).deleteHost},
-		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // forbidden
-		8:  {hashContentType, bytesContentType, (*clientRequest_).appendContentType, (*clientRequest_).deleteContentType},
-		9:  {hashCookie, bytesCookie, nil, nil}, // forbidden
-		10: {hashDate, bytesDate, (*clientRequest_).appendDate, (*clientRequest_).deleteDate},
-		11: {hashVia, bytesVia, nil, nil}, // forbidden
-	}
-	clientRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
-)
-
-func (r *clientRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &clientRequestCriticalHeaderTable[clientRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden to insert
-			return true // pretend to be successful
-		}
-		return h.fAdd(r, value)
-	}
-	return r.shell.addHeader(name, value)
-}
-func (r *clientRequest_) appendHost(host []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.host, bytesHost, host)
-}
-func (r *clientRequest_) appendIfModifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
-}
-func (r *clientRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
-}
-func (r *clientRequest_) appendIfRange(ifRange []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
-}
-
-func (r *clientRequest_) removeHeader(hash uint16, name []byte) bool {
-	h := &clientRequestCriticalHeaderTable[clientRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden to remove
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.shell.delHeader(name)
-}
-func (r *clientRequest_) deleteHost() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.host)
-}
-func (r *clientRequest_) deleteIfModifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
-}
-func (r *clientRequest_) deleteIfUnmodifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
-}
-func (r *clientRequest_) deleteIfRange() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.ifRange)
-}
-
 func (r *clientRequest_) copyTailFrom(req Request) bool { // used by proxies
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
@@ -507,13 +509,13 @@ func (r *clientResponse_) examineHead() bool {
 	// Basic checks against versions
 	switch r.versionCode {
 	case Version1_0: // we don't support HTTP/1.0 in client side
-		BugExitln("HTTP/1.0 must be denied prior")
+		BugExitln("HTTP/1.0 must be denied priorly")
 	case Version1_1:
 		if r.keepAlive == -1 { // no connection header
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
-		// Add here
+		// TODO: add checks here
 	}
 
 	if !r.determineContentMode() {
@@ -554,7 +556,7 @@ func (r *clientResponse_) applyHeader(index uint8) bool {
 			return false
 		}
 		if header.isCommaValue() { // has sub headers, check them
-			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
+			if extraEdge := uint8(len(r.extras)); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}
@@ -721,6 +723,14 @@ func (r *clientResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge 
 	// TODO; use r._checkChallenge
 	return true
 }
+func (r *clientResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
+	// TODO; use r._checkChallenge
+	return true
+}
+func (r *clientResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
+	// TODO
+	return true
+}
 func (r *clientResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
@@ -741,14 +751,6 @@ func (r *clientResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool {
 		r.zones.vary.from = from
 	}
 	r.zones.vary.edge = edge
-	return true
-}
-func (r *clientResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
-	// TODO; use r._checkChallenge
-	return true
-}
-func (r *clientResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
-	// TODO
 	return true
 }
 
@@ -784,6 +786,10 @@ func (r *clientResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
+func (r *clientResponse_) addCookie(cookie *cookie) bool {
+	// TODO
+	return true
+}
 func (r *clientResponse_) HasCookies() bool {
 	// TODO
 	return false
@@ -839,11 +845,6 @@ func (r *clientResponse_) arrayCopy(p []byte) bool {
 		}
 		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
 	}
-	return true
-}
-
-func (r *clientResponse_) addCookie(cookie *cookie) bool {
-	// TODO
 	return true
 }
 

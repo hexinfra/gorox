@@ -907,7 +907,7 @@ func (r *serverRequest_) applyHeader(index uint8) bool {
 			return false
 		}
 		if header.isCommaValue() { // has sub headers, check them
-			if !mh.check(r, r.extras, extraFrom, uint8(len(r.extras))) {
+			if extraEdge := uint8(len(r.extras)); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}
@@ -1147,14 +1147,6 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
-func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
-	if r.indexes.userAgent != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header"
-		return false
-	}
-	r.indexes.userAgent = index
-	return true
-}
 func (r *serverRequest_) _addRange(from int64, last int64) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
@@ -1162,6 +1154,14 @@ func (r *serverRequest_) _addRange(from int64, last int64) bool {
 	}
 	r.ranges[r.nRanges] = Range{from, last}
 	r.nRanges++
+	return true
+}
+func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+	if r.indexes.userAgent != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header"
+		return false
+	}
+	r.indexes.userAgent = index
 	return true
 }
 
@@ -1265,6 +1265,34 @@ func (r *serverRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool
 func (r *serverRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
 	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
+func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
+	if zMatch.isEmpty() {
+		zMatch.from = from
+	}
+	zMatch.edge = edge
+	for i := from; i < edge; i++ {
+		data := pairs[i].dataAt(r.input)
+		nMatch := *match // -1:*, 0:nonexist, >0:num
+		if len(data) == 1 && data[0] == '*' {
+			if nMatch != 0 {
+				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
+				return false
+			}
+			*match = -1 // *
+		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
+			if nMatch == -1 { // *
+				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
+				return false
+			}
+			if nMatch > 16 {
+				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
+				return false
+			}
+			*match++ // *match is 0 by default
+		}
+	}
+	return true
+}
 func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
@@ -1324,34 +1352,6 @@ func (r *serverRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8
 		r.zones.xForwardedFor.from = from
 	}
 	r.zones.xForwardedFor.edge = edge
-	return true
-}
-func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
-	if zMatch.isEmpty() {
-		zMatch.from = from
-	}
-	zMatch.edge = edge
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
-		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(data) == 1 && data[0] == '*' {
-			if nMatch != 0 {
-				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
-				return false
-			}
-			*match = -1 // *
-		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
-			if nMatch == -1 { // *
-				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
-				return false
-			}
-			if nMatch > 16 {
-				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
-				return false
-			}
-			*match++ // *match is 0 by default
-		}
-	}
 	return true
 }
 
@@ -2490,7 +2490,7 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	(*serverRequest_).UnsafeContentType, // contentType
 }
 
-var (
+const (
 	serverRequestPrefixQuery  = "query_"
 	serverRequestPrefixHeader = "header_"
 	serverRequestPrefixCookie = "cookie_"
@@ -2609,6 +2609,7 @@ type Response interface {
 	SetExpires(expires int64) bool
 	SetLastModified(lastModified int64) bool
 	AddContentType(contentType string) bool
+	AddContentTypeBytes(contentType []byte) bool
 	AddHTTPSRedirection(authority string) bool
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
@@ -2652,8 +2653,7 @@ type Response interface {
 	hasHeader(name []byte) bool
 	delHeader(name []byte) bool
 	setConnectionClose()
-	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
-	useRanges(ranges []Range, rangeType string)
+	employRanges(ranges []Range, rangeType string)
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content
@@ -2661,11 +2661,11 @@ type Response interface {
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	finalizeVague() error
-	pass1xx(resp response) bool               // used by proxies
-	pass(resp webIn) error                    // used by proxies
-	post(content any, hasTrailers bool) error // used by proxies
-	copyTailFrom(resp response) bool          // used by proxies
+	pass1xx(resp response) bool                      // used by proxies
+	pass(resp webIn) error                           // used by proxies
+	post(content any, hasTrailers bool) error        // used by proxies
+	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
+	copyTailFrom(resp response) bool                 // used by proxies
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2680,6 +2680,7 @@ type serverResponse_ struct { // outgoing. needs building
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	status    int16    // 200, 302, 404, 500, ...
+	_         [6]byte  // padding
 	start     [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
 	unixTimes struct { // in seconds
 		expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
@@ -2693,6 +2694,7 @@ type serverResponse0 struct { // for fast reset, entirely
 	indexes struct {
 		expires      uint8
 		lastModified uint8
+		_            [6]byte // padding
 	}
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 }
@@ -2818,17 +2820,19 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	return r.shell.sendChain()
 }
 
+func (r *serverResponse_) beforeSend() {
+	resp := r.shell.(Response)
+	for _, id := range r.revisers { // revise headers
+		if id == 0 { // id of effective reviser is ensured to be > 0
+			continue
+		}
+		reviser := r.webapp.reviserByID(id)
+		reviser.BeforeSend(resp.Request(), resp)
+	}
+}
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
 		resp := r.shell.(Response)
-		// Travel through revisers
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.webapp.reviserByID(id)
-			reviser.BeforeSend(resp.Request(), resp)
-		}
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
@@ -2836,7 +2840,7 @@ func (r *serverResponse_) doSend() error {
 			reviser := r.webapp.reviserByID(id)
 			reviser.OnOutput(resp.Request(), resp, &r.chain)
 		}
-		// Because r.chain may be altered/replaced by revisers, content size must be recalculated
+		// Because r.chain may be altered by revisers, content size must be recalculated
 		if contentSize, ok := r.chain.Size(); ok {
 			r.contentSize = contentSize
 		} else {
@@ -2846,16 +2850,14 @@ func (r *serverResponse_) doSend() error {
 	return r.shell.sendChain()
 }
 
-func (r *serverResponse_) beforeRevise() {
+func (r *serverResponse_) beforeEcho() {
 	resp := r.shell.(Response)
-	if r.hasRevisers {
-		for _, id := range r.revisers { // revise headers
-			if id == 0 { // id of effective reviser is ensured to be > 0
-				continue
-			}
-			reviser := r.webapp.reviserByID(id)
-			reviser.BeforeEcho(resp.Request(), resp)
+	for _, id := range r.revisers { // revise headers
+		if id == 0 { // id of effective reviser is ensured to be > 0
+			continue
 		}
+		reviser := r.webapp.reviserByID(id)
+		reviser.BeforeEcho(resp.Request(), resp)
 	}
 }
 func (r *serverResponse_) doEcho() error {
@@ -2893,27 +2895,6 @@ func (r *serverResponse_) endVague() error {
 	return r.shell.finalizeVague()
 }
 
-func (r *serverResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
-	resp.delHopHeaders()
-
-	// copy control (:status)
-	r.SetStatus(resp.Status())
-
-	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
-
-	// copy remaining headers from resp
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
-			return r.shell.addHeader(name, value)
-		}
-		return r.shell.insertHeader(header.hash, name, value)
-	}) {
-		return false
-	}
-
-	return true
-}
-
 var ( // perfect hash table for response critical headers
 	serverResponseCriticalHeaderTable = [10]struct {
 		hash uint16
@@ -2921,15 +2902,15 @@ var ( // perfect hash table for response critical headers
 		fAdd func(*serverResponse_, []byte) (ok bool)
 		fDel func(*serverResponse_) (deleted bool)
 	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
-		0: {hashServer, bytesServer, nil, nil},       // forbidden
-		1: {hashSetCookie, bytesSetCookie, nil, nil}, // forbidden
-		2: {hashUpgrade, bytesUpgrade, nil, nil},     // forbidden
+		0: {hashServer, bytesServer, nil, nil},       // restricted
+		1: {hashSetCookie, bytesSetCookie, nil, nil}, // restricted
+		2: {hashUpgrade, bytesUpgrade, nil, nil},     // restricted
 		3: {hashDate, bytesDate, (*serverResponse_).appendDate, (*serverResponse_).deleteDate},
-		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // forbidden
-		5: {hashConnection, bytesConnection, nil, nil},             // forbidden
+		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
+		5: {hashConnection, bytesConnection, nil, nil},             // restricted
 		6: {hashLastModified, bytesLastModified, (*serverResponse_).appendLastModified, (*serverResponse_).deleteLastModified},
 		7: {hashExpires, bytesExpires, (*serverResponse_).appendExpires, (*serverResponse_).deleteExpires},
-		8: {hashContentLength, bytesContentLength, nil, nil}, // forbidden
+		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted
 		9: {hashContentType, bytesContentType, (*serverResponse_).appendContentType, (*serverResponse_).deleteContentType},
 	}
 	serverResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
@@ -2938,7 +2919,7 @@ var ( // perfect hash table for response critical headers
 func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is forbidden to insert
+		if h.fAdd == nil { // mainly because this header is restricted to insert
 			return true // pretend to be successful
 		}
 		return h.fAdd(r, value)
@@ -2955,7 +2936,7 @@ func (r *serverResponse_) appendLastModified(lastModified []byte) (ok bool) {
 func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
 	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is forbidden to remove
+		if h.fDel == nil { // mainly because this header is restricted to remove
 			return true // pretend to be successful
 		}
 		return h.fDel(r)
@@ -2969,6 +2950,27 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
+func (r *serverResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
+	resp.delHopHeaders()
+
+	// copy control (:status)
+	r.SetStatus(resp.Status())
+
+	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
+
+	// copy remaining headers from resp
+	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
+			return r.shell.addHeader(name, value)
+		} else {
+			return r.shell.insertHeader(header.hash, name, value)
+		}
+	}) {
+		return false
+	}
+
+	return true
+}
 func (r *serverResponse_) copyTailFrom(resp response) bool { // used by proxies
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)

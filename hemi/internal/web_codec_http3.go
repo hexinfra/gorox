@@ -47,10 +47,6 @@ func (r *webOut_) sendChain3() error {
 	return nil
 }
 
-func (r *webOut_) echoHeaders3() error {
-	// TODO
-	return nil
-}
 func (r *webOut_) echoChain3() error {
 	// TODO
 	return nil
@@ -88,10 +84,10 @@ func (r *webOut_) writePiece3(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *webOut_) writeBytes3(p []byte) error {
-	// TODO
+func (r *webOut_) writeVector3() error {
 	return nil
 }
-func (r *webOut_) writeVector3() error {
+func (r *webOut_) writeBytes3(p []byte) error {
+	// TODO
 	return nil
 }

@@ -150,9 +150,10 @@ func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 type webIn interface {
 	ContentSize() int64
 	IsVague() bool
+	HasTrailers() bool
+
 	readContent() (p []byte, err error)
 	applyTrailer(index uint8) bool
-	HasTrailers() bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
@@ -681,7 +682,7 @@ func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content
 	// duplicated field-values with a single valid Content-Length field
 	// containing that decimal value prior to determining the message body
 	// length or forwarding the message.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set later if the content is vague
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set after all of the headers are received if the content is vague
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
@@ -708,7 +709,7 @@ func (r *webIn_) checkContentLocation(header *pair, index uint8) bool { // Conte
 	return false
 }
 func (r *webIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
-	// TODO
+	// TODO: check syntax
 	if r.iContentRange == 0 && header.value.notEmpty() {
 		r.iContentRange = index
 		return true
@@ -896,12 +897,11 @@ func (r *webIn_) determineContentMode() bool {
 		}
 		r.contentSize = -2 // vague
 	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
-		// TODO: if there is no content, HTTP/2 and HTTP/3 will mark END_STREAM in headers frame. use this to decide!
+		// TODO: if there is no content, HTTP/2 and HTTP/3 should mark END_STREAM in headers frame. use this to decide!
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as vague
 	}
 	return true
 }
-func (r *webIn_) markVague()    { r.contentSize = -2 }
 func (r *webIn_) IsVague() bool { return r.contentSize == -2 }
 
 func (r *webIn_) ContentSize() int64 { return r.contentSize }
@@ -1124,7 +1124,7 @@ func (r *webIn_) arrayPush(b byte) {
 		r._growArray(1)
 	}
 }
-func (r *webIn_) _growArray(size int32) bool { // stock->4K->16K->64K1->(128K->...->1G)
+func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(128K->...->1G)
 	edge := r.arrayEdge + size
 	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
 		return false
@@ -1279,45 +1279,46 @@ func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	return pairs
 }
 func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
-	if name != "" {
-		if hash == 0 {
-			hash = stringHash(name)
+	if name == "" {
+		return
+	}
+	if hash == 0 {
+		hash = stringHash(name)
+	}
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash == hash {
+				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+					if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+						continue
+					}
+					if !prime.isCommaValue() {
+						return prime.dataAt(p), true
+					}
+				}
+			}
 		}
-		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
-			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
-							continue
-						}
-						if !prime.isCommaValue() {
-							return prime.dataAt(p), true
-						}
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+						return extra.dataAt(p), true
 					}
 				}
 			}
-			if r.hasExtra[extraKind] {
-				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
-						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
-							return extra.dataAt(p), true
-						}
-					}
+		}
+	} else { // queries, cookies, forms, and params
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash == hash {
+				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+					return prime.valueAt(p), true
 				}
 			}
-		} else { // queries, cookies, forms, and params
-			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						return prime.valueAt(p), true
-					}
-				}
-			}
-			if r.hasExtra[extraKind] {
-				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
-						return extra.valueAt(r.array), true
-					}
+		}
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+					return extra.valueAt(r.array), true
 				}
 			}
 		}
@@ -1325,73 +1326,75 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 	return
 }
 func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
-	if name != "" {
-		if hash == 0 {
-			hash = stringHash(name)
-		}
-		if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
-			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
-							continue
-						}
-						if !prime.isCommaValue() {
-							values = append(values, string(prime.dataAt(p)))
-						}
-					}
-				}
-			}
-			if r.hasExtra[extraKind] {
-				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
-						if p := r._placeOf(extra); extra.nameEqualString(p, name) {
-							values = append(values, string(extra.dataAt(p)))
-						}
-					}
-				}
-			}
-		} else { // queries, cookies, forms, and params
-			for i := primes.from; i < primes.edge; i++ {
-				if prime := &r.primes[i]; prime.hash == hash {
-					if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-						values = append(values, string(prime.valueAt(p)))
-					}
-				}
-			}
-			if r.hasExtra[extraKind] {
-				for i := 0; i < len(r.extras); i++ {
-					if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
-						values = append(values, string(extra.valueAt(r.array)))
-					}
-				}
-			}
-		}
-		if len(values) > 0 {
-			ok = true
-		}
+	if name == "" {
+		return
 	}
-	return
-}
-func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
-	if name != "" {
-		if hash == 0 {
-			hash = stringHash(name)
-		}
+	if hash == 0 {
+		hash = stringHash(name)
+	}
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-					prime.zero()
-					deleted = true
+					if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+						continue
+					}
+					if !prime.isCommaValue() {
+						values = append(values, string(prime.dataAt(p)))
+					}
+				}
+			}
+		}
+		if r.hasExtra[extraKind] {
+			for i := 0; i < len(r.extras); i++ {
+				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
+						values = append(values, string(extra.dataAt(p)))
+					}
+				}
+			}
+		}
+	} else { // queries, cookies, forms, and params
+		for i := primes.from; i < primes.edge; i++ {
+			if prime := &r.primes[i]; prime.hash == hash {
+				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+					values = append(values, string(prime.valueAt(p)))
 				}
 			}
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
 				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
-					extra.zero()
-					deleted = true
+					values = append(values, string(extra.valueAt(r.array)))
 				}
+			}
+		}
+	}
+	if len(values) > 0 {
+		ok = true
+	}
+	return
+}
+func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
+	if name == "" {
+		return
+	}
+	if hash == 0 {
+		hash = stringHash(name)
+	}
+	for i := primes.from; i < primes.edge; i++ {
+		if prime := &r.primes[i]; prime.hash == hash {
+			if p := r._placeOf(prime); prime.nameEqualString(p, name) {
+				prime.zero()
+				deleted = true
+			}
+		}
+	}
+	if r.hasExtra[extraKind] {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				extra.zero()
+				deleted = true
 			}
 		}
 	}
@@ -1399,15 +1402,16 @@ func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) 
 }
 func (r *webIn_) _placeOf(pair *pair) []byte {
 	var place []byte
-	if pair.place == placeInput {
+	switch pair.place {
+	case placeInput:
 		place = r.input
-	} else if pair.place == placeArray {
+	case placeArray:
 		place = r.array
-	} else if pair.place == placeStatic2 {
+	case placeStatic2:
 		place = http2BytesStatic
-	} else if pair.place == placeStatic3 {
+	case placeStatic3:
 		place = http3BytesStatic
-	} else {
+	default:
 		BugExitln("unknown pair.place")
 	}
 	return place
@@ -1530,9 +1534,10 @@ type webOut interface {
 	addedHeaders() []byte
 	fixedHeaders() []byte
 	finalizeHeaders()
+	beforeSend()
 	doSend() error
 	sendChain() error // content
-	beforeRevise()
+	beforeEcho()
 	echoHeaders() error
 	doEcho() error
 	echoChain() error // chunks
@@ -1555,7 +1560,7 @@ type webOut_ struct { // outgoing. needs building
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
-	fields      []byte        // bytes of the headers or trailers which are not present at the same time. [<r.stockFields>/4K/16K]
+	fields      []byte        // bytes of the headers or trailers which are not manipulated at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
@@ -1572,7 +1577,7 @@ type webOut_ struct { // outgoing. needs building
 }
 type webOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
-	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not present at the same time
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not manipulated at the same time
 	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
@@ -1609,6 +1614,9 @@ func (r *webOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size)
 
 func (r *webOut_) AddContentType(contentType string) bool {
 	return r.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+}
+func (r *webOut_) AddContentTypeBytes(contentType []byte) bool {
+	return r.AddHeaderBytes(bytesContentType, contentType)
 }
 
 func (r *webOut_) Header(name string) (value string, ok bool) {
@@ -1675,15 +1683,13 @@ func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte
 	return hash, true, buffer[:n]
 }
 
-func (r *webOut_) markVague()    { r.contentSize = -2 }
 func (r *webOut_) isVague() bool { return r.contentSize == -2 }
-func (r *webOut_) markSent()     { r.isSent = true }
 func (r *webOut_) IsSent() bool  { return r.isSent }
 
 func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
-func (r *webOut_) appendDate(date []byte) (ok bool) {
+func (r *webOut_) appendDate(date []byte) (ok bool) { // rarely used in clientRequest
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 
@@ -1718,7 +1724,7 @@ func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) 
 	return true
 }
 func (r *webOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
-	if *pUnixTime == -2 {
+	if *pUnixTime == -2 { // was set through general api, must delete it
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	} else { // >= 0 or -1
@@ -1734,7 +1740,7 @@ func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	if *pUnixTime == -1 {
 		return false
 	}
-	if *pUnixTime == -2 {
+	if *pUnixTime == -2 { // was set through general api, must delete it
 		r.shell.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
@@ -1746,9 +1752,8 @@ func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeou
 
 func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
-func (r *webOut_) SendJSON(content any) error {
-	// TODO: optimize performance
-	r.appendContentType(bytesTypeJSON)
+func (r *webOut_) SendJSON(content any) error { // TODO: optimize performance
+	r.AddContentTypeBytes(bytesTypeJSON)
 	data, err := json.Marshal(content)
 	if err != nil {
 		return err
@@ -1797,7 +1802,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
-func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content directly
+func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content to the other side directly
 	pass := r.shell.passBytes
 	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -1832,7 +1837,7 @@ func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content dire
 	}
 	return nil
 }
-func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content
+func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content to the other side
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
 			return r.echoText(contentText)
@@ -1859,7 +1864,7 @@ func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies
 	}
 }
 
-func (r *webOut_) useRanges(ranges []Range, rangeType string) {
+func (r *webOut_) employRanges(ranges []Range, rangeType string) {
 	r.ranges = ranges
 	r.rangeType = rangeType
 }
@@ -1887,6 +1892,9 @@ func (r *webOut_) _beforeSend() error {
 		return webOutAlreadySent
 	}
 	r.isSent = true
+	if r.hasRevisers {
+		r.shell.beforeSend()
+	}
 	return nil
 }
 
@@ -1894,7 +1902,7 @@ func (r *webOut_) echoText(chunk []byte) error {
 	if err := r._beforeEcho(); err != nil {
 		return err
 	}
-	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end
+	if len(chunk) == 0 { // empty chunk is not actually sent, since it is used to indicate the end. pretend to succeed
 		return nil
 	}
 	r.piece.SetText(chunk)
@@ -1905,7 +1913,7 @@ func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
 		return err
 	}
-	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate the end
+	if info.Size() == 0 { // empty chunk is not actually sent, since it is used to indicate the end. pretend to succeed
 		if shut {
 			chunk.Close()
 		}
@@ -1919,29 +1927,27 @@ func (r *webOut_) _beforeEcho() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if r.IsSent() {
+	if r.isSent {
 		return nil
 	}
 	if r.contentSize != -1 {
 		return webOutMixedContent
 	}
-	r.markSent()
-	r.markVague()
-	/*
-		if r.hasRevisers {
-			r.shell.beforeRevise()
-		}
-	*/
+	r.isSent = true
+	r.contentSize = -2
+	if r.hasRevisers {
+		r.shell.beforeEcho()
+	}
 	return r.shell.echoHeaders()
 }
 
-func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
+func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
 		return
 	}
 	return r._growFields(size)
 }
-func (r *webOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not present at the same time
+func (r *webOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
 	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
 		return
 	}
@@ -1958,7 +1964,7 @@ func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used 
 		// Overflow
 		return
 	}
-	if last > uint16(cap(r.fields)) { // last <= _16K
+	if last > uint16(cap(r.fields)) { // cap < last <= _16K
 		fields := GetNK(int64(last)) // 4K/16K
 		copy(fields, r.fields[0:r.fieldsEdge])
 		if cap(r.fields) != cap(r.stockFields) {
@@ -1973,7 +1979,7 @@ func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used 
 
 func (r *webOut_) _beforeWrite() error {
 	now := time.Now()
-	if r.sendTime.IsZero() {
+	if r.sendTime.IsZero() { // only once
 		r.sendTime = now
 	}
 	return r.stream.setWriteDeadline(now.Add(r.stream.webBroker().WriteTimeout()))

@@ -59,7 +59,7 @@ type wConn interface {
 	ReadAtLeast(p []byte, min int) (n int, err error)
 	CloseWrite() error
 	Close() error
-	MakeTempName(p []byte, unixTime int64) (from int, edge int)
+	MakeTempName(p []byte, unixTime int64) int
 	IsBroken() bool
 	MarkBroken()
 }

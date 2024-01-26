@@ -32,15 +32,14 @@ const ( // array kinds
 // fakeFile
 var fakeFile _fakeFile
 
-func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) (from int, edge int) {
+func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) int {
 	// TODO: improvement
+	// stageID(8) | connID(16) | seconds(32) | counter(8)
 	stageID &= 0x7f
 	connID &= 0xffff
 	unixTime &= 0xffffffff
 	counter &= 0xff
-	// stageID(8) | connID(16) | seconds(32) | counter(8)
-	i64 := stageID<<56 | connID<<40 | unixTime<<8 | counter
-	return i64ToDec(i64, p)
+	return i64ToDec(stageID<<56|connID<<40|unixTime<<8|counter, p)
 }
 
 // hostnameTo
@@ -381,19 +380,23 @@ func decToI64(dec []byte) (int64, bool) {
 	}
 	return i64, true
 }
-func i64ToDec(i64 int64, dec []byte) (from int, edge int) {
-	n := len(dec)
-	if n < 19 { // 19 bytes are enough to hold a positive int64
+func i64ToDec(i64 int64, dec []byte) int {
+	if len(dec) < 19 { // 19 bytes are enough to hold a positive int64
 		BugExitln("dec is too small")
+	}
+	n := 1
+	for i := i64; i > 10; i /= 10 {
+		n++
 	}
 	j := n - 1
 	for i64 >= 10 {
-		dec[j] = byte(i64%10 + '0')
+		t := i64 / 10
+		dec[j] = byte(i64 - t*10 + '0')
 		j--
-		i64 /= 10
+		i64 = t
 	}
 	dec[j] = byte(i64 + '0')
-	return j, n
+	return n
 }
 func hexToI64(hex []byte) (int64, bool) {
 	if n := len(hex); n == 0 || n > 16 {
@@ -423,25 +426,18 @@ func i64ToHex(i64 int64, hex []byte) int {
 	if len(hex) < 16 { // 16 bytes are enough to hold an int64 hex
 		BugExitln("hex is too small")
 	}
-	if i64 == 0 {
-		hex[0] = '0'
-		return 1
-	}
-	var tmp [16]byte
-	j := len(tmp) - 1
-	for i64 >= 16 {
-		s := i64 / 16
-		tmp[j] = digits[i64-s*16]
-		j--
-		i64 = s
-	}
-	tmp[j] = digits[i64]
-	n := 0
-	for j < len(tmp) {
-		hex[n] = tmp[j]
-		j++
+	n := 1
+	for i := i64; i > 0x10; i >>= 4 {
 		n++
 	}
+	j := n - 1
+	for i64 >= 0x10 {
+		t := i64 >> 4
+		hex[j] = digits[i64-t<<4]
+		j--
+		i64 = t
+	}
+	hex[j] = digits[i64]
 	return n
 }
 

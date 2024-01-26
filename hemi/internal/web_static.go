@@ -218,7 +218,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			contentType = mimeType
 		}
 	}
-	if !req.HasRanges() || req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin) {
+	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
 		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
 		if h.developerMode { // TODO

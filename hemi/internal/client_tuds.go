@@ -290,7 +290,7 @@ func (c *XConn) UnixConn() *net.UnixConn { return c.unixConn }
 
 func (c *XConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
-func (c *XConn) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *XConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 

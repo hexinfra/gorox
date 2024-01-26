@@ -220,9 +220,9 @@ func (x *hwebExchan) serveAbnormal(req *hwebRequest, resp *hwebResponse) { // 4x
 	// TODO
 }
 
-func (x *hwebExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (x *hwebExchan) makeTempName(p []byte, unixTime int64) int {
 	// TODO
-	return
+	return 0
 }
 
 func (x *hwebExchan) setReadDeadline(deadline time.Time) error { // for content i/o only

@@ -146,7 +146,7 @@ func (c *clientConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
 }
 
-func (c *clientConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *clientConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 

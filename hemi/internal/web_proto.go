@@ -332,37 +332,36 @@ var ( // misc web strings & byteses.
 	stringSlash        = "/"
 	stringAsterisk     = "*"
 	// Byteses
-	bytesColonPort80     = []byte(stringColonPort80)
-	bytesColonPort443    = []byte(stringColonPort443)
-	bytesSlash           = []byte(stringSlash)
-	bytesAsterisk        = []byte(stringAsterisk)
-	bytesGET             = []byte("GET")
-	bytes100Continue     = []byte("100-continue")
-	bytesBoundary        = []byte("boundary")
-	bytesBytes           = []byte("bytes")
-	bytesBytesEqual      = []byte("bytes=")
-	bytesBytesStarSlash  = []byte("bytes */")
-	bytesChunked         = []byte("chunked")
-	bytesClose           = []byte("close")
-	bytesColonSpace      = []byte(": ")
-	bytesCompress        = []byte("compress")
-	bytesCRLF            = []byte("\r\n")
-	bytesDeflate         = []byte("deflate")
-	bytesFilename        = []byte("filename")
-	bytesFormData        = []byte("form-data")
-	bytesGzip            = []byte("gzip")
-	bytesBrotli          = []byte("br")
-	bytesIdentity        = []byte("identity")
-	bytesTypeHTMLUTF8    = []byte("text/html; charset=utf-8")
-	bytesTypeJSON        = []byte("application/json")
-	bytesURLEncodedForm  = []byte("application/x-www-form-urlencoded")
-	bytesMultipartForm   = []byte("multipart/form-data")
-	bytesMultipartRanges = []byte("multipart/byteranges; boundary=")
-	bytesName            = []byte("name")
-	bytesNone            = []byte("none")
-	bytesTrailers        = []byte("trailers")
-	bytesWebSocket       = []byte("websocket")
-	bytesGorox           = []byte("gorox")
+	bytesColonPort80    = []byte(stringColonPort80)
+	bytesColonPort443   = []byte(stringColonPort443)
+	bytesSlash          = []byte(stringSlash)
+	bytesAsterisk       = []byte(stringAsterisk)
+	bytesGET            = []byte("GET")
+	bytes100Continue    = []byte("100-continue")
+	bytesBoundary       = []byte("boundary")
+	bytesBytes          = []byte("bytes")
+	bytesBytesEqual     = []byte("bytes=")
+	bytesBytesStarSlash = []byte("bytes */")
+	bytesChunked        = []byte("chunked")
+	bytesClose          = []byte("close")
+	bytesColonSpace     = []byte(": ")
+	bytesCompress       = []byte("compress")
+	bytesCRLF           = []byte("\r\n")
+	bytesDeflate        = []byte("deflate")
+	bytesFilename       = []byte("filename")
+	bytesFormData       = []byte("form-data")
+	bytesGzip           = []byte("gzip")
+	bytesBrotli         = []byte("br")
+	bytesIdentity       = []byte("identity")
+	bytesTypeHTMLUTF8   = []byte("text/html; charset=utf-8")
+	bytesTypeJSON       = []byte("application/json")
+	bytesURLEncodedForm = []byte("application/x-www-form-urlencoded")
+	bytesMultipartForm  = []byte("multipart/form-data")
+	bytesName           = []byte("name")
+	bytesNone           = []byte("none")
+	bytesTrailers       = []byte("trailers")
+	bytesWebSocket      = []byte("websocket")
+	bytesGorox          = []byte("gorox")
 	// HTTP/2 and HTTP/3 byteses, TODO
 	bytesSchemeHTTP           = []byte(":scheme http")
 	bytesSchemeHTTPS          = []byte(":scheme https")
@@ -2300,7 +2299,7 @@ type para struct { // 16 bytes
 
 // Range defines a range.
 type Range struct { // 16 bytes
-	from, last int64 // [from,last], inclusive
+	from, last int64 // [from:last], inclusive
 }
 
 // poolPiece
@@ -2322,7 +2321,7 @@ func putPiece(piece *Piece) {
 // Piece is a member of content chain.
 type Piece struct { // 64 bytes
 	next *Piece   // next piece
-	pool bool     // true if this piece is got from poolPiece. don't change this after set
+	pool bool     // true if this piece is got from poolPiece. don't change this after set!
 	shut bool     // close file on free()?
 	kind int8     // 0:text 1:*os.File
 	_    [5]byte  // padding
@@ -2338,6 +2337,7 @@ func (p *Piece) zero() {
 	p.shut = false
 	p.kind = 0
 	p.text = nil
+	p.file = nil
 	p.size = 0
 	p.time = 0
 }
@@ -2348,12 +2348,11 @@ func (p *Piece) closeFile() {
 	if p.shut {
 		p.file.Close()
 	}
-	p.file = nil
 	if Debug() >= 2 {
 		if p.shut {
 			Println("file closed in Piece.closeFile()")
 		} else {
-			Println("file NOT closed in Piece.closeFile()")
+			Println("file *NOT* closed in Piece.closeFile()")
 		}
 	}
 }
@@ -2389,6 +2388,7 @@ func (p *Piece) SetText(text []byte) {
 	p.shut = false
 	p.kind = 0
 	p.text = text
+	p.file = nil
 	p.size = int64(len(text))
 	p.time = 0
 }
@@ -2417,18 +2417,6 @@ func (p *Piece) File() *os.File {
 	}
 	return p.file
 }
-
-/*
-func (p *Piece) ToText() error {
-	if p.IsText() {
-		return nil
-	}
-	text := make([]byte, p.size)
-	num, err := io.ReadFull(p.file, text) // TODO: convT()?
-	p.SetText(text[:num])
-	return err
-}
-*/
 
 // Chain is a linked-list of pieces.
 type Chain struct { // 24 bytes
@@ -2462,7 +2450,7 @@ func (c *Chain) free() {
 	c.qnty = 0
 }
 
-func (c *Chain) NumPieces() int { return c.qnty }
+func (c *Chain) Qnty() int { return c.qnty }
 func (c *Chain) Size() (int64, bool) {
 	size := int64(0)
 	for piece := c.head; piece != nil; piece = piece.next {

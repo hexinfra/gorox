@@ -319,7 +319,7 @@ func (x *fcgiExchan) onEnd() {
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-func (x *fcgiExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (x *fcgiExchan) makeTempName(p []byte, unixTime int64) int {
 	return x.conn.MakeTempName(p, unixTime)
 }
 
@@ -1308,12 +1308,10 @@ func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.relay.Save
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
-	pathSize := len(filesDir)
-	filePath := r.exchan.unsafeMake(pathSize + 19) // 19 bytes is enough for int64
-	copy(filePath, filesDir)
-	from, edge := r.exchan.makeTempName(filePath[pathSize:], r.recvTime.Unix())
-	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
-	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
+	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+	n := copy(filePath, filesDir)
+	n += r.exchan.makeTempName(filePath[n:], r.recvTime.Unix())
+	return os.OpenFile(risky.WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	now := time.Now()

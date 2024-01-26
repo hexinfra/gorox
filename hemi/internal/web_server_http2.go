@@ -890,7 +890,7 @@ func (s *http2Stream) executeUDPTun() { // see RFC 9298: https://datatracker.iet
 	// TODO
 }
 
-func (s *http2Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *http2Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)
 }
 

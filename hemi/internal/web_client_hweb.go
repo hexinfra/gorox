@@ -230,9 +230,9 @@ func (x *HExchan) ReverseProxy(req Request, resp Response, bufferClientContent b
 	// TODO
 }
 
-func (x *HExchan) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (x *HExchan) makeTempName(p []byte, unixTime int64) int {
 	// TODO
-	return
+	return 0
 }
 
 func (x *HExchan) setWriteDeadline(deadline time.Time) error { // for content i/o only?

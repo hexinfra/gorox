@@ -291,7 +291,7 @@ func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }
 
 func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
-func (c *TConn) MakeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 

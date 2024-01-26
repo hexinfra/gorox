@@ -158,7 +158,6 @@ var ( // HTTP/2 errors
 )
 
 // http2Error denotes both connection error and stream error.
-// We treat stream errors as connection errors to simplify implementation.
 type http2Error uint32
 
 func (e http2Error) Error() string {

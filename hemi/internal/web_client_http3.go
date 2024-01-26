@@ -290,7 +290,7 @@ func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	// TODO
 }
 
-func (s *H3Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *H3Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)
 }
 

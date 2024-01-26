@@ -697,56 +697,25 @@ func (r *webOut_) _sendEntireChain1() error {
 }
 func (r *webOut_) _sendSingleRange1() error {
 	r.AddContentType(r.rangeType)
-	r.shell.finalizeHeaders()
-	vector := r._prepareVector1() // waiting to write
-	vFrom, vEdge := 0, 3
-	for piece := r.chain.head; piece != nil; piece = piece.next {
-		if piece.size == 0 {
-			continue
-		}
-		if piece.IsText() { // plain text
-			vector[vEdge] = piece.Text()
-			vEdge++
-		} else if piece.size <= _16K { // small file, <= 16K
-			buffer := GetNK(piece.size) // 4K/16K
-			if err := piece.copyTo(buffer); err != nil {
-				r.stream.markBroken()
-				PutNK(buffer)
-				return err
-			}
-			vector[vEdge] = buffer[0:piece.size]
-			vEdge++
-			r.vector = vector[vFrom:vEdge]
-			if err := r.writeVector1(); err != nil {
-				PutNK(buffer)
-				return err
-			}
-			PutNK(buffer)
-			vFrom, vEdge = 0, 0
-		} else { // large file, > 16K
-			if vFrom < vEdge {
-				r.vector = vector[vFrom:vEdge]
-				if err := r.writeVector1(); err != nil { // texts
-					return err
-				}
-				vFrom, vEdge = 0, 0
-			}
-			if err := r.writePiece1(piece, false); err != nil { // the file
-				return err
-			}
-		}
-	}
-	if vFrom < vEdge {
-		r.vector = vector[vFrom:vEdge]
-		return r.writeVector1()
-	}
+	value := r.stream.buffer256()
+	n := copy(value, "bytes ")
+	theRange := r.ranges[0]
+	n += i64ToDec(theRange.from, value[n:])
+	value[n] = '-'
+	n++
+	n += i64ToDec(theRange.last-1, value[n:])
+	value[n] = '/'
+	n++
+	n += i64ToDec(r.contentSize, value[n:])
+	r.AddHeaderBytes(bytesContentRange, value[:n])
+	//return r._sendEntireChain1()
 	return nil
 }
 func (r *webOut_) _sendMultiRanges1() error {
-	buffer := r.stream.buffer256()
-	n := copy(buffer, bytesMultipartRanges)
-	n += copy(buffer[n:], "xsd3lxT9b5c")
-	r.AddHeaderBytes(bytesContentType, buffer[:n])
+	value := r.stream.buffer256()
+	n := copy(value, "multipart/byteranges; boundary=")
+	n += copy(value[n:], "xsd3lxT9b5c")
+	r.AddHeaderBytes(bytesContentType, value[:n])
 	// TODO
 	return nil
 }
@@ -755,7 +724,7 @@ func (r *webOut_) _prepareVector1() [][]byte {
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
 		r.chain.free()
-	} else if nPieces := r.chain.NumPieces(); nPieces == 1 { // content chain has exactly one piece
+	} else if nPieces := r.chain.Qnty(); nPieces == 1 { // content chain has exactly one piece
 		vector = r.fixedVector[0:4]
 	} else { // nPieces >= 2
 		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
@@ -815,15 +784,14 @@ func (r *webOut_) passBytes1(p []byte) error { return r.writeBytes1(p) }
 
 func (r *webOut_) finalizeVague1() error {
 	if r.nTrailers == 1 { // no trailers
-		r.vector = r.fixedVector[0:1]
-		r.vector[0] = http1BytesZeroCRLFCRLF // 0\r\n\r\n
+		return r.writeBytes1(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
 	} else { // with trailers
 		r.vector = r.fixedVector[0:3]
 		r.vector[0] = http1BytesZeroCRLF // 0\r\n
 		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
 		r.vector[2] = bytesCRLF          // \r\n
+		return r.writeVector1()
 	}
-	return r.writeVector1()
 }
 
 func (r *webOut_) writeHeaders1() error { // used by echo and pass
@@ -851,22 +819,28 @@ func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {
 		return webOutWriteBroken
 	}
 	if piece.IsText() { // text piece
-		if chunked { // HTTP/1.1 chunked data
-			sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
-			n := i64ToHex(piece.size, sizeBuffer)
-			sizeBuffer[n] = '\r'
-			sizeBuffer[n+1] = '\n'
-			n += 2
-			r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
-			r.vector[0] = sizeBuffer[0:n]
-			r.vector[1] = piece.Text()
-			r.vector[2] = sizeBuffer[n-2 : n]
-		} else { // HTTP/1.0, or raw data
-			r.vector = r.fixedVector[0:1] // we reuse r.vector and r.fixedVector
-			r.vector[0] = piece.Text()
-		}
-		return r.writeVector1()
+		return r._writeTextPiece1(piece, chunked)
+	} else {
+		return r._writeFilePiece1(piece, chunked)
 	}
+}
+func (r *webOut_) _writeTextPiece1(piece *Piece, chunked bool) error {
+	if chunked { // HTTP/1.1 chunked data
+		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
+		n := i64ToHex(piece.size, sizeBuffer)
+		sizeBuffer[n] = '\r'
+		sizeBuffer[n+1] = '\n'
+		n += 2
+		r.vector = r.fixedVector[0:3] // we reuse r.vector and r.fixedVector
+		r.vector[0] = sizeBuffer[:n]
+		r.vector[1] = piece.Text()
+		r.vector[2] = bytesCRLF
+		return r.writeVector1()
+	} else { // HTTP/1.0, or raw data
+		return r.writeBytes1(piece.Text())
+	}
+}
+func (r *webOut_) _writeFilePiece1(piece *Piece, chunked bool) error {
 	// file piece. we don't use sendfile(2).
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
@@ -898,7 +872,7 @@ func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {
 			r.vector = r.fixedVector[0:3]
 			r.vector[0] = sizeBuffer[:k]
 			r.vector[1] = buffer[:n]
-			r.vector[2] = sizeBuffer[k-2 : k]
+			r.vector[2] = bytesCRLF
 			_, err = r.stream.writev(&r.vector)
 		} else { // HTTP/1.0, or identity content
 			_, err = r.stream.write(buffer[0:n])
@@ -912,7 +886,7 @@ func (r *webOut_) writeVector1() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
+	if len(r.vector) == 1 && len(r.vector[0]) == 0 { // empty data
 		return nil
 	}
 	if err := r._beforeWrite(); err != nil {
@@ -926,7 +900,7 @@ func (r *webOut_) writeBytes1(p []byte) error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	if len(p) == 0 {
+	if len(p) == 0 { // empty data
 		return nil
 	}
 	if err := r._beforeWrite(); err != nil {

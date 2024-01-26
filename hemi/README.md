@@ -65,4 +65,4 @@ A program using Hemi typically has following dependencies:
 Examples
 ========
 
-For examples showing how to use Hemi, see: https://github.com/hexinfra/examples
+For examples showing how to use Hemi, see "examples/" directory.

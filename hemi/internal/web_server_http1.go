@@ -567,7 +567,7 @@ func (s *http1Stream) executeUDPTun() { // upgrade: connect-udp
 	s.onEnd()
 }
 
-func (s *http1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *http1Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)
 }
 
@@ -1225,8 +1225,8 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
-				from, edge := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
+				n := i64ToDec(r.contentSize, sizeBuffer)
+				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else {

@@ -203,7 +203,7 @@ func (c *serverConn_) onPut() {
 func (c *serverConn_) getServer() webServer { return c.server }
 func (c *serverConn_) getGate() webGate     { return c.gate }
 
-func (c *serverConn_) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (c *serverConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
@@ -2020,7 +2020,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
 					para := &paras[i]
 					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
-						if n := para.value.size(); n == 0 || n > 255 {
+						if m := para.value.size(); m == 0 || m > 255 {
 							r.stream.markBroken()
 							return
 						}
@@ -2036,7 +2036,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							part.hash += uint16(r.formWindow[p])
 						}
 					} else if bytes.Equal(paraName, bytesFilename) { // filename="michael.jpg"
-						if n := para.value.size(); n == 0 || n > 255 {
+						if m := para.value.size(); m == 0 || m > 255 {
 							r.stream.markBroken()
 							return
 						}
@@ -2055,8 +2055,8 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							return
 						}
 						tempName := r.stream.buffer256() // buffer is enough for tempName
-						from, edge := r.stream.makeTempName(tempName, r.recvTime.Unix())
-						if !r.arrayCopy(tempName[from:edge]) { // add "391384576"
+						m := r.stream.makeTempName(tempName, r.recvTime.Unix())
+						if !r.arrayCopy(tempName[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return
 						}
@@ -2783,12 +2783,11 @@ func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) err
 	return r.sendError(StatusMethodNotAllowed, content)
 }
 func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
-	buffer := r.stream.buffer256()
-	n := copy(buffer, bytesBytesStarSlash)
-	p := buffer[n:]
-	from, edge := i64ToDec(contentSize, p)
-	copy(buffer[n:], p[from:edge])
-	r.AddHeaderBytes(bytesContentRange, buffer[:n+(edge-from)])
+	// add a header like: content-range: bytes */1234
+	value := r.stream.buffer256()
+	n := copy(value, bytesBytesStarSlash)
+	n += i64ToDec(contentSize, value[n:])
+	r.AddHeaderBytes(bytesContentRange, value[:n])
 	return r.sendError(StatusRangeNotSatisfiable, content)
 }
 func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500
@@ -3026,8 +3025,7 @@ type Cookie struct {
 	httpOnly bool
 	invalid  bool
 	quote    bool // if true, quote value with ""
-	aFrom    int8
-	aEdge    int8
+	aSize    int8
 	ageBuf   [19]byte
 }
 
@@ -3106,12 +3104,12 @@ func (c *Cookie) size() int {
 		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
 	}
 	if c.maxAge > 0 {
-		from, edge := i64ToDec(c.maxAge, c.ageBuf[:])
-		c.aFrom, c.aEdge = int8(from), int8(edge)
-		n += len("; Max-Age=") + (edge - from)
+		m := i64ToDec(c.maxAge, c.ageBuf[:])
+		c.aSize = int8(m)
+		n += len("; Max-Age=") + m
 	} else if c.maxAge < 0 {
 		c.ageBuf[0] = '0'
-		c.aFrom, c.aEdge = 0, 1
+		c.aSize = 1
 		n += len("; Max-Age=0")
 	}
 	if c.domain != "" {
@@ -3150,7 +3148,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	}
 	if c.maxAge != 0 {
 		i += copy(p[i:], "; Max-Age=")
-		i += copy(p[i:], c.ageBuf[c.aFrom:c.aEdge])
+		i += copy(p[i:], c.ageBuf[0:c.aSize])
 	}
 	if c.domain != "" {
 		i += copy(p[i:], "; Domain=")

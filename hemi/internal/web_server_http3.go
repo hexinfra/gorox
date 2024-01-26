@@ -297,7 +297,7 @@ func (s *http3Stream) executeUDPTun() { // see RFC 9298
 	// TODO
 }
 
-func (s *http3Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *http3Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)
 }
 

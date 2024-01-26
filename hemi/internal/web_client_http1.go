@@ -356,7 +356,7 @@ func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent 
 	return nil
 }
 
-func (s *H1Stream) makeTempName(p []byte, unixTime int64) (from int, edge int) {
+func (s *H1Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)
 }
 
@@ -509,8 +509,8 @@ func (r *H1Request) finalizeHeaders() { // add at most 256 bytes
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
-				from, edge := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeader1(bytesContentLength, sizeBuffer[from:edge])
+				n := i64ToDec(r.contentSize, sizeBuffer)
+				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
 			}
 		}
 		// content-type: application/octet-stream\r\n

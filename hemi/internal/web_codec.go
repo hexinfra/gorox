@@ -77,7 +77,7 @@ func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
 
 // webConn is the interface for serverConn and clientConn.
 type webConn interface {
-	makeTempName(p []byte, unixTime int64) (from int, edge int) // small enough to be placed in buffer256() of stream
+	makeTempName(p []byte, unixTime int64) int
 	isBroken() bool
 	markBroken()
 }
@@ -103,7 +103,7 @@ type webStream interface {
 
 	buffer256() []byte
 	unsafeMake(size int) []byte
-	makeTempName(p []byte, unixTime int64) (from int, edge int)
+	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
 
 	setReadDeadline(deadline time.Time) error
 	setWriteDeadline(deadline time.Time) error
@@ -1498,12 +1498,10 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 		return fakeFile, nil
 	}
 	filesDir := r.shell.saveContentFilesDir()
-	pathSize := len(filesDir)
-	filePath := r.UnsafeMake(pathSize + 19) // 19 bytes is enough for int64
-	copy(filePath, filesDir)
-	from, edge := r.stream.makeTempName(filePath[pathSize:], r.recvTime.Unix())
-	pathSize += copy(filePath[pathSize:], filePath[pathSize+from:pathSize+edge])
-	return os.OpenFile(risky.WeakString(filePath[:pathSize]), os.O_RDWR|os.O_CREATE, 0644)
+	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+	n := copy(filePath, filesDir)
+	n += r.stream.makeTempName(filePath[n:], r.recvTime.Unix())
+	return os.OpenFile(risky.WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	now := time.Now()

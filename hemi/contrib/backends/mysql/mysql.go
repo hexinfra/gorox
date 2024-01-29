@@ -27,7 +27,7 @@ type mysqlNode struct {
 	backend *MySQLBackend
 }
 
-func (n *mysqlNode) Maintain() { // goroutine
+func (n *mysqlNode) Maintain() { // runner
 }
 
 // mysqlConn is a connection to mysqlNode.

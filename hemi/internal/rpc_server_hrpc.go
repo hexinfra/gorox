@@ -14,7 +14,7 @@ type hrpcServer struct {
 	// States
 }
 
-func (s *hrpcServer) Serve() { // goroutine
+func (s *hrpcServer) Serve() { // runner
 }
 
 // hrpcGate is a gate of hrpcServer.
@@ -23,7 +23,7 @@ type hrpcGate struct {
 	rpcGate_
 }
 
-func (g *hrpcGate) serve() { // goroutine
+func (g *hrpcGate) serve() { // runner
 }
 
 // hrpcCall is the server-side HRPC call.

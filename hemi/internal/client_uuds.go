@@ -51,7 +51,7 @@ func (f *UUDSOutgate) OnPrepare() {
 	f.outgate_.onConfigure()
 }
 
-func (f *UUDSOutgate) run() { // goroutine
+func (f *UUDSOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -139,7 +139,7 @@ func (n *uudsNode) setAddress(address string) {
 	n.unixAddr = unixAddr
 }
 
-func (n *uudsNode) Maintain() { // goroutine
+func (n *uudsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

@@ -56,7 +56,7 @@ func (f *TCPSOutgate) OnPrepare() {
 	f.streamHolder_.onPrepare(f)
 }
 
-func (f *TCPSOutgate) run() { // goroutine
+func (f *TCPSOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -148,7 +148,7 @@ func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
 	n.backend = backend
 }
 
-func (n *tcpsNode) Maintain() { // goroutine
+func (n *tcpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markUp()
 	})

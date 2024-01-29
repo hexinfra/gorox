@@ -62,7 +62,7 @@ func (a *Webapp) onCreate(name string, stage *Stage) {
 	a.nRevisers = 1 // position 0 is not used
 }
 func (a *Webapp) OnShutdown() {
-	close(a.ShutChan)
+	close(a.ShutChan) // notifies maintain()
 }
 
 func (a *Webapp) OnConfigure() {
@@ -335,7 +335,7 @@ func (a *Webapp) Logf(format string, args ...any) {
 
 func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
 
-func (a *Webapp) maintain() { // goroutine
+func (a *Webapp) maintain() { // runner
 	a.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

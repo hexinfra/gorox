@@ -54,7 +54,7 @@ func (f *QUDSOutgate) OnPrepare() {
 	f.streamHolder_.onPrepare(f)
 }
 
-func (f *QUDSOutgate) run() { // goroutine
+func (f *QUDSOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -138,7 +138,7 @@ func (n *qudsNode) setAddress(address string) {
 	// TODO
 }
 
-func (n *qudsNode) Maintain() { // goroutine
+func (n *qudsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

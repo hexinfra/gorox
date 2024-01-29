@@ -38,7 +38,7 @@ func (s *localStater) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *localStater) OnShutdown() {
-	close(s.ShutChan)
+	close(s.ShutChan) // notifies Maintain()
 }
 
 func (s *localStater) OnConfigure() {
@@ -57,7 +57,7 @@ func (s *localStater) OnPrepare() {
 	}
 }
 
-func (s *localStater) Maintain() { // goroutine
+func (s *localStater) Maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

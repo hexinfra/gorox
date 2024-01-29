@@ -47,7 +47,7 @@ func (f *HRPCOutgate) OnPrepare() {
 	f.rpcOutgate_.onPrepare(f)
 }
 
-func (f *HRPCOutgate) run() { // goroutine
+func (f *HRPCOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -95,7 +95,7 @@ func (n *hrpcNode) init(id int32, backend *HRPCBackend) {
 	n.backend = backend
 }
 
-func (n *hrpcNode) Maintain() { // goroutine
+func (n *hrpcNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

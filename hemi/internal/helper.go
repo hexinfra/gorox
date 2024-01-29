@@ -364,40 +364,6 @@ func PutNK(p []byte) {
 	}
 }
 
-func decToI64(dec []byte) (int64, bool) {
-	if n := len(dec); n == 0 || n > 19 { // the max number of int64 is 19 bytes
-		return 0, false
-	}
-	var i64 int64
-	for _, b := range dec {
-		if b < '0' || b > '9' {
-			return 0, false
-		}
-		i64 = i64*10 + int64(b-'0')
-		if i64 < 0 {
-			return 0, false
-		}
-	}
-	return i64, true
-}
-func i64ToDec(i64 int64, dec []byte) int {
-	if len(dec) < 19 { // 19 bytes are enough to hold a positive int64
-		BugExitln("dec is too small")
-	}
-	n := 1
-	for i := i64; i > 10; i /= 10 {
-		n++
-	}
-	j := n - 1
-	for i64 >= 10 {
-		t := i64 / 10
-		dec[j] = byte(i64 - t*10 + '0')
-		j--
-		i64 = t
-	}
-	dec[j] = byte(i64 + '0')
-	return n
-}
 func hexToI64(hex []byte) (int64, bool) {
 	if n := len(hex); n == 0 || n > 16 {
 		return 0, false
@@ -421,23 +387,70 @@ func hexToI64(hex []byte) (int64, bool) {
 	}
 	return i64, true
 }
-func i64ToHex(i64 int64, hex []byte) int {
-	const digits = "0123456789abcdef"
-	if len(hex) < 16 { // 16 bytes are enough to hold an int64 hex
+func decToI64(dec []byte) (int64, bool) {
+	if n := len(dec); n == 0 || n > 19 { // the max number of int64 is 19 bytes
+		return 0, false
+	}
+	var i64 int64
+	for _, b := range dec {
+		if b < '0' || b > '9' {
+			return 0, false
+		}
+		i64 = i64*10 + int64(b-'0')
+		if i64 < 0 {
+			return 0, false
+		}
+	}
+	return i64, true
+}
+
+const hexDigits = "0123456789abcdef"
+
+func i64ToHex(i64 int64, hex []byte) int { return intToHex(i64, hex, 16) }
+func i32ToHex(i32 int32, hex []byte) int { return intToHex(i32, hex, 8) }
+func intToHex[T int32 | int64](ixx T, hex []byte, bufSize int) int {
+	if len(hex) < bufSize {
 		BugExitln("hex is too small")
 	}
+	if ixx < 0 {
+		BugExitln("negative numbers are not supported")
+	}
 	n := 1
-	for i := i64; i > 0x10; i >>= 4 {
+	for i := ixx; i > 0x10; i >>= 4 {
 		n++
 	}
 	j := n - 1
-	for i64 >= 0x10 {
-		t := i64 >> 4
-		hex[j] = digits[i64-t<<4]
+	for ixx >= 0x10 {
+		t := ixx >> 4
+		hex[j] = hexDigits[ixx-t<<4]
 		j--
-		i64 = t
+		ixx = t
 	}
-	hex[j] = digits[i64]
+	hex[j] = hexDigits[ixx]
+	return n
+}
+
+func i64ToDec(i64 int64, dec []byte) int { return intToDec(i64, dec, 19) } // 19 bytes are enough to hold a positive int64
+func i32ToDec(i32 int32, dec []byte) int { return intToDec(i32, dec, 10) } // 10 bytes are enough to hold a positive int32
+func intToDec[T int32 | int64](ixx T, dec []byte, bufSize int) int {
+	if len(dec) < bufSize {
+		BugExitln("dec is too small")
+	}
+	if ixx < 0 {
+		BugExitln("negative numbers are not supported")
+	}
+	n := 1
+	for i := ixx; i > 10; i /= 10 {
+		n++
+	}
+	j := n - 1
+	for ixx >= 10 {
+		t := ixx / 10
+		dec[j] = byte(ixx - t*10 + '0')
+		j--
+		ixx = t
+	}
+	dec[j] = byte(ixx + '0')
 	return n
 }
 

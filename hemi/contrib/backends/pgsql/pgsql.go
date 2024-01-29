@@ -27,7 +27,7 @@ type pgsqlNode struct {
 	backend *PgSQLBackend
 }
 
-func (n *pgsqlNode) Maintain() { // goroutine
+func (n *pgsqlNode) Maintain() { // runner
 }
 
 // pgsqlConn is a connection to pgsqlNode.

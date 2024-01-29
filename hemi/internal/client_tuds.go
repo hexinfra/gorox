@@ -55,7 +55,7 @@ func (f *TUDSOutgate) OnPrepare() {
 	f.streamHolder_.onPrepare(f)
 }
 
-func (f *TUDSOutgate) run() { // goroutine
+func (f *TUDSOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -157,7 +157,7 @@ func (n *tudsNode) setAddress(address string) {
 	n.unixAddr = unixAddr
 }
 
-func (n *tudsNode) Maintain() { // goroutine
+func (n *tudsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markUp()
 	})

@@ -49,7 +49,7 @@ func (f *fcacheFixture) onCreate(stage *Stage) {
 	f.entries = make(map[string]*fcacheEntry)
 }
 func (f *fcacheFixture) OnShutdown() {
-	close(f.ShutChan)
+	close(f.ShutChan) // notifies run()
 }
 
 func (f *fcacheFixture) OnConfigure() {
@@ -88,7 +88,7 @@ func (f *fcacheFixture) OnConfigure() {
 func (f *fcacheFixture) OnPrepare() {
 }
 
-func (f *fcacheFixture) run() { // goroutine
+func (f *fcacheFixture) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		f.rwMutex.Lock()
 		for path, entry := range f.entries {

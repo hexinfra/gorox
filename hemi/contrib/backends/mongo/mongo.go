@@ -27,7 +27,7 @@ type mongoNode struct {
 	backend *MongoBackend
 }
 
-func (n *mongoNode) Maintain() { // goroutine
+func (n *mongoNode) Maintain() { // runner
 }
 
 // mongoConn is a connection to mongoNode.

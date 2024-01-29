@@ -425,11 +425,11 @@ type clientResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockCookies [8]cookie // for r.cookies
+	stockSetCookies [8]SetCookie // for r.setCookies
 	// Stream states (controlled)
-	cookie cookie // to overcome the limitation of Go's escape analysis when receiving setCookies
+	setCookie SetCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
 	// Stream states (non-zeros)
-	cookies []cookie // hold setCookies->r.input. [<r.stockCookies>/(make=32/128)]
+	setCookies []SetCookie // hold setCookies->r.input. [<r.stockSetCookies>/(make=32/128)]
 	// Stream states (zeros)
 	clientResponse0 // all values must be zero by default in this struct!
 }
@@ -443,8 +443,9 @@ type clientResponse0 struct { // for fast reset, entirely
 		expires      uint8   // expires header ->r.input
 		lastModified uint8   // last-modified header ->r.input
 		location     uint8   // location header ->r.input
+		retryAfter   uint8   // retry-after header ->r.input
 		server       uint8   // server header ->r.input
-		_            [3]byte // padding
+		_            [2]byte // padding
 	}
 	zones struct { // zones of some selected headers, for fast accessing
 		allow  zone
@@ -474,13 +475,14 @@ func (r *clientResponse_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = true
 	r.webIn_.onUse(versionCode, asResponse)
 
-	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
+	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
 }
 func (r *clientResponse_) onEnd() { // for zeros
-	if cap(r.cookies) != cap(r.stockCookies) {
-		// TODO: put?
-		r.cookies = nil
+	r.setCookie.input = nil
+	for i := 0; i < len(r.setCookies); i++ {
+		r.setCookies[i].input = nil
 	}
+	r.setCookies = nil
 	r.clientResponse0 = clientResponse0{}
 
 	r.webIn_.onEnd()
@@ -597,10 +599,11 @@ func (r *clientResponse_) checkAge(header *pair, index uint8) bool { // Age = de
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
 	}
-	// TODO
+	// TODO: check
 	return true
 }
 func (r *clientResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
+	// TODO: check
 	r.indexes.etag = index
 	return true
 }
@@ -611,14 +614,17 @@ func (r *clientResponse_) checkLastModified(header *pair, index uint8) bool { //
 	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
 func (r *clientResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
+	// TODO: check
 	r.indexes.location = index
 	return true
 }
 func (r *clientResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
-	// TODO
+	// TODO: check
+	r.indexes.retryAfter = index
 	return true
 }
 func (r *clientResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
+	// TODO: check
 	r.indexes.server = index
 	return true
 }
@@ -627,19 +633,19 @@ func (r *clientResponse_) checkSetCookie(header *pair, index uint8) bool { // Se
 		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
-	if len(r.cookies) == cap(r.cookies) {
-		if cap(r.cookies) == cap(r.stockCookies) {
-			cookies := make([]cookie, 0, 16)
-			r.cookies = append(cookies, r.cookies...)
-		} else if cap(r.cookies) == 16 {
-			cookies := make([]cookie, 0, 128)
-			r.cookies = append(cookies, r.cookies...)
+	if len(r.setCookies) == cap(r.setCookies) {
+		if cap(r.setCookies) == cap(r.stockSetCookies) {
+			setCookies := make([]SetCookie, 0, 16)
+			r.setCookies = append(setCookies, r.setCookies...)
+		} else if cap(r.setCookies) == 16 {
+			setCookies := make([]SetCookie, 0, 128)
+			r.setCookies = append(setCookies, r.setCookies...)
 		} else {
 			r.headResult = StatusRequestHeaderFieldsTooLarge
 			return false
 		}
 	}
-	r.cookies = append(r.cookies, r.cookie)
+	r.setCookies = append(r.setCookies, r.setCookie)
 	return true
 }
 
@@ -742,7 +748,11 @@ func (r *clientResponse_) checkTransferEncoding(pairs []pair, from uint8, edge u
 	return r.webIn_.checkTransferEncoding(pairs, from, edge)
 }
 func (r *clientResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	// TODO: socket, tcptun, udptun?
+	if r.versionCode >= Version2 {
+		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
+		return false
+	}
+	// TODO: what about socket, tcptun, udptun?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
@@ -754,7 +764,8 @@ func (r *clientResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool {
 	return true
 }
 
-func (r *clientResponse_) parseSetCookie(setCookieString span) bool { // set-cookie-string = cookie-pair *( ";" SP cookie-av )
+func (r *clientResponse_) parseSetCookie(setCookieString span) bool {
+	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
@@ -767,9 +778,10 @@ func (r *clientResponse_) parseSetCookie(setCookieString span) bool { // set-coo
 	// httponly-av = "HttpOnly"
 	// samesite-av = "SameSite=" samesite-value
 	// extension-av = <any CHAR except CTLs or ";">
-	cookie := &r.cookie
-	cookie.zero()
-	// TODO
+	setCookie := &r.setCookie
+	setCookie.zero()
+	setCookie.input = &r.input
+	// TODO: parse
 	return true
 }
 
@@ -786,33 +798,30 @@ func (r *clientResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *clientResponse_) addCookie(cookie *cookie) bool {
-	// TODO
+func (r *clientResponse_) HasSetCookies() bool { return len(r.setCookies) > 0 }
+func (r *clientResponse_) GetSetCookie(name string) *SetCookie {
+	for i := 0; i < len(r.setCookies); i++ {
+		if setCookie := &r.setCookies[i]; setCookie.nameEqualString(name) {
+			return setCookie
+		}
+	}
+	return nil
+}
+func (r *clientResponse_) HasSetCookie(name string) bool {
+	for i := 0; i < len(r.setCookies); i++ {
+		if setCookie := &r.setCookies[i]; setCookie.nameEqualString(name) {
+			return true
+		}
+	}
+	return false
+}
+func (r *clientResponse_) forSetCookies(callback func(setCookie *SetCookie) bool) bool {
+	for i := 0; i < len(r.setCookies); i++ {
+		if !callback(&r.setCookies[i]) {
+			return false
+		}
+	}
 	return true
-}
-func (r *clientResponse_) HasCookies() bool {
-	// TODO
-	return false
-}
-func (r *clientResponse_) C(name string) string {
-	// TODO
-	return ""
-}
-func (r *clientResponse_) Cookie(name string) (value string, ok bool) {
-	// TODO
-	return
-}
-func (r *clientResponse_) UnsafeCookie(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *clientResponse_) HasCookie(name string) bool {
-	// TODO
-	return false
-}
-func (r *clientResponse_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
-	// TODO
-	return false
 }
 
 func (r *clientResponse_) HasContent() bool {
@@ -852,50 +861,69 @@ func (r *clientResponse_) saveContentFilesDir() string {
 	return r.stream.webBroker().SaveContentFilesDir()
 }
 
-// cookie is a "set-cookie" received from server.
-type cookie struct { // 24 bytes. refers to r.input
-	hash         uint16 // hash of name
-	nameFrom     int16  // foo
-	valueFrom    int16  // bar
-	valueEdge    int16  // edge of value
-	expiresFrom  int16  // Expires=Wed, 09 Jun 2021 10:18:14 GMT (fixed value length=29)
-	maxAgeFrom   int16  // Max-Age=123
-	domainFrom   int16  // Domain=example.com
-	pathFrom     int16  // Path=/abc
-	sameSiteFrom int16  // SameSite=Lax|Strict|None
-	nameSize     uint8  // <= 255
-	maxAgeSize   uint8  // <= 255
-	domainSize   uint8  // <= 255
-	pathSize     uint8  // <= 255
-	sameSiteSize uint8  // <= 255
-	flags        uint8  // secure(1), httpOnly(1), reserved(6)
+// SetCookie is a "set-cookie" received from server.
+type SetCookie struct { // 32 bytes
+	input      *[]byte // the buffer holding data
+	expires    int64   // Expires=Wed, 09 Jun 2021 10:18:14 GMT
+	maxAge     int32   // Max-Age=123
+	nameFrom   int16   // foo
+	valueEdge  int16   // bar
+	domainFrom int16   // Domain=example.com
+	pathFrom   int16   // Path=/abc
+	nameSize   uint8   // <= 255
+	domainSize uint8   // <= 255
+	pathSize   uint8   // <= 255
+	flags      uint8   // secure(1), httpOnly(1), sameSite(2), reserved(2), valueOffset(2)
 }
 
-func (c *cookie) zero() { *c = cookie{} }
+func (c *SetCookie) zero() { *c = SetCookie{} }
 
-func (c *cookie) nameAt(t []byte) []byte {
-	return t[c.nameFrom : c.nameFrom+int16(c.nameSize)]
+func (c *SetCookie) Name() string {
+	p := *c.input
+	return string(p[c.nameFrom : c.nameFrom+int16(c.nameSize)])
 }
-func (c *cookie) valueAt(t []byte) []byte {
-	return t[c.valueFrom:c.valueEdge]
+func (c *SetCookie) Value() string {
+	p := *c.input
+	valueFrom := c.nameFrom + int16(c.nameSize) + 1 // name=value
+	return string(p[valueFrom:c.valueEdge])
 }
-func (c *cookie) expiresAt(t []byte) []byte {
-	return t[c.expiresFrom : c.expiresFrom+29]
+func (c *SetCookie) Expires() int64 { return c.expires }
+func (c *SetCookie) MaxAge() int32  { return c.maxAge }
+func (c *SetCookie) domain() []byte {
+	p := *c.input
+	return p[c.domainFrom : c.domainFrom+int16(c.domainSize)]
 }
-func (c *cookie) maxAgeAt(t []byte) []byte {
-	return t[c.maxAgeFrom : c.maxAgeFrom+int16(c.maxAgeSize)]
+func (c *SetCookie) path() []byte {
+	p := *c.input
+	return p[c.pathFrom : c.pathFrom+int16(c.pathSize)]
 }
-func (c *cookie) domainAt(t []byte) []byte {
-	return t[c.domainFrom : c.domainFrom+int16(c.domainSize)]
+func (c *SetCookie) sameSite() string {
+	switch c.flags & 0b00110000 {
+	case 0b00010000:
+		return "Lax"
+	case 0b00100000:
+		return "Strict"
+	default:
+		return "None"
+	}
 }
-func (c *cookie) pathAt(t []byte) []byte {
-	return t[c.pathFrom : c.pathFrom+int16(c.pathSize)]
+func (c *SetCookie) secure() bool   { return c.flags&0b10000000 > 0 }
+func (c *SetCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
+
+func (c *SetCookie) nameEqualString(name string) bool {
+	if int(c.nameSize) != len(name) {
+		return false
+	}
+	p := *c.input
+	return string(p[c.nameFrom:c.nameFrom+int16(c.nameSize)]) == name
 }
-func (c *cookie) sameSiteAt(t []byte) []byte {
-	return t[c.sameSiteFrom : c.sameSiteFrom+int16(c.sameSiteSize)]
+func (c *SetCookie) nameEqualBytes(name []byte) bool {
+	if int(c.nameSize) != len(name) {
+		return false
+	}
+	p := *c.input
+	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
-func (c *cookie) secure() bool   { return c.flags&0b10000000 > 0 }
-func (c *cookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
 // socket is the interface for *H[1-3]Socket.
 type socket interface {

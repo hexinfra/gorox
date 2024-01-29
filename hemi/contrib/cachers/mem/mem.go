@@ -35,7 +35,7 @@ func (c *memCacher) onCreate(name string, stage *Stage) {
 	c.stage = stage
 }
 func (c *memCacher) OnShutdown() {
-	close(c.ShutChan)
+	close(c.ShutChan) // notifies Maintain()
 }
 
 func (c *memCacher) OnConfigure() {
@@ -45,7 +45,7 @@ func (c *memCacher) OnPrepare() {
 	// TODO
 }
 
-func (c *memCacher) Maintain() { // goroutine
+func (c *memCacher) Maintain() { // runner
 	c.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

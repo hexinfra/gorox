@@ -141,7 +141,7 @@ func (c *client_) onPrepare() {
 }
 
 func (c *client_) OnShutdown() {
-	close(c.ShutChan)
+	close(c.ShutChan) // notifies run() or Maintain()
 }
 
 func (c *client_) Stage() *Stage               { return c.stage }
@@ -191,7 +191,7 @@ type Backend interface {
 	Component
 	client
 	// Methods
-	Maintain() // goroutine
+	Maintain() // runner
 }
 
 // Backend_ is the mixin for backends.
@@ -265,7 +265,7 @@ func (b *Backend_[N]) onPrepare() {
 	b.client_.onPrepare()
 }
 
-func (b *Backend_[N]) Maintain() { // goroutine
+func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub(1)
 		go node.Maintain()
@@ -289,7 +289,7 @@ type Node interface {
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
-	Maintain() // goroutine
+	Maintain() // runner
 	shutdown()
 }
 
@@ -369,7 +369,7 @@ func (n *Node_) closeFree() int {
 }
 
 func (n *Node_) shutdown() {
-	close(n.ShutChan)
+	close(n.ShutChan) // notifies Maintain()
 }
 
 var errNodeDown = errors.New("node is down")

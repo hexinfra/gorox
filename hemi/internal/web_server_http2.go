@@ -115,7 +115,7 @@ func (c *http2Conn) onPut() {
 	c.http2Conn0 = http2Conn0{}
 }
 
-func (c *http2Conn) serve() { // goroutine
+func (c *http2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
 		Printf("========================== conn=%d exit =========================\n", c.id)
@@ -190,7 +190,7 @@ serve:
 	}
 	Printf("conn=%d c.serve() quit\n", c.id)
 }
-func (c *http2Conn) receive() { // goroutine
+func (c *http2Conn) receive() { // runner
 	if Debug() >= 1 {
 		defer Printf("conn=%d c.receive() quit\n", c.id)
 	}
@@ -857,7 +857,7 @@ func (s *http2Stream) onEnd() { // for zeros
 	s.http2Stream0 = http2Stream0{}
 }
 
-func (s *http2Stream) execute() { // goroutine
+func (s *http2Stream) execute() { // runner
 	// TODO ...
 	if Debug() >= 2 {
 		Println("stream processing...")

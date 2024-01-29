@@ -29,7 +29,7 @@ func (m *TCPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, tcpsFilterCreators)
 }
 func (m *TCPSMesher) OnShutdown() {
-	// We don't close(m.ShutChan) here.
+	// Notify gates. We don't close(m.ShutChan) here.
 	for _, gate := range m.gates {
 		gate.shut()
 	}
@@ -57,7 +57,7 @@ func (m *TCPSMesher) createCase(name string) *tcpsCase {
 	return kase
 }
 
-func (m *TCPSMesher) serve() { // goroutine
+func (m *TCPSMesher) serve() { // runner
 	for id := int32(0); id < m.numGates; id++ {
 		gate := new(tcpsGate)
 		gate.init(m, id)
@@ -118,7 +118,7 @@ func (g *tcpsGate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *tcpsGate) serveTCP() { // goroutine
+func (g *tcpsGate) serveTCP() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -152,7 +152,7 @@ func (g *tcpsGate) serveTCP() { // goroutine
 	}
 	g.mesher.SubDone()
 }
-func (g *tcpsGate) serveTLS() { // goroutine
+func (g *tcpsGate) serveTLS() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -184,7 +184,7 @@ func (g *tcpsGate) serveTLS() { // goroutine
 	g.mesher.SubDone()
 }
 
-func (g *tcpsGate) execute(conn *TCPSConn) { // goroutine
+func (g *tcpsGate) execute(conn *TCPSConn) { // runner
 	for _, kase := range g.mesher.cases {
 		if !kase.isMatch(conn) {
 			continue

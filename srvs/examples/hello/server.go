@@ -39,7 +39,7 @@ func (s *helloServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *helloServer) OnShutdown() {
-	// We don't close(s.ShutChan) here.
+	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}
@@ -52,7 +52,7 @@ func (s *helloServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 
-func (s *helloServer) Serve() { // goroutine
+func (s *helloServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(helloGate)
 		gate.init(s, id)
@@ -101,7 +101,7 @@ func (g *helloGate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *helloGate) serve() { // goroutine
+func (g *helloGate) serve() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -182,7 +182,7 @@ func (c *helloConn) onPut() {
 	c.netConn = nil
 }
 
-func (c *helloConn) serve() { // goroutine
+func (c *helloConn) serve() { // runner
 	c.netConn.Write([]byte("hello, world!"))
 	c.closeConn()
 	putHelloConn(c)

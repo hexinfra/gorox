@@ -16,7 +16,7 @@ type Cacher interface {
 	// Imports
 	Component
 	// Methods
-	Maintain() // goroutine
+	Maintain() // runner
 	Set(key []byte, wobject *Wobject)
 	Get(key []byte) (wobject *Wobject)
 	Del(key []byte) bool

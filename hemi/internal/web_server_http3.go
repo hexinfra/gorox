@@ -38,7 +38,7 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
 }
 func (s *http3Server) OnShutdown() {
-	// We don't close(s.ShutChan) here.
+	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}
@@ -51,7 +51,7 @@ func (s *http3Server) OnPrepare() {
 	s.webServer_.onPrepare(s)
 }
 
-func (s *http3Server) Serve() { // goroutine
+func (s *http3Server) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
 		gate.init(s, id)
@@ -97,7 +97,7 @@ func (g *http3Gate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *http3Gate) serve() { // goroutine
+func (g *http3Gate) serve() { // runner
 	connID := int64(0)
 	for {
 		quicConnection, err := g.gate.Accept()
@@ -184,11 +184,11 @@ func (c *http3Conn) onPut() {
 	c.http3Conn0 = http3Conn0{}
 }
 
-func (c *http3Conn) serve() { // goroutine
+func (c *http3Conn) serve() { // runner
 	// TODO
 	// use go c.receive()?
 }
-func (c *http3Conn) receive() { // goroutine
+func (c *http3Conn) receive() { // runner
 	// TODO
 }
 
@@ -267,7 +267,7 @@ func (s *http3Stream) onEnd() { // for zeros
 	s.http3Stream0 = http3Stream0{}
 }
 
-func (s *http3Stream) execute() { // goroutine
+func (s *http3Stream) execute() { // runner
 	// TODO ...
 	putHTTP3Stream(s)
 }

@@ -35,7 +35,7 @@ func (f *resolvFixture) onCreate(stage *Stage) {
 	f.fixture_.onCreate(signResolv, stage)
 }
 func (f *resolvFixture) OnShutdown() {
-	close(f.ShutChan)
+	close(f.ShutChan) // notifies run()
 }
 
 func (f *resolvFixture) OnConfigure() {
@@ -43,7 +43,7 @@ func (f *resolvFixture) OnConfigure() {
 func (f *resolvFixture) OnPrepare() {
 }
 
-func (f *resolvFixture) run() { // goroutine
+func (f *resolvFixture) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

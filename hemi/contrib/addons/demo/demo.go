@@ -35,7 +35,7 @@ func (a *demoAddon) onCreate(name string, stage *Stage) {
 	a.stage = stage
 }
 func (a *demoAddon) OnShutdown() {
-	close(a.ShutChan)
+	close(a.ShutChan) // notifies Run()
 }
 
 func (a *demoAddon) OnConfigure() {
@@ -45,7 +45,7 @@ func (a *demoAddon) OnPrepare() {
 	// TODO
 }
 
-func (a *demoAddon) Run() { // goroutine
+func (a *demoAddon) Run() { // runner
 	a.Loop(time.Second, func(now time.Time) {
 		fmt.Printf("i'm addon %s\n", a.Name())
 	})

@@ -2,7 +2,6 @@ v?.?.?                                                        (2023-??-?? UTC+8)
 ================================================================================
 
   * Interface of TCPSFilter is refactored.
-  * Runner is renamed as Addon.
   * Storers are renamed as cachers.
   * Fix crash caused by empty value of some fields.
   * Flag "-temp" changed to "-tmps".

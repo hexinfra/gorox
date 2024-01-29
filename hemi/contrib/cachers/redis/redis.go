@@ -38,7 +38,7 @@ func (c *redisCacher) onCreate(name string, stage *Stage) {
 	c.stage = stage
 }
 func (c *redisCacher) OnShutdown() {
-	close(c.ShutChan)
+	close(c.ShutChan) // notifies Maintain()
 }
 
 func (c *redisCacher) OnConfigure() {
@@ -48,7 +48,7 @@ func (c *redisCacher) OnPrepare() {
 	// TODO
 }
 
-func (c *redisCacher) Maintain() { // goroutine
+func (c *redisCacher) Maintain() { // runner
 	c.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

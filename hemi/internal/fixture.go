@@ -18,7 +18,7 @@ type fixture interface {
 	// Imports
 	Component
 	// Methods
-	run() // goroutine
+	run() // runner
 }
 
 // fixture_ is the mixin for all fixtures.

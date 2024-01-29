@@ -22,7 +22,7 @@ import (
 
 var keeperChan chan chan *msgx.Message
 
-func workerKeeper(configBase string, configFile string) { // goroutine
+func workerKeeper(configBase string, configFile string) { // runner
 	dieChan := make(chan int) // dead worker goes through this channel
 
 	rand.Seed(time.Now().UnixNano())
@@ -158,7 +158,7 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	w.admConn = admConn
 	go w.watch(dieChan)
 }
-func (w *worker) watch(dieChan chan int) { // goroutine
+func (w *worker) watch(dieChan chan int) { // runner
 	stat, err := w.process.Wait()
 	if err != nil {
 		common.Crash(err.Error())

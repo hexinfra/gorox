@@ -34,7 +34,7 @@ func (s *hwebServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 }
 func (s *hwebServer) OnShutdown() {
-	// We don't close(s.ShutChan) here.
+	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}
@@ -47,7 +47,7 @@ func (s *hwebServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
 }
 
-func (s *hwebServer) Serve() { // goroutine
+func (s *hwebServer) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(hwebGate)
 		gate.init(s, id)
@@ -89,7 +89,7 @@ func (g *hwebGate) shut() error {
 	return nil
 }
 
-func (g *hwebGate) serve() { // goroutine
+func (g *hwebGate) serve() { // runner
 	// TODO
 }
 
@@ -135,11 +135,11 @@ func (c *hwebConn) onPut() {
 	c.hwebConn0 = hwebConn0{}
 }
 
-func (c *hwebConn) serve() { // goroutine
+func (c *hwebConn) serve() { // runner
 	// TODO
 	// use go c.receive()?
 }
-func (c *hwebConn) receive() { // goroutine
+func (c *hwebConn) receive() { // runner
 	// TODO
 }
 
@@ -199,7 +199,7 @@ func (x *hwebExchan) onEnd() { // for zeros
 	x.hwebExchan0 = hwebExchan0{}
 }
 
-func (x *hwebExchan) execute() { // goroutine
+func (x *hwebExchan) execute() { // runner
 	// TODO
 	putHWEBExchan(x)
 }

@@ -470,17 +470,17 @@ func (s *Stage) OnShutdown() {
 
 	// fixtures
 	s.IncSub(11)
-	go s.quicOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.qudsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.tcpsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.tudsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.udpsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.uudsOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.hrpcOutgate.OnShutdown()  // we don't treat this as goroutine
-	go s.http1Outgate.OnShutdown() // we don't treat this as goroutine
-	go s.http2Outgate.OnShutdown() // we don't treat this as goroutine
-	go s.http3Outgate.OnShutdown() // we don't treat this as goroutine
-	go s.hwebOutgate.OnShutdown()  // we don't treat this as goroutine
+	go s.quicOutgate.OnShutdown()
+	go s.qudsOutgate.OnShutdown()
+	go s.tcpsOutgate.OnShutdown()
+	go s.tudsOutgate.OnShutdown()
+	go s.udpsOutgate.OnShutdown()
+	go s.uudsOutgate.OnShutdown()
+	go s.hrpcOutgate.OnShutdown()
+	go s.http1Outgate.OnShutdown()
+	go s.http2Outgate.OnShutdown()
+	go s.http3Outgate.OnShutdown()
+	go s.hwebOutgate.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -1005,7 +1005,7 @@ type Addon interface {
 	// Imports
 	Component
 	// Methods
-	Run() // goroutine
+	Run() // runner
 }
 
 // Stater component is the interface to storages of Web/RPC states.
@@ -1013,7 +1013,7 @@ type Stater interface {
 	// Imports
 	Component
 	// Methods
-	Maintain() // goroutine
+	Maintain() // runner
 	Set(sid []byte, session *Session)
 	Get(sid []byte) (session *Session)
 	Del(sid []byte) bool
@@ -1053,7 +1053,7 @@ type Server interface {
 	// Imports
 	Component
 	// Methods
-	Serve() // goroutine
+	Serve() // runner
 	Stage() *Stage
 	TLSMode() bool
 	ColonPort() string
@@ -1201,7 +1201,7 @@ type Cronjob interface {
 	// Imports
 	Component
 	// Methods
-	Schedule() // goroutine
+	Schedule() // runner
 }
 
 // Cronjob_ is the mixin for all cronjobs.

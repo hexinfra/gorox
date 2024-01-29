@@ -35,7 +35,7 @@ func (j *statCronjob) onCreate(name string, stage *Stage) {
 	j.stage = stage
 }
 func (j *statCronjob) OnShutdown() {
-	close(j.ShutChan)
+	close(j.ShutChan) // notifies Schedule()
 }
 
 func (j *statCronjob) OnConfigure() {
@@ -45,7 +45,7 @@ func (j *statCronjob) OnPrepare() {
 	// TODO
 }
 
-func (j *statCronjob) Schedule() { // goroutine
+func (j *statCronjob) Schedule() { // runner
 	j.Loop(time.Minute, func(now time.Time) {
 		// TODO
 	})

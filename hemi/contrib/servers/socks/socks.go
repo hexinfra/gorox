@@ -41,7 +41,7 @@ func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *socksServer) OnShutdown() {
-	// We don't close(s.ShutChan) here.
+	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}
@@ -54,7 +54,7 @@ func (s *socksServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 
-func (s *socksServer) Serve() { // goroutine
+func (s *socksServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(socksGate)
 		gate.init(s, id)
@@ -103,7 +103,7 @@ func (g *socksGate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *socksGate) serve() { // goroutine
+func (g *socksGate) serve() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -184,7 +184,7 @@ func (c *socksConn) onPut() {
 	c.netConn = nil
 }
 
-func (c *socksConn) serve() { // goroutine
+func (c *socksConn) serve() { // runner
 	defer putSocksConn(c)
 
 	c.netConn.Write([]byte("not implemented yet"))

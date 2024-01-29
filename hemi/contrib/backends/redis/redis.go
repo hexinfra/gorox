@@ -27,7 +27,7 @@ type redisNode struct {
 	backend *RedisBackend
 }
 
-func (n *redisNode) Maintain() { // goroutine
+func (n *redisNode) Maintain() { // runner
 }
 
 // redisConn is a connection to redisNode.

@@ -36,7 +36,7 @@ func (j *helloCronjob) onCreate(name string, stage *Stage) {
 	j.stage = stage
 }
 func (j *helloCronjob) OnShutdown() {
-	close(j.ShutChan)
+	close(j.ShutChan) // notifies Schedule()
 }
 
 func (j *helloCronjob) OnConfigure() {
@@ -44,7 +44,7 @@ func (j *helloCronjob) OnConfigure() {
 func (j *helloCronjob) OnPrepare() {
 }
 
-func (j *helloCronjob) Schedule() { // goroutine
+func (j *helloCronjob) Schedule() { // runner
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 loop:

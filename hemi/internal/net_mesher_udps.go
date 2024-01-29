@@ -25,7 +25,7 @@ func (m *UDPSMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, udpsFilterCreators)
 }
 func (m *UDPSMesher) OnShutdown() {
-	// We don't close(m.ShutChan) here.
+	// Notify gates. We don't close(m.ShutChan) here.
 	for _, gate := range m.gates {
 		gate.shut()
 	}
@@ -53,7 +53,7 @@ func (m *UDPSMesher) createCase(name string) *udpsCase {
 	return kase
 }
 
-func (m *UDPSMesher) serve() { // goroutine
+func (m *UDPSMesher) serve() { // runner
 	for id := int32(0); id < m.numGates; id++ {
 		gate := new(udpsGate)
 		gate.init(m, id)
@@ -111,14 +111,14 @@ func (g *udpsGate) shut() error {
 	return nil
 }
 
-func (g *udpsGate) serveUDP() { // goroutine
+func (g *udpsGate) serveUDP() { // runner
 	// TODO
 	for !g.isShut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.mesher.SubDone()
 }
-func (g *udpsGate) serveTLS() { // goroutine
+func (g *udpsGate) serveTLS() { // runner
 	// TODO
 	for !g.isShut.Load() {
 		time.Sleep(time.Second)
@@ -126,7 +126,7 @@ func (g *udpsGate) serveTLS() { // goroutine
 	g.mesher.SubDone()
 }
 
-func (g *udpsGate) execute(link *UDPSLink) { // goroutine
+func (g *udpsGate) execute(link *UDPSLink) { // runner
 	for _, kase := range g.mesher.cases {
 		if !kase.isMatch(link) {
 			continue

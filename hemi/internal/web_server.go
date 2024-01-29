@@ -166,7 +166,7 @@ type serverConn interface {
 	// Imports
 	webConn
 	// Methods
-	serve() // goroutine
+	serve() // runner
 	getServer() webServer
 }
 
@@ -3017,16 +3017,16 @@ type Cookie struct {
 	name     string
 	value    string
 	expires  time.Time
-	maxAge   int64
 	domain   string
 	path     string
 	sameSite string
+	maxAge   int32
 	secure   bool
 	httpOnly bool
 	invalid  bool
 	quote    bool // if true, quote value with ""
 	aSize    int8
-	ageBuf   [19]byte
+	ageBuf   [10]byte
 }
 
 func (c *Cookie) Set(name string, value string) bool {
@@ -3086,7 +3086,7 @@ func (c *Cookie) SetExpires(expires time.Time) bool {
 	c.expires = expires
 	return true
 }
-func (c *Cookie) SetMaxAge(maxAge int64)  { c.maxAge = maxAge }
+func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
 func (c *Cookie) SetSecure()              { c.secure = true }
 func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
 func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
@@ -3104,7 +3104,7 @@ func (c *Cookie) size() int {
 		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
 	}
 	if c.maxAge > 0 {
-		m := i64ToDec(c.maxAge, c.ageBuf[:])
+		m := i32ToDec(c.maxAge, c.ageBuf[:])
 		c.aSize = int8(m)
 		n += len("; Max-Age=") + m
 	} else if c.maxAge < 0 {

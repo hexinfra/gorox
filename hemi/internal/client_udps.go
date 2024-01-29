@@ -51,7 +51,7 @@ func (f *UDPSOutgate) OnPrepare() {
 	f.outgate_.onConfigure()
 }
 
-func (f *UDPSOutgate) run() { // goroutine
+func (f *UDPSOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -128,7 +128,7 @@ func (n *udpsNode) init(id int32, backend *UDPSBackend) {
 	n.backend = backend
 }
 
-func (n *udpsNode) Maintain() { // goroutine
+func (n *udpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

@@ -56,7 +56,7 @@ func (f *HTTP2Outgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
 }
 
-func (f *HTTP2Outgate) run() { // goroutine
+func (f *HTTP2Outgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -123,7 +123,7 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.backend = backend
 }
 
-func (n *http2Node) Maintain() { // goroutine
+func (n *http2Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

@@ -49,7 +49,7 @@ func (f *HWEBOutgate) OnPrepare() {
 	f.webOutgate_.onPrepare(f)
 }
 
-func (f *HWEBOutgate) run() { // goroutine
+func (f *HWEBOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -97,7 +97,7 @@ func (n *hwebNode) init(id int32, backend *HWEBBackend) {
 	n.backend = backend
 }
 
-func (n *hwebNode) Maintain() { // goroutine
+func (n *hwebNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

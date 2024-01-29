@@ -54,7 +54,7 @@ func (f *QUICOutgate) OnPrepare() {
 	f.streamHolder_.onPrepare(f)
 }
 
-func (f *QUICOutgate) run() { // goroutine
+func (f *QUICOutgate) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
@@ -133,7 +133,7 @@ func (n *quicNode) init(id int32, backend *QUICBackend) {
 	n.backend = backend
 }
 
-func (n *quicNode) Maintain() { // goroutine
+func (n *quicNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})

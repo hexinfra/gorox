@@ -36,7 +36,7 @@ func (s *Service) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *Service) OnShutdown() {
-	close(s.ShutChan)
+	close(s.ShutChan) // notifies maintain()
 }
 
 func (s *Service) OnConfigure() {
@@ -95,7 +95,7 @@ func (s *Service) Logf(format string, args ...any) {
 func (s *Service) BindServer(server rpcServer) { s.servers = append(s.servers, server) }
 func (s *Service) Servers() []rpcServer        { return s.servers }
 
-func (s *Service) maintain() { // goroutine
+func (s *Service) maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})

@@ -24,7 +24,7 @@ func (m *QUICMesher) onCreate(name string, stage *Stage) {
 	m.mesher_.onCreate(name, stage, quicFilterCreators)
 }
 func (m *QUICMesher) OnShutdown() {
-	// We don't close(m.ShutChan) here.
+	// Notify gates. We don't close(m.ShutChan) here.
 	for _, gate := range m.gates {
 		gate.shut()
 	}
@@ -52,7 +52,7 @@ func (m *QUICMesher) createCase(name string) *quicCase {
 	return kase
 }
 
-func (m *QUICMesher) serve() { // goroutine
+func (m *QUICMesher) serve() { // runner
 	for id := int32(0); id < m.numGates; id++ {
 		gate := new(quicGate)
 		gate.init(m, id)
@@ -101,7 +101,7 @@ func (g *quicGate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *quicGate) serve() { // goroutine
+func (g *quicGate) serve() { // runner
 	// TODO
 	for !g.IsShut() {
 		time.Sleep(time.Second)
@@ -109,7 +109,7 @@ func (g *quicGate) serve() { // goroutine
 	g.mesher.SubDone()
 }
 
-func (g *quicGate) execute(connection *QUICConnection) { // goroutine
+func (g *quicGate) execute(connection *QUICConnection) { // runner
 	for _, kase := range g.mesher.cases {
 		if !kase.isMatch(connection) {
 			continue

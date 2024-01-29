@@ -64,7 +64,7 @@ func (l *logger) Logf(f string, v ...any) {
 
 func (l *logger) Close() { l.queue <- "" }
 
-func (l *logger) saver() { // goroutine
+func (l *logger) saver() { // runner
 	for {
 		s := <-l.queue
 		if s == "" {

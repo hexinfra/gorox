@@ -48,7 +48,7 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.forceScheme = -1 // not forced
 }
 func (s *httpxServer) OnShutdown() {
-	// We don't close(s.ShutChan) here.
+	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.shut()
 	}
@@ -96,7 +96,7 @@ func (s *httpxServer) OnPrepare() {
 	}
 }
 
-func (s *httpxServer) Serve() { // goroutine
+func (s *httpxServer) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
 		gate.init(s, id)
@@ -155,7 +155,7 @@ func (g *httpxGate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *httpxGate) serveTCP() { // goroutine
+func (g *httpxGate) serveTCP() { // runner
 	getHTTPConn := getHTTP1Conn
 	if g.server.h2cMode { // use HTTP/2 explicitly
 		getHTTPConn = getHTTP2Conn
@@ -192,7 +192,7 @@ func (g *httpxGate) serveTCP() { // goroutine
 	}
 	g.server.SubDone()
 }
-func (g *httpxGate) serveTLS() { // goroutine
+func (g *httpxGate) serveTLS() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.gate.AcceptTCP()
@@ -298,7 +298,7 @@ func (c *http1Conn) onPut() {
 	c.serverConn_.onPut()
 }
 
-func (c *http1Conn) serve() { // goroutine
+func (c *http1Conn) serve() { // runner
 	stream := &c.stream
 	for c.keepConn { // each stream
 		stream.onUse(c)

@@ -180,6 +180,7 @@ const ( // misc web types
 	webCodingDeflate  = 2 // this is in fact zlib format
 	webCodingGzip     = 3
 	webCodingBrotli   = 4
+	webCodingUnknown  = 5
 
 	webFormNotForm    = 0 // must be 0
 	webFormURLEncoded = 1 // application/x-www-form-urlencoded

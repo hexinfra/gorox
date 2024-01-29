@@ -172,11 +172,11 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			} else if isFile { // file not found
 				resp.SendNotFound(h.webapp.text404)
 			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
-				if file, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
-					h.listDir(file, resp)
-					file.Close()
+				if dir, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
+					h.listDir(dir, resp)
+					dir.Close()
 				} else if !os.IsNotExist(err) {
-					h.webapp.Logf("open file error=%s\n", err.Error())
+					h.webapp.Logf("open dir error=%s\n", err.Error())
 					resp.SendInternalServerError(nil)
 				} else { // directory not found
 					resp.SendNotFound(h.webapp.text404)

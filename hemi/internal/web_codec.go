@@ -748,8 +748,8 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 	// codings        = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) { // ignore too many codings
-			break
+		if r.nAcceptCodings == int8(cap(r.acceptCodings)) {
+			break // ignore too many codings
 		}
 		pair := &pairs[i]
 		if pair.kind != kindHeader {
@@ -771,8 +771,7 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 		} else if bytes.Equal(data, bytesIdentity) {
 			coding = webCodingIdentity
 		} else {
-			// Empty or unknown content-coding, ignored
-			continue
+			coding = webCodingUnknown
 		}
 		r.acceptCodings[r.nAcceptCodings] = coding
 		r.nAcceptCodings++
@@ -823,14 +822,7 @@ func (r *webIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool
 		} else if bytes.Equal(data, bytesCompress) {
 			coding = webCodingCompress
 		} else {
-			// RFC 7231 (section 3.1.2.2):
-			// An origin server MAY respond with a status code of 415 (Unsupported
-			// Media Type) if a representation in the request message has a content
-			// coding that is not acceptable.
-
-			// TODO: but we can be proxies too...
-			r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip, deflate, compress, and br are supported"
-			return false
+			coding = webCodingUnknown
 		}
 		r.contentCodings[r.nContentCodings] = coding
 		r.nContentCodings++

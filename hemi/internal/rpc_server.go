@@ -126,8 +126,8 @@ type serverCall_ struct {
 	// TODO
 }
 
-// Req is the server-side RPC request.
-type Req interface {
+// serverReq is the server-side RPC request.
+type serverReq interface {
 	Service() *Service
 	// TODO
 }
@@ -139,9 +139,9 @@ type serverReq_ struct {
 	// TODO
 }
 
-// Resp is the server-side RPC response.
-type Resp interface {
-	Req() Req
+// serverResp is the server-side RPC response.
+type serverResp interface {
+	Req() serverReq
 	// TODO
 }
 

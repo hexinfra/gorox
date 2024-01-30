@@ -105,7 +105,7 @@ func (s *Service) maintain() { // runner
 	s.stage.SubDone()
 }
 
-func (s *Service) dispatchBundlet(req Req, resp Resp) {
+func (s *Service) dispatchBundlet(req serverReq, resp serverResp) {
 	// TODO
 }
 

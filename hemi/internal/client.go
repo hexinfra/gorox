@@ -272,7 +272,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	}
 	<-b.ShutChan
 
-	// Backend is told to shutdown. Tell its nodes to shutdown too
+	// Backend was told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
 		node.shutdown()
 	}

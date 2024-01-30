@@ -18,7 +18,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
-func cmduiServer() {
+func cmduiServer() { // runner
 	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
 	}

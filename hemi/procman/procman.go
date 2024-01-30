@@ -61,7 +61,7 @@ OPTIONS
   -cmdui  <addr>    # listen address of leader cmdui (default: %s)
   -webui  <addr>    # listen address of leader webui (default: %s)
   -myrox  <addr>    # myrox to use. "-cmdui" and "-webui" will be ignored if set
-  -config <config>  # path or url to worker config file
+  -config <config>  # path to worker config file (default: conf/%s.conf)
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
   -base   <path>    # base directory of the program
@@ -97,7 +97,7 @@ func Main(args *Args) {
 
 	flag.Usage = func() {
 		if args.Usage == "" {
-			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DebugLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program)
+			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DebugLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program, args.Program)
 		} else {
 			fmt.Println(args.Usage)
 		}

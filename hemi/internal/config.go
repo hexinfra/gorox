@@ -899,21 +899,21 @@ type ruleCond struct {
 }
 
 var varCodes = map[string]int16{
-	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
+	// general conn vars. keep sync with net_mesher_quic.go, net_mesher_tcps.go, and net_mesher_udps.go
 	"srcHost": 0,
 	"srcPort": 1,
 
-	// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
+	// general tcps & udps conn vars. keep sync with net_mesher_tcps.go and net_mesher_udps.go
 	"transport": 2, // tcp/udp, tls/dtls
 
-	// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
-	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
+	// quic connection vars. keep sync with quicConnectionVariables in net_mesher_quic.go
+	// quic stream vars. keep sync with quicStreamVariables in net_mesher_quic.go
 
-	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
+	// tcps conn vars. keep sync with tcpsConnVariables in net_mesher_tcps.go
 	"serverName": 3,
 	"nextProto":  4,
 
-	// udps link vars. keep sync with udpsLinkVariables in net_udps.go
+	// udps link vars. keep sync with udpsLinkVariables in net_mesher_udps.go
 
 	// web request vars. keep sync with serverRequestVariables in web_server.go
 	"method":      0, // GET, POST, ...

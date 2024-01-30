@@ -94,6 +94,7 @@ func (g *quicGate) init(mesher *QUICMesher, id int32) {
 
 func (g *quicGate) open() error {
 	// TODO
+	// set g.gate
 	return nil
 }
 func (g *quicGate) shut() error {
@@ -130,6 +131,22 @@ func (g *quicGate) onConnectionClosed() {
 	g.DecConns()
 }
 
+// QUICFilter
+type QUICFilter interface {
+	// Imports
+	Component
+	// Methods
+	OnSetup(connection *QUICConnection) (next bool)
+	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
+}
+
+// QUICFilter_
+type QUICFilter_ struct {
+	// Mixins
+	Component_
+	// States
+}
+
 // quicCase
 type quicCase struct {
 	// Mixins
@@ -161,6 +178,42 @@ func (c *quicCase) isMatch(connection *QUICConnection) bool {
 	return c.matcher(c, connection, value)
 }
 
+func (c *quicCase) execute(connection *QUICConnection) (processed bool) {
+	// TODO
+	return false
+}
+
+func (c *quicCase) equalMatch(connection *QUICConnection, value []byte) bool { // value == patterns
+	return c.case_._equalMatch(value)
+}
+func (c *quicCase) prefixMatch(connection *QUICConnection, value []byte) bool { // value ^= patterns
+	return c.case_._prefixMatch(value)
+}
+func (c *quicCase) suffixMatch(connection *QUICConnection, value []byte) bool { // value $= patterns
+	return c.case_._suffixMatch(value)
+}
+func (c *quicCase) containMatch(connection *QUICConnection, value []byte) bool { // value *= patterns
+	return c.case_._containMatch(value)
+}
+func (c *quicCase) regexpMatch(connection *QUICConnection, value []byte) bool { // value ~= patterns
+	return c.case_._regexpMatch(value)
+}
+func (c *quicCase) notEqualMatch(connection *QUICConnection, value []byte) bool { // value != patterns
+	return c.case_._notEqualMatch(value)
+}
+func (c *quicCase) notPrefixMatch(connection *QUICConnection, value []byte) bool { // value !^ patterns
+	return c.case_._notPrefixMatch(value)
+}
+func (c *quicCase) notSuffixMatch(connection *QUICConnection, value []byte) bool { // value !$ patterns
+	return c.case_._notSuffixMatch(value)
+}
+func (c *quicCase) notContainMatch(connection *QUICConnection, value []byte) bool { // value !* patterns
+	return c.case_._notContainMatch(value)
+}
+func (c *quicCase) notRegexpMatch(connection *QUICConnection, value []byte) bool { // value !~ patterns
+	return c.case_._notRegexpMatch(value)
+}
+
 var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnection, value []byte) bool{
 	"==": (*quicCase).equalMatch,
 	"^=": (*quicCase).prefixMatch,
@@ -172,57 +225,6 @@ var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnectio
 	"!$": (*quicCase).notSuffixMatch,
 	"!*": (*quicCase).notContainMatch,
 	"!~": (*quicCase).notRegexpMatch,
-}
-
-func (c *quicCase) equalMatch(connection *QUICConnection, value []byte) bool { // value == patterns
-	return c.case_.equalMatch(value)
-}
-func (c *quicCase) prefixMatch(connection *QUICConnection, value []byte) bool { // value ^= patterns
-	return c.case_.prefixMatch(value)
-}
-func (c *quicCase) suffixMatch(connection *QUICConnection, value []byte) bool { // value $= patterns
-	return c.case_.suffixMatch(value)
-}
-func (c *quicCase) containMatch(connection *QUICConnection, value []byte) bool { // value *= patterns
-	return c.case_.containMatch(value)
-}
-func (c *quicCase) regexpMatch(connection *QUICConnection, value []byte) bool { // value ~= patterns
-	return c.case_.regexpMatch(value)
-}
-func (c *quicCase) notEqualMatch(connection *QUICConnection, value []byte) bool { // value != patterns
-	return c.case_.notEqualMatch(value)
-}
-func (c *quicCase) notPrefixMatch(connection *QUICConnection, value []byte) bool { // value !^ patterns
-	return c.case_.notPrefixMatch(value)
-}
-func (c *quicCase) notSuffixMatch(connection *QUICConnection, value []byte) bool { // value !$ patterns
-	return c.case_.notSuffixMatch(value)
-}
-func (c *quicCase) notContainMatch(connection *QUICConnection, value []byte) bool { // value !* patterns
-	return c.case_.notContainMatch(value)
-}
-func (c *quicCase) notRegexpMatch(connection *QUICConnection, value []byte) bool { // value !~ patterns
-	return c.case_.notRegexpMatch(value)
-}
-
-func (c *quicCase) execute(connection *QUICConnection) (processed bool) {
-	// TODO
-	return false
-}
-
-// QUICFilter
-type QUICFilter interface {
-	// Imports
-	Component
-	// Methods
-	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
-}
-
-// QUICFilter_
-type QUICFilter_ struct {
-	// Mixins
-	Component_
-	// States
 }
 
 // poolQUICConnection
@@ -243,7 +245,7 @@ func putQUICConnection(connection *QUICConnection) {
 	poolQUICConnection.Put(connection)
 }
 
-// QUICConnection is the QUIC connection coming from QUICMesher.
+// QUICConnection is a QUIC connection coming from QUICMesher.
 type QUICConnection struct {
 	// Connection states (stocks)
 	// Connection states (controlled)

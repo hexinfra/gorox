@@ -315,7 +315,7 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = webSectionTrailers
-				if !r.recvTrailers1() || !r.examineTail() {
+				if !r.recvTrailers1() || !r.shell.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.

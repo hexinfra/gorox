@@ -4,6 +4,26 @@ Hemi
 Hemi is the engine of Gorox.
 
 
+Layout
+======
+
+Hemi uses these directories:
+
+  * common/   - Place general purpose libraries,
+  * contrib/  - Place community contributed components,
+  * develop/  - A prototype application used to develop Hemi,
+  * internal/ - The core of Hemi,
+  * procman/  - A process manager for applications using Hemi.
+
+The "export.go" file collects the exported elements of Hemi.
+
+
+How to use
+==========
+
+For examples showing how to use Hemi, see: https://github.com/hexinfra/examples.
+
+
 Architecture
 ============
 
@@ -60,9 +80,3 @@ A program using Hemi typically has following dependencies:
   |                         <internal>                          |
   +-------------------------------------------------------------+
 ```
-
-
-Examples
-========
-
-For examples showing how to use Hemi, see: https://github.com/hexinfra/examples.

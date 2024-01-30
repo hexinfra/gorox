@@ -20,7 +20,7 @@ var (
 	webChan  chan *msgx.Message
 )
 
-func webuiServer() {
+func webuiServer() { // runner
 	webChan = make(chan *msgx.Message)
 	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)

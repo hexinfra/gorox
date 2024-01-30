@@ -153,7 +153,7 @@ type webIn interface {
 	HasTrailers() bool
 
 	readContent() (p []byte, err error)
-	applyTrailer(index uint8) bool
+	examineTail() bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
 	saveContentFilesDir() string
@@ -1100,75 +1100,6 @@ func (r *webIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
 }
 
-func (r *webIn_) examineTail() bool {
-	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.shell.applyTrailer(i) {
-			// r.bodyResult is set.
-			return false
-		}
-	}
-	return true
-}
-
-func (r *webIn_) arrayPush(b byte) {
-	r.array[r.arrayEdge] = b
-	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
-		r._growArray(1)
-	}
-}
-func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(128K->...->1G)
-	edge := r.arrayEdge + size
-	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
-		return false
-	}
-	if edge <= int32(cap(r.array)) { // existing array is enough
-		return true
-	}
-	arrayKind := r.arrayKind
-	var array []byte
-	if edge <= _64K1 { // (stock, 64K1]
-		r.arrayKind = arrayKindPool
-		array = GetNK(int64(edge)) // 4K/16K/64K1
-	} else { // > _64K1
-		r.arrayKind = arrayKindMake
-		if edge <= _128K {
-			array = make([]byte, _128K)
-		} else if edge <= _256K {
-			array = make([]byte, _256K)
-		} else if edge <= _512K {
-			array = make([]byte, _512K)
-		} else if edge <= _1M {
-			array = make([]byte, _1M)
-		} else if edge <= _2M {
-			array = make([]byte, _2M)
-		} else if edge <= _4M {
-			array = make([]byte, _4M)
-		} else if edge <= _8M {
-			array = make([]byte, _8M)
-		} else if edge <= _16M {
-			array = make([]byte, _16M)
-		} else if edge <= _32M {
-			array = make([]byte, _32M)
-		} else if edge <= _64M {
-			array = make([]byte, _64M)
-		} else if edge <= _128M {
-			array = make([]byte, _128M)
-		} else if edge <= _256M {
-			array = make([]byte, _256M)
-		} else if edge <= _512M {
-			array = make([]byte, _512M)
-		} else { // <= _1G
-			array = make([]byte, _1G)
-		}
-	}
-	copy(array, r.array[0:r.arrayEdge])
-	if arrayKind == arrayKindPool {
-		PutNK(r.array)
-	}
-	r.array = array
-	return true
-}
-
 func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
 		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
@@ -1412,17 +1343,9 @@ func (r *webIn_) _placeOf(pair *pair) []byte {
 func (r *webIn_) delHopHeaders() { // used by proxies
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
-func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
-	return r._forMainFields(r.headers, kindHeader, callback)
-}
-
 func (r *webIn_) delHopTrailers() { // used by proxies
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
-func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTrailersFrom(). excluding sub trailers
-	return r._forMainFields(r.trailers, kindTrailer, callback)
-}
-
 func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
@@ -1464,6 +1387,13 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 		}
 	}
 }
+
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
+	return r._forMainFields(r.headers, kindHeader, callback)
+}
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTailFrom(). excluding sub trailers
+	return r._forMainFields(r.trailers, kindTrailer, callback)
+}
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 {
@@ -1482,6 +1412,65 @@ func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field
 			}
 		}
 	}
+	return true
+}
+
+func (r *webIn_) arrayPush(b byte) {
+	r.array[r.arrayEdge] = b
+	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
+		r._growArray(1)
+	}
+}
+func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(128K->...->1G)
+	edge := r.arrayEdge + size
+	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
+		return false
+	}
+	if edge <= int32(cap(r.array)) { // existing array is enough
+		return true
+	}
+	arrayKind := r.arrayKind
+	var array []byte
+	if edge <= _64K1 { // (stock, 64K1]
+		r.arrayKind = arrayKindPool
+		array = GetNK(int64(edge)) // 4K/16K/64K1
+	} else { // > _64K1
+		r.arrayKind = arrayKindMake
+		if edge <= _128K {
+			array = make([]byte, _128K)
+		} else if edge <= _256K {
+			array = make([]byte, _256K)
+		} else if edge <= _512K {
+			array = make([]byte, _512K)
+		} else if edge <= _1M {
+			array = make([]byte, _1M)
+		} else if edge <= _2M {
+			array = make([]byte, _2M)
+		} else if edge <= _4M {
+			array = make([]byte, _4M)
+		} else if edge <= _8M {
+			array = make([]byte, _8M)
+		} else if edge <= _16M {
+			array = make([]byte, _16M)
+		} else if edge <= _32M {
+			array = make([]byte, _32M)
+		} else if edge <= _64M {
+			array = make([]byte, _64M)
+		} else if edge <= _128M {
+			array = make([]byte, _128M)
+		} else if edge <= _256M {
+			array = make([]byte, _256M)
+		} else if edge <= _512M {
+			array = make([]byte, _512M)
+		} else { // <= _1G
+			array = make([]byte, _1G)
+		}
+	}
+	copy(array, r.array[0:r.arrayEdge])
+	if arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = array
 	return true
 }
 

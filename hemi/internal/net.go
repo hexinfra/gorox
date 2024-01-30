@@ -12,12 +12,13 @@ import (
 	"regexp"
 )
 
-// _mesher
-type _mesher interface { // *QUICMesher, *TCPSMesher, *UDPSMesher
+// _mesher is the interface for *QUICMesher, *TCPSMesher, *UDPSMesher.
+type _mesher interface {
 	Component
+	serve() // runner
 }
 
-// mesher_ is the mixin for *QUICMesher, *TCPSMesher, *UDPSMesher.
+// mesher_ is the mixin for QUICMesher, TCPSMesher, UDPSMesher.
 type mesher_[M _mesher, G _gate, F _filter, C _case] struct {
 	// Mixins
 	Server_
@@ -103,19 +104,19 @@ func (m *mesher_[M, G, F, C]) Logf(format string, args ...any) {
 	}
 }
 
-// _gate
-type _gate interface { // *quicGate, *tcpsGate, *udpsGate
+// _gate is the interface for *quicGate, *tcpsGate, *udpsGate.
+type _gate interface {
 	open() error
 	shut() error
 }
 
-// _filter
-type _filter interface { // QUICFilter, TCPSFilter, UDPSFilter
+// _filter is for QUICFilter, TCPSFilter, UDPSFilter.
+type _filter interface {
 	Component
 }
 
-// _case
-type _case interface { // *quicCase, *tcpsCase, *udpsCase
+// _case is the interface for *quicCase, *tcpsCase, *udpsCase.
+type _case interface {
 	Component
 }
 
@@ -169,7 +170,7 @@ func (c *case_[M, F]) OnPrepare() {
 
 func (c *case_[M, F]) addFilter(filter F) { c.filters = append(c.filters, filter) }
 
-func (c *case_[M, F]) equalMatch(value []byte) bool {
+func (c *case_[M, F]) _equalMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return true
@@ -177,7 +178,7 @@ func (c *case_[M, F]) equalMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, F]) prefixMatch(value []byte) bool {
+func (c *case_[M, F]) _prefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return true
@@ -185,7 +186,7 @@ func (c *case_[M, F]) prefixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, F]) suffixMatch(value []byte) bool {
+func (c *case_[M, F]) _suffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return true
@@ -193,7 +194,7 @@ func (c *case_[M, F]) suffixMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, F]) containMatch(value []byte) bool {
+func (c *case_[M, F]) _containMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return true
@@ -201,7 +202,7 @@ func (c *case_[M, F]) containMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, F]) regexpMatch(value []byte) bool {
+func (c *case_[M, F]) _regexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return true
@@ -209,7 +210,7 @@ func (c *case_[M, F]) regexpMatch(value []byte) bool {
 	}
 	return false
 }
-func (c *case_[M, F]) notEqualMatch(value []byte) bool {
+func (c *case_[M, F]) _notEqualMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Equal(value, pattern) {
 			return false
@@ -217,7 +218,7 @@ func (c *case_[M, F]) notEqualMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, F]) notPrefixMatch(value []byte) bool {
+func (c *case_[M, F]) _notPrefixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasPrefix(value, pattern) {
 			return false
@@ -225,7 +226,7 @@ func (c *case_[M, F]) notPrefixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, F]) notSuffixMatch(value []byte) bool {
+func (c *case_[M, F]) _notSuffixMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.HasSuffix(value, pattern) {
 			return false
@@ -233,7 +234,7 @@ func (c *case_[M, F]) notSuffixMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, F]) notContainMatch(value []byte) bool {
+func (c *case_[M, F]) _notContainMatch(value []byte) bool {
 	for _, pattern := range c.patterns {
 		if bytes.Contains(value, pattern) {
 			return false
@@ -241,7 +242,7 @@ func (c *case_[M, F]) notContainMatch(value []byte) bool {
 	}
 	return true
 }
-func (c *case_[M, F]) notRegexpMatch(value []byte) bool {
+func (c *case_[M, F]) _notRegexpMatch(value []byte) bool {
 	for _, regexp := range c.regexps {
 		if regexp.Match(value) {
 			return false

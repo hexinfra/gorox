@@ -15,6 +15,7 @@ type hrpcServer struct {
 }
 
 func (s *hrpcServer) Serve() { // runner
+	// TODO
 }
 
 // hrpcGate is a gate of hrpcServer.
@@ -24,6 +25,7 @@ type hrpcGate struct {
 }
 
 func (g *hrpcGate) serve() { // runner
+	// TODO
 }
 
 // hrpcCall is the server-side HRPC call.

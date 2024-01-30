@@ -83,8 +83,8 @@ func (s *webServer_) onPrepare(shell Component) {
 }
 
 func (s *webServer_) bindWebapps() {
-	for _, webappName := range s.forApps {
-		webapp := s.stage.Webapp(webappName)
+	for _, appName := range s.forApps {
+		webapp := s.stage.Webapp(appName)
 		if webapp == nil {
 			continue
 		}
@@ -372,7 +372,7 @@ type Request interface {
 	unsetHost()
 	takeContent() any
 	readContent() (p []byte, err error)
-	applyTrailer(index uint8) bool
+	examineTail() bool
 	delHopTrailers()
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	arrayCopy(p []byte) bool
@@ -2418,6 +2418,15 @@ func (r *serverRequest_) HasUpload(name string) bool {
 	return ok
 }
 
+func (r *serverRequest_) examineTail() bool {
+	for i := r.trailers.from; i < r.trailers.edge; i++ {
+		if !r.applyTrailer(i) {
+			// r.bodyResult is set.
+			return false
+		}
+	}
+	return true
+}
 func (r *serverRequest_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
@@ -2442,10 +2451,10 @@ func (r *serverRequest_) arrayCopy(p []byte) bool {
 }
 
 func (r *serverRequest_) saveContentFilesDir() string {
-	if r.webapp != nil {
-		return r.webapp.SaveContentFilesDir()
-	} else {
+	if r.webapp == nil {
 		return r.stream.webBroker().SaveContentFilesDir()
+	} else {
+		return r.webapp.SaveContentFilesDir()
 	}
 }
 

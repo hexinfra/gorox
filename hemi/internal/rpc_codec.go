@@ -25,7 +25,8 @@ type rpcCall interface {
 // rpcCall_ is the mixin for hrpcCall and HCall.
 type rpcCall_ struct {
 	// TODO
-	region Region // a region-based memory pool
+	stockBuffer [256]byte // ...
+	region      Region    // a region-based memory pool
 }
 
 func (c *rpcCall_) onUse() {
@@ -35,6 +36,7 @@ func (c *rpcCall_) onEnd() {
 	c.region.Free()
 }
 
+func (c *rpcCall_) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *rpcCall_) unsafeMake(size int) []byte { return c.region.Make(size) }
 
 // rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
@@ -63,4 +65,7 @@ type rpcOut_ struct {
 	// Assocs
 	shell rpcOut
 	// TODO
+	rpcOut0
+}
+type rpcOut0 struct {
 }

@@ -143,6 +143,21 @@ func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
 
+// UDPSFilter
+type UDPSFilter interface {
+	// Imports
+	Component
+	// Methods
+	Deal(link *UDPSLink) (next bool)
+}
+
+// UDPSFilter_
+type UDPSFilter_ struct {
+	// Mixins
+	Component_
+	// States
+}
+
 // udpsCase
 type udpsCase struct {
 	// Mixins
@@ -174,6 +189,42 @@ func (c *udpsCase) isMatch(link *UDPSLink) bool {
 	return c.matcher(c, link, value)
 }
 
+func (c *udpsCase) execute(link *UDPSLink) (processed bool) {
+	// TODO
+	return false
+}
+
+func (c *udpsCase) equalMatch(link *UDPSLink, value []byte) bool { // value == patterns
+	return c.case_._equalMatch(value)
+}
+func (c *udpsCase) prefixMatch(link *UDPSLink, value []byte) bool { // value ^= patterns
+	return c.case_._prefixMatch(value)
+}
+func (c *udpsCase) suffixMatch(link *UDPSLink, value []byte) bool { // value $= patterns
+	return c.case_._suffixMatch(value)
+}
+func (c *udpsCase) containMatch(link *UDPSLink, value []byte) bool { // value *= patterns
+	return c.case_._containMatch(value)
+}
+func (c *udpsCase) regexpMatch(link *UDPSLink, value []byte) bool { // value ~= patterns
+	return c.case_._regexpMatch(value)
+}
+func (c *udpsCase) notEqualMatch(link *UDPSLink, value []byte) bool { // value != patterns
+	return c.case_._notEqualMatch(value)
+}
+func (c *udpsCase) notPrefixMatch(link *UDPSLink, value []byte) bool { // value !^ patterns
+	return c.case_._notPrefixMatch(value)
+}
+func (c *udpsCase) notSuffixMatch(link *UDPSLink, value []byte) bool { // value !$ patterns
+	return c.case_._notSuffixMatch(value)
+}
+func (c *udpsCase) notContainMatch(link *UDPSLink, value []byte) bool { // value !* patterns
+	return c.case_._notContainMatch(value)
+}
+func (c *udpsCase) notRegexpMatch(link *UDPSLink, value []byte) bool { // value !~ patterns
+	return c.case_._notRegexpMatch(value)
+}
+
 var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []byte) bool{
 	"==": (*udpsCase).equalMatch,
 	"^=": (*udpsCase).prefixMatch,
@@ -185,57 +236,6 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, link *UDPSLink, value []b
 	"!$": (*udpsCase).notSuffixMatch,
 	"!*": (*udpsCase).notContainMatch,
 	"!~": (*udpsCase).notRegexpMatch,
-}
-
-func (c *udpsCase) equalMatch(link *UDPSLink, value []byte) bool { // value == patterns
-	return c.case_.equalMatch(value)
-}
-func (c *udpsCase) prefixMatch(link *UDPSLink, value []byte) bool { // value ^= patterns
-	return c.case_.prefixMatch(value)
-}
-func (c *udpsCase) suffixMatch(link *UDPSLink, value []byte) bool { // value $= patterns
-	return c.case_.suffixMatch(value)
-}
-func (c *udpsCase) containMatch(link *UDPSLink, value []byte) bool { // value *= patterns
-	return c.case_.containMatch(value)
-}
-func (c *udpsCase) regexpMatch(link *UDPSLink, value []byte) bool { // value ~= patterns
-	return c.case_.regexpMatch(value)
-}
-func (c *udpsCase) notEqualMatch(link *UDPSLink, value []byte) bool { // value != patterns
-	return c.case_.notEqualMatch(value)
-}
-func (c *udpsCase) notPrefixMatch(link *UDPSLink, value []byte) bool { // value !^ patterns
-	return c.case_.notPrefixMatch(value)
-}
-func (c *udpsCase) notSuffixMatch(link *UDPSLink, value []byte) bool { // value !$ patterns
-	return c.case_.notSuffixMatch(value)
-}
-func (c *udpsCase) notContainMatch(link *UDPSLink, value []byte) bool { // value !* patterns
-	return c.case_.notContainMatch(value)
-}
-func (c *udpsCase) notRegexpMatch(link *UDPSLink, value []byte) bool { // value !~ patterns
-	return c.case_.notRegexpMatch(value)
-}
-
-func (c *udpsCase) execute(link *UDPSLink) (processed bool) {
-	// TODO
-	return false
-}
-
-// UDPSFilter
-type UDPSFilter interface {
-	// Imports
-	Component
-	// Methods
-	Deal(link *UDPSLink) (next bool)
-}
-
-// UDPSFilter_
-type UDPSFilter_ struct {
-	// Mixins
-	Component_
-	// States
 }
 
 // poolUDPSLink
@@ -259,6 +259,7 @@ func putUDPSLink(link *UDPSLink) {
 // UDPSLink needs redesign, maybe datagram?
 type UDPSLink struct {
 	// Link states (stocks)
+	stockBuffer [256]byte // ...
 	// Link states (controlled)
 	// Link states (non-zeros)
 	id      int64

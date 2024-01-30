@@ -504,7 +504,7 @@ type Rule struct {
 	socklets []Socklet // socklets in this rule. NOTICE: socklets are sub components of webapp, not rule
 	// States
 	general    bool     // general match?
-	logAccess  bool     // enable booking for this rule?
+	logAccess  bool     // enable logging for this rule?
 	returnCode int16    // ...
 	returnText []byte   // ...
 	varCode    int16    // the variable code

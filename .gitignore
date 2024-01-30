@@ -1,3 +1,4 @@
+*.7z
 *.a
 *.dll
 *.dylib
@@ -16,6 +17,7 @@
 *.rar
 *.so
 *.swp
+*.tar
 *.test
 *.zip
 

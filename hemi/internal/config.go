@@ -305,8 +305,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compQUICFilter:
-			c.parseQUICFilter(current, mesher, nil)
+		case compQUICDealet:
+			c.parseQUICDealet(current, mesher, nil)
 		case compCase:
 			c.parseQUICCase(mesher)
 		default:
@@ -314,8 +314,8 @@ func (c *config) parseQUICMesher(stage *Stage) { // quicMesher <name> {}
 		}
 	}
 }
-func (c *config) parseQUICFilter(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqFilter <name> {}, qqqFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseQUICDealet(sign *token, mesher *QUICMesher, kase *quicCase) { // qqqDealet <name> {}, qqqDealet {}
+	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -346,8 +346,8 @@ func (c *config) parseQUICCase(mesher *QUICMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compQUICFilter:
-			c.parseQUICFilter(current, mesher, kase)
+		case compQUICDealet:
+			c.parseQUICDealet(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -371,8 +371,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compTCPSFilter:
-			c.parseTCPSFilter(current, mesher, nil)
+		case compTCPSDealet:
+			c.parseTCPSDealet(current, mesher, nil)
 		case compCase:
 			c.parseTCPSCase(mesher)
 		default:
@@ -380,8 +380,8 @@ func (c *config) parseTCPSMesher(stage *Stage) { // tcpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseTCPSFilter(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttFilter <name> {}, tttFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseTCPSDealet(sign *token, mesher *TCPSMesher, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
+	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -412,8 +412,8 @@ func (c *config) parseTCPSCase(mesher *TCPSMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compTCPSFilter:
-			c.parseTCPSFilter(current, mesher, kase)
+		case compTCPSDealet:
+			c.parseTCPSDealet(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -437,8 +437,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsMesher\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compUDPSFilter:
-			c.parseUDPSFilter(current, mesher, nil)
+		case compUDPSDealet:
+			c.parseUDPSDealet(current, mesher, nil)
 		case compCase:
 			c.parseUDPSCase(mesher)
 		default:
@@ -446,8 +446,8 @@ func (c *config) parseUDPSMesher(stage *Stage) { // udpsMesher <name> {}
 		}
 	}
 }
-func (c *config) parseUDPSFilter(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuFilter <name> {}, uuuFilter {}
-	parseComponent1(c, sign, mesher, mesher.createFilter, kase, kase.addFilter)
+func (c *config) parseUDPSDealet(sign *token, mesher *UDPSMesher, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
+	parseComponent1(c, sign, mesher, mesher.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := mesher.createCase(c.newName()) // use a temp name by default
@@ -478,8 +478,8 @@ func (c *config) parseUDPSCase(mesher *UDPSMesher) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compUDPSFilter:
-			c.parseUDPSFilter(current, mesher, kase)
+		case compUDPSDealet:
+			c.parseUDPSDealet(current, mesher, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
 		}
@@ -851,7 +851,7 @@ func parseComponent0[T Component](c *config, sign *token, stage *Stage, create f
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // filter
+func parseComponent1[M Component, T Component, C any](c *config, sign *token, mesher M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text
@@ -899,21 +899,21 @@ type ruleCond struct {
 }
 
 var varCodes = map[string]int16{
-	// general conn vars. keep sync with net_mesher_quic.go, net_mesher_tcps.go, and net_mesher_udps.go
+	// general conn vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
 	"srcHost": 0,
 	"srcPort": 1,
 
-	// general tcps & udps conn vars. keep sync with net_mesher_tcps.go and net_mesher_udps.go
+	// general tcps & udps conn vars. keep sync with net_tcps.go and net_udps.go
 	"transport": 2, // tcp/udp, tls/dtls
 
-	// quic connection vars. keep sync with quicConnectionVariables in net_mesher_quic.go
-	// quic stream vars. keep sync with quicStreamVariables in net_mesher_quic.go
+	// quic connection vars. keep sync with quicConnectionVariables in net_quic.go
+	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
 
-	// tcps conn vars. keep sync with tcpsConnVariables in net_mesher_tcps.go
+	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
 	"serverName": 3,
 	"nextProto":  4,
 
-	// udps link vars. keep sync with udpsLinkVariables in net_mesher_udps.go
+	// udps link vars. keep sync with udpsLinkVariables in net_udps.go
 
 	// web request vars. keep sync with serverRequestVariables in web_server.go
 	"method":      0, // GET, POST, ...

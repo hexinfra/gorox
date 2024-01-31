@@ -8,17 +8,17 @@
 package internal
 
 func init() {
-	RegisterQUICFilter("qudsProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICFilter {
-		f := new(qudsProxy)
-		f.onCreate(name, stage, mesher)
-		return f
+	RegisterQUICDealet("qudsProxy", func(name string, stage *Stage, mesher *QUICMesher) QUICDealet {
+		d := new(qudsProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
 // qudsProxy passes QUIC connections to backend QUDS server.
 type qudsProxy struct {
 	// Mixins
-	QUICFilter_
+	QUICDealet_
 	// Assocs
 	stage   *Stage
 	mesher  *QUICMesher
@@ -26,23 +26,23 @@ type qudsProxy struct {
 	// States
 }
 
-func (f *qudsProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *qudsProxy) onCreate(name string, stage *Stage, mesher *QUICMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *qudsProxy) OnShutdown() {
-	f.mesher.SubDone()
+func (d *qudsProxy) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *qudsProxy) OnConfigure() {
+func (d *qudsProxy) OnConfigure() {
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := f.stage.Backend(name); backend == nil {
+			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if qudsBackend, ok := backend.(*QUDSBackend); ok {
-				f.backend = qudsBackend
+				d.backend = qudsBackend
 			} else {
 				UseExitf("incorrect backend '%s' for qudsProxy\n", name)
 			}
@@ -53,14 +53,14 @@ func (f *qudsProxy) OnConfigure() {
 		UseExitln("toBackend is required for qudsProxy")
 	}
 }
-func (f *qudsProxy) OnPrepare() {
+func (d *qudsProxy) OnPrepare() {
 }
 
-func (f *qudsProxy) OnSetup(connection *QUICConnection) (next bool) {
+func (d *qudsProxy) OnSetup(connection *QUICConnection) (next bool) {
 	// TODO
 	return
 }
-func (f *qudsProxy) Deal(connection *QUICConnection, stream *QUICStream) (next bool) { // reverse only
+func (d *qudsProxy) Deal(connection *QUICConnection, stream *QUICStream) (next bool) { // reverse only
 	// TODO
 	return
 }

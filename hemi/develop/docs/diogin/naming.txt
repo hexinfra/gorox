@@ -24,7 +24,7 @@ COMPONENTS
     addon (...)
     backend (http1Backend, tcpsBackend, ...)
     mesher (quicMesher, tcpsMesher, udpsMesher)
-      filter (...)
+      dealet (...)
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)

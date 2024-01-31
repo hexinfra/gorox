@@ -6,7 +6,7 @@ udpsMesher "um1" {
 	.numGates        = runtime.NumCPU()
 	.maxConnsPerGate = 100000
 
-	// filters
+	// dealets
 
 	// cases
 }

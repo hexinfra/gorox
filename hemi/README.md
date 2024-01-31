@@ -41,7 +41,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     | e | [tcps] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udps] +--------------+-----------------+     |
    |     | v | mesher |              |webapp(*) handlet|     |
-   |     | e | filter |              | socklet reviser |     |
+   |     | e | dealet |              | socklet reviser |     |
    |     | r |  case  |  service(*)  |     rule        |     |
    |     |(*)|        |          +---+--+       +------+     |
    |     |   |        |          |stater|       |cacher|     |

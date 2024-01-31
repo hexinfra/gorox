@@ -1,7 +1,6 @@
 v?.?.?                                                        (2023-??-?? UTC+8)
 ================================================================================
 
-  * Interface of TCPSFilter is refactored.
   * Storers are renamed as cachers.
   * Fix crash caused by empty value of some fields.
   * Flag "-temp" changed to "-tmps".
@@ -13,6 +12,7 @@ v?.?.?                                                        (2023-??-?? UTC+8)
   * FromFile and FromText are renamed as BootFile and BootText respectively.
   * Abbreviations are now differentiated from names clearly.
   * Directory "cmds/" is now renamed as "bins/".
+  * Filter is renamed as Dealet in mesher.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================

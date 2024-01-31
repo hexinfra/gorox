@@ -8,17 +8,17 @@
 package internal
 
 func init() {
-	RegisterUDPSFilter("uudsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSFilter {
-		f := new(uudsProxy)
-		f.onCreate(name, stage, mesher)
-		return f
+	RegisterUDPSDealet("uudsProxy", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet {
+		d := new(uudsProxy)
+		d.onCreate(name, stage, mesher)
+		return d
 	})
 }
 
 // uudsProxy passes UDP/DTLS links to backend UUDS server.
 type uudsProxy struct {
 	// Mixins
-	UDPSFilter_
+	UDPSDealet_
 	// Assocs
 	stage   *Stage
 	mesher  *UDPSMesher
@@ -26,23 +26,23 @@ type uudsProxy struct {
 	// States
 }
 
-func (f *uudsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
-	f.MakeComp(name)
-	f.stage = stage
-	f.mesher = mesher
+func (d *uudsProxy) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.mesher = mesher
 }
-func (f *uudsProxy) OnShutdown() {
-	f.mesher.SubDone()
+func (d *uudsProxy) OnShutdown() {
+	d.mesher.SubDone()
 }
 
-func (f *uudsProxy) OnConfigure() {
+func (d *uudsProxy) OnConfigure() {
 	// toBackend
-	if v, ok := f.Find("toBackend"); ok {
+	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
-			if backend := f.stage.Backend(name); backend == nil {
+			if backend := d.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else if uudsBackend, ok := backend.(*UUDSBackend); ok {
-				f.backend = uudsBackend
+				d.backend = uudsBackend
 			} else {
 				UseExitf("incorrect backend '%s' for uudsProxy\n", name)
 			}
@@ -53,10 +53,10 @@ func (f *uudsProxy) OnConfigure() {
 		UseExitln("toBackend is required for uudsProxy")
 	}
 }
-func (f *uudsProxy) OnPrepare() {
+func (d *uudsProxy) OnPrepare() {
 }
 
-func (f *uudsProxy) Deal(link *UDPSLink) (next bool) { // reverse only
+func (d *uudsProxy) Deal(link *UDPSLink) (next bool) { // reverse only
 	// TODO
 	return
 }

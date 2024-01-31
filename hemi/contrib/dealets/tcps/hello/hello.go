@@ -45,14 +45,9 @@ func (d *helloDealet) OnPrepare() {
 	// TODO
 }
 
-func (d *helloDealet) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *helloDealet) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *helloDealet) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *helloDealet) Deal(conn *TCPSConn) (dealt bool) {
+	conn.Send(helloBytes)
+	return true
 }
 
 var (

@@ -45,19 +45,6 @@ func (d *echoDealet) OnPrepare() {
 	// TODO
 }
 
-func (d *echoDealet) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *echoDealet) OnInput(buf *Buffer, end bool) (next bool) {
-	/*
-		conn := buf.Conn()
-		conn.Write(buf.Data())
-		if end {
-			conn.CloseWrite()
-		}
-	*/
-	return
-}
-func (d *echoDealet) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *echoDealet) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

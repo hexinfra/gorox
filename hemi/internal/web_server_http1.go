@@ -490,7 +490,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 }
 
 func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
-	webapp.dispatchHandlet(req, resp)
+	webapp.exchanDispatch(req, resp)
 	if !resp.isSent { // only happens on sized content because response must be sent on echo
 		resp.sendChain()
 	} else if resp.isVague() { // end vague content and write trailers (if exist)

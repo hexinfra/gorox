@@ -86,6 +86,17 @@ func (m *TCPSMesher) serve() { // runner
 	m.stage.SubDone()
 }
 
+func (m *TCPSMesher) dispatch(conn *TCPSConn) {
+	for _, kase := range m.cases {
+		if !kase.isMatch(conn) {
+			continue
+		}
+		if dealt := kase.execute(conn); dealt {
+			break
+		}
+	}
+}
+
 // tcpsGate is an opening gate of TCPSMesher.
 type tcpsGate struct {
 	// Mixins
@@ -142,7 +153,7 @@ func (g *tcpsGate) serveTCP() { // runner
 			if Debug() >= 1 {
 				Printf("%+v\n", conn)
 			}
-			go g.execute(conn) // conn is put to pool in execute()
+			go conn.mesh() // conn is put to pool in mesh()
 			connID++
 		}
 	}
@@ -173,7 +184,7 @@ func (g *tcpsGate) serveTLS() { // runner
 				continue
 			}
 			conn := getTCPSConn(connID, g.stage, g.mesher, g, tlsConn, nil)
-			go g.execute(conn) // conn is put to pool in execute()
+			go conn.mesh() // conn is put to pool in mesh()
 			connID++
 		}
 	}
@@ -182,19 +193,6 @@ func (g *tcpsGate) serveTLS() { // runner
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.mesher.SubDone()
-}
-
-func (g *tcpsGate) execute(conn *TCPSConn) { // runner
-	for _, kase := range g.mesher.cases {
-		if !kase.isMatch(conn) {
-			continue
-		}
-		if processed := kase.execute(conn); processed {
-			break
-		}
-	}
-	conn.closeConn()
-	putTCPSConn(conn)
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
@@ -211,9 +209,7 @@ type TCPSDealet interface {
 	// Imports
 	Component
 	// Methods
-	OnSetup(conn *TCPSConn) (next bool)
-	OnInput(buf *Buffer, end bool) (next bool)
-	OnOutput(buf *Buffer, end bool) (next bool)
+	Deal(conn *TCPSConn) (dealt bool)
 }
 
 // TCPSDealet_
@@ -254,14 +250,12 @@ func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
 	return c.matcher(c, conn, value)
 }
 
-func (c *tcpsCase) execute(conn *TCPSConn) (processed bool) {
-	/*
-		for _, dealet := range c.dealets {
-			if next := dealet.Deal(conn); !next {
-				return true
-			}
+func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
+	for _, dealet := range c.dealets {
+		if dealt := dealet.Deal(conn); dealt {
+			return true
 		}
-	*/
+	}
 	return false
 }
 
@@ -372,6 +366,12 @@ func (c *TCPSConn) onPut() {
 		c.input = nil
 	}
 	c.tcpsConn0 = tcpsConn0{}
+}
+
+func (c *TCPSConn) mesh() { // runner
+	c.mesher.dispatch(c)
+	c.closeConn()
+	putTCPSConn(c)
 }
 
 func (c *TCPSConn) Recv() (p []byte, err error) { // p == nil means EOF

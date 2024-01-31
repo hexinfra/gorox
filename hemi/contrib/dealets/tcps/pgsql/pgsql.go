@@ -45,12 +45,6 @@ func (d *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *pgsqlProxy) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *pgsqlProxy) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *pgsqlProxy) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *pgsqlProxy) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

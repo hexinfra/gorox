@@ -57,15 +57,7 @@ func (d *tudsProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (d *tudsProxy) OnSetup(conn *TCPSConn) (next bool) {
+func (d *tudsProxy) Deal(conn *TCPSConn) (dealt bool) {
 	// TODO
-	return
-}
-func (d *tudsProxy) OnInput(buf *Buffer, end bool) (next bool) {
-	// TODO
-	return
-}
-func (d *tudsProxy) OnOutput(buf *Buffer, end bool) (next bool) {
-	// TODO
-	return
+	return true
 }

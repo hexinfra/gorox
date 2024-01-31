@@ -45,12 +45,6 @@ func (d *mongoProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *mongoProxy) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *mongoProxy) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *mongoProxy) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *mongoProxy) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

@@ -77,6 +77,17 @@ func (m *QUICMesher) serve() { // runner
 	m.stage.SubDone()
 }
 
+func (m *QUICMesher) dispatch(connection *QUICConnection) {
+	for _, kase := range m.cases {
+		if !kase.isMatch(connection) {
+			continue
+		}
+		if dealt := kase.execute(connection); dealt {
+			break
+		}
+	}
+}
+
 // quicGate is an opening gate of QUICMesher.
 type quicGate struct {
 	// Mixins
@@ -110,19 +121,6 @@ func (g *quicGate) serve() { // runner
 	g.mesher.SubDone()
 }
 
-func (g *quicGate) execute(connection *QUICConnection) { // runner
-	for _, kase := range g.mesher.cases {
-		if !kase.isMatch(connection) {
-			continue
-		}
-		if processed := kase.execute(connection); processed {
-			break
-		}
-	}
-	connection.Close()
-	putQUICConnection(connection)
-}
-
 func (g *quicGate) justClose(quicConnection *quix.Connection) {
 	quicConnection.Close()
 	g.onConnectionClosed()
@@ -136,8 +134,7 @@ type QUICDealet interface {
 	// Imports
 	Component
 	// Methods
-	OnSetup(connection *QUICConnection) (next bool)
-	Deal(connection *QUICConnection, stream *QUICStream) (next bool)
+	Deal(connection *QUICConnection, stream *QUICStream) (dealt bool)
 }
 
 // QUICDealet_
@@ -178,7 +175,7 @@ func (c *quicCase) isMatch(connection *QUICConnection) bool {
 	return c.matcher(c, connection, value)
 }
 
-func (c *quicCase) execute(connection *QUICConnection) (processed bool) {
+func (c *quicCase) execute(connection *QUICConnection) (dealt bool) {
 	// TODO
 	return false
 }
@@ -274,6 +271,12 @@ func (c *QUICConnection) onPut() {
 	c.gate = nil
 	c.quicConnection = nil
 	c.quicConnection0 = quicConnection0{}
+}
+
+func (c *QUICConnection) mesh() { // runner
+	c.mesher.dispatch(c)
+	c.Close()
+	putQUICConnection(c)
 }
 
 func (c *QUICConnection) Close() error {

@@ -356,7 +356,7 @@ func (a *Webapp) maintain() { // runner
 	a.stage.SubDone()
 }
 
-func (a *Webapp) dispatchHandlet(req Request, resp Response) {
+func (a *Webapp) exchanDispatch(req Request, resp Response) {
 	if a.proxyOnly && req.VersionCode() == Version1_0 {
 		resp.setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 	}
@@ -365,30 +365,30 @@ func (a *Webapp) dispatchHandlet(req Request, resp Response) {
 		if !rule.isMatch(req) {
 			continue
 		}
-		if processed := rule.executeExchan(req, resp); processed {
+		if handled := rule.executeExchan(req, resp); handled {
 			if rule.logAccess && a.logger != nil {
 				//a.logger.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
 		}
 	}
-	// If we reach here, it means the stream is not processed by any rule in this webapp.
+	// If we reach here, it means the stream is not handled by any rules or handlets in this webapp.
 	resp.SendNotFound(a.text404)
 }
-func (a *Webapp) dispatchSocklet(req Request, sock Socket) {
+func (a *Webapp) socketDispatch(req Request, sock Socket) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
 			continue
 		}
-		if processed := rule.executeSocket(req, sock); processed {
+		if served := rule.executeSocket(req, sock); served {
 			if rule.logAccess && a.logger != nil {
 				// TODO: log?
 			}
 			return
 		}
 	}
-	// If we reach here, it means the socket is not processed by any rule in this webapp.
+	// If we reach here, it means the socket is not served by any rules or socklets in this webapp.
 	sock.Close()
 }
 
@@ -640,7 +640,7 @@ func (r *Rule) isMatch(req Request) bool {
 	return r.matcher(r, req, value)
 }
 
-func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
+func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
 	if r.returnCode != 0 {
 		resp.SetStatus(r.returnCode)
 		if len(r.returnText) == 0 {
@@ -700,7 +700,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (processed bool) {
 	}
 	return false
 }
-func (r *Rule) executeSocket(req Request, sock Socket) (processed bool) {
+func (r *Rule) executeSocket(req Request, sock Socket) (served bool) {
 	// TODO
 	/*
 		if r.socklet == nil {

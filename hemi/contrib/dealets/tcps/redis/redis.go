@@ -45,12 +45,6 @@ func (d *redisProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *redisProxy) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *redisProxy) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *redisProxy) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *redisProxy) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

@@ -214,7 +214,7 @@ func (x *hwebExchan) writeContinue() bool { // 100 continue
 
 func (x *hwebExchan) executeExchan(webapp *Webapp, req *hwebRequest, resp *hwebResponse) { // request & response
 	// TODO
-	webapp.dispatchHandlet(req, resp)
+	webapp.exchanDispatch(req, resp)
 }
 func (x *hwebExchan) serveAbnormal(req *hwebRequest, resp *hwebResponse) { // 4xx & 5xx
 	// TODO

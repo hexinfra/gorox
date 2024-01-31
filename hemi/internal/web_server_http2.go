@@ -875,7 +875,7 @@ func (s *http2Stream) writeContinue() bool { // 100 continue
 
 func (s *http2Stream) executeExchan(webapp *Webapp, req *http2Request, resp *http2Response) { // request & response
 	// TODO
-	webapp.dispatchHandlet(req, resp)
+	webapp.exchanDispatch(req, resp)
 }
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO

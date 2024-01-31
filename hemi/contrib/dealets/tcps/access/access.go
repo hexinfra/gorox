@@ -45,12 +45,6 @@ func (d *accessDealet) OnPrepare() {
 	// TODO
 }
 
-func (d *accessDealet) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *accessDealet) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *accessDealet) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *accessDealet) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

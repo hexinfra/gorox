@@ -45,12 +45,6 @@ func (d *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *mysqlProxy) OnSetup(conn *TCPSConn) (next bool) {
-	return
-}
-func (d *mysqlProxy) OnInput(buf *Buffer, end bool) (next bool) {
-	return
-}
-func (d *mysqlProxy) OnOutput(buf *Buffer, end bool) (next bool) {
-	return
+func (d *mysqlProxy) Deal(conn *TCPSConn) (dealt bool) {
+	return true
 }

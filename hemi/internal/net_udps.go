@@ -82,6 +82,17 @@ func (m *UDPSMesher) serve() { // runner
 	m.stage.SubDone()
 }
 
+func (m *UDPSMesher) dispatch(link *UDPSLink) {
+	for _, kase := range m.cases {
+		if !kase.isMatch(link) {
+			continue
+		}
+		if dealt := kase.execute(link); dealt {
+			break
+		}
+	}
+}
+
 // udpsGate is an opening gate of UDPSMesher.
 type udpsGate struct {
 	// Mixins
@@ -126,19 +137,6 @@ func (g *udpsGate) serveTLS() { // runner
 	g.mesher.SubDone()
 }
 
-func (g *udpsGate) execute(link *UDPSLink) { // runner
-	for _, kase := range g.mesher.cases {
-		if !kase.isMatch(link) {
-			continue
-		}
-		if processed := kase.execute(link); processed {
-			break
-		}
-	}
-	link.closeConn()
-	putUDPSLink(link)
-}
-
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
 }
@@ -148,7 +146,7 @@ type UDPSDealet interface {
 	// Imports
 	Component
 	// Methods
-	Deal(link *UDPSLink) (next bool)
+	Deal(link *UDPSLink) (dealt bool)
 }
 
 // UDPSDealet_
@@ -189,8 +187,12 @@ func (c *udpsCase) isMatch(link *UDPSLink) bool {
 	return c.matcher(c, link, value)
 }
 
-func (c *udpsCase) execute(link *UDPSLink) (processed bool) {
-	// TODO
+func (c *udpsCase) execute(link *UDPSLink) (dealt bool) {
+	for _, dealet := range c.dealets {
+		if dealt := dealet.Deal(link); dealt {
+			return true
+		}
+	}
 	return false
 }
 
@@ -285,6 +287,12 @@ func (l *UDPSLink) onPut() {
 	l.gate = nil
 	l.udpConn = nil
 	l.rawConn = nil
+}
+
+func (l *UDPSLink) mesh() { // runner
+	l.mesher.dispatch(l)
+	l.closeConn()
+	putUDPSLink(l)
 }
 
 func (l *UDPSLink) Close() error {

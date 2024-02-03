@@ -699,7 +699,7 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
-func (s *Stage) Namer() *namerFixture      { return s.namer }
+func (s *Stage) Namer() *namerFixture        { return s.namer }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }

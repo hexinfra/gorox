@@ -351,11 +351,11 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	if r.versionCode >= Version2 {
 		var scheme []byte
 		/*
-		if r.stream.webBroker().TLSMode() {
-			scheme = bytesSchemeHTTPS
-		} else {
-			scheme = bytesSchemeHTTP
-		}
+			if r.stream.webBroker().TLSMode() {
+				scheme = bytesSchemeHTTPS
+			} else {
+				scheme = bytesSchemeHTTP
+			}
 		*/
 		if !r.setScheme(scheme) {
 			return false

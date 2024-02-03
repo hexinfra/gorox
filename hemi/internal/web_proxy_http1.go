@@ -65,7 +65,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 		if req.IsHTTPS() {
 			conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
 		} else {
-			conn1, err1 = outgate1.DialTCP(req.Hostname()+req.ColonPort())
+			conn1, err1 = outgate1.DialTCP(req.Hostname() + req.ColonPort())
 		}
 		if err1 != nil {
 			if Debug() >= 1 {

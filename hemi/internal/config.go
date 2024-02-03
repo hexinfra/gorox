@@ -900,10 +900,10 @@ type ruleCond struct {
 
 var varCodes = map[string]int16{
 	// general vars
-	"srcHost": 0,
-	"srcPort": 1,
-	"sockType":  2, // net/uds
-	"tlsMode": 3,
+	"srcHost":  0,
+	"srcPort":  1,
+	"sockType": 2, // net/uds
+	"tlsMode":  3,
 
 	// quic conn vars
 	// quic stream vars

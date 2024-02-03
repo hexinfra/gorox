@@ -151,7 +151,7 @@ type Backend_[N Node] struct {
 	} // if Go's generic supports new(N) then this is not needed.
 	nodes []N // nodes of this backend
 	// States
-	tlsConfig    *tls.Config   // TLS config if TLS is enabled
+	tlsConfig *tls.Config // TLS config if TLS is enabled
 }
 
 func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
@@ -219,7 +219,7 @@ func (b *Backend_[N]) onPrepare() {
 	b.client_.onPrepare()
 }
 
-func (b *Backend_[N]) TLSMode() bool {return b.tlsConfig != nil}
+func (b *Backend_[N]) TLSMode() bool { return b.tlsConfig != nil }
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
@@ -257,7 +257,7 @@ type Node_ struct {
 	shutdownable_
 	// States
 	id        int32       // the node id
-	sockType    int8        // net, uds
+	sockType  int8        // net, uds
 	tlsMode   bool        // tls or not
 	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
@@ -276,7 +276,7 @@ func (n *Node_) init(id int32) {
 	n.id = id
 }
 
-func (n *Node_) setSockType(sockType int8)        { n.sockType = sockType }
+func (n *Node_) setSockType(sockType int8)    { n.sockType = sockType }
 func (n *Node_) setAddress(address string)    { n.address = address }
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
@@ -346,12 +346,12 @@ type Conn interface {
 // Conn_ is the mixin for client conns.
 type Conn_ struct {
 	// Conn states (non-zeros)
-	next   Conn      // the linked-list
-	id     int64     // the conn id
+	next     Conn      // the linked-list
+	id       int64     // the conn id
 	sockType int8      // net, uds
-	tlsMode bool // tls or not
-	client client    // associated client
-	expire time.Time // when the conn is considered expired
+	tlsMode  bool      // tls or not
+	client   client    // associated client
+	expire   time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	lastWrite time.Time // deadline of last write operation
 	lastRead  time.Time // deadline of last read operation

@@ -129,8 +129,8 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	} else {
 		var (
 			sockType int8
-			rawConn syscall.RawConn
-			err     error
+			rawConn  syscall.RawConn
+			err      error
 		)
 		if n.uds {
 			sockType = sockTypeUDS
@@ -365,13 +365,13 @@ func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) boo
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	/*
-	if r.stream.webBroker().TLSMode() {
-		if bytes.Equal(colonPort, bytesColonPort443) {
+		if r.stream.webBroker().TLSMode() {
+			if bytes.Equal(colonPort, bytesColonPort443) {
+				colonPort = nil
+			}
+		} else if bytes.Equal(colonPort, bytesColonPort80) {
 			colonPort = nil
 		}
-	} else if bytes.Equal(colonPort, bytesColonPort80) {
-		colonPort = nil
-	}
 	*/
 	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(headerSize); ok {

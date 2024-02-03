@@ -62,9 +62,6 @@ func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 
 func (b *rpcBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
-	if b.tlsConfig != nil {
-		b.tlsConfig.InsecureSkipVerify = true
-	}
 }
 func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.onPrepare()
@@ -79,6 +76,11 @@ type rpcNode_ struct {
 
 func (n *rpcNode_) init(id int32) {
 	n.Node_.init(id)
+}
+
+func (n *rpcNode_) setTLSMode() {
+	n.Node_.setTLSMode()
+	n.tlsConfig.InsecureSkipVerify = true
 }
 
 // clientCall_

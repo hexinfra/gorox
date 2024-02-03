@@ -114,7 +114,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	}
 	if n.udsMode {
 		return n._dialUDS()
-	} else if n.backend.TLSMode() {
+	} else if n.tlsMode {
 		return n._dialTLS()
 	} else {
 		return n._dialTCP()
@@ -147,7 +147,7 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 		Printf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	tlsConn := tls.Client(netConn, n.backend.tlsConfig)
+	tlsConn := tls.Client(netConn, n.tlsConfig)
 	if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 		tlsConn.Close()
 		return nil, err

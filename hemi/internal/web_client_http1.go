@@ -40,9 +40,6 @@ func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
-	if b.tlsConfig != nil {
-		b.tlsConfig.NextProtos = []string{"http/1.1"}
-	}
 }
 func (b *HTTP1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
@@ -74,6 +71,11 @@ type http1Node struct {
 func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
+}
+
+func (n *http1Node) setTLSMode() {
+	n.webNode_.setTLSMode()
+	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }
 
 func (n *http1Node) Maintain() { // runner
@@ -118,8 +120,8 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	if n.backend.TLSMode() && !n.udsMode {
-		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
+	if n.tlsMode && !n.udsMode {
+		tlsConn := tls.Client(netConn, n.tlsConfig)
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
 			return nil, err

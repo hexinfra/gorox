@@ -72,10 +72,6 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
-	if b.tlsConfig != nil {
-		// TODO
-		b.tlsConfig.InsecureSkipVerify = true
-	}
 	b.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
 	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+shell.Name())
@@ -100,8 +96,9 @@ func (n *webNode_) init(id int32) {
 	n.Node_.init(id)
 }
 
-func (n *webNode_) setAddress(address string) {
-	n.Node_.setAddress(address)
+func (n *webNode_) setTLSMode() {
+	n.Node_.setTLSMode()
+	n.tlsConfig.InsecureSkipVerify = true
 }
 
 // clientConn is the interface for *H[1-3]Conn and *HConn.

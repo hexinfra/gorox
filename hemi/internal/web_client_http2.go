@@ -38,9 +38,6 @@ func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
-	if b.tlsConfig != nil {
-		b.tlsConfig.NextProtos = []string{"h2"}
-	}
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
@@ -72,6 +69,11 @@ type http2Node struct {
 func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.webNode_.init(id)
 	n.backend = backend
+}
+
+func (n *http2Node) setTLSMode() {
+	n.webNode_.setTLSMode()
+	n.tlsConfig.NextProtos = []string{"h2"}
 }
 
 func (n *http2Node) Maintain() { // runner

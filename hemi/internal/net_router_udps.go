@@ -307,6 +307,7 @@ func (c *UDPSConn) Close() error {
 }
 
 func (c *UDPSConn) closeConn() {
+	// TODO: uds, tls?
 	c.udpConn.Close()
 }
 

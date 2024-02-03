@@ -132,7 +132,6 @@ type Backend interface {
 	Component
 	_client
 	// Methods
-	TLSMode() bool
 	Maintain() // runner
 }
 
@@ -146,7 +145,6 @@ type Backend_[N Node] struct {
 	} // if Go's generic supports new(N) then this is not needed.
 	nodes []N // nodes of this backend
 	// States
-	tlsConfig *tls.Config // TLS config if TLS is enabled
 }
 
 func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
@@ -156,12 +154,6 @@ func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ cre
 
 func (b *Backend_[N]) onConfigure() {
 	b._client_.onConfigure()
-	// tlsMode
-	var tlsMode bool
-	b.ConfigureBool("tlsMode", &tlsMode, false)
-	if tlsMode {
-		b.tlsConfig = new(tls.Config)
-	}
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -185,6 +177,14 @@ func (b *Backend_[N]) onConfigure() {
 		}
 		if address, ok := vAddress.String(); ok && address != "" {
 			node.setAddress(address)
+		}
+
+		// tlsMode
+		vTLSMode, ok := vNode["tlsMode"]
+		if ok {
+			if tlsMode, ok := vTLSMode.Bool(); ok && tlsMode {
+				node.setTLSMode()
+			}
 		}
 
 		// weight
@@ -214,8 +214,6 @@ func (b *Backend_[N]) onPrepare() {
 	b._client_.onPrepare()
 }
 
-func (b *Backend_[N]) TLSMode() bool { return b.tlsConfig != nil }
-
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub(1)
@@ -238,6 +236,7 @@ func (b *Backend_[N]) Maintain() { // runner
 type Node interface {
 	// Methods
 	setAddress(address string)
+	setTLSMode()
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
 	Maintain() // runner
@@ -253,6 +252,7 @@ type Node_ struct {
 	id        int32       // the node id
 	udsMode   bool        // uds or not
 	tlsMode   bool        // tls or not
+	tlsConfig *tls.Config // TLS config if TLS is enabled
 	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
 	keepConns int32       // max conns to keep alive
@@ -275,6 +275,10 @@ func (n *Node_) setAddress(address string) {
 	if _, err := os.Stat(address); err == nil {
 		n.udsMode = true
 	}
+}
+func (n *Node_) setTLSMode() {
+	n.tlsMode = true
+	n.tlsConfig = new(tls.Config)
 }
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }

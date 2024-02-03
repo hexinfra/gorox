@@ -146,14 +146,14 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, client webClient, node *http3Node, quicConnection *quix.Connection) *H3Conn {
+func getH3Conn(id int64, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
 	} else {
 		conn = x.(*H3Conn)
 	}
-	conn.onGet(id, client, node, quicConnection)
+	conn.onGet(id, client, node, quixConn)
 	return conn
 }
 func putH3Conn(conn *H3Conn) {
@@ -168,21 +168,21 @@ type H3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node           *http3Node
-	quicConnection *quix.Connection // the underlying quic connection
+	node     *http3Node
+	quixConn *quix.Conn // the underlying quic connection
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quicConnection *quix.Connection) {
+func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quixConn *quix.Conn) {
 	c.clientConn_.onGet(id, client)
 	c.node = node
-	c.quicConnection = quicConnection
+	c.quixConn = quixConn
 }
 func (c *H3Conn) onPut() {
 	c.clientConn_.onPut()
 	c.node = nil
-	c.quicConnection = nil
+	c.quixConn = nil
 	c.activeStreams = 0
 }
 
@@ -200,12 +200,12 @@ func (c *H3Conn) Close() error { // only used by clients of dial
 	return nil
 }
 
-func (c *H3Conn) closeConn() { c.quicConnection.Close() } // used by codes which use fetch/store
+func (c *H3Conn) closeConn() { c.quixConn.Close() } // used by codes which use fetch/store
 
 // poolH3Stream
 var poolH3Stream sync.Pool
 
-func getH3Stream(conn *H3Conn, quicStream *quix.Stream) *H3Stream {
+func getH3Stream(conn *H3Conn, quixStream *quix.Stream) *H3Stream {
 	var stream *H3Stream
 	if x := poolH3Stream.Get(); x == nil {
 		stream = new(H3Stream)
@@ -218,7 +218,7 @@ func getH3Stream(conn *H3Conn, quicStream *quix.Stream) *H3Stream {
 	} else {
 		stream = x.(*H3Stream)
 	}
-	stream.onUse(conn, quicStream)
+	stream.onUse(conn, quixStream)
 	return stream
 }
 func putH3Stream(stream *H3Stream) {
@@ -238,17 +238,17 @@ type H3Stream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *H3Conn
-	quicStream *quix.Stream // the underlying quic stream
+	quixStream *quix.Stream // the underlying quic stream
 	// Stream states (zeros)
 	h3Stream0 // all values must be zero by default in this struct!
 }
 type h3Stream0 struct { // for fast reset, entirely
 }
 
-func (s *H3Stream) onUse(conn *H3Conn, quicStream *quix.Stream) { // for non-zeros
+func (s *H3Stream) onUse(conn *H3Conn, quixStream *quix.Stream) { // for non-zeros
 	s.clientStream_.onUse()
 	s.conn = conn
-	s.quicStream = quicStream
+	s.quixStream = quixStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
@@ -257,7 +257,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.quicStream = nil
+	s.quixStream = nil
 	s.h3Stream0 = h3Stream0{}
 	s.clientStream_.onEnd()
 }

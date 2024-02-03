@@ -13,8 +13,8 @@ import (
 
 // Stream
 type Stream struct {
-	connection *Connection
-	id         int64
+	conn *Conn
+	id   int64
 }
 
 func (s *Stream) SetReadDeadline(deadline time.Time) error {

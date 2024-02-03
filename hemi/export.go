@@ -97,31 +97,16 @@ type (
 
 	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend
-	QConnection = internal.QConnection
+	QConn       = internal.QConn
 	QStream     = internal.QStream
-	QOneway     = internal.QOneway
-
-	QUDSOutgate = internal.QUDSOutgate
-	QUDSBackend = internal.QUDSBackend
-	XConnection = internal.XConnection
-	XStream     = internal.XStream
-	XOneway     = internal.XOneway
 
 	TCPSOutgate = internal.TCPSOutgate
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
 
-	TUDSOutgate = internal.TUDSOutgate
-	TUDSBackend = internal.TUDSBackend
-	XConn       = internal.XConn
-
 	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
-	ULink       = internal.ULink
-
-	UUDSOutgate = internal.UUDSOutgate
-	UUDSBackend = internal.UUDSBackend
-	XLink       = internal.XLink
+	UConn       = internal.UConn
 
 	HRPCOutgate = internal.HRPCOutgate
 	HRPCBackend = internal.HRPCBackend
@@ -164,10 +149,10 @@ type (
 type (
 	Buffer = internal.Buffer
 
-	QUICMesher     = internal.QUICMesher
-	QUICDealet     = internal.QUICDealet
-	QUICConnection = internal.QUICConnection
-	QUICStream     = internal.QUICStream
+	QUICMesher = internal.QUICMesher
+	QUICDealet = internal.QUICDealet
+	QUICConn   = internal.QUICConn
+	QUICStream = internal.QUICStream
 
 	TCPSMesher = internal.TCPSMesher
 	TCPSDealet = internal.TCPSDealet
@@ -175,7 +160,7 @@ type (
 
 	UDPSMesher = internal.UDPSMesher
 	UDPSDealet = internal.UDPSDealet
-	UDPSLink   = internal.UDPSLink
+	UDPSConn   = internal.UDPSConn
 )
 
 type (

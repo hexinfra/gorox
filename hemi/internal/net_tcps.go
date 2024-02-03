@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS network mesher.
+// TCPS (TCP/TLS/UDS) network mesher.
 
 package internal
 
@@ -321,21 +321,21 @@ func putTCPSConn(conn *TCPSConn) {
 	poolTCPSConn.Put(conn)
 }
 
-// TCPSConn is a TCP/TLS connection coming from TCPSMesher.
+// TCPSConn is a TCP/TLS/UDS connection coming from TCPSMesher.
 type TCPSConn struct {
 	// Conn states (stocks)
 	stockInput  [8192]byte // for c.input
-	stockBuffer [256]byte  // ...
+	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id        int64           // connection id
 	stage     *Stage          // current stage
 	mesher    *TCPSMesher     // from mesher
 	gate      *tcpsGate       // from gate
-	netConn   net.Conn        // the connection (TCP/TLS)
+	netConn   net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
-	region    Region
-	input     []byte // input buffer
+	region    Region          // a region-based memory pool
+	input     []byte          // input buffer
 	closeSema atomic.Int32
 	// Conn states (zeros)
 	tcpsConn0

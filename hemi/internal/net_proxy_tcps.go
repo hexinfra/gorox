@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS proxy implementation.
+// TCPS (TCP/TLS/UDS) proxy implementation.
 
 package internal
 
@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// tcpsProxy passes TCP/TLS connections to another/backend TCP/TLS server.
+// tcpsProxy passes TCPS connections to another/backend TCPS server.
 type tcpsProxy struct {
 	// Mixins
 	TCPSDealet_

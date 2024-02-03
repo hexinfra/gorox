@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General RPC incoming and outgoing messages.
+// General RPC incoming and outgoing messages implementation.
 
 package internal
 
@@ -25,7 +25,7 @@ type rpcCall interface {
 // rpcCall_ is the mixin for hrpcCall and HCall.
 type rpcCall_ struct {
 	// TODO
-	stockBuffer [256]byte // ...
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	region      Region    // a region-based memory pool
 }
 

@@ -28,7 +28,7 @@ func SetBuffered(rawConn syscall.RawConn, buffered bool) {
 }
 
 var (
-	//link: https://learn.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls
+	// link: https://learn.microsoft.com/en-us/windows/win32/winsock/winsock-ioctls
 	sioTcpInfo = uint32(syscall.IOC_INOUT | syscall.IOC_VENDOR | 39)
 )
 

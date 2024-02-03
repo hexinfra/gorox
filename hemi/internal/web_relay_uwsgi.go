@@ -30,10 +30,10 @@ type uwsgiRelay struct {
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	stage   *Stage   // current stage
-	webapp  *Webapp  // the webapp to which the relay belongs
-	backend wBackend // the *TCPSBackend or *TUDSBackend to pass to
-	cacher  Cacher   // the cacher which is used by this relay
+	stage   *Stage       // current stage
+	webapp  *Webapp      // the webapp to which the relay belongs
+	backend *TCPSBackend // the backend to pass to
+	cacher  Cacher       // the cacher which is used by this relay
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -58,10 +58,10 @@ func (h *uwsgiRelay) OnConfigure() {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if wBackend, ok := backend.(wBackend); ok {
-				h.backend = wBackend
+			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
+				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiRelay, must be TCPSBackend or TUDSBackend\n", name)
+				UseExitf("incorrect backend '%s' for uwsgiRelay, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -128,7 +128,7 @@ func (h *uwsgiRelay) Handle(req Request, resp Response) (handled bool) { // reve
 // poolUWSGIExchan
 var poolUWSGIExchan sync.Pool
 
-func getUWSGIExchan(relay *uwsgiRelay, conn wConn) *uwsgiExchan {
+func getUWSGIExchan(relay *uwsgiRelay, conn *TConn) *uwsgiExchan {
 	var exchan *uwsgiExchan
 	if x := poolUWSGIExchan.Get(); x == nil {
 		exchan = new(uwsgiExchan)
@@ -157,12 +157,12 @@ type uwsgiExchan struct {
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
 	relay  *uwsgiRelay // associated relay
-	conn   wConn       // associated conn
+	conn   *TConn      // associated conn
 	region Region      // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn wConn) {
+func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn *TConn) {
 	x.relay = relay
 	x.conn = conn
 	x.region.Init()

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC network mesher.
+// QUIC (UDP/UDS) network mesher.
 
 package internal
 
@@ -77,12 +77,12 @@ func (m *QUICMesher) serve() { // runner
 	m.stage.SubDone()
 }
 
-func (m *QUICMesher) dispatch(connection *QUICConnection) {
+func (m *QUICMesher) dispatch(conn *QUICConn) {
 	for _, kase := range m.cases {
-		if !kase.isMatch(connection) {
+		if !kase.isMatch(conn) {
 			continue
 		}
-		if dealt := kase.execute(connection); dealt {
+		if dealt := kase.execute(conn); dealt {
 			break
 		}
 	}
@@ -121,8 +121,8 @@ func (g *quicGate) serve() { // runner
 	g.mesher.SubDone()
 }
 
-func (g *quicGate) justClose(quicConnection *quix.Connection) {
-	quicConnection.Close()
+func (g *quicGate) justClose(quixConn *quix.Conn) {
+	quixConn.Close()
 	g.onConnectionClosed()
 }
 func (g *quicGate) onConnectionClosed() {
@@ -134,7 +134,7 @@ type QUICDealet interface {
 	// Imports
 	Component
 	// Methods
-	Deal(connection *QUICConnection, stream *QUICStream) (dealt bool)
+	Deal(conn *QUICConn, stream *QUICStream) (dealt bool)
 }
 
 // QUICDealet_
@@ -149,7 +149,7 @@ type quicCase struct {
 	// Mixins
 	case_[*QUICMesher, QUICDealet]
 	// States
-	matcher func(kase *quicCase, connection *QUICConnection, value []byte) bool
+	matcher func(kase *quicCase, conn *QUICConn, value []byte) bool
 }
 
 func (c *quicCase) OnConfigure() {
@@ -167,51 +167,51 @@ func (c *quicCase) OnPrepare() {
 	c.case_.OnPrepare()
 }
 
-func (c *quicCase) isMatch(connection *QUICConnection) bool {
+func (c *quicCase) isMatch(conn *QUICConn) bool {
 	if c.general {
 		return true
 	}
-	value := connection.unsafeVariable(c.varCode, c.varName)
-	return c.matcher(c, connection, value)
+	value := conn.unsafeVariable(c.varCode, c.varName)
+	return c.matcher(c, conn, value)
 }
 
-func (c *quicCase) execute(connection *QUICConnection) (dealt bool) {
+func (c *quicCase) execute(conn *QUICConn) (dealt bool) {
 	// TODO
 	return false
 }
 
-func (c *quicCase) equalMatch(connection *QUICConnection, value []byte) bool { // value == patterns
+func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool { // value == patterns
 	return c.case_._equalMatch(value)
 }
-func (c *quicCase) prefixMatch(connection *QUICConnection, value []byte) bool { // value ^= patterns
+func (c *quicCase) prefixMatch(conn *QUICConn, value []byte) bool { // value ^= patterns
 	return c.case_._prefixMatch(value)
 }
-func (c *quicCase) suffixMatch(connection *QUICConnection, value []byte) bool { // value $= patterns
+func (c *quicCase) suffixMatch(conn *QUICConn, value []byte) bool { // value $= patterns
 	return c.case_._suffixMatch(value)
 }
-func (c *quicCase) containMatch(connection *QUICConnection, value []byte) bool { // value *= patterns
+func (c *quicCase) containMatch(conn *QUICConn, value []byte) bool { // value *= patterns
 	return c.case_._containMatch(value)
 }
-func (c *quicCase) regexpMatch(connection *QUICConnection, value []byte) bool { // value ~= patterns
+func (c *quicCase) regexpMatch(conn *QUICConn, value []byte) bool { // value ~= patterns
 	return c.case_._regexpMatch(value)
 }
-func (c *quicCase) notEqualMatch(connection *QUICConnection, value []byte) bool { // value != patterns
+func (c *quicCase) notEqualMatch(conn *QUICConn, value []byte) bool { // value != patterns
 	return c.case_._notEqualMatch(value)
 }
-func (c *quicCase) notPrefixMatch(connection *QUICConnection, value []byte) bool { // value !^ patterns
+func (c *quicCase) notPrefixMatch(conn *QUICConn, value []byte) bool { // value !^ patterns
 	return c.case_._notPrefixMatch(value)
 }
-func (c *quicCase) notSuffixMatch(connection *QUICConnection, value []byte) bool { // value !$ patterns
+func (c *quicCase) notSuffixMatch(conn *QUICConn, value []byte) bool { // value !$ patterns
 	return c.case_._notSuffixMatch(value)
 }
-func (c *quicCase) notContainMatch(connection *QUICConnection, value []byte) bool { // value !* patterns
+func (c *quicCase) notContainMatch(conn *QUICConn, value []byte) bool { // value !* patterns
 	return c.case_._notContainMatch(value)
 }
-func (c *quicCase) notRegexpMatch(connection *QUICConnection, value []byte) bool { // value !~ patterns
+func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
 	return c.case_._notRegexpMatch(value)
 }
 
-var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnection, value []byte) bool{
+var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []byte) bool{
 	"==": (*quicCase).equalMatch,
 	"^=": (*quicCase).prefixMatch,
 	"$=": (*quicCase).suffixMatch,
@@ -224,72 +224,72 @@ var quicCaseMatchers = map[string]func(kase *quicCase, connection *QUICConnectio
 	"!~": (*quicCase).notRegexpMatch,
 }
 
-// poolQUICConnection
-var poolQUICConnection sync.Pool
+// poolQUICConn
+var poolQUICConn sync.Pool
 
-func getQUICConnection(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConnection *quix.Connection) *QUICConnection {
-	var connection *QUICConnection
-	if x := poolQUICConnection.Get(); x == nil {
-		connection = new(QUICConnection)
+func getQUICConn(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quixConn *quix.Conn) *QUICConn {
+	var conn *QUICConn
+	if x := poolQUICConn.Get(); x == nil {
+		conn = new(QUICConn)
 	} else {
-		connection = x.(*QUICConnection)
+		conn = x.(*QUICConn)
 	}
-	connection.onGet(id, stage, mesher, gate, quicConnection)
-	return connection
+	conn.onGet(id, stage, mesher, gate, quixConn)
+	return conn
 }
-func putQUICConnection(connection *QUICConnection) {
-	connection.onPut()
-	poolQUICConnection.Put(connection)
-}
-
-// QUICConnection is a QUIC connection coming from QUICMesher.
-type QUICConnection struct {
-	// Connection states (stocks)
-	// Connection states (controlled)
-	// Connection states (non-zeros)
-	id             int64
-	stage          *Stage // current stage
-	mesher         *QUICMesher
-	gate           *quicGate
-	quicConnection *quix.Connection
-	// Connection states (zeros)
-	quicConnection0
-}
-type quicConnection0 struct { // for fast reset, entirely
+func putQUICConn(conn *QUICConn) {
+	conn.onPut()
+	poolQUICConn.Put(conn)
 }
 
-func (c *QUICConnection) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quicConnection *quix.Connection) {
+// QUICConn is a QUIC connection coming from QUICMesher.
+type QUICConn struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id       int64
+	stage    *Stage // current stage
+	mesher   *QUICMesher
+	gate     *quicGate
+	quixConn *quix.Conn
+	// Conn states (zeros)
+	quicConn0
+}
+type quicConn0 struct { // for fast reset, entirely
+}
+
+func (c *QUICConn) onGet(id int64, stage *Stage, mesher *QUICMesher, gate *quicGate, quixConn *quix.Conn) {
 	c.id = id
 	c.stage = stage
 	c.mesher = mesher
 	c.gate = gate
-	c.quicConnection = quicConnection
+	c.quixConn = quixConn
 }
-func (c *QUICConnection) onPut() {
+func (c *QUICConn) onPut() {
 	c.stage = nil
 	c.mesher = nil
 	c.gate = nil
-	c.quicConnection = nil
-	c.quicConnection0 = quicConnection0{}
+	c.quixConn = nil
+	c.quicConn0 = quicConn0{}
 }
 
-func (c *QUICConnection) mesh() { // runner
+func (c *QUICConn) mesh() { // runner
 	c.mesher.dispatch(c)
 	c.Close()
-	putQUICConnection(c)
+	putQUICConn(c)
 }
 
-func (c *QUICConnection) Close() error {
+func (c *QUICConn) Close() error {
 	// TODO
 	return nil
 }
 
-func (c *QUICConnection) unsafeVariable(code int16, name string) (value []byte) {
-	return quicConnectionVariables[code](c)
+func (c *QUICConn) unsafeVariable(code int16, name string) (value []byte) {
+	return quicConnVariables[code](c)
 }
 
-// quicConnectionVariables
-var quicConnectionVariables = [...]func(*QUICConnection) []byte{ // keep sync with varCodes in config.go
+// quicConnVariables
+var quicConnVariables = [...]func(*QUICConn) []byte{ // keep sync with varCodes in config.go
 	// TODO
 }
 

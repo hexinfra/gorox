@@ -113,3 +113,10 @@ func (s *Service) dispatch(req serverReq, resp serverResp) {
 // Bundlets are not components.
 type Bundlet interface {
 }
+
+// Bundlet_ is the mixin for all bundlets.
+type Bundlet_ struct {
+}
+
+func (b *Bundlet_) dispatch(req serverReq, resp serverResp) {
+}

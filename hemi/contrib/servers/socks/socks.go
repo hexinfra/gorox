@@ -142,14 +142,14 @@ func (g *socksGate) onConnClosed() {
 // poolSocksConn
 var poolSocksConn sync.Pool
 
-func getSocksConn(id int64, stage *Stage, server *socksServer, gate *socksGate, netConn *net.TCPConn) *socksConn {
+func getSocksConn(id int64, stage *Stage, server *socksServer, gate *socksGate, tcpConn *net.TCPConn) *socksConn {
 	var conn *socksConn
 	if x := poolSocksConn.Get(); x == nil {
 		conn = new(socksConn)
 	} else {
 		conn = x.(*socksConn)
 	}
-	conn.onGet(id, stage, server, gate, netConn)
+	conn.onGet(id, stage, server, gate, tcpConn)
 	return conn
 }
 func putSocksConn(conn *socksConn) {
@@ -166,32 +166,32 @@ type socksConn struct {
 	stage   *Stage
 	server  *socksServer
 	gate    *socksGate
-	netConn *net.TCPConn
+	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *socksConn) onGet(id int64, stage *Stage, server *socksServer, gate *socksGate, netConn *net.TCPConn) {
+func (c *socksConn) onGet(id int64, stage *Stage, server *socksServer, gate *socksGate, tcpConn *net.TCPConn) {
 	c.id = id
 	c.stage = stage
 	c.server = server
 	c.gate = gate
-	c.netConn = netConn
+	c.tcpConn = tcpConn
 }
 func (c *socksConn) onPut() {
 	c.stage = nil
 	c.server = nil
 	c.gate = nil
-	c.netConn = nil
+	c.tcpConn = nil
 }
 
 func (c *socksConn) serve() { // runner
 	defer putSocksConn(c)
 
-	c.netConn.Write([]byte("not implemented yet"))
+	c.tcpConn.Write([]byte("not implemented yet"))
 	c.closeConn()
 }
 
 func (c *socksConn) closeConn() {
-	c.netConn.Close()
+	c.tcpConn.Close()
 	c.gate.onConnClosed()
 }

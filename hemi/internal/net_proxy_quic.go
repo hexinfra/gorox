@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC proxy implementation.
+// QUIC (UDP/UDS) proxy implementation.
 
 package internal
 
@@ -56,7 +56,7 @@ func (d *quicProxy) OnConfigure() {
 func (d *quicProxy) OnPrepare() {
 }
 
-func (d *quicProxy) Deal(connection *QUICConnection, stream *QUICStream) (dealt bool) { // reverse only
+func (d *quicProxy) Deal(conn *QUICConn, stream *QUICStream) (dealt bool) { // reverse only
 	// TODO
 	return true
 }

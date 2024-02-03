@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS proxy implementation.
+// UDPS (UDP/TLS/UDS) proxy implementation.
 
 package internal
 
@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// udpsProxy passes UDP/DTLS links to backend UDP/DTLS server.
+// udpsProxy passes UDPS (UDP/TLS/UDS) conns to backend UDPS server.
 type udpsProxy struct {
 	// Mixins
 	UDPSDealet_
@@ -56,7 +56,7 @@ func (d *udpsProxy) OnConfigure() {
 func (d *udpsProxy) OnPrepare() {
 }
 
-func (d *udpsProxy) Deal(link *UDPSLink) (dealt bool) { // reverse only
+func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) { // reverse only
 	// TODO
 	return true
 }

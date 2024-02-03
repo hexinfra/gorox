@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCP/TLS client implementation.
+// TCPS (TCP/TLS/UDS) client implementation.
 
 package internal
 
@@ -24,6 +24,14 @@ func init() {
 		b.onCreate(name, stage)
 		return b
 	})
+}
+
+// tcpsClient is the interface for *TCPSOutgate and *TCPSBackend.
+type tcpsClient interface {
+	// Imports
+	client
+	streamHolder
+	// Methods
 }
 
 const signTCPSOutgate = "tcpsOutgate"
@@ -117,20 +125,17 @@ func (b *TCPSBackend) createNode(id int32) *tcpsNode {
 	return node
 }
 
-func (b *TCPSBackend) Dial() (wConn, error) { return b.DialTCPS() }
-func (b *TCPSBackend) DialTCPS() (*TConn, error) {
+func (b *TCPSBackend) Dial() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.dial()
 }
 
-func (b *TCPSBackend) FetchConn() (wConn, error) { return b.FetchTConn() }
-func (b *TCPSBackend) FetchTConn() (*TConn, error) {
+func (b *TCPSBackend) FetchConn() (*TConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 
-func (b *TCPSBackend) StoreConn(conn wConn) { b.StoreTConn(conn.(*TConn)) }
-func (b *TCPSBackend) StoreTConn(tConn *TConn) {
+func (b *TCPSBackend) StoreConn(tConn *TConn) {
 	tConn.node.storeConn(tConn)
 }
 
@@ -192,6 +197,12 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 		return getTConn(connID, n.backend, n, netConn, rawConn), nil
 	}
 }
+func (n *tcpsNode) _dialTCPS() (*TConn, error) {
+	return nil, nil
+}
+func (n *tcpsNode) _dialUnix() (*TConn, error) {
+	return nil, nil
+}
 
 func (n *tcpsNode) fetchConn() (*TConn, error) {
 	conn := n.pullConn()
@@ -235,7 +246,7 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, client tClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
@@ -266,7 +277,7 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, client tClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *TConn) onGet(id int64, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.Conn_.onGet(id, client)
 	c.node = node
 	c.netConn = netConn
@@ -284,7 +295,7 @@ func (c *TConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *TConn) getClient() tClient { return c.client.(tClient) }
+func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
 
 func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }

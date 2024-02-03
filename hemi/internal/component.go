@@ -348,11 +348,8 @@ type Stage struct {
 	fcache       *fcacheFixture        // for fast accessing
 	resolv       *resolvFixture        // for fast accessing
 	quicOutgate  *QUICOutgate          // for fast accessing
-	qudsOutgate  *QUDSOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
-	tudsOutgate  *TUDSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
-	uudsOutgate  *UUDSOutgate          // for fast accessing
 	hrpcOutgate  *HRPCOutgate          // for fast accessing
 	http1Outgate *HTTP1Outgate         // for fast accessing
 	http2Outgate *HTTP2Outgate         // for fast accessing
@@ -387,11 +384,8 @@ func (s *Stage) onCreate() {
 	s.fcache = createFcache(s)
 	s.resolv = createResolv(s)
 	s.quicOutgate = createQUICOutgate(s)
-	s.qudsOutgate = createQUDSOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
-	s.tudsOutgate = createTUDSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
-	s.uudsOutgate = createUUDSOutgate(s)
 	s.hrpcOutgate = createHRPCOutgate(s)
 	s.http1Outgate = createHTTP1Outgate(s)
 	s.http2Outgate = createHTTP2Outgate(s)
@@ -401,11 +395,8 @@ func (s *Stage) onCreate() {
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolv] = s.resolv
 	s.fixtures[signQUICOutgate] = s.quicOutgate
-	s.fixtures[signQUDSOutgate] = s.qudsOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
-	s.fixtures[signTUDSOutgate] = s.tudsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
-	s.fixtures[signUUDSOutgate] = s.uudsOutgate
 	s.fixtures[signHRPCOutgate] = s.hrpcOutgate
 	s.fixtures[signHTTP1Outgate] = s.http1Outgate
 	s.fixtures[signHTTP2Outgate] = s.http2Outgate
@@ -471,11 +462,8 @@ func (s *Stage) OnShutdown() {
 	// fixtures
 	s.IncSub(11)
 	go s.quicOutgate.OnShutdown()
-	go s.qudsOutgate.OnShutdown()
 	go s.tcpsOutgate.OnShutdown()
-	go s.tudsOutgate.OnShutdown()
 	go s.udpsOutgate.OnShutdown()
-	go s.uudsOutgate.OnShutdown()
 	go s.hrpcOutgate.OnShutdown()
 	go s.http1Outgate.OnShutdown()
 	go s.http2Outgate.OnShutdown()
@@ -713,11 +701,8 @@ func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
 func (s *Stage) Resolv() *resolvFixture      { return s.resolv }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
-func (s *Stage) QUDSOutgate() *QUDSOutgate   { return s.qudsOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
-func (s *Stage) TUDSOutgate() *TUDSOutgate   { return s.tudsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
-func (s *Stage) UUDSOutgate() *UUDSOutgate   { return s.uudsOutgate }
 func (s *Stage) HRPCOutgate() *HRPCOutgate   { return s.hrpcOutgate }
 func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
 func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }

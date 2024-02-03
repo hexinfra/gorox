@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC client implementation.
+// QUIC (UDP/UDS) client implementation.
 
 package internal
 
@@ -22,6 +22,14 @@ func init() {
 		b.onCreate(name, stage)
 		return b
 	})
+}
+
+// quicClient is the interface for *QUICOutgate and *QUICBackend.
+type quicClient interface {
+	// Imports
+	client
+	streamHolder
+	// Methods
 }
 
 const signQUICOutgate = "quicOutgate"
@@ -64,14 +72,14 @@ func (f *QUICOutgate) run() { // runner
 	f.stage.SubDone()
 }
 
-func (f *QUICOutgate) Dial(address string) (*QConnection, error) {
+func (f *QUICOutgate) Dial(address string) (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *QUICOutgate) FetchConnection(address string) {
+func (f *QUICOutgate) FetchConn(address string) {
 	// TODO
 }
-func (f *QUICOutgate) StoreConnection(qConnection *QConnection) {
+func (f *QUICOutgate) StoreConn(qConn *QConn) {
 	// TODO
 }
 
@@ -107,15 +115,15 @@ func (b *QUICBackend) createNode(id int32) *quicNode {
 	return node
 }
 
-func (b *QUICBackend) Dial() (*QConnection, error) {
+func (b *QUICBackend) Dial() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUICBackend) FetchConnection() (*QConnection, error) {
+func (b *QUICBackend) FetchConn() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (b *QUICBackend) StoreConnection(qConnection *QConnection) {
+func (b *QUICBackend) StoreConn(qConn *QConn) {
 	// TODO
 }
 
@@ -144,100 +152,93 @@ func (n *quicNode) Maintain() { // runner
 	n.backend.SubDone()
 }
 
-func (n *quicNode) dial() (*QConnection, error) {
+func (n *quicNode) dial() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
-func (n *quicNode) fetchConnection() (*QConnection, error) {
-	// Note: A QConnection can be used concurrently, limited by maxStreams.
+func (n *quicNode) fetchConn() (*QConn, error) {
+	// Note: A QConn can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *quicNode) storeConnection(qConnection *QConnection) {
-	// Note: A QConnection can be used concurrently, limited by maxStreams.
+func (n *quicNode) storeConn(qConn *QConn) {
+	// Note: A QConn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
-// poolQConnection
-var poolQConnection sync.Pool
+// poolQConn
+var poolQConn sync.Pool
 
-func getQConnection(id int64, client qClient, node *quicNode, quicConnection *quix.Connection) *QConnection {
-	var connection *QConnection
-	if x := poolQConnection.Get(); x == nil {
-		connection = new(QConnection)
+func getQConn(id int64, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
+	var conn *QConn
+	if x := poolQConn.Get(); x == nil {
+		conn = new(QConn)
 	} else {
-		connection = x.(*QConnection)
+		conn = x.(*QConn)
 	}
-	connection.onGet(id, client, node, quicConnection)
-	return connection
+	conn.onGet(id, client, node, quixConn)
+	return conn
 }
-func putQConnection(connection *QConnection) {
-	connection.onPut()
-	poolQConnection.Put(connection)
+func putQConn(conn *QConn) {
+	conn.onPut()
+	poolQConn.Put(conn)
 }
 
-// QConnection is a client-side connection to quicNode.
-type QConnection struct {
+// QConn is a client-side quic connection to quicNode.
+type QConn struct {
 	// Mixins
 	Conn_
-	// Connection states (non-zeros)
-	node           *quicNode // associated node if client is QUICBackend
-	quicConnection *quix.Connection
-	maxStreams     int32 // how many streams are allowed on this connection?
-	// Connection states (zeros)
+	// Conn states (non-zeros)
+	node       *quicNode // associated node if client is QUICBackend
+	quixConn   *quix.Conn
+	maxStreams int32 // how many streams are allowed on this connection?
+	// Conn states (zeros)
 	usedStreams atomic.Int32 // how many streams has been used?
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConnection) onGet(id int64, client qClient, node *quicNode, quicConnection *quix.Connection) {
+func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quixConn *quix.Conn) {
 	c.Conn_.onGet(id, client)
 	c.node = node
-	c.quicConnection = quicConnection
+	c.quixConn = quixConn
 	c.maxStreams = client.MaxStreamsPerConn()
 }
-func (c *QConnection) onPut() {
+func (c *QConn) onPut() {
 	c.Conn_.onPut()
 	c.node = nil
-	c.quicConnection = nil
+	c.quixConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
 
-func (c *QConnection) getClient() qClient { return c.client.(qClient) }
+func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
 
-func (c *QConnection) reachLimit() bool {
+func (c *QConn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams
 }
 
-func (c *QConnection) isBroken() bool { return c.broken.Load() }
-func (c *QConnection) markBroken()    { c.broken.Store(true) }
+func (c *QConn) isBroken() bool { return c.broken.Load() }
+func (c *QConn) markBroken()    { c.broken.Store(true) }
 
-func (c *QConnection) FetchStream() *QStream {
+func (c *QConn) FetchStream() *QStream {
 	// TODO
 	return nil
 }
-func (c *QConnection) StoreStream(stream *QStream) {
-	// TODO
-}
-func (c *QConnection) FetchOneway() *QOneway {
-	// TODO
-	return nil
-}
-func (c *QConnection) StoreOneway(oneway *QOneway) {
+func (c *QConn) StoreStream(stream *QStream) {
 	// TODO
 }
 
 // poolQStream
 var poolQStream sync.Pool
 
-func getQStream(connection *QConnection, quicStream *quix.Stream) *QStream {
+func getQStream(conn *QConn, quixStream *quix.Stream) *QStream {
 	var stream *QStream
 	if x := poolQStream.Get(); x == nil {
 		stream = new(QStream)
 	} else {
 		stream = x.(*QStream)
 	}
-	stream.onUse(connection, quicStream)
+	stream.onUse(conn, quixStream)
 	return stream
 }
 func putQStream(stream *QStream) {
@@ -245,20 +246,20 @@ func putQStream(stream *QStream) {
 	poolQStream.Put(stream)
 }
 
-// QStream is a bidirectional stream of QConnection.
+// QStream is a bidirectional stream of QConn.
 type QStream struct {
 	// TODO
-	connection *QConnection
-	quicStream *quix.Stream
+	conn       *QConn
+	quixStream *quix.Stream
 }
 
-func (s *QStream) onUse(connection *QConnection, quicStream *quix.Stream) {
-	s.connection = connection
-	s.quicStream = quicStream
+func (s *QStream) onUse(conn *QConn, quixStream *quix.Stream) {
+	s.conn = conn
+	s.quixStream = quixStream
 }
 func (s *QStream) onEnd() {
-	s.connection = nil
-	s.quicStream = nil
+	s.conn = nil
+	s.quixStream = nil
 }
 
 func (s *QStream) Write(p []byte) (n int, err error) {
@@ -266,49 +267,6 @@ func (s *QStream) Write(p []byte) (n int, err error) {
 	return
 }
 func (s *QStream) Read(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-
-// poolQOneway
-var poolQOneway sync.Pool
-
-func getQOneway(connection *QConnection, quicOneway *quix.Oneway) *QOneway {
-	var oneway *QOneway
-	if x := poolQOneway.Get(); x == nil {
-		oneway = new(QOneway)
-	} else {
-		oneway = x.(*QOneway)
-	}
-	oneway.onUse(connection, quicOneway)
-	return oneway
-}
-func putQOneway(oneway *QOneway) {
-	oneway.onEnd()
-	poolQOneway.Put(oneway)
-}
-
-// QOneway is a unidirectional stream of QConnection.
-type QOneway struct {
-	// TODO
-	connection *QConnection
-	quicOneway *quix.Oneway
-}
-
-func (s *QOneway) onUse(connection *QConnection, quicOneway *quix.Oneway) {
-	s.connection = connection
-	s.quicOneway = quicOneway
-}
-func (s *QOneway) onEnd() {
-	s.connection = nil
-	s.quicOneway = nil
-}
-
-func (s *QOneway) Write(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-func (s *QOneway) Read(p []byte) (n int, err error) {
 	// TODO
 	return
 }

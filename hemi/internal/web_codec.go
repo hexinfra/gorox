@@ -120,7 +120,7 @@ type webStream interface {
 // webStream_ is the mixin for http[1-3]Stream, hwebExchan, H[1-3]Stream, and HExchan.
 type webStream_ struct {
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be 256 bytes so names can be placed into
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	region Region // a region-based memory pool

@@ -1,7 +1,0 @@
-qudsOutgate {
-	.dialTimeout = 10s
-	.writeTimeout = 30s
-	.readTimeout = 30s
-	.aliveTimeout = 5s
-	.maxStreamsPerConn = 1000
-}

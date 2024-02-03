@@ -141,14 +141,14 @@ func (g *echoGate) onConnClosed() {
 // poolEchoConn
 var poolEchoConn sync.Pool
 
-func getEchoConn(id int64, stage *Stage, server *echoServer, gate *echoGate, netConn *net.TCPConn) *echoConn {
+func getEchoConn(id int64, stage *Stage, server *echoServer, gate *echoGate, tcpConn *net.TCPConn) *echoConn {
 	var conn *echoConn
 	if x := poolEchoConn.Get(); x == nil {
 		conn = new(echoConn)
 	} else {
 		conn = x.(*echoConn)
 	}
-	conn.onGet(id, stage, server, gate, netConn)
+	conn.onGet(id, stage, server, gate, tcpConn)
 	return conn
 }
 func putEchoConn(conn *echoConn) {
@@ -166,32 +166,32 @@ type echoConn struct {
 	stage   *Stage
 	server  *echoServer
 	gate    *echoGate
-	netConn *net.TCPConn
+	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *echoConn) onGet(id int64, stage *Stage, server *echoServer, gate *echoGate, netConn *net.TCPConn) {
+func (c *echoConn) onGet(id int64, stage *Stage, server *echoServer, gate *echoGate, tcpConn *net.TCPConn) {
 	c.id = id
 	c.stage = stage
 	c.server = server
 	c.gate = gate
-	c.netConn = netConn
+	c.tcpConn = tcpConn
 }
 func (c *echoConn) onPut() {
 	c.stage = nil
 	c.server = nil
 	c.gate = nil
-	c.netConn = nil
+	c.tcpConn = nil
 }
 
 func (c *echoConn) serve() { // runner
 	defer putEchoConn(c)
 	// TODO: deadline?
-	io.CopyBuffer(c.netConn, c.netConn, c.buffer[:])
+	io.CopyBuffer(c.tcpConn, c.tcpConn, c.buffer[:])
 	c.closeConn()
 }
 
 func (c *echoConn) closeConn() {
-	c.netConn.Close()
+	c.tcpConn.Close()
 	c.gate.onConnClosed()
 }

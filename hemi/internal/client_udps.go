@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDP/DTLS client implementation.
+// UDPS (UDP/TLS/UDS) client implementation.
 
 package internal
 
@@ -22,6 +22,13 @@ func init() {
 		b.onCreate(name, stage)
 		return b
 	})
+}
+
+// udpsClient is the interface for *UDPSOutgate and *UDPSBackend.
+type udpsClient interface {
+	// Imports
+	client
+	// Methods
 }
 
 const signUDPSOutgate = "udpsOutgate"
@@ -61,15 +68,15 @@ func (f *UDPSOutgate) run() { // runner
 	f.stage.SubDone()
 }
 
-func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*ULink, error) {
+func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*UConn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UDPSOutgate) FetchLink(address string, tlsMode bool) (*ULink, error) {
+func (f *UDPSOutgate) FetchConn(address string, tlsMode bool) (*UConn, error) {
 	// TODO
 	return nil, nil
 }
-func (f *UDPSOutgate) StoreLink(uLink *ULink) {
+func (f *UDPSOutgate) StoreConn(uConn *UConn) {
 	// TODO
 }
 
@@ -102,16 +109,16 @@ func (b *UDPSBackend) createNode(id int32) *udpsNode {
 	return node
 }
 
-func (b *UDPSBackend) Link() (*ULink, error) {
+func (b *UDPSBackend) Conn() (*UConn, error) {
 	node := b.nodes[b.getNext()]
-	return node.link()
+	return node.conn()
 }
-func (b *UDPSBackend) FetchLink() (*ULink, error) {
+func (b *UDPSBackend) FetchConn() (*UConn, error) {
 	node := b.nodes[b.getNext()]
-	return node.fetchLink()
+	return node.fetchConn()
 }
-func (b *UDPSBackend) StoreLink(uLink *ULink) {
-	uLink.node.storeLink(uLink)
+func (b *UDPSBackend) StoreConn(uConn *UConn) {
+	uConn.node.storeConn(uConn)
 }
 
 // udpsNode is a node in UDPSBackend.
@@ -132,76 +139,76 @@ func (n *udpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
-	// TODO: wait for all links
+	// TODO: wait for all conns
 	if Debug() >= 2 {
 		Printf("udpsNode=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *udpsNode) link() (*ULink, error) {
+func (n *udpsNode) conn() (*UConn, error) {
 	// TODO
 	return nil, nil
 }
 
-func (n *udpsNode) fetchLink() (*ULink, error) {
-	link := n.pullConn()
-	if link != nil {
-		uLink := link.(*ULink)
-		if uLink.isAlive() {
-			return uLink, nil
+func (n *udpsNode) fetchConn() (*UConn, error) {
+	conn := n.pullConn()
+	if conn != nil {
+		uConn := conn.(*UConn)
+		if uConn.isAlive() {
+			return uConn, nil
 		}
-		uLink.closeConn()
-		putULink(uLink)
+		uConn.closeConn()
+		putUConn(uConn)
 	}
-	return n.link()
+	return n.conn()
 }
-func (n *udpsNode) storeLink(uLink *ULink) {
-	if uLink.isBroken() || n.isDown() || !uLink.isAlive() {
-		uLink.closeConn()
-		putULink(uLink)
+func (n *udpsNode) storeConn(uConn *UConn) {
+	if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
+		uConn.closeConn()
+		putUConn(uConn)
 	} else {
-		n.pushConn(uLink)
+		n.pushConn(uConn)
 	}
 }
 
-// poolULink
-var poolULink sync.Pool
+// poolUConn
+var poolUConn sync.Pool
 
-func getULink(id int64, client uClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *ULink {
-	var link *ULink
-	if x := poolULink.Get(); x == nil {
-		link = new(ULink)
+func getUConn(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
+	var conn *UConn
+	if x := poolUConn.Get(); x == nil {
+		conn = new(UConn)
 	} else {
-		link = x.(*ULink)
+		conn = x.(*UConn)
 	}
-	link.onGet(id, client, node, udpConn, rawConn)
-	return link
+	conn.onGet(id, client, node, udpConn, rawConn)
+	return conn
 }
-func putULink(link *ULink) {
-	link.onPut()
-	poolULink.Put(link)
+func putUConn(conn *UConn) {
+	conn.onPut()
+	poolUConn.Put(conn)
 }
 
-// ULink needs redesign, maybe datagram?
-type ULink struct {
+// UConn
+type UConn struct {
 	// Mixins
 	Conn_
-	// Link states (non-zeros)
+	// Conn states (non-zeros)
 	node    *udpsNode       // associated node if client is UDPSBackend
 	udpConn *net.UDPConn    // udp conn
 	rawConn syscall.RawConn // for syscall
-	// Link states (zeros)
-	broken atomic.Bool // is link broken?
+	// Conn states (zeros)
+	broken atomic.Bool // is conn broken?
 }
 
-func (l *ULink) onGet(id int64, client uClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+func (l *UConn) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
 	l.Conn_.onGet(id, client)
 	l.node = node
 	l.udpConn = udpConn
 	l.rawConn = rawConn
 }
-func (l *ULink) onPut() {
+func (l *UConn) onPut() {
 	l.Conn_.onPut()
 	l.node = nil
 	l.udpConn = nil
@@ -209,9 +216,9 @@ func (l *ULink) onPut() {
 	l.broken.Store(false)
 }
 
-func (l *ULink) getClient() uClient { return l.client.(uClient) }
+func (l *UConn) getClient() udpsClient { return l.client.(udpsClient) }
 
-func (l *ULink) SetWriteDeadline(deadline time.Time) error {
+func (l *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastWrite) >= time.Second {
 		if err := l.udpConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -220,7 +227,7 @@ func (l *ULink) SetWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (l *ULink) SetReadDeadline(deadline time.Time) error {
+func (l *UConn) SetReadDeadline(deadline time.Time) error {
 	if deadline.Sub(l.lastRead) >= time.Second {
 		if err := l.udpConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -230,16 +237,16 @@ func (l *ULink) SetReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (l *ULink) Write(p []byte) (n int, err error) { return l.udpConn.Write(p) }
-func (l *ULink) Read(p []byte) (n int, err error)  { return l.udpConn.Read(p) }
+func (l *UConn) Write(p []byte) (n int, err error) { return l.udpConn.Write(p) }
+func (l *UConn) Read(p []byte) (n int, err error)  { return l.udpConn.Read(p) }
 
-func (l *ULink) isBroken() bool { return l.broken.Load() }
-func (l *ULink) markBroken()    { l.broken.Store(true) }
+func (l *UConn) isBroken() bool { return l.broken.Load() }
+func (l *UConn) markBroken()    { l.broken.Store(true) }
 
-func (l *ULink) Close() error { // only used by clients of dial
+func (l *UConn) Close() error { // only used by clients of dial
 	udpConn := l.udpConn
-	putULink(l)
+	putUConn(l)
 	return udpConn.Close()
 }
 
-func (l *ULink) closeConn() { l.udpConn.Close() } // used by codes which use fetch/store
+func (l *UConn) closeConn() { l.udpConn.Close() } // used by codes which use fetch/store

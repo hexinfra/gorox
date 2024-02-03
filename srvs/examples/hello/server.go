@@ -140,14 +140,14 @@ func (g *helloGate) onConnClosed() {
 // poolHelloConn
 var poolHelloConn sync.Pool
 
-func getHelloConn(id int64, stage *Stage, server *helloServer, gate *helloGate, netConn *net.TCPConn) *helloConn {
+func getHelloConn(id int64, stage *Stage, server *helloServer, gate *helloGate, tcpConn *net.TCPConn) *helloConn {
 	var conn *helloConn
 	if x := poolHelloConn.Get(); x == nil {
 		conn = new(helloConn)
 	} else {
 		conn = x.(*helloConn)
 	}
-	conn.onGet(id, stage, server, gate, netConn)
+	conn.onGet(id, stage, server, gate, tcpConn)
 	return conn
 }
 func putHelloConn(conn *helloConn) {
@@ -164,31 +164,31 @@ type helloConn struct {
 	stage   *Stage
 	server  *helloServer
 	gate    *helloGate
-	netConn *net.TCPConn
+	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *helloConn) onGet(id int64, stage *Stage, server *helloServer, gate *helloGate, netConn *net.TCPConn) {
+func (c *helloConn) onGet(id int64, stage *Stage, server *helloServer, gate *helloGate, tcpConn *net.TCPConn) {
 	c.id = id
 	c.stage = stage
 	c.server = server
 	c.gate = gate
-	c.netConn = netConn
+	c.tcpConn = tcpConn
 }
 func (c *helloConn) onPut() {
 	c.stage = nil
 	c.server = nil
 	c.gate = nil
-	c.netConn = nil
+	c.tcpConn = nil
 }
 
 func (c *helloConn) serve() { // runner
-	c.netConn.Write([]byte("hello, world!"))
+	c.tcpConn.Write([]byte("hello, world!"))
 	c.closeConn()
 	putHelloConn(c)
 }
 
 func (c *helloConn) closeConn() {
-	c.netConn.Close()
+	c.tcpConn.Close()
 	c.gate.onConnClosed()
 }

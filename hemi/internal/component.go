@@ -1040,6 +1040,7 @@ type Server interface {
 	// Methods
 	Serve() // runner
 	Stage() *Stage
+	UDSMode() bool
 	TLSMode() bool
 	ColonPort() string
 	ColonPortBytes() []byte
@@ -1057,7 +1058,7 @@ type Server_ struct {
 	address         string        // hostname:port, /path/to/unix.sock
 	colonPort       string        // like: ":9876"
 	colonPortBytes  []byte        // like: []byte(":9876")
-	sockType        int8          // net, uds
+	udsMode         bool          // unix domain socket?
 	tlsConfig       *tls.Config   // set if is tls mode
 	readTimeout     time.Duration // read() timeout
 	writeTimeout    time.Duration // write() timeout
@@ -1074,13 +1075,15 @@ func (s *Server_) OnConfigure() {
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
-			// TODO: sockType
-			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
-				UseExitln("bad address: " + address)
-			} else {
+			if p := strings.IndexByte(address, ':'); p != -1 && p != len(address)-1 {
 				s.address = address
 				s.colonPort = address[p:]
 				s.colonPortBytes = []byte(s.colonPort)
+			} else if _, err := os.Stat(address); err == nil {
+				s.address = address
+				s.udsMode = true
+			} else {
+				UseExitln("bad address: " + address)
 			}
 		} else {
 			UseExitln("address should be of string type")
@@ -1136,6 +1139,7 @@ func (s *Server_) Stage() *Stage               { return s.stage }
 func (s *Server_) Address() string             { return s.address }
 func (s *Server_) ColonPort() string           { return s.colonPort }
 func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
+func (s *Server_) UDSMode() bool               { return s.udsMode }
 func (s *Server_) TLSMode() bool               { return s.tlsConfig != nil }
 func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }

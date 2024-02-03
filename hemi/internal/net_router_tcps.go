@@ -66,7 +66,9 @@ func (r *TCPSRouter) serve() { // runner
 		}
 		r.gates = append(r.gates, gate)
 		r.IncSub(1)
-		if r.TLSMode() {
+		if r.UDSMode() {
+			go gate.serveUDS()
+		} else if r.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -193,6 +195,9 @@ func (g *tcpsGate) serveTLS() { // runner
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.router.SubDone()
+}
+func (g *tcpsGate) serveUDS() { // runner
+	// TODO
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
@@ -402,7 +407,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if c.router.TLSMode() {
+	if router := c.router; router.UDSMode() {
+		c.netConn.(*net.UnixConn).CloseWrite()
+	} else if router.TLSMode() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
@@ -423,7 +430,7 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	// TODO
 	nil, // srcHost
 	nil, // srcPort
-	nil, // sockType
+	nil, // udsMode
 	nil, // tlsMode
 	nil, // serverName
 	nil, // nextProto

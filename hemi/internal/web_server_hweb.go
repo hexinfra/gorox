@@ -205,6 +205,7 @@ func (x *hwebExchan) execute() { // runner
 }
 
 func (x *hwebExchan) webBroker() webBroker { return nil } // TODO
+func (x *hwebExchan) webConn() webConn     { return nil } // TODO
 func (x *hwebExchan) remoteAddr() net.Addr { return nil } // TODO
 
 func (x *hwebExchan) writeContinue() bool { // 100 continue

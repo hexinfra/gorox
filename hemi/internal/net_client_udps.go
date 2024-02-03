@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDPS (UDP/TLS/UDS) client implementation.
+// UDPS (UDP/TLS/UDS) network client implementation.
 
 package internal
 
@@ -18,7 +18,7 @@ import (
 // udpsClient is the interface for *UDPSOutgate and *UDPSBackend.
 type udpsClient interface {
 	// Imports
-	client
+	_client
 	// Methods
 }
 
@@ -125,14 +125,14 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 // poolUConn
 var poolUConn sync.Pool
 
-func getUConn(id int64, sockType int8, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
+func getUConn(id int64, udsMode bool, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
 	var conn *UConn
 	if x := poolUConn.Get(); x == nil {
 		conn = new(UConn)
 	} else {
 		conn = x.(*UConn)
 	}
-	conn.onGet(id, sockType, tlsMode, client, node, udpConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, client, node, udpConn, rawConn)
 	return conn
 }
 func putUConn(conn *UConn) {
@@ -152,8 +152,8 @@ type UConn struct {
 	broken atomic.Bool // is conn broken?
 }
 
-func (l *UConn) onGet(id int64, sockType int8, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	l.Conn_.onGet(id, sockType, tlsMode, client)
+func (l *UConn) onGet(id int64, udsMode bool, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	l.Conn_.onGet(id, udsMode, tlsMode, client)
 	l.node = node
 	l.udpConn = udpConn
 	l.rawConn = rawConn

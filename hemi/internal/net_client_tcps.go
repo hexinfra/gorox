@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCPS (TCP/TLS/UDS) client implementation.
+// TCPS (TCP/TLS/UDS) network client implementation.
 
 package internal
 
@@ -20,7 +20,7 @@ import (
 // tcpsClient is the interface for *TCPSOutgate and *TCPSBackend.
 type tcpsClient interface {
 	// Imports
-	client
+	_client
 	streamHolder
 	// Methods
 }
@@ -112,14 +112,12 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if Debug() >= 2 {
 		Printf("tcpsNode=%d dial %s\n", n.id, n.address)
 	}
-	if n.sockType == sockTypeNET {
-		if n.backend.TLSMode() {
-			return n._dialTLS()
-		} else {
-			return n._dialTCP()
-		}
-	} else {
+	if n.udsMode {
 		return n._dialUDS()
+	} else if n.backend.TLSMode() {
+		return n._dialTLS()
+	} else {
+		return n._dialTCP()
 	}
 }
 func (n *tcpsNode) _dialTCP() (*TConn, error) {
@@ -137,7 +135,7 @@ func (n *tcpsNode) _dialTCP() (*TConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getTConn(connID, sockTypeNET, false, n.backend, n, netConn, rawConn), nil
+	return getTConn(connID, false, false, n.backend, n, netConn, rawConn), nil
 }
 func (n *tcpsNode) _dialTLS() (*TConn, error) {
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
@@ -154,7 +152,7 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 		tlsConn.Close()
 		return nil, err
 	}
-	return getTConn(connID, sockTypeNET, true, n.backend, n, tlsConn, nil), nil
+	return getTConn(connID, false, true, n.backend, n, tlsConn, nil), nil
 }
 func (n *tcpsNode) _dialUDS() (*TConn, error) {
 	// TODO
@@ -203,14 +201,14 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, sockType int8, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, udsMode bool, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
 	} else {
 		conn = x.(*TConn)
 	}
-	conn.onGet(id, sockType, tlsMode, client, node, netConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, client, node, netConn, rawConn)
 	return conn
 }
 func putTConn(conn *TConn) {
@@ -234,8 +232,8 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, sockType int8, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.Conn_.onGet(id, sockType, tlsMode, client)
+func (c *TConn) onGet(id int64, udsMode bool, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.Conn_.onGet(id, udsMode, tlsMode, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -254,8 +252,9 @@ func (c *TConn) onPut() {
 
 func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
 
-func (c *TConn) TCPConn() *net.TCPConn { return c.netConn.(*net.TCPConn) }
-func (c *TConn) TLSConn() *tls.Conn    { return c.netConn.(*tls.Conn) }
+func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
+func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
+func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
 
 func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
@@ -300,7 +299,9 @@ func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
 
 func (c *TConn) CloseWrite() error {
-	if c.tlsMode {
+	if c.udsMode {
+		return c.netConn.(*net.UnixConn).CloseWrite()
+	} else if c.tlsMode {
 		return c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		return c.netConn.(*net.TCPConn).CloseWrite()

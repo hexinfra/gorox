@@ -90,7 +90,7 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 		return nil, err
 	}
 	connID := n.backend.nextConnID()
-	return getH3Conn(connID, sockTypeNET, true, n.backend, n, conn), nil
+	return getH3Conn(connID, false, true, n.backend, n, conn), nil
 }
 func (n *http3Node) storeConn(h3Conn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
@@ -100,14 +100,14 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, sockType int8, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
 	} else {
 		conn = x.(*H3Conn)
 	}
-	conn.onGet(id, sockType, tlsMode, client, node, quixConn)
+	conn.onGet(id, udsMode, tlsMode, client, node, quixConn)
 	return conn
 }
 func putH3Conn(conn *H3Conn) {
@@ -128,8 +128,8 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) {
-	c.clientConn_.onGet(id, sockType, tlsMode, client)
+func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, client)
 	c.node = node
 	c.quixConn = quixConn
 }
@@ -217,6 +217,7 @@ func (s *H3Stream) onEnd() { // for zeros
 }
 
 func (s *H3Stream) webBroker() webBroker { return s.conn.getClient() }
+func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) Request() *H3Request   { return &s.request }

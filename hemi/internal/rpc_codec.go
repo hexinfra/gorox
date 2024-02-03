@@ -7,6 +7,10 @@
 
 package internal
 
+import (
+	"time"
+)
+
 // rpcBroker
 type rpcBroker interface {
 	// TODO
@@ -15,6 +19,11 @@ type rpcBroker interface {
 // rpcBroker_
 type rpcBroker_ struct {
 	// TODO
+}
+
+func (b *rpcBroker_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+}
+func (b *rpcBroker_) onPrepare(shell Component) {
 }
 
 // rpcCall is the interface for *hrpcCall and *HCall.

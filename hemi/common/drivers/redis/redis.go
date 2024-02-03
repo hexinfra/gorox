@@ -7,16 +7,13 @@
 
 package redis
 
-import (
-	"time"
-)
-
-func Dial(address string, timeout time.Duration) (*Redis, error) {
-	return nil, nil
-}
-
 type Redis struct {
 	address string
+}
+
+func New(conn any) *Redis {
+	redis := new(Redis)
+	return redis
 }
 
 func (c *Redis) Close() error {

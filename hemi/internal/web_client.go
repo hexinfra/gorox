@@ -9,7 +9,6 @@ package internal
 
 import (
 	"bytes"
-	"os"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -18,7 +17,7 @@ import (
 // webClient is the interface for web outgates and web backends.
 type webClient interface {
 	// Imports
-	client
+	_client
 	streamHolder
 	contentSaver
 	// Methods
@@ -95,7 +94,6 @@ type webNode_ struct {
 	// Mixins
 	Node_
 	// States
-	uds bool // use unix domain socket?
 }
 
 func (n *webNode_) init(id int32) {
@@ -104,9 +102,6 @@ func (n *webNode_) init(id int32) {
 
 func (n *webNode_) setAddress(address string) {
 	n.Node_.setAddress(address)
-	if _, err := os.Stat(address); err == nil {
-		n.uds = true
-	}
 }
 
 // clientConn is the interface for *H[1-3]Conn and *HConn.
@@ -128,8 +123,8 @@ type clientConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *clientConn_) onGet(id int64, sockType int8, tlsMode bool, client webClient) {
-	c.Conn_.onGet(id, sockType, tlsMode, client)
+func (c *clientConn_) onGet(id int64, udsMode bool, tlsMode bool, client webClient) {
+	c.Conn_.onGet(id, udsMode, tlsMode, client)
 }
 func (c *clientConn_) onPut() {
 	c.Conn_.onPut()
@@ -139,6 +134,9 @@ func (c *clientConn_) onPut() {
 }
 
 func (c *clientConn_) getClient() webClient { return c.client.(webClient) }
+
+func (c *clientConn_) isUDS() bool { return c.udsMode }
+func (c *clientConn_) isTLS() bool { return c.tlsMode }
 
 func (c *clientConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
@@ -350,13 +348,11 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
-		/*
-			if r.stream.webBroker().TLSMode() {
-				scheme = bytesSchemeHTTPS
-			} else {
-				scheme = bytesSchemeHTTP
-			}
-		*/
+		if r.stream.webConn().isTLS() {
+			scheme = bytesSchemeHTTPS
+		} else {
+			scheme = bytesSchemeHTTP
+		}
 		if !r.setScheme(scheme) {
 			return false
 		}

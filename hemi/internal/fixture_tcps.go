@@ -68,7 +68,7 @@ func (f *TCPSOutgate) DialTCP(address string) (*TConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getTConn(connID, sockTypeNET, false, f, nil, netConn, rawConn), nil
+	return getTConn(connID, false, false, f, nil, netConn, rawConn), nil
 }
 func (f *TCPSOutgate) DialTLS(address string, tlsConfig *tls.Config) (*TConn, error) {
 	netConn, err := net.DialTimeout("tcp", address, f.dialTimeout)
@@ -77,7 +77,7 @@ func (f *TCPSOutgate) DialTLS(address string, tlsConfig *tls.Config) (*TConn, er
 	}
 	connID := f.nextConnID()
 	tlsConn := tls.Client(netConn, tlsConfig)
-	return getTConn(connID, sockTypeNET, true, f, nil, tlsConn, nil), nil
+	return getTConn(connID, false, true, f, nil, tlsConn, nil), nil
 }
 func (f *TCPSOutgate) DialUDS(address string) (*TConn, error) {
 	// TODO

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCPS (TCP/TLS/UDS) proxy implementation.
+// TCPS (TCP/TLS/UDS) network proxy implementation.
 
 package internal
 

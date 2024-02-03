@@ -105,7 +105,9 @@ func (s *httpxServer) Serve() { // runner
 		}
 		s.gates = append(s.gates, gate)
 		s.IncSub(1)
-		if s.TLSMode() {
+		if s.UDSMode() {
+			go gate.serveUDS()
+		} else if s.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -229,6 +231,9 @@ func (g *httpxGate) serveTLS() { // runner
 	}
 	g.server.SubDone()
 }
+func (g *httpxGate) serveUDS() { // runner
+	// TODO
+}
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
@@ -302,7 +307,7 @@ func (c *http1Conn) serve() { // runner
 	stream := &c.stream
 	for c.keepConn { // each stream
 		stream.onUse(c)
-		stream.execute(c)
+		stream.execute()
 		if stream.mode == streamModeExchan {
 			stream.onEnd()
 		} else {
@@ -339,7 +344,9 @@ func (c *http1Conn) closeConn() {
 	// acknowledgement of the packet(s) containing the server's last
 	// response.  Finally, the server fully closes the connection.
 	if !c.closeSafe {
-		if c.server.TLSMode() {
+		if c.isUDS() {
+			c.netConn.(*net.UnixConn).CloseWrite()
+		} else if c.isTLS() {
 			c.netConn.(*tls.Conn).CloseWrite()
 		} else {
 			c.netConn.(*net.TCPConn).CloseWrite()
@@ -364,7 +371,7 @@ type http1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *http1Stream) execute(conn *http1Conn) {
+func (s *http1Stream) execute() {
 	req, resp := &s.request, &s.response
 
 	req.recvHead()
@@ -378,17 +385,17 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
 		s.executeTCPTun()
 		s.mode = streamModeTCPTun
-		conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
+		s.conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
 		return
 	}
 	if req.upgradeUDPTun { // udpTun mode?
 		s.executeUDPTun()
 		s.mode = streamModeUDPTun
-		conn.keepConn = false // hijacked, so must close conn after s.executeUDPTun()
+		s.conn.keepConn = false // hijacked, so must close conn after s.executeUDPTun()
 		return
 	}
 
-	server := conn.server.(*httpxServer)
+	server := s.conn.server.(*httpxServer)
 
 	// RFC 7230 (section 5.5):
 	// If the server's configuration (or outbound gateway) provides a
@@ -398,7 +405,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	// the scheme is "http".
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
-	} else if server.TLSMode() {
+	} else if s.conn.isTLS() {
 		if req.schemeCode == SchemeHTTP && server.adjustScheme {
 			req.schemeCode = SchemeHTTPS
 		}
@@ -422,7 +429,7 @@ func (s *http1Stream) execute(conn *http1Conn) {
 		}
 		s.executeSocket()
 		s.mode = streamModeSocket
-		conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
+		s.conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
 		return
 	}
 
@@ -450,8 +457,8 @@ func (s *http1Stream) execute(conn *http1Conn) {
 	if req.expectContinue && !s.writeContinue() {
 		return
 	}
-	conn.usedStreams.Add(1)
-	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
+	s.conn.usedStreams.Add(1)
+	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
 		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
 	}
 	s.executeExchan(webapp, req, resp)
@@ -475,6 +482,7 @@ func (s *http1Stream) onEnd() { // for zeros
 }
 
 func (s *http1Stream) webBroker() webBroker { return s.conn.getServer() }
+func (s *http1Stream) webConn() webConn     { return s.conn }
 func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue

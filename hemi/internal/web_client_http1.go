@@ -106,7 +106,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 	}
 
 	network := "tcp"
-	if n.uds {
+	if n.udsMode {
 		network = "unix"
 	}
 	netConn, err := net.DialTimeout(network, n.address, n.backend.dialTimeout)
@@ -118,25 +118,22 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	if n.backend.TLSMode() && !n.uds {
+	if n.backend.TLSMode() && !n.udsMode {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
 			return nil, err
 		}
 		n.IncSub(1)
-		return getH1Conn(connID, sockTypeNET, true, n.backend, n, tlsConn, nil), nil
+		return getH1Conn(connID, false, true, n.backend, n, tlsConn, nil), nil
 	} else {
 		var (
-			sockType int8
-			rawConn  syscall.RawConn
-			err      error
+			rawConn syscall.RawConn
+			err     error
 		)
-		if n.uds {
-			sockType = sockTypeUDS
+		if n.udsMode {
 			rawConn, err = netConn.(*net.UnixConn).SyscallConn()
 		} else {
-			sockType = sockTypeNET
 			rawConn, err = netConn.(*net.TCPConn).SyscallConn()
 		}
 		if err != nil {
@@ -144,7 +141,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 			return nil, err
 		}
 		n.IncSub(1)
-		return getH1Conn(connID, sockType, false, n.backend, n, netConn, rawConn), nil
+		return getH1Conn(connID, n.udsMode, false, n.backend, n, netConn, rawConn), nil
 	}
 }
 func (n *http1Node) storeConn(h1Conn *H1Conn) {
@@ -170,7 +167,7 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the client-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, sockType int8, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		conn = new(H1Conn)
@@ -184,7 +181,7 @@ func getH1Conn(id int64, sockType int8, tlsMode bool, client webClient, node *ht
 	} else {
 		conn = x.(*H1Conn)
 	}
-	conn.onGet(id, sockType, tlsMode, client, node, netConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, client, node, netConn, rawConn)
 	return conn
 }
 func putH1Conn(conn *H1Conn) {
@@ -208,8 +205,8 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, sockType, tlsMode, client)
+func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -269,6 +266,7 @@ func (s *H1Stream) onEnd() { // for zeros
 }
 
 func (s *H1Stream) webBroker() webBroker { return s.conn.getClient() }
+func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() *H1Request   { return &s.request }
@@ -364,15 +362,13 @@ func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) boo
 	}
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	/*
-		if r.stream.webBroker().TLSMode() {
-			if bytes.Equal(colonPort, bytesColonPort443) {
-				colonPort = nil
-			}
-		} else if bytes.Equal(colonPort, bytesColonPort80) {
+	if r.stream.webConn().isTLS() {
+		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
 		}
-	*/
+	} else if bytes.Equal(colonPort, bytesColonPort80) {
+		colonPort = nil
+	}
 	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(headerSize); ok {
 		from += copy(r.fields[from:], bytesHost)

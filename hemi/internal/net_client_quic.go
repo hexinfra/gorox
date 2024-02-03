@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC (UDP/UDS) client implementation.
+// QUIC (UDP/UDS) network client implementation.
 
 package internal
 
@@ -18,7 +18,7 @@ import (
 // quicClient is the interface for *QUICOutgate and *QUICBackend.
 type quicClient interface {
 	// Imports
-	client
+	_client
 	streamHolder
 	// Methods
 }
@@ -117,14 +117,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, sockType int8, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
+func getQConn(id int64, udsMode bool, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
 	} else {
 		conn = x.(*QConn)
 	}
-	conn.onGet(id, sockType, client, node, quixConn)
+	conn.onGet(id, udsMode, client, node, quixConn)
 	return conn
 }
 func putQConn(conn *QConn) {
@@ -145,8 +145,8 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConn) onGet(id int64, sockType int8, client quicClient, node *quicNode, quixConn *quix.Conn) {
-	c.Conn_.onGet(id, sockType, true, client)
+func (c *QConn) onGet(id int64, udsMode bool, client quicClient, node *quicNode, quixConn *quix.Conn) {
+	c.Conn_.onGet(id, udsMode, true, client)
 	c.node = node
 	c.quixConn = quixConn
 	c.maxStreams = client.MaxStreamsPerConn()

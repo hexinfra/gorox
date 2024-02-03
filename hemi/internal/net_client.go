@@ -10,13 +10,14 @@ package internal
 import (
 	"crypto/tls"
 	"errors"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// client is the interface for outgates and backends.
-type client interface {
+// _client is the interface for outgates and backends.
+type _client interface {
 	// Imports
 	// Methods
 	Stage() *Stage
@@ -26,8 +27,8 @@ type client interface {
 	nextConnID() int64
 }
 
-// client_ is the mixin for outgates and backends.
-type client_ struct {
+// _client_ is the mixin for outgates and backends.
+type _client_ struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -40,15 +41,15 @@ type client_ struct {
 	connID       atomic.Int64  // next conn id
 }
 
-func (c *client_) onCreate(name string, stage *Stage) {
+func (c *_client_) onCreate(name string, stage *Stage) {
 	c.MakeComp(name)
 	c.stage = stage
 }
-func (c *client_) OnShutdown() {
+func (c *_client_) OnShutdown() {
 	close(c.ShutChan) // notifies run() or Maintain()
 }
 
-func (c *client_) onConfigure() {
+func (c *_client_) onConfigure() {
 	// dialTimeout
 	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
@@ -81,16 +82,16 @@ func (c *client_) onConfigure() {
 		return errors.New(".readTimeout has an invalid value")
 	}, 5*time.Second)
 }
-func (c *client_) onPrepare() {
+func (c *_client_) onPrepare() {
 	// Currently nothing.
 }
 
-func (c *client_) Stage() *Stage               { return c.stage }
-func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
-func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
-func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
+func (c *_client_) Stage() *Stage               { return c.stage }
+func (c *_client_) WriteTimeout() time.Duration { return c.writeTimeout }
+func (c *_client_) ReadTimeout() time.Duration  { return c.readTimeout }
+func (c *_client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
-func (c *client_) nextConnID() int64 { return c.connID.Add(1) }
+func (c *_client_) nextConnID() int64 { return c.connID.Add(1) }
 
 // outgate is the interface for outgates.
 type outgate interface {
@@ -102,21 +103,21 @@ type outgate interface {
 // outgate_ is the mixin for outgates.
 type outgate_ struct {
 	// Mixins
-	client_
+	_client_
 	// States
 	nServedStreams atomic.Int64
 	nServedExchans atomic.Int64
 }
 
 func (o *outgate_) onCreate(name string, stage *Stage) {
-	o.client_.onCreate(name, stage)
+	o._client_.onCreate(name, stage)
 }
 
 func (o *outgate_) onConfigure() {
-	o.client_.onConfigure()
+	o._client_.onConfigure()
 }
 func (o *outgate_) onPrepare() {
-	o.client_.onPrepare()
+	o._client_.onPrepare()
 }
 
 func (o *outgate_) servedStreams() int64 { return o.nServedStreams.Load() }
@@ -125,17 +126,11 @@ func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
 func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
 func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
-const ( // sock types
-	sockTypeUnknown = iota
-	sockTypeNET
-	sockTypeUDS
-)
-
 // Backend is a group of nodes.
 type Backend interface {
 	// Imports
 	Component
-	client
+	_client
 	// Methods
 	TLSMode() bool
 	Maintain() // runner
@@ -144,7 +139,7 @@ type Backend interface {
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
 	// Mixins
-	client_
+	_client_
 	// Assocs
 	creator interface {
 		createNode(id int32) N
@@ -155,12 +150,12 @@ type Backend_[N Node] struct {
 }
 
 func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b.client_.onCreate(name, stage)
+	b._client_.onCreate(name, stage)
 	b.creator = creator
 }
 
 func (b *Backend_[N]) onConfigure() {
-	b.client_.onConfigure()
+	b._client_.onConfigure()
 	// tlsMode
 	var tlsMode bool
 	b.ConfigureBool("tlsMode", &tlsMode, false)
@@ -216,7 +211,7 @@ func (b *Backend_[N]) onConfigure() {
 	}
 }
 func (b *Backend_[N]) onPrepare() {
-	b.client_.onPrepare()
+	b._client_.onPrepare()
 }
 
 func (b *Backend_[N]) TLSMode() bool { return b.tlsConfig != nil }
@@ -242,7 +237,6 @@ func (b *Backend_[N]) Maintain() { // runner
 // Node is a member of backend. Nodes are not components.
 type Node interface {
 	// Methods
-	setSockType(sockType int8)
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
@@ -257,7 +251,7 @@ type Node_ struct {
 	shutdownable_
 	// States
 	id        int32       // the node id
-	sockType  int8        // net, uds
+	udsMode   bool        // uds or not
 	tlsMode   bool        // tls or not
 	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
@@ -276,8 +270,12 @@ func (n *Node_) init(id int32) {
 	n.id = id
 }
 
-func (n *Node_) setSockType(sockType int8)    { n.sockType = sockType }
-func (n *Node_) setAddress(address string)    { n.address = address }
+func (n *Node_) setAddress(address string) {
+	n.address = address
+	if _, err := os.Stat(address); err == nil {
+		n.udsMode = true
+	}
+}
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
 
@@ -346,23 +344,22 @@ type Conn interface {
 // Conn_ is the mixin for client conns.
 type Conn_ struct {
 	// Conn states (non-zeros)
-	next     Conn      // the linked-list
-	id       int64     // the conn id
-	sockType int8      // net, uds
-	tlsMode  bool      // tls or not
-	client   client    // associated client
-	expire   time.Time // when the conn is considered expired
+	next    Conn      // the linked-list
+	id      int64     // the conn id
+	udsMode bool      // uds or not
+	tlsMode bool      // tls or not. required by outgate conns
+	client  _client   // associated client
+	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	lastWrite time.Time // deadline of last write operation
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *Conn_) onGet(id int64, sockType int8, tlsMode bool, client client) {
+func (c *Conn_) onGet(id int64, udsMode bool, tlsMode bool, client _client) {
 	c.id = id
-	c.sockType = sockType
+	c.udsMode = udsMode
 	c.tlsMode = tlsMode
 	c.client = client
-	c.sockType = sockType
 	c.expire = time.Now().Add(client.AliveTimeout())
 }
 func (c *Conn_) onPut() {
@@ -376,8 +373,3 @@ func (c *Conn_) getNext() Conn     { return c.next }
 func (c *Conn_) setNext(next Conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }
-
-func (c *Conn_) IsNET() bool { return c.sockType == sockTypeNET }
-func (c *Conn_) IsUDS() bool { return c.sockType == sockTypeUDS }
-
-func (c *Conn_) IsTLS() bool { return c.tlsMode }

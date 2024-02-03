@@ -73,14 +73,14 @@ func (n *hwebNode) Maintain() { // runner
 // poolHConn is the client-side HWEB connection pool.
 var poolHConn sync.Pool
 
-func getHConn(id int64, sockType int8, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
+func getHConn(id int64, udsMode bool, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
 	var conn *HConn
 	if x := poolHConn.Get(); x == nil {
 		conn = new(HConn)
 	} else {
 		conn = x.(*HConn)
 	}
-	conn.onGet(id, sockType, tlsMode, client, node, tcpConn)
+	conn.onGet(id, udsMode, tlsMode, client, node, tcpConn)
 	return conn
 }
 func putHConn(conn *HConn) {
@@ -101,8 +101,8 @@ type HConn struct {
 	activeExchans int32 // concurrent exchans
 }
 
-func (c *HConn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
-	c.clientConn_.onGet(id, sockType, tlsMode, client)
+func (c *HConn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, client)
 	c.node = node
 	c.tcpConn = tcpConn
 }
@@ -175,6 +175,7 @@ func (x *HExchan) onEnd() { // for zeros
 }
 
 func (x *HExchan) webBroker() webBroker { return nil } // TODO
+func (x *HExchan) webConn() webConn     { return nil } // TODO
 func (x *HExchan) remoteAddr() net.Addr { return nil } // TODO
 
 func (x *HExchan) Request() *HRequest   { return &x.request }

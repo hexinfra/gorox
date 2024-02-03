@@ -35,7 +35,7 @@ type http3Server struct {
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
-	s.tlsConfig = new(tls.Config) // TLS mode is always enabled.
+	s.tlsConfig = new(tls.Config) // tls mode is always enabled
 }
 func (s *http3Server) OnShutdown() {
 	// Notify gates. We don't close(s.ShutChan) here.
@@ -60,7 +60,11 @@ func (s *http3Server) Serve() { // runner
 		}
 		s.gates = append(s.gates, gate)
 		s.IncSub(1)
-		go gate.serve()
+		if s.UDSMode() {
+			go gate.serveUDS()
+		} else { // tls mode is always enabled
+			go gate.serveTLS()
+		}
 	}
 	s.WaitSubs() // gates
 	if Debug() >= 2 {
@@ -97,7 +101,7 @@ func (g *http3Gate) shut() error {
 	return g.gate.Close()
 }
 
-func (g *http3Gate) serve() { // runner
+func (g *http3Gate) serveTLS() { // runner
 	connID := int64(0)
 	for {
 		quixConn, err := g.gate.Accept()
@@ -122,6 +126,9 @@ func (g *http3Gate) serve() { // runner
 		Printf("http3Gate=%d done\n", g.id)
 	}
 	g.server.SubDone()
+}
+func (g *http3Gate) serveUDS() { // runner
+	// TODO
 }
 
 func (g *http3Gate) justClose(quixConn *quix.Conn) {
@@ -273,6 +280,7 @@ func (s *http3Stream) execute() { // runner
 }
 
 func (s *http3Stream) webBroker() webBroker { return s.conn.getServer() }
+func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue

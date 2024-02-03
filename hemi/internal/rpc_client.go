@@ -7,10 +7,16 @@
 
 package internal
 
+import (
+	"time"
+)
+
 // rpcClient
 type rpcClient interface {
 	// Imports
-	client
+	_client
+	streamHolder
+	contentSaver
 	// Methods
 }
 
@@ -19,6 +25,8 @@ type rpcOutgate_ struct {
 	// Mixins
 	outgate_
 	rpcBroker_
+	streamHolder_
+	contentSaver_
 	// States
 }
 
@@ -28,9 +36,15 @@ func (f *rpcOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *rpcOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
+	f.rpcBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	f.streamHolder_.onConfigure(shell, 1000)
+	f.contentSaver_.onConfigure(shell, TmpsDir()+"/rpc/outgates/"+shell.Name())
 }
 func (f *rpcOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()
+	f.rpcBroker_.onPrepare(shell)
+	f.streamHolder_.onPrepare(shell)
+	f.contentSaver_.onPrepare(shell, 0755)
 }
 
 // rpcBackend_

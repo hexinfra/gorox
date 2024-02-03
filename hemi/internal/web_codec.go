@@ -76,6 +76,8 @@ func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
 
 // webConn is the interface for serverConn and clientConn.
 type webConn interface {
+	isUDS() bool
+	isTLS() bool
 	makeTempName(p []byte, unixTime int64) int
 	isBroken() bool
 	markBroken()
@@ -98,6 +100,7 @@ func (c *webConn_) markBroken()    { c.broken.Store(true) }
 // webStream is the interface for *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, and *HExchan.
 type webStream interface {
 	webBroker() webBroker
+	webConn() webConn
 	remoteAddr() net.Addr
 
 	buffer256() []byte

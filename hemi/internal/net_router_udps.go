@@ -62,7 +62,9 @@ func (r *UDPSRouter) serve() { // runner
 		}
 		r.gates = append(r.gates, gate)
 		r.IncSub(1)
-		if r.TLSMode() {
+		if r.UDSMode() {
+			go gate.serveUDS()
+		} else if r.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
@@ -135,6 +137,9 @@ func (g *udpsGate) serveTLS() { // runner
 		time.Sleep(time.Second)
 	}
 	g.router.SubDone()
+}
+func (g *udpsGate) serveUDS() { // runner
+	// TODO
 }
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {

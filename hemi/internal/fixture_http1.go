@@ -66,7 +66,7 @@ func (f *HTTP1Outgate) DialTCP(address string) (*H1Conn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getH1Conn(connID, sockTypeNET, false, f, nil, netConn, rawConn), nil
+	return getH1Conn(connID, false, false, f, nil, netConn, rawConn), nil
 }
 func (f *HTTP1Outgate) DialTLS(address string, tlsConfig *tls.Config) (*H1Conn, error) {
 	netConn, err := net.DialTimeout("tcp", address, f.dialTimeout)
@@ -75,5 +75,5 @@ func (f *HTTP1Outgate) DialTLS(address string, tlsConfig *tls.Config) (*H1Conn, 
 	}
 	connID := f.nextConnID()
 	tlsConn := tls.Client(netConn, tlsConfig)
-	return getH1Conn(connID, sockTypeNET, true, f, nil, tlsConn, nil), nil
+	return getH1Conn(connID, false, true, f, nil, tlsConn, nil), nil
 }

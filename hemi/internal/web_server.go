@@ -203,6 +203,9 @@ func (c *serverConn_) onPut() {
 func (c *serverConn_) getServer() webServer { return c.server }
 func (c *serverConn_) getGate() webGate     { return c.gate }
 
+func (c *serverConn_) isUDS() bool { return c.server.UDSMode() }
+func (c *serverConn_) isTLS() bool { return c.server.TLSMode() }
+
 func (c *serverConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }

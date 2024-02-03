@@ -93,28 +93,34 @@ type (
 )
 
 type (
+	QUICOutgate  = internal.QUICOutgate
+	TCPSOutgate  = internal.TCPSOutgate
+	UDPSOutgate  = internal.UDPSOutgate
+	HRPCOutgate  = internal.HRPCOutgate
+	HTTP1Outgate = internal.HTTP1Outgate
+	HTTP2Outgate = internal.HTTP2Outgate
+	HTTP3Outgate = internal.HTTP3Outgate
+	HWEBOutgate  = internal.HWEBOutgate
+)
+
+type (
 	Backend = internal.Backend
 
-	QUICOutgate = internal.QUICOutgate
 	QUICBackend = internal.QUICBackend
 	QConn       = internal.QConn
 	QStream     = internal.QStream
 
-	TCPSOutgate = internal.TCPSOutgate
 	TCPSBackend = internal.TCPSBackend
 	TConn       = internal.TConn
 
-	UDPSOutgate = internal.UDPSOutgate
 	UDPSBackend = internal.UDPSBackend
 	UConn       = internal.UConn
 
-	HRPCOutgate = internal.HRPCOutgate
 	HRPCBackend = internal.HRPCBackend
 	HCall       = internal.HCall
 	HReq        = internal.HReq
 	HResp       = internal.HResp
 
-	HTTP1Outgate = internal.HTTP1Outgate
 	HTTP1Backend = internal.HTTP1Backend
 	H1Conn       = internal.H1Conn
 	H1Stream     = internal.H1Stream
@@ -122,7 +128,6 @@ type (
 	H1Response   = internal.H1Response
 	H1Socket     = internal.H1Socket
 
-	HTTP2Outgate = internal.HTTP2Outgate
 	HTTP2Backend = internal.HTTP2Backend
 	H2Conn       = internal.H2Conn
 	H2Stream     = internal.H2Stream
@@ -130,7 +135,6 @@ type (
 	H2Response   = internal.H2Response
 	H2Socket     = internal.H2Socket
 
-	HTTP3Outgate = internal.HTTP3Outgate
 	HTTP3Backend = internal.HTTP3Backend
 	H3Conn       = internal.H3Conn
 	H3Stream     = internal.H3Stream
@@ -138,7 +142,6 @@ type (
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
 
-	HWEBOutgate = internal.HWEBOutgate
 	HWEBBackend = internal.HWEBBackend
 	HConn       = internal.HConn
 	HExchan     = internal.HExchan

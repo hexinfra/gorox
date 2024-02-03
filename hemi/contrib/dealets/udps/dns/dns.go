@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterUDPSDealet("dnsDealet", func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet {
+	RegisterUDPSDealet("dnsDealet", func(name string, stage *Stage, router *UDPSRouter) UDPSDealet {
 		d := new(dnsDealet)
-		d.onCreate(name, stage, mesher)
+		d.onCreate(name, stage, router)
 		return d
 	})
 }
@@ -25,17 +25,17 @@ type dnsDealet struct {
 	UDPSDealet_
 	// Assocs
 	stage  *Stage
-	mesher *UDPSMesher
+	router *UDPSRouter
 	// States
 }
 
-func (d *dnsDealet) onCreate(name string, stage *Stage, mesher *UDPSMesher) {
+func (d *dnsDealet) onCreate(name string, stage *Stage, router *UDPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.mesher = mesher
+	d.router = router
 }
 func (d *dnsDealet) OnShutdown() {
-	d.mesher.SubDone()
+	d.router.SubDone()
 }
 
 func (d *dnsDealet) OnConfigure() {

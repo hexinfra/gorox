@@ -34,9 +34,9 @@ article h3{
 
 	<h3>功能体系</h3>
 
-		<h4>Mesher 和 Server</h4>
-		<p>Gorox 的前端部分有两套子系统：Mesher 子系统和 Server 子系统。</p>
-		<p>Mesher 子系统涵盖的元素有：Mesher、Gate、Conn、Case、Dealet，用于实现 L4 代理以及非 Web 的 L7 代理。</p>
+		<h4>Router 和 Server</h4>
+		<p>Gorox 的前端部分有两套子系统：Router 子系统和 Server 子系统。</p>
+		<p>Router 子系统涵盖的元素有：Router、Gate、Conn、Case、Dealet，用于实现 L4 代理以及非 Web 的 L7 代理。</p>
 		<p>Server 子系统包含通用体系、Web 体系和 RPC 体系，其中：</p>
 		<ul>
 			<li>通用体系涵盖的元素有：Server、Gate、Conn，用于开发者自行发挥实现各种通用服务器（例如 FTP 服务器、聊天服务器等）；</li>
@@ -48,13 +48,13 @@ article h3{
 		<p>Gorox 的后端部分有两套子系统：Outgate 子系统和 Backend 子系统。</p>
 		<p>Outgate 子系统包含通用体系、Web 体系和 RPC 体系，其中：</p>
 		<ul>
-			<li>通用体系涵盖的元素有：Outgate、Conn，主要由 Mesher 前端子系统使用；</li>
+			<li>通用体系涵盖的元素有：Outgate、Conn，主要由 Router 前端子系统使用；</li>
 			<li>Web 体系涵盖的元素有：Outgate、Conn、Stream、Request、Response、Socket，主要由 Web 前端体系使用；</li>
 			<li>RPC 体系涵盖的元素有：Outgate、Call、Req、Resp，主要由 RPC 前端体系使用。</li>
 		</ul>
 		<p>Backend 子系统包含通用体系、Web 体系和 RPC 体系，其中：</p>
 		<ul>
-			<li>通用体系涵盖的元素有：Backend、Node、Conn，主要由 Mesher 前端子系统使用；</li>
+			<li>通用体系涵盖的元素有：Backend、Node、Conn，主要由 Router 前端子系统使用；</li>
 			<li>Web 体系涵盖的元素有：Backend、Node、Conn、Stream、Request、Response、Socket，主要由 Web 前端体系使用；</li>
 			<li>RPC 体系涵盖的元素有：Backend、Node、Call、Req、Resp，主要由 RPC 前端体系使用。</li>
 		</ul>

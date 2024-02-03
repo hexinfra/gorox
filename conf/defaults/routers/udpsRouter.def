@@ -1,4 +1,4 @@
-tcpsMesher "tm1" {
+udpsRouter "um1" {
 	.address         = string,required
 	.tlsMode         = false
 	.readTimeout     = 60s

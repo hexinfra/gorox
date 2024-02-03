@@ -1,1 +1,1 @@
-Place QUIC dealets for QUIC meshers.
+Place QUIC dealets for QUIC routers.

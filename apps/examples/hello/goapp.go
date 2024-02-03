@@ -8,7 +8,7 @@
 package hello
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -46,12 +46,12 @@ func (h *helloHandlet) OnConfigure() {
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *helloHandlet) OnPrepare() {
-	r := simple.New() // you can write your own router as long as it implements the hemi.Router interface
+	m := simple.New() // you can write your own mapper as long as it implements the hemi.Mapper interface
 
-	r.GET("/", h.index)
-	r.Map("/foo", h.handleFoo)
+	m.GET("/", h.index)
+	m.Map("/foo", h.handleFoo)
 
-	h.UseRouter(h, r) // equip handlet with router so it can call handles automatically through Dispatch()
+	h.UseMapper(h, m) // equip handlet with a mapper so it can call handles automatically through Dispatch()
 }
 
 func (h *helloHandlet) Handle(req Request, resp Response) (handled bool) {

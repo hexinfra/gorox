@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPSDealet("mongoProxy", func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet {
+	RegisterTCPSDealet("mongoProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealet {
 		d := new(mongoProxy)
-		d.onCreate(name, stage, mesher)
+		d.onCreate(name, stage, router)
 		return d
 	})
 }
@@ -25,17 +25,17 @@ type mongoProxy struct {
 	TCPSDealet_
 	// Assocs
 	stage  *Stage
-	mesher *TCPSMesher
+	router *TCPSRouter
 	// States
 }
 
-func (d *mongoProxy) onCreate(name string, stage *Stage, mesher *TCPSMesher) {
+func (d *mongoProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.MakeComp(name)
 	d.stage = stage
-	d.mesher = mesher
+	d.router = router
 }
 func (d *mongoProxy) OnShutdown() {
-	d.mesher.SubDone()
+	d.router.SubDone()
 }
 
 func (d *mongoProxy) OnConfigure() {

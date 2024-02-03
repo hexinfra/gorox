@@ -6,7 +6,7 @@
 package sunlei
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -47,9 +47,9 @@ func (h *sunleiHandlet) OnShutdown() {
 func (h *sunleiHandlet) OnConfigure() {
 }
 func (h *sunleiHandlet) OnPrepare() {
-	r := simple.New()
+	m := simple.New()
 
-	h.UseRouter(h, r)
+	h.UseMapper(h, m)
 }
 
 func (h *sunleiHandlet) Handle(req Request, resp Response) (handled bool) {

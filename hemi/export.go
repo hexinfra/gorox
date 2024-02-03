@@ -149,16 +149,16 @@ type (
 type (
 	Buffer = internal.Buffer
 
-	QUICMesher = internal.QUICMesher
+	QUICRouter = internal.QUICRouter
 	QUICDealet = internal.QUICDealet
 	QUICConn   = internal.QUICConn
 	QUICStream = internal.QUICStream
 
-	TCPSMesher = internal.TCPSMesher
+	TCPSRouter = internal.TCPSRouter
 	TCPSDealet = internal.TCPSDealet
 	TCPSConn   = internal.TCPSConn
 
-	UDPSMesher = internal.UDPSMesher
+	UDPSRouter = internal.UDPSRouter
 	UDPSDealet = internal.UDPSDealet
 	UDPSConn   = internal.UDPSConn
 )
@@ -170,7 +170,7 @@ type (
 	Webapp   = internal.Webapp
 	Handlet  = internal.Handlet
 	Handle   = internal.Handle
-	Router   = internal.Router
+	Mapper   = internal.Mapper
 	Reviser  = internal.Reviser
 	Range    = internal.Range
 	Piece    = internal.Piece

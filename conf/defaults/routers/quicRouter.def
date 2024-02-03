@@ -1,4 +1,4 @@
-udpsMesher "um1" {
+quicRouter "qm1" {
 	.address         = string,required
 	.tlsMode         = false
 	.readTimeout     = 60s

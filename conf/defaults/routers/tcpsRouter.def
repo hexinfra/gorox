@@ -1,4 +1,4 @@
-quicMesher "qm1" {
+tcpsRouter "tm1" {
 	.address         = string,required
 	.tlsMode         = false
 	.readTimeout     = 60s

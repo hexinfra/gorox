@@ -8,7 +8,7 @@
 package forums
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/routers/simple"
+	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )
@@ -48,11 +48,11 @@ func (h *forumsHandlet) OnShutdown() {
 func (h *forumsHandlet) OnConfigure() {
 }
 func (h *forumsHandlet) OnPrepare() {
-	r := simple.New()
+	m := simple.New()
 
-	r.GET("/", h.index)
+	m.GET("/", h.index)
 
-	h.UseRouter(h, r)
+	h.UseMapper(h, m)
 }
 
 func (h *forumsHandlet) Handle(req Request, resp Response) (handled bool) {

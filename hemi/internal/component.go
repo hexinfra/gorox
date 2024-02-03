@@ -28,11 +28,11 @@ const ( // component list
 	compFixture               // clock, fcache, namer, http1Outgate, tcpsOutgate, ...
 	compAddon                 // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
-	compQUICMesher            // quicMesher
+	compQUICRouter            // quicRouter
 	compQUICDealet            // quicProxy, ...
-	compTCPSMesher            // tcpsMesher
+	compTCPSRouter            // tcpsRouter
 	compTCPSDealet            // tcpsProxy, ...
-	compUDPSMesher            // udpsMesher
+	compUDPSRouter            // udpsRouter
 	compUDPSDealet            // udpsProxy, ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
@@ -49,9 +49,9 @@ const ( // component list
 
 var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
 	"stage":      compStage,
-	"quicMesher": compQUICMesher,
-	"tcpsMesher": compTCPSMesher,
-	"udpsMesher": compUDPSMesher,
+	"quicRouter": compQUICRouter,
+	"tcpsRouter": compTCPSRouter,
+	"udpsRouter": compUDPSRouter,
 	"case":       compCase,
 	"webapp":     compWebapp,
 	"rule":       compRule,
@@ -79,9 +79,9 @@ var (
 	creatorsLock       sync.RWMutex
 	addonCreators      = make(map[string]func(name string, stage *Stage) Addon) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
-	quicDealetCreators = make(map[string]func(name string, stage *Stage, mesher *QUICMesher) QUICDealet)
-	tcpsDealetCreators = make(map[string]func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet)
-	udpsDealetCreators = make(map[string]func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet)
+	quicDealetCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICDealet)
+	tcpsDealetCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSDealet)
+	udpsDealetCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSDealet)
 	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Handlet)
@@ -97,13 +97,13 @@ func RegisterAddon(sign string, create func(name string, stage *Stage) Addon) {
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterQUICDealet(sign string, create func(name string, stage *Stage, mesher *QUICMesher) QUICDealet) {
+func RegisterQUICDealet(sign string, create func(name string, stage *Stage, router *QUICRouter) QUICDealet) {
 	_registerComponent1(sign, compQUICDealet, quicDealetCreators, create)
 }
-func RegisterTCPSDealet(sign string, create func(name string, stage *Stage, mesher *TCPSMesher) TCPSDealet) {
+func RegisterTCPSDealet(sign string, create func(name string, stage *Stage, router *TCPSRouter) TCPSDealet) {
 	_registerComponent1(sign, compTCPSDealet, tcpsDealetCreators, create)
 }
-func RegisterUDPSDealet(sign string, create func(name string, stage *Stage, mesher *UDPSMesher) UDPSDealet) {
+func RegisterUDPSDealet(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSDealet) {
 	_registerComponent1(sign, compUDPSDealet, udpsDealetCreators, create)
 }
 func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
@@ -357,9 +357,9 @@ type Stage struct {
 	hwebOutgate  *HWEBOutgate          // for fast accessing
 	addons       compDict[Addon]       // indexed by addonName
 	backends     compDict[Backend]     // indexed by backendName
-	quicMeshers  compDict[*QUICMesher] // indexed by mesherName
-	tcpsMeshers  compDict[*TCPSMesher] // indexed by mesherName
-	udpsMeshers  compDict[*UDPSMesher] // indexed by mesherName
+	quicRouters  compDict[*QUICRouter] // indexed by routerName
+	tcpsRouters  compDict[*TCPSRouter] // indexed by routerName
+	udpsRouters  compDict[*UDPSRouter] // indexed by routerName
 	staters      compDict[Stater]      // indexed by staterName
 	cachers      compDict[Cacher]      // indexed by cacherName
 	webapps      compDict[*Webapp]     // indexed by webappName
@@ -405,9 +405,9 @@ func (s *Stage) onCreate() {
 
 	s.addons = make(compDict[Addon])
 	s.backends = make(compDict[Backend])
-	s.quicMeshers = make(compDict[*QUICMesher])
-	s.tcpsMeshers = make(compDict[*TCPSMesher])
-	s.udpsMeshers = make(compDict[*UDPSMesher])
+	s.quicRouters = make(compDict[*QUICRouter])
+	s.tcpsRouters = make(compDict[*TCPSRouter])
+	s.udpsRouters = make(compDict[*UDPSRouter])
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
 	s.webapps = make(compDict[*Webapp])
@@ -442,11 +442,11 @@ func (s *Stage) OnShutdown() {
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
-	// meshers
-	s.IncSub(len(s.udpsMeshers) + len(s.tcpsMeshers) + len(s.quicMeshers))
-	s.udpsMeshers.goWalk((*UDPSMesher).OnShutdown)
-	s.tcpsMeshers.goWalk((*TCPSMesher).OnShutdown)
-	s.quicMeshers.goWalk((*QUICMesher).OnShutdown)
+	// routers
+	s.IncSub(len(s.udpsRouters) + len(s.tcpsRouters) + len(s.quicRouters))
+	s.udpsRouters.goWalk((*UDPSRouter).OnShutdown)
+	s.tcpsRouters.goWalk((*TCPSRouter).OnShutdown)
+	s.quicRouters.goWalk((*QUICRouter).OnShutdown)
 	s.WaitSubs()
 
 	// backends
@@ -536,9 +536,9 @@ func (s *Stage) OnConfigure() {
 	s.fixtures.walk(fixture.OnConfigure)
 	s.addons.walk(Addon.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
-	s.quicMeshers.walk((*QUICMesher).OnConfigure)
-	s.tcpsMeshers.walk((*TCPSMesher).OnConfigure)
-	s.udpsMeshers.walk((*UDPSMesher).OnConfigure)
+	s.quicRouters.walk((*QUICRouter).OnConfigure)
+	s.tcpsRouters.walk((*TCPSRouter).OnConfigure)
+	s.udpsRouters.walk((*UDPSRouter).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
 	s.webapps.walk((*Webapp).OnConfigure)
@@ -557,9 +557,9 @@ func (s *Stage) OnPrepare() {
 	s.fixtures.walk(fixture.OnPrepare)
 	s.addons.walk(Addon.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
-	s.quicMeshers.walk((*QUICMesher).OnPrepare)
-	s.tcpsMeshers.walk((*TCPSMesher).OnPrepare)
-	s.udpsMeshers.walk((*UDPSMesher).OnPrepare)
+	s.quicRouters.walk((*QUICRouter).OnPrepare)
+	s.tcpsRouters.walk((*TCPSRouter).OnPrepare)
+	s.udpsRouters.walk((*UDPSRouter).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
 	s.webapps.walk((*Webapp).OnPrepare)
@@ -594,35 +594,35 @@ func (s *Stage) createBackend(sign string, name string) Backend {
 	s.backends[name] = backend
 	return backend
 }
-func (s *Stage) createQUICMesher(name string) *QUICMesher {
-	if s.QUICMesher(name) != nil {
-		UseExitf("conflicting quicMesher with a same name '%s'\n", name)
+func (s *Stage) createQUICRouter(name string) *QUICRouter {
+	if s.QUICRouter(name) != nil {
+		UseExitf("conflicting quicRouter with a same name '%s'\n", name)
 	}
-	mesher := new(QUICMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.quicMeshers[name] = mesher
-	return mesher
+	router := new(QUICRouter)
+	router.onCreate(name, s)
+	router.setShell(router)
+	s.quicRouters[name] = router
+	return router
 }
-func (s *Stage) createTCPSMesher(name string) *TCPSMesher {
-	if s.TCPSMesher(name) != nil {
-		UseExitf("conflicting tcpsMesher with a same name '%s'\n", name)
+func (s *Stage) createTCPSRouter(name string) *TCPSRouter {
+	if s.TCPSRouter(name) != nil {
+		UseExitf("conflicting tcpsRouter with a same name '%s'\n", name)
 	}
-	mesher := new(TCPSMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.tcpsMeshers[name] = mesher
-	return mesher
+	router := new(TCPSRouter)
+	router.onCreate(name, s)
+	router.setShell(router)
+	s.tcpsRouters[name] = router
+	return router
 }
-func (s *Stage) createUDPSMesher(name string) *UDPSMesher {
-	if s.UDPSMesher(name) != nil {
-		UseExitf("conflicting udpsMesher with a same name '%s'\n", name)
+func (s *Stage) createUDPSRouter(name string) *UDPSRouter {
+	if s.UDPSRouter(name) != nil {
+		UseExitf("conflicting udpsRouter with a same name '%s'\n", name)
 	}
-	mesher := new(UDPSMesher)
-	mesher.onCreate(name, s)
-	mesher.setShell(mesher)
-	s.udpsMeshers[name] = mesher
-	return mesher
+	router := new(UDPSRouter)
+	router.onCreate(name, s)
+	router.setShell(router)
+	s.udpsRouters[name] = router
+	return router
 }
 func (s *Stage) createStater(sign string, name string) Stater {
 	if s.Stater(name) != nil {
@@ -712,9 +712,9 @@ func (s *Stage) fixture(sign string) fixture { return s.fixtures[sign] }
 
 func (s *Stage) Addon(name string) Addon            { return s.addons[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
-func (s *Stage) QUICMesher(name string) *QUICMesher { return s.quicMeshers[name] }
-func (s *Stage) TCPSMesher(name string) *TCPSMesher { return s.tcpsMeshers[name] }
-func (s *Stage) UDPSMesher(name string) *UDPSMesher { return s.udpsMeshers[name] }
+func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
+func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
+func (s *Stage) UDPSRouter(name string) *UDPSRouter { return s.udpsRouters[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
 func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
@@ -770,7 +770,7 @@ func (s *Stage) Start(id int32) {
 	s.startFixtures() // go fixture.run()
 	s.startAddons()   // go addon.Run()
 	s.startBackends() // go backend.maintain()
-	s.startMeshers()  // go mesher.serve()
+	s.startRouters()  // go router.serve()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
 	s.startWebapps()  // go webapp.maintain()
@@ -830,24 +830,24 @@ func (s *Stage) startBackends() {
 		go backend.Maintain()
 	}
 }
-func (s *Stage) startMeshers() {
-	for _, quicMesher := range s.quicMeshers {
+func (s *Stage) startRouters() {
+	for _, quicRouter := range s.quicRouters {
 		if Debug() >= 1 {
-			Printf("quicMesher=%s go serve()\n", quicMesher.Name())
+			Printf("quicRouter=%s go serve()\n", quicRouter.Name())
 		}
-		go quicMesher.serve()
+		go quicRouter.serve()
 	}
-	for _, tcpsMesher := range s.tcpsMeshers {
+	for _, tcpsRouter := range s.tcpsRouters {
 		if Debug() >= 1 {
-			Printf("tcpsMesher=%s go serve()\n", tcpsMesher.Name())
+			Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
 		}
-		go tcpsMesher.serve()
+		go tcpsRouter.serve()
 	}
-	for _, udpsMesher := range s.udpsMeshers {
+	for _, udpsRouter := range s.udpsRouters {
 		if Debug() >= 1 {
-			Printf("udpsMesher=%s go serve()\n", udpsMesher.Name())
+			Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
-		go udpsMesher.serve()
+		go udpsRouter.serve()
 	}
 }
 func (s *Stage) startStaters() {
@@ -1150,7 +1150,7 @@ type Gate interface {
 	shut() error
 }
 
-// Gate_ is the mixin for mesher gates and server gates.
+// Gate_ is the mixin for router gates and server gates.
 type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns

@@ -1,1 +1,1 @@
-Place UDPS dealets for UDPS meshers.
+Place UDPS dealets for UDPS routers.

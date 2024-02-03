@@ -18,57 +18,11 @@ import (
 )
 
 func init() {
-	registerFixture(signHTTP3Outgate)
 	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
 		b := new(HTTP3Backend)
 		b.onCreate(name, stage)
 		return b
 	})
-}
-
-const signHTTP3Outgate = "http3Outgate"
-
-func createHTTP3Outgate(stage *Stage) *HTTP3Outgate {
-	http3 := new(HTTP3Outgate)
-	http3.onCreate(stage)
-	http3.setShell(http3)
-	return http3
-}
-
-// HTTP3Outgate
-type HTTP3Outgate struct {
-	// Mixins
-	webOutgate_
-	// States
-}
-
-func (f *HTTP3Outgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHTTP3Outgate, stage)
-}
-
-func (f *HTTP3Outgate) OnConfigure() {
-	f.webOutgate_.onConfigure(f)
-}
-func (f *HTTP3Outgate) OnPrepare() {
-	f.webOutgate_.onPrepare(f)
-}
-
-func (f *HTTP3Outgate) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
-		// TODO
-	})
-	if Debug() >= 2 {
-		Println("http3Outgate done")
-	}
-	f.stage.SubDone()
-}
-
-func (f *HTTP3Outgate) FetchConn(address string, tlsMode bool) (*H3Conn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *HTTP3Outgate) StoreConn(conn *H3Conn) {
-	// TODO
 }
 
 // HTTP3Backend
@@ -136,7 +90,7 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 		return nil, err
 	}
 	connID := n.backend.nextConnID()
-	return getH3Conn(connID, n.backend, n, conn), nil
+	return getH3Conn(connID, sockTypeNET, true, n.backend, n, conn), nil
 }
 func (n *http3Node) storeConn(h3Conn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
@@ -146,14 +100,14 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, sockType int8, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
 	} else {
 		conn = x.(*H3Conn)
 	}
-	conn.onGet(id, client, node, quixConn)
+	conn.onGet(id, sockType, tlsMode, client, node, quixConn)
 	return conn
 }
 func putH3Conn(conn *H3Conn) {
@@ -174,8 +128,8 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, client webClient, node *http3Node, quixConn *quix.Conn) {
-	c.clientConn_.onGet(id, client)
+func (c *H3Conn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) {
+	c.clientConn_.onGet(id, sockType, tlsMode, client)
 	c.node = node
 	c.quixConn = quixConn
 }

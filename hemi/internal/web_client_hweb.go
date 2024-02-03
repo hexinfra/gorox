@@ -14,49 +14,11 @@ import (
 )
 
 func init() {
-	registerFixture(signHWEBOutgate)
 	RegisterBackend("hwebBackend", func(name string, stage *Stage) Backend {
 		b := new(HWEBBackend)
 		b.onCreate(name, stage)
 		return b
 	})
-}
-
-const signHWEBOutgate = "hwebOutgate"
-
-func createHWEBOutgate(stage *Stage) *HWEBOutgate {
-	hweb := new(HWEBOutgate)
-	hweb.onCreate(stage)
-	hweb.setShell(hweb)
-	return hweb
-}
-
-// HWEBOutgate
-type HWEBOutgate struct {
-	// Mixins
-	webOutgate_
-	// States
-}
-
-func (f *HWEBOutgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHWEBOutgate, stage)
-}
-
-func (f *HWEBOutgate) OnConfigure() {
-	f.webOutgate_.onConfigure(f)
-}
-func (f *HWEBOutgate) OnPrepare() {
-	f.webOutgate_.onPrepare(f)
-}
-
-func (f *HWEBOutgate) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
-		// TODO
-	})
-	if Debug() >= 2 {
-		Println("hwebOutgate done")
-	}
-	f.stage.SubDone()
 }
 
 // HWEBBackend
@@ -111,14 +73,14 @@ func (n *hwebNode) Maintain() { // runner
 // poolHConn is the client-side HWEB connection pool.
 var poolHConn sync.Pool
 
-func getHConn(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
+func getHConn(id int64, sockType int8, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
 	var conn *HConn
 	if x := poolHConn.Get(); x == nil {
 		conn = new(HConn)
 	} else {
 		conn = x.(*HConn)
 	}
-	conn.onGet(id, client, node, tcpConn)
+	conn.onGet(id, sockType, tlsMode, client, node, tcpConn)
 	return conn
 }
 func putHConn(conn *HConn) {
@@ -139,8 +101,8 @@ type HConn struct {
 	activeExchans int32 // concurrent exchans
 }
 
-func (c *HConn) onGet(id int64, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
-	c.clientConn_.onGet(id, client)
+func (c *HConn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
+	c.clientConn_.onGet(id, sockType, tlsMode, client)
 	c.node = node
 	c.tcpConn = tcpConn
 }

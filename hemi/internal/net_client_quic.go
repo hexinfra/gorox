@@ -15,15 +15,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
-func init() {
-	registerFixture(signQUICOutgate)
-	RegisterBackend("quicBackend", func(name string, stage *Stage) Backend {
-		b := new(QUICBackend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
-
 // quicClient is the interface for *QUICOutgate and *QUICBackend.
 type quicClient interface {
 	// Imports
@@ -32,55 +23,12 @@ type quicClient interface {
 	// Methods
 }
 
-const signQUICOutgate = "quicOutgate"
-
-func createQUICOutgate(stage *Stage) *QUICOutgate {
-	quic := new(QUICOutgate)
-	quic.onCreate(stage)
-	quic.setShell(quic)
-	return quic
-}
-
-// QUICOutgate component.
-type QUICOutgate struct {
-	// Mixins
-	outgate_
-	streamHolder_
-	// States
-}
-
-func (f *QUICOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signQUICOutgate, stage)
-}
-
-func (f *QUICOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
-	f.streamHolder_.onConfigure(f, 1000)
-}
-func (f *QUICOutgate) OnPrepare() {
-	f.outgate_.onPrepare()
-	f.streamHolder_.onPrepare(f)
-}
-
-func (f *QUICOutgate) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
-		// TODO
+func init() {
+	RegisterBackend("quicBackend", func(name string, stage *Stage) Backend {
+		b := new(QUICBackend)
+		b.onCreate(name, stage)
+		return b
 	})
-	if Debug() >= 2 {
-		Println("quicOutgate done")
-	}
-	f.stage.SubDone()
-}
-
-func (f *QUICOutgate) Dial(address string) (*QConn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *QUICOutgate) FetchConn(address string) {
-	// TODO
-}
-func (f *QUICOutgate) StoreConn(qConn *QConn) {
-	// TODO
 }
 
 // QUICBackend component.
@@ -169,14 +117,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
+func getQConn(id int64, sockType int8, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
 	} else {
 		conn = x.(*QConn)
 	}
-	conn.onGet(id, client, node, quixConn)
+	conn.onGet(id, sockType, client, node, quixConn)
 	return conn
 }
 func putQConn(conn *QConn) {
@@ -197,8 +145,8 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConn) onGet(id int64, client quicClient, node *quicNode, quixConn *quix.Conn) {
-	c.Conn_.onGet(id, client)
+func (c *QConn) onGet(id int64, sockType int8, client quicClient, node *quicNode, quixConn *quix.Conn) {
+	c.Conn_.onGet(id, sockType, true, client)
 	c.node = node
 	c.quixConn = quixConn
 	c.maxStreams = client.MaxStreamsPerConn()

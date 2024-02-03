@@ -20,7 +20,7 @@ COMPONENTS
 ==========
 
   stage [*]
-    fixture (clock, fcache, resolv, http1Outgate, tcpsOutgate, ...)
+    fixture (clock, fcache, namer, http1Outgate, tcpsOutgate, ...)
     addon (...)
     backend (http1Backend, tcpsBackend, ...)
     mesher (quicMesher, tcpsMesher, udpsMesher)

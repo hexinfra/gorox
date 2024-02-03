@@ -416,7 +416,7 @@ func intToHex[T int32 | int64](ixx T, hex []byte, bufSize int) int {
 		BugExitln("negative numbers are not supported")
 	}
 	n := 1
-	for i := ixx; i > 0x10; i >>= 4 {
+	for i := ixx; i >= 0x10; i >>= 4 {
 		n++
 	}
 	j := n - 1
@@ -440,7 +440,7 @@ func intToDec[T int32 | int64](ixx T, dec []byte, bufSize int) int {
 		BugExitln("negative numbers are not supported")
 	}
 	n := 1
-	for i := ixx; i > 10; i /= 10 {
+	for i := ixx; i >= 10; i /= 10 {
 		n++
 	}
 	j := n - 1

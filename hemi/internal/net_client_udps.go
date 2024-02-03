@@ -15,15 +15,6 @@ import (
 	"time"
 )
 
-func init() {
-	registerFixture(signUDPSOutgate)
-	RegisterBackend("udpsBackend", func(name string, stage *Stage) Backend {
-		b := new(UDPSBackend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
-
 // udpsClient is the interface for *UDPSOutgate and *UDPSBackend.
 type udpsClient interface {
 	// Imports
@@ -31,53 +22,12 @@ type udpsClient interface {
 	// Methods
 }
 
-const signUDPSOutgate = "udpsOutgate"
-
-func createUDPSOutgate(stage *Stage) *UDPSOutgate {
-	udps := new(UDPSOutgate)
-	udps.onCreate(stage)
-	udps.setShell(udps)
-	return udps
-}
-
-// UDPSOutgate component.
-type UDPSOutgate struct {
-	// Mixins
-	outgate_
-	// States
-}
-
-func (f *UDPSOutgate) onCreate(stage *Stage) {
-	f.outgate_.onCreate(signUDPSOutgate, stage)
-}
-
-func (f *UDPSOutgate) OnConfigure() {
-	f.outgate_.onConfigure()
-}
-func (f *UDPSOutgate) OnPrepare() {
-	f.outgate_.onConfigure()
-}
-
-func (f *UDPSOutgate) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
-		// TODO
+func init() {
+	RegisterBackend("udpsBackend", func(name string, stage *Stage) Backend {
+		b := new(UDPSBackend)
+		b.onCreate(name, stage)
+		return b
 	})
-	if Debug() >= 2 {
-		Println("udpsOutgate done")
-	}
-	f.stage.SubDone()
-}
-
-func (f *UDPSOutgate) Dial(address string, tlsMode bool) (*UConn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *UDPSOutgate) FetchConn(address string, tlsMode bool) (*UConn, error) {
-	// TODO
-	return nil, nil
-}
-func (f *UDPSOutgate) StoreConn(uConn *UConn) {
-	// TODO
 }
 
 // UDPSBackend component.
@@ -175,14 +125,14 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 // poolUConn
 var poolUConn sync.Pool
 
-func getUConn(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
+func getUConn(id int64, sockType int8, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
 	var conn *UConn
 	if x := poolUConn.Get(); x == nil {
 		conn = new(UConn)
 	} else {
 		conn = x.(*UConn)
 	}
-	conn.onGet(id, client, node, udpConn, rawConn)
+	conn.onGet(id, sockType, tlsMode, client, node, udpConn, rawConn)
 	return conn
 }
 func putUConn(conn *UConn) {
@@ -202,8 +152,8 @@ type UConn struct {
 	broken atomic.Bool // is conn broken?
 }
 
-func (l *UConn) onGet(id int64, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	l.Conn_.onGet(id, client)
+func (l *UConn) onGet(id int64, sockType int8, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	l.Conn_.onGet(id, sockType, tlsMode, client)
 	l.node = node
 	l.udpConn = udpConn
 	l.rawConn = rawConn

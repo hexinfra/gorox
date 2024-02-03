@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General client implementation.
+// General network client implementation.
 
 package internal
 
@@ -20,7 +20,6 @@ type client interface {
 	// Imports
 	// Methods
 	Stage() *Stage
-	TLSMode() bool
 	WriteTimeout() time.Duration
 	ReadTimeout() time.Duration
 	AliveTimeout() time.Duration
@@ -34,8 +33,6 @@ type client_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	tlsMode      bool          // use TLS?
-	tlsConfig    *tls.Config   // TLS config if TLS is enabled
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write operation timeout
 	readTimeout  time.Duration // read operation timeout
@@ -52,12 +49,6 @@ func (c *client_) OnShutdown() {
 }
 
 func (c *client_) onConfigure() {
-	// tlsMode
-	c.ConfigureBool("tlsMode", &c.tlsMode, false)
-	if c.tlsMode {
-		c.tlsConfig = new(tls.Config)
-	}
-
 	// dialTimeout
 	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
@@ -95,7 +86,6 @@ func (c *client_) onPrepare() {
 }
 
 func (c *client_) Stage() *Stage               { return c.stage }
-func (c *client_) TLSMode() bool               { return c.tlsMode }
 func (c *client_) WriteTimeout() time.Duration { return c.writeTimeout }
 func (c *client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *client_) AliveTimeout() time.Duration { return c.aliveTimeout }
@@ -135,12 +125,19 @@ func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
 func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
 func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
+const ( // sock types
+	sockTypeUnknown = iota
+	sockTypeNET
+	sockTypeUDS
+)
+
 // Backend is a group of nodes.
 type Backend interface {
 	// Imports
 	Component
 	client
 	// Methods
+	TLSMode() bool
 	Maintain() // runner
 }
 
@@ -154,6 +151,7 @@ type Backend_[N Node] struct {
 	} // if Go's generic supports new(N) then this is not needed.
 	nodes []N // nodes of this backend
 	// States
+	tlsConfig    *tls.Config   // TLS config if TLS is enabled
 }
 
 func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
@@ -163,6 +161,12 @@ func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ cre
 
 func (b *Backend_[N]) onConfigure() {
 	b.client_.onConfigure()
+	// tlsMode
+	var tlsMode bool
+	b.ConfigureBool("tlsMode", &tlsMode, false)
+	if tlsMode {
+		b.tlsConfig = new(tls.Config)
+	}
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -215,6 +219,8 @@ func (b *Backend_[N]) onPrepare() {
 	b.client_.onPrepare()
 }
 
+func (b *Backend_[N]) TLSMode() bool {return b.tlsConfig != nil}
+
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub(1)
@@ -236,6 +242,7 @@ func (b *Backend_[N]) Maintain() { // runner
 // Node is a member of backend. Nodes are not components.
 type Node interface {
 	// Methods
+	setSockType(sockType int8)
 	setAddress(address string)
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
@@ -250,6 +257,8 @@ type Node_ struct {
 	shutdownable_
 	// States
 	id        int32       // the node id
+	sockType    int8        // net, uds
+	tlsMode   bool        // tls or not
 	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
 	keepConns int32       // max conns to keep alive
@@ -267,6 +276,7 @@ func (n *Node_) init(id int32) {
 	n.id = id
 }
 
+func (n *Node_) setSockType(sockType int8)        { n.sockType = sockType }
 func (n *Node_) setAddress(address string)    { n.address = address }
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
@@ -338,6 +348,8 @@ type Conn_ struct {
 	// Conn states (non-zeros)
 	next   Conn      // the linked-list
 	id     int64     // the conn id
+	sockType int8      // net, uds
+	tlsMode bool // tls or not
 	client client    // associated client
 	expire time.Time // when the conn is considered expired
 	// Conn states (zeros)
@@ -345,9 +357,12 @@ type Conn_ struct {
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *Conn_) onGet(id int64, client client) {
+func (c *Conn_) onGet(id int64, sockType int8, tlsMode bool, client client) {
 	c.id = id
+	c.sockType = sockType
+	c.tlsMode = tlsMode
 	c.client = client
+	c.sockType = sockType
 	c.expire = time.Now().Add(client.AliveTimeout())
 }
 func (c *Conn_) onPut() {
@@ -361,3 +376,8 @@ func (c *Conn_) getNext() Conn     { return c.next }
 func (c *Conn_) setNext(next Conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }
+
+func (c *Conn_) IsNET() bool { return c.sockType == sockTypeNET }
+func (c *Conn_) IsUDS() bool { return c.sockType == sockTypeUDS }
+
+func (c *Conn_) IsTLS() bool { return c.tlsMode }

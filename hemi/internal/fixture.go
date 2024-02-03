@@ -10,8 +10,7 @@ package internal
 // fixture component.
 //
 // Fixtures only exist in internal, and are created by stage.
-// Some critical functions, like clock and name resolv, are
-// implemented as fixtures.
+// Some critical functions, like clock and namer, are implemented as fixtures.
 //
 // Fixtures are singletons in stage.
 type fixture interface {

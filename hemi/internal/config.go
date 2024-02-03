@@ -899,23 +899,22 @@ type ruleCond struct {
 }
 
 var varCodes = map[string]int16{
-	// general vars. keep sync with net_quic.go, net_tcps.go, and net_udps.go
+	// general vars
 	"srcHost": 0,
 	"srcPort": 1,
+	"sockType":  2, // net/uds
+	"tlsMode": 3,
 
-	// general tcps conn & udps conn vars. keep sync with net_tcps.go and net_udps.go
-	"transport": 2, // tcp/udp, tls/dtls
+	// quic conn vars
+	// quic stream vars
 
-	// quic conn vars. keep sync with quicConnVariables in net_quic.go
-	// quic stream vars. keep sync with quicStreamVariables in net_quic.go
-
-	// tcps conn vars. keep sync with tcpsConnVariables in net_tcps.go
+	// tcps conn vars
 	"serverName": 3,
 	"nextProto":  4,
 
-	// udps conn vars. keep sync with udpsConnVariables in net_udps.go
+	// udps conn vars
 
-	// web request vars. keep sync with serverRequestVariables in web_server.go
+	// web request vars
 	"method":      0, // GET, POST, ...
 	"scheme":      1, // http, https
 	"authority":   2, // example.com, example.org:8080

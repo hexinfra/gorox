@@ -66,7 +66,7 @@ func (m *TCPSMesher) serve() { // runner
 		}
 		m.gates = append(m.gates, gate)
 		m.IncSub(1)
-		if m.tlsMode {
+		if m.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -423,7 +423,8 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	// TODO
 	nil, // srcHost
 	nil, // srcPort
-	nil, // transport
+	nil, // sockType
+	nil, // tlsMode
 	nil, // serverName
 	nil, // nextProto
 }

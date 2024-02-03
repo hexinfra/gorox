@@ -25,7 +25,6 @@ import (
 type webBroker interface {
 	// Methods
 	Stage() *Stage               // current stage
-	TLSMode() bool               // works in TLS mode?
 	ReadTimeout() time.Duration  // timeout of a read operation
 	WriteTimeout() time.Duration // timeout of a write operation
 	RecvTimeout() time.Duration  // timeout to recv the whole message content

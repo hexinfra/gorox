@@ -83,7 +83,7 @@ func (s *httpxServer) OnConfigure() {
 }
 func (s *httpxServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
-	if s.tlsMode {
+	if s.TLSMode() {
 		var nextProtos []string
 		if s.enableHTTP2 {
 			nextProtos = []string{"h2", "http/1.1"}
@@ -105,7 +105,7 @@ func (s *httpxServer) Serve() { // runner
 		}
 		s.gates = append(s.gates, gate)
 		s.IncSub(1)
-		if s.tlsMode {
+		if s.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()

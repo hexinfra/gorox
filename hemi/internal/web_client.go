@@ -43,9 +43,6 @@ func (f *webOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *webOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	if f.tlsConfig != nil {
-		f.tlsConfig.InsecureSkipVerify = true
-	}
 	f.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	f.streamHolder_.onConfigure(shell, 1000)
 	f.contentSaver_.onConfigure(shell, TmpsDir()+"/web/outgates/"+shell.Name())
@@ -77,6 +74,7 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
 	if b.tlsConfig != nil {
+		// TODO
 		b.tlsConfig.InsecureSkipVerify = true
 	}
 	b.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
@@ -130,8 +128,8 @@ type clientConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *clientConn_) onGet(id int64, client webClient) {
-	c.Conn_.onGet(id, client)
+func (c *clientConn_) onGet(id int64, sockType int8, tlsMode bool, client webClient) {
+	c.Conn_.onGet(id, sockType, tlsMode, client)
 }
 func (c *clientConn_) onPut() {
 	c.Conn_.onPut()
@@ -352,11 +350,13 @@ func (r *clientRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
+		/*
 		if r.stream.webBroker().TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP
 		}
+		*/
 		if !r.setScheme(scheme) {
 			return false
 		}

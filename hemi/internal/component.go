@@ -25,7 +25,7 @@ import (
 
 const ( // component list
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, resolv, http1Outgate, tcpsOutgate, ...
+	compFixture               // clock, fcache, namer, http1Outgate, tcpsOutgate, ...
 	compAddon                 // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICMesher            // quicMesher
@@ -346,7 +346,7 @@ type Stage struct {
 	fixtures     compDict[fixture]     // indexed by sign
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
-	resolv       *resolvFixture        // for fast accessing
+	namer        *namerFixture         // for fast accessing
 	quicOutgate  *QUICOutgate          // for fast accessing
 	tcpsOutgate  *TCPSOutgate          // for fast accessing
 	udpsOutgate  *UDPSOutgate          // for fast accessing
@@ -382,7 +382,7 @@ func (s *Stage) onCreate() {
 	s.fixtures = make(compDict[fixture])
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
-	s.resolv = createResolv(s)
+	s.namer = createNamer(s)
 	s.quicOutgate = createQUICOutgate(s)
 	s.tcpsOutgate = createTCPSOutgate(s)
 	s.udpsOutgate = createUDPSOutgate(s)
@@ -393,7 +393,7 @@ func (s *Stage) onCreate() {
 	s.hwebOutgate = createHWEBOutgate(s)
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
-	s.fixtures[signResolv] = s.resolv
+	s.fixtures[signNamer] = s.namer
 	s.fixtures[signQUICOutgate] = s.quicOutgate
 	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
 	s.fixtures[signUDPSOutgate] = s.udpsOutgate
@@ -476,7 +476,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	s.IncSub(1)
-	s.resolv.OnShutdown()
+	s.namer.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub(1)
@@ -699,7 +699,7 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
-func (s *Stage) Resolv() *resolvFixture      { return s.resolv }
+func (s *Stage) Namer() *namerFixture      { return s.namer }
 func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
 func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
 func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
@@ -1054,10 +1054,10 @@ type Server_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	address         string        // hostname:port
+	address         string        // hostname:port, /path/to/unix.sock
 	colonPort       string        // like: ":9876"
 	colonPortBytes  []byte        // like: []byte(":9876")
-	tlsMode         bool          // tls mode?
+	sockType        int8          // net, uds
 	tlsConfig       *tls.Config   // set if is tls mode
 	readTimeout     time.Duration // read() timeout
 	writeTimeout    time.Duration // write() timeout
@@ -1074,6 +1074,7 @@ func (s *Server_) OnConfigure() {
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
+			// TODO: sockType
 			if p := strings.IndexByte(address, ':'); p == -1 || p == len(address)-1 {
 				UseExitln("bad address: " + address)
 			} else {
@@ -1089,8 +1090,9 @@ func (s *Server_) OnConfigure() {
 	}
 
 	// tlsMode
-	s.ConfigureBool("tlsMode", &s.tlsMode, false)
-	if s.tlsMode {
+	var tlsMode bool
+	s.ConfigureBool("tlsMode", &tlsMode, false)
+	if tlsMode {
 		s.tlsConfig = new(tls.Config)
 	}
 
@@ -1134,7 +1136,7 @@ func (s *Server_) Stage() *Stage               { return s.stage }
 func (s *Server_) Address() string             { return s.address }
 func (s *Server_) ColonPort() string           { return s.colonPort }
 func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
-func (s *Server_) TLSMode() bool               { return s.tlsMode }
+func (s *Server_) TLSMode() bool               { return s.tlsConfig != nil }
 func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *Server_) NumGates() int32             { return s.numGates }

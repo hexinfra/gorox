@@ -62,7 +62,11 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 
 	if h.isForward {
 		outgate1 := h.stage.http1Outgate
-		conn1, err1 = outgate1.Dial(req.Hostname()+req.ColonPort(), req.IsHTTPS())
+		if req.IsHTTPS() {
+			conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
+		} else {
+			conn1, err1 = outgate1.DialTCP(req.Hostname()+req.ColonPort())
+		}
 		if err1 != nil {
 			if Debug() >= 1 {
 				Println(err1.Error())

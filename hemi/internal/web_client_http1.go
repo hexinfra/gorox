@@ -20,72 +20,11 @@ import (
 )
 
 func init() {
-	registerFixture(signHTTP1Outgate)
 	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
 		b := new(HTTP1Backend)
 		b.onCreate(name, stage)
 		return b
 	})
-}
-
-const signHTTP1Outgate = "http1Outgate"
-
-func createHTTP1Outgate(stage *Stage) *HTTP1Outgate {
-	http1 := new(HTTP1Outgate)
-	http1.onCreate(stage)
-	http1.setShell(http1)
-	return http1
-}
-
-// HTTP1Outgate
-type HTTP1Outgate struct {
-	// Mixins
-	webOutgate_
-	// States
-	conns any // TODO
-}
-
-func (f *HTTP1Outgate) onCreate(stage *Stage) {
-	f.webOutgate_.onCreate(signHTTP1Outgate, stage)
-}
-
-func (f *HTTP1Outgate) OnConfigure() {
-	f.webOutgate_.onConfigure(f)
-	if f.tlsConfig != nil {
-		f.tlsConfig.NextProtos = []string{"http/1.1"}
-	}
-}
-func (f *HTTP1Outgate) OnPrepare() {
-	f.webOutgate_.onPrepare(f)
-}
-
-func (f *HTTP1Outgate) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
-		// TODO
-	})
-	if Debug() >= 2 {
-		Println("http1Outgate done")
-	}
-	f.stage.SubDone()
-}
-
-func (f *HTTP1Outgate) Dial(address string, tlsMode bool) (*H1Conn, error) {
-	netConn, err := net.DialTimeout("tcp", address, f.dialTimeout)
-	if err != nil {
-		return nil, err
-	}
-	connID := f.nextConnID()
-	if tlsMode {
-		tlsConn := tls.Client(netConn, f.tlsConfig)
-		return getH1Conn(connID, f, nil, tlsConn, nil), nil
-	} else {
-		rawConn, err := netConn.(*net.TCPConn).SyscallConn()
-		if err != nil {
-			netConn.Close()
-			return nil, err
-		}
-		return getH1Conn(connID, f, nil, netConn, rawConn), nil
-	}
 }
 
 // HTTP1Backend
@@ -179,22 +118,25 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	if n.backend.tlsMode && !n.uds {
+	if n.backend.TLSMode() && !n.uds {
 		tlsConn := tls.Client(netConn, n.backend.tlsConfig)
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			tlsConn.Close()
 			return nil, err
 		}
 		n.IncSub(1)
-		return getH1Conn(connID, n.backend, n, tlsConn, nil), nil
+		return getH1Conn(connID, sockTypeNET, true, n.backend, n, tlsConn, nil), nil
 	} else {
 		var (
+			sockType int8
 			rawConn syscall.RawConn
 			err     error
 		)
 		if n.uds {
+			sockType = sockTypeUDS
 			rawConn, err = netConn.(*net.UnixConn).SyscallConn()
 		} else {
+			sockType = sockTypeNET
 			rawConn, err = netConn.(*net.TCPConn).SyscallConn()
 		}
 		if err != nil {
@@ -202,7 +144,7 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 			return nil, err
 		}
 		n.IncSub(1)
-		return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
+		return getH1Conn(connID, sockType, false, n.backend, n, netConn, rawConn), nil
 	}
 }
 func (n *http1Node) storeConn(h1Conn *H1Conn) {
@@ -228,7 +170,7 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the client-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, sockType int8, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		conn = new(H1Conn)
@@ -242,7 +184,7 @@ func getH1Conn(id int64, client webClient, node *http1Node, netConn net.Conn, ra
 	} else {
 		conn = x.(*H1Conn)
 	}
-	conn.onGet(id, client, node, netConn, rawConn)
+	conn.onGet(id, sockType, tlsMode, client, node, netConn, rawConn)
 	return conn
 }
 func putH1Conn(conn *H1Conn) {
@@ -266,8 +208,8 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, client)
+func (c *H1Conn) onGet(id int64, sockType int8, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.clientConn_.onGet(id, sockType, tlsMode, client)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -422,6 +364,7 @@ func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) boo
 	}
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+	/*
 	if r.stream.webBroker().TLSMode() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
@@ -429,6 +372,7 @@ func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // us
 	} else if bytes.Equal(colonPort, bytesColonPort80) {
 		colonPort = nil
 	}
+	*/
 	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(headerSize); ok {
 		from += copy(r.fields[from:], bytesHost)

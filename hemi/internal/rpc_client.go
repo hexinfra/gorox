@@ -28,9 +28,6 @@ func (f *rpcOutgate_) onCreate(name string, stage *Stage) {
 
 func (f *rpcOutgate_) onConfigure(shell Component) {
 	f.outgate_.onConfigure()
-	if f.tlsConfig != nil {
-		f.tlsConfig.InsecureSkipVerify = true
-	}
 }
 func (f *rpcOutgate_) onPrepare(shell Component) {
 	f.outgate_.onPrepare()

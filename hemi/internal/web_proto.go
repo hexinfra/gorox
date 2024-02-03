@@ -167,7 +167,7 @@ const ( // status codes. keep sync with ../export.go
 const ( // misc web types
 	webTargetOrigin    = 0 // must be 0
 	webTargetAbsolute  = 1 // scheme "://" hostname [ ":" port ] path-abempty [ "?" query ]
-	webTargetAuthority = 2 // hostname:port
+	webTargetAuthority = 2 // hostname:port, /path/to/unix.sock
 	webTargetAsterisk  = 3 // *
 
 	webSectionControl  = 0 // must be 0

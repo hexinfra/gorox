@@ -62,7 +62,7 @@ func (m *UDPSMesher) serve() { // runner
 		}
 		m.gates = append(m.gates, gate)
 		m.IncSub(1)
-		if m.tlsMode {
+		if m.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()

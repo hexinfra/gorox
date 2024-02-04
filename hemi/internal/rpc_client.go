@@ -20,33 +20,6 @@ type rpcClient interface {
 	// Methods
 }
 
-// rpcOutgate_
-type rpcOutgate_ struct {
-	// Mixins
-	outgate_
-	rpcBroker_
-	streamHolder_
-	contentSaver_
-	// States
-}
-
-func (f *rpcOutgate_) onCreate(name string, stage *Stage) {
-	f.outgate_.onCreate(name, stage)
-}
-
-func (f *rpcOutgate_) onConfigure(shell Component) {
-	f.outgate_.onConfigure()
-	f.rpcBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
-	f.streamHolder_.onConfigure(shell, 1000)
-	f.contentSaver_.onConfigure(shell, TmpsDir()+"/rpc/outgates/"+shell.Name())
-}
-func (f *rpcOutgate_) onPrepare(shell Component) {
-	f.outgate_.onPrepare()
-	f.rpcBroker_.onPrepare(shell)
-	f.streamHolder_.onPrepare(shell)
-	f.contentSaver_.onPrepare(shell, 0755)
-}
-
 // rpcBackend_
 type rpcBackend_[N Node] struct {
 	// Mixins
@@ -86,8 +59,27 @@ func (n *rpcNode_) setTLSMode() {
 // clientCall_
 type clientCall_ struct {
 	// Mixins
+	Conn_
 	rpcCall_
+	// Call states (stocks)
+	// Call states (controlled)
+	// Call states (non-zeros)
+	client rpcClient
+	// Call states (zeros)
 }
+
+func (c *clientCall_) onGet(id int64, udsMode bool, tlsMode bool, client rpcClient) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(client.AliveTimeout()))
+	// c.rpcCall_.onGet()?
+	c.client = client
+}
+func (c *clientCall_) onPut() {
+	c.client = nil
+	c.Conn_.onPut()
+	// c.rpcCall_.onPut()?
+}
+
+func (c *clientCall_) getClient() rpcClient { return c.client }
 
 // clientReq is the client-side RPC request.
 type clientReq interface {

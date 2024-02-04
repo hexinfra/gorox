@@ -15,13 +15,6 @@ import (
 	"time"
 )
 
-// udpsClient is the interface for *UDPSOutgate and *UDPSBackend.
-type udpsClient interface {
-	// Imports
-	_client
-	// Methods
-}
-
 func init() {
 	RegisterBackend("udpsBackend", func(name string, stage *Stage) Backend {
 		b := new(UDPSBackend)
@@ -125,14 +118,14 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 // poolUConn
 var poolUConn sync.Pool
 
-func getUConn(id int64, udsMode bool, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) *UConn {
+func getUConn(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
 	var conn *UConn
 	if x := poolUConn.Get(); x == nil {
 		conn = new(UConn)
 	} else {
 		conn = x.(*UConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, udpConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
 	return conn
 }
 func putUConn(conn *UConn) {
@@ -145,58 +138,63 @@ type UConn struct {
 	// Mixins
 	Conn_
 	// Conn states (non-zeros)
-	node    *udpsNode       // associated node if client is UDPSBackend
-	udpConn *net.UDPConn    // udp conn
+	backend *UDPSBackend
+	node    *udpsNode
+	netConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
 	broken atomic.Bool // is conn broken?
 }
 
-func (l *UConn) onGet(id int64, udsMode bool, tlsMode bool, client udpsClient, node *udpsNode, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	l.Conn_.onGet(id, udsMode, tlsMode, client)
-	l.node = node
-	l.udpConn = udpConn
-	l.rawConn = rawConn
+func (c *UConn) onGet(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.backend = backend
+	c.node = node
+	c.netConn = netConn
+	c.rawConn = rawConn
 }
-func (l *UConn) onPut() {
-	l.Conn_.onPut()
-	l.node = nil
-	l.udpConn = nil
-	l.rawConn = nil
-	l.broken.Store(false)
+func (c *UConn) onPut() {
+	c.Conn_.onPut()
+	c.backend = nil
+	c.node = nil
+	c.netConn = nil
+	c.rawConn = nil
+	c.broken.Store(false)
 }
 
-func (l *UConn) getClient() udpsClient { return l.client.(udpsClient) }
+func (c *UConn) Backend() *UDPSBackend { return c.backend }
 
-func (l *UConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(l.lastWrite) >= time.Second {
-		if err := l.udpConn.SetWriteDeadline(deadline); err != nil {
+func (c *UConn) SetWriteDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
-		l.lastWrite = deadline
+		c.lastWrite = deadline
 	}
 	return nil
 }
-func (l *UConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(l.lastRead) >= time.Second {
-		if err := l.udpConn.SetReadDeadline(deadline); err != nil {
+func (c *UConn) SetReadDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
-		l.lastRead = deadline
+		c.lastRead = deadline
 	}
 	return nil
 }
 
-func (l *UConn) Write(p []byte) (n int, err error) { return l.udpConn.Write(p) }
-func (l *UConn) Read(p []byte) (n int, err error)  { return l.udpConn.Read(p) }
+func (c *UConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+	return c.netConn.WriteTo(p, addr)
+}
+func (c *UConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) { return c.netConn.ReadFrom(p) }
 
-func (l *UConn) isBroken() bool { return l.broken.Load() }
-func (l *UConn) markBroken()    { l.broken.Store(true) }
+func (c *UConn) isBroken() bool { return c.broken.Load() }
+func (c *UConn) markBroken()    { c.broken.Store(true) }
 
-func (l *UConn) Close() error { // only used by clients of dial
-	udpConn := l.udpConn
-	putUConn(l)
-	return udpConn.Close()
+func (c *UConn) Close() error { // only used by clients of dial
+	netConn := c.netConn
+	putUConn(c)
+	return netConn.Close()
 }
 
-func (l *UConn) closeConn() { l.udpConn.Close() } // used by codes which use fetch/store
+func (c *UConn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store

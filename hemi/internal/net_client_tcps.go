@@ -17,14 +17,6 @@ import (
 	"time"
 )
 
-// tcpsClient is the interface for *TCPSOutgate and *TCPSBackend.
-type tcpsClient interface {
-	// Imports
-	_client
-	streamHolder
-	// Methods
-}
-
 func init() {
 	RegisterBackend("tcpsBackend", func(name string, stage *Stage) Backend {
 		b := new(TCPSBackend)
@@ -201,14 +193,14 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, udsMode bool, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, udsMode bool, tlsMode bool, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
 		conn = new(TConn)
 	} else {
 		conn = x.(*TConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, netConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
 	return conn
 }
 func putTConn(conn *TConn) {
@@ -221,9 +213,10 @@ type TConn struct {
 	// Mixins
 	Conn_
 	// Conn states (non-zeros)
-	node       *tcpsNode       // associated node if client is TCPSBackend
-	netConn    net.Conn        // *net.TCPConn, *tls.Conn
-	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP
+	backend    *TCPSBackend
+	node       *tcpsNode
+	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
 	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)
 	counter     atomic.Int64 // used to make temp name
@@ -232,15 +225,17 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, udsMode bool, tlsMode bool, client tcpsClient, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.Conn_.onGet(id, udsMode, tlsMode, client)
+func (c *TConn) onGet(id int64, udsMode bool, tlsMode bool, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.backend = backend
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.maxStreams = client.MaxStreamsPerConn()
+	c.maxStreams = backend.MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
 	c.Conn_.onPut()
+	c.backend = nil
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
@@ -250,7 +245,7 @@ func (c *TConn) onPut() {
 	c.readBroken.Store(false)
 }
 
-func (c *TConn) getClient() tcpsClient { return c.client.(tcpsClient) }
+func (c *TConn) Backend() *TCPSBackend { return c.backend }
 
 func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
@@ -259,7 +254,7 @@ func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
 func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {

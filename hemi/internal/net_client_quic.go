@@ -15,14 +15,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/quix"
 )
 
-// quicClient is the interface for *QUICOutgate and *QUICBackend.
-type quicClient interface {
-	// Imports
-	_client
-	streamHolder
-	// Methods
-}
-
 func init() {
 	RegisterBackend("quicBackend", func(name string, stage *Stage) Backend {
 		b := new(QUICBackend)
@@ -117,14 +109,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, udsMode bool, client quicClient, node *quicNode, quixConn *quix.Conn) *QConn {
+func getQConn(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
 	} else {
 		conn = x.(*QConn)
 	}
-	conn.onGet(id, udsMode, client, node, quixConn)
+	conn.onGet(id, udsMode, backend, node, quixConn)
 	return conn
 }
 func putQConn(conn *QConn) {
@@ -137,7 +129,8 @@ type QConn struct {
 	// Mixins
 	Conn_
 	// Conn states (non-zeros)
-	node       *quicNode // associated node if client is QUICBackend
+	backend    *QUICBackend
+	node       *quicNode
 	quixConn   *quix.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
 	// Conn states (zeros)
@@ -145,21 +138,23 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConn) onGet(id int64, udsMode bool, client quicClient, node *quicNode, quixConn *quix.Conn) {
-	c.Conn_.onGet(id, udsMode, true, client)
+func (c *QConn) onGet(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) {
+	c.Conn_.onGet(id, udsMode, true, time.Now().Add(backend.AliveTimeout()))
+	c.backend = backend
 	c.node = node
 	c.quixConn = quixConn
-	c.maxStreams = client.MaxStreamsPerConn()
+	c.maxStreams = backend.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
 	c.Conn_.onPut()
+	c.backend = nil
 	c.node = nil
 	c.quixConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
 
-func (c *QConn) getClient() quicClient { return c.client.(quicClient) }
+func (c *QConn) Backend() *QUICBackend { return c.backend }
 
 func (c *QConn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.maxStreams

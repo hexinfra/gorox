@@ -107,11 +107,16 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return nil, errNodeDown
 	}
 
-	network := "tcp"
 	if n.udsMode {
-		network = "unix"
+		return n._fetchUDS()
+	} else if n.tlsMode {
+		return n._fetchTLS()
+	} else {
+		return n._fetchTCP()
 	}
-	netConn, err := net.DialTimeout(network, n.address, n.backend.dialTimeout)
+}
+func (n *http1Node) _fetchTCP() (*H1Conn, error) {
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -120,31 +125,49 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	if n.tlsMode && !n.udsMode {
-		tlsConn := tls.Client(netConn, n.tlsConfig)
-		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-			tlsConn.Close()
-			return nil, err
-		}
-		n.IncSub(1)
-		return getH1Conn(connID, false, true, n.backend, n, tlsConn, nil), nil
-	} else {
-		var (
-			rawConn syscall.RawConn
-			err     error
-		)
-		if n.udsMode {
-			rawConn, err = netConn.(*net.UnixConn).SyscallConn()
-		} else {
-			rawConn, err = netConn.(*net.TCPConn).SyscallConn()
-		}
-		if err != nil {
-			netConn.Close()
-			return nil, err
-		}
-		n.IncSub(1)
-		return getH1Conn(connID, n.udsMode, false, n.backend, n, netConn, rawConn), nil
+	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
 	}
+	n.IncSub(1)
+	return getH1Conn(connID, false, false, n.backend, n, netConn, rawConn), nil
+}
+func (n *http1Node) _fetchTLS() (*H1Conn, error) {
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if Debug() >= 2 {
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+	}
+	connID := n.backend.nextConnID()
+	tlsConn := tls.Client(netConn, n.tlsConfig)
+	if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+		tlsConn.Close()
+		return nil, err
+	}
+	n.IncSub(1)
+	return getH1Conn(connID, false, true, n.backend, n, tlsConn, nil), nil
+}
+func (n *http1Node) _fetchUDS() (*H1Conn, error) {
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.dialTimeout)
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if Debug() >= 2 {
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	n.IncSub(1)
+	return getH1Conn(connID, true, false, n.backend, n, netConn, rawConn), nil
 }
 func (n *http1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {

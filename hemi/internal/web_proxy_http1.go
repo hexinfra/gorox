@@ -61,6 +61,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 	}
 
 	if h.isForward {
+		/*
 		outgate1 := h.stage.http1Outgate
 		if req.IsHTTPS() {
 			conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
@@ -75,6 +76,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 			return true
 		}
 		defer conn1.Close()
+		*/
 	} else { // reverse
 		backend1 := h.backend.(*HTTP1Backend)
 		conn1, err1 = backend1.FetchConn()

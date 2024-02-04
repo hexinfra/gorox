@@ -186,6 +186,7 @@ type serverConn_ struct {
 }
 
 func (c *serverConn_) onGet(id int64, server webServer, gate webGate) {
+	c.webConn_.onGet()
 	c.id = id
 	c.server = server
 	c.gate = gate
@@ -195,9 +196,7 @@ func (c *serverConn_) onPut() {
 	c.gate = nil
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
+	c.webConn_.onPut()
 }
 
 func (c *serverConn_) getServer() webServer { return c.server }

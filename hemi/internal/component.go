@@ -25,7 +25,7 @@ import (
 
 const ( // component list
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, namer, http1Outgate, tcpsOutgate, ...
+	compFixture               // clock, fcache, namer, ...
 	compAddon                 // ...
 	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICRouter            // quicRouter
@@ -347,14 +347,6 @@ type Stage struct {
 	clock        *clockFixture         // for fast accessing
 	fcache       *fcacheFixture        // for fast accessing
 	namer        *namerFixture         // for fast accessing
-	quicOutgate  *QUICOutgate          // for fast accessing
-	tcpsOutgate  *TCPSOutgate          // for fast accessing
-	udpsOutgate  *UDPSOutgate          // for fast accessing
-	hrpcOutgate  *HRPCOutgate          // for fast accessing
-	http1Outgate *HTTP1Outgate         // for fast accessing
-	http2Outgate *HTTP2Outgate         // for fast accessing
-	http3Outgate *HTTP3Outgate         // for fast accessing
-	hwebOutgate  *HWEBOutgate          // for fast accessing
 	addons       compDict[Addon]       // indexed by addonName
 	backends     compDict[Backend]     // indexed by backendName
 	quicRouters  compDict[*QUICRouter] // indexed by routerName
@@ -383,25 +375,9 @@ func (s *Stage) onCreate() {
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
 	s.namer = createNamer(s)
-	s.quicOutgate = createQUICOutgate(s)
-	s.tcpsOutgate = createTCPSOutgate(s)
-	s.udpsOutgate = createUDPSOutgate(s)
-	s.hrpcOutgate = createHRPCOutgate(s)
-	s.http1Outgate = createHTTP1Outgate(s)
-	s.http2Outgate = createHTTP2Outgate(s)
-	s.http3Outgate = createHTTP3Outgate(s)
-	s.hwebOutgate = createHWEBOutgate(s)
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signNamer] = s.namer
-	s.fixtures[signQUICOutgate] = s.quicOutgate
-	s.fixtures[signTCPSOutgate] = s.tcpsOutgate
-	s.fixtures[signUDPSOutgate] = s.udpsOutgate
-	s.fixtures[signHRPCOutgate] = s.hrpcOutgate
-	s.fixtures[signHTTP1Outgate] = s.http1Outgate
-	s.fixtures[signHTTP2Outgate] = s.http2Outgate
-	s.fixtures[signHTTP3Outgate] = s.http3Outgate
-	s.fixtures[signHWEBOutgate] = s.hwebOutgate
 
 	s.addons = make(compDict[Addon])
 	s.backends = make(compDict[Backend])
@@ -460,17 +436,6 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	// fixtures
-	s.IncSub(11)
-	go s.quicOutgate.OnShutdown()
-	go s.tcpsOutgate.OnShutdown()
-	go s.udpsOutgate.OnShutdown()
-	go s.hrpcOutgate.OnShutdown()
-	go s.http1Outgate.OnShutdown()
-	go s.http2Outgate.OnShutdown()
-	go s.http3Outgate.OnShutdown()
-	go s.hwebOutgate.OnShutdown()
-	s.WaitSubs()
-
 	s.IncSub(1)
 	s.fcache.OnShutdown()
 	s.WaitSubs()
@@ -700,14 +665,6 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 func (s *Stage) Clock() *clockFixture        { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
 func (s *Stage) Namer() *namerFixture        { return s.namer }
-func (s *Stage) QUICOutgate() *QUICOutgate   { return s.quicOutgate }
-func (s *Stage) TCPSOutgate() *TCPSOutgate   { return s.tcpsOutgate }
-func (s *Stage) UDPSOutgate() *UDPSOutgate   { return s.udpsOutgate }
-func (s *Stage) HRPCOutgate() *HRPCOutgate   { return s.hrpcOutgate }
-func (s *Stage) HTTP1Outgate() *HTTP1Outgate { return s.http1Outgate }
-func (s *Stage) HTTP2Outgate() *HTTP2Outgate { return s.http2Outgate }
-func (s *Stage) HTTP3Outgate() *HTTP3Outgate { return s.http3Outgate }
-func (s *Stage) HWEBOutgate() *HWEBOutgate   { return s.hwebOutgate }
 func (s *Stage) fixture(sign string) fixture { return s.fixtures[sign] }
 
 func (s *Stage) Addon(name string) Addon            { return s.addons[name] }
@@ -1059,6 +1016,7 @@ type Server_ struct {
 	colonPort       string        // like: ":9876"
 	colonPortBytes  []byte        // like: []byte(":9876")
 	udsMode         bool          // unix domain socket?
+	tlsMode         bool          // tls mode?
 	tlsConfig       *tls.Config   // set if is tls mode
 	readTimeout     time.Duration // read() timeout
 	writeTimeout    time.Duration // write() timeout
@@ -1093,9 +1051,8 @@ func (s *Server_) OnConfigure() {
 	}
 
 	// tlsMode
-	var tlsMode bool
-	s.ConfigureBool("tlsMode", &tlsMode, false)
-	if tlsMode {
+	s.ConfigureBool("tlsMode", &s.tlsMode, false)
+	if s.tlsMode {
 		s.tlsConfig = new(tls.Config)
 	}
 
@@ -1140,7 +1097,7 @@ func (s *Server_) Address() string             { return s.address }
 func (s *Server_) ColonPort() string           { return s.colonPort }
 func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
 func (s *Server_) UDSMode() bool               { return s.udsMode }
-func (s *Server_) TLSMode() bool               { return s.tlsConfig != nil }
+func (s *Server_) TLSMode() bool               { return s.tlsMode }
 func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *Server_) NumGates() int32             { return s.numGates }

@@ -61,6 +61,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 	}
 
 	if h.isForward {
+		/*
 		outgate2 := h.stage.http2Outgate
 		conn2, err2 = outgate2.FetchConn(req.Authority()) // TODO
 		if err2 != nil {
@@ -71,6 +72,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 			return true
 		}
 		defer conn2.closeConn() // TODO
+		*/
 	} else { // reverse
 		backend2 := h.backend.(*HTTP2Backend)
 		conn2, err2 = backend2.FetchConn()

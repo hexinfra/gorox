@@ -14,7 +14,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webClient is the interface for web outgates and web backends.
+// webClient is the interface for web backends.
 type webClient interface {
 	// Imports
 	_client
@@ -24,33 +24,6 @@ type webClient interface {
 	MaxContentSize() int64 // allowed
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
-}
-
-// webOutgate_ is the mixin for HTTP[1-3]Outgate and HWEBOutgate.
-type webOutgate_ struct {
-	// Mixins
-	outgate_
-	webBroker_ // as webClient
-	streamHolder_
-	contentSaver_ // so responses can save their large contents in local file system.
-	// States
-}
-
-func (f *webOutgate_) onCreate(name string, stage *Stage) {
-	f.outgate_.onCreate(name, stage)
-}
-
-func (f *webOutgate_) onConfigure(shell Component) {
-	f.outgate_.onConfigure()
-	f.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
-	f.streamHolder_.onConfigure(shell, 1000)
-	f.contentSaver_.onConfigure(shell, TmpsDir()+"/web/outgates/"+shell.Name())
-}
-func (f *webOutgate_) onPrepare(shell Component) {
-	f.outgate_.onPrepare()
-	f.webBroker_.onPrepare(shell)
-	f.streamHolder_.onPrepare(shell)
-	f.contentSaver_.onPrepare(shell, 0755)
 }
 
 // webBackend_ is the mixin for HTTP[1-3]Backend and HWEBBackend.
@@ -117,20 +90,22 @@ type clientConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	client webClient
 	// Conn states (zeros)
 }
 
 func (c *clientConn_) onGet(id int64, udsMode bool, tlsMode bool, client webClient) {
-	c.Conn_.onGet(id, udsMode, tlsMode, client)
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(client.AliveTimeout()))
+	c.webConn_.onGet()
+	c.client = client
 }
 func (c *clientConn_) onPut() {
+	c.client = nil
 	c.Conn_.onPut()
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
+	c.webConn_.onPut()
 }
 
-func (c *clientConn_) getClient() webClient { return c.client.(webClient) }
+func (c *clientConn_) getClient() webClient { return c.client }
 
 func (c *clientConn_) isUDS() bool { return c.udsMode }
 func (c *clientConn_) isTLS() bool { return c.tlsMode }

@@ -33,7 +33,7 @@ type webBroker interface {
 	SaveContentFilesDir() string
 }
 
-// webBroker_ is the mixin for webServer_, webOutgate_, and webBackend_.
+// webBroker_ is the mixin for webServer_ and webBackend_.
 type webBroker_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content
@@ -92,6 +92,15 @@ type webConn_ struct {
 	counter     atomic.Int64 // can be used to generate a random number
 	usedStreams atomic.Int32 // num of streams served or used
 	broken      atomic.Bool  // is conn broken?
+}
+
+func (c *webConn_) onGet() {
+	// Currently nothing
+}
+func (c *webConn_) onPut() {
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *webConn_) isBroken() bool { return c.broken.Load() }

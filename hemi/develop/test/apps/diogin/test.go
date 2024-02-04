@@ -24,31 +24,7 @@ func Main() {
 		return
 	}
 	stage.Start(1)
-	defer stage.Quit()
-
-	outgate := stage.HTTP1Outgate()
-
-	conn, err := outgate.Dial("httpwg.org:80", false)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer conn.Close()
-
-	stream := conn.UseStream()
-	defer conn.EndStream(stream)
-
-	req := stream.Request()
-	req.SetMethodURI("GET", "/", false)
-	req.AddHeader("host", "httpwg.org")
-
-	if err := stream.ExecuteExchan(); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	resp := stream.Response()
-	fmt.Printf("status=%d\n", resp.Status())
+	stage.Quit()
 }
 
 func must(err error) {

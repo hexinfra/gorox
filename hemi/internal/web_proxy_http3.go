@@ -61,6 +61,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 	}
 
 	if h.isForward {
+		/*
 		outgate3 := h.stage.http3Outgate
 		conn3, err3 = outgate3.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
 		if err3 != nil {
@@ -71,6 +72,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 			return true
 		}
 		defer conn3.closeConn() // TODO
+		*/
 	} else { // reverse
 		backend3 := h.backend.(*HTTP3Backend)
 		conn3, err3 = backend3.FetchConn()

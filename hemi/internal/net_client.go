@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// _client is the interface for outgates and backends.
+// _client is the interface for backends.
 type _client interface {
 	// Imports
 	// Methods
@@ -27,7 +27,7 @@ type _client interface {
 	nextConnID() int64
 }
 
-// _client_ is the mixin for outgates and backends.
+// _client_ is the mixin for backends.
 type _client_ struct {
 	// Mixins
 	Component_
@@ -92,39 +92,6 @@ func (c *_client_) ReadTimeout() time.Duration  { return c.readTimeout }
 func (c *_client_) AliveTimeout() time.Duration { return c.aliveTimeout }
 
 func (c *_client_) nextConnID() int64 { return c.connID.Add(1) }
-
-// outgate is the interface for outgates.
-type outgate interface {
-	// Methods
-	servedConns() int64
-	servedStreams() int64
-}
-
-// outgate_ is the mixin for outgates.
-type outgate_ struct {
-	// Mixins
-	_client_
-	// States
-	nServedStreams atomic.Int64
-	nServedExchans atomic.Int64
-}
-
-func (o *outgate_) onCreate(name string, stage *Stage) {
-	o._client_.onCreate(name, stage)
-}
-
-func (o *outgate_) onConfigure() {
-	o._client_.onConfigure()
-}
-func (o *outgate_) onPrepare() {
-	o._client_.onPrepare()
-}
-
-func (o *outgate_) servedStreams() int64 { return o.nServedStreams.Load() }
-func (o *outgate_) incServedStreams()    { o.nServedStreams.Add(1) }
-
-func (o *outgate_) servedExchans() int64 { return o.nServedExchans.Load() }
-func (o *outgate_) incServedExchans()    { o.nServedExchans.Add(1) }
 
 // Backend is a group of nodes.
 type Backend interface {
@@ -234,6 +201,7 @@ func (b *Backend_[N]) Maintain() { // runner
 
 // Node is a member of backend. Nodes are not components.
 type Node interface {
+	// Imports
 	// Methods
 	setAddress(address string)
 	setTLSMode()
@@ -259,8 +227,8 @@ type Node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		head Conn // head element
-		tail Conn // tail element
+		head conn // head element
+		tail conn // tail element
 		qnty int  // size of the list
 	}
 }
@@ -287,7 +255,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() Conn {
+func (n *Node_) pullConn() conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -301,7 +269,7 @@ func (n *Node_) pullConn() Conn {
 	list.qnty--
 	return conn
 }
-func (n *Node_) pushConn(conn Conn) {
+func (n *Node_) pushConn(conn conn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -336,11 +304,12 @@ func (n *Node_) shutdown() {
 
 var errNodeDown = errors.New("node is down")
 
-// Conn is the client conns.
-type Conn interface {
+// conn is the client conns.
+type conn interface {
+	// Imports
 	// Methods
-	getNext() Conn
-	setNext(next Conn)
+	getNext() conn
+	setNext(next conn)
 	isAlive() bool
 	closeConn()
 }
@@ -348,32 +317,29 @@ type Conn interface {
 // Conn_ is the mixin for client conns.
 type Conn_ struct {
 	// Conn states (non-zeros)
-	next    Conn      // the linked-list
+	next    conn      // the linked-list
 	id      int64     // the conn id
 	udsMode bool      // uds or not
-	tlsMode bool      // tls or not. required by outgate conns
-	client  _client   // associated client
+	tlsMode bool      // tls or not
 	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	lastWrite time.Time // deadline of last write operation
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *Conn_) onGet(id int64, udsMode bool, tlsMode bool, client _client) {
+func (c *Conn_) onGet(id int64, udsMode bool, tlsMode bool, expire time.Time) {
 	c.id = id
 	c.udsMode = udsMode
 	c.tlsMode = tlsMode
-	c.client = client
-	c.expire = time.Now().Add(client.AliveTimeout())
+	c.expire = expire
 }
 func (c *Conn_) onPut() {
-	c.client = nil
 	c.expire = time.Time{}
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
 
-func (c *Conn_) getNext() Conn     { return c.next }
-func (c *Conn_) setNext(next Conn) { c.next = next }
+func (c *Conn_) getNext() conn     { return c.next }
+func (c *Conn_) setNext(next conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }

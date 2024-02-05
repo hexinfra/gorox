@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General Web client implementation. See RFC 9110 and 9111.
+// General Web backend implementation. See RFC 9110 and 9111.
 
 package internal
 
@@ -14,13 +14,17 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webClient is the interface for web backends.
-type webClient interface {
+// webBackend is the interface for web backends.
+type webBackend interface {
 	// Imports
-	_client
 	streamHolder
 	contentSaver
 	// Methods
+	Stage() *Stage
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
 	MaxContentSize() int64 // allowed
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
@@ -30,7 +34,7 @@ type webClient interface {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webBroker_ // as webClient
+	webBroker_ // as webBackend
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
@@ -79,7 +83,7 @@ type clientConn interface {
 	// Imports
 	webConn
 	// Methods
-	getClient() webClient
+	getBackend() webBackend
 }
 
 // clientConn_ is the mixin for H[1-3]Conn and HConn.
@@ -90,32 +94,32 @@ type clientConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	client webClient
+	backend webBackend
 	// Conn states (zeros)
 }
 
-func (c *clientConn_) onGet(id int64, udsMode bool, tlsMode bool, client webClient) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(client.AliveTimeout()))
+func (c *clientConn_) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.webConn_.onGet()
-	c.client = client
+	c.backend = backend
 }
 func (c *clientConn_) onPut() {
-	c.client = nil
+	c.backend = nil
 	c.Conn_.onPut()
 	c.webConn_.onPut()
 }
 
-func (c *clientConn_) getClient() webClient { return c.client }
+func (c *clientConn_) getBackend() webBackend { return c.backend }
 
 func (c *clientConn_) isUDS() bool { return c.udsMode }
 func (c *clientConn_) isTLS() bool { return c.tlsMode }
 
 func (c *clientConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.getClient().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.getBackend().MaxStreamsPerConn()
 }
 
 func (c *clientConn_) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.client.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 // clientStream_ is the mixin for H[1-3]Stream and HExchan.

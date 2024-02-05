@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HWEB client implementation.
+// HWEB backend implementation.
 
 package internal
 
@@ -73,14 +73,14 @@ func (n *hwebNode) Maintain() { // runner
 // poolHConn is the client-side HWEB connection pool.
 var poolHConn sync.Pool
 
-func getHConn(id int64, udsMode bool, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) *HConn {
+func getHConn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) *HConn {
 	var conn *HConn
 	if x := poolHConn.Get(); x == nil {
 		conn = new(HConn)
 	} else {
 		conn = x.(*HConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, tcpConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, tcpConn)
 	return conn
 }
 func putHConn(conn *HConn) {
@@ -101,8 +101,8 @@ type HConn struct {
 	activeExchans int32 // concurrent exchans
 }
 
-func (c *HConn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *hwebNode, tcpConn *net.TCPConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, client)
+func (c *HConn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.tcpConn = tcpConn
 }

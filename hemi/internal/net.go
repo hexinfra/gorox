@@ -7,29 +7,24 @@
 
 package internal
 
-// _router is the interface for *QUICRouter, *TCPSRouter, *UDPSRouter.
+// _router is the interface for *QUICRouter, *TCPSRouter, and *UDPSRouter.
 type _router interface {
 	Component
 	serve() // runner
 }
 
-// _gate is the interface for *quicGate, *tcpsGate, *udpsGate.
+// _gate is the interface for *quicGate, *tcpsGate, and *udpsGate.
 type _gate interface {
 	open() error
 	shut() error
 }
 
-// _dealet is for QUICDealet, TCPSDealet, UDPSDealet.
+// _dealet is the interface for *QUICDealet, *TCPSDealet, and *UDPSDealet.
 type _dealet interface {
 	Component
 }
 
-// _case is the interface for *quicCase, *tcpsCase, *udpsCase.
+// _case is the interface for *quicCase, *tcpsCase, and *udpsCase.
 type _case interface {
 	Component
-}
-
-// Buffer
-type Buffer struct {
-	// TODO
 }

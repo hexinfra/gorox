@@ -16,10 +16,12 @@ import (
 	"time"
 )
 
-// _client is the interface for backends.
-type _client interface {
+// Backend is a group of nodes.
+type Backend interface {
 	// Imports
+	Component
 	// Methods
+	Maintain() // runner
 	Stage() *Stage
 	WriteTimeout() time.Duration
 	ReadTimeout() time.Duration
@@ -27,12 +29,16 @@ type _client interface {
 	nextConnID() int64
 }
 
-// _client_ is the mixin for backends.
-type _client_ struct {
+// Backend_ is the mixin for backends.
+type Backend_[N Node] struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage *Stage // current stage
+	stage   *Stage // current stage
+	creator interface {
+		createNode(id int32) N
+	} // if Go's generic supports new(N) then this is not needed.
+	nodes []N // nodes of this backend
 	// States
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write operation timeout
@@ -41,17 +47,18 @@ type _client_ struct {
 	connID       atomic.Int64  // next conn id
 }
 
-func (c *_client_) onCreate(name string, stage *Stage) {
-	c.MakeComp(name)
-	c.stage = stage
+func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
+	b.MakeComp(name)
+	b.stage = stage
+	b.creator = creator
 }
-func (c *_client_) OnShutdown() {
-	close(c.ShutChan) // notifies run() or Maintain()
+func (b *Backend_[N]) OnShutdown() {
+	close(b.ShutChan) // notifies run() or Maintain()
 }
 
-func (c *_client_) onConfigure() {
+func (b *Backend_[N]) onConfigure() {
 	// dialTimeout
-	c.ConfigureDuration("dialTimeout", &c.dialTimeout, func(value time.Duration) error {
+	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
 			return nil
 		}
@@ -59,7 +66,7 @@ func (c *_client_) onConfigure() {
 	}, 10*time.Second)
 
 	// writeTimeout
-	c.ConfigureDuration("writeTimeout", &c.writeTimeout, func(value time.Duration) error {
+	b.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
 		if value >= time.Second {
 			return nil
 		}
@@ -67,7 +74,7 @@ func (c *_client_) onConfigure() {
 	}, 30*time.Second)
 
 	// readTimeout
-	c.ConfigureDuration("readTimeout", &c.readTimeout, func(value time.Duration) error {
+	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
 		if value >= time.Second {
 			return nil
 		}
@@ -75,52 +82,13 @@ func (c *_client_) onConfigure() {
 	}, 30*time.Second)
 
 	// aliveTimeout
-	c.ConfigureDuration("aliveTimeout", &c.aliveTimeout, func(value time.Duration) error {
+	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".readTimeout has an invalid value")
 	}, 5*time.Second)
-}
-func (c *_client_) onPrepare() {
-	// Currently nothing.
-}
 
-func (c *_client_) Stage() *Stage               { return c.stage }
-func (c *_client_) WriteTimeout() time.Duration { return c.writeTimeout }
-func (c *_client_) ReadTimeout() time.Duration  { return c.readTimeout }
-func (c *_client_) AliveTimeout() time.Duration { return c.aliveTimeout }
-
-func (c *_client_) nextConnID() int64 { return c.connID.Add(1) }
-
-// Backend is a group of nodes.
-type Backend interface {
-	// Imports
-	Component
-	_client
-	// Methods
-	Maintain() // runner
-}
-
-// Backend_ is the mixin for backends.
-type Backend_[N Node] struct {
-	// Mixins
-	_client_
-	// Assocs
-	creator interface {
-		createNode(id int32) N
-	} // if Go's generic supports new(N) then this is not needed.
-	nodes []N // nodes of this backend
-	// States
-}
-
-func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b._client_.onCreate(name, stage)
-	b.creator = creator
-}
-
-func (b *Backend_[N]) onConfigure() {
-	b._client_.onConfigure()
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -178,7 +146,7 @@ func (b *Backend_[N]) onConfigure() {
 	}
 }
 func (b *Backend_[N]) onPrepare() {
-	b._client_.onPrepare()
+	// Currently nothing.
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -198,6 +166,13 @@ func (b *Backend_[N]) Maintain() { // runner
 	}
 	b.stage.SubDone()
 }
+
+func (b *Backend_[N]) Stage() *Stage               { return b.stage }
+func (b *Backend_[N]) WriteTimeout() time.Duration { return b.writeTimeout }
+func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
+func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
+
+func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
 // Node is a member of backend. Nodes are not components.
 type Node interface {

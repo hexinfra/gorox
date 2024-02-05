@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webBroker is a webServer or webClient which keeps its connections and streams.
+// webBroker is a webServer or webBackend which keeps its connections and streams.
 type webBroker interface {
 	// Methods
 	Stage() *Stage               // current stage

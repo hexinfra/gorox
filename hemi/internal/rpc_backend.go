@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General RPC client implementation.
+// General RPC backend implementation.
 
 package internal
 
@@ -11,13 +11,17 @@ import (
 	"time"
 )
 
-// rpcClient
-type rpcClient interface {
+// rpcBackend
+type rpcBackend interface {
 	// Imports
-	_client
 	streamHolder
 	contentSaver
 	// Methods
+	Stage() *Stage
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
 }
 
 // rpcBackend_
@@ -64,22 +68,22 @@ type clientCall_ struct {
 	// Call states (stocks)
 	// Call states (controlled)
 	// Call states (non-zeros)
-	client rpcClient
+	backend rpcBackend
 	// Call states (zeros)
 }
 
-func (c *clientCall_) onGet(id int64, udsMode bool, tlsMode bool, client rpcClient) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(client.AliveTimeout()))
+func (c *clientCall_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	// c.rpcCall_.onGet()?
-	c.client = client
+	c.backend = backend
 }
 func (c *clientCall_) onPut() {
-	c.client = nil
+	c.backend = nil
 	c.Conn_.onPut()
 	// c.rpcCall_.onPut()?
 }
 
-func (c *clientCall_) getClient() rpcClient { return c.client }
+func (c *clientCall_) getBackend() rpcBackend { return c.backend }
 
 // clientReq is the client-side RPC request.
 type clientReq interface {

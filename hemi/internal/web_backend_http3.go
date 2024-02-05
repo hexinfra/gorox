@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/3 client implementation. See RFC 9114 and 9204.
+// HTTP/3 backend implementation. See RFC 9114 and 9204.
 
 // For simplicity, HTTP/3 Server Push is not supported.
 
@@ -100,14 +100,14 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the client-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		conn = new(H3Conn)
 	} else {
 		conn = x.(*H3Conn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, quixConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, quixConn)
 	return conn
 }
 func putH3Conn(conn *H3Conn) {
@@ -128,8 +128,8 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *http3Node, quixConn *quix.Conn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, client)
+func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http3Node, quixConn *quix.Conn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.quixConn = quixConn
 }
@@ -216,7 +216,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.clientStream_.onEnd()
 }
 
-func (s *H3Stream) webBroker() webBroker { return s.conn.getClient() }
+func (s *H3Stream) webBroker() webBroker { return s.conn.getBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 

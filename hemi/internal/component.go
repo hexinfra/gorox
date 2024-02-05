@@ -343,21 +343,21 @@ type Stage struct {
 	// Mixins
 	Component_
 	// Assocs
-	fixtures     compDict[fixture]     // indexed by sign
-	clock        *clockFixture         // for fast accessing
-	fcache       *fcacheFixture        // for fast accessing
-	namer        *namerFixture         // for fast accessing
-	addons       compDict[Addon]       // indexed by addonName
-	backends     compDict[Backend]     // indexed by backendName
-	quicRouters  compDict[*QUICRouter] // indexed by routerName
-	tcpsRouters  compDict[*TCPSRouter] // indexed by routerName
-	udpsRouters  compDict[*UDPSRouter] // indexed by routerName
-	staters      compDict[Stater]      // indexed by staterName
-	cachers      compDict[Cacher]      // indexed by cacherName
-	webapps      compDict[*Webapp]     // indexed by webappName
-	services     compDict[*Service]    // indexed by serviceName
-	servers      compDict[Server]      // indexed by serverName
-	cronjobs     compDict[Cronjob]     // indexed by cronjobName
+	fixtures    compDict[fixture]     // indexed by sign
+	clock       *clockFixture         // for fast accessing
+	fcache      *fcacheFixture        // for fast accessing
+	namer       *namerFixture         // for fast accessing
+	addons      compDict[Addon]       // indexed by addonName
+	backends    compDict[Backend]     // indexed by backendName
+	quicRouters compDict[*QUICRouter] // indexed by routerName
+	tcpsRouters compDict[*TCPSRouter] // indexed by routerName
+	udpsRouters compDict[*UDPSRouter] // indexed by routerName
+	staters     compDict[Stater]      // indexed by staterName
+	cachers     compDict[Cacher]      // indexed by cacherName
+	webapps     compDict[*Webapp]     // indexed by webappName
+	services    compDict[*Service]    // indexed by serviceName
+	servers     compDict[Server]      // indexed by serverName
+	cronjobs    compDict[Cronjob]     // indexed by cronjobName
 	// States
 	cpuFile string
 	hepFile string

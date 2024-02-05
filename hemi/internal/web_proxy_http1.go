@@ -62,20 +62,20 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 
 	if h.isForward {
 		/*
-		outgate1 := h.stage.http1Outgate
-		if req.IsHTTPS() {
-			conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
-		} else {
-			conn1, err1 = outgate1.DialTCP(req.Hostname() + req.ColonPort())
-		}
-		if err1 != nil {
-			if Debug() >= 1 {
-				Println(err1.Error())
+			outgate1 := h.stage.http1Outgate
+			if req.IsHTTPS() {
+				conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
+			} else {
+				conn1, err1 = outgate1.DialTCP(req.Hostname() + req.ColonPort())
 			}
-			resp.SendBadGateway(nil)
-			return true
-		}
-		defer conn1.Close()
+			if err1 != nil {
+				if Debug() >= 1 {
+					Println(err1.Error())
+				}
+				resp.SendBadGateway(nil)
+				return true
+			}
+			defer conn1.Close()
 		*/
 	} else { // reverse
 		backend1 := h.backend.(*HTTP1Backend)

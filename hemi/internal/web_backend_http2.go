@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/2 client implementation. See RFC 9113 and 7541.
+// HTTP/2 backend implementation. See RFC 9113 and 7541.
 
 // For simplicity, HTTP/2 Server Push is not supported.
 
@@ -103,14 +103,14 @@ func (n *http2Node) storeConn(h2Conn *H2Conn) {
 // poolH2Conn is the client-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		conn = new(H2Conn)
 	} else {
 		conn = x.(*H2Conn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, netConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
 	return conn
 }
 func putH2Conn(conn *H2Conn) {
@@ -132,8 +132,8 @@ type H2Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, client webClient, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, client)
+func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, backend webBackend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -249,7 +249,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.clientStream_.onEnd()
 }
 
-func (s *H2Stream) webBroker() webBroker { return s.conn.getClient() }
+func (s *H2Stream) webBroker() webBroker { return s.conn.getBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

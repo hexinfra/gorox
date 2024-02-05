@@ -139,8 +139,6 @@ type (
 )
 
 type (
-	Buffer = internal.Buffer
-
 	QUICRouter = internal.QUICRouter
 	QUICDealet = internal.QUICDealet
 	QUICConn   = internal.QUICConn

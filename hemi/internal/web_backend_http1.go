@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP/1 client implementation. See RFC 9112.
+// HTTP/1 backend implementation. See RFC 9112.
 
 // Only HTTP/1.1 is used. For simplicity, HTTP/1.1 pipelining is not used.
 
@@ -192,7 +192,7 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the client-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		conn = new(H1Conn)
@@ -206,7 +206,7 @@ func getH1Conn(id int64, udsMode bool, tlsMode bool, client webClient, node *htt
 	} else {
 		conn = x.(*H1Conn)
 	}
-	conn.onGet(id, udsMode, tlsMode, client, node, netConn, rawConn)
+	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
 	return conn
 }
 func putH1Conn(conn *H1Conn) {
@@ -230,8 +230,8 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, client webClient, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, client)
+func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -290,7 +290,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.clientStream_.onEnd()
 }
 
-func (s *H1Stream) webBroker() webBroker { return s.conn.getClient() }
+func (s *H1Stream) webBroker() webBroker { return s.conn.getBackend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

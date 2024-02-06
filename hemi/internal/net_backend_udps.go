@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDPS (UDP/TLS/UDS) network client implementation.
+// UDPS (UDP/TLS/UDS) network backend implementation.
 
 package internal
 
@@ -119,18 +119,18 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 var poolUConn sync.Pool
 
 func getUConn(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
-	var conn *UConn
+	var uConn *UConn
 	if x := poolUConn.Get(); x == nil {
-		conn = new(UConn)
+		uConn = new(UConn)
 	} else {
-		conn = x.(*UConn)
+		uConn = x.(*UConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
-	return conn
+	uConn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	return uConn
 }
-func putUConn(conn *UConn) {
-	conn.onPut()
-	poolUConn.Put(conn)
+func putUConn(uConn *UConn) {
+	uConn.onPut()
+	poolUConn.Put(uConn)
 }
 
 // UConn

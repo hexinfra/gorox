@@ -44,8 +44,6 @@ func (h *http3Proxy) OnPrepare() {
 func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	var (
 		content  any
-		conn3    *H3Conn
-		err3     error
 		content3 any
 	)
 
@@ -60,31 +58,16 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 		}
 	}
 
-	if h.isForward {
-		/*
-			outgate3 := h.stage.http3Outgate
-			conn3, err3 = outgate3.FetchConn(req.Authority(), req.IsHTTPS()) // TODO
-			if err3 != nil {
-				if Debug() >= 1 {
-					Println(err3.Error())
-				}
-				resp.SendBadGateway(nil)
-				return true
-			}
-			defer conn3.closeConn() // TODO
-		*/
-	} else { // reverse
-		backend3 := h.backend.(*HTTP3Backend)
-		conn3, err3 = backend3.FetchConn()
-		if err3 != nil {
-			if Debug() >= 1 {
-				Println(err3.Error())
-			}
-			resp.SendBadGateway(nil)
-			return true
+	backend3 := h.backend.(*HTTP3Backend)
+	conn3, err3 := backend3.FetchConn()
+	if err3 != nil {
+		if Debug() >= 1 {
+			Println(err3.Error())
 		}
-		defer backend3.StoreConn(conn3)
+		resp.SendBadGateway(nil)
+		return true
 	}
+	defer backend3.StoreConn(conn3)
 
 	stream3 := conn3.FetchStream()
 	defer conn3.StoreStream(stream3)
@@ -206,8 +189,5 @@ func (s *sock3Proxy) OnPrepare() {
 
 func (s *sock3Proxy) Serve(req Request, sock Socket) { // forward or reverse
 	// TODO(diogin): Implementation
-	if s.isForward {
-	} else {
-	}
 	sock.Close()
 }

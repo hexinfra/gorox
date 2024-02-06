@@ -1109,6 +1109,7 @@ type Gate interface {
 	ID() int32
 	IsShut() bool
 	shut() error
+	onConnClosed()
 }
 
 // Gate_ is the mixin for router gates and server gates.
@@ -1143,6 +1144,11 @@ func (g *Gate_) IsShut() bool { return g.isShut.Load() }
 
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
+
+func (g *Gate_) onConnClosed() {
+	g.DecConns()
+	g.SubDone()
+}
 
 // Cronjob component
 type Cronjob interface {

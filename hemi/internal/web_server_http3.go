@@ -76,7 +76,7 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Mixins
-	webGate_
+	Gate_
 	// Assocs
 	server *http3Server
 	// States
@@ -84,7 +84,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
-	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -140,18 +140,18 @@ func (g *http3Gate) justClose(quixConn *quix.Conn) {
 var poolHTTP3Conn sync.Pool
 
 func getHTTP3Conn(id int64, server *http3Server, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
-	var conn *http3Conn
+	var httpConn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
-		conn = new(http3Conn)
+		httpConn = new(http3Conn)
 	} else {
-		conn = x.(*http3Conn)
+		httpConn = x.(*http3Conn)
 	}
-	conn.onGet(id, server, gate, quixConn)
-	return conn
+	httpConn.onGet(id, server, gate, quixConn)
+	return httpConn
 }
-func putHTTP3Conn(conn *http3Conn) {
-	conn.onPut()
-	poolHTTP3Conn.Put(conn)
+func putHTTP3Conn(httpConn *http3Conn) {
+	httpConn.onPut()
+	poolHTTP3Conn.Put(httpConn)
 }
 
 // http3Conn is the server-side HTTP/3 connection.
@@ -279,7 +279,7 @@ func (s *http3Stream) execute() { // runner
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) webBroker() webBroker { return s.conn.getServer() }
+func (s *http3Stream) webBroker() webBroker { return s.conn.webServer() }
 func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 

@@ -204,10 +204,6 @@ func (g *tcpsGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.onConnClosed()
 }
-func (g *tcpsGate) onConnClosed() {
-	g.DecConns()
-	g.SubDone()
-}
 
 // TCPSDealet
 type TCPSDealet interface {
@@ -312,18 +308,18 @@ var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []b
 var poolTCPSConn sync.Pool
 
 func getTCPSConn(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
-	var conn *TCPSConn
+	var tcpsConn *TCPSConn
 	if x := poolTCPSConn.Get(); x == nil {
-		conn = new(TCPSConn)
+		tcpsConn = new(TCPSConn)
 	} else {
-		conn = x.(*TCPSConn)
+		tcpsConn = x.(*TCPSConn)
 	}
-	conn.onGet(id, stage, router, gate, netConn, rawConn)
-	return conn
+	tcpsConn.onGet(id, stage, router, gate, netConn, rawConn)
+	return tcpsConn
 }
-func putTCPSConn(conn *TCPSConn) {
-	conn.onPut()
-	poolTCPSConn.Put(conn)
+func putTCPSConn(tcpsConn *TCPSConn) {
+	tcpsConn.onPut()
+	poolTCPSConn.Put(tcpsConn)
 }
 
 // TCPSConn is a TCP/TLS/UDS connection coming from TCPSRouter.

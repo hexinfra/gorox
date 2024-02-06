@@ -68,14 +68,14 @@ func (s *hwebServer) Serve() { // runner
 // hwebGate is a gate of hwebServer.
 type hwebGate struct {
 	// Mixins
-	webGate_
+	Gate_
 	// Assocs
 	server *hwebServer
 	// States
 }
 
 func (g *hwebGate) init(server *hwebServer, id int32) {
-	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -97,18 +97,18 @@ func (g *hwebGate) serve() { // runner
 var poolHWEBConn sync.Pool
 
 func getHWEBConn(id int64, server *hwebServer, gate *hwebGate, tcpConn *net.TCPConn) *hwebConn {
-	var conn *hwebConn
+	var httpConn *hwebConn
 	if x := poolHWEBConn.Get(); x == nil {
-		conn = new(hwebConn)
+		httpConn = new(hwebConn)
 	} else {
-		conn = x.(*hwebConn)
+		httpConn = x.(*hwebConn)
 	}
-	conn.onGet(id, server, gate, tcpConn)
-	return conn
+	httpConn.onGet(id, server, gate, tcpConn)
+	return httpConn
 }
-func putHWEBConn(conn *hwebConn) {
-	conn.onPut()
-	poolHWEBConn.Put(conn)
+func putHWEBConn(httpConn *hwebConn) {
+	httpConn.onPut()
+	poolHWEBConn.Put(httpConn)
 }
 
 // hwebConn is the server-side HWEB connection.

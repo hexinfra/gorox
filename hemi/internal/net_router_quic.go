@@ -228,18 +228,18 @@ var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []b
 var poolQUICConn sync.Pool
 
 func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) *QUICConn {
-	var conn *QUICConn
+	var quicConn *QUICConn
 	if x := poolQUICConn.Get(); x == nil {
-		conn = new(QUICConn)
+		quicConn = new(QUICConn)
 	} else {
-		conn = x.(*QUICConn)
+		quicConn = x.(*QUICConn)
 	}
-	conn.onGet(id, stage, router, gate, quixConn)
-	return conn
+	quicConn.onGet(id, stage, router, gate, quixConn)
+	return quicConn
 }
-func putQUICConn(conn *QUICConn) {
-	conn.onPut()
-	poolQUICConn.Put(conn)
+func putQUICConn(quicConn *QUICConn) {
+	quicConn.onPut()
+	poolQUICConn.Put(quicConn)
 }
 
 // QUICConn is a QUIC connection coming from QUICRouter.

@@ -120,3 +120,87 @@ type Bundlet_ struct {
 
 func (b *Bundlet_) dispatch(req serverReq, resp serverResp) {
 }
+
+// GRPCBridge is the interface for all gRPC server bridges.
+// Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
+type GRPCBridge interface {
+	// Imports
+	rpcServer
+	// Methods
+	GRPCServer() any // may be a *grpc.Server
+}
+
+// ThriftBridge is the interface for all Thrift server bridges.
+// Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
+type ThriftBridge interface {
+	// Imports
+	rpcServer
+	// Methods
+	ThriftServer() any // may be a thrift.TServer?
+}
+
+// rpcBroker
+type rpcBroker interface {
+	// TODO
+}
+
+// rpcServer
+type rpcServer interface {
+	// Imports
+	Server
+	// Methods
+	BindServices()
+}
+
+// rpcBackend
+type rpcBackend interface {
+	// Imports
+	streamHolder
+	contentSaver
+	// Methods
+	Stage() *Stage
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
+
+// rpcWire
+type rpcWire interface {
+	// TODO
+}
+
+// rpcCall is the interface for *hrpcCall and *HRCall.
+type rpcCall interface {
+	// TODO
+}
+
+// rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
+type rpcIn interface {
+	// TODO
+}
+
+// rpcOut is the interface for *hrpcResp and *HReq. Used as shell by rpcOut_.
+type rpcOut interface {
+	// TODO
+}
+
+// serverReq is the server-side RPC request.
+type serverReq interface {
+	Service() *Service
+	// TODO
+}
+
+// backendReq is the backend-side RPC request.
+type backendReq interface {
+}
+
+// serverResp is the server-side RPC response.
+type serverResp interface {
+	Req() serverReq
+	// TODO
+}
+
+// backendResp is the backend-side RPC response.
+type backendResp interface {
+}

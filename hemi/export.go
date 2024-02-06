@@ -132,10 +132,10 @@ type (
 	H3Socket     = internal.H3Socket
 
 	HWEBBackend = internal.HWEBBackend
-	HConn       = internal.HConn
-	HExchan     = internal.HExchan
-	HRequest    = internal.HRequest
-	HResponse   = internal.HResponse
+	HWConn      = internal.HWConn
+	HWExchan    = internal.HWExchan
+	HWRequest   = internal.HWRequest
+	HWResponse  = internal.HWResponse
 )
 
 type (

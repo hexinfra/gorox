@@ -1,5 +1,4 @@
 http2Proxy "h2p1" {
-	.proxyMode = "reverse"
 	.toBackend = "proxy_name"
 	.viaName = "gorox"
 	.bufferClientContent = true

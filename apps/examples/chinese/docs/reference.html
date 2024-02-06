@@ -344,7 +344,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		rule { // match all url
 			http1Proxy {
 				.toBackend = "h1b"
-				.proxyMode = "reverse"
 			}
 		}
 	}
@@ -1152,7 +1151,6 @@ stage {
 			<code class="pre">语法：http1Proxy [name] { ... }
 
 http1Proxy {
-	.proxyMode = "reverse"
 	.toBackend = "proxy_name"
 	.viaName = "gorox"
 	.bufferClientContent = true
@@ -1164,13 +1162,6 @@ http1Proxy {
 	]
 }</code>
 			<ul>
-				<li>
-					<p>.proxyMode 代理模式。</p>
-					<code>语法：.proxyMode = ""
-						默认值： ""
-						取值范围： forward | reverse
-					</code>
-				</li>
 				<li>
 					<p>.toBackend 配置代理的名称</p>
 					<code>语法：  .toBackend = "backendName"

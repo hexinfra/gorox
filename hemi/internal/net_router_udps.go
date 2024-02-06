@@ -249,18 +249,18 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 var poolUDPSConn sync.Pool
 
 func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
-	var conn *UDPSConn
+	var udpsConn *UDPSConn
 	if x := poolUDPSConn.Get(); x == nil {
-		conn = new(UDPSConn)
+		udpsConn = new(UDPSConn)
 	} else {
-		conn = x.(*UDPSConn)
+		udpsConn = x.(*UDPSConn)
 	}
-	conn.onGet(id, stage, router, gate, udpConn, rawConn)
-	return conn
+	udpsConn.onGet(id, stage, router, gate, udpConn, rawConn)
+	return udpsConn
 }
-func putUDPSConn(conn *UDPSConn) {
-	conn.onPut()
-	poolUDPSConn.Put(conn)
+func putUDPSConn(udpsConn *UDPSConn) {
+	udpsConn.onPut()
+	poolUDPSConn.Put(udpsConn)
 }
 
 // UDPSConn

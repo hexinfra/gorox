@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-// rpcBroker
-type rpcBroker interface {
-	// TODO
-}
-
 // rpcBroker_
 type rpcBroker_ struct {
 	// TODO
@@ -26,9 +21,13 @@ func (b *rpcBroker_) onConfigure(shell Component, sendTimeout time.Duration, rec
 func (b *rpcBroker_) onPrepare(shell Component) {
 }
 
-// rpcCall is the interface for *hrpcCall and *HCall.
-type rpcCall interface {
-	// TODO
+// rpcWire_
+type rpcWire_ struct {
+}
+
+func (w *rpcWire_) onGet() {
+}
+func (w *rpcWire_) onPut() {
 }
 
 // rpcCall_ is the mixin for hrpcCall and HCall.
@@ -48,12 +47,7 @@ func (c *rpcCall_) onEnd() {
 func (c *rpcCall_) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *rpcCall_) unsafeMake(size int) []byte { return c.region.Make(size) }
 
-// rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
-type rpcIn interface {
-	// TODO
-}
-
-// rpcIn_ is the mixin for serverReq_ and clientResp_.
+// rpcIn_ is the mixin for serverReq_ and backendResp_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
@@ -64,12 +58,7 @@ type rpcIn0 struct {
 	arrayKind int8 // kind of current r.array. see arrayKindXXX
 }
 
-// rpcOut is the interface for *hrpcResp and *HReq. Used as shell by rpcOut_.
-type rpcOut interface {
-	// TODO
-}
-
-// rpcOut_ is the mixin for serverResp_ and clientReq_.
+// rpcOut_ is the mixin for serverResp_ and backendReq_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

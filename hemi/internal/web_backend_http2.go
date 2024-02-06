@@ -60,19 +60,20 @@ func (b *HTTP2Backend) StoreConn(conn *H2Conn) {
 // http2Node
 type http2Node struct {
 	// Mixins
-	webNode_
+	Node_
 	// Assocs
 	backend *HTTP2Backend
 	// States
 }
 
 func (n *http2Node) init(id int32, backend *HTTP2Backend) {
-	n.webNode_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
 func (n *http2Node) setTLSMode() {
-	n.webNode_.setTLSMode()
+	n.Node_.setTLSMode()
+	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
 }
 
@@ -100,28 +101,28 @@ func (n *http2Node) storeConn(h2Conn *H2Conn) {
 	// TODO
 }
 
-// poolH2Conn is the client-side HTTP/2 connection pool.
+// poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
 func getH2Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
-	var conn *H2Conn
+	var h2Conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
-		conn = new(H2Conn)
+		h2Conn = new(H2Conn)
 	} else {
-		conn = x.(*H2Conn)
+		h2Conn = x.(*H2Conn)
 	}
-	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
-	return conn
+	h2Conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	return h2Conn
 }
-func putH2Conn(conn *H2Conn) {
-	conn.onPut()
-	poolH2Conn.Put(conn)
+func putH2Conn(h2Conn *H2Conn) {
+	h2Conn.onPut()
+	poolH2Conn.Put(h2Conn)
 }
 
 // H2Conn
 type H2Conn struct {
 	// Mixins
-	clientConn_
+	backendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -133,13 +134,13 @@ type H2Conn struct {
 }
 
 func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, backend webBackend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
+	c.backendConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *H2Conn) onPut() {
-	c.clientConn_.onPut()
+	c.backendConn_.onPut()
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
@@ -217,7 +218,7 @@ func putH2Stream(stream *H2Stream) {
 // H2Stream
 type H2Stream struct {
 	// Mixins
-	clientStream_
+	backendStream_
 	// Assocs
 	request  H2Request
 	response H2Response
@@ -234,7 +235,7 @@ type h2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
-	s.clientStream_.onUse()
+	s.backendStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -246,10 +247,10 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.socket = nil
 	s.conn = nil
 	s.h2Stream0 = h2Stream0{}
-	s.clientStream_.onEnd()
+	s.backendStream_.onEnd()
 }
 
-func (s *H2Stream) webBroker() webBroker { return s.conn.getBackend() }
+func (s *H2Stream) webBroker() webBroker { return s.conn.webBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -305,10 +306,10 @@ func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-// H2Request is the client-side HTTP/2 request.
+// H2Request is the backend-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building
 	// Mixins
-	clientRequest_
+	backendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -365,10 +366,10 @@ func (r *H2Request) finalizeVague() error {
 func (r *H2Request) addedHeaders() []byte { return nil } // TODO
 func (r *H2Request) fixedHeaders() []byte { return nil } // TODO
 
-// H2Response is the client-side HTTP/2 response.
+// H2Response is the backend-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing
 	// Mixins
-	clientResponse_
+	backendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -380,10 +381,10 @@ func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2
 // poolH2Socket
 var poolH2Socket sync.Pool
 
-// H2Socket is the client-side HTTP/2 websocket.
+// H2Socket is the backend-side HTTP/2 websocket.
 type H2Socket struct {
 	// Mixins
-	clientSocket_
+	backendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

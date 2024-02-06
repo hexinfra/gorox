@@ -62,19 +62,20 @@ func (b *HTTP1Backend) StoreConn(conn *H1Conn) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Mixins
-	webNode_
+	Node_
 	// Assocs
 	backend *HTTP1Backend
 	// States
 }
 
 func (n *http1Node) init(id int32, backend *HTTP1Backend) {
-	n.webNode_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
 func (n *http1Node) setTLSMode() {
-	n.webNode_.setTLSMode()
+	n.Node_.setTLSMode()
+	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }
 
@@ -189,14 +190,14 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 	n.SubDone()
 }
 
-// poolH1Conn is the client-side HTTP/1 connection pool.
+// poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
 func getH1Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
-	var conn *H1Conn
+	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
-		conn = new(H1Conn)
-		stream := &conn.stream
+		h1Conn = new(H1Conn)
+		stream := &h1Conn.stream
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -204,26 +205,26 @@ func getH1Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *h
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		conn = x.(*H1Conn)
+		h1Conn = x.(*H1Conn)
 	}
-	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
-	return conn
+	h1Conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	return h1Conn
 }
-func putH1Conn(conn *H1Conn) {
-	conn.onPut()
-	poolH1Conn.Put(conn)
+func putH1Conn(h1Conn *H1Conn) {
+	h1Conn.onPut()
+	poolH1Conn.Put(h1Conn)
 }
 
-// H1Conn is the client-side HTTP/1 connection.
+// H1Conn is the backend-side HTTP/1 connection.
 type H1Conn struct {
 	// Mixins
-	clientConn_
+	backendConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *http1Node      // associated node if client is http backend
+	node     *http1Node      // associated node
 	netConn  net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn  syscall.RawConn // used when netConn is TCP or UDS
 	keepConn bool            // keep the connection after current stream? true by default
@@ -231,7 +232,7 @@ type H1Conn struct {
 }
 
 func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
+	c.backendConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -241,7 +242,7 @@ func (c *H1Conn) onPut() {
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.clientConn_.onPut()
+	c.backendConn_.onPut()
 }
 
 func (c *H1Conn) UseStream() *H1Stream {
@@ -261,14 +262,14 @@ func (c *H1Conn) Close() error { // only used by clients of dial
 
 func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store
 
-// H1Stream is the client-side HTTP/1 stream.
+// H1Stream is the backend-side HTTP/1 stream.
 type H1Stream struct {
 	// Mixins
-	clientStream_
+	backendStream_
 	// Assocs
-	request  H1Request  // the client-side http/1 request
-	response H1Response // the client-side http/1 response
-	socket   *H1Socket  // the client-side http/1 socket
+	request  H1Request  // the backend-side http/1 request
+	response H1Response // the backend-side http/1 response
+	socket   *H1Socket  // the backend-side http/1 socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
@@ -277,7 +278,7 @@ type H1Stream struct {
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.clientStream_.onUse()
+	s.backendStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -287,10 +288,10 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.clientStream_.onEnd()
+	s.backendStream_.onEnd()
 }
 
-func (s *H1Stream) webBroker() webBroker { return s.conn.getBackend() }
+func (s *H1Stream) webBroker() webBroker { return s.conn.webBackend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -354,10 +355,10 @@ func (s *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFu
 func (s *H1Stream) isBroken() bool { return s.conn.isBroken() }
 func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 
-// H1Request is the client-side HTTP/1 request.
+// H1Request is the backend-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
 	// Mixins
-	clientRequest_
+	backendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -491,10 +492,10 @@ func (r *H1Request) finalizeVague() error { return r.finalizeVague1() }
 func (r *H1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
-// H1Response is the client-side HTTP/1 response.
+// H1Response is the backend-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
 	// Mixins
-	clientResponse_
+	backendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -537,7 +538,7 @@ func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ re
 			}
 		}
 	}
-	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // HTTP/1.0 is not supported in client side
+	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // HTTP/1.0 is not supported in backend side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}
@@ -642,10 +643,10 @@ func (r *H1Response) readContent() (p []byte, err error) { return r.readContent1
 // poolH1Socket
 var poolH1Socket sync.Pool
 
-// H1Socket is the client-side HTTP/1 websocket.
+// H1Socket is the backend-side HTTP/1 websocket.
 type H1Socket struct {
 	// Mixins
-	clientSocket_
+	backendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

@@ -11,32 +11,12 @@ import (
 	"strings"
 )
 
-// Cacher component is the interface to storages of Web caching. See RFC 9111.
-type Cacher interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, wobject *Wobject)
-	Get(key []byte) (wobject *Wobject)
-	Del(key []byte) bool
-}
-
 // Cacher_
 type Cacher_ struct {
 	// Mixins
 	Component_
 	// Assocs
 	// States
-}
-
-// Wobject is a Web object in Cacher.
-type Wobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
 }
 
 // exchanProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
@@ -52,11 +32,10 @@ type exchanProxy_ struct {
 	hostname            []byte            // hostname used in ":authority" and "host" header
 	colonPort           []byte            // colonPort used in ":authority" and "host" header
 	viaName             []byte            // ...
-	isForward           bool              // reverse if false
 	bufferClientContent bool              // buffer client content into tempFile?
 	bufferServerContent bool              // buffer server content into tempFile?
-	addRequestHeaders   map[string]Value  // headers appended to client request
-	delRequestHeaders   [][]byte          // client request headers to delete
+	addRequestHeaders   map[string]Value  // headers appended to backend request
+	delRequestHeaders   [][]byte          // backend request headers to delete
 	addResponseHeaders  map[string]string // headers appended to server response
 	delResponseHeaders  [][]byte          // server response headers to delete
 }
@@ -68,17 +47,6 @@ func (h *exchanProxy_) onCreate(name string, stage *Stage, webapp *Webapp) {
 }
 
 func (h *exchanProxy_) onConfigure() {
-	// proxyMode
-	if v, ok := h.Find("proxyMode"); ok {
-		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
-			h.isForward = mode == "forward"
-		} else {
-			UseExitln("invalid proxyMode")
-		}
-	} else {
-		h.isForward = false
-	}
-
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -90,11 +58,8 @@ func (h *exchanProxy_) onConfigure() {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if !h.isForward {
+	} else {
 		UseExitln("toBackend is required for reverse proxy")
-	}
-	if h.isForward && !h.webapp.isDefault {
-		UseExitln("forward proxy can be bound to default webapp only")
 	}
 
 	// withCacher
@@ -165,7 +130,6 @@ type socketProxy_ struct {
 	webapp  *Webapp // the webapp to which the proxy belongs
 	backend Backend // if works as forward proxy, this is nil
 	// States
-	isForward bool // reverse if false
 }
 
 func (s *socketProxy_) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -175,17 +139,6 @@ func (s *socketProxy_) onCreate(name string, stage *Stage, webapp *Webapp) {
 }
 
 func (s *socketProxy_) onConfigure() {
-	// proxyMode
-	if v, ok := s.Find("proxyMode"); ok {
-		if mode, ok := v.String(); ok && (mode == "forward" || mode == "reverse") {
-			s.isForward = mode == "forward"
-		} else {
-			UseExitln("invalid proxyMode")
-		}
-	} else {
-		s.isForward = false
-	}
-
 	// toBackend
 	if v, ok := s.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -197,11 +150,8 @@ func (s *socketProxy_) onConfigure() {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if !s.isForward {
+	} else {
 		UseExitln("toBackend is required for reverse proxy")
-	}
-	if s.isForward && !s.webapp.isDefault {
-		UseExitln("forward proxy can be bound to default webapp only")
 	}
 }
 func (s *socketProxy_) onPrepare() {

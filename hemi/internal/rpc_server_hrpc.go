@@ -21,7 +21,25 @@ func (s *hrpcServer) Serve() { // runner
 // hrpcGate is a gate of hrpcServer.
 type hrpcGate struct {
 	// Mixins
-	rpcGate_
+	Gate_
+	// Assocs
+	server *hrpcServer
+	// States
+}
+
+func (g *hrpcGate) init(server *hrpcServer, id int32) {
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.server = server
+}
+
+func (g *hrpcGate) open() error {
+	// TODO
+	return nil
+}
+func (g *hrpcGate) shut() error {
+	g.MarkShut()
+	// TODO
+	return nil
 }
 
 func (g *hrpcGate) serve() { // runner

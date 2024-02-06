@@ -44,8 +44,6 @@ func (h *http1Proxy) OnPrepare() {
 func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
 	var (
 		content  any
-		conn1    *H1Conn
-		err1     error
 		content1 any
 	)
 
@@ -60,35 +58,16 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 		}
 	}
 
-	if h.isForward {
-		/*
-			outgate1 := h.stage.http1Outgate
-			if req.IsHTTPS() {
-				conn1, err1 = outgate1.DialTLS(req.Hostname()+req.ColonPort(), nil) // TODO
-			} else {
-				conn1, err1 = outgate1.DialTCP(req.Hostname() + req.ColonPort())
-			}
-			if err1 != nil {
-				if Debug() >= 1 {
-					Println(err1.Error())
-				}
-				resp.SendBadGateway(nil)
-				return true
-			}
-			defer conn1.Close()
-		*/
-	} else { // reverse
-		backend1 := h.backend.(*HTTP1Backend)
-		conn1, err1 = backend1.FetchConn()
-		if err1 != nil {
-			if Debug() >= 1 {
-				Println(err1.Error())
-			}
-			resp.SendBadGateway(nil)
-			return true
+	backend1 := h.backend.(*HTTP1Backend)
+	conn1, err1 := backend1.FetchConn()
+	if err1 != nil {
+		if Debug() >= 1 {
+			Println(err1.Error())
 		}
-		defer backend1.StoreConn(conn1)
+		resp.SendBadGateway(nil)
+		return true
 	}
+	defer backend1.StoreConn(conn1)
 
 	stream1 := conn1.UseStream()
 	defer conn1.EndStream(stream1)
@@ -218,8 +197,5 @@ func (s *sock1Proxy) OnPrepare() {
 
 func (s *sock1Proxy) Serve(req Request, sock Socket) { // forward or reverse
 	// TODO(diogin): Implementation
-	if s.isForward {
-	} else {
-	}
 	sock.Close()
 }

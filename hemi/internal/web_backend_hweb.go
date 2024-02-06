@@ -48,14 +48,14 @@ func (b *HWEBBackend) createNode(id int32) *hwebNode {
 // hwebNode
 type hwebNode struct {
 	// Mixins
-	webNode_
+	Node_
 	// Assocs
 	backend *HWEBBackend
 	// States
 }
 
 func (n *hwebNode) init(id int32, backend *HWEBBackend) {
-	n.webNode_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
@@ -70,28 +70,28 @@ func (n *hwebNode) Maintain() { // runner
 	n.backend.SubDone()
 }
 
-// poolHConn is the client-side HWEB connection pool.
-var poolHConn sync.Pool
+// poolHWConn is the backend-side HWEB connection pool.
+var poolHWConn sync.Pool
 
-func getHConn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) *HConn {
-	var conn *HConn
-	if x := poolHConn.Get(); x == nil {
-		conn = new(HConn)
+func getHWConn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) *HWConn {
+	var hwConn *HWConn
+	if x := poolHWConn.Get(); x == nil {
+		hwConn = new(HWConn)
 	} else {
-		conn = x.(*HConn)
+		hwConn = x.(*HWConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, backend, node, tcpConn)
-	return conn
+	hwConn.onGet(id, udsMode, tlsMode, backend, node, tcpConn)
+	return hwConn
 }
-func putHConn(conn *HConn) {
-	conn.onPut()
-	poolHConn.Put(conn)
+func putHWConn(hwConn *HWConn) {
+	hwConn.onPut()
+	poolHWConn.Put(hwConn)
 }
 
-// HConn
-type HConn struct {
+// HWConn
+type HWConn struct {
 	// Mixins
-	clientConn_
+	backendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -101,53 +101,53 @@ type HConn struct {
 	activeExchans int32 // concurrent exchans
 }
 
-func (c *HConn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) {
-	c.clientConn_.onGet(id, udsMode, tlsMode, backend)
+func (c *HWConn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *hwebNode, tcpConn *net.TCPConn) {
+	c.backendConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.tcpConn = tcpConn
 }
-func (c *HConn) onPut() {
-	c.clientConn_.onPut()
+func (c *HWConn) onPut() {
+	c.backendConn_.onPut()
 	c.node = nil
 	c.tcpConn = nil
 	c.activeExchans = 0
 }
 
-func (c *HConn) FetchExchan() *HExchan {
+func (c *HWConn) FetchExchan() *HWExchan {
 	// TODO: exchan.onUse()
 	return nil
 }
-func (c *HConn) StoreExchan(exchan *HExchan) {
+func (c *HWConn) StoreExchan(exchan *HWExchan) {
 	// TODO
 	exchan.onEnd()
 }
 
-func (c *HConn) Close() error { // only used by clients of dial
+func (c *HWConn) Close() error { // only used by clients of dial
 	// TODO
 	return nil
 }
 
-func (c *HConn) closeConn() { c.tcpConn.Close() } // used by codes which use fetch/store
+func (c *HWConn) closeConn() { c.tcpConn.Close() } // used by codes which use fetch/store
 
-// poolHExchan
-var poolHExchan sync.Pool
+// poolHWExchan
+var poolHWExchan sync.Pool
 
-func getHExchan(node *hwebNode, id int32) *HExchan {
+func getHWExchan(node *hwebNode, id int32) *HWExchan {
 	// TODO
 	return nil
 }
-func putHExchan(exchan *HExchan) {
+func putHWExchan(exchan *HWExchan) {
 	exchan.onEnd()
-	poolHExchan.Put(exchan)
+	poolHWExchan.Put(exchan)
 }
 
-// HExchan is the client-side HWEB exchan.
-type HExchan struct {
+// HWExchan is the backend-side HWEB exchan.
+type HWExchan struct {
 	// Mixins
-	clientStream_
+	backendStream_
 	// Assocs
-	request  HRequest
-	response HResponse
+	request  HWRequest
+	response HWResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
@@ -159,136 +159,136 @@ type HExchan struct {
 type hExchan0 struct { // for fast reset, entirely
 }
 
-func (x *HExchan) onUse(node *hwebNode, id int32) { // for non-zeros
-	x.clientStream_.onUse()
+func (x *HWExchan) onUse(node *hwebNode, id int32) { // for non-zeros
+	x.backendStream_.onUse()
 	x.node = node
 	x.id = id
 	x.request.onUse(Version2)
 	x.response.onUse(Version2)
 }
-func (x *HExchan) onEnd() { // for zeros
+func (x *HWExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.request.onEnd()
 	x.node = nil
 	x.hExchan0 = hExchan0{}
-	x.clientStream_.onEnd()
+	x.backendStream_.onEnd()
 }
 
-func (x *HExchan) webBroker() webBroker { return nil } // TODO
-func (x *HExchan) webConn() webConn     { return nil } // TODO
-func (x *HExchan) remoteAddr() net.Addr { return nil } // TODO
+func (x *HWExchan) webBroker() webBroker { return nil } // TODO
+func (x *HWExchan) webConn() webConn     { return nil } // TODO
+func (x *HWExchan) remoteAddr() net.Addr { return nil } // TODO
 
-func (x *HExchan) Request() *HRequest   { return &x.request }
-func (x *HExchan) Response() *HResponse { return &x.response }
+func (x *HWExchan) Request() *HWRequest   { return &x.request }
+func (x *HWExchan) Response() *HWResponse { return &x.response }
 
-func (x *HExchan) ExecuteExchan() error { // request & response
+func (x *HWExchan) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
 
-func (x *HExchan) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (x *HWExchan) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
-func (x *HExchan) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+func (x *HWExchan) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
 	// TODO
 }
 
-func (x *HExchan) makeTempName(p []byte, unixTime int64) int {
+func (x *HWExchan) makeTempName(p []byte, unixTime int64) int {
 	// TODO
 	return 0
 }
 
-func (x *HExchan) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (x *HWExchan) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (x *HExchan) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (x *HWExchan) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (x *HExchan) write(p []byte) (int, error) { // for content i/o only?
+func (x *HWExchan) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (x *HExchan) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (x *HWExchan) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (x *HExchan) read(p []byte) (int, error) { // for content i/o only?
+func (x *HWExchan) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (x *HExchan) readFull(p []byte) (int, error) { // for content i/o only?
+func (x *HWExchan) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-func (x *HExchan) isBroken() bool { return false } // TODO: limit the breakage in the exchan
-func (x *HExchan) markBroken()    {}               // TODO: limit the breakage in the exchan
+func (x *HWExchan) isBroken() bool { return false } // TODO: limit the breakage in the exchan
+func (x *HWExchan) markBroken()    {}               // TODO: limit the breakage in the exchan
 
-// HRequest is the client-side HWEB request.
-type HRequest struct { // outgoing. needs building
+// HWRequest is the backend-side HWEB request.
+type HWRequest struct { // outgoing. needs building
 	// Mixins
-	clientRequest_
+	backendRequest_
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
 	// Exchan states (zeros)
 }
 
-func (r *HRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :target = uri
+func (r *HWRequest) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :target = uri
 	// TODO: set :method and :uri
 	return false
 }
-func (r *HRequest) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *HWRequest) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: set :authority
 	return false
 }
 
-func (r *HRequest) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
-func (r *HRequest) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
-func (r *HRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
-func (r *HRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
-func (r *HRequest) delHeaderAt(i uint8)                        { r.delHeaderAtH(i) }
+func (r *HWRequest) addHeader(name []byte, value []byte) bool   { return r.addHeaderH(name, value) }
+func (r *HWRequest) header(name []byte) (value []byte, ok bool) { return r.headerH(name) }
+func (r *HWRequest) hasHeader(name []byte) bool                 { return r.hasHeaderH(name) }
+func (r *HWRequest) delHeader(name []byte) (deleted bool)       { return r.delHeaderH(name) }
+func (r *HWRequest) delHeaderAt(i uint8)                        { r.delHeaderAtH(i) }
 
-func (r *HRequest) AddCookie(name string, value string) bool {
+func (r *HWRequest) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *HRequest) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header?
+func (r *HWRequest) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header?
 	// TODO: one by one?
 	return true
 }
 
-func (r *HRequest) sendChain() error { return r.sendChainH() }
+func (r *HWRequest) sendChain() error { return r.sendChainH() }
 
-func (r *HRequest) echoHeaders() error { return r.writeHeadersH() }
-func (r *HRequest) echoChain() error   { return r.echoChainH() }
+func (r *HWRequest) echoHeaders() error { return r.writeHeadersH() }
+func (r *HWRequest) echoChain() error   { return r.echoChainH() }
 
-func (r *HRequest) addTrailer(name []byte, value []byte) bool {
+func (r *HWRequest) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailerH(name, value)
 }
-func (r *HRequest) trailer(name []byte) (value []byte, ok bool) {
+func (r *HWRequest) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailerH(name)
 }
 
-func (r *HRequest) passHeaders() error       { return r.writeHeadersH() }
-func (r *HRequest) passBytes(p []byte) error { return r.passBytesH(p) }
+func (r *HWRequest) passHeaders() error       { return r.writeHeadersH() }
+func (r *HWRequest) passBytes(p []byte) error { return r.passBytesH(p) }
 
-func (r *HRequest) finalizeHeaders() { // add at most 256 bytes
+func (r *HWRequest) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *HRequest) finalizeVague() error {
+func (r *HWRequest) finalizeVague() error {
 	// TODO
 	return nil
 }
 
-func (r *HRequest) addedHeaders() []byte { return nil } // TODO
-func (r *HRequest) fixedHeaders() []byte { return nil } // TODO
+func (r *HWRequest) addedHeaders() []byte { return nil } // TODO
+func (r *HWRequest) fixedHeaders() []byte { return nil } // TODO
 
-// HResponse is the client-side HWEB response.
-type HResponse struct { // incoming. needs parsing
+// HWResponse is the backend-side HWEB response.
+type HWResponse struct { // incoming. needs parsing
 	// Mixins
-	clientResponse_
+	backendResponse_
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
 	// Exchan states (zeros)
 }
 
-func (r *HResponse) readContent() (p []byte, err error) { return r.readContentH() }
+func (r *HWResponse) readContent() (p []byte, err error) { return r.readContentH() }

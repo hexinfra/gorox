@@ -21,18 +21,6 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webBroker is a webServer or webBackend which keeps its connections and streams.
-type webBroker interface {
-	// Methods
-	Stage() *Stage               // current stage
-	ReadTimeout() time.Duration  // timeout of a read operation
-	WriteTimeout() time.Duration // timeout of a write operation
-	RecvTimeout() time.Duration  // timeout to recv the whole message content
-	SendTimeout() time.Duration  // timeout to send the whole message
-	MaxContentSize() int64       // allowed
-	SaveContentFilesDir() string
-}
-
 // webBroker_ is the mixin for webServer_ and webBackend_.
 type webBroker_ struct {
 	// States
@@ -74,16 +62,7 @@ func (b *webBroker_) RecvTimeout() time.Duration { return b.recvTimeout }
 func (b *webBroker_) SendTimeout() time.Duration { return b.sendTimeout }
 func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
 
-// webConn is the interface for serverConn and clientConn.
-type webConn interface {
-	isUDS() bool
-	isTLS() bool
-	makeTempName(p []byte, unixTime int64) int
-	isBroken() bool
-	markBroken()
-}
-
-// webConn_ is the mixin for serverConn_ and clientConn_.
+// webConn_ is the mixin for serverConn_ and backendConn_.
 type webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -106,29 +85,7 @@ func (c *webConn_) onPut() {
 func (c *webConn_) isBroken() bool { return c.broken.Load() }
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
-// webStream is the interface for *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, and *HExchan.
-type webStream interface {
-	webBroker() webBroker
-	webConn() webConn
-	remoteAddr() net.Addr
-
-	buffer256() []byte
-	unsafeMake(size int) []byte
-	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
-
-	setReadDeadline(deadline time.Time) error
-	setWriteDeadline(deadline time.Time) error
-
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
-
-	isBroken() bool // if either side of the stream is broken, then it is broken
-	markBroken()    // mark stream as broken
-}
-
-// webStream_ is the mixin for http[1-3]Stream, hwebExchan, H[1-3]Stream, and HExchan.
+// webStream_ is the mixin for http[1-3]Stream, hwebExchan, H[1-3]Stream, and HWExchan.
 type webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
@@ -157,24 +114,11 @@ func (s *webStream_) onEnd() { // for zeros
 func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// webIn is the interface for *http[1-3]Request, *hwebRequest, *H[1-3]Response, and *HResponse. Used as shell by webIn_.
-type webIn interface {
-	ContentSize() int64
-	IsVague() bool
-	HasTrailers() bool
-
-	readContent() (p []byte, err error)
-	examineTail() bool
-	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-	arrayCopy(p []byte) bool
-	saveContentFilesDir() string
-}
-
-// webIn_ is the mixin for serverRequest_ and clientResponse_.
+// webIn_ is the mixin for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell  webIn     // *http[1-3]Request, *hwebRequest, *H[1-3]Response, *HResponse
-	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HExchan
+	shell  webIn     // *http[1-3]Request, *hwebRequest, *H[1-3]Response, *HWResponse
+	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HWExchan
 	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
@@ -1511,38 +1455,11 @@ var ( // web incoming message errors
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
-// webOut is the interface for *http[1-3]Response, *hwebResponse, *H[1-3]Request, and *HRequest. Used as shell by webOut_.
-type webOut interface {
-	control() []byte
-	addHeader(name []byte, value []byte) bool
-	header(name []byte) (value []byte, ok bool)
-	hasHeader(name []byte) bool
-	delHeader(name []byte) (deleted bool)
-	delHeaderAt(i uint8)
-	insertHeader(hash uint16, name []byte, value []byte) bool
-	removeHeader(hash uint16, name []byte) (deleted bool)
-	addedHeaders() []byte
-	fixedHeaders() []byte
-	finalizeHeaders()
-	beforeSend()
-	doSend() error
-	sendChain() error // content
-	beforeEcho()
-	echoHeaders() error
-	doEcho() error
-	echoChain() error // chunks
-	addTrailer(name []byte, value []byte) bool
-	trailer(name []byte) (value []byte, ok bool)
-	finalizeVague() error
-	passHeaders() error       // used by proxies
-	passBytes(p []byte) error // used by proxies
-}
-
-// webOut_ is the mixin for serverResponse_ and clientRequest_.
+// webOut_ is the mixin for serverResponse_ and backendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell  webOut    // *http[1-3]Response, *hwebResponse, *H[1-3]Request, *HRequest
-	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HExchan
+	shell  webOut    // *http[1-3]Response, *hwebResponse, *H[1-3]Request, *HWRequest
+	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HWExchan
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
@@ -1679,7 +1596,7 @@ func (r *webOut_) IsSent() bool  { return r.isSent }
 func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
-func (r *webOut_) appendDate(date []byte) (ok bool) { // rarely used in clientRequest
+func (r *webOut_) appendDate(date []byte) (ok bool) { // rarely used in backendRequest
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 

@@ -11,19 +11,6 @@ import (
 	"time"
 )
 
-// rpcBackend
-type rpcBackend interface {
-	// Imports
-	streamHolder
-	contentSaver
-	// Methods
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
-
 // rpcBackend_
 type rpcBackend_[N Node] struct {
 	// Mixins
@@ -44,63 +31,49 @@ func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.onPrepare()
 }
 
-// rpcNode_
-type rpcNode_ struct {
-	// Mixins
-	Node_
-	// States
-}
-
-func (n *rpcNode_) init(id int32) {
-	n.Node_.init(id)
-}
-
-func (n *rpcNode_) setTLSMode() {
-	n.Node_.setTLSMode()
-	n.tlsConfig.InsecureSkipVerify = true
-}
-
-// clientCall_
-type clientCall_ struct {
-	// Mixins
+// backendWire_
+type backendWire_ struct {
 	Conn_
-	rpcCall_
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
+	rpcWire_
 	backend rpcBackend
-	// Call states (zeros)
 }
 
-func (c *clientCall_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	// c.rpcCall_.onGet()?
-	c.backend = backend
+func (w *backendWire_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
+	w.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	w.rpcWire_.onGet()
+	w.backend = backend
 }
-func (c *clientCall_) onPut() {
-	c.backend = nil
-	c.Conn_.onPut()
+func (w *backendWire_) onPut() {
+	w.backend = nil
+	w.Conn_.onPut()
+	w.rpcWire_.onPut()
+}
+
+func (w *backendWire_) rpcBackend() rpcBackend { return w.backend }
+
+// backendCall_
+type backendCall_ struct {
+}
+
+func (c *backendCall_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
+	//c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	// c.rpcCall_.onGet()?
+	//c.backend = backend
+}
+func (c *backendCall_) onPut() {
+	//c.backend = nil
+	//c.Conn_.onPut()
 	// c.rpcCall_.onPut()?
 }
 
-func (c *clientCall_) getBackend() rpcBackend { return c.backend }
-
-// clientReq is the client-side RPC request.
-type clientReq interface {
-}
-
-// clientReq_
-type clientReq_ struct {
+// backendReq_
+type backendReq_ struct {
 	// Mixins
 	rpcOut_
 }
 
-// clientResp is the client-side RPC response.
-type clientResp interface {
-}
-
-// clientResp_
-type clientResp_ struct {
+// backendResp_
+type backendResp_ struct {
 	// Mixins
 	rpcIn_
 }

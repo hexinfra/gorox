@@ -46,14 +46,14 @@ func (b *HRPCBackend) createNode(id int32) *hrpcNode {
 // hrpcNode
 type hrpcNode struct {
 	// Mixins
-	rpcNode_
+	Node_
 	// Assocs
 	backend *HRPCBackend
 	// States
 }
 
 func (n *hrpcNode) init(id int32, backend *HRPCBackend) {
-	n.rpcNode_.init(id)
+	n.Node_.init(id)
 	n.backend = backend
 }
 
@@ -68,10 +68,10 @@ func (n *hrpcNode) Maintain() { // runner
 	n.backend.SubDone()
 }
 
-// HCall is the client-side HRPC call.
+// HCall is the backend-side HRPC call.
 type HCall struct {
 	// Mixins
-	clientCall_
+	backendCall_
 	// Assocs
 	req  HReq
 	resp HResp
@@ -83,20 +83,20 @@ type HCall struct {
 	// Call states (zeros)
 }
 
-// HReq is the client-side HRPC request.
+// HReq is the backend-side HRPC request.
 type HReq struct {
 	// Mixins
-	clientReq_
+	backendReq_
 	// Call states (stocks)
 	// Call states (controlled)
 	// Call states (non-zeros)
 	// Call states (zeros)
 }
 
-// HResp is the client-side HRPC response.
+// HResp is the backend-side HRPC response.
 type HResp struct {
 	// Mixins
-	clientResp_
+	backendResp_
 	// Call states (stocks)
 	// Call states (controlled)
 	// Call states (non-zeros)

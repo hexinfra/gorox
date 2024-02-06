@@ -53,8 +53,8 @@ type fcgiRelay struct {
 	preferUnderscore    bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 	scriptFilename      []byte            // for SCRIPT_FILENAME
 	indexFile           []byte            // for indexFile
-	addRequestHeaders   map[string]Value  // headers appended to client request
-	delRequestHeaders   [][]byte          // client request headers to delete
+	addRequestHeaders   map[string]Value  // headers appended to backend request
+	delRequestHeaders   [][]byte          // backend request headers to delete
 	addResponseHeaders  map[string]string // headers appended to server response
 	delResponseHeaders  [][]byte          // server response headers to delete
 	sendTimeout         time.Duration     // timeout to send the whole request

@@ -11,20 +11,20 @@ THE WEB PICTURE
 
 ```
   --http[1-3]Stream-->                        ----H[1-3]Stream--->
-  ----hwebExchan----->                        ------HExchan------>
+  ----hwebExchan----->                        ------HWExchan----->
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
-  webIn_          | webStream                 webOut_         | webStream
-  ^ - stream -----+                           ^ - stream -----+
-  |                                           |
-  | - shell ------+                           | - shell ------+
-  |               | webIn                     |               | webOut
-  +-serverRequest_|                           +-clientRequest_|
+  webIn_          | webStream                webOut_          | webStream
+  ^ - stream -----+                          ^ - stream ------+
+  |                                          |
+  | - shell ------+                          | - shell -------+
+  |               | webIn                    |                | webOut
+  +-serverRequest_|                          +-backendRequest_|
     ^             |                             ^             |
     |             v                             |             v
     +-http[1-3]Request                          +-H[1-3]Request
-    +-hwebRequest                               +-HRequest
+    +-hwebRequest                               +-HWRequest
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
@@ -33,20 +33,20 @@ THE WEB PICTURE
                   /          /         \
                             /           \
   <--http[1-3]Stream--                        <---H[1-3]Stream----
-  <----hwebExchan-----                        <-----HExchan-------
+  <----hwebExchan-----                        <-----HWExchan------
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |
-  webOut_          | webStream                webIn_           | webStream
-  ^ - stream ------+                          ^ - stream ------+
-  |                                           |
-  | - shell -------+                          | - shell -------+
-  |                | webOut                   |                | webIn
-  +-serverResponse_|                          +-clientResponse_|
+  webOut_          | webStream               webIn_            | webStream
+  ^ - stream ------+                         ^ - stream -------+
+  |                                          |
+  | - shell -------+                         | - shell --------+
+  |                | webOut                  |                 | webIn
+  +-serverResponse_|                         +-backendResponse_|
     ^              |                            ^              |
     |              v                            |              v
     +-http[1-3]Response                         +-H[1-3]Response
-    +-hwebResponse                              +-HResponse
+    +-hwebResponse                              +-HWResponse
 ```
 
 
@@ -67,9 +67,9 @@ NOTES
 WEB SERVER -> WEB PROXY -> WEB CLIENT
 -------------------------------------
 
-  * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in client side.
-  * we support revisers in server side, but we don't support revisers in client side.
+  * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in backend side.
+  * we support revisers in server side, but we don't support revisers in backend side.
   * HTTP/1.1 pipelining is supported in server side, but not optimized.
-  * HTTP/1.1 pipelining is not used in client side.
+  * HTTP/1.1 pipelining is not used in backend side.
   * in HTTP/2 server side, streams are started passively (by receiving a HEADERS frame).
-  * in HTTP/2 client side, streams are started actively.
+  * in HTTP/2 backend side, streams are started actively.

@@ -22,19 +22,19 @@ import (
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) serverConn {
-	var conn *http2Conn
+func getHTTP2Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
-		conn = new(http2Conn)
+		httpConn = new(http2Conn)
 	} else {
-		conn = x.(*http2Conn)
+		httpConn = x.(*http2Conn)
 	}
-	conn.onGet(id, server, gate, netConn, rawConn)
-	return conn
+	httpConn.onGet(id, server, gate, netConn, rawConn)
+	return httpConn
 }
-func putHTTP2Conn(conn *http2Conn) {
-	conn.onPut()
-	poolHTTP2Conn.Put(conn)
+func putHTTP2Conn(httpConn *http2Conn) {
+	httpConn.onPut()
+	poolHTTP2Conn.Put(httpConn)
 }
 
 // http2Conn is the server-side HTTP/2 connection.
@@ -865,7 +865,7 @@ func (s *http2Stream) execute() { // runner
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) webBroker() webBroker { return s.conn.getServer() }
+func (s *http2Stream) webBroker() webBroker { return s.conn.webServer() }
 func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

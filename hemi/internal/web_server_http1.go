@@ -123,7 +123,7 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Mixins
-	webGate_
+	Gate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -131,7 +131,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(server *httpxServer, id int32) {
-	g.webGate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -183,8 +183,8 @@ func (g *httpxGate) serveTCP() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpxConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
-			go httpxConn.serve() // httpxConn is put to pool in serve()
+			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
+			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -220,8 +220,8 @@ func (g *httpxGate) serveTLS() { // runner
 			if connState.NegotiatedProtocol == "h2" {
 				getHTTPConn = getHTTP2Conn
 			}
-			httpxConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
-			go httpxConn.serve() // httpxConn is put to pool in serve()
+			httpConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
+			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -240,14 +240,19 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 	g.onConnClosed()
 }
 
+// httpxConn
+type httpxConn interface {
+	serve() // runner
+}
+
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) serverConn {
-	var conn *http1Conn
+func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
-		conn = new(http1Conn)
-		stream := &conn.stream
+		httpConn = new(http1Conn)
+		stream := &httpConn.stream
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -255,14 +260,14 @@ func getHTTP1Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Co
 		resp.stream = stream
 		resp.request = req
 	} else {
-		conn = x.(*http1Conn)
+		httpConn = x.(*http1Conn)
 	}
-	conn.onGet(id, server, gate, netConn, rawConn)
-	return conn
+	httpConn.onGet(id, server, gate, netConn, rawConn)
+	return httpConn
 }
-func putHTTP1Conn(conn *http1Conn) {
-	conn.onPut()
-	poolHTTP1Conn.Put(conn)
+func putHTTP1Conn(httpConn *http1Conn) {
+	httpConn.onPut()
+	poolHTTP1Conn.Put(httpConn)
 }
 
 // http1Conn is the server-side HTTP/1 connection.
@@ -481,7 +486,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.serverStream_.onEnd()
 }
 
-func (s *http1Stream) webBroker() webBroker { return s.conn.getServer() }
+func (s *http1Stream) webBroker() webBroker { return s.conn.webServer() }
 func (s *http1Stream) webConn() webConn     { return s.conn }
 func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

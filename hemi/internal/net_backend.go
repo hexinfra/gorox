@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General network client implementation.
+// General network backend implementation.
 
 package internal
 
@@ -15,19 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-// Backend is a group of nodes.
-type Backend interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
 
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
@@ -174,18 +161,6 @@ func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
-// Node is a member of backend. Nodes are not components.
-type Node interface {
-	// Imports
-	// Methods
-	setAddress(address string)
-	setTLSMode()
-	setWeight(weight int32)
-	setKeepConns(keepConns int32)
-	Maintain() // runner
-	shutdown()
-}
-
 // Node_ is the mixin for backend nodes.
 type Node_ struct {
 	// Mixins
@@ -202,8 +177,8 @@ type Node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		head conn // head element
-		tail conn // tail element
+		head Conn // head element
+		tail Conn // tail element
 		qnty int  // size of the list
 	}
 }
@@ -230,7 +205,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() conn {
+func (n *Node_) pullConn() Conn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -244,7 +219,7 @@ func (n *Node_) pullConn() conn {
 	list.qnty--
 	return conn
 }
-func (n *Node_) pushConn(conn conn) {
+func (n *Node_) pushConn(conn Conn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -279,20 +254,10 @@ func (n *Node_) shutdown() {
 
 var errNodeDown = errors.New("node is down")
 
-// conn is the client conns.
-type conn interface {
-	// Imports
-	// Methods
-	getNext() conn
-	setNext(next conn)
-	isAlive() bool
-	closeConn()
-}
-
-// Conn_ is the mixin for client conns.
+// Conn_ is the mixin for backend conns.
 type Conn_ struct {
 	// Conn states (non-zeros)
-	next    conn      // the linked-list
+	next    Conn      // the linked-list
 	id      int64     // the conn id
 	udsMode bool      // uds or not
 	tlsMode bool      // tls or not
@@ -314,7 +279,7 @@ func (c *Conn_) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *Conn_) getNext() conn     { return c.next }
-func (c *Conn_) setNext(next conn) { c.next = next }
+func (c *Conn_) getNext() Conn     { return c.next }
+func (c *Conn_) setNext(next Conn) { c.next = next }
 
 func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }

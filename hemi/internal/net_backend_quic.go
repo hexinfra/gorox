@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC (UDP/UDS) network client implementation.
+// QUIC (UDP/UDS) network backend implementation.
 
 package internal
 
@@ -110,21 +110,21 @@ func (n *quicNode) storeConn(qConn *QConn) {
 var poolQConn sync.Pool
 
 func getQConn(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) *QConn {
-	var conn *QConn
+	var qConn *QConn
 	if x := poolQConn.Get(); x == nil {
-		conn = new(QConn)
+		qConn = new(QConn)
 	} else {
-		conn = x.(*QConn)
+		qConn = x.(*QConn)
 	}
-	conn.onGet(id, udsMode, backend, node, quixConn)
-	return conn
+	qConn.onGet(id, udsMode, backend, node, quixConn)
+	return qConn
 }
-func putQConn(conn *QConn) {
-	conn.onPut()
-	poolQConn.Put(conn)
+func putQConn(qConn *QConn) {
+	qConn.onPut()
+	poolQConn.Put(qConn)
 }
 
-// QConn is a client-side quic connection to quicNode.
+// QConn is a backend-side quic connection to quicNode.
 type QConn struct {
 	// Mixins
 	Conn_

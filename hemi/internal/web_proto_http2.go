@@ -45,9 +45,9 @@ func (p *http2Frames) decRef() {
 }
 
 const ( // HTTP/2 sizes and limits
-	http2FrameMaxSize     = _16K // for both of our HTTP/2 client and HTTP/2 server
-	http2MaxTableSize     = _4K  // for both of our HTTP/2 client and HTTP/2 server
-	http2MaxActiveStreams = 127  // for both of our HTTP/2 client and HTTP/2 server
+	http2FrameMaxSize     = _16K // for both of our HTTP/2 server and HTTP/2 backend
+	http2MaxTableSize     = _4K  // for both of our HTTP/2 server and HTTP/2 backend
+	http2MaxActiveStreams = 127  // for both of our HTTP/2 server and HTTP/2 backend
 )
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0

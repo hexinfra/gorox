@@ -36,20 +36,6 @@ func (d *tcpsProxy) OnShutdown() {
 }
 
 func (d *tcpsProxy) OnConfigure() {
-	isReverse := true
-	// proxyMode
-	if v, ok := d.Find("proxyMode"); ok {
-		if mode, ok := v.String(); ok {
-			switch mode {
-			case "socks": // SOCKS
-				isReverse = false
-			case "https": // HTTP CONNECT
-				isReverse = false
-			}
-		} else {
-			UseExitln("invalid proxyMode")
-		}
-	}
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -63,7 +49,7 @@ func (d *tcpsProxy) OnConfigure() {
 		} else {
 			UseExitln("invalid toBackend")
 		}
-	} else if isReverse {
+	} else {
 		UseExitln("toBackend is required for reverse proxy")
 	}
 }

@@ -1,5 +1,4 @@
 http1Proxy "h1p1" {
-	.proxyMode = "reverse"
 	.toBackend = "proxy_name"
 	.viaName = "gorox"
 	.bufferClientContent = true

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCPS (TCP/TLS/UDS) network client implementation.
+// TCPS (TCP/TLS/UDS) network backend implementation.
 
 package internal
 
@@ -194,21 +194,21 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 var poolTConn sync.Pool
 
 func getTConn(id int64, udsMode bool, tlsMode bool, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
-	var conn *TConn
+	var tConn *TConn
 	if x := poolTConn.Get(); x == nil {
-		conn = new(TConn)
+		tConn = new(TConn)
 	} else {
-		conn = x.(*TConn)
+		tConn = x.(*TConn)
 	}
-	conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
-	return conn
+	tConn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	return tConn
 }
-func putTConn(conn *TConn) {
-	conn.onPut()
-	poolTConn.Put(conn)
+func putTConn(tConn *TConn) {
+	tConn.onPut()
+	poolTConn.Put(tConn)
 }
 
-// TConn is a client-side connection to tcpsNode.
+// TConn is a backend-side connection to tcpsNode.
 type TConn struct {
 	// Mixins
 	Conn_

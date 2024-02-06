@@ -11,39 +11,13 @@ import (
 	"bytes"
 )
 
-// GRPCBridge is the interface for all gRPC server bridges.
-// Users can implement their own gRPC server in exts, which may embeds *grpc.Server and must implements the GRPCBridge interface.
-type GRPCBridge interface {
-	// Imports
-	rpcServer
-	// Methods
-	GRPCServer() any // may be a *grpc.Server
-}
-
-// ThriftBridge is the interface for all Thrift server bridges.
-// Users can implement their own Thrift server in exts, which may embeds thrift.TServer and must implements the ThriftBridge interface.
-type ThriftBridge interface {
-	// Imports
-	rpcServer
-	// Methods
-	ThriftServer() any // may be a thrift.TServer?
-}
-
-// rpcServer
-type rpcServer interface {
-	// Imports
-	Server
-	// Methods
-	BindServices()
-}
-
 // rpcServer_
 type rpcServer_ struct {
 	// Mixins
 	Server_
 	rpcBroker_
 	// Assocs
-	gates          []rpcGate
+	gates          []Gate
 	defaultService *Service // default service if not found
 	// States
 	forServices    []string                // for what services
@@ -105,18 +79,10 @@ func (s *rpcServer_) findService(hostname []byte) *Service {
 	return nil
 }
 
-// rpcGate
-type rpcGate interface {
-	// Imports
-	Gate
-	// TODO
-}
-
-// rpcGate_
-type rpcGate_ struct {
+// serverWire_
+type serverWire_ struct {
 	// Mixins
-	Gate_
-	// TODO
+	rpcWire_
 }
 
 // serverCall_
@@ -126,22 +92,10 @@ type serverCall_ struct {
 	// TODO
 }
 
-// serverReq is the server-side RPC request.
-type serverReq interface {
-	Service() *Service
-	// TODO
-}
-
 // serverReq_
 type serverReq_ struct {
 	// Mixins
 	rpcIn_
-	// TODO
-}
-
-// serverResp is the server-side RPC response.
-type serverResp interface {
-	Req() serverReq
 	// TODO
 }
 

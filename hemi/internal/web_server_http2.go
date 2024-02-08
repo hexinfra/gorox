@@ -40,7 +40,7 @@ func putHTTP2Conn(httpConn *http2Conn) {
 // http2Conn is the server-side HTTP/2 connection.
 type http2Conn struct {
 	// Mixins
-	serverConn_
+	serverWebConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
@@ -80,7 +80,7 @@ type http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.serverConn_.onGet(id, server, gate)
+	c.serverWebConn_.onGet(id, server, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.frames == nil {
@@ -99,7 +99,7 @@ func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netCon
 	}
 }
 func (c *http2Conn) onPut() {
-	c.serverConn_.onPut()
+	c.serverWebConn_.onPut()
 	c.netConn = nil
 	c.rawConn = nil
 	// c.frames is reserved

@@ -21,13 +21,13 @@ func (b *rpcBroker_) onConfigure(shell Component, sendTimeout time.Duration, rec
 func (b *rpcBroker_) onPrepare(shell Component) {
 }
 
-// rpcWire_
-type rpcWire_ struct {
+// rpcConn_
+type rpcConn_ struct {
 }
 
-func (w *rpcWire_) onGet() {
+func (c *rpcConn_) onGet() {
 }
-func (w *rpcWire_) onPut() {
+func (c *rpcConn_) onPut() {
 }
 
 // rpcCall_ is the mixin for hrpcCall and HCall.

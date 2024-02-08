@@ -20,11 +20,11 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webServer_ is the mixin for http[x3]Server and hwebServer.
+// webServer_ is the mixin for http[x3]Server.
 type webServer_ struct {
 	// Mixins
 	Server_
-	webBroker_ // as webServer
+	webBroker_
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to a webapp, we use webapp's contentSaver_.
 	// Assocs
@@ -125,8 +125,8 @@ func (s *webServer_) findWebapp(hostname []byte) *Webapp {
 	return s.defaultApp // may be nil
 }
 
-// serverConn_ is the mixin for http[1-3]Conn and hwebConn.
-type serverConn_ struct {
+// serverWebConn_ is the mixin for http[1-3]Conn.
+type serverWebConn_ struct {
 	// Mixins
 	webConn_
 	// Conn states (stocks)
@@ -140,13 +140,13 @@ type serverConn_ struct {
 	lastWrite time.Time // deadline of last write operation
 }
 
-func (c *serverConn_) onGet(id int64, server webServer, gate Gate) {
+func (c *serverWebConn_) onGet(id int64, server webServer, gate Gate) {
 	c.webConn_.onGet()
 	c.id = id
 	c.server = server
 	c.gate = gate
 }
-func (c *serverConn_) onPut() {
+func (c *serverWebConn_) onPut() {
 	c.server = nil
 	c.gate = nil
 	c.lastRead = time.Time{}
@@ -154,16 +154,16 @@ func (c *serverConn_) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *serverConn_) webServer() webServer { return c.server }
+func (c *serverWebConn_) webServer() webServer { return c.server }
 
-func (c *serverConn_) isUDS() bool { return c.server.UDSMode() }
-func (c *serverConn_) isTLS() bool { return c.server.TLSMode() }
+func (c *serverWebConn_) isUDS() bool { return c.server.UDSMode() }
+func (c *serverWebConn_) isTLS() bool { return c.server.TLSMode() }
 
-func (c *serverConn_) makeTempName(p []byte, unixTime int64) int {
+func (c *serverWebConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// serverStream_ is the mixin for http[1-3]Stream and hwebExchan.
+// serverStream_ is the mixin for http[1-3]Stream.
 type serverStream_ struct {
 	// Mixins
 	webStream_
@@ -180,7 +180,7 @@ func (s *serverStream_) serveUDPTun() {
 	// TODO: upgrade connect-udp
 }
 
-// serverRequest_ is the mixin for http[1-3]Request and hwebRequest.
+// serverRequest_ is the mixin for http[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
@@ -2304,7 +2304,7 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	(*serverRequest_).UnsafeContentType, // contentType
 }
 
-// serverResponse_ is the mixin for http[1-3]Response and hwebResponse.
+// serverResponse_ is the mixin for http[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message

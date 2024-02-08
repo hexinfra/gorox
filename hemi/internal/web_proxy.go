@@ -19,7 +19,7 @@ type Cacher_ struct {
 	// States
 }
 
-// exchanProxy_ is the mixin for http[1-3]Proxy and hwebProxy.
+// exchanProxy_ is the mixin for http[1-3]Proxy.
 type exchanProxy_ struct {
 	// Mixins
 	Handlet_

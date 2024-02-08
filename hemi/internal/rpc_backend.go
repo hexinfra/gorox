@@ -26,54 +26,50 @@ func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ 
 
 func (b *rpcBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.onConfigure()
+	b.rpcBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 }
 func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.onPrepare()
+	b.rpcBroker_.onPrepare(shell)
 }
 
-// backendWire_
-type backendWire_ struct {
+// backendRPCConn_
+type backendRPCConn_ struct {
 	Conn_
-	rpcWire_
+	rpcConn_
 	backend rpcBackend
 }
 
-func (w *backendWire_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
-	w.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	w.rpcWire_.onGet()
-	w.backend = backend
+func (c *backendRPCConn_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
+	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.rpcConn_.onGet()
+	c.backend = backend
 }
-func (w *backendWire_) onPut() {
-	w.backend = nil
-	w.Conn_.onPut()
-	w.rpcWire_.onPut()
+func (c *backendRPCConn_) onPut() {
+	c.backend = nil
+	c.Conn_.onPut()
+	c.rpcConn_.onPut()
 }
 
-func (w *backendWire_) rpcBackend() rpcBackend { return w.backend }
+func (c *backendRPCConn_) rpcBackend() rpcBackend { return c.backend }
 
 // backendCall_
 type backendCall_ struct {
-}
-
-func (c *backendCall_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
-	//c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	// c.rpcCall_.onGet()?
-	//c.backend = backend
-}
-func (c *backendCall_) onPut() {
-	//c.backend = nil
-	//c.Conn_.onPut()
-	// c.rpcCall_.onPut()?
+	// Mixins
+	rpcCall_
+	// TODO
 }
 
 // backendReq_
 type backendReq_ struct {
 	// Mixins
 	rpcOut_
+	// TODO
 }
 
 // backendResp_
 type backendResp_ struct {
 	// Mixins
 	rpcIn_
+	// TODO
 }

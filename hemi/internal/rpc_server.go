@@ -79,11 +79,28 @@ func (s *rpcServer_) findService(hostname []byte) *Service {
 	return nil
 }
 
-// serverWire_
-type serverWire_ struct {
+// serverRPCConn_
+type serverRPCConn_ struct {
 	// Mixins
-	rpcWire_
+	rpcConn_
+	id     int64
+	server rpcServer
+	gate   Gate
 }
+
+func (c *serverRPCConn_) onGet(id int64, server rpcServer, gate Gate) {
+	c.rpcConn_.onGet()
+	c.id = id
+	c.server = server
+	c.gate = gate
+}
+func (c *serverRPCConn_) onPut() {
+	c.server = nil
+	c.gate = nil
+	c.rpcConn_.onPut()
+}
+
+func (c *serverRPCConn_) rpcServer() rpcServer { return c.server }
 
 // serverCall_
 type serverCall_ struct {

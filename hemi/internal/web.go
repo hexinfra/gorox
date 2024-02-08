@@ -892,7 +892,7 @@ type webBroker interface {
 	SaveContentFilesDir() string
 }
 
-// webServer is the interface for *http[x3]Server and *hwebServer.
+// webServer is the interface for *http[x3]Server.
 type webServer interface {
 	// Imports
 	Server
@@ -906,7 +906,7 @@ type webServer interface {
 	findWebapp(hostname []byte) *Webapp
 }
 
-// webBackend is the interface for *HTTP[1-3]Backend and *HWEBBackend.
+// webBackend is the interface for *HTTP[1-3]Backend.
 type webBackend interface {
 	// Imports
 	streamHolder
@@ -922,7 +922,7 @@ type webBackend interface {
 	RecvTimeout() time.Duration
 }
 
-// webConn is the interface for *http[1-3]Conn, *hwebConn, *H[1-3]Conn, and *HWConn.
+// webConn is the interface for *http[1-3]Conn and *H[1-3]Conn.
 type webConn interface {
 	isUDS() bool
 	isTLS() bool
@@ -931,7 +931,7 @@ type webConn interface {
 	markBroken()
 }
 
-// webStream is the interface for *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, and *HWExchan.
+// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
 	webBroker() webBroker
 	webConn() webConn
@@ -953,7 +953,7 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// webIn is the interface for *http[1-3]Request, *hwebRequest, *H[1-3]Response, and *HWResponse. Used as shell by webIn_.
+// webIn is the interface for *http[1-3]Request and *H[1-3]Response. Used as shell by webIn_.
 type webIn interface {
 	ContentSize() int64
 	IsVague() bool
@@ -966,7 +966,7 @@ type webIn interface {
 	saveContentFilesDir() string
 }
 
-// webOut is the interface for *http[1-3]Response, *hwebResponse, *H[1-3]Request, and *HWRequest. Used as shell by webOut_.
+// webOut is the interface for *http[1-3]Response and *H[1-3]Request. Used as shell by webOut_.
 type webOut interface {
 	control() []byte
 	addHeader(name []byte, value []byte) bool
@@ -993,7 +993,7 @@ type webOut interface {
 	passBytes(p []byte) error // used by proxies
 }
 
-// Request is the interface for *http[1-3]Request and *hwebRequest.
+// Request is the interface for *http[1-3]Request.
 type Request interface {
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
@@ -1150,14 +1150,14 @@ type Request interface {
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// request is the interface for *H[1-3]Request and *HWRequest.
+// request is the interface for *H[1-3]Request.
 type request interface {
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
 }
 
-// Response is the interface for *http[1-3]Response and *hwebResponse.
+// Response is the interface for *http[1-3]Response.
 type Response interface {
 	Request() Request
 
@@ -1229,7 +1229,7 @@ type Response interface {
 	unsafeMake(size int) []byte
 }
 
-// response is the interface for *H[1-3]Response and *HWResponse.
+// response is the interface for *H[1-3]Response.
 type response interface {
 	Status() int16
 	delHopHeaders()

@@ -68,6 +68,16 @@ func (n *hrpcNode) Maintain() { // runner
 	n.backend.SubDone()
 }
 
+// HConn
+type HConn struct {
+	backendRPCConn_
+}
+
+func (c *HConn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
+}
+
 // HCall is the backend-side HRPC call.
 type HCall struct {
 	// Mixins

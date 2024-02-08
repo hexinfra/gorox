@@ -14,11 +14,11 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webBackend_ is the mixin for HTTP[1-3]Backend and HWEBBackend.
+// webBackend_ is the mixin for HTTP[1-3]Backend.
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webBroker_ // as webBackend
+	webBroker_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
@@ -46,8 +46,8 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.loadBalancer_.onPrepare(numNodes)
 }
 
-// backendConn_ is the mixin for H[1-3]Conn and HWConn.
-type backendConn_ struct {
+// backendWebConn_ is the mixin for H[1-3]Conn.
+type backendWebConn_ struct {
 	// Mixins
 	Conn_
 	webConn_
@@ -58,31 +58,31 @@ type backendConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *backendConn_) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend) {
+func (c *backendWebConn_) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend) {
 	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.webConn_.onGet()
 	c.backend = backend
 }
-func (c *backendConn_) onPut() {
+func (c *backendWebConn_) onPut() {
 	c.backend = nil
 	c.Conn_.onPut()
 	c.webConn_.onPut()
 }
 
-func (c *backendConn_) webBackend() webBackend { return c.backend }
+func (c *backendWebConn_) webBackend() webBackend { return c.backend }
 
-func (c *backendConn_) isUDS() bool { return c.udsMode }
-func (c *backendConn_) isTLS() bool { return c.tlsMode }
+func (c *backendWebConn_) isUDS() bool { return c.udsMode }
+func (c *backendWebConn_) isTLS() bool { return c.tlsMode }
 
-func (c *backendConn_) reachLimit() bool {
+func (c *backendWebConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.webBackend().MaxStreamsPerConn()
 }
 
-func (c *backendConn_) makeTempName(p []byte, unixTime int64) int {
+func (c *backendWebConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// backendStream_ is the mixin for H[1-3]Stream and HWExchan.
+// backendStream_ is the mixin for H[1-3]Stream.
 type backendStream_ struct {
 	// Mixins
 	webStream_
@@ -99,7 +99,7 @@ func (s *backendStream_) startUDPTun() {
 	// TODO: upgrade connect-udp
 }
 
-// backendRequest_ is the mixin for H[1-3]Request and HWRequest.
+// backendRequest_ is the mixin for H[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
@@ -331,7 +331,7 @@ func (r *backendRequest_) copyTailFrom(req Request) bool { // used by proxies
 	})
 }
 
-// backendResponse_ is the mixin for H[1-3]Response and HWResponse.
+// backendResponse_ is the mixin for H[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message

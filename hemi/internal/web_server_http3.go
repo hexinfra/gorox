@@ -157,7 +157,7 @@ func putHTTP3Conn(httpConn *http3Conn) {
 // http3Conn is the server-side HTTP/3 connection.
 type http3Conn struct {
 	// Mixins
-	serverConn_
+	serverWebConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -175,7 +175,7 @@ type http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quixConn *quix.Conn) {
-	c.serverConn_.onGet(id, server, gate)
+	c.serverWebConn_.onGet(id, server, gate)
 	c.quixConn = quixConn
 	if c.frames == nil {
 		c.frames = getHTTP3Frames()
@@ -183,7 +183,7 @@ func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quixCo
 	}
 }
 func (c *http3Conn) onPut() {
-	c.serverConn_.onPut()
+	c.serverWebConn_.onPut()
 	c.quixConn = nil
 	// c.frames is reserved
 	// c.table is reserved

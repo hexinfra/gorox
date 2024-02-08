@@ -62,7 +62,7 @@ func (b *webBroker_) RecvTimeout() time.Duration { return b.recvTimeout }
 func (b *webBroker_) SendTimeout() time.Duration { return b.sendTimeout }
 func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
 
-// webConn_ is the mixin for serverConn_ and backendConn_.
+// webConn_ is the mixin for serverWebConn_ and backendWebConn_.
 type webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -85,7 +85,7 @@ func (c *webConn_) onPut() {
 func (c *webConn_) isBroken() bool { return c.broken.Load() }
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
 
-// webStream_ is the mixin for http[1-3]Stream, hwebExchan, H[1-3]Stream, and HWExchan.
+// webStream_ is the mixin for http[1-3]Stream and H[1-3]Stream.
 type webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
@@ -117,8 +117,8 @@ func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 // webIn_ is the mixin for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell  webIn     // *http[1-3]Request, *hwebRequest, *H[1-3]Response, *HWResponse
-	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HWExchan
+	shell  webIn     // *http[1-3]Request, *H[1-3]Response
+	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
 	stockArray  [768]byte  // for r.array
@@ -1458,8 +1458,8 @@ var ( // web incoming message errors
 // webOut_ is the mixin for serverResponse_ and backendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell  webOut    // *http[1-3]Response, *hwebResponse, *H[1-3]Request, *HWRequest
-	stream webStream // *http[1-3]Stream, *hwebExchan, *H[1-3]Stream, *HWExchan
+	shell  webOut    // *http[1-3]Response, *H[1-3]Request
+	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)

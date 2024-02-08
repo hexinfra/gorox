@@ -273,7 +273,7 @@ func putHTTP1Conn(httpConn *http1Conn) {
 // http1Conn is the server-side HTTP/1 connection.
 type http1Conn struct {
 	// Mixins
-	serverConn_
+	serverWebConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -287,7 +287,7 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.serverConn_.onGet(id, server, gate)
+	c.serverWebConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -305,7 +305,7 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
-	c.serverConn_.onPut()
+	c.serverWebConn_.onPut()
 }
 
 func (c *http1Conn) serve() { // runner

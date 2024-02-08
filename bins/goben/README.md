@@ -7,5 +7,3 @@ shell> goben -c 128 -r 10000 -s 100 -u http2://1.2.3.4:3080/path?query
 shell> goben -c 128 -r 10000 -s 100 -u http2s://1.2.3.4:3443/path?query
 
 shell> goben -c 128 -r 10000 -s 100 -u http3://1.2.3.4:3443/path?query
-
-shell> goben -c 128 -r 10000 -s 100 -u hweb://1.2.3.4:3080/path?query

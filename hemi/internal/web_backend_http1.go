@@ -193,7 +193,7 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, udsMode bool, tlsMode bool, backend *HTTP1Backend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
@@ -218,7 +218,7 @@ func putH1Conn(h1Conn *H1Conn) {
 // H1Conn is the backend-side HTTP/1 connection.
 type H1Conn struct {
 	// Mixins
-	backendConn_
+	backendWebConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -231,8 +231,8 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.backendConn_.onGet(id, udsMode, tlsMode, backend)
+func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *HTTP1Backend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -242,7 +242,7 @@ func (c *H1Conn) onPut() {
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.backendConn_.onPut()
+	c.backendWebConn_.onPut()
 }
 
 func (c *H1Conn) UseStream() *H1Stream {

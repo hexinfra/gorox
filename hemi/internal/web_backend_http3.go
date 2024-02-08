@@ -105,7 +105,7 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, udsMode bool, tlsMode bool, backend *HTTP3Backend, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var h3Conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		h3Conn = new(H3Conn)
@@ -123,7 +123,7 @@ func putH3Conn(h3Conn *H3Conn) {
 // H3Conn
 type H3Conn struct {
 	// Mixins
-	backendConn_
+	backendWebConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -133,13 +133,13 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend, node *http3Node, quixConn *quix.Conn) {
-	c.backendConn_.onGet(id, udsMode, tlsMode, backend)
+func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *HTTP3Backend, node *http3Node, quixConn *quix.Conn) {
+	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.quixConn = quixConn
 }
 func (c *H3Conn) onPut() {
-	c.backendConn_.onPut()
+	c.backendWebConn_.onPut()
 	c.node = nil
 	c.quixConn = nil
 	c.activeStreams = 0

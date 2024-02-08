@@ -130,12 +130,6 @@ type (
 	H3Request    = internal.H3Request
 	H3Response   = internal.H3Response
 	H3Socket     = internal.H3Socket
-
-	HWEBBackend = internal.HWEBBackend
-	HWConn      = internal.HWConn
-	HWExchan    = internal.HWExchan
-	HWRequest   = internal.HWRequest
-	HWResponse  = internal.HWResponse
 )
 
 type (
@@ -177,8 +171,7 @@ type (
 	Service = internal.Service
 	Bundlet = internal.Bundlet
 
-	GRPCBridge   = internal.GRPCBridge   // for implementing gRPC server in exts
-	ThriftBridge = internal.ThriftBridge // for implementing Thrift server in exts
+	GRPCBridge = internal.GRPCBridge // for implementing gRPC server in exts
 )
 
 type ( // core mixins

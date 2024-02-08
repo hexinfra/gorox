@@ -171,6 +171,11 @@ func (c *QConn) StoreStream(stream *QStream) {
 	// TODO
 }
 
+func (c *QConn) Close() error { // only used by clients of dial
+	// TODO
+	return nil
+}
+
 // poolQStream
 var poolQStream sync.Pool
 
@@ -212,4 +217,9 @@ func (s *QStream) Write(p []byte) (n int, err error) {
 func (s *QStream) Read(p []byte) (n int, err error) {
 	// TODO
 	return
+}
+
+func (s *QStream) Close() error { // only used by clients of dial
+	// TODO
+	return nil
 }

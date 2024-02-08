@@ -38,10 +38,7 @@ func (s *helloServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *helloServer) OnShutdown() {
-	// Notify gates. We don't close(s.ShutChan) here.
-	for _, gate := range s.gates {
-		gate.Shut()
-	}
+	s.ShutGates()
 }
 
 func (s *helloServer) OnConfigure() {
@@ -58,7 +55,7 @@ func (s *helloServer) Serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.gates = append(s.gates, gate)
+		s.AppendGate(gate)
 		s.IncSub(1)
 		go gate.serve()
 	}

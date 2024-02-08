@@ -9,7 +9,7 @@ package gunzip
 
 import (
 	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {

@@ -12,10 +12,7 @@ Hemi uses these directories:
   * common/   - Place general purpose libraries,
   * contrib/  - Place community contributed components,
   * develop/  - A prototype application used to develop Hemi,
-  * internal/ - The core of Hemi,
   * procman/  - A process manager for applications using Hemi.
-
-The "export.go" file collects the exported elements of Hemi.
 
 
 How to use
@@ -72,11 +69,6 @@ A program using Hemi typically has following dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <contrib>       |<--+              <hemi>             |
-  +-----------+-----------+   +-----------------+---------------+
-              |                                 |
-              v                                 v
-  +-------------------------------------------------------------+
-  |                         <internal>                          |
-  +-------------------------------------------------------------+
+  |       <contrib>       |-->+              <hemi>             |
+  +-----------------------+   +---------------------------------+
 ```

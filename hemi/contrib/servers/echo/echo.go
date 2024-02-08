@@ -16,7 +16,7 @@ import (
 
 	"github.com/hexinfra/gorox/hemi/common/system"
 
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {

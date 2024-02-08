@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 const (

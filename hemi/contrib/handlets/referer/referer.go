@@ -12,7 +12,7 @@ import (
 	"errors"
 	"regexp"
 
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 var (

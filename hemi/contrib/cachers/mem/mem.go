@@ -10,7 +10,7 @@ package mem
 import (
 	"time"
 
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {

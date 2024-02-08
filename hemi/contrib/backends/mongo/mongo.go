@@ -8,7 +8,7 @@
 package mongo
 
 import (
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 
 	_ "github.com/hexinfra/gorox/hemi/common/drivers/mongo"
 )

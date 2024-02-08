@@ -8,7 +8,7 @@
 package sitex
 
 import (
-	. "github.com/hexinfra/gorox/hemi/internal"
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 // Pack_

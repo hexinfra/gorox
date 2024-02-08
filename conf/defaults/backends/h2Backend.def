@@ -1,4 +1,4 @@
-http2Backend "h2b1" {
+h2Backend "h2b1" {
 	.tlsMode = false
 	.dialTimeout = 10s
 	.writeTimeout = 30s

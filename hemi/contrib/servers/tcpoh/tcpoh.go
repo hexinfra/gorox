@@ -5,4 +5,4 @@
 
 // TCP over HTTP.
 
-package htcp
+package tcpoh

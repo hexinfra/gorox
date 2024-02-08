@@ -9,8 +9,8 @@ Roadmap
   * [TODO] http/2 implementation.
   * [TODO] quic and http/3 implementation.
   * [TODO] cacher implementation.
-  * [TODO] htcp server implementation.
-  * [TODO] hudp server implementation.
+  * [TODO] tcpoh server implementation.
+  * [TODO] udpoh server implementation.
   * [TODO] web application framework implementation.
   * [TODO] documentation.
   * [TODO] official websites.

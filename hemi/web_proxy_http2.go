@@ -58,7 +58,7 @@ func (h *http2Proxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	backend2 := h.backend.(*HTTP2Backend)
+	backend2 := h.backend.(*H2Backend)
 	conn2, err2 := backend2.FetchConn()
 	if err2 != nil {
 		if Debug() >= 1 {

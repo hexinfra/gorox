@@ -22,7 +22,7 @@ COMPONENTS
   stage [*]
     fixture (clock, fcache, namer, ...)
     addon (...)
-    backend (http1Backend, tcpsBackend, ...)
+    backend (h1Backend, tcpsBackend, ...)
     router (quicRouter, tcpsRouter, udpsRouter)
       dealet (...)
       case [*]

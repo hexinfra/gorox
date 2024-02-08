@@ -5,4 +5,4 @@
 
 // UDP over HTTP.
 
-package hudp
+package udpoh

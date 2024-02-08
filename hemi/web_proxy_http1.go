@@ -58,7 +58,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	backend1 := h.backend.(*HTTP1Backend)
+	backend1 := h.backend.(*H1Backend)
 	conn1, err1 := backend1.FetchConn()
 	if err1 != nil {
 		if Debug() >= 1 {

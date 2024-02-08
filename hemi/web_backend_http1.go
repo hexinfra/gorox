@@ -20,66 +20,66 @@ import (
 )
 
 func init() {
-	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP1Backend)
+	RegisterBackend("h1Backend", func(name string, stage *Stage) Backend {
+		b := new(H1Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// HTTP1Backend
-type HTTP1Backend struct {
+// H1Backend
+type H1Backend struct {
 	// Mixins
-	webBackend_[*http1Node]
+	webBackend_[*h1Node]
 	// States
 }
 
-func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
+func (b *H1Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *HTTP1Backend) OnConfigure() {
+func (b *H1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *HTTP1Backend) OnPrepare() {
+func (b *H1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HTTP1Backend) createNode(id int32) *http1Node {
-	node := new(http1Node)
+func (b *H1Backend) createNode(id int32) *h1Node {
+	node := new(h1Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *HTTP1Backend) FetchConn() (*H1Conn, error) {
+func (b *H1Backend) FetchConn() (*H1Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *HTTP1Backend) StoreConn(conn *H1Conn) {
+func (b *H1Backend) StoreConn(conn *H1Conn) {
 	conn.node.storeConn(conn)
 }
 
-// http1Node is a node in HTTP1Backend.
-type http1Node struct {
+// h1Node is a node in H1Backend.
+type h1Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *HTTP1Backend
+	backend *H1Backend
 	// States
 }
 
-func (n *http1Node) init(id int32, backend *HTTP1Backend) {
+func (n *h1Node) init(id int32, backend *H1Backend) {
 	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *http1Node) setIsTLS() {
+func (n *h1Node) setIsTLS() {
 	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }
 
-func (n *http1Node) Maintain() { // runner
+func (n *h1Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markUp()
 	})
@@ -89,12 +89,12 @@ func (n *http1Node) Maintain() { // runner
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
-		Printf("http1Node=%d done\n", n.id)
+		Printf("h1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *http1Node) fetchConn() (*H1Conn, error) {
+func (n *h1Node) fetchConn() (*H1Conn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -116,14 +116,14 @@ func (n *http1Node) fetchConn() (*H1Conn, error) {
 		return n._fetchTCP()
 	}
 }
-func (n *http1Node) _fetchTCP() (*H1Conn, error) {
+func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
@@ -134,14 +134,14 @@ func (n *http1Node) _fetchTCP() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, false, false, n.backend, n, netConn, rawConn), nil
 }
-func (n *http1Node) _fetchTLS() (*H1Conn, error) {
+func (n *h1Node) _fetchTLS() (*H1Conn, error) {
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
@@ -152,14 +152,14 @@ func (n *http1Node) _fetchTLS() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, false, true, n.backend, n, tlsConn, nil), nil
 }
-func (n *http1Node) _fetchUDS() (*H1Conn, error) {
+func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -170,7 +170,7 @@ func (n *http1Node) _fetchUDS() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, true, false, n.backend, n, netConn, rawConn), nil
 }
-func (n *http1Node) storeConn(h1Conn *H1Conn) {
+func (n *h1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if Debug() >= 2 {
 			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
@@ -184,7 +184,7 @@ func (n *http1Node) storeConn(h1Conn *H1Conn) {
 	}
 }
 
-func (n *http1Node) closeConn(h1Conn *H1Conn) {
+func (n *h1Node) closeConn(h1Conn *H1Conn) {
 	h1Conn.closeConn()
 	putH1Conn(h1Conn)
 	n.SubDone()
@@ -193,7 +193,7 @@ func (n *http1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, udsMode bool, tlsMode bool, backend *HTTP1Backend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
@@ -224,14 +224,14 @@ type H1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *http1Node      // associated node
+	node     *h1Node         // associated node
 	netConn  net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn  syscall.RawConn // used when netConn is TCP or UDS
 	keepConn bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *HTTP1Backend, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn

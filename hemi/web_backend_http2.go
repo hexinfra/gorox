@@ -18,77 +18,77 @@ import (
 )
 
 func init() {
-	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP2Backend)
+	RegisterBackend("h2Backend", func(name string, stage *Stage) Backend {
+		b := new(H2Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// HTTP2Backend
-type HTTP2Backend struct {
+// H2Backend
+type H2Backend struct {
 	// Mixins
-	webBackend_[*http2Node]
+	webBackend_[*h2Node]
 	// States
 }
 
-func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
+func (b *H2Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *HTTP2Backend) OnConfigure() {
+func (b *H2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *HTTP2Backend) OnPrepare() {
+func (b *H2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HTTP2Backend) createNode(id int32) *http2Node {
-	node := new(http2Node)
+func (b *H2Backend) createNode(id int32) *h2Node {
+	node := new(h2Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *HTTP2Backend) FetchConn() (*H2Conn, error) {
+func (b *H2Backend) FetchConn() (*H2Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *HTTP2Backend) StoreConn(conn *H2Conn) {
+func (b *H2Backend) StoreConn(conn *H2Conn) {
 	conn.node.storeConn(conn)
 }
 
-// http2Node
-type http2Node struct {
+// h2Node
+type h2Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *HTTP2Backend
+	backend *H2Backend
 	// States
 }
 
-func (n *http2Node) init(id int32, backend *HTTP2Backend) {
+func (n *h2Node) init(id int32, backend *H2Backend) {
 	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *http2Node) setIsTLS() {
+func (n *h2Node) setIsTLS() {
 	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
 }
 
-func (n *http2Node) Maintain() { // runner
+func (n *h2Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("http2Node=%d done\n", n.id)
+		Printf("h2Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *http2Node) fetchConn() (*H2Conn, error) {
+func (n *h2Node) fetchConn() (*H2Conn, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var netConn net.Conn
@@ -96,7 +96,7 @@ func (n *http2Node) fetchConn() (*H2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, false, false, n.backend, n, netConn, rawConn), nil
 }
-func (n *http2Node) storeConn(h2Conn *H2Conn) {
+func (n *h2Node) storeConn(h2Conn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -104,7 +104,7 @@ func (n *http2Node) storeConn(h2Conn *H2Conn) {
 // poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, udsMode bool, tlsMode bool, backend *HTTP2Backend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, udsMode bool, tlsMode bool, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var h2Conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		h2Conn = new(H2Conn)
@@ -126,14 +126,14 @@ type H2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *http2Node // associated node
-	netConn net.Conn   // the connection (TCP/TLS)
+	node    *h2Node  // associated node
+	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, backend *HTTP2Backend, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn

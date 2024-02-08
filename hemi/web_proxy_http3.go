@@ -58,7 +58,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	backend3 := h.backend.(*HTTP3Backend)
+	backend3 := h.backend.(*H3Backend)
 	conn3, err3 := backend3.FetchConn()
 	if err3 != nil {
 		if Debug() >= 1 {

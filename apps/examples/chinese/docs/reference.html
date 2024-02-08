@@ -102,9 +102,9 @@ article table.none tr td {
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
 		<li><a href="#stage-namer">stage &gt; namer</a></li>
 		<li><a href="#stage-demoAddon">stage &gt; demoAddon</a></li>
-		<li><a href="#stage-http1Backend">stage &gt; http1Backend</a></li>
-		<li><a href="#stage-http2Backend">stage &gt; http2Backend</a></li>
-		<li><a href="#stage-http3Backend">stage &gt; http3Backend</a></li>
+		<li><a href="#stage-h1Backend">stage &gt; h1Backend</a></li>
+		<li><a href="#stage-h2Backend">stage &gt; h2Backend</a></li>
+		<li><a href="#stage-h3Backend">stage &gt; h3Backend</a></li>
 		<li><a href="#stage-quicBackend">stage &gt; quicBackend</a></li>
 		<li><a href="#stage-tcpsBackend">stage &gt; tcpsBackend</a></li>
 		<li><a href="#stage-udpsBackend">stage &gt; udpsBackend</a></li>
@@ -317,11 +317,11 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-http1Backend">
-			<h4>stage &gt; http1Backend</h4>
+		<li id="stage-h1Backend">
+			<h4>stage &gt; h1Backend</h4>
 			<p>例子</p>
 			<code class="pre">stage {
-	http1Backend "h1b" {
+	h1Backend "h1b" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -452,14 +452,14 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</li>
 			</ul>
 		</li>
-		<li id="stage-http2Backend">
-			<h4>stage &gt; http2Backend</h4>
+		<li id="stage-h2Backend">
+			<h4>stage &gt; h2Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-http3Backend">
-			<h4>stage &gt; http3Backend</h4>
+		<li id="stage-h3Backend">
+			<h4>stage &gt; h3Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
@@ -529,7 +529,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</code>
 					<p>例子</p>
 					<code class="pre">stage {
-	http1Backend "h1b" {
+	h1Backend "h1b" {
 		.balancer = "roundRobin"
 		.nodes = (
 			["address": "127.0.0.1:3080", "weight": 1],

@@ -18,76 +18,76 @@ import (
 )
 
 func init() {
-	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP3Backend)
+	RegisterBackend("h3Backend", func(name string, stage *Stage) Backend {
+		b := new(H3Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// HTTP3Backend
-type HTTP3Backend struct {
+// H3Backend
+type H3Backend struct {
 	// Mixins
-	webBackend_[*http3Node]
+	webBackend_[*h3Node]
 	// States
 }
 
-func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
+func (b *H3Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b)
 }
 
-func (b *HTTP3Backend) OnConfigure() {
+func (b *H3Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *HTTP3Backend) OnPrepare() {
+func (b *H3Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HTTP3Backend) createNode(id int32) *http3Node {
-	node := new(http3Node)
+func (b *H3Backend) createNode(id int32) *h3Node {
+	node := new(h3Node)
 	node.init(id, b)
 	return node
 }
 
-func (b *HTTP3Backend) FetchConn() (*H3Conn, error) {
+func (b *H3Backend) FetchConn() (*H3Conn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
-func (b *HTTP3Backend) StoreConn(conn *H3Conn) {
+func (b *H3Backend) StoreConn(conn *H3Conn) {
 	conn.node.storeConn(conn)
 }
 
-// http3Node
-type http3Node struct {
+// h3Node
+type h3Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *HTTP3Backend
+	backend *H3Backend
 	// States
 }
 
-func (n *http3Node) init(id int32, backend *HTTP3Backend) {
+func (n *h3Node) init(id int32, backend *H3Backend) {
 	n.Node_.init(id)
 	n.backend = backend
 }
 
-func (n *http3Node) setIsTLS() {
+func (n *h3Node) setIsTLS() {
 	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 }
 
-func (n *http3Node) Maintain() { // runner
+func (n *h3Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("http3Node=%d done\n", n.id)
+		Printf("h3Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *http3Node) fetchConn() (*H3Conn, error) {
+func (n *h3Node) fetchConn() (*H3Conn, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	conn, err := quix.DialTimeout(n.address, n.backend.dialTimeout)
@@ -97,7 +97,7 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, false, true, n.backend, n, conn), nil
 }
-func (n *http3Node) storeConn(h3Conn *H3Conn) {
+func (n *h3Node) storeConn(h3Conn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -105,7 +105,7 @@ func (n *http3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, udsMode bool, tlsMode bool, backend *HTTP3Backend, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, udsMode bool, tlsMode bool, backend *H3Backend, node *h3Node, quixConn *quix.Conn) *H3Conn {
 	var h3Conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		h3Conn = new(H3Conn)
@@ -127,13 +127,13 @@ type H3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *http3Node
+	node     *h3Node
 	quixConn *quix.Conn // the underlying quic connection
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *HTTP3Backend, node *http3Node, quixConn *quix.Conn) {
+func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *H3Backend, node *h3Node, quixConn *quix.Conn) {
 	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.quixConn = quixConn

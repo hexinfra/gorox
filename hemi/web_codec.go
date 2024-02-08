@@ -99,8 +99,6 @@ type webStream_ struct {
 const ( // stream modes
 	streamModeExchan = 0 // request & response, must be 0
 	streamModeSocket = 1 // upgrade: websocket
-	streamModeTCPTun = 2 // CONNECT method
-	streamModeUDPTun = 3 // upgrade: connect-udp
 )
 
 func (s *webStream_) onUse() { // for non-zeros
@@ -166,7 +164,6 @@ type webIn0 struct { // for fast reset, entirely
 	headers          zone    // headers ->r.primes
 	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
-	upgradeUDPTun    bool    // upgrade: connect-udp?
 	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
@@ -176,7 +173,7 @@ type webIn0 struct { // for fast reset, entirely
 	iContentRange    uint8   // index of content-range header in r.primes
 	iContentType     uint8   // index of content-type header in r.primes
 	iDate            uint8   // index of date header in r.primes
-	_                [2]byte // padding
+	_                [3]byte // padding
 	zConnection      zone    // zone of connection headers in r.primes. may not be continuous
 	zContentLanguage zone    // zone of content-language headers in r.primes. may not be continuous
 	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous

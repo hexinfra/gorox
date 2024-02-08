@@ -386,17 +386,9 @@ func (s *http1Stream) execute() {
 		return
 	}
 
-	if req.methodCode == MethodCONNECT { // tcpTun mode?
-		// CONNECT does not allow content, so expectContinue is not allowed, and rejected.
-		s.executeTCPTun()
-		s.mode = streamModeTCPTun
-		s.conn.keepConn = false // hijacked, so must close conn after s.executeTCPTun()
-		return
-	}
-	if req.upgradeUDPTun { // udpTun mode?
-		s.executeUDPTun()
-		s.mode = streamModeUDPTun
-		s.conn.keepConn = false // hijacked, so must close conn after s.executeUDPTun()
+	if req.methodCode == MethodCONNECT {
+		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented"
+		s.serveAbnormal(req, resp)
 		return
 	}
 
@@ -436,40 +428,39 @@ func (s *http1Stream) execute() {
 		s.mode = streamModeSocket
 		s.conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
 		return
-	}
-
-	// Exchan mode.
-	if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-		req.maxContentSize = webapp.maxUploadContentSize
-	} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
-		req.maxContentSize = int64(webapp.maxMemoryContentSize)
-	}
-	if req.contentSize > req.maxContentSize {
-		if req.expectContinue {
-			req.headResult = StatusExpectationFailed
-		} else {
-			req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
+	} else { // exchan mode.
+		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+			req.maxContentSize = webapp.maxUploadContentSize
+		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
+			req.maxContentSize = int64(webapp.maxMemoryContentSize)
 		}
-		s.serveAbnormal(req, resp)
-		return
-	}
+		if req.contentSize > req.maxContentSize {
+			if req.expectContinue {
+				req.headResult = StatusExpectationFailed
+			} else {
+				req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
+			}
+			s.serveAbnormal(req, resp)
+			return
+		}
 
-	// Prepare response according to request
-	if req.methodCode == MethodHEAD {
-		resp.forbidContent = true
-	}
+		// Prepare response according to request
+		if req.methodCode == MethodHEAD {
+			resp.forbidContent = true
+		}
 
-	if req.expectContinue && !s.writeContinue() {
-		return
-	}
-	s.conn.usedStreams.Add(1)
-	if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
-		s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
-	}
-	s.executeExchan(webapp, req, resp)
+		if req.expectContinue && !s.writeContinue() {
+			return
+		}
+		s.conn.usedStreams.Add(1)
+		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
+			s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
+		}
+		s.executeExchan(webapp, req, resp)
 
-	if s.isBroken() {
-		s.conn.keepConn = false // i/o error
+		if s.isBroken() {
+			s.conn.keepConn = false // i/o error
+		}
 	}
 }
 
@@ -563,19 +554,6 @@ func (s *http1Stream) executeSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455), use s.serveSocket()
 	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
-	s.conn.closeConn()
-	s.onEnd()
-}
-func (s *http1Stream) executeTCPTun() { // CONNECT method
-	// TODO(diogin): implementation, use s.serveTCPTun()
-	// NOTICE: use idle timeout or clear read timeout otherwise
-	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
-	s.conn.closeConn()
-	s.onEnd()
-}
-func (s *http1Stream) executeUDPTun() { // upgrade: connect-udp
-	// TODO(diogin): implementation (RFC 9298), use s.serveUDPTun()
-	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nconnection: close\r\n\r\n"))
 	s.conn.closeConn()
 	s.onEnd()
 }

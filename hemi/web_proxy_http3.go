@@ -41,7 +41,7 @@ func (h *http3Proxy) OnPrepare() {
 	h.exchanProxy_.onPrepare()
 }
 
-func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forward or reverse
+func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) {
 	var (
 		content  any
 		content3 any
@@ -72,7 +72,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) { // forw
 	stream3 := conn3.FetchStream()
 	defer conn3.StoreStream(stream3)
 
-	// TODO: use stream3.ForwardProxy() or stream3.ReverseProxy()
+	// TODO: use stream3.ReverseExchan()
 
 	req3 := stream3.Request()
 	if !req3.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
@@ -187,7 +187,7 @@ func (s *sock3Proxy) OnPrepare() {
 	s.socketProxy_.onPrepare()
 }
 
-func (s *sock3Proxy) Serve(req Request, sock Socket) { // forward or reverse
+func (s *sock3Proxy) Serve(req Request, sock Socket) {
 	// TODO(diogin): Implementation
 	sock.Close()
 }

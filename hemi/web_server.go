@@ -30,12 +30,10 @@ type webServer_[G Gate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	forApps      []string               // for what webapps
-	exactApps    []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixApps   []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixApps   []*hostnameTo[*Webapp] // like: ("www.example.*")
-	enableTCPTun bool                   // allow CONNECT method?
-	enableUDPTun bool                   // allow upgrade: connect-udp?
+	forApps    []string               // for what webapps
+	exactApps  []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixApps []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixApps []*hostnameTo[*Webapp] // like: ("www.example.*")
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
@@ -50,13 +48,6 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
-
-	if Debug() >= 2 { // remove this condition after TCPTun and UDPTun are fully implemented
-		// enableTCPTun
-		s.ConfigureBool("enableTCPTun", &s.enableTCPTun, false)
-		// enableUDPTun
-		s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
-	}
 }
 func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
@@ -171,12 +162,6 @@ type serverStream_ struct {
 
 func (s *serverStream_) serveSocket() {
 	// TODO
-}
-func (s *serverStream_) serveTCPTun() {
-	// TODO: CONNECT method
-}
-func (s *serverStream_) serveUDPTun() {
-	// TODO: upgrade connect-udp
 }
 
 // serverRequest_ is the mixin for http[1-3]Request.

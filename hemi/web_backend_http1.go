@@ -302,24 +302,14 @@ func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
+func (s *H1Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
+	// TODO
+	return nil
+}
+
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO
 	return s.socket
-}
-func (s *H1Stream) ExecuteTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *H1Stream) ExecuteUDPTun() { // upgrade: connect-udp
-	// TODO
-}
-
-func (s *H1Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
-	// TODO
-	return nil
-}
-func (s *H1Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
-	// TODO
-	return nil
 }
 
 func (s *H1Stream) makeTempName(p []byte, unixTime int64) int {

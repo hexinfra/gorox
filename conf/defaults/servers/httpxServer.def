@@ -6,8 +6,6 @@ httpxServer "hxs1" {
 	.writeTimeout    = 60s
 	.numGates        = runtime.NumCPU()
 	.maxConnsPerGate = 100000
-	.enableTCPTun    = false
-	.enableUDPTun    = false
 	.maxContentSize  = 1T
 	.recvTimeout     = 120s
 	.sendTimeout     = 120s

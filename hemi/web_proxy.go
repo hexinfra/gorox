@@ -26,8 +26,8 @@ type exchanProxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage
 	webapp  *Webapp // the webapp to which the proxy belongs
-	backend Backend // if works as forward proxy, this is nil
-	cacher  Cacher  // the cacher which is used by this proxy
+	backend Backend
+	cacher  Cacher // the cacher which is used by this proxy
 	// States
 	hostname            []byte            // hostname used in ":authority" and "host" header
 	colonPort           []byte            // colonPort used in ":authority" and "host" header
@@ -59,7 +59,7 @@ func (h *exchanProxy_) onConfigure() {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for reverse proxy")
+		UseExitln("toBackend is required for web proxy")
 	}
 
 	// withCacher
@@ -128,7 +128,7 @@ type socketProxy_ struct {
 	// Assocs
 	stage   *Stage  // current stage
 	webapp  *Webapp // the webapp to which the proxy belongs
-	backend Backend // if works as forward proxy, this is nil
+	backend Backend
 	// States
 }
 
@@ -151,7 +151,7 @@ func (s *socketProxy_) onConfigure() {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for reverse proxy")
+		UseExitln("toBackend is required for websocket proxy")
 	}
 }
 func (s *socketProxy_) onPrepare() {

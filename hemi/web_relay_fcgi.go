@@ -154,7 +154,7 @@ func (h *fcgiRelay) OnPrepare() {
 func (h *fcgiRelay) IsProxy() bool { return true }
 func (h *fcgiRelay) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) { // reverse only
+func (h *fcgiRelay) Handle(req Request, resp Response) (handled bool) {
 	var (
 		content  any
 		fConn    *TConn

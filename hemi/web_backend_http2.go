@@ -261,22 +261,13 @@ func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
+func (s *H2Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
+
 func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO, use s.startSocket()
 	return s.socket
-}
-func (s *H2Stream) ExecuteTCPTun() { // CONNECT method
-	// TODO, use s.startTCPTun()
-}
-func (s *H2Stream) ExecuteUDPTun() { // see RFC 9298: https://datatracker.ietf.org/doc/html/rfc9298
-	// TODO, use s.startUDPTun()
-}
-
-func (s *H2Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-func (s *H2Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
 }
 
 func (s *H2Stream) makeTempName(p []byte, unixTime int64) int {

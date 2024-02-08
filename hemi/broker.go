@@ -38,7 +38,7 @@ type Server_[G Gate] struct {
 	Component_
 	// Assocs
 	stage *Stage // current stage
-	gates []G // a server has many gates
+	gates []G    // a server has many gates
 	// States
 	address         string        // hostname:port, /path/to/unix.sock
 	colonPort       string        // like: ":9876"
@@ -208,10 +208,10 @@ type Backend_[N Node] struct {
 	Component_
 	// Assocs
 	stage   *Stage // current stage
+	nodes   []N    // nodes of this backend
 	creator interface {
 		createNode(id int32) N
 	} // if Go's generic supports new(N) then this is not needed.
-	nodes []N // nodes of this backend
 	// States
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write operation timeout

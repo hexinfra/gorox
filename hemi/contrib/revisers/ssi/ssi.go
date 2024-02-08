@@ -10,8 +10,8 @@ package ssi
 import (
 	"errors"
 
-	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 	. "github.com/hexinfra/gorox/hemi"
+	. "github.com/hexinfra/gorox/hemi/contrib/revisers"
 )
 
 func init() {

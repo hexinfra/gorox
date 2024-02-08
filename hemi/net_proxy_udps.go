@@ -56,7 +56,7 @@ func (d *udpsProxy) OnConfigure() {
 func (d *udpsProxy) OnPrepare() {
 }
 
-func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) { // reverse only
+func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) {
 	// TODO
 	return true
 }

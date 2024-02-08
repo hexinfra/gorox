@@ -298,12 +298,6 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 func (s *http3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
-func (s *http3Stream) executeTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *http3Stream) executeUDPTun() { // see RFC 9298
-	// TODO
-}
 
 func (s *http3Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)

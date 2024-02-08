@@ -884,12 +884,6 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 func (s *http2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO
 }
-func (s *http2Stream) executeTCPTun() { // CONNECT method
-	// TODO
-}
-func (s *http2Stream) executeUDPTun() { // see RFC 9298: https://datatracker.ietf.org/doc/html/rfc9298
-	// TODO
-}
 
 func (s *http2Stream) makeTempName(p []byte, unixTime int64) int {
 	return s.conn.makeTempName(p, unixTime)

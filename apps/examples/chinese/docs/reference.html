@@ -1483,8 +1483,6 @@ http1Proxy {
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConnsPerGate = 100000
 		.forApps = ("example_com")
-		.enableTCPTun = false
-		.enableUDPTun = false
 		.maxContentSize = 1T
 		.recvTimeout = 120s
 		.sendTimeout = 120s
@@ -1540,20 +1538,6 @@ http1Proxy {
 					<p>.forApps 当前 httpxServer 应用于那些 Webapp。</p>
 					<code>语法：.forApps = ("test", "test2")
 						默认值：nil
-					</code>
-				</li>
-				<li>
-					<p>.enableTCPTun 是否开启 tcp tunnel？这样 http 代理就可以转发 https 请求了。</p>
-					<code>语法 .enableTCPTun = false
-						默认值：false
-						取值范围：false | true
-					</code>
-				</li>
-				<li>
-					<p>.enableUDPTun 是否开启 udp tunnel？</p>
-					<code>语法 .enableUDPTun = false
-						默认值：false
-						取值范围：false | true
 					</code>
 				</li>
 				<li>

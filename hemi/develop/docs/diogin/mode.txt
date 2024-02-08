@@ -8,7 +8,6 @@ exchan mode
 
     client  ---http/1/2/3-->  handlet
     client  ---http/1/2/3-->  reverse proxy  ---http/1/2/3/fcgi-->  backend
-    client  ---http/1/2/3-->  forward proxy  ~~~http/1/2/3~~>  target
 
 socket mode
 ===========
@@ -20,23 +19,3 @@ socket mode
 
     client  ---ws/1/2/3-->  socklet
     client  ---ws/1/2/3-->  proxy socklet  ---ws-->  socklet
-
-tcptun mode
-===========
-
-  CONNECT
-
-  through stream
-  --------------
-
-    client  ---connect/1/2/3-->  stream.processTCPTun()  ---tcp-->  server
-
-udptun mode
-===========
-
-  upgrade: connect-udp
-
-  through stream
-  --------------
-
-    client  ---connect/1/2/3-->  stream.processUDPTun()  ---udp-->  server

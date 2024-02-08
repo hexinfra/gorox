@@ -20,9 +20,9 @@ type tcpsProxy struct {
 	// Mixins
 	TCPSDealet_
 	// Assocs
-	stage   *Stage       // current stage
-	router  *TCPSRouter  // the router to which the dealet belongs
-	backend *TCPSBackend // if works as forward proxy, this is nil
+	stage   *Stage      // current stage
+	router  *TCPSRouter // the router to which the dealet belongs
+	backend *TCPSBackend
 	// States
 }
 
@@ -50,7 +50,7 @@ func (d *tcpsProxy) OnConfigure() {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for reverse proxy")
+		UseExitln("toBackend is required for tcpsProxy proxy")
 	}
 }
 func (d *tcpsProxy) OnPrepare() {

@@ -58,7 +58,6 @@ NOTES
   * adding headers to incoming messages: apply + check.
   * adding headers to outgoing messages: insert + append.
   * deleting headers from outgoing messages: remove + delete.
-  * proxies can be forward or reverse.
 
 WEB SERVER -> WEB PROXY -> WEB CLIENT
 -------------------------------------

@@ -232,22 +232,13 @@ func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
+func (s *H3Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
+	// TODO
+}
+
 func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
 	// TODO, use s.startSocket()
 	return s.socket
-}
-func (s *H3Stream) ExecuteTCPTun() { // CONNECT method
-	// TODO, use s.startTCPTun()
-}
-func (s *H3Stream) ExecuteUDPTun() { // see RFC 9298
-	// TODO, use s.startUDPTun()
-}
-
-func (s *H3Stream) ForwardProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-func (s *H3Stream) ReverseProxy(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
 }
 
 func (s *H3Stream) makeTempName(p []byte, unixTime int64) int {

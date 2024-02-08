@@ -92,12 +92,6 @@ type backendStream_ struct {
 func (s *backendStream_) startSocket() {
 	// TODO
 }
-func (s *backendStream_) startTCPTun() {
-	// TODO: CONNECT method
-}
-func (s *backendStream_) startUDPTun() {
-	// TODO: upgrade connect-udp
-}
 
 // backendRequest_ is the mixin for H[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
@@ -663,7 +657,7 @@ func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bo
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
 	}
-	// TODO: what about socket, tcptun, udptun?
+	// TODO: what about websocket?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }

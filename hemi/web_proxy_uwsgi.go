@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI relay implementation.
+// UWSGI proxy implementation.
 
 // UWSGI is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
 // UWSGI 1.9.13 seems to have vague content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
@@ -17,23 +17,23 @@ import (
 )
 
 func init() {
-	RegisterHandlet("uwsgiRelay", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(uwsgiRelay)
+	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(uwsgiProxy)
 		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
 
-// uwsgiRelay handlet passes web requests to backend uWSGI servers and cache responses.
-type uwsgiRelay struct {
+// uwsgiProxy handlet passes web requests to backend uWSGI servers and cache responses.
+type uwsgiProxy struct {
 	// Mixins
 	Handlet_
 	contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
-	webapp  *Webapp      // the webapp to which the relay belongs
+	webapp  *Webapp      // the webapp to which the proxy belongs
 	backend *TCPSBackend // the backend to pass to
-	cacher  Cacher       // the cacher which is used by this relay
+	cacher  Cacher       // the cacher which is used by this proxy
 	// States
 	bufferClientContent bool          // client content is buffered anyway?
 	bufferServerContent bool          // server content is buffered anyway?
@@ -42,16 +42,16 @@ type uwsgiRelay struct {
 	maxContentSize      int64         // max response content size allowed
 }
 
-func (h *uwsgiRelay) onCreate(name string, stage *Stage, webapp *Webapp) {
+func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.webapp = webapp
 }
-func (h *uwsgiRelay) OnShutdown() {
+func (h *uwsgiProxy) OnShutdown() {
 	h.webapp.SubDone()
 }
 
-func (h *uwsgiRelay) OnConfigure() {
+func (h *uwsgiProxy) OnConfigure() {
 	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/uwsgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -61,13 +61,13 @@ func (h *uwsgiRelay) OnConfigure() {
 			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
 				h.backend = tcpsBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiRelay, must be TCPSBackend\n", name)
+				UseExitf("incorrect backend '%s' for uwsgiProxy, must be TCPSBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for uwsgiRelay")
+		UseExitln("toBackend is required for uwsgiProxy")
 	}
 
 	// withCacher
@@ -112,14 +112,14 @@ func (h *uwsgiRelay) OnConfigure() {
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
-func (h *uwsgiRelay) OnPrepare() {
+func (h *uwsgiProxy) OnPrepare() {
 	h.contentSaver_.onPrepare(h, 0755)
 }
 
-func (h *uwsgiRelay) IsProxy() bool { return true }
-func (h *uwsgiRelay) IsCache() bool { return h.cacher != nil }
+func (h *uwsgiProxy) IsProxy() bool { return true }
+func (h *uwsgiProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *uwsgiRelay) Handle(req Request, resp Response) (handled bool) {
+func (h *uwsgiProxy) Handle(req Request, resp Response) (handled bool) {
 	// TODO: implementation
 	resp.Send("uwsgi")
 	return true
@@ -128,7 +128,7 @@ func (h *uwsgiRelay) Handle(req Request, resp Response) (handled bool) {
 // poolUWSGIExchan
 var poolUWSGIExchan sync.Pool
 
-func getUWSGIExchan(relay *uwsgiRelay, conn *TConn) *uwsgiExchan {
+func getUWSGIExchan(proxy *uwsgiProxy, conn *TConn) *uwsgiExchan {
 	var exchan *uwsgiExchan
 	if x := poolUWSGIExchan.Get(); x == nil {
 		exchan = new(uwsgiExchan)
@@ -139,7 +139,7 @@ func getUWSGIExchan(relay *uwsgiRelay, conn *TConn) *uwsgiExchan {
 	} else {
 		exchan = x.(*uwsgiExchan)
 	}
-	exchan.onUse(relay, conn)
+	exchan.onUse(proxy, conn)
 	return exchan
 }
 func putUWSGIExchan(exchan *uwsgiExchan) {
@@ -156,14 +156,14 @@ type uwsgiExchan struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	relay  *uwsgiRelay // associated relay
+	proxy  *uwsgiProxy // associated proxy
 	conn   *TConn      // associated conn
 	region Region      // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *uwsgiExchan) onUse(relay *uwsgiRelay, conn *TConn) {
-	x.relay = relay
+func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn *TConn) {
+	x.proxy = proxy
 	x.conn = conn
 	x.region.Init()
 	x.request.onUse()
@@ -174,7 +174,7 @@ func (x *uwsgiExchan) onEnd() {
 	x.response.onEnd()
 	x.region.Free()
 	x.conn = nil
-	x.relay = nil
+	x.proxy = nil
 }
 
 func (x *uwsgiExchan) buffer256() []byte          { return x.stockBuffer[:] }

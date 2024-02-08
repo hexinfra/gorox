@@ -1,4 +1,4 @@
-fcgiRelay "fp1" {
+fcgiProxy "fp1" {
 	.saveContentFilesDir = %tmpsDir + "/web/fcgi/fp1"
 	.toBackend = "php-fpm"
 	.sendTimeout = 60s

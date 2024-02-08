@@ -8,7 +8,6 @@ v?.?.?                                                        (2024-??-?? UTC+8)
   * Action "test" is not integrated.
   * Values can now be variables in config file.
   * HTTP proxies now support adding and deleting request headers.
-  * ajpProxy, fcgiProxy, and uwsgiProxy are now renamed as respective relays.
   * FromFile and FromText are renamed as BootFile and BootText respectively.
   * Abbreviations are now differentiated from names clearly.
   * Directory "cmds/" is now renamed as "bins/".

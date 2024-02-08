@@ -135,13 +135,13 @@ article table.none tr td {
 		<li> <a href="#stage-webapp-refererChecker">stage &gt; webapp &gt; [rule &gt;] refererChecker</a></li>
 		<li> <a href="#stage-webapp-rewriter">stage &gt; webapp &gt; [rule &gt;] rewriter</a></li>
 		<li> <a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
-		<li> <a href="#stage-webapp-fcgiRelay">stage &gt; webapp &gt; [rule &gt;] fcgiRelay</a></li>
+		<li> <a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
 		<li> <a href="#stage-webapp-http1Proxy">stage &gt; webapp &gt; [rule &gt;] http1Proxy</a></li>
 		<li> <a href="#stage-webapp-http2Proxy">stage &gt; webapp &gt; [rule &gt;] http2Proxy</a></li>
 		<li> <a href="#stage-webapp-http3Proxy">stage &gt; webapp &gt; [rule &gt;] http3Proxy</a></li>
 		<li> <a href="#stage-webapp-sitex">stage &gt; webapp &gt; [rule &gt;] sitex</a></li>
 		<li> <a href="#stage-webapp-static">stage &gt; webapp &gt; [rule &gt;] static</a></li>
-		<li> <a href="#stage-webapp-uwsgiRelay">stage &gt; webapp &gt; [rule &gt;] uwsgiRelay</a></li>
+		<li> <a href="#stage-webapp-uwsgiProxy">stage &gt; webapp &gt; [rule &gt;] uwsgiProxy</a></li>
 		<li> <a href="#stage-webapp-webdavHandlet">stage &gt; webapp &gt; [rule &gt;] webdavHandlet</a></li>
 		<li> <a href="#stage-webapp-gzipReviser">stage &gt; webapp &gt; [rule &gt;] gzipReviser</a></li>
 		<li> <a href="#stage-webapp-headReviser">stage &gt; webapp &gt; [rule &gt;] headReviser</a></li>
@@ -779,7 +779,7 @@ $=	变量和给定值，是否后缀匹配。
 webapp "main" {
 		
 	rule $path == /phpstatus { // 全匹配
-		fcgiRelay {
+		fcgiProxy {
 			.toBackend = "fpm"
 		}
 	}
@@ -813,7 +813,7 @@ webapp "main" {
 	}
 
 	rule $path ~= "\.php$" { // 后缀是 php 都转到 fpm 上。
-		fcgiRelay {
+		fcgiProxy {
 			.toBackend = "fpm"
 		}
 	}
@@ -989,14 +989,14 @@ webapp "main" {
 			<h4>stage &gt; webapp &gt; favicon </h4>
 		</li>
 
-		<li id="stage-webapp-uwsgiRelay">
-			<h4>stage &gt; webapp &gt; uwsgiRelay </h4>
+		<li id="stage-webapp-uwsgiProxy">
+			<h4>stage &gt; webapp &gt; uwsgiProxy </h4>
 		</li>
 
-		<li id="stage-webapp-fcgiRelay">
-			<h4>stage &gt; webapp &gt; fcgiRelay </h4>
-			<p>fcgiRelay 用于 FCGI 协议的后端代理，比如代理 php-fpm。 </p>
-			<code class="pre">语法：fcgiRelay [name] { ... }
+		<li id="stage-webapp-fcgiProxy">
+			<h4>stage &gt; webapp &gt; fcgiProxy </h4>
+			<p>fcgiProxy 用于 FCGI 协议的后端代理，比如代理 php-fpm。 </p>
+			<code class="pre">语法：fcgiProxy [name] { ... }
 
 // 例子
 stage {
@@ -1011,7 +1011,7 @@ stage {
 	webapp "main" {
 		.webRoot = %baseDir + "/apps/diogin/root"
 
-		fcgiRelay "fpm" {
+		fcgiProxy "fpm" {
 			.toBackend = "php-fpm"
 		}
 
@@ -1020,7 +1020,7 @@ stage {
 		}
 
 		rule $path ~= "\.php$" {
-			fcgiRelay {
+			fcgiProxy {
 				.toBackend = "php-fpm"
 			}
 		}
@@ -1126,7 +1126,7 @@ stage {
 	webapp "main" {
 		.webRoot = %baseDir + "/apps/diogin/root"
 
-		fcgiRelay "php-fpm" {
+		fcgiProxy "php-fpm" {
 			.toBackend = "php-fpm"
 			.sendTimeout = 60s
 			.recvTimeout = 60s

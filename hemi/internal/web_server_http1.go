@@ -35,7 +35,7 @@ func init() {
 // httpxServer is the HTTP/1 and HTTP/2 server.
 type httpxServer struct {
 	// Mixins
-	webServer_
+	webServer_[*httpxGate]
 	// States
 	forceScheme  int8 // scheme that must be used
 	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
@@ -50,7 +50,7 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 func (s *httpxServer) OnShutdown() {
 	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.Shut()
 	}
 }
 
@@ -83,7 +83,7 @@ func (s *httpxServer) OnConfigure() {
 }
 func (s *httpxServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
-	if s.TLSMode() {
+	if s.IsTLS() {
 		var nextProtos []string
 		if s.enableHTTP2 {
 			nextProtos = []string{"h2", "http/1.1"}
@@ -100,14 +100,14 @@ func (s *httpxServer) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
 		gate.init(s, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
 		s.IncSub(1)
-		if s.UDSMode() {
+		if s.IsUDS() {
 			go gate.serveUDS()
-		} else if s.TLSMode() {
+		} else if s.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -135,7 +135,7 @@ func (g *httpxGate) init(server *httpxServer, id int32) {
 	g.server = server
 }
 
-func (g *httpxGate) open() error {
+func (g *httpxGate) Open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		if err := system.SetReusePort(rawConn); err != nil {
@@ -152,7 +152,7 @@ func (g *httpxGate) open() error {
 	}
 	return err
 }
-func (g *httpxGate) shut() error {
+func (g *httpxGate) Shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
@@ -237,7 +237,7 @@ func (g *httpxGate) serveUDS() { // runner
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.onConnClosed()
+	g.OnConnClosed()
 }
 
 // httpxConn
@@ -359,7 +359,7 @@ func (c *http1Conn) closeConn() {
 		time.Sleep(time.Second)
 	}
 	c.netConn.Close()
-	c.gate.onConnClosed()
+	c.gate.OnConnClosed()
 }
 
 // http1Stream is the server-side HTTP/1 stream.

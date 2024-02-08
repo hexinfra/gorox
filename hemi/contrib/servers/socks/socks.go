@@ -31,20 +31,16 @@ func init() {
 // socksServer
 type socksServer struct {
 	// Mixins
-	Server_
+	Server_[*socksGate]
 	// Assocs
 	// States
-	gates []*socksGate
 }
 
 func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *socksServer) OnShutdown() {
-	// Notify gates. We don't close(s.ShutChan) here.
-	for _, gate := range s.gates {
-		gate.shut()
-	}
+	s.ShutGates()
 }
 
 func (s *socksServer) OnConfigure() {
@@ -58,10 +54,10 @@ func (s *socksServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(socksGate)
 		gate.init(s, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.gates = append(s.gates, gate)
+		s.AppendGate(gate)
 		s.IncSub(1)
 		go gate.serve()
 	}
@@ -87,7 +83,7 @@ func (g *socksGate) init(server *socksServer, id int32) {
 	g.server = server
 }
 
-func (g *socksGate) open() error {
+func (g *socksGate) Open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
@@ -98,7 +94,7 @@ func (g *socksGate) open() error {
 	}
 	return err
 }
-func (g *socksGate) shut() error {
+func (g *socksGate) Shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
@@ -132,11 +128,7 @@ func (g *socksGate) serve() { // runner
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.onConnClosed()
-}
-func (g *socksGate) onConnClosed() {
-	g.DecConns()
-	g.SubDone()
+	g.OnConnClosed()
 }
 
 // poolSocksConn
@@ -193,5 +185,5 @@ func (c *socksConn) serve() { // runner
 
 func (c *socksConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.onConnClosed()
+	c.gate.OnConnClosed()
 }

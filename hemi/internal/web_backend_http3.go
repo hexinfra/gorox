@@ -71,8 +71,8 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 	n.backend = backend
 }
 
-func (n *http3Node) setTLSMode() {
-	n.Node_.setTLSMode()
+func (n *http3Node) setIsTLS() {
+	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 }
 

@@ -31,7 +31,7 @@ func (r *TCPSRouter) onCreate(name string, stage *Stage) {
 func (r *TCPSRouter) OnShutdown() {
 	// Notify gates. We don't close(r.ShutChan) here.
 	for _, gate := range r.gates {
-		gate.shut()
+		gate.Shut()
 	}
 }
 
@@ -61,14 +61,14 @@ func (r *TCPSRouter) serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
 		gate.init(r, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		r.gates = append(r.gates, gate)
 		r.IncSub(1)
-		if r.UDSMode() {
+		if r.IsUDS() {
 			go gate.serveUDS()
-		} else if r.TLSMode() {
+		} else if r.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -114,7 +114,7 @@ func (g *tcpsGate) init(router *TCPSRouter, id int32) {
 	g.router = router
 }
 
-func (g *tcpsGate) open() error {
+func (g *tcpsGate) Open() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
@@ -126,7 +126,7 @@ func (g *tcpsGate) open() error {
 	}
 	return err
 }
-func (g *tcpsGate) shut() error {
+func (g *tcpsGate) Shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
@@ -202,7 +202,7 @@ func (g *tcpsGate) serveUDS() { // runner
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.onConnClosed()
+	g.OnConnClosed()
 }
 
 // TCPSDealet
@@ -403,9 +403,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.router; router.UDSMode() {
+	if router := c.router; router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if router.TLSMode() {
+	} else if router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
@@ -414,7 +414,7 @@ func (c *TCPSConn) closeWrite() {
 
 func (c *TCPSConn) closeConn() {
 	c.netConn.Close()
-	c.gate.onConnClosed()
+	c.gate.OnConnClosed()
 }
 
 func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {

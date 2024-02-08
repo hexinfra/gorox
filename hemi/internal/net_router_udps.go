@@ -10,7 +10,6 @@ package internal
 import (
 	"net"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -27,7 +26,7 @@ func (r *UDPSRouter) onCreate(name string, stage *Stage) {
 func (r *UDPSRouter) OnShutdown() {
 	// Notify gates. We don't close(r.ShutChan) here.
 	for _, gate := range r.gates {
-		gate.shut()
+		gate.Shut()
 	}
 }
 
@@ -57,14 +56,14 @@ func (r *UDPSRouter) serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpsGate)
 		gate.init(r, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		r.gates = append(r.gates, gate)
 		r.IncSub(1)
-		if r.UDSMode() {
+		if r.IsUDS() {
 			go gate.serveUDS()
-		} else if r.TLSMode() {
+		} else if r.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
@@ -98,27 +97,22 @@ func (r *UDPSRouter) dispatch(conn *UDPSConn) {
 // udpsGate is an opening gate of UDPSRouter.
 type udpsGate struct {
 	// Mixins
+	Gate_
 	// Assocs
-	stage  *Stage // current stage
 	router *UDPSRouter
 	// States
-	id      int32
-	address string
-	isShut  atomic.Bool
 }
 
 func (g *udpsGate) init(router *UDPSRouter, id int32) {
-	g.stage = router.stage
+	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
 	g.router = router
-	g.id = id
-	g.address = router.address
 }
 
-func (g *udpsGate) open() error {
+func (g *udpsGate) Open() error {
 	// TODO
 	return nil
 }
-func (g *udpsGate) shut() error {
+func (g *udpsGate) Shut() error {
 	g.isShut.Store(true)
 	// TODO
 	return nil
@@ -144,6 +138,7 @@ func (g *udpsGate) serveUDS() { // runner
 
 func (g *udpsGate) justClose(udpConn *net.UDPConn) {
 	udpConn.Close()
+	g.OnConnClosed()
 }
 
 // UDPSDealet
@@ -307,8 +302,8 @@ func (c *UDPSConn) Close() error {
 }
 
 func (c *UDPSConn) closeConn() {
-	if router := c.router; router.UDSMode() {
-	} else if router.TLSMode() {
+	if router := c.router; router.IsUDS() {
+	} else if router.IsTLS() {
 	} else {
 	}
 	// TODO: uds, tls?

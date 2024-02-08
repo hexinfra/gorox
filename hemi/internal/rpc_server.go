@@ -12,12 +12,11 @@ import (
 )
 
 // rpcServer_
-type rpcServer_ struct {
+type rpcServer_[G Gate] struct {
 	// Mixins
-	Server_
+	Server_[G]
 	rpcBroker_
 	// Assocs
-	gates          []Gate
 	defaultService *Service // default service if not found
 	// States
 	forServices    []string                // for what services
@@ -26,17 +25,17 @@ type rpcServer_ struct {
 	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
 }
 
-func (s *rpcServer_) onConfigure(shell Component) {
+func (s *rpcServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 
 	// forServices
 	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
 }
-func (s *rpcServer_) onPrepare(shell Component) {
+func (s *rpcServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 }
 
-func (s *rpcServer_) BindServices() {
+func (s *rpcServer_[G]) BindServices() {
 	for _, serviceName := range s.forServices {
 		service := s.stage.Service(serviceName)
 		if service == nil {
@@ -57,7 +56,7 @@ func (s *rpcServer_) BindServices() {
 		}
 	}
 }
-func (s *rpcServer_) findService(hostname []byte) *Service {
+func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactServices {
 		if bytes.Equal(hostname, exactMap.hostname) {

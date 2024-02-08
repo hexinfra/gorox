@@ -21,14 +21,13 @@ import (
 )
 
 // webServer_ is the mixin for http[x3]Server.
-type webServer_ struct {
+type webServer_[G Gate] struct {
 	// Mixins
-	Server_
+	Server_[G]
 	webBroker_
 	streamHolder_
 	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to a webapp, we use webapp's contentSaver_.
 	// Assocs
-	gates      []Gate
 	defaultApp *Webapp // default webapp if not found
 	// States
 	forApps      []string               // for what webapps
@@ -39,11 +38,11 @@ type webServer_ struct {
 	enableUDPTun bool                   // allow upgrade: connect-udp?
 }
 
-func (s *webServer_) onCreate(name string, stage *Stage) {
+func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 
-func (s *webServer_) onConfigure(shell Component) {
+func (s *webServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s.webBroker_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 1000)
@@ -59,14 +58,14 @@ func (s *webServer_) onConfigure(shell Component) {
 		s.ConfigureBool("enableUDPTun", &s.enableUDPTun, false)
 	}
 }
-func (s *webServer_) onPrepare(shell Component) {
+func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s.webBroker_.onPrepare(shell)
 	s.streamHolder_.onPrepare(shell)
 	s.contentSaver_.onPrepare(shell, 0755)
 }
 
-func (s *webServer_) bindWebapps() {
+func (s *webServer_[G]) bindWebapps() {
 	for _, appName := range s.forApps {
 		webapp := s.stage.Webapp(appName)
 		if webapp == nil {
@@ -103,7 +102,7 @@ func (s *webServer_) bindWebapps() {
 		}
 	}
 }
-func (s *webServer_) findWebapp(hostname []byte) *Webapp {
+func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -156,8 +155,8 @@ func (c *serverWebConn_) onPut() {
 
 func (c *serverWebConn_) webServer() webServer { return c.server }
 
-func (c *serverWebConn_) isUDS() bool { return c.server.UDSMode() }
-func (c *serverWebConn_) isTLS() bool { return c.server.TLSMode() }
+func (c *serverWebConn_) isUDS() bool { return c.server.IsUDS() }
+func (c *serverWebConn_) isTLS() bool { return c.server.IsTLS() }
 
 func (c *serverWebConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))

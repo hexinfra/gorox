@@ -24,8 +24,8 @@ type Server interface {
 	// Methods
 	Serve() // runner
 	Stage() *Stage
-	UDSMode() bool
-	TLSMode() bool
+	IsUDS() bool
+	IsTLS() bool
 	ColonPort() string
 	ColonPortBytes() []byte
 	ReadTimeout() time.Duration
@@ -33,11 +33,12 @@ type Server interface {
 }
 
 // Server_ is the mixin for all servers.
-type Server_ struct {
+type Server_[G Gate] struct {
 	// Mixins
 	Component_
 	// Assocs
 	stage *Stage // current stage
+	gates []G // a server has many gates
 	// States
 	address         string        // hostname:port, /path/to/unix.sock
 	colonPort       string        // like: ":9876"
@@ -51,12 +52,12 @@ type Server_ struct {
 	maxConnsPerGate int32         // max concurrent connections allowed per gate
 }
 
-func (s *Server_) OnCreate(name string, stage *Stage) { // exported
+func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
 	s.MakeComp(name)
 	s.stage = stage
 }
 
-func (s *Server_) OnConfigure() {
+func (s *Server_[G]) OnConfigure() {
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
@@ -115,31 +116,42 @@ func (s *Server_) OnConfigure() {
 		return errors.New(".maxConnsPerGate has an invalid value")
 	}, 100000)
 }
-func (s *Server_) OnPrepare() {
+func (s *Server_[G]) OnPrepare() {
 	// Currently nothing.
 }
 
-func (s *Server_) Stage() *Stage               { return s.stage }
-func (s *Server_) Address() string             { return s.address }
-func (s *Server_) ColonPort() string           { return s.colonPort }
-func (s *Server_) ColonPortBytes() []byte      { return s.colonPortBytes }
-func (s *Server_) UDSMode() bool               { return s.udsMode }
-func (s *Server_) TLSMode() bool               { return s.tlsMode }
-func (s *Server_) ReadTimeout() time.Duration  { return s.readTimeout }
-func (s *Server_) WriteTimeout() time.Duration { return s.writeTimeout }
-func (s *Server_) NumGates() int32             { return s.numGates }
-func (s *Server_) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
+func (s *Server_[G]) ShutGates() {
+	// Notify gates. We don't close(s.ShutChan) here.
+	for _, gate := range s.gates {
+		gate.Shut()
+	}
+}
+func (s *Server_[G]) AppendGate(gate G) {
+	s.gates = append(s.gates, gate)
+}
+
+func (s *Server_[G]) Stage() *Stage               { return s.stage }
+func (s *Server_[G]) Address() string             { return s.address }
+func (s *Server_[G]) ColonPort() string           { return s.colonPort }
+func (s *Server_[G]) ColonPortBytes() []byte      { return s.colonPortBytes }
+func (s *Server_[G]) IsUDS() bool                 { return s.udsMode }
+func (s *Server_[G]) IsTLS() bool                 { return s.tlsMode }
+func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
+func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
+func (s *Server_[G]) NumGates() int32             { return s.numGates }
+func (s *Server_[G]) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
 	ID() int32
 	IsShut() bool
-	shut() error
-	onConnClosed()
+	Open() error
+	Shut() error
+	OnConnClosed()
 }
 
-// Gate_ is the mixin for router gates and server gates.
+// Gate_ is the mixin for all gates.
 type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns
@@ -172,7 +184,7 @@ func (g *Gate_) IsShut() bool { return g.isShut.Load() }
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
-func (g *Gate_) onConnClosed() {
+func (g *Gate_) OnConnClosed() {
 	g.DecConns()
 	g.SubDone()
 }
@@ -276,10 +288,10 @@ func (b *Backend_[N]) onConfigure() {
 		}
 
 		// tlsMode
-		vTLSMode, ok := vNode["tlsMode"]
+		vIsTLS, ok := vNode["tlsMode"]
 		if ok {
-			if tlsMode, ok := vTLSMode.Bool(); ok && tlsMode {
-				node.setTLSMode()
+			if tlsMode, ok := vIsTLS.Bool(); ok && tlsMode {
+				node.setIsTLS()
 			}
 		}
 
@@ -339,7 +351,7 @@ func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 type Node interface {
 	// Methods
 	setAddress(address string)
-	setTLSMode()
+	setIsTLS()
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
 	Maintain() // runner
@@ -379,7 +391,7 @@ func (n *Node_) setAddress(address string) {
 		n.udsMode = true
 	}
 }
-func (n *Node_) setTLSMode() {
+func (n *Node_) setIsTLS() {
 	n.tlsMode = true
 	n.tlsConfig = new(tls.Config)
 }

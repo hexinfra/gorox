@@ -188,7 +188,7 @@ type ( // core mixins
 	Reviser_ = internal.Reviser_
 	Socklet_ = internal.Socklet_
 
-	Server_ = internal.Server_
+	// Server_ = internal.Server_ // Go team says this will be supported in Go 1.23. So wait.
 	Gate_   = internal.Gate_
 
 	Cronjob_ = internal.Cronjob_

@@ -10,7 +10,7 @@ package internal
 // hrpcServer is the HRPC server.
 type hrpcServer struct {
 	// Mixins
-	rpcServer_
+	rpcServer_[*hrpcGate]
 	// States
 }
 
@@ -32,11 +32,11 @@ func (g *hrpcGate) init(server *hrpcServer, id int32) {
 	g.server = server
 }
 
-func (g *hrpcGate) open() error {
+func (g *hrpcGate) Open() error {
 	// TODO
 	return nil
 }
-func (g *hrpcGate) shut() error {
+func (g *hrpcGate) Shut() error {
 	g.MarkShut()
 	// TODO
 	return nil

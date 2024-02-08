@@ -71,8 +71,8 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.backend = backend
 }
 
-func (n *http2Node) setTLSMode() {
-	n.Node_.setTLSMode()
+func (n *http2Node) setIsTLS() {
+	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
 }

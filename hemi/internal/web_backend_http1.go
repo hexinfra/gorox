@@ -73,8 +73,8 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.backend = backend
 }
 
-func (n *http1Node) setTLSMode() {
-	n.Node_.setTLSMode()
+func (n *http1Node) setIsTLS() {
+	n.Node_.setIsTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }

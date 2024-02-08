@@ -13,7 +13,7 @@ import (
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
 	_ "github.com/hexinfra/gorox/jobs"
-	_ "github.com/hexinfra/gorox/srvs"
+	//_ "github.com/hexinfra/gorox/srvs" // see https://github.com/golang/go/issues/46477
 	_ "github.com/hexinfra/gorox/svcs"
 )
 

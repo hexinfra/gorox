@@ -29,7 +29,7 @@ func init() {
 // http3Server is the HTTP/3 server.
 type http3Server struct {
 	// Mixins
-	webServer_
+	webServer_[*http3Gate]
 	// States
 }
 
@@ -40,7 +40,7 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 func (s *http3Server) OnShutdown() {
 	// Notify gates. We don't close(s.ShutChan) here.
 	for _, gate := range s.gates {
-		gate.shut()
+		gate.Shut()
 	}
 }
 
@@ -55,12 +55,12 @@ func (s *http3Server) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
 		gate.init(s, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		s.gates = append(s.gates, gate)
 		s.IncSub(1)
-		if s.UDSMode() {
+		if s.IsUDS() {
 			go gate.serveUDS()
 		} else { // tls mode is always enabled
 			go gate.serveTLS()
@@ -88,7 +88,7 @@ func (g *http3Gate) init(server *http3Server, id int32) {
 	g.server = server
 }
 
-func (g *http3Gate) open() error {
+func (g *http3Gate) Open() error {
 	gate := quix.NewGate(g.address)
 	if err := gate.Open(); err != nil {
 		return err
@@ -96,7 +96,7 @@ func (g *http3Gate) open() error {
 	g.gate = gate
 	return nil
 }
-func (g *http3Gate) shut() error {
+func (g *http3Gate) Shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }
@@ -133,7 +133,7 @@ func (g *http3Gate) serveUDS() { // runner
 
 func (g *http3Gate) justClose(quixConn *quix.Conn) {
 	quixConn.Close()
-	g.onConnClosed()
+	g.OnConnClosed()
 }
 
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
@@ -210,7 +210,7 @@ func (c *http3Conn) setWriteDeadline(deadline time.Time) error {
 
 func (c *http3Conn) closeConn() {
 	c.quixConn.Close()
-	c.gate.onConnClosed()
+	c.gate.OnConnClosed()
 }
 
 // poolHTTP3Stream is the server-side HTTP/3 stream pool.

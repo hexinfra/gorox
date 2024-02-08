@@ -26,7 +26,7 @@ func (r *QUICRouter) onCreate(name string, stage *Stage) {
 func (r *QUICRouter) OnShutdown() {
 	// Notify gates. We don't close(r.ShutChan) here.
 	for _, gate := range r.gates {
-		gate.shut()
+		gate.Shut()
 	}
 }
 
@@ -56,7 +56,7 @@ func (r *QUICRouter) serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quicGate)
 		gate.init(r, id)
-		if err := gate.open(); err != nil {
+		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		r.gates = append(r.gates, gate)
@@ -103,12 +103,12 @@ func (g *quicGate) init(router *QUICRouter, id int32) {
 	g.router = router
 }
 
-func (g *quicGate) open() error {
+func (g *quicGate) Open() error {
 	// TODO
 	// set g.gate
 	return nil
 }
-func (g *quicGate) shut() error {
+func (g *quicGate) Shut() error {
 	g.MarkShut()
 	return g.gate.Close()
 }

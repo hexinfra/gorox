@@ -19,11 +19,10 @@ type _router interface {
 }
 
 // router_ is the mixin for QUICRouter, TCPSRouter, UDPSRouter.
-type router_[R _router, G _gate, D _dealet, C _case] struct {
+type router_[R _router, G Gate, D _dealet, C _case] struct {
 	// Mixins
-	Server_
+	Server_[G]
 	// Assocs
-	gates   []G         // a router has many gates opened
 	dealets compDict[D] // defined dealets. indexed by name
 	cases   compList[C] // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
@@ -102,12 +101,6 @@ func (r *router_[R, G, D, C]) Logf(format string, args ...any) {
 	if r.logger != nil {
 		r.logger.Logf(format, args...)
 	}
-}
-
-// _gate is the interface for *quicGate, *tcpsGate, and *udpsGate.
-type _gate interface {
-	open() error
-	shut() error
 }
 
 // _dealet is the interface for *QUICDealet, *TCPSDealet, and *UDPSDealet.

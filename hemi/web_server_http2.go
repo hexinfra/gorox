@@ -22,7 +22,7 @@ import (
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+func getHTTP2Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
 	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		httpConn = new(http2Conn)
@@ -79,7 +79,7 @@ type http2Conn0 struct { // for fast reset, entirely
 	//queuedControlFrames?
 }
 
-func (c *http2Conn) onGet(id int64, server *httpxServer, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *http2Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.serverWebConn_.onGet(id, server, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn

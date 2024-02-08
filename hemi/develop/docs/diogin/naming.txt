@@ -34,5 +34,5 @@ COMPONENTS
       socklet (hello, ...)
       rule [*]
     service [*]
-    server (httpxServer, http3Server, echoServer, ...)
+    server (httpServer, http3Server, echoServer, ...)
     cronjob (clean, stat, ...)

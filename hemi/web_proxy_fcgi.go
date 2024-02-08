@@ -1446,12 +1446,11 @@ const ( // fcgi constants
 	fcgiHeaderSize = 8
 	fcgiMaxPayload = 65535
 	fcgiMaxPadding = 255
+	fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding
 )
 
 // poolFCGIRecords
 var poolFCGIRecords sync.Pool
-
-const fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding
 
 func getFCGIRecords() []byte {
 	if x := poolFCGIRecords.Get(); x == nil {
@@ -1467,7 +1466,7 @@ func putFCGIRecords(records []byte) {
 	poolFCGIRecords.Put(records)
 }
 
-var ( // request records
+var ( // fcgi request records
 	fcgiBeginKeepConn = []byte{ // 16 bytes
 		1, 1, // version, FCGI_BEGIN_REQUEST
 		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
@@ -1496,7 +1495,7 @@ var ( // request records
 	} // end of stdins
 )
 
-var ( // request param names
+var ( // fcgi request param names
 	fcgiBytesAuthType         = []byte("AUTH_TYPE")
 	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
 	fcgiBytesContentType      = []byte("CONTENT_TYPE")
@@ -1523,16 +1522,16 @@ var ( // request param names
 	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
 )
 
-var ( // request param values
+var ( // fcgi request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
 	fcgiBytesON     = []byte("on")
 	fcgiBytes200    = []byte("200")
 )
 
-const ( // response header hashes
+const ( // fcgi response header hashes
 	fcgiHashStatus = 676
 )
 
-var ( // response header names
+var ( // fcgi response header names
 	fcgiBytesStatus = []byte("status")
 )

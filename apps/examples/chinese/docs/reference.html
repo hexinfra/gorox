@@ -154,8 +154,8 @@ article table.none tr td {
 		<li> <a href="#stage-webapp-sock3Proxy">stage &gt; webapp &gt; [rule &gt;] sock3Proxy</a></li>
 		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li><a href="#stage-echoServer">stage &gt; echoServer</a></li>
+		<li><a href="#stage-httpServer">stage &gt; httpServer</a></li>
 		<li><a href="#stage-http3Server">stage &gt; http3Server</a></li>
-		<li><a href="#stage-httpxServer">stage &gt; httpxServer</a></li>
 		<li><a href="#stage-socksServer">stage &gt; socksServer</a></li>
 		<li><a href="#stage-cleanCronjob">stage &gt; cleanCronjob</a></li>
 		<li><a href="#stage-statCronjob">stage &gt; statCronjob</a></li>
@@ -178,7 +178,7 @@ article table.none tr td {
 		static {}
 	}
 
-	httpxServer "main" {
+	httpServer "main" {
 		.forApps = ("example")
 		.address = ":3080"
 	}
@@ -348,7 +348,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		}
 	}
 
-	httpxServer "main" {
+	httpServer "main" {
 		.forApps = ("proxy")
 		.address = ":3080"
 	}
@@ -566,7 +566,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		}
 	}
 
-	httpxServer "main" {
+	httpServer "main" {
 		.forApps = ("proxy")
 		.address = ":80"
 	}
@@ -1463,9 +1463,9 @@ http1Proxy {
 			<h4>stage &gt; service </h4>
 		</li>
 
-		<li id="stage-httpxServer">
-			<h4>stage &gt; httpxServer </h4>
-			<p>httpxServer goroxy 中对 http1.1 和 http2 服务端配置。</p>
+		<li id="stage-httpServer">
+			<h4>stage &gt; httpServer </h4>
+			<p>httpServer gorox 中对 http1.1 和 http2 服务端配置。</p>
 			<p>例子</p>
 			<code class="pre">stage {
 	webapp "example_com" {
@@ -1475,7 +1475,7 @@ http1Proxy {
 		.tlsPrivateKey = "/etc/tls/example_com.key"
 	}
 
-	httpxServer {
+	httpServer {
 		.address = ":8080" // required
 		.tlsMode = false
 		.readTimeout = 60s
@@ -1535,7 +1535,7 @@ http1Proxy {
 					</code>
 				</li>
 				<li>
-					<p>.forApps 当前 httpxServer 应用于那些 Webapp。</p>
+					<p>.forApps 当前 httpServer 应用于那些 Webapp。</p>
 					<code>语法：.forApps = ("test", "test2")
 						默认值：nil
 					</code>

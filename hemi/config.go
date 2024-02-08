@@ -288,31 +288,7 @@ func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> 
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
 func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
-	routerName := c.forwardExpect(tokenString)
-	router := stage.createQUICRouter(routerName.text)
-	router.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, router)
-			continue
-		}
-		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in quicRouter\n", current.name(), current.text, current.line))
-		}
-		switch current.info {
-		case compQUICDealet:
-			c.parseQUICDealet(current, router, nil)
-		case compCase:
-			c.parseQUICCase(router)
-		default:
-			panic(fmt.Errorf("unknown component '%s' in quicRouter\n", current.text))
-		}
-	}
+	parseComponentR(c, stage, stage.createQUICRouter, compQUICDealet, c.parseQUICDealet, c.parseQUICCase)
 }
 func (c *config) parseQUICDealet(sign *token, router *QUICRouter, kase *quicCase) { // qqqDealet <name> {}, qqqDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
@@ -354,31 +330,7 @@ func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <na
 	}
 }
 func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
-	routerName := c.forwardExpect(tokenString)
-	router := stage.createTCPSRouter(routerName.text)
-	router.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, router)
-			continue
-		}
-		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in tcpsRouter\n", current.name(), current.text, current.line))
-		}
-		switch current.info {
-		case compTCPSDealet:
-			c.parseTCPSDealet(current, router, nil)
-		case compCase:
-			c.parseTCPSCase(router)
-		default:
-			panic(fmt.Errorf("unknown component '%s' in tcpsRouter\n", current.text))
-		}
-	}
+	parseComponentR(c, stage, stage.createTCPSRouter, compTCPSDealet, c.parseTCPSDealet, c.parseTCPSCase)
 }
 func (c *config) parseTCPSDealet(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
@@ -420,31 +372,7 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 	}
 }
 func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
-	routerName := c.forwardExpect(tokenString)
-	router := stage.createUDPSRouter(routerName.text)
-	router.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
-	for {
-		current := c.forward()
-		if current.kind == tokenRightBrace { // }
-			return
-		}
-		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, router)
-			continue
-		}
-		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in udpsRouter\n", current.name(), current.text, current.line))
-		}
-		switch current.info {
-		case compUDPSDealet:
-			c.parseUDPSDealet(current, router, nil)
-		case compCase:
-			c.parseUDPSCase(router)
-		default:
-			panic(fmt.Errorf("unknown component '%s' in udpsRouter\n", current.text))
-		}
-	}
+	parseComponentR(c, stage, stage.createUDPSRouter, compUDPSDealet, c.parseUDPSDealet, c.parseUDPSCase)
 }
 func (c *config) parseUDPSDealet(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
@@ -851,7 +779,34 @@ func parseComponent0[T Component](c *config, sign *token, stage *Stage, create f
 	c.forward()
 	c.parseLeaf(component)
 }
-func parseComponent1[M Component, T Component, C any](c *config, sign *token, router M, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
+func parseComponentR[R Component, C any](c *config, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
+	routerName := c.forwardExpect(tokenString)
+	router := create(routerName.text)
+	router.setParent(stage)
+	c.forwardExpect(tokenLeftBrace) // {
+	for {
+		current := c.forward()
+		if current.kind == tokenRightBrace { // }
+			return
+		}
+		if current.kind == tokenProperty { // .property
+			c.parseAssign(current, router)
+			continue
+		}
+		if current.kind != tokenComponent {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in router\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case infoDealet:
+			parseDealet(current, router, nil) // not in case
+		case compCase:
+			parseCase(router)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in router\n", current.text))
+		}
+	}
+}
+func parseComponent1[R Component, T Component, C any](c *config, sign *token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text

@@ -37,10 +37,10 @@ type httpServer struct {
 	// Mixins
 	webServer_[*httpGate]
 	// States
-	forceScheme  int8 // scheme that must be used
+	forceScheme  int8 // scheme (http/https) that must be used
 	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
-	enableHTTP2  bool // enable HTTP/2?
-	h2cMode      bool // if true, TCP runs HTTP/2 only. TLS is not affected. requires enableHTTP2
+	enableHTTP2  bool // enable HTTP/2 support?
+	http2Only    bool // if true, server runs HTTP/2 *only*. requires enableHTTP2 to be true, otherwise ignored
 }
 
 func (s *httpServer) onCreate(name string, stage *Stage) {
@@ -48,10 +48,7 @@ func (s *httpServer) onCreate(name string, stage *Stage) {
 	s.forceScheme = -1 // not forced
 }
 func (s *httpServer) OnShutdown() {
-	// Notify gates. We don't close(s.ShutChan) here.
-	for _, gate := range s.gates {
-		gate.Shut()
-	}
+	s.ShutGates()
 }
 
 func (s *httpServer) OnConfigure() {
@@ -74,40 +71,62 @@ func (s *httpServer) OnConfigure() {
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 
-	if Debug() >= 2 { // remove this condition after HTTP/2 server is fully implemented
+	if Debug() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// enableHTTP2
-		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, false) // TODO: change to true after HTTP/2 server is fully implemented
-		// h2cMode
-		s.ConfigureBool("h2cMode", &s.h2cMode, false)
+		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, true)
+		// http2Only
+		s.ConfigureBool("http2Only", &s.http2Only, false)
 	}
 }
 func (s *httpServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
-	if s.IsTLS() {
+	if s.tlsMode {
 		var nextProtos []string
-		if s.enableHTTP2 {
-			nextProtos = []string{"h2", "http/1.1"}
-		} else {
+		if !s.enableHTTP2 {
 			nextProtos = []string{"http/1.1"}
+		} else if s.http2Only {
+			nextProtos = []string{"h2"}
+		} else {
+			nextProtos = []string{"h2", "http/1.1"}
 		}
 		s.tlsConfig.NextProtos = nextProtos
 	} else if !s.enableHTTP2 {
-		s.h2cMode = false
+		s.http2Only = false
 	}
 }
 
 func (s *httpServer) Serve() { // runner
+	if s.udsMode {
+		s.serveUDS()
+	} else {
+		s.serveTCP()
+	}
+}
+func (s *httpServer) serveUDS() {
+	gate := new(httpGate)
+	gate.init(s, 0)
+	if err := gate.Open(); err != nil {
+		EnvExitln(err.Error())
+	}
+	s.AppendGate(gate)
+	s.IncSub(1)
+	go gate.serveUDS()
+	s.WaitSubs() // gates
+	if Debug() >= 2 {
+		Printf("httpServer=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
+}
+func (s *httpServer) serveTCP() {
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpGate)
 		gate.init(s, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.gates = append(s.gates, gate)
+		s.AppendGate(gate)
 		s.IncSub(1)
-		if s.IsUDS() {
-			go gate.serveUDS()
-		} else if s.IsTLS() {
+		if s.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -127,15 +146,32 @@ type httpGate struct {
 	// Assocs
 	server *httpServer
 	// States
-	gate *net.TCPListener // the real gate. set after open
+	gate net.Listener // the real gate. set after open
 }
 
 func (g *httpGate) init(server *httpServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.udsMode, server.abstract, server.tlsMode, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
 func (g *httpGate) Open() error {
+	if g.udsMode {
+		return g.openUDS()
+	} else {
+		return g.openTCP()
+	}
+}
+func (g *httpGate) openUDS() error {
+	gate, err := net.Listen("unix", g.address)
+	if err == nil {
+		g.gate = gate.(*net.UnixListener)
+		if Debug() >= 1 {
+			Printf("httpGate id=%d address=%s opened!\n", g.id, g.address)
+		}
+	}
+	return err
+}
+func (g *httpGate) openTCP() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		if err := system.SetReusePort(rawConn); err != nil {
@@ -157,14 +193,53 @@ func (g *httpGate) Shut() error {
 	return g.gate.Close()
 }
 
-func (g *httpGate) serveTCP() { // runner
+func (g *httpGate) serveUDS() { // runner
 	getHTTPConn := getHTTP1Conn
-	if g.server.h2cMode { // use HTTP/2 explicitly
+	if g.server.http2Only {
 		getHTTPConn = getHTTP2Conn
 	}
+	gate := g.gate.(*net.UnixListener)
 	connID := int64(0)
 	for {
-		tcpConn, err := g.gate.AcceptTCP()
+		unixConn, err := gate.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpServer[%s] httpGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+		}
+		g.IncSub(1)
+		if g.ReachLimit() {
+			g.justClose(unixConn)
+		} else {
+			rawConn, err := unixConn.SyscallConn()
+			if err != nil {
+				g.justClose(unixConn)
+				//g.stage.Logf("httpServer[%s] httpGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+			httpConn := getHTTPConn(connID, g.server, g, unixConn, rawConn)
+			go httpConn.serve() // httpConn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("httpGate=%d TCP done\n", g.id)
+	}
+	g.server.SubDone()
+}
+func (g *httpGate) serveTCP() { // runner
+	getHTTPConn := getHTTP1Conn
+	if g.server.http2Only {
+		getHTTPConn = getHTTP2Conn
+	}
+	gate := g.gate.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := gate.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -195,9 +270,10 @@ func (g *httpGate) serveTCP() { // runner
 	g.server.SubDone()
 }
 func (g *httpGate) serveTLS() { // runner
+	gate := g.gate.(*net.TCPListener)
 	connID := int64(0)
 	for {
-		tcpConn, err := g.gate.AcceptTCP()
+		tcpConn, err := gate.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -231,24 +307,21 @@ func (g *httpGate) serveTLS() { // runner
 	}
 	g.server.SubDone()
 }
-func (g *httpGate) serveUDS() { // runner
-	// TODO
-}
 
 func (g *httpGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.OnConnClosed()
 }
 
-// httpConn
-type httpConn interface {
+// httpxConn is a *http1Conn or *http2Conn.
+type httpxConn interface {
 	serve() // runner
 }
 
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
+func getHTTP1Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		httpConn = new(http1Conn)
@@ -279,8 +352,8 @@ type http1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	netConn   net.Conn        // the connection (TCP/TLS)
-	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
+	netConn   net.Conn        // the connection (UDS/TCP/TLS)
+	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	keepConn  bool            // keep the connection after current stream? true by default
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
@@ -387,7 +460,7 @@ func (s *http1Stream) execute() {
 	}
 
 	if req.methodCode == MethodCONNECT {
-		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented"
+		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented here"
 		s.serveAbnormal(req, resp)
 		return
 	}
@@ -427,7 +500,6 @@ func (s *http1Stream) execute() {
 		s.executeSocket()
 		s.mode = streamModeSocket
 		s.conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
-		return
 	} else { // exchan mode.
 		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 			req.maxContentSize = webapp.maxUploadContentSize

@@ -522,6 +522,38 @@ var webNchar = [256]int8{ // for hostname
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
+// zone
+type zone struct { // 2 bytes
+	from, edge uint8 // edge is ensured to be <= 255
+}
+
+func (z *zone) zero() { *z = zone{} }
+
+func (z *zone) size() int      { return int(z.edge - z.from) }
+func (z *zone) isEmpty() bool  { return z.from == z.edge }
+func (z *zone) notEmpty() bool { return z.from != z.edge }
+
+// span
+type span struct { // 8 bytes
+	from, edge int32 // p[from:edge] is the bytes. edge is ensured to be <= 2147483647
+}
+
+func (s *span) zero() { *s = span{} }
+
+func (s *span) size() int      { return int(s.edge - s.from) }
+func (s *span) isEmpty() bool  { return s.from == s.edge }
+func (s *span) notEmpty() bool { return s.from != s.edge }
+
+func (s *span) set(from int32, edge int32) {
+	s.from, s.edge = from, edge
+}
+func (s *span) sub(delta int32) {
+	if s.from >= delta {
+		s.from -= delta
+		s.edge -= delta
+	}
+}
+
 // defaultDesc
 var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
 	allowQuote: true,

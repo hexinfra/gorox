@@ -22,7 +22,7 @@ import (
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpConn {
+func getHTTP2Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		httpConn = new(http2Conn)

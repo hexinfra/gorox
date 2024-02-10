@@ -853,19 +853,18 @@ type ruleCond struct {
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }
 
-var varCodes = map[string]int16{
-	// general vars
+var varCodes = map[string]int16{ // TODO
+	// general conn vars for quic, tcps, and udps
 	"srcHost": 0,
 	"srcPort": 1,
 	"udsMode": 2,
 	"tlsMode": 3,
 
 	// quic conn vars
-	// quic stream vars
 
 	// tcps conn vars
-	"serverName": 3,
-	"nextProto":  4,
+	"serverName": 4,
+	"nextProto":  5,
 
 	// udps conn vars
 

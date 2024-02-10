@@ -35,19 +35,19 @@ func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 
 // backendRPCConn_
 type backendRPCConn_ struct {
-	Conn_
+	BackendConn_
 	rpcConn_
 	backend rpcBackend
 }
 
 func (c *backendRPCConn_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.rpcConn_.onGet()
 	c.backend = backend
 }
 func (c *backendRPCConn_) onPut() {
 	c.backend = nil
-	c.Conn_.onPut()
+	c.BackendConn_.onPut()
 	c.rpcConn_.onPut()
 }
 

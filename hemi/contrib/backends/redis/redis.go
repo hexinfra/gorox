@@ -77,7 +77,7 @@ func putRedisConn() {
 // redisConn is a connection to redisNode.
 type redisConn struct {
 	// Mixins
-	Conn_
+	BackendConn_
 	// Conn states (non-zeros)
 	node *redisNode
 	// Conn states (zeros)

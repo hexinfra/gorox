@@ -1,17 +1,8 @@
 v?.?.?                                                        (2024-??-?? UTC+8)
 ================================================================================
 
-  * Storers are renamed as cachers.
-  * Fix crash caused by empty value of some fields.
-  * Flag "-temp" changed to "-tmps".
-  * procman.Main() now accepts an args parameter.
-  * Action "test" is not integrated.
-  * Values can now be variables in config file.
-  * HTTP proxies now support adding and deleting request headers.
-  * FromFile and FromText are renamed as BootFile and BootText respectively.
-  * Abbreviations are now differentiated from names clearly.
-  * Directory "cmds/" is now renamed as "bins/".
-  * Filter is renamed as Dealet in router.
+  * A lot of changes and improvements.
+  * Incompatible with v0.1.
 
 v0.1.7                                                        (2023-06-13 UTC+8)
 ================================================================================
@@ -54,12 +45,12 @@ v0.1.3                                                        (2023-05-16 UTC+8)
 v0.1.2                                                        (2023-05-10 UTC+8)
 ================================================================================
 
-  * Various improvement.
+  * Various improvements.
 
 v0.1.1                                                        (2023-05-01 UTC+8)
 ================================================================================
 
-  * Various improvement.
+  * Various improvements.
 
 v0.1.0                                                        (2022-10-21 UTC+8)
 ================================================================================

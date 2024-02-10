@@ -42,11 +42,7 @@ func (h *http3Proxy) OnPrepare() {
 }
 
 func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) {
-	var (
-		content  any
-		content3 any
-	)
-
+	var content any
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
 		content = req.takeContent()
@@ -132,6 +128,7 @@ func (h *http3Proxy) Handle(req Request, resp Response) (handled bool) {
 		resp3.onUse(Version3)
 	}
 
+	var content3 any
 	hasContent3 := false
 	if req.MethodCode() != MethodHEAD {
 		hasContent3 = resp3.HasContent()

@@ -79,7 +79,7 @@ type socksGate struct {
 }
 
 func (g *socksGate) init(server *socksServer, id int32) {
-	g.Gate_.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
+	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsAbstract(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 

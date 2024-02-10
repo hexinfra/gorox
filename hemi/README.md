@@ -55,7 +55,7 @@ prepare  +-----------+---------------+-----------------+     v
 Dependencies
 ------------
 
-A program using Hemi typically has following dependencies:
+A program using Hemi typically has the following dependencies:
 
 ```
   +-------------------------------------------------------------+

@@ -127,7 +127,7 @@ func putQConn(qConn *QConn) {
 // QConn is a backend-side quic connection to quicNode.
 type QConn struct {
 	// Mixins
-	Conn_
+	BackendConn_
 	// Conn states (non-zeros)
 	backend    *QUICBackend
 	node       *quicNode
@@ -139,14 +139,14 @@ type QConn struct {
 }
 
 func (c *QConn) onGet(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) {
-	c.Conn_.onGet(id, udsMode, true, time.Now().Add(backend.AliveTimeout()))
+	c.BackendConn_.onGet(id, udsMode, true, time.Now().Add(backend.AliveTimeout()))
 	c.backend = backend
 	c.node = node
 	c.quixConn = quixConn
 	c.maxStreams = backend.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
-	c.Conn_.onPut()
+	c.BackendConn_.onPut()
 	c.backend = nil
 	c.node = nil
 	c.quixConn = nil

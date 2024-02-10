@@ -42,11 +42,7 @@ func (h *http1Proxy) OnPrepare() {
 }
 
 func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) {
-	var (
-		content  any
-		content1 any
-	)
-
+	var content any
 	hasContent := req.HasContent()
 	if hasContent && h.bufferClientContent { // including size 0
 		content = req.takeContent()
@@ -140,6 +136,7 @@ func (h *http1Proxy) Handle(req Request, resp Response) (handled bool) {
 		resp1.onUse(Version1_1)
 	}
 
+	var content1 any
 	hasContent1 := false
 	if req.MethodCode() != MethodHEAD {
 		hasContent1 = resp1.HasContent()

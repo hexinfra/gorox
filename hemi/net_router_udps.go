@@ -24,10 +24,7 @@ func (r *UDPSRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, udpsDealetCreators)
 }
 func (r *UDPSRouter) OnShutdown() {
-	// Notify gates. We don't close(r.ShutChan) here.
-	for _, gate := range r.gates {
-		gate.Shut()
-	}
+	r.ShutGates()
 }
 
 func (r *UDPSRouter) OnConfigure() {
@@ -59,11 +56,11 @@ func (r *UDPSRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
+		r.AppendGate(gate)
 		r.IncSub(1)
-		if r.IsUDS() {
+		if r.udsMode {
 			go gate.serveUDS()
-		} else if r.IsTLS() {
+		} else if r.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
@@ -104,7 +101,7 @@ type udpsGate struct {
 }
 
 func (g *udpsGate) init(router *UDPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, router.tlsMode, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -302,11 +299,11 @@ func (c *UDPSConn) Close() error {
 }
 
 func (c *UDPSConn) closeConn() {
-	if router := c.router; router.IsUDS() {
-	} else if router.IsTLS() {
+	// TODO: uds, tls?
+	if router := c.router; router.udsMode {
+	} else if router.tlsMode {
 	} else {
 	}
-	// TODO: uds, tls?
 	c.udpConn.Close()
 }
 

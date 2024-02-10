@@ -49,7 +49,7 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 // backendWebConn_ is the mixin for H[1-3]Conn.
 type backendWebConn_ struct {
 	// Mixins
-	Conn_
+	BackendConn_
 	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -59,13 +59,13 @@ type backendWebConn_ struct {
 }
 
 func (c *backendWebConn_) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.webConn_.onGet()
 	c.backend = backend
 }
 func (c *backendWebConn_) onPut() {
 	c.backend = nil
-	c.Conn_.onPut()
+	c.BackendConn_.onPut()
 	c.webConn_.onPut()
 }
 

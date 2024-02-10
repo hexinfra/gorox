@@ -29,10 +29,7 @@ func (r *TCPSRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, tcpsDealetCreators)
 }
 func (r *TCPSRouter) OnShutdown() {
-	// Notify gates. We don't close(r.ShutChan) here.
-	for _, gate := range r.gates {
-		gate.Shut()
-	}
+	r.ShutGates()
 }
 
 func (r *TCPSRouter) OnConfigure() {
@@ -64,11 +61,11 @@ func (r *TCPSRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
+		r.AppendGate(gate)
 		r.IncSub(1)
-		if r.IsUDS() {
+		if r.udsMode {
 			go gate.serveUDS()
-		} else if r.IsTLS() {
+		} else if r.tlsMode {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -110,7 +107,7 @@ type tcpsGate struct {
 }
 
 func (g *tcpsGate) init(router *TCPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, router.tlsMode, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -403,9 +400,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.router; router.IsUDS() {
+	if router := c.router; router.udsMode {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if router.IsTLS() {
+	} else if router.tlsMode {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

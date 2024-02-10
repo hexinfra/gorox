@@ -892,7 +892,7 @@ type webBroker interface {
 	SaveContentFilesDir() string
 }
 
-// webServer is the interface for *http[x3]Server.
+// webServer is the interface for *httpServer and *http3Server.
 type webServer interface {
 	// Imports
 	Server

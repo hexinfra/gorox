@@ -77,7 +77,7 @@ type helloGate struct {
 }
 
 func (g *helloGate) init(server *helloServer, id int32) {
-	g.Gate_.Init(server.Stage(), id, server.Address(), server.MaxConnsPerGate())
+	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsAbstract(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 

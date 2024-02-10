@@ -9,8 +9,8 @@ Roadmap
   * [TODO] http/2 implementation.
   * [TODO] quic and http/3 implementation.
   * [TODO] cacher implementation.
-  * [TODO] tcpoh server implementation.
-  * [TODO] udpoh server implementation.
+  * [TODO] tcpoh (tcp over http) server implementation.
+  * [TODO] udpoh (udp over http) server implementation.
   * [TODO] web application framework implementation.
   * [TODO] documentation.
   * [TODO] official websites.
@@ -18,7 +18,7 @@ Roadmap
   * [TODO] goben design and implementation.
   * [TODO] more unit tests.
   * [TODO] black/white box tests.
-  * [TODO] online parsing for forms.
+  * [TODO] online parsing algorithm for forms.
   * [TODO] fetch config through url.
   * [TODO] ktls support?
   * [TODO] ...

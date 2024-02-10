@@ -136,7 +136,7 @@ func putUConn(uConn *UConn) {
 // UConn
 type UConn struct {
 	// Mixins
-	Conn_
+	BackendConn_
 	// Conn states (non-zeros)
 	backend *UDPSBackend
 	node    *udpsNode
@@ -147,14 +147,14 @@ type UConn struct {
 }
 
 func (c *UConn) onGet(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.backend = backend
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *UConn) onPut() {
-	c.Conn_.onPut()
+	c.BackendConn_.onPut()
 	c.backend = nil
 	c.node = nil
 	c.netConn = nil

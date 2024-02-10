@@ -1489,7 +1489,7 @@ http1Proxy {
 		.forceScheme = ""
 		.adjustScheme = true
 		.enableHTTP2 = false
-		.h2cMode = false
+		.http2Only = false
 	}
 }
 </code>
@@ -1593,8 +1593,8 @@ http1Proxy {
 				</li>
 
 				<li>
-					<p>.h2cMode 是否仅支持 http2 协议？</p>
-					<code>语法：.h2cMode = false
+					<p>.http2Only 是否仅支持 http2 协议？</p>
+					<code>语法：.http2Only = false
 						默认值：false
 						取值范围：false | true
 					</code>

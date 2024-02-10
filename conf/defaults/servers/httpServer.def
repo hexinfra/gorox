@@ -12,5 +12,5 @@ httpServer "hs1" {
 	.forceScheme     = ""
 	.adjustScheme    = true
 	.enableHTTP2     = false
-	.h2cMode         = false
+	.http2Only       = false
 }

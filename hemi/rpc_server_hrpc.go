@@ -28,7 +28,7 @@ type hrpcGate struct {
 }
 
 func (g *hrpcGate) init(server *hrpcServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.udsMode, server.abstract, server.tlsMode, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -44,6 +44,12 @@ func (g *hrpcGate) Shut() error {
 
 func (g *hrpcGate) serve() { // runner
 	// TODO
+}
+
+// hrpcConn
+type hrpcConn struct {
+	// Mixins
+	serverRPCConn_
 }
 
 // hrpcCall is the server-side HRPC call.

@@ -20,7 +20,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webServer_ is the mixin for http[x3]Server.
+// webServer_ is the mixin for httpServer and http3Server.
 type webServer_[G Gate] struct {
 	// Mixins
 	Server_[G]

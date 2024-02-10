@@ -8,6 +8,7 @@
 package hemi
 
 import (
+	"sync/atomic"
 	"time"
 )
 
@@ -23,6 +24,13 @@ func (b *rpcBroker_) onPrepare(shell Component) {
 
 // rpcConn_
 type rpcConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	usedCalls atomic.Int32 // num of streams served or used
+	broken    atomic.Bool  // is conn broken?
 }
 
 func (c *rpcConn_) onGet() {

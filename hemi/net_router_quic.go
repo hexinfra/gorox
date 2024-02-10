@@ -24,10 +24,7 @@ func (r *QUICRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, quicDealetCreators)
 }
 func (r *QUICRouter) OnShutdown() {
-	// Notify gates. We don't close(r.ShutChan) here.
-	for _, gate := range r.gates {
-		gate.Shut()
-	}
+	r.ShutGates()
 }
 
 func (r *QUICRouter) OnConfigure() {
@@ -59,7 +56,7 @@ func (r *QUICRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.gates = append(r.gates, gate)
+		r.AppendGate(gate)
 		r.IncSub(1)
 		go gate.serve()
 	}
@@ -99,7 +96,7 @@ type quicGate struct {
 }
 
 func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, true, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -304,13 +301,4 @@ func (s *QUICStream) Write(p []byte) (n int, err error) {
 func (s *QUICStream) Read(p []byte) (n int, err error) {
 	// TODO
 	return
-}
-
-func (s *QUICStream) unsafeVariable(code int16, name string) (value []byte) {
-	return quicStreamVariables[code](s)
-}
-
-// quicStreamVariables
-var quicStreamVariables = [...]func(*QUICStream) []byte{ // keep sync with varCodes in config.go
-	// TODO
 }

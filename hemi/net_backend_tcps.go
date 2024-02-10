@@ -211,7 +211,7 @@ func putTConn(tConn *TConn) {
 // TConn is a backend-side connection to tcpsNode.
 type TConn struct {
 	// Mixins
-	Conn_
+	BackendConn_
 	// Conn states (non-zeros)
 	backend    *TCPSBackend
 	node       *tcpsNode
@@ -226,7 +226,7 @@ type TConn struct {
 }
 
 func (c *TConn) onGet(id int64, udsMode bool, tlsMode bool, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.Conn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
+	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.backend = backend
 	c.node = node
 	c.netConn = netConn
@@ -234,7 +234,7 @@ func (c *TConn) onGet(id int64, udsMode bool, tlsMode bool, backend *TCPSBackend
 	c.maxStreams = backend.MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
-	c.Conn_.onPut()
+	c.BackendConn_.onPut()
 	c.backend = nil
 	c.node = nil
 	c.netConn = nil

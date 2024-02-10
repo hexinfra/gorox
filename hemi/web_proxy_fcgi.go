@@ -6,9 +6,9 @@
 // FCGI proxy implementation.
 
 // FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
-// And we don't use request-side chunking due to the limitation of CGI/1.1 even
+// And we don't use backend-side chunking due to the limitation of CGI/1.1 even
 // though FCGI can do that through its framing protocol. Perhaps most FCGI
-// applications don't implement this feature either.
+// applications don't implement this feature either?
 
 // In response side, FCGI applications mostly use "vague" output.
 
@@ -155,13 +155,7 @@ func (h *fcgiProxy) IsProxy() bool { return true }
 func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
-	var (
-		content  any
-		fConn    *TConn
-		fErr     error
-		fContent any
-	)
-
+	var content any
 	hasContent := req.HasContent()
 	if hasContent && (h.bufferClientContent || req.IsVague()) { // including size 0
 		content = req.takeContent()
@@ -173,6 +167,10 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
+	var (
+		fConn *TConn
+		fErr  error
+	)
 	if h.keepConn {
 		if fConn, fErr = h.backend.FetchConn(); fErr == nil {
 			defer h.backend.StoreConn(fConn)
@@ -235,6 +233,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		fResp.onUse()
 	}
 
+	var fContent any
 	fHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
 	if req.MethodCode() != MethodHEAD {
 		fHasContent = fResp.hasContent()
@@ -344,7 +343,7 @@ type fcgiRequest struct { // outgoing. needs building
 	exchan   *fcgiExchan
 	response *fcgiResponse
 	// Exchan states (stocks)
-	stockParams [_2K]byte // for r.params
+	stockParams [2048]byte // for r.params
 	// Exchan states (controlled)
 	paramsHeader [8]byte // used by params record
 	stdinHeader  [8]byte // used by stdin record
@@ -460,7 +459,7 @@ func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) boo
 	if !header.isUnderscore() || !r.exchan.proxy.preferUnderscore {
 		return r._addParam(name, value, true)
 	}
-	// TODO: got a "foo_bar" and user prefer it. avoid name conflicts with header which is like "foo-bar"
+	// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
 	return true
 }
 func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
@@ -537,7 +536,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. vague content must use post(), as we don't use request-side chunking
+func (r *fcgiRequest) pass(req Request) error { // only for sized (>0) content. vague content must use post(), as we don't use backend-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -735,7 +734,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	exchan *fcgiExchan
 	// Exchan states (stocks)
 	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP
-	stockInput   [_2K]byte  // for r.input
+	stockInput   [2048]byte // for r.input
 	stockPrimes  [48]pair   // for r.primes
 	stockExtras  [16]pair   // for r.extras
 	// Exchan states (controlled)

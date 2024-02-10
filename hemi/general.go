@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Servers and backends.
+// General components and elements for net, rpc, and web.
 
 package hemi
 
@@ -25,6 +25,7 @@ type Server interface {
 	Serve() // runner
 	Stage() *Stage
 	IsUDS() bool
+	IsAbstract() bool
 	IsTLS() bool
 	ColonPort() string
 	ColonPortBytes() []byte
@@ -38,12 +39,13 @@ type Server_[G Gate] struct {
 	Component_
 	// Assocs
 	stage *Stage // current stage
-	gates []G    // a server has many gates
+	gates []G    // a server may has many gates
 	// States
 	address         string        // hostname:port, /path/to/unix.sock
 	colonPort       string        // like: ":9876"
 	colonPortBytes  []byte        // like: []byte(":9876")
-	udsMode         bool          // unix domain socket?
+	udsMode         bool          // address is a unix domain socket?
+	abstract        bool          // use abstract unix domain socket? only effective under linux
 	tlsMode         bool          // tls mode?
 	tlsConfig       *tls.Config   // set if is tls mode
 	readTimeout     time.Duration // read() timeout
@@ -77,6 +79,9 @@ func (s *Server_[G]) OnConfigure() {
 	} else {
 		UseExitln("address is required for servers")
 	}
+
+	// abstract
+	s.ConfigureBool("abstract", &s.abstract, false)
 
 	// tlsMode
 	s.ConfigureBool("tlsMode", &s.tlsMode, false)
@@ -121,20 +126,19 @@ func (s *Server_[G]) OnPrepare() {
 }
 
 func (s *Server_[G]) ShutGates() {
-	// Notify gates. We don't close(s.ShutChan) here.
+	// Notify gates. We don't use close(s.ShutChan) here.
 	for _, gate := range s.gates {
 		gate.Shut()
 	}
 }
-func (s *Server_[G]) AppendGate(gate G) {
-	s.gates = append(s.gates, gate)
-}
+func (s *Server_[G]) AppendGate(gate G) { s.gates = append(s.gates, gate) }
 
 func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) Address() string             { return s.address }
 func (s *Server_[G]) ColonPort() string           { return s.colonPort }
 func (s *Server_[G]) ColonPortBytes() []byte      { return s.colonPortBytes }
 func (s *Server_[G]) IsUDS() bool                 { return s.udsMode }
+func (s *Server_[G]) IsAbstract() bool            { return s.abstract }
 func (s *Server_[G]) IsTLS() bool                 { return s.tlsMode }
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
@@ -158,25 +162,34 @@ type Gate_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	id       int32        // gate id
+	id       int32 // gate id
+	udsMode  bool
+	abstract bool
+	tlsMode  bool
 	address  string       // listening address
 	isShut   atomic.Bool  // is gate shut?
 	maxConns int32        // max concurrent conns allowed
 	numConns atomic.Int32 // TODO: false sharing
 }
 
-func (g *Gate_) Init(stage *Stage, id int32, address string, maxConns int32) {
+func (g *Gate_) Init(stage *Stage, id int32, udsMode bool, abstract bool, tlsMode bool, address string, maxConns int32) {
 	g.stage = stage
 	g.id = id
+	g.udsMode = udsMode
+	g.abstract = abstract
+	g.tlsMode = tlsMode
 	g.address = address
 	g.isShut.Store(false)
 	g.maxConns = maxConns
 	g.numConns.Store(0)
 }
 
-func (g *Gate_) Stage() *Stage   { return g.stage }
-func (g *Gate_) ID() int32       { return g.id }
-func (g *Gate_) Address() string { return g.address }
+func (g *Gate_) Stage() *Stage    { return g.stage }
+func (g *Gate_) ID() int32        { return g.id }
+func (g *Gate_) Address() string  { return g.address }
+func (g *Gate_) IsUDS() bool      { return g.udsMode }
+func (g *Gate_) IsAbstract() bool { return g.abstract }
+func (g *Gate_) IsTLS() bool      { return g.tlsMode }
 
 func (g *Gate_) MarkShut()    { g.isShut.Store(true) }
 func (g *Gate_) IsShut() bool { return g.isShut.Load() }
@@ -187,6 +200,24 @@ func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
 	g.SubDone()
+}
+
+// ServerConn_
+type ServerConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id    int64
+	stage *Stage
+	// Conn states (zeros)
+}
+
+func (c *ServerConn_) onGet(id int64, stage *Stage) {
+	c.id = id
+	c.stage = stage
+}
+func (c *ServerConn_) onPut() {
+	c.stage = nil
 }
 
 // Backend is a group of nodes.
@@ -374,9 +405,9 @@ type Node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		head Conn // head element
-		tail Conn // tail element
-		qnty int  // size of the list
+		head BackendConn // head element
+		tail BackendConn // tail element
+		qnty int         // size of the list
 	}
 }
 
@@ -402,7 +433,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() Conn {
+func (n *Node_) pullConn() BackendConn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -416,7 +447,7 @@ func (n *Node_) pullConn() Conn {
 	list.qnty--
 	return conn
 }
-func (n *Node_) pushConn(conn Conn) {
+func (n *Node_) pushConn(conn BackendConn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -451,41 +482,41 @@ func (n *Node_) shutdown() {
 
 var errNodeDown = errors.New("node is down")
 
-// Conn is the backend conns.
-type Conn interface {
+// BackendConn is the backend conns.
+type BackendConn interface {
 	// Methods
-	getNext() Conn
-	setNext(next Conn)
+	getNext() BackendConn
+	setNext(next BackendConn)
 	isAlive() bool
 	closeConn()
 }
 
-// Conn_ is the mixin for backend conns.
-type Conn_ struct {
+// BackendConn_ is the mixin for backend conns.
+type BackendConn_ struct {
 	// Conn states (non-zeros)
-	next    Conn      // the linked-list
-	id      int64     // the conn id
-	udsMode bool      // uds or not
-	tlsMode bool      // tls or not
-	expire  time.Time // when the conn is considered expired
+	next    BackendConn // the linked-list
+	id      int64       // the conn id
+	udsMode bool        // uds or not
+	tlsMode bool        // tls or not
+	expire  time.Time   // when the conn is considered expired
 	// Conn states (zeros)
 	lastWrite time.Time // deadline of last write operation
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *Conn_) onGet(id int64, udsMode bool, tlsMode bool, expire time.Time) {
+func (c *BackendConn_) onGet(id int64, udsMode bool, tlsMode bool, expire time.Time) {
 	c.id = id
 	c.udsMode = udsMode
 	c.tlsMode = tlsMode
 	c.expire = expire
 }
-func (c *Conn_) onPut() {
+func (c *BackendConn_) onPut() {
 	c.expire = time.Time{}
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
 
-func (c *Conn_) getNext() Conn     { return c.next }
-func (c *Conn_) setNext(next Conn) { c.next = next }
+func (c *BackendConn_) getNext() BackendConn     { return c.next }
+func (c *BackendConn_) setNext(next BackendConn) { c.next = next }
 
-func (c *Conn_) isAlive() bool { return time.Now().Before(c.expire) }
+func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }

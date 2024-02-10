@@ -38,7 +38,7 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.tlsConfig = new(tls.Config) // tls mode is always enabled
 }
 func (s *http3Server) OnShutdown() {
-	s.ShutGates()
+	s.webServer_.onShutdown()
 }
 
 func (s *http3Server) OnConfigure() {
@@ -55,7 +55,7 @@ func (s *http3Server) Serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.AppendGate(gate)
+		s.AddGate(gate)
 		s.IncSub(1)
 		if s.udsMode {
 			go gate.serveUDS()

@@ -40,7 +40,7 @@ func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *socksServer) OnShutdown() {
-	s.ShutGates()
+	s.Server_.OnShutdown()
 }
 
 func (s *socksServer) OnConfigure() {
@@ -57,7 +57,7 @@ func (s *socksServer) Serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.AppendGate(gate)
+		s.AddGate(gate)
 		s.IncSub(1)
 		go gate.serve()
 	}

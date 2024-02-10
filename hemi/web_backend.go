@@ -14,6 +14,22 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
+// webBackend is the interface for *HTTP[1-3]Backend.
+type webBackend interface {
+	// Imports
+	streamHolder
+	contentSaver
+	// Methods
+	Stage() *Stage
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
+	MaxContentSize() int64 // allowed
+	SendTimeout() time.Duration
+	RecvTimeout() time.Duration
+}
+
 // webBackend_ is the mixin for HTTP[1-3]Backend.
 type webBackend_[N Node] struct {
 	// Mixins

@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+// rpcBroker
+type rpcBroker interface {
+	// TODO
+}
+
 // rpcBroker_
 type rpcBroker_ struct {
 	// TODO
@@ -20,6 +25,11 @@ type rpcBroker_ struct {
 func (b *rpcBroker_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
 }
 func (b *rpcBroker_) onPrepare(shell Component) {
+}
+
+// rpcConn
+type rpcConn interface {
+	// TODO
 }
 
 // rpcConn_
@@ -36,6 +46,11 @@ type rpcConn_ struct {
 func (c *rpcConn_) onGet() {
 }
 func (c *rpcConn_) onPut() {
+}
+
+// rpcCall is the interface for *hrpcCall and *HRCall.
+type rpcCall interface {
+	// TODO
 }
 
 // rpcCall_ is the mixin for hrpcCall and HCall.
@@ -55,6 +70,11 @@ func (c *rpcCall_) onEnd() {
 func (c *rpcCall_) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *rpcCall_) unsafeMake(size int) []byte { return c.region.Make(size) }
 
+// rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
+type rpcIn interface {
+	// TODO
+}
+
 // rpcIn_ is the mixin for serverReq_ and backendResp_.
 type rpcIn_ struct {
 	// Assocs
@@ -64,6 +84,11 @@ type rpcIn_ struct {
 }
 type rpcIn0 struct {
 	arrayKind int8 // kind of current r.array. see arrayKindXXX
+}
+
+// rpcOut is the interface for *hrpcResp and *HReq. Used as shell by rpcOut_.
+type rpcOut interface {
+	// TODO
 }
 
 // rpcOut_ is the mixin for serverResp_ and backendReq_.

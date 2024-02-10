@@ -11,6 +11,19 @@ import (
 	"time"
 )
 
+// rpcBackend
+type rpcBackend interface {
+	// Imports
+	streamHolder
+	contentSaver
+	// Methods
+	Stage() *Stage
+	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
+
 // rpcBackend_
 type rpcBackend_[N Node] struct {
 	// Mixins

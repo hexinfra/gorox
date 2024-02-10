@@ -36,6 +36,9 @@ func (r *router_[R, G, D, C]) onCreate(name string, stage *Stage, dealetCreators
 	r.dealets = make(compDict[D])
 	r.dealetCreators = dealetCreators
 }
+func (r *router_[R, G, D, C]) onShutdown() {
+	r.Server_.OnShutdown()
+}
 
 func (r *router_[R, G, D, C]) shutdownSubs() { // cases, dealets
 	r.cases.walk(C.OnShutdown)
@@ -54,6 +57,8 @@ func (r *router_[R, G, D, C]) configureSubs() { // dealets, cases
 
 func (r *router_[R, G, D, C]) onPrepare() {
 	r.Server_.OnPrepare()
+
+	// accessLog, TODO
 	if r.accessLog != nil {
 		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
@@ -159,6 +164,7 @@ func (c *case_[R, D]) OnConfigure() {
 	}
 }
 func (c *case_[R, D]) OnPrepare() {
+	// Currently nothing.
 }
 
 func (c *case_[R, D]) addDealet(dealet D) { c.dealets = append(c.dealets, dealet) }

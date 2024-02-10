@@ -20,6 +20,20 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
+// webServer is the interface for *httpServer and *http3Server.
+type webServer interface {
+	// Imports
+	Server
+	streamHolder
+	contentSaver
+	// Methods
+	MaxContentSize() int64 // allowed
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
+	bindWebapps()
+	findWebapp(hostname []byte) *Webapp
+}
+
 // webServer_ is the mixin for httpServer and http3Server.
 type webServer_[G Gate] struct {
 	// Mixins
@@ -38,6 +52,9 @@ type webServer_[G Gate] struct {
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
+}
+func (s *webServer_[G]) onShutdown() {
+	s.Server_.OnShutdown()
 }
 
 func (s *webServer_[G]) onConfigure(shell Component) {

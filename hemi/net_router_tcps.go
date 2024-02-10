@@ -29,7 +29,7 @@ func (r *TCPSRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, tcpsDealetCreators)
 }
 func (r *TCPSRouter) OnShutdown() {
-	r.ShutGates()
+	r.router_.onShutdown()
 }
 
 func (r *TCPSRouter) OnConfigure() {
@@ -61,7 +61,7 @@ func (r *TCPSRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.AppendGate(gate)
+		r.AddGate(gate)
 		r.IncSub(1)
 		if r.udsMode {
 			go gate.serveUDS()

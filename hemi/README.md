@@ -12,7 +12,7 @@ Hemi uses these directories:
   * common/   - Place general purpose libraries,
   * contrib/  - Place community contributed components,
   * develop/  - A prototype application used to develop Hemi,
-  * procman/  - A process manager for applications using Hemi.
+  * procmgr/  - A process manager for applications using Hemi.
 
 
 How to use
@@ -64,7 +64,7 @@ A program using Hemi typically has the following dependencies:
                 |                               |          |
                 v                               v          v
   +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<procman>|
+  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<procmgr>|
   +------+   +--+---------------------+--+   +--+---+ +----+----+
                 |                     |         |          |
                 v                     v         v          v

@@ -24,7 +24,7 @@ func (r *UDPSRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, udpsDealetCreators)
 }
 func (r *UDPSRouter) OnShutdown() {
-	r.ShutGates()
+	r.router_.onShutdown()
 }
 
 func (r *UDPSRouter) OnConfigure() {
@@ -56,7 +56,7 @@ func (r *UDPSRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.AppendGate(gate)
+		r.AddGate(gate)
 		r.IncSub(1)
 		if r.udsMode {
 			go gate.serveUDS()

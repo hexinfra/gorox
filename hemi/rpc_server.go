@@ -11,6 +11,14 @@ import (
 	"bytes"
 )
 
+// rpcServer
+type rpcServer interface {
+	// Imports
+	Server
+	// Methods
+	BindServices()
+}
+
 // rpcServer_
 type rpcServer_[G Gate] struct {
 	// Mixins

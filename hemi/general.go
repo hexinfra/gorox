@@ -58,6 +58,12 @@ func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
 	s.MakeComp(name)
 	s.stage = stage
 }
+func (s *Server_[G]) OnShutdown() {
+	// Notify gates. We don't use close(s.ShutChan) here.
+	for _, gate := range s.gates {
+		gate.Shut()
+	}
+}
 
 func (s *Server_[G]) OnConfigure() {
 	// address
@@ -125,13 +131,7 @@ func (s *Server_[G]) OnPrepare() {
 	// Currently nothing.
 }
 
-func (s *Server_[G]) ShutGates() {
-	// Notify gates. We don't use close(s.ShutChan) here.
-	for _, gate := range s.gates {
-		gate.Shut()
-	}
-}
-func (s *Server_[G]) AppendGate(gate G) { s.gates = append(s.gates, gate) }
+func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 
 func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) Address() string             { return s.address }

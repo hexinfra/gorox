@@ -48,7 +48,7 @@ func (s *httpServer) onCreate(name string, stage *Stage) {
 	s.forceScheme = -1 // not forced
 }
 func (s *httpServer) OnShutdown() {
-	s.ShutGates()
+	s.webServer_.onShutdown()
 }
 
 func (s *httpServer) OnConfigure() {
@@ -108,7 +108,7 @@ func (s *httpServer) serveUDS() {
 	if err := gate.Open(); err != nil {
 		EnvExitln(err.Error())
 	}
-	s.AppendGate(gate)
+	s.AddGate(gate)
 	s.IncSub(1)
 	go gate.serveUDS()
 	s.WaitSubs() // gates
@@ -124,7 +124,7 @@ func (s *httpServer) serveTCP() {
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.AppendGate(gate)
+		s.AddGate(gate)
 		s.IncSub(1)
 		if s.tlsMode {
 			go gate.serveTLS()

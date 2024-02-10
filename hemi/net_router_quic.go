@@ -24,7 +24,7 @@ func (r *QUICRouter) onCreate(name string, stage *Stage) {
 	r.router_.onCreate(name, stage, quicDealetCreators)
 }
 func (r *QUICRouter) OnShutdown() {
-	r.ShutGates()
+	r.router_.onShutdown()
 }
 
 func (r *QUICRouter) OnConfigure() {
@@ -56,7 +56,7 @@ func (r *QUICRouter) serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		r.AppendGate(gate)
+		r.AddGate(gate)
 		r.IncSub(1)
 		go gate.serve()
 	}

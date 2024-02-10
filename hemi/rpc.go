@@ -121,52 +121,6 @@ type Bundlet_ struct {
 func (b *Bundlet_) dispatch(req serverReq, resp serverResp) {
 }
 
-// rpcBroker
-type rpcBroker interface {
-	// TODO
-}
-
-// rpcServer
-type rpcServer interface {
-	// Imports
-	Server
-	// Methods
-	BindServices()
-}
-
-// rpcBackend
-type rpcBackend interface {
-	// Imports
-	streamHolder
-	contentSaver
-	// Methods
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
-
-// rpcConn
-type rpcConn interface {
-	// TODO
-}
-
-// rpcCall is the interface for *hrpcCall and *HRCall.
-type rpcCall interface {
-	// TODO
-}
-
-// rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
-type rpcIn interface {
-	// TODO
-}
-
-// rpcOut is the interface for *hrpcResp and *HReq. Used as shell by rpcOut_.
-type rpcOut interface {
-	// TODO
-}
-
 // serverReq is the server-side RPC request.
 type serverReq interface {
 	Service() *Service

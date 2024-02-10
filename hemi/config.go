@@ -165,7 +165,7 @@ func (c *config) bootText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	return c.parse()
+	return c.doParse()
 }
 func (c *config) bootFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
@@ -175,7 +175,7 @@ func (c *config) bootFile(base string, path string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	return c.parse()
+	return c.doParse()
 }
 
 func (c *config) show() {
@@ -217,14 +217,14 @@ func (c *config) newName() string {
 	return strconv.Itoa(c.counter)
 }
 
-func (c *config) parse() (stage *Stage, err error) {
-	if current := c.current(); current.kind == tokenComponent && current.info == compStage {
-		stage = createStage()
-		stage.setParent(nil)
-		c.parseStage(stage)
-		return stage, nil
+func (c *config) doParse() (stage *Stage, err error) {
+	if current := c.current(); current.kind != tokenComponent || current.info != compStage {
+		panic(errors.New("config error: root component is not stage"))
 	}
-	panic(errors.New("config error: root component is not stage"))
+	stage = createStage()
+	stage.setParent(nil)
+	c.parseStage(stage)
+	return stage, nil
 }
 
 func (c *config) parseStage(stage *Stage) { // stage {}
@@ -235,7 +235,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, stage)
+			c._parseAssign(current, stage)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -279,7 +279,7 @@ func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	}
 	fixture.setParent(stage)
 	c.forward()
-	c.parseLeaf(fixture)
+	c._parseLeaf(fixture)
 }
 func (c *config) parseAddon(sign *token, stage *Stage) { // xxxAddon <name> {}
 	parseComponent0(c, sign, stage, stage.createAddon)
@@ -315,7 +315,7 @@ func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <na
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, kase)
+			c._parseAssign(current, kase)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -357,7 +357,7 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, kase)
+			c._parseAssign(current, kase)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -399,7 +399,7 @@ func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <na
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, kase)
+			c._parseAssign(current, kase)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -465,7 +465,7 @@ func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, webapp)
+			c._parseAssign(current, webapp)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -516,7 +516,7 @@ func (c *config) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <con
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, rule)
+			c._parseAssign(current, rule)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -579,7 +579,7 @@ func (c *config) parseService(sign *token, stage *Stage) { // service <name> {}
 	service := stage.createService(serviceName.text)
 	service.setParent(stage)
 	c.forward()
-	c.parseLeaf(service)
+	c._parseLeaf(service)
 }
 func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
@@ -588,7 +588,7 @@ func (c *config) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <name> 
 	parseComponent0(c, sign, stage, stage.createCronjob)
 }
 
-func (c *config) parseLeaf(component Component) {
+func (c *config) _parseLeaf(component Component) {
 	c.expect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -596,24 +596,24 @@ func (c *config) parseLeaf(component Component) {
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, component)
+			c._parseAssign(current, component)
 			continue
 		}
 		panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
 	}
 }
-func (c *config) parseAssign(prop *token, component Component) {
+func (c *config) _parseAssign(prop *token, component Component) {
 	if c.nextIs(tokenLeftBrace) { // {
 		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
 	c.forwardExpect(tokenEqual) // =
 	c.forward()
 	var value Value
-	c.parseValue(component, prop.text, &value)
+	c._parseValue(component, prop.text, &value)
 	component.setProp(prop.text, value)
 }
 
-func (c *config) parseValue(component Component, prop string, value *Value) {
+func (c *config) _parseValue(component Component, prop string, value *Value) {
 	current := c.current()
 	switch current.kind {
 	case tokenBool:
@@ -676,9 +676,9 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 	case tokenVariable: // $variable
 		value.kind, value.code, value.name = tokenVariable, -1, current.text
 	case tokenLeftParen: // (...)
-		c.parseList(component, prop, value)
+		c._parseList(component, prop, value)
 	case tokenLeftBracket: // [...]
-		c.parseDict(component, prop, value)
+		c._parseDict(component, prop, value)
 	case tokenProperty: // .property
 		if propRef := current.text; prop == "" || prop == propRef {
 			panic(errors.New("config error: cannot refer to self"))
@@ -707,7 +707,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		isString := false
 		if c.currentIs(tokenString) {
 			isString = true
-			c.parseValue(component, prop, &str)
+			c._parseValue(component, prop, &str)
 		} else if c.currentIs(tokenProperty) {
 			if propRef := current.text; prop == "" || prop == propRef {
 				panic(errors.New("config error: cannot refer to self"))
@@ -728,7 +728,7 @@ func (c *config) parseValue(component Component, prop string, value *Value) {
 		}
 	}
 }
-func (c *config) parseList(component Component, prop string, value *Value) {
+func (c *config) _parseList(component Component, prop string, value *Value) {
 	list := []Value{}
 	c.expect(tokenLeftParen) // (
 	for {
@@ -737,7 +737,7 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 			break
 		}
 		var elem Value
-		c.parseValue(component, prop, &elem)
+		c._parseValue(component, prop, &elem)
 		list = append(list, elem)
 		current = c.forward()
 		if current.kind == tokenRightParen { // )
@@ -748,7 +748,7 @@ func (c *config) parseList(component Component, prop string, value *Value) {
 	}
 	value.kind, value.value = tokenList, list
 }
-func (c *config) parseDict(component Component, prop string, value *Value) {
+func (c *config) _parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
 	c.expect(tokenLeftBracket) // [
 	for {
@@ -760,7 +760,7 @@ func (c *config) parseDict(component Component, prop string, value *Value) {
 		c.forwardExpect(tokenColon) // :
 		current = c.forward()       // v
 		var v Value
-		c.parseValue(component, prop, &v)
+		c._parseValue(component, prop, &v)
 		dict[k.text] = v
 		current = c.forward()
 		if current.kind == tokenRightBracket { // ]
@@ -777,7 +777,7 @@ func parseComponent0[T Component](c *config, sign *token, stage *Stage, create f
 	component := create(sign.text, name.text)
 	component.setParent(stage)
 	c.forward()
-	c.parseLeaf(component)
+	c._parseLeaf(component)
 }
 func parseComponentR[R Component, C any](c *config, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
 	routerName := c.forwardExpect(tokenString)
@@ -790,7 +790,7 @@ func parseComponentR[R Component, C any](c *config, stage *Stage, create func(na
 			return
 		}
 		if current.kind == tokenProperty { // .property
-			c.parseAssign(current, router)
+			c._parseAssign(current, router)
 			continue
 		}
 		if current.kind != tokenComponent {
@@ -819,7 +819,7 @@ func parseComponent1[R Component, T Component, C any](c *config, sign *token, ro
 	if kase != nil { // in case
 		assign(component)
 	}
-	c.parseLeaf(component)
+	c._parseLeaf(component)
 }
 func parseComponent2[T Component](c *config, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.text
@@ -834,7 +834,7 @@ func parseComponent2[T Component](c *config, sign *token, webapp *Webapp, create
 	if rule != nil { // in rule
 		assign(component)
 	}
-	c.parseLeaf(component)
+	c._parseLeaf(component)
 }
 
 // caseCond is the case condition.
@@ -1135,17 +1135,6 @@ func (l *lexer) _loadURL(base string, file string) string {
 	}
 }
 
-// token is a token in config file.
-type token struct { // 40 bytes
-	kind int16  // tokenXXX
-	info int16  // compXXX for components, or code for variables
-	line int32  // at line number
-	file string // file path
-	text string // text literal
-}
-
-func (t token) name() string { return tokenNames[t.kind] }
-
 const ( // token list. if you change this list, change in tokenNames too.
 	// Components
 	tokenComponent = 1 + iota // stage, httpServer, ...
@@ -1175,6 +1164,17 @@ const ( // token list. if you change this list, change in tokenNames too.
 	tokenDict     // dicts: [...]
 	tokenVariable // $method, $path, ...
 )
+
+// token is a token in config file.
+type token struct { // 40 bytes
+	kind int16  // tokenXXX
+	info int16  // compXXX for components, or code for variables
+	line int32  // at line number
+	file string // file path
+	text string // text literal
+}
+
+func (t token) name() string { return tokenNames[t.kind] }
 
 var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
 	// Components

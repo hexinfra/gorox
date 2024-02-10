@@ -10,9 +10,9 @@ package leader
 import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/common/msgx"
-	"github.com/hexinfra/gorox/hemi/procman/common"
+	"github.com/hexinfra/gorox/hemi/procmgr/common"
 
-	_ "github.com/hexinfra/gorox/hemi/procman/leader/webui"
+	_ "github.com/hexinfra/gorox/hemi/procmgr/leader/webui"
 )
 
 var (

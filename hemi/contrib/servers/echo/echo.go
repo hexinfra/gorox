@@ -39,7 +39,7 @@ func (s *echoServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 func (s *echoServer) OnShutdown() {
-	s.ShutGates()
+	s.Server_.OnShutdown()
 }
 
 func (s *echoServer) OnConfigure() {
@@ -56,7 +56,7 @@ func (s *echoServer) Serve() { // runner
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
-		s.AppendGate(gate)
+		s.AddGate(gate)
 		s.IncSub(1)
 		go gate.serve()
 	}

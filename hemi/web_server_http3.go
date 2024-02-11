@@ -154,7 +154,7 @@ func putHTTP3Conn(httpConn *http3Conn) {
 // http3Conn is the server-side HTTP/3 connection.
 type http3Conn struct {
 	// Mixins
-	serverWebConn_
+	webServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -172,7 +172,7 @@ type http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quixConn *quix.Conn) {
-	c.serverWebConn_.onGet(id, server, gate)
+	c.webServerConn_.onGet(id, server, gate)
 	c.quixConn = quixConn
 	if c.frames == nil {
 		c.frames = getHTTP3Frames()
@@ -180,7 +180,7 @@ func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quixCo
 	}
 }
 func (c *http3Conn) onPut() {
-	c.serverWebConn_.onPut()
+	c.webServerConn_.onPut()
 	c.quixConn = nil
 	// c.frames is reserved
 	// c.table is reserved
@@ -237,7 +237,7 @@ func putHTTP3Stream(stream *http3Stream) {
 // http3Stream is the server-side HTTP/3 stream.
 type http3Stream struct {
 	// Mixins
-	serverStream_
+	webServerStream_
 	// Assocs
 	request  http3Request  // the http/3 request.
 	response http3Response // the http/3 response.
@@ -256,7 +256,7 @@ type http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream) onUse(conn *http3Conn, quixStream *quix.Stream) { // for non-zeros
-	s.serverStream_.onUse()
+	s.webServerStream_.onUse()
 	s.conn = conn
 	s.quixStream = quixStream
 	s.request.onUse(Version3)
@@ -265,7 +265,7 @@ func (s *http3Stream) onUse(conn *http3Conn, quixStream *quix.Stream) { // for n
 func (s *http3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.serverStream_.onEnd()
+	s.webServerStream_.onEnd()
 	s.conn = nil
 	s.quixStream = nil
 	s.http3Stream0 = http3Stream0{}
@@ -326,7 +326,7 @@ func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct { // incoming. needs parsing
 	// Mixins
-	serverRequest_
+	webServerRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -338,7 +338,7 @@ func (r *http3Request) readContent() (p []byte, err error) { return r.readConten
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building
 	// Mixins
-	serverResponse_
+	webServerResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -416,7 +416,7 @@ var poolHTTP3Socket sync.Pool
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
 	// Mixins
-	serverSocket_
+	webServerSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

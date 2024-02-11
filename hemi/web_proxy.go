@@ -11,12 +11,32 @@ import (
 	"strings"
 )
 
+// Cacher component is the interface to storages of Web caching. See RFC 9111.
+type Cacher interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(key []byte, wobject *Wobject)
+	Get(key []byte) (wobject *Wobject)
+	Del(key []byte) bool
+}
+
 // Cacher_
 type Cacher_ struct {
 	// Mixins
 	Component_
 	// Assocs
 	// States
+}
+
+// Wobject is a Web object in Cacher.
+type Wobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
 }
 
 // exchanProxy_ is the mixin for http[1-3]Proxy.

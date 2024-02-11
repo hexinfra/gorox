@@ -346,7 +346,7 @@ func putHTTP1Conn(httpConn *http1Conn) {
 // http1Conn is the server-side HTTP/1 connection.
 type http1Conn struct {
 	// Mixins
-	serverWebConn_
+	webServerConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -360,7 +360,7 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.serverWebConn_.onGet(id, server, gate)
+	c.webServerConn_.onGet(id, server, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -378,7 +378,7 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
-	c.serverWebConn_.onPut()
+	c.webServerConn_.onPut()
 }
 
 func (c *http1Conn) serve() { // runner
@@ -438,7 +438,7 @@ func (c *http1Conn) closeConn() {
 // http1Stream is the server-side HTTP/1 stream.
 type http1Stream struct {
 	// Mixins
-	serverStream_
+	webServerStream_
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
@@ -537,7 +537,7 @@ func (s *http1Stream) execute() {
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s.serverStream_.onUse()
+	s.webServerStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -546,7 +546,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.conn = nil
-	s.serverStream_.onEnd()
+	s.webServerStream_.onEnd()
 }
 
 func (s *http1Stream) webBroker() webBroker { return s.conn.webServer() }
@@ -668,7 +668,7 @@ func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct { // incoming. needs parsing
 	// Mixins
-	serverRequest_
+	webServerRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1116,14 +1116,14 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
 	// Mixins
-	serverResponse_
+	webServerResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in serverResponse_
+func (r *http1Response) control() []byte { // HTTP/1's own control(). HTTP/2 and HTTP/3 use general control() in webServerResponse_
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template
@@ -1326,7 +1326,7 @@ var poolHTTP1Socket sync.Pool
 // http1Socket is the server-side HTTP/1 websocket.
 type http1Socket struct {
 	// Mixins
-	serverSocket_
+	webServerSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

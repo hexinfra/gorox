@@ -105,7 +105,7 @@ func (s *Service) maintain() { // runner
 	s.stage.SubDone()
 }
 
-func (s *Service) dispatch(req serverReq, resp serverResp) {
+func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 	// TODO
 }
 
@@ -118,25 +118,25 @@ type Bundlet interface {
 type Bundlet_ struct {
 }
 
-func (b *Bundlet_) dispatch(req serverReq, resp serverResp) {
+func (b *Bundlet_) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 }
 
-// serverReq is the server-side RPC request.
-type serverReq interface {
+// rpcServerRequest is the server-side RPC request.
+type rpcServerRequest interface {
 	Service() *Service
 	// TODO
 }
 
-// backendReq is the backend-side RPC request.
-type backendReq interface {
-}
-
-// serverResp is the server-side RPC response.
-type serverResp interface {
-	Req() serverReq
+// rpcServerResponse is the server-side RPC response.
+type rpcServerResponse interface {
+	Req() rpcServerRequest
 	// TODO
 }
 
-// backendResp is the backend-side RPC response.
-type backendResp interface {
+// rpcBackendRequest is the backend-side RPC request.
+type rpcBackendRequest interface {
+}
+
+// rpcBackendResponse is the backend-side RPC response.
+type rpcBackendResponse interface {
 }

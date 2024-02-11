@@ -46,42 +46,42 @@ func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.rpcBroker_.onPrepare(shell)
 }
 
-// backendRPCConn_
-type backendRPCConn_ struct {
+// rpcBackendConn_
+type rpcBackendConn_ struct {
 	BackendConn_
 	rpcConn_
 	backend rpcBackend
 }
 
-func (c *backendRPCConn_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
+func (c *rpcBackendConn_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
 	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
 	c.rpcConn_.onGet()
 	c.backend = backend
 }
-func (c *backendRPCConn_) onPut() {
+func (c *rpcBackendConn_) onPut() {
 	c.backend = nil
 	c.BackendConn_.onPut()
 	c.rpcConn_.onPut()
 }
 
-func (c *backendRPCConn_) rpcBackend() rpcBackend { return c.backend }
+func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.backend }
 
-// backendCall_
-type backendCall_ struct {
+// rpcBackendExchan_
+type rpcBackendExchan_ struct {
 	// Mixins
-	rpcCall_
+	rpcExchan_
 	// TODO
 }
 
-// backendReq_
-type backendReq_ struct {
+// rpcBackendRequest_
+type rpcBackendRequest_ struct {
 	// Mixins
 	rpcOut_
 	// TODO
 }
 
-// backendResp_
-type backendResp_ struct {
+// rpcBackendResponse_
+type rpcBackendResponse_ struct {
 	// Mixins
 	rpcIn_
 	// TODO

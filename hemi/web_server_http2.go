@@ -40,7 +40,7 @@ func putHTTP2Conn(httpConn *http2Conn) {
 // http2Conn is the server-side HTTP/2 connection.
 type http2Conn struct {
 	// Mixins
-	serverWebConn_
+	webServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
@@ -80,7 +80,7 @@ type http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.serverWebConn_.onGet(id, server, gate)
+	c.webServerConn_.onGet(id, server, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.frames == nil {
@@ -99,7 +99,7 @@ func (c *http2Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn 
 	}
 }
 func (c *http2Conn) onPut() {
-	c.serverWebConn_.onPut()
+	c.webServerConn_.onPut()
 	c.netConn = nil
 	c.rawConn = nil
 	// c.frames is reserved
@@ -820,7 +820,7 @@ func putHTTP2Stream(stream *http2Stream) {
 // http2Stream is the server-side HTTP/2 stream.
 type http2Stream struct {
 	// Mixins
-	serverStream_
+	webServerStream_
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
@@ -841,7 +841,7 @@ type http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
-	s.serverStream_.onUse()
+	s.webServerStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
@@ -852,7 +852,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.serverStream_.onEnd()
+	s.webServerStream_.onEnd()
 	s.conn = nil
 	s.http2Stream0 = http2Stream0{}
 }
@@ -915,7 +915,7 @@ func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct { // incoming. needs parsing
 	// Mixins
-	serverRequest_
+	webServerRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -942,7 +942,7 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 // http2Response is the server-side HTTP/2 response.
 type http2Response struct { // outgoing. needs building
 	// Mixins
-	serverResponse_
+	webServerResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1020,7 +1020,7 @@ var poolHTTP2Socket sync.Pool
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {
 	// Mixins
-	serverSocket_
+	webServerSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

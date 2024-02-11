@@ -860,26 +860,6 @@ var ruleMatchers = map[string]struct {
 	"!e": {(*Rule).notExistMatch, true},
 }
 
-// Cacher component is the interface to storages of Web caching. See RFC 9111.
-type Cacher interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, wobject *Wobject)
-	Get(key []byte) (wobject *Wobject)
-	Del(key []byte) bool
-}
-
-// Wobject is a Web object in Cacher.
-type Wobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}
-
 // Request is the interface for *http[1-3]Request.
 type Request interface {
 	RemoteAddr() net.Addr
@@ -1037,13 +1017,6 @@ type Request interface {
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// request is the interface for *H[1-3]Request.
-type request interface {
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool
-	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-}
-
 // Response is the interface for *http[1-3]Response.
 type Response interface {
 	Request() Request
@@ -1116,24 +1089,8 @@ type Response interface {
 	unsafeMake(size int) []byte
 }
 
-// response is the interface for *H[1-3]Response.
-type response interface {
-	Status() int16
-	delHopHeaders()
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	delHopTrailers()
-	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
-}
-
 // Socket is the interface for *http[1-3]Socket.
 type Socket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-}
-
-// socket is the interface for *H[1-3]Socket.
-type socket interface {
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
@@ -1239,11 +1196,6 @@ func (u *Upload) Size() int64  { return u.size }
 func (u *Upload) MoveTo(path string) error {
 	// TODO. Remember to mark as moved
 	return nil
-}
-
-// upload is a file to be uploaded.
-type upload struct {
-	// TODO
 }
 
 // Cookie is a "set-cookie" header sent to client.
@@ -1403,6 +1355,34 @@ func (c *Cookie) writeTo(p []byte) int {
 		i += copy(p[i:], c.sameSite)
 	}
 	return i
+}
+
+// request is the interface for *H[1-3]Request.
+type request interface {
+	setMethodURI(method []byte, uri []byte, hasContent bool) bool
+	setAuthority(hostname []byte, colonPort []byte) bool
+	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+}
+
+// response is the interface for *H[1-3]Response.
+type response interface {
+	Status() int16
+	delHopHeaders()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	delHopTrailers()
+	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
+}
+
+// socket is the interface for *H[1-3]Socket.
+type socket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+}
+
+// upload is a file to be uploaded.
+type upload struct {
+	// TODO
 }
 
 // SetCookie is a "set-cookie" header received from backend.

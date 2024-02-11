@@ -7,11 +7,33 @@
 
 package hemi
 
+func init() {
+	RegisterServer("hrpcServer", func(name string, stage *Stage) Server {
+		s := new(hrpcServer)
+		s.onCreate(name, stage)
+		return s
+	})
+}
+
 // hrpcServer is the HRPC server.
 type hrpcServer struct {
 	// Mixins
 	rpcServer_[*hrpcGate]
 	// States
+}
+
+func (s *hrpcServer) onCreate(name string, stage *Stage) {
+	s.rpcServer_.onCreate(name, stage)
+}
+func (s *hrpcServer) OnShutdown() {
+	s.rpcServer_.onShutdown()
+}
+
+func (s *hrpcServer) OnConfigure() {
+	s.rpcServer_.onConfigure(s)
+}
+func (s *hrpcServer) OnPrepare() {
+	s.rpcServer_.onPrepare(s)
 }
 
 func (s *hrpcServer) Serve() { // runner
@@ -49,39 +71,39 @@ func (g *hrpcGate) serve() { // runner
 // hrpcConn
 type hrpcConn struct {
 	// Mixins
-	serverRPCConn_
+	rpcServerConn_
 }
 
-// hrpcCall is the server-side HRPC call.
-type hrpcCall struct {
+// hrpcExchan is the server-side HRPC exchan.
+type hrpcExchan struct {
 	// Mixins
-	serverCall_
+	rpcServerExchan_
 	// Assocs
-	req  hrpcReq
-	resp hrpcResp
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
+	req  hrpcRequest
+	resp hrpcResponse
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	gate *hrpcGate
-	// Call states (zeros)
+	// Exchan states (zeros)
 }
 
-// hrpcReq is the server-side HRPC request.
-type hrpcReq struct {
+// hrpcRequest is the server-side HRPC request.
+type hrpcRequest struct {
 	// Mixins
-	serverReq_
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
-	// Call states (zeros)
+	rpcServerRequest_
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
-// hrpcResp is the server-side HRPC response.
-type hrpcResp struct {
+// hrpcResponse is the server-side HRPC response.
+type hrpcResponse struct {
 	// Mixins
-	serverResp_
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
-	// Call states (zeros)
+	rpcServerResponse_
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }

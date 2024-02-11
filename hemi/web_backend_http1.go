@@ -218,7 +218,7 @@ func putH1Conn(h1Conn *H1Conn) {
 // H1Conn is the backend-side HTTP/1 connection.
 type H1Conn struct {
 	// Mixins
-	backendWebConn_
+	webBackendConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -232,7 +232,7 @@ type H1Conn struct {
 }
 
 func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
+	c.webBackendConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -242,7 +242,7 @@ func (c *H1Conn) onPut() {
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.backendWebConn_.onPut()
+	c.webBackendConn_.onPut()
 }
 
 func (c *H1Conn) UseStream() *H1Stream {
@@ -265,7 +265,7 @@ func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes which use fe
 // H1Stream is the backend-side HTTP/1 stream.
 type H1Stream struct {
 	// Mixins
-	backendStream_
+	webBackendStream_
 	// Assocs
 	request  H1Request  // the backend-side http/1 request
 	response H1Response // the backend-side http/1 response
@@ -278,7 +278,7 @@ type H1Stream struct {
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.backendStream_.onUse()
+	s.webBackendStream_.onUse()
 	s.conn = conn
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -288,7 +288,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.backendStream_.onEnd()
+	s.webBackendStream_.onEnd()
 }
 
 func (s *H1Stream) webBroker() webBroker { return s.conn.webBackend() }
@@ -348,7 +348,7 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 // H1Request is the backend-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
 	// Mixins
-	backendRequest_
+	webBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -485,7 +485,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 // H1Response is the backend-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
 	// Mixins
-	backendResponse_
+	webBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -636,7 +636,7 @@ var poolH1Socket sync.Pool
 // H1Socket is the backend-side HTTP/1 websocket.
 type H1Socket struct {
 	// Mixins
-	backendSocket_
+	webBackendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

@@ -38,9 +38,9 @@ type rpcConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	usedCalls atomic.Int32 // num of streams served or used
-	broken    atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	usedExchans atomic.Int32 // num of exchans served or used
+	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *rpcConn_) onGet() {
@@ -48,34 +48,34 @@ func (c *rpcConn_) onGet() {
 func (c *rpcConn_) onPut() {
 }
 
-// rpcCall is the interface for *hrpcCall and *HRCall.
-type rpcCall interface {
+// rpcExchan is the interface for *hrpcExchan and *HExchan.
+type rpcExchan interface {
 	// TODO
 }
 
-// rpcCall_ is the mixin for hrpcCall and HCall.
-type rpcCall_ struct {
+// rpcExchan_ is the mixin for hrpcExchan and HExchan.
+type rpcExchan_ struct {
 	// TODO
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	region      Region    // a region-based memory pool
 }
 
-func (c *rpcCall_) onUse() {
-	c.region.Init()
+func (x *rpcExchan_) onUse() {
+	x.region.Init()
 }
-func (c *rpcCall_) onEnd() {
-	c.region.Free()
+func (x *rpcExchan_) onEnd() {
+	x.region.Free()
 }
 
-func (c *rpcCall_) buffer256() []byte          { return c.stockBuffer[:] }
-func (c *rpcCall_) unsafeMake(size int) []byte { return c.region.Make(size) }
+func (x *rpcExchan_) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *rpcExchan_) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // rpcIn is the interface for *hrpcReq and *HResp. Used as shell by rpcIn_.
 type rpcIn interface {
 	// TODO
 }
 
-// rpcIn_ is the mixin for serverReq_ and backendResp_.
+// rpcIn_ is the mixin for rpcServerRequest_ and rpcBackendResponse_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
@@ -91,7 +91,7 @@ type rpcOut interface {
 	// TODO
 }
 
-// rpcOut_ is the mixin for serverResp_ and backendReq_.
+// rpcOut_ is the mixin for rpcServerResponse_ and rpcBackendRequest_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

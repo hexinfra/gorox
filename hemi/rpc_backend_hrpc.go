@@ -70,7 +70,7 @@ func (n *hrpcNode) Maintain() { // runner
 
 // HConn
 type HConn struct {
-	backendRPCConn_
+	rpcBackendConn_
 }
 
 func (c *HConn) Close() error { // only used by clients of dial
@@ -78,37 +78,37 @@ func (c *HConn) Close() error { // only used by clients of dial
 	return nil
 }
 
-// HCall is the backend-side HRPC call.
-type HCall struct {
+// HExchan is the backend-side HRPC exchan.
+type HExchan struct {
 	// Mixins
-	backendCall_
+	rpcBackendExchan_
 	// Assocs
-	req  HReq
-	resp HResp
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
+	request  HRequest
+	response HResponse
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	node *hrpcNode
 	id   int32
-	// Call states (zeros)
+	// Exchan states (zeros)
 }
 
-// HReq is the backend-side HRPC request.
-type HReq struct {
+// HRequest is the backend-side HRPC request.
+type HRequest struct {
 	// Mixins
-	backendReq_
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
-	// Call states (zeros)
+	rpcBackendRequest_
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
-// HResp is the backend-side HRPC response.
-type HResp struct {
+// HResponse is the backend-side HRPC response.
+type HResponse struct {
 	// Mixins
-	backendResp_
-	// Call states (stocks)
-	// Call states (controlled)
-	// Call states (non-zeros)
-	// Call states (zeros)
+	rpcBackendResponse_
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }

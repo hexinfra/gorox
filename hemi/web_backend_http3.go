@@ -123,7 +123,7 @@ func putH3Conn(h3Conn *H3Conn) {
 // H3Conn
 type H3Conn struct {
 	// Mixins
-	backendWebConn_
+	webBackendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -134,12 +134,12 @@ type H3Conn struct {
 }
 
 func (c *H3Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *H3Backend, node *h3Node, quixConn *quix.Conn) {
-	c.backendWebConn_.onGet(id, udsMode, tlsMode, backend)
+	c.webBackendConn_.onGet(id, udsMode, tlsMode, backend)
 	c.node = node
 	c.quixConn = quixConn
 }
 func (c *H3Conn) onPut() {
-	c.backendWebConn_.onPut()
+	c.webBackendConn_.onPut()
 	c.node = nil
 	c.quixConn = nil
 	c.activeStreams = 0
@@ -188,7 +188,7 @@ func putH3Stream(stream *H3Stream) {
 // H3Stream
 type H3Stream struct {
 	// Mixins
-	backendStream_
+	webBackendStream_
 	// Assocs
 	request  H3Request
 	response H3Response
@@ -205,7 +205,7 @@ type h3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quixStream *quix.Stream) { // for non-zeros
-	s.backendStream_.onUse()
+	s.webBackendStream_.onUse()
 	s.conn = conn
 	s.quixStream = quixStream
 	s.request.onUse(Version3)
@@ -218,7 +218,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quixStream = nil
 	s.h3Stream0 = h3Stream0{}
-	s.backendStream_.onEnd()
+	s.webBackendStream_.onEnd()
 }
 
 func (s *H3Stream) webBroker() webBroker { return s.conn.webBackend() }
@@ -271,7 +271,7 @@ func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 // H3Request is the backend-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building
 	// Mixins
-	backendRequest_
+	webBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -331,7 +331,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil } // TODO
 // H3Response is the backend-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing
 	// Mixins
-	backendResponse_
+	webBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -346,7 +346,7 @@ var poolH3Socket sync.Pool
 // H3Socket is the backend-side HTTP/3 websocket.
 type H3Socket struct {
 	// Mixins
-	backendSocket_
+	webBackendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

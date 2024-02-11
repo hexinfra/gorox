@@ -33,6 +33,13 @@ type rpcServer_[G Gate] struct {
 	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
 }
 
+func (s *rpcServer_[G]) onCreate(name string, stage *Stage) {
+	s.Server_.OnCreate(name, stage)
+}
+func (s *rpcServer_[G]) onShutdown() {
+	s.Server_.OnShutdown()
+}
+
 func (s *rpcServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 
@@ -86,8 +93,8 @@ func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 	return nil
 }
 
-// serverRPCConn_
-type serverRPCConn_ struct {
+// rpcServerConn_
+type rpcServerConn_ struct {
 	// Mixins
 	rpcConn_
 	id     int64
@@ -95,36 +102,36 @@ type serverRPCConn_ struct {
 	gate   Gate
 }
 
-func (c *serverRPCConn_) onGet(id int64, server rpcServer, gate Gate) {
+func (c *rpcServerConn_) onGet(id int64, server rpcServer, gate Gate) {
 	c.rpcConn_.onGet()
 	c.id = id
 	c.server = server
 	c.gate = gate
 }
-func (c *serverRPCConn_) onPut() {
+func (c *rpcServerConn_) onPut() {
 	c.server = nil
 	c.gate = nil
 	c.rpcConn_.onPut()
 }
 
-func (c *serverRPCConn_) rpcServer() rpcServer { return c.server }
+func (c *rpcServerConn_) rpcServer() rpcServer { return c.server }
 
-// serverCall_
-type serverCall_ struct {
+// rpcServerExchan_
+type rpcServerExchan_ struct {
 	// Mixins
-	rpcCall_
+	rpcExchan_
 	// TODO
 }
 
-// serverReq_
-type serverReq_ struct {
+// rpcServerRequest_
+type rpcServerRequest_ struct {
 	// Mixins
 	rpcIn_
 	// TODO
 }
 
-// serverResp_
-type serverResp_ struct {
+// rpcServerResponse_
+type rpcServerResponse_ struct {
 	// Mixins
 	rpcOut_
 	// TODO

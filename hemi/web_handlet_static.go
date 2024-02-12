@@ -227,7 +227,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			resp.AddHeaderBytes(bytesETag, etag)
 			resp.SetLastModified(date)
 		}
-	} else if ranges := req.ExamineRanges(size); ranges != nil { // ranges are satisfiable
+	} else if ranges := req.MeasureRanges(size); ranges != nil { // ranges are satisfiable
 		resp.employRanges(ranges, contentType)
 	} else { // ranges are not satisfiable
 		resp.SendRangeNotSatisfiable(size, nil)

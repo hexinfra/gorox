@@ -33,20 +33,20 @@ type UDPSBackend struct {
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.onCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
-	b.Backend_.onConfigure()
+	b.Backend_.OnConfigure()
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
-	b.Backend_.onPrepare()
+	b.Backend_.OnPrepare()
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *UDPSBackend) createNode(id int32) *udpsNode {
+func (b *UDPSBackend) CreateNode(id int32) *udpsNode {
 	node := new(udpsNode)
 	node.init(id, b)
 	return node

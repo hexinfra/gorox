@@ -1513,7 +1513,7 @@ func (r *webServerRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	return r.unixTimes.ifRange == date
 }
 
-func (r *webServerRequest_) ExamineRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
+func (r *webServerRequest_) MeasureRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
 	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
 		rang := &r.ranges[i]

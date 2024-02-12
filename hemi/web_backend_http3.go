@@ -43,7 +43,7 @@ func (b *H3Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *H3Backend) createNode(id int32) *h3Node {
+func (b *H3Backend) CreateNode(id int32) *h3Node {
 	node := new(h3Node)
 	node.init(id, b)
 	return node

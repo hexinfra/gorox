@@ -19,13 +19,12 @@ import (
 
 // webBroker is a webServer or webBackend which keeps its connections and streams.
 type webBroker interface {
+	// Imports
+	broker
 	// Methods
-	Stage() *Stage               // current stage
-	ReadTimeout() time.Duration  // timeout of a read operation
-	WriteTimeout() time.Duration // timeout of a write operation
-	RecvTimeout() time.Duration  // timeout to recv the whole message content
-	SendTimeout() time.Duration  // timeout to send the whole message
-	MaxContentSize() int64       // allowed
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	SendTimeout() time.Duration // timeout to send the whole message
+	MaxContentSize() int64      // allowed
 	SaveContentFilesDir() string
 }
 

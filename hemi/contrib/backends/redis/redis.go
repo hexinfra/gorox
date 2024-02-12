@@ -30,12 +30,18 @@ type RedisBackend struct {
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
-	//b.Backend_.OnCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b)
 }
 
 func (b *RedisBackend) OnConfigure() {
 }
 func (b *RedisBackend) OnPrepare() {
+}
+
+func (b *RedisBackend) CreateNode(id int32) *redisNode {
+	node := new(redisNode)
+	node.init(id, b)
+	return node
 }
 
 // redisNode is a node in RedisBackend.

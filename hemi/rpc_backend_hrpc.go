@@ -37,7 +37,7 @@ func (b *HRPCBackend) OnPrepare() {
 	b.rpcBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HRPCBackend) createNode(id int32) *hrpcNode {
+func (b *HRPCBackend) CreateNode(id int32) *hrpcNode {
 	node := new(hrpcNode)
 	node.init(id, b)
 	return node

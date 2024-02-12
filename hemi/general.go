@@ -9,57 +9,101 @@ package hemi
 
 import (
 	"crypto/tls"
+	"encoding/binary"
 	"errors"
+	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"encoding/binary"
-	"fmt"
-	"math/rand"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// Server component.
-type Server interface {
+// broker is the interface for Server and Backend.
+type broker interface {
 	// Imports
 	Component
 	// Methods
-	Serve() // runner
 	Stage() *Stage
+	ReadTimeout() time.Duration
+	WriteTimeout() time.Duration
+}
+
+// broker_ is the mixin for Server_ and Backend_.
+type broker_ struct {
+	// Mixins
+	Component_
+	// Assocs
+	stage *Stage
+	// States
+	readTimeout  time.Duration // read() timeout
+	writeTimeout time.Duration // write() timeout
+}
+
+func (b *broker_) onCreate(name string, stage *Stage) {
+	b.MakeComp(name)
+	b.stage = stage
+}
+
+func (b *broker_) onConfigure(shell Component, readTimeout time.Duration, writeTimeout time.Duration) {
+	// readTimeout
+	shell.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, readTimeout)
+
+	// writeTimeout
+	shell.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, writeTimeout)
+}
+func (b *broker_) onPrepare() {
+	// Currently nothing.
+}
+
+func (b *broker_) Stage() *Stage               { return b.stage }
+func (b *broker_) ReadTimeout() time.Duration  { return b.readTimeout }
+func (b *broker_) WriteTimeout() time.Duration { return b.writeTimeout }
+
+// Server component.
+type Server interface {
+	// Imports
+	broker
+	// Methods
+	Serve() // runner
 	IsUDS() bool
 	IsTLS() bool
 	ColonPort() string
 	ColonPortBytes() []byte
-	ReadTimeout() time.Duration
-	WriteTimeout() time.Duration
 }
 
 // Server_ is the mixin for all servers.
 type Server_[G Gate] struct {
 	// Mixins
-	Component_
+	broker_
 	// Assocs
-	stage *Stage // current stage
-	gates []G    // a server may has many gates
+	gates []G // a server may has many gates
 	// States
-	address         string        // hostname:port, /path/to/unix.sock
-	colonPort       string        // like: ":9876"
-	colonPortBytes  []byte        // like: []byte(":9876")
-	udsMode         bool          // address is a unix domain socket?
-	tlsMode         bool          // tls mode?
-	tlsConfig       *tls.Config   // set if is tls mode
-	readTimeout     time.Duration // read() timeout
-	writeTimeout    time.Duration // write() timeout
-	numGates        int32         // number of gates
-	maxConnsPerGate int32         // max concurrent connections allowed per gate
+	address         string      // hostname:port, /path/to/unix.sock
+	colonPort       string      // like: ":9876"
+	colonPortBytes  []byte      // like: []byte(":9876")
+	udsMode         bool        // address is a unix domain socket?
+	tlsMode         bool        // tls mode?
+	tlsConfig       *tls.Config // set if is tls mode
+	numGates        int32       // number of gates
+	maxConnsPerGate int32       // max concurrent connections allowed per gate
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
-	s.MakeComp(name)
-	s.stage = stage
+	s.broker_.onCreate(name, stage)
 }
 func (s *Server_[G]) OnShutdown() {
 	// Notify gates. We don't use close(s.ShutChan) here.
@@ -69,6 +113,8 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
+	s.broker_.onConfigure(s, 60*time.Second, 60*time.Second)
+
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok {
@@ -95,22 +141,6 @@ func (s *Server_[G]) OnConfigure() {
 		s.tlsConfig = new(tls.Config)
 	}
 
-	// readTimeout
-	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// writeTimeout
-	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 60*time.Second)
-
 	// numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
 		if value > 0 {
@@ -128,21 +158,18 @@ func (s *Server_[G]) OnConfigure() {
 	}, 100000)
 }
 func (s *Server_[G]) OnPrepare() {
-	// Currently nothing.
+	s.broker_.onPrepare()
 }
 
 func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 
-func (s *Server_[G]) Stage() *Stage               { return s.stage }
-func (s *Server_[G]) Address() string             { return s.address }
-func (s *Server_[G]) ColonPort() string           { return s.colonPort }
-func (s *Server_[G]) ColonPortBytes() []byte      { return s.colonPortBytes }
-func (s *Server_[G]) IsUDS() bool                 { return s.udsMode }
-func (s *Server_[G]) IsTLS() bool                 { return s.tlsMode }
-func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
-func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
-func (s *Server_[G]) NumGates() int32             { return s.numGates }
-func (s *Server_[G]) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
+func (s *Server_[G]) Address() string        { return s.address }
+func (s *Server_[G]) ColonPort() string      { return s.colonPort }
+func (s *Server_[G]) ColonPortBytes() []byte { return s.colonPortBytes }
+func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
+func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
+func (s *Server_[G]) NumGates() int32        { return s.numGates }
+func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
@@ -225,12 +252,9 @@ func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
 // Backend is a group of nodes.
 type Backend interface {
 	// Imports
-	Component
+	broker
 	// Methods
 	Maintain() // runner
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
 	AliveTimeout() time.Duration
 	nextConnID() int64
 }
@@ -238,31 +262,29 @@ type Backend interface {
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
 	// Mixins
-	Component_
+	broker_
 	// Assocs
-	stage   *Stage // current stage
-	nodes   []N    // nodes of this backend
+	nodes   []N // nodes of this backend
 	creator interface {
-		createNode(id int32) N
+		CreateNode(id int32) N
 	} // if Go's generic supports new(N) then this is not needed.
 	// States
 	dialTimeout  time.Duration // dial remote timeout
-	writeTimeout time.Duration // write operation timeout
-	readTimeout  time.Duration // read operation timeout
 	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 }
 
-func (b *Backend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b.MakeComp(name)
-	b.stage = stage
+func (b *Backend_[N]) OnCreate(name string, stage *Stage, creator interface{ CreateNode(id int32) N }) {
+	b.broker_.onCreate(name, stage)
 	b.creator = creator
 }
 func (b *Backend_[N]) OnShutdown() {
 	close(b.ShutChan) // notifies run() or Maintain()
 }
 
-func (b *Backend_[N]) onConfigure() {
+func (b *Backend_[N]) OnConfigure() {
+	b.broker_.onConfigure(b, 30*time.Second, 30*time.Second)
+
 	// dialTimeout
 	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
@@ -270,22 +292,6 @@ func (b *Backend_[N]) onConfigure() {
 		}
 		return errors.New(".dialTimeout has an invalid value")
 	}, 10*time.Second)
-
-	// writeTimeout
-	b.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
-		if value >= time.Second {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 30*time.Second)
-
-	// readTimeout
-	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
-		if value >= time.Second {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 30*time.Second)
 
 	// aliveTimeout
 	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
@@ -309,7 +315,7 @@ func (b *Backend_[N]) onConfigure() {
 		if !ok {
 			UseExitln("node in nodes must be a dict")
 		}
-		node := b.creator.createNode(int32(id))
+		node := b.creator.CreateNode(int32(id))
 
 		// address
 		vAddress, ok := vNode["address"]
@@ -351,8 +357,8 @@ func (b *Backend_[N]) onConfigure() {
 		b.nodes = append(b.nodes, node)
 	}
 }
-func (b *Backend_[N]) onPrepare() {
-	// Currently nothing.
+func (b *Backend_[N]) OnPrepare() {
+	b.broker_.onPrepare()
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -373,9 +379,6 @@ func (b *Backend_[N]) Maintain() { // runner
 	b.stage.SubDone()
 }
 
-func (b *Backend_[N]) Stage() *Stage               { return b.stage }
-func (b *Backend_[N]) WriteTimeout() time.Duration { return b.writeTimeout }
-func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
 func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
@@ -434,7 +437,7 @@ func (n *Node_) setTLS() {
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
 
-func (n *Node_) ID() int32 { return n.id }
+func (n *Node_) ID() int32   { return n.id }
 func (n *Node_) IsUDS() bool { return n.udsMode }
 func (n *Node_) IsTLS() bool { return n.tlsMode }
 

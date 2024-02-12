@@ -34,22 +34,22 @@ type QUICBackend struct {
 }
 
 func (b *QUICBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.onCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *QUICBackend) OnConfigure() {
-	b.Backend_.onConfigure()
+	b.Backend_.OnConfigure()
 	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *QUICBackend) OnPrepare() {
-	b.Backend_.onPrepare()
+	b.Backend_.OnPrepare()
 	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *QUICBackend) createNode(id int32) *quicNode {
+func (b *QUICBackend) CreateNode(id int32) *quicNode {
 	node := new(quicNode)
 	node.init(id, b)
 	return node

@@ -29,16 +29,16 @@ type rpcBackend_[N Node] struct {
 	health any // TODO
 }
 
-func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ createNode(id int32) N }) {
-	b.Backend_.onCreate(name, stage, creator)
+func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ CreateNode(id int32) N }) {
+	b.Backend_.OnCreate(name, stage, creator)
 }
 
 func (b *rpcBackend_[N]) onConfigure(shell Component) {
-	b.Backend_.onConfigure()
+	b.Backend_.OnConfigure()
 	b.rpcBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
 }
 func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
-	b.Backend_.onPrepare()
+	b.Backend_.OnPrepare()
 	b.rpcBroker_.onPrepare(shell)
 }
 

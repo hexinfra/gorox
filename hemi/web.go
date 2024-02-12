@@ -929,7 +929,7 @@ type Request interface {
 	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
 
-	ExamineRanges(size int64) []Range
+	MeasureRanges(size int64) []Range
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool

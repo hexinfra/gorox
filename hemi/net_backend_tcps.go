@@ -36,22 +36,22 @@ type TCPSBackend struct {
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.onCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b)
 	b.loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
-	b.Backend_.onConfigure()
+	b.Backend_.OnConfigure()
 	b.streamHolder_.onConfigure(b, 1000)
 	b.loadBalancer_.onConfigure(b)
 }
 func (b *TCPSBackend) OnPrepare() {
-	b.Backend_.onPrepare()
+	b.Backend_.OnPrepare()
 	b.streamHolder_.onPrepare(b)
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *TCPSBackend) createNode(id int32) *tcpsNode {
+func (b *TCPSBackend) CreateNode(id int32) *tcpsNode {
 	node := new(tcpsNode)
 	node.init(id, b)
 	return node

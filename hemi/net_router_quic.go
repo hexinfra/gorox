@@ -242,6 +242,7 @@ type QUICConn struct {
 	// Mixins
 	ServerConn_
 	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quixConn *quix.Conn

@@ -55,21 +55,10 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 }
 
 func (r *TCPSRouter) Serve() { // runner
-	for id := int32(0); id < r.numGates; id++ {
-		gate := new(tcpsGate)
-		gate.init(id, r)
-		if err := gate.Open(); err != nil {
-			EnvExitln(err.Error())
-		}
-		r.AddGate(gate)
-		r.IncSub(1)
-		if r.IsUDS() {
-			go gate.serveUDS()
-		} else if r.IsTLS() {
-			go gate.serveTLS()
-		} else {
-			go gate.serveTCP()
-		}
+	if r.IsUDS() {
+		r.serveUDS()
+	} else {
+		r.serveTCP()
 	}
 	r.WaitSubs() // gates
 	r.IncSub(len(r.dealets) + len(r.cases))
@@ -83,6 +72,32 @@ func (r *TCPSRouter) Serve() { // runner
 		Printf("tcpsRouter=%s done\n", r.Name())
 	}
 	r.stage.SubDone()
+}
+func (r *TCPSRouter) serveUDS() {
+	gate := new(tcpsGate)
+	gate.init(0, r)
+	if err := gate.Open(); err != nil {
+		EnvExitln(err.Error())
+	}
+	r.AddGate(gate)
+	r.IncSub(1)
+	go gate.serveUDS()
+}
+func (r *TCPSRouter) serveTCP() {
+	for id := int32(0); id < r.numGates; id++ {
+		gate := new(tcpsGate)
+		gate.init(id, r)
+		if err := gate.Open(); err != nil {
+			EnvExitln(err.Error())
+		}
+		r.AddGate(gate)
+		r.IncSub(1)
+		if r.IsTLS() {
+			go gate.serveTLS()
+		} else {
+			go gate.serveTCP()
+		}
+	}
 }
 
 func (r *TCPSRouter) dispatch(conn *TCPSConn) {

@@ -101,6 +101,11 @@ func (s *httpServer) Serve() { // runner
 	} else {
 		s.serveTCP()
 	}
+	s.WaitSubs() // gates
+	if Debug() >= 2 {
+		Printf("httpServer=%s done\n", s.Name())
+	}
+	s.stage.SubDone()
 }
 func (s *httpServer) serveUDS() {
 	gate := new(httpGate)
@@ -111,11 +116,6 @@ func (s *httpServer) serveUDS() {
 	s.AddGate(gate)
 	s.IncSub(1)
 	go gate.serveUDS()
-	s.WaitSubs() // gates
-	if Debug() >= 2 {
-		Printf("httpServer=%s done\n", s.Name())
-	}
-	s.stage.SubDone()
 }
 func (s *httpServer) serveTCP() {
 	for id := int32(0); id < s.numGates; id++ {
@@ -132,11 +132,6 @@ func (s *httpServer) serveTCP() {
 			go gate.serveTCP()
 		}
 	}
-	s.WaitSubs() // gates
-	if Debug() >= 2 {
-		Printf("httpServer=%s done\n", s.Name())
-	}
-	s.stage.SubDone()
 }
 
 // httpGate is a gate of httpServer.

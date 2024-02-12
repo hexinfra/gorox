@@ -32,6 +32,59 @@ type broker interface {
 	WriteTimeout() time.Duration
 }
 
+// Server component.
+type Server interface {
+	// Imports
+	broker
+	// Methods
+	Serve() // runner
+	Address() string
+	ColonPort() string
+	ColonPortBytes() []byte
+	IsUDS() bool
+	IsTLS() bool
+	TLSConfig() *tls.Config
+	MaxConnsPerGate() int32
+}
+
+// Backend is a group of nodes.
+type Backend interface {
+	// Imports
+	broker
+	// Methods
+	Maintain() // runner
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
+
+// Gate is the interface for all gates. Gates are not components.
+type Gate interface {
+	// Methods
+	Server() Server
+	Address() string
+	IsUDS() bool
+	IsTLS() bool
+	ID() int32
+	IsShut() bool
+	Open() error
+	Shut() error
+	OnConnClosed()
+}
+
+// Node is a member of backend. Nodes are not components.
+type Node interface {
+	// Methods
+	setAddress(address string)
+	setTLS()
+	setWeight(weight int32)
+	setKeepConns(keepConns int32)
+	ID() int32
+	IsUDS() bool
+	IsTLS() bool
+	Maintain() // runner
+	shutdown()
+}
+
 // broker_ is the mixin for Server_ and Backend_.
 type broker_ struct {
 	// Mixins
@@ -73,21 +126,6 @@ func (b *broker_) Stage() *Stage               { return b.stage }
 func (b *broker_) ReadTimeout() time.Duration  { return b.readTimeout }
 func (b *broker_) WriteTimeout() time.Duration { return b.writeTimeout }
 
-// Server component.
-type Server interface {
-	// Imports
-	broker
-	// Methods
-	Serve() // runner
-	Address() string
-	ColonPort() string
-	ColonPortBytes() []byte
-	IsUDS() bool
-	IsTLS() bool
-	TLSConfig() *tls.Config
-	MaxConnsPerGate() int32
-}
-
 // Server_ is the mixin for all servers.
 type Server_[G Gate] struct {
 	// Mixins
@@ -101,8 +139,8 @@ type Server_[G Gate] struct {
 	udsMode         bool        // is address a unix domain socket?
 	tlsMode         bool        // tls mode?
 	tlsConfig       *tls.Config // set if is tls mode
-	numGates        int32       // number of gates
 	maxConnsPerGate int32       // max concurrent connections allowed per gate
+	numGates        int32       // number of gates
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
@@ -141,14 +179,6 @@ func (s *Server_[G]) OnConfigure() {
 		s.tlsConfig = new(tls.Config)
 	}
 
-	// numGates
-	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".numGates has an invalid value")
-	}, s.stage.NumCPU())
-
 	// maxConnsPerGate
 	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
 		if value > 0 {
@@ -156,6 +186,14 @@ func (s *Server_[G]) OnConfigure() {
 		}
 		return errors.New(".maxConnsPerGate has an invalid value")
 	}, 100000)
+
+	// numGates
+	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".numGates has an invalid value")
+	}, s.stage.NumCPU())
 }
 func (s *Server_[G]) OnPrepare() {
 	s.broker_.onPrepare()
@@ -169,95 +207,9 @@ func (s *Server_[G]) ColonPortBytes() []byte { return s.colonPortBytes }
 func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
 func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
-func (s *Server_[G]) NumGates() int32        { return s.numGates }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
-// Gate is the interface for all gates. Gates are not components.
-type Gate interface {
-	// Methods
-	Server() Server
-	IsUDS() bool
-	IsTLS() bool
-	ID() int32
-	IsShut() bool
-	Open() error
-	Shut() error
-	OnConnClosed()
-}
-
-// Gate_ is the mixin for all gates.
-type Gate_ struct {
-	// Mixins
-	subsWaiter_ // for conns
-	// Assocs
-	server Server
-	// States
-	id       int32        // gate id
-	isShut   atomic.Bool  // is gate shut?
-	numConns atomic.Int32 // TODO: false sharing
-}
-
-func (g *Gate_) Init(id int32, server Server) {
-	g.server = server
-	g.id = id
-	g.isShut.Store(false)
-	g.numConns.Store(0)
-}
-
-func (g *Gate_) Server() Server  { return g.server }
-func (g *Gate_) Address() string { return g.server.Address() }
-func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
-func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
-
-func (g *Gate_) ID() int32 { return g.id }
-
-func (g *Gate_) MarkShut()    { g.isShut.Store(true) }
-func (g *Gate_) IsShut() bool { return g.isShut.Load() }
-
-func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
-func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConnsPerGate() }
-
-func (g *Gate_) OnConnClosed() {
-	g.DecConns()
-	g.SubDone()
-}
-
-// ServerConn_
-type ServerConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id     int64
-	server Server
-	gate   Gate
-	// Conn states (zeros)
-}
-
-func (c *ServerConn_) OnGet(id int64, gate Gate) {
-	c.id = id
-	c.server = gate.Server()
-	c.gate = gate
-}
-func (c *ServerConn_) OnPut() {
-	c.server = nil
-	c.gate = nil
-}
-
-func (c *ServerConn_) Server() Server { return c.server }
-func (c *ServerConn_) Gate() Gate     { return c.gate }
-
-func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
-func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
-
-// Backend is a group of nodes.
-type Backend interface {
-	// Imports
-	broker
-	// Methods
-	Maintain() // runner
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
+func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
@@ -383,19 +335,67 @@ func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
-// Node is a member of backend. Nodes are not components.
-type Node interface {
-	// Methods
-	setAddress(address string)
-	setTLS()
-	setWeight(weight int32)
-	setKeepConns(keepConns int32)
-	ID() int32
-	IsUDS() bool
-	IsTLS() bool
-	Maintain() // runner
-	shutdown()
+// Gate_ is the mixin for all gates.
+type Gate_ struct {
+	// Mixins
+	subsWaiter_ // for conns
+	// Assocs
+	server Server
+	// States
+	id       int32        // gate id
+	isShut   atomic.Bool  // is gate shut?
+	numConns atomic.Int32 // TODO: false sharing
 }
+
+func (g *Gate_) Init(id int32, server Server) {
+	g.server = server
+	g.id = id
+	g.isShut.Store(false)
+	g.numConns.Store(0)
+}
+
+func (g *Gate_) Server() Server  { return g.server }
+func (g *Gate_) Address() string { return g.server.Address() }
+func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
+func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
+
+func (g *Gate_) ID() int32        { return g.id }
+func (g *Gate_) IsShut() bool     { return g.isShut.Load() }
+func (g *Gate_) MarkShut()        { g.isShut.Store(true) }
+func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConnsPerGate() }
+
+func (g *Gate_) OnConnClosed() {
+	g.DecConns()
+	g.SubDone()
+}
+
+// ServerConn_
+type ServerConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id     int64
+	server Server
+	gate   Gate
+	// Conn states (zeros)
+}
+
+func (c *ServerConn_) OnGet(id int64, gate Gate) {
+	c.id = id
+	c.server = gate.Server()
+	c.gate = gate
+}
+func (c *ServerConn_) OnPut() {
+	c.server = nil
+	c.gate = nil
+}
+
+func (c *ServerConn_) Server() Server { return c.server }
+func (c *ServerConn_) Gate() Gate     { return c.gate }
+
+func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
+func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
 
 // Node_ is the mixin for backend nodes.
 type Node_ struct {
@@ -413,8 +413,8 @@ type Node_ struct {
 	down      atomic.Bool // TODO: false-sharing
 	freeList  struct {    // free list of conns in this node
 		sync.Mutex
-		head BackendConn // head element
-		tail BackendConn // tail element
+		head backendConn // head element
+		tail backendConn // tail element
 		qnty int         // size of the list
 	}
 }
@@ -447,7 +447,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() BackendConn {
+func (n *Node_) pullConn() backendConn {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -461,7 +461,7 @@ func (n *Node_) pullConn() BackendConn {
 	list.qnty--
 	return conn
 }
-func (n *Node_) pushConn(conn BackendConn) {
+func (n *Node_) pushConn(conn backendConn) {
 	list := &n.freeList
 	list.Lock()
 	defer list.Unlock()
@@ -494,19 +494,10 @@ func (n *Node_) shutdown() {
 	close(n.ShutChan) // notifies Maintain()
 }
 
-// BackendConn is the backend conns.
-type BackendConn interface {
-	// Methods
-	getNext() BackendConn
-	setNext(next BackendConn)
-	isAlive() bool
-	closeConn()
-}
-
 // BackendConn_ is the mixin for backend conns.
 type BackendConn_ struct {
 	// Conn states (non-zeros)
-	next    BackendConn // the linked-list
+	next    backendConn // the linked-list
 	id      int64       // the conn id
 	backend Backend
 	node    Node
@@ -533,10 +524,19 @@ func (c *BackendConn_) onPut() {
 func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
 
-func (c *BackendConn_) getNext() BackendConn     { return c.next }
-func (c *BackendConn_) setNext(next BackendConn) { c.next = next }
+func (c *BackendConn_) getNext() backendConn     { return c.next }
+func (c *BackendConn_) setNext(next backendConn) { c.next = next }
 
 func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }
+
+// backendConn is the backend conns.
+type backendConn interface {
+	// Methods
+	getNext() backendConn
+	setNext(next backendConn)
+	isAlive() bool
+	closeConn()
+}
 
 // Stream_
 type Stream_ struct {

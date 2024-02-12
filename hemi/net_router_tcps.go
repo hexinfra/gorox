@@ -394,9 +394,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.server.(*TCPSRouter); router.udsMode {
+	if c.server.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if router.tlsMode {
+	} else if c.server.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

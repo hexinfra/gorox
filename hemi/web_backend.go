@@ -283,10 +283,10 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 				return false
 			}
 		} else { // custom authority (hostname or colonPort)
-			if len(hostname) == 0 {
+			if len(hostname) == 0 { // no custom hostname
 				hostname = req.UnsafeHostname()
 			}
-			if len(colonPort) == 0 {
+			if len(colonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
 			}
 			if !r.shell.(request).setAuthority(hostname, colonPort) {

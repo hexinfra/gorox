@@ -294,8 +294,8 @@ func (c *UDPSConn) Close() error {
 
 func (c *UDPSConn) closeConn() {
 	// TODO: uds, tls?
-	if router := c.server.(*UDPSRouter); router.udsMode {
-	} else if router.tlsMode {
+	if c.server.IsUDS() {
+	} else if c.server.IsTLS() {
 	} else {
 	}
 	c.udpConn.Close()

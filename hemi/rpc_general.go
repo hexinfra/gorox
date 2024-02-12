@@ -24,8 +24,8 @@ type rpcBroker interface {
 // rpcBroker_
 type rpcBroker_ struct {
 	// States
-	recvTimeout    time.Duration // timeout to recv the whole message content
-	sendTimeout    time.Duration // timeout to send the whole message
+	recvTimeout time.Duration // timeout to recv the whole message content
+	sendTimeout time.Duration // timeout to send the whole message
 }
 
 func (b *rpcBroker_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {

@@ -117,17 +117,14 @@ func (s *Server_[G]) OnConfigure() {
 
 	// address
 	if v, ok := s.Find("address"); ok {
-		if address, ok := v.String(); ok {
+		if address, ok := v.String(); ok && address != "" {
 			if p := strings.IndexByte(address, ':'); p != -1 && p != len(address)-1 {
-				s.address = address
 				s.colonPort = address[p:]
 				s.colonPortBytes = []byte(s.colonPort)
-			} else if _, err := os.Stat(address); err == nil {
-				s.address = address
-				s.udsMode = true
 			} else {
-				UseExitln("bad address: " + address)
+				s.udsMode = true
 			}
+			s.address = address
 		} else {
 			UseExitln("address should be of string type")
 		}
@@ -285,22 +282,6 @@ func (b *Backend_[N]) OnShutdown() {
 func (b *Backend_[N]) OnConfigure() {
 	b.broker_.onConfigure(b, 30*time.Second, 30*time.Second)
 
-	// dialTimeout
-	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
-		if value >= time.Second {
-			return nil
-		}
-		return errors.New(".dialTimeout has an invalid value")
-	}, 10*time.Second)
-
-	// aliveTimeout
-	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 5*time.Second)
-
 	// nodes
 	v, ok := b.Find("nodes")
 	if !ok {
@@ -356,6 +337,22 @@ func (b *Backend_[N]) OnConfigure() {
 
 		b.nodes = append(b.nodes, node)
 	}
+
+	// dialTimeout
+	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
+		if value >= time.Second {
+			return nil
+		}
+		return errors.New(".dialTimeout has an invalid value")
+	}, 10*time.Second)
+
+	// aliveTimeout
+	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 5*time.Second)
 }
 func (b *Backend_[N]) OnPrepare() {
 	b.broker_.onPrepare()
@@ -425,10 +422,12 @@ func (n *Node_) init(id int32) {
 }
 
 func (n *Node_) setAddress(address string) {
-	n.address = address
-	if _, err := os.Stat(address); err == nil {
+	if address[0] == '@' { // abstract uds
+		n.udsMode = true
+	} else if _, err := os.Stat(address); err == nil { // normal uds
 		n.udsMode = true
 	}
+	n.address = address
 }
 func (n *Node_) setTLS() {
 	n.tlsMode = true

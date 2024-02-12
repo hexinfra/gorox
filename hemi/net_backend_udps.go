@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDPS (UDP/TLS/UDS) network backend implementation.
+// UDPS (UDP/TLS/UDS) backend implementation.
 
 package hemi
 
@@ -61,7 +61,7 @@ func (b *UDPSBackend) FetchConn() (*UConn, error) {
 	return node.fetchConn()
 }
 func (b *UDPSBackend) StoreConn(uConn *UConn) {
-	uConn.node.storeConn(uConn)
+	uConn.node.(*udpsNode).storeConn(uConn)
 }
 
 // udpsNode is a node in UDPSBackend.
@@ -118,14 +118,14 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 // poolUConn
 var poolUConn sync.Pool
 
-func getUConn(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
+func getUConn(id int64, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
 	var uConn *UConn
 	if x := poolUConn.Get(); x == nil {
 		uConn = new(UConn)
 	} else {
 		uConn = x.(*UConn)
 	}
-	uConn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	uConn.onGet(id, backend, node, netConn, rawConn)
 	return uConn
 }
 func putUConn(uConn *UConn) {
@@ -138,31 +138,25 @@ type UConn struct {
 	// Mixins
 	BackendConn_
 	// Conn states (non-zeros)
-	backend *UDPSBackend
-	node    *udpsNode
 	netConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
 	broken atomic.Bool // is conn broken?
 }
 
-func (c *UConn) onGet(id int64, udsMode bool, tlsMode bool, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	c.backend = backend
-	c.node = node
+func (c *UConn) onGet(id int64, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
+	c.BackendConn_.onGet(id, backend, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *UConn) onPut() {
-	c.BackendConn_.onPut()
-	c.backend = nil
-	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.broken.Store(false)
+	c.BackendConn_.onPut()
 }
 
-func (c *UConn) Backend() *UDPSBackend { return c.backend }
+func (c *UConn) Backend() *UDPSBackend { return c.backend.(*UDPSBackend) }
 
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {

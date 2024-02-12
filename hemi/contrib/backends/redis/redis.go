@@ -79,7 +79,6 @@ type redisConn struct {
 	// Mixins
 	BackendConn_
 	// Conn states (non-zeros)
-	node *redisNode
 	// Conn states (zeros)
 }
 

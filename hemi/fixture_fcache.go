@@ -34,7 +34,9 @@ func createFcache(stage *Stage) *fcacheFixture {
 // fcacheFixture
 type fcacheFixture struct {
 	// Mixins
-	fixture_
+	Component_
+	// Assocs
+	stage *Stage
 	// States
 	smallFileSize int64 // what size is considered as small file
 	maxSmallFiles int32 // max number of small files. for small files, contents are cached
@@ -45,7 +47,8 @@ type fcacheFixture struct {
 }
 
 func (f *fcacheFixture) onCreate(stage *Stage) {
-	f.fixture_.onCreate(signFcache, stage)
+	f.MakeComp(signFcache)
+	f.stage = stage
 	f.entries = make(map[string]*fcacheEntry)
 }
 func (f *fcacheFixture) OnShutdown() {

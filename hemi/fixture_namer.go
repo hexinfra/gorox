@@ -27,12 +27,15 @@ func createNamer(stage *Stage) *namerFixture {
 // namerFixture
 type namerFixture struct {
 	// Mixins
-	fixture_
+	Component_
+	// Assocs
+	stage *Stage
 	// States
 }
 
 func (f *namerFixture) onCreate(stage *Stage) {
-	f.fixture_.onCreate(signNamer, stage)
+	f.MakeComp(signNamer)
+	f.stage = stage
 }
 func (f *namerFixture) OnShutdown() {
 	close(f.ShutChan) // notifies run()

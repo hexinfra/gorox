@@ -81,7 +81,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(server *http3Server, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.abstract, server.tlsMode, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 

@@ -789,19 +789,19 @@ func (s *Stage) startRouters() {
 		if Debug() >= 1 {
 			Printf("quicRouter=%s go serve()\n", quicRouter.Name())
 		}
-		go quicRouter.serve()
+		go quicRouter.Serve()
 	}
 	for _, tcpsRouter := range s.tcpsRouters {
 		if Debug() >= 1 {
 			Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
 		}
-		go tcpsRouter.serve()
+		go tcpsRouter.Serve()
 	}
 	for _, udpsRouter := range s.udpsRouters {
 		if Debug() >= 1 {
 			Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
-		go udpsRouter.serve()
+		go udpsRouter.Serve()
 	}
 }
 func (s *Stage) startStaters() {
@@ -935,6 +935,19 @@ func (s *Stage) ProfBlock() {
 	time.Sleep(5 * time.Second)
 	pprof.Lookup("block").WriteTo(file, 1)
 	runtime.SetBlockProfileRate(0)
+}
+
+// fixture component.
+//
+// Fixtures only exist in internal, and are created by stage.
+// Some critical functions, like clock and namer, are implemented as fixtures.
+//
+// Fixtures are singletons in stage.
+type fixture interface {
+	// Imports
+	Component
+	// Methods
+	run() // runner
 }
 
 // Addon component.

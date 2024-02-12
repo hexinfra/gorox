@@ -96,31 +96,30 @@ func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 // rpcServerConn_
 type rpcServerConn_ struct {
 	// Mixins
-	rpcConn_
-	id     int64
-	server rpcServer
-	gate   Gate
+	ServerConn_
 }
 
 func (c *rpcServerConn_) onGet(id int64, server rpcServer, gate Gate) {
-	c.rpcConn_.onGet()
-	c.id = id
-	c.server = server
-	c.gate = gate
+	c.ServerConn_.onGet(id, server, gate)
 }
 func (c *rpcServerConn_) onPut() {
-	c.server = nil
-	c.gate = nil
-	c.rpcConn_.onPut()
+	c.ServerConn_.onPut()
 }
 
-func (c *rpcServerConn_) rpcServer() rpcServer { return c.server }
+func (c *rpcServerConn_) rpcServer() rpcServer { return c.server.(rpcServer) }
 
 // rpcServerExchan_
 type rpcServerExchan_ struct {
 	// Mixins
-	rpcExchan_
+	Stream_
 	// TODO
+}
+
+func (x *rpcServerExchan_) onUse() {
+	x.Stream_.onUse()
+}
+func (x *rpcServerExchan_) onEnd() {
+	x.Stream_.onEnd()
 }
 
 // rpcServerRequest_

@@ -6,7 +6,7 @@
 // HRPC incoming message and outgoing message implementation.
 
 // HRPC is a request/response RPC protocol designed for IDC.
-// HRPC is under design, maybe we'll build it upon QUIC.
+// HRPC is under design, its transport protocol is not determined. Maybe we can build it upon QUIC without TLS?
 
 package hemi
 

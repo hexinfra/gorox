@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDPS (UDP/TLS/UDS) network router.
+// UDPS (UDP/TLS/UDS) reverse proxy.
 
 package hemi
 
@@ -49,7 +49,7 @@ func (r *UDPSRouter) createCase(name string) *udpsCase {
 	return kase
 }
 
-func (r *UDPSRouter) serve() { // runner
+func (r *UDPSRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpsGate)
 		gate.init(r, id)
@@ -101,7 +101,7 @@ type udpsGate struct {
 }
 
 func (g *udpsGate) init(router *UDPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, router.tlsMode, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, router.tlsMode, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -240,14 +240,14 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 // poolUDPSConn
 var poolUDPSConn sync.Pool
 
-func getUDPSConn(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+func getUDPSConn(id int64, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
 	var udpsConn *UDPSConn
 	if x := poolUDPSConn.Get(); x == nil {
 		udpsConn = new(UDPSConn)
 	} else {
 		udpsConn = x.(*UDPSConn)
 	}
-	udpsConn.onGet(id, stage, router, gate, udpConn, rawConn)
+	udpsConn.onGet(id, router, gate, udpConn, rawConn)
 	return udpsConn
 }
 func putUDPSConn(udpsConn *UDPSConn) {
@@ -257,37 +257,31 @@ func putUDPSConn(udpsConn *UDPSConn) {
 
 // UDPSConn
 type UDPSConn struct {
+	// Mixins
+	ServerConn_
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage // current stage
-	router  *UDPSRouter
-	gate    *udpsGate
 	udpConn *net.UDPConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
-func (c *UDPSConn) onGet(id int64, stage *Stage, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
+func (c *UDPSConn) onGet(id int64, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	c.ServerConn_.onGet(id, router, gate)
 	c.udpConn = udpConn
 	c.rawConn = rawConn
 }
 func (c *UDPSConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
 	c.udpConn = nil
 	c.rawConn = nil
+	c.ServerConn_.onPut()
 }
 
 func (c *UDPSConn) mesh() { // runner
-	c.router.dispatch(c)
+	router := c.server.(*UDPSRouter)
+	router.dispatch(c)
 	c.closeConn()
 	putUDPSConn(c)
 }
@@ -300,7 +294,7 @@ func (c *UDPSConn) Close() error {
 
 func (c *UDPSConn) closeConn() {
 	// TODO: uds, tls?
-	if router := c.router; router.udsMode {
+	if router := c.server.(*UDPSRouter); router.udsMode {
 	} else if router.tlsMode {
 	} else {
 	}

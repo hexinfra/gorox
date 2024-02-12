@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UDPS (UDP/TLS/UDS) network proxy implementation.
+// UDPS (UDP/TLS/UDS) reverse proxy implementation.
 
 package hemi
 

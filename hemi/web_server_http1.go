@@ -150,7 +150,7 @@ type httpGate struct {
 }
 
 func (g *httpGate) init(server *httpServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.abstract, server.tlsMode, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -386,16 +386,15 @@ func (c *http1Conn) serve() { // runner
 	for c.keepConn { // each stream
 		stream.onUse(c)
 		stream.execute()
-		if stream.mode == streamModeExchan {
+		if !stream.isSocket {
 			stream.onEnd()
 		} else {
-			// It's switcher's responsibility to call stream.onEnd()
+			// It's switcher's responsibility to call stream.onEnd() and c.closeConn()
+			break
 		}
 	}
-	if stream.mode == streamModeExchan {
+	if !stream.isSocket {
 		c.closeConn()
-	} else {
-		// It's switcher's responsibility to call c.closeConn()
 	}
 	putHTTP1Conn(c)
 }
@@ -422,9 +421,9 @@ func (c *http1Conn) closeConn() {
 	// acknowledgement of the packet(s) containing the server's last
 	// response.  Finally, the server fully closes the connection.
 	if !c.closeSafe {
-		if c.isUDS() {
+		if c.IsUDS() {
 			c.netConn.(*net.UnixConn).CloseWrite()
-		} else if c.isTLS() {
+		} else if c.IsTLS() {
 			c.netConn.(*tls.Conn).CloseWrite()
 		} else {
 			c.netConn.(*net.TCPConn).CloseWrite()
@@ -475,7 +474,7 @@ func (s *http1Stream) execute() {
 	// the scheme is "http".
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
-	} else if s.conn.isTLS() {
+	} else if s.conn.IsTLS() {
 		if req.schemeCode == SchemeHTTP && server.adjustScheme {
 			req.schemeCode = SchemeHTTPS
 		}
@@ -498,8 +497,7 @@ func (s *http1Stream) execute() {
 			return
 		}
 		s.executeSocket()
-		s.mode = streamModeSocket
-		s.conn.keepConn = false // hijacked, so must close conn after s.executeSocket()
+		s.isSocket = true
 	} else { // exchan mode.
 		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 			req.maxContentSize = webapp.maxUploadContentSize
@@ -526,7 +524,7 @@ func (s *http1Stream) execute() {
 		}
 		s.conn.usedStreams.Add(1)
 		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
-			s.conn.keepConn = false // reaches limit, or client told us to close, or gate is shut
+			s.conn.keepConn = false // reaches limit, or client told us to close, or gate was shut
 		}
 		s.executeExchan(webapp, req, resp)
 

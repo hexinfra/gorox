@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC (UDP/UDS) network router.
+// QUIC (UDP/UDS) reverse proxy.
 
 package hemi
 
@@ -49,7 +49,7 @@ func (r *QUICRouter) createCase(name string) *quicCase {
 	return kase
 }
 
-func (r *QUICRouter) serve() { // runner
+func (r *QUICRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quicGate)
 		gate.init(r, id)
@@ -96,7 +96,7 @@ type quicGate struct {
 }
 
 func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, true, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, true, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -224,14 +224,14 @@ var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []b
 // poolQUICConn
 var poolQUICConn sync.Pool
 
-func getQUICConn(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) *QUICConn {
+func getQUICConn(id int64, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) *QUICConn {
 	var quicConn *QUICConn
 	if x := poolQUICConn.Get(); x == nil {
 		quicConn = new(QUICConn)
 	} else {
 		quicConn = x.(*QUICConn)
 	}
-	quicConn.onGet(id, stage, router, gate, quixConn)
+	quicConn.onGet(id, router, gate, quixConn)
 	return quicConn
 }
 func putQUICConn(quicConn *QUICConn) {
@@ -241,13 +241,11 @@ func putQUICConn(quicConn *QUICConn) {
 
 // QUICConn is a QUIC connection coming from QUICRouter.
 type QUICConn struct {
+	// Mixins
+	ServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id       int64
-	stage    *Stage // current stage
-	router   *QUICRouter
-	gate     *quicGate
 	quixConn *quix.Conn
 	// Conn states (zeros)
 	quicConn0
@@ -255,23 +253,19 @@ type QUICConn struct {
 type quicConn0 struct { // for fast reset, entirely
 }
 
-func (c *QUICConn) onGet(id int64, stage *Stage, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
+func (c *QUICConn) onGet(id int64, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) {
+	c.ServerConn_.onGet(id, router, gate)
 	c.quixConn = quixConn
 }
 func (c *QUICConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
 	c.quixConn = nil
 	c.quicConn0 = quicConn0{}
+	c.ServerConn_.onPut()
 }
 
 func (c *QUICConn) mesh() { // runner
-	c.router.dispatch(c)
+	router := c.server.(*QUICRouter)
+	router.dispatch(c)
 	c.Close()
 	putQUICConn(c)
 }

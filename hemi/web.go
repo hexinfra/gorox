@@ -396,7 +396,7 @@ func (a *Webapp) socketDispatch(req Request, sock Socket) {
 // Handle is a function which handles web request and gives web response.
 type Handle func(req Request, resp Response)
 
-// Mapper performs request mapping in handlets.
+// Mapper performs request mapping in handlets. Mappers are not components.
 type Mapper interface {
 	FindHandle(req Request) Handle // firstly
 	HandleName(req Request) string // secondly

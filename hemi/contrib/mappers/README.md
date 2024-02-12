@@ -1,2 +1,2 @@
-Mappers perform request mapping in handlets. They are not components.
+Mappers perform request mapping in handlets. Mappers are not components.
 

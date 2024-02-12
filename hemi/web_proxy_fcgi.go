@@ -287,32 +287,32 @@ func putFCGIExchan(exchan *fcgiExchan) {
 
 // fcgiExchan
 type fcgiExchan struct {
+	// Mixins
+	Stream_
 	// Assocs
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
 	// Exchan states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	proxy  *fcgiProxy // associated proxy
-	conn   *TConn     // associated conn
-	region Region     // a region-based memory pool
+	proxy *fcgiProxy // associated proxy
+	conn  *TConn     // associated conn
 	// Exchan states (zeros)
 }
 
 func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn *TConn) {
+	x.Stream_.onUse()
 	x.proxy = proxy
 	x.conn = conn
-	x.region.Init()
 	x.request.onUse()
 	x.response.onUse()
 }
 func (x *fcgiExchan) onEnd() {
 	x.request.onEnd()
 	x.response.onEnd()
-	x.region.Free()
 	x.conn = nil
 	x.proxy = nil
+	x.Stream_.onEnd()
 }
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }

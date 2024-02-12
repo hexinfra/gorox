@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// SOCKS server.
+// SOCKS proxy server.
 
 // Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "websocket".
 
@@ -79,7 +79,7 @@ type socksGate struct {
 }
 
 func (g *socksGate) init(server *socksServer, id int32) {
-	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsAbstract(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
+	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
 	g.server = server
 }
 

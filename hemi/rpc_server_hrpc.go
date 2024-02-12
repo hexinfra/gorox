@@ -50,7 +50,7 @@ type hrpcGate struct {
 }
 
 func (g *hrpcGate) init(server *hrpcServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.abstract, server.tlsMode, server.address, server.maxConnsPerGate)
+	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
 	g.server = server
 }
 
@@ -79,8 +79,8 @@ type hrpcExchan struct {
 	// Mixins
 	rpcServerExchan_
 	// Assocs
-	req  hrpcRequest
-	resp hrpcResponse
+	request  hrpcRequest
+	response hrpcResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)

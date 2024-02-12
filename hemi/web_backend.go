@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"bytes"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -17,14 +18,10 @@ import (
 // webBackend is the interface for *HTTP[1-3]Backend.
 type webBackend interface {
 	// Imports
+	Backend
 	streamHolder
 	contentSaver
 	// Methods
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
 	MaxContentSize() int64 // allowed
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
@@ -66,43 +63,55 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 type webBackendConn_ struct {
 	// Mixins
 	BackendConn_
-	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend webBackend
 	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	usedStreams atomic.Int32 // num of streams served or used
+	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *webBackendConn_) onGet(id int64, udsMode bool, tlsMode bool, backend webBackend) {
-	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	c.webConn_.onGet()
-	c.backend = backend
+func (c *webBackendConn_) onGet(id int64, backend webBackend, node Node) {
+	c.BackendConn_.onGet(id, backend, node)
 }
 func (c *webBackendConn_) onPut() {
-	c.backend = nil
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 	c.BackendConn_.onPut()
-	c.webConn_.onPut()
 }
 
-func (c *webBackendConn_) webBackend() webBackend { return c.backend }
-
-func (c *webBackendConn_) isUDS() bool { return c.udsMode }
-func (c *webBackendConn_) isTLS() bool { return c.tlsMode }
+func (c *webBackendConn_) Backend() webBackend { return c.backend.(webBackend) }
 
 func (c *webBackendConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.webBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.Backend().MaxStreamsPerConn()
 }
 
 func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
+func (c *webBackendConn_) isBroken() bool { return c.broken.Load() }
+func (c *webBackendConn_) markBroken()    { c.broken.Store(true) }
+
 // webBackendStream_ is the mixin for H[1-3]Stream.
 type webBackendStream_ struct {
 	// Mixins
-	webStream_
+	Stream_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
+	isSocket bool // is websocket?
+}
+
+func (s *webBackendStream_) onUse() { // for non-zeros
+	s.Stream_.onUse()
+}
+func (s *webBackendStream_) onEnd() { // for zeros
+	s.isSocket = false
+	s.Stream_.onEnd()
 }
 
 func (s *webBackendStream_) startSocket() {
@@ -287,7 +296,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 	}
 	if r.versionCode >= Version2 {
 		var scheme []byte
-		if r.stream.webConn().isTLS() {
+		if r.stream.webConn().IsTLS() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP

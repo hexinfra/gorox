@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC (UDP/UDS) network backend implementation.
+// QUIC (UDP/UDS) backend implementation.
 
 package hemi
 
@@ -109,14 +109,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) *QConn {
+func getQConn(id int64, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) *QConn {
 	var qConn *QConn
 	if x := poolQConn.Get(); x == nil {
 		qConn = new(QConn)
 	} else {
 		qConn = x.(*QConn)
 	}
-	qConn.onGet(id, udsMode, backend, node, quixConn)
+	qConn.onGet(id, backend, node, quixConn)
 	return qConn
 }
 func putQConn(qConn *QConn) {
@@ -129,8 +129,6 @@ type QConn struct {
 	// Mixins
 	BackendConn_
 	// Conn states (non-zeros)
-	backend    *QUICBackend
-	node       *quicNode
 	quixConn   *quix.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
 	// Conn states (zeros)
@@ -138,27 +136,21 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConn) onGet(id int64, udsMode bool, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) {
-	c.BackendConn_.onGet(id, udsMode, true, time.Now().Add(backend.AliveTimeout()))
-	c.backend = backend
-	c.node = node
+func (c *QConn) onGet(id int64, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) {
+	c.BackendConn_.onGet(id, backend, node)
 	c.quixConn = quixConn
 	c.maxStreams = backend.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
-	c.BackendConn_.onPut()
-	c.backend = nil
-	c.node = nil
 	c.quixConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
+	c.BackendConn_.onPut()
 }
 
-func (c *QConn) Backend() *QUICBackend { return c.backend }
+func (c *QConn) Backend() *QUICBackend { return c.backend.(*QUICBackend) }
 
-func (c *QConn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.maxStreams
-}
+func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *QConn) isBroken() bool { return c.broken.Load() }
 func (c *QConn) markBroken()    { c.broken.Store(true) }

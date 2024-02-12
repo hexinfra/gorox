@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Network router and related components.
+// Reverse proxy and related components.
 
 package hemi
 
@@ -12,14 +12,8 @@ import (
 	"regexp"
 )
 
-// _router is the interface for *QUICRouter, *TCPSRouter, and *UDPSRouter.
-type _router interface {
-	Component
-	serve() // runner
-}
-
 // router_ is the mixin for QUICRouter, TCPSRouter, UDPSRouter.
-type router_[R _router, G Gate, D _dealet, C _case] struct {
+type router_[R Server, G Gate, D _dealet, C _case] struct {
 	// Mixins
 	Server_[G]
 	// Assocs
@@ -119,7 +113,7 @@ type _case interface {
 }
 
 // case_ is the mixin for *quicCase, *tcpsCase, *udpsCase.
-type case_[R _router, D _dealet] struct {
+type case_[R Server, D _dealet] struct {
 	// Mixins
 	Component_
 	// Assocs

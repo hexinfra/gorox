@@ -28,14 +28,17 @@ func createClock(stage *Stage) *clockFixture {
 // clockFixture
 type clockFixture struct {
 	// Mixins
-	fixture_
+	Component_
+	// Assocs
+	stage *Stage
 	// States
 	resolution time.Duration
 	date       atomic.Int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit
 }
 
 func (f *clockFixture) onCreate(stage *Stage) {
-	f.fixture_.onCreate(signClock, stage)
+	f.MakeComp(signClock)
+	f.stage = stage
 	f.resolution = 100 * time.Millisecond
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }

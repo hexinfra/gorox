@@ -14,14 +14,10 @@ import (
 // rpcBackend
 type rpcBackend interface {
 	// Imports
+	Backend
 	streamHolder
 	contentSaver
 	// Methods
-	Stage() *Stage
-	WriteTimeout() time.Duration
-	ReadTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
 }
 
 // rpcBackend_
@@ -48,29 +44,35 @@ func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 
 // rpcBackendConn_
 type rpcBackendConn_ struct {
+	// Mixins
 	BackendConn_
-	rpcConn_
-	backend rpcBackend
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
 }
 
-func (c *rpcBackendConn_) onGet(id int64, udsMode bool, tlsMode bool, backend rpcBackend) {
-	c.BackendConn_.onGet(id, udsMode, tlsMode, time.Now().Add(backend.AliveTimeout()))
-	c.rpcConn_.onGet()
-	c.backend = backend
+func (c *rpcBackendConn_) onGet(id int64, backend rpcBackend, node Node) {
+	c.BackendConn_.onGet(id, backend, node)
 }
 func (c *rpcBackendConn_) onPut() {
-	c.backend = nil
 	c.BackendConn_.onPut()
-	c.rpcConn_.onPut()
 }
 
-func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.backend }
+func (c *rpcBackendConn_) Backend() rpcBackend { return c.backend.(rpcBackend) }
 
 // rpcBackendExchan_
 type rpcBackendExchan_ struct {
 	// Mixins
-	rpcExchan_
+	Stream_
 	// TODO
+}
+
+func (x *rpcBackendExchan_) onUse() {
+	x.Stream_.onUse()
+}
+func (x *rpcBackendExchan_) onEnd() {
+	x.Stream_.onEnd()
 }
 
 // rpcBackendRequest_

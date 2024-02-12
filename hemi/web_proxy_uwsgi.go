@@ -149,20 +149,21 @@ func putUWSGIExchan(exchan *uwsgiExchan) {
 
 // uwsgiExchan
 type uwsgiExchan struct {
+	// Mixins
+	Stream_
 	// Assocs
 	request  uwsgiRequest  // the uwsgi request
 	response uwsgiResponse // the uwsgi response
 	// Exchan states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	proxy  *uwsgiProxy // associated proxy
-	conn   *TConn      // associated conn
-	region Region      // a region-based memory pool
+	proxy *uwsgiProxy // associated proxy
+	conn  *TConn      // associated conn
 	// Exchan states (zeros)
 }
 
 func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn *TConn) {
+	x.Stream_.onUse()
 	x.proxy = proxy
 	x.conn = conn
 	x.region.Init()
@@ -172,9 +173,9 @@ func (x *uwsgiExchan) onUse(proxy *uwsgiProxy, conn *TConn) {
 func (x *uwsgiExchan) onEnd() {
 	x.request.onEnd()
 	x.response.onEnd()
-	x.region.Free()
 	x.conn = nil
 	x.proxy = nil
+	x.Stream_.onEnd()
 }
 
 func (x *uwsgiExchan) buffer256() []byte          { return x.stockBuffer[:] }

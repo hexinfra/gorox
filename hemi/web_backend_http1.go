@@ -56,7 +56,7 @@ func (b *H1Backend) FetchConn() (*H1Conn, error) {
 	return node.fetchConn()
 }
 func (b *H1Backend) StoreConn(conn *H1Conn) {
-	conn.node.storeConn(conn)
+	conn.node.(*h1Node).storeConn(conn)
 }
 
 // h1Node is a node in H1Backend.
@@ -73,8 +73,8 @@ func (n *h1Node) init(id int32, backend *H1Backend) {
 	n.backend = backend
 }
 
-func (n *h1Node) setIsTLS() {
-	n.Node_.setIsTLS()
+func (n *h1Node) setTLS() {
+	n.Node_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }
@@ -117,6 +117,7 @@ func (n *h1Node) fetchConn() (*H1Conn, error) {
 	}
 }
 func (n *h1Node) _fetchTCP() (*H1Conn, error) {
+	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
@@ -132,9 +133,10 @@ func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, false, false, n.backend, n, netConn, rawConn), nil
+	return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
 }
 func (n *h1Node) _fetchTLS() (*H1Conn, error) {
+	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
@@ -150,9 +152,10 @@ func (n *h1Node) _fetchTLS() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, false, true, n.backend, n, tlsConn, nil), nil
+	return getH1Conn(connID, n.backend, n, tlsConn, nil), nil
 }
 func (n *h1Node) _fetchUDS() (*H1Conn, error) {
+	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.dialTimeout)
 	if err != nil {
 		n.markDown()
@@ -168,17 +171,17 @@ func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, true, false, n.backend, n, netConn, rawConn), nil
+	return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
 }
 func (n *h1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if Debug() >= 2 {
-			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.id, h1Conn.id)
+			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.ID(), h1Conn.id)
 		}
 		n.closeConn(h1Conn)
 	} else {
 		if Debug() >= 2 {
-			Printf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.id, h1Conn.id)
+			Printf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.ID(), h1Conn.id)
 		}
 		n.pushConn(h1Conn)
 	}
@@ -193,7 +196,7 @@ func (n *h1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
@@ -207,7 +210,7 @@ func getH1Conn(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h
 	} else {
 		h1Conn = x.(*H1Conn)
 	}
-	h1Conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	h1Conn.onGet(id, backend, node, netConn, rawConn)
 	return h1Conn
 }
 func putH1Conn(h1Conn *H1Conn) {
@@ -224,22 +227,19 @@ type H1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node     *h1Node         // associated node
 	netConn  net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn  syscall.RawConn // used when netConn is TCP or UDS
 	keepConn bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, udsMode bool, tlsMode bool, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, udsMode, tlsMode, backend)
-	c.node = node
+func (c *H1Conn) onGet(id int64, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webBackendConn_.onGet(id, backend, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.keepConn = true
 }
 func (c *H1Conn) onPut() {
-	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.webBackendConn_.onPut()
@@ -291,7 +291,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H1Stream) webBroker() webBroker { return s.conn.webBackend() }
+func (s *H1Stream) webBroker() webBroker { return s.conn.Backend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -378,7 +378,7 @@ func (r *H1Request) setMethodURI(method []byte, uri []byte, hasContent bool) boo
 	}
 }
 func (r *H1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	if r.stream.webConn().isTLS() {
+	if r.stream.webConn().IsTLS() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
 		}

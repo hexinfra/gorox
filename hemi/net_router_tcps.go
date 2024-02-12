@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// TCPS (TCP/TLS/UDS) network router.
+// TCPS (TCP/TLS/UDS) reverse proxy.
 
 package hemi
 
@@ -54,7 +54,7 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 	return kase
 }
 
-func (r *TCPSRouter) serve() { // runner
+func (r *TCPSRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
 		gate.init(r, id)
@@ -107,7 +107,7 @@ type tcpsGate struct {
 }
 
 func (g *tcpsGate) init(router *TCPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, router.abstract, router.tlsMode, router.address, router.maxConnsPerGate)
+	g.Gate_.Init(router.stage, id, router.udsMode, router.tlsMode, router.address, router.maxConnsPerGate)
 	g.router = router
 }
 
@@ -148,7 +148,7 @@ func (g *tcpsGate) serveTCP() { // runner
 				g.justClose(tcpConn)
 				continue
 			}
-			conn := getTCPSConn(connID, g.stage, g.router, g, tcpConn, rawConn)
+			conn := getTCPSConn(connID, g.router, g, tcpConn, rawConn)
 			if Debug() >= 1 {
 				Printf("%+v\n", conn)
 			}
@@ -182,7 +182,7 @@ func (g *tcpsGate) serveTLS() { // runner
 				g.justClose(tlsConn)
 				continue
 			}
-			conn := getTCPSConn(connID, g.stage, g.router, g, tlsConn, nil)
+			conn := getTCPSConn(connID, g.router, g, tlsConn, nil)
 			go conn.mesh() // conn is put to pool in mesh()
 			connID++
 		}
@@ -304,14 +304,14 @@ var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []b
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
-func getTCPSConn(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+func getTCPSConn(id int64, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
 	var tcpsConn *TCPSConn
 	if x := poolTCPSConn.Get(); x == nil {
 		tcpsConn = new(TCPSConn)
 	} else {
 		tcpsConn = x.(*TCPSConn)
 	}
-	tcpsConn.onGet(id, stage, router, gate, netConn, rawConn)
+	tcpsConn.onGet(id, router, gate, netConn, rawConn)
 	return tcpsConn
 }
 func putTCPSConn(tcpsConn *TCPSConn) {
@@ -321,15 +321,13 @@ func putTCPSConn(tcpsConn *TCPSConn) {
 
 // TCPSConn is a TCP/TLS/UDS connection coming from TCPSRouter.
 type TCPSConn struct {
+	// Mixins
+	ServerConn_
 	// Conn states (stocks)
 	stockInput  [8192]byte // for c.input
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id        int64           // connection id
-	stage     *Stage          // current stage
-	router    *TCPSRouter     // from router
-	gate      *tcpsGate       // from gate
 	netConn   net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
 	region    Region          // a region-based memory pool
@@ -341,11 +339,8 @@ type TCPSConn struct {
 type tcpsConn0 struct { // for fast reset, entirely
 }
 
-func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
-	c.stage = stage
-	c.router = router
-	c.gate = gate
+func (c *TCPSConn) onGet(id int64, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.ServerConn_.onGet(id, router, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.region.Init()
@@ -353,9 +348,6 @@ func (c *TCPSConn) onGet(id int64, stage *Stage, router *TCPSRouter, gate *tcpsG
 	c.closeSema.Store(2)
 }
 func (c *TCPSConn) onPut() {
-	c.stage = nil
-	c.router = nil
-	c.gate = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.region.Free()
@@ -364,10 +356,12 @@ func (c *TCPSConn) onPut() {
 		c.input = nil
 	}
 	c.tcpsConn0 = tcpsConn0{}
+	c.ServerConn_.onPut()
 }
 
 func (c *TCPSConn) mesh() { // runner
-	c.router.dispatch(c)
+	router := c.server.(*TCPSRouter)
+	router.dispatch(c)
 	c.closeConn()
 	putTCPSConn(c)
 }
@@ -400,7 +394,7 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.router; router.udsMode {
+	if router := c.server.(*TCPSRouter); router.udsMode {
 		c.netConn.(*net.UnixConn).CloseWrite()
 	} else if router.tlsMode {
 		c.netConn.(*tls.Conn).CloseWrite()

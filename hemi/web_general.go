@@ -3,16 +3,103 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Misc web elements.
+// General web elements.
 
 package hemi
 
 import (
 	"bytes"
+	"errors"
+	"net"
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
+
+// webBroker is a webServer or webBackend which keeps its connections and streams.
+type webBroker interface {
+	// Methods
+	Stage() *Stage               // current stage
+	ReadTimeout() time.Duration  // timeout of a read operation
+	WriteTimeout() time.Duration // timeout of a write operation
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	SendTimeout() time.Duration  // timeout to send the whole message
+	MaxContentSize() int64       // allowed
+	SaveContentFilesDir() string
+}
+
+// webBroker_ is the mixin for webServer_ and webBackend_.
+type webBroker_ struct {
+	// States
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	sendTimeout    time.Duration // timeout to send the whole message
+	maxContentSize int64         // max content size allowed
+}
+
+func (b *webBroker_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
+
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, recvTimeout)
+
+	// maxContentSize
+	shell.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
+}
+func (b *webBroker_) onPrepare(shell Component) {
+	// Currently nothing
+}
+
+func (b *webBroker_) RecvTimeout() time.Duration { return b.recvTimeout }
+func (b *webBroker_) SendTimeout() time.Duration { return b.sendTimeout }
+func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
+
+// webConn is the interface for *http[1-3]Conn and *H[1-3]Conn.
+type webConn interface {
+	IsUDS() bool
+	IsTLS() bool
+	makeTempName(p []byte, unixTime int64) int
+	isBroken() bool
+	markBroken()
+}
+
+// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
+type webStream interface {
+	webBroker() webBroker
+	webConn() webConn
+	remoteAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
+
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+
+	isBroken() bool // if either side of the stream is broken, then it is broken
+	markBroken()    // mark stream as broken
+}
 
 const ( // version codes
 	Version1_0 = 0 // must be 0

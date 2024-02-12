@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -135,46 +136,56 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 // webServerConn_ is the mixin for http[1-3]Conn.
 type webServerConn_ struct {
 	// Mixins
-	webConn_
+	ServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64     // the conn id
-	server webServer // the server to which the conn belongs
-	gate   Gate      // the gate to which the conn belongs
 	// Conn states (zeros)
-	lastRead  time.Time // deadline of last read operation
-	lastWrite time.Time // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+	counter     atomic.Int64 // can be used to generate a random number
+	usedStreams atomic.Int32 // num of streams served or used
+	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *webServerConn_) onGet(id int64, server webServer, gate Gate) {
-	c.webConn_.onGet()
-	c.id = id
-	c.server = server
-	c.gate = gate
+	c.ServerConn_.onGet(id, server, gate)
 }
 func (c *webServerConn_) onPut() {
-	c.server = nil
-	c.gate = nil
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-	c.webConn_.onPut()
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
+	c.ServerConn_.onPut()
 }
 
-func (c *webServerConn_) webServer() webServer { return c.server }
-
-func (c *webServerConn_) isUDS() bool { return c.server.IsUDS() }
-func (c *webServerConn_) isTLS() bool { return c.server.IsTLS() }
+func (c *webServerConn_) webServer() webServer { return c.server.(webServer) }
 
 func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
+func (c *webServerConn_) isBroken() bool { return c.broken.Load() }
+func (c *webServerConn_) markBroken()    { c.broken.Store(true) }
+
 // webServerStream_ is the mixin for http[1-3]Stream.
 type webServerStream_ struct {
 	// Mixins
-	webStream_
+	Stream_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
+	isSocket bool // is websocket?
+}
+
+func (s *webServerStream_) onUse() { // for non-zeros
+	s.Stream_.onUse()
+}
+func (s *webServerStream_) onEnd() { // for zeros
+	s.Stream_.onEnd()
+	s.isSocket = false
 }
 
 func (s *webServerStream_) serveSocket() {

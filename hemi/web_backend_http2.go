@@ -54,7 +54,7 @@ func (b *H2Backend) FetchConn() (*H2Conn, error) {
 	return node.fetchConn()
 }
 func (b *H2Backend) StoreConn(conn *H2Conn) {
-	conn.node.storeConn(conn)
+	conn.node.(*h2Node).storeConn(conn)
 }
 
 // h2Node
@@ -71,8 +71,8 @@ func (n *h2Node) init(id int32, backend *H2Backend) {
 	n.backend = backend
 }
 
-func (n *h2Node) setIsTLS() {
-	n.Node_.setIsTLS()
+func (n *h2Node) setTLS() {
+	n.Node_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
 }
@@ -94,7 +94,7 @@ func (n *h2Node) fetchConn() (*H2Conn, error) {
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
-	return getH2Conn(connID, false, false, n.backend, n, netConn, rawConn), nil
+	return getH2Conn(connID, n.backend, n, netConn, rawConn), nil
 }
 func (n *h2Node) storeConn(h2Conn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
@@ -104,14 +104,14 @@ func (n *h2Node) storeConn(h2Conn *H2Conn) {
 // poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, udsMode bool, tlsMode bool, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var h2Conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		h2Conn = new(H2Conn)
 	} else {
 		h2Conn = x.(*H2Conn)
 	}
-	h2Conn.onGet(id, udsMode, tlsMode, backend, node, netConn, rawConn)
+	h2Conn.onGet(id, backend, node, netConn, rawConn)
 	return h2Conn
 }
 func putH2Conn(h2Conn *H2Conn) {
@@ -126,25 +126,22 @@ type H2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *h2Node  // associated node
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, udsMode, tlsMode bool, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, udsMode, tlsMode, backend)
-	c.node = node
+func (c *H2Conn) onGet(id int64, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webBackendConn_.onGet(id, backend, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *H2Conn) onPut() {
-	c.webBackendConn_.onPut()
-	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.activeStreams = 0
+	c.webBackendConn_.onPut()
 }
 
 func (c *H2Conn) FetchStream() *H2Stream {
@@ -250,7 +247,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H2Stream) webBroker() webBroker { return s.conn.webBackend() }
+func (s *H2Stream) webBroker() webBroker { return s.conn.Backend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

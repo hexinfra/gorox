@@ -57,15 +57,15 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 func (r *TCPSRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
-		gate.init(r, id)
+		gate.init(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
 		r.IncSub(1)
-		if r.udsMode {
+		if r.IsUDS() {
 			go gate.serveUDS()
-		} else if r.tlsMode {
+		} else if r.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -94,112 +94,6 @@ func (r *TCPSRouter) dispatch(conn *TCPSConn) {
 			break
 		}
 	}
-}
-
-// tcpsGate is an opening gate of TCPSRouter.
-type tcpsGate struct {
-	// Mixins
-	Gate_
-	// Assocs
-	router *TCPSRouter
-	// States
-	gate *net.TCPListener // the real gate. set after open
-}
-
-func (g *tcpsGate) init(router *TCPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, router.tlsMode, router.address, router.maxConnsPerGate)
-	g.router = router
-}
-
-func (g *tcpsGate) Open() error {
-	listenConfig := new(net.ListenConfig)
-	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
-		return system.SetReusePort(rawConn)
-	}
-	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
-	if err == nil {
-		g.gate = gate.(*net.TCPListener)
-	}
-	return err
-}
-func (g *tcpsGate) Shut() error {
-	g.MarkShut()
-	return g.gate.Close()
-}
-
-func (g *tcpsGate) serveTCP() { // runner
-	connID := int64(0)
-	for {
-		tcpConn, err := g.gate.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				continue
-			}
-		}
-		g.IncSub(1)
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				g.justClose(tcpConn)
-				continue
-			}
-			conn := getTCPSConn(connID, g.router, g, tcpConn, rawConn)
-			if Debug() >= 1 {
-				Printf("%+v\n", conn)
-			}
-			go conn.mesh() // conn is put to pool in mesh()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
-		Printf("tcpsGate=%d TCP done\n", g.id)
-	}
-	g.router.SubDone()
-}
-func (g *tcpsGate) serveTLS() { // runner
-	connID := int64(0)
-	for {
-		tcpConn, err := g.gate.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				continue
-			}
-		}
-		g.IncSub(1)
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			tlsConn := tls.Server(tcpConn, g.router.tlsConfig)
-			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-				g.justClose(tlsConn)
-				continue
-			}
-			conn := getTCPSConn(connID, g.router, g, tlsConn, nil)
-			go conn.mesh() // conn is put to pool in mesh()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
-		Printf("tcpsGate=%d TLS done\n", g.id)
-	}
-	g.router.SubDone()
-}
-func (g *tcpsGate) serveUDS() { // runner
-	// TODO
-}
-
-func (g *tcpsGate) justClose(netConn net.Conn) {
-	netConn.Close()
-	g.OnConnClosed()
 }
 
 // TCPSDealet
@@ -301,17 +195,121 @@ var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []b
 	"!~": (*tcpsCase).notRegexpMatch,
 }
 
+// tcpsGate is an opening gate of TCPSRouter.
+type tcpsGate struct {
+	// Mixins
+	Gate_
+	// Assocs
+	// States
+	listener *net.TCPListener // the real gate. set after open
+}
+
+func (g *tcpsGate) init(id int32, router *TCPSRouter) {
+	g.Gate_.Init(id, router)
+}
+
+func (g *tcpsGate) Open() error {
+	listenConfig := new(net.ListenConfig)
+	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
+		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
+		return system.SetReusePort(rawConn)
+	}
+	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
+	if err == nil {
+		g.listener = listener.(*net.TCPListener)
+	}
+	return err
+}
+func (g *tcpsGate) Shut() error {
+	g.MarkShut()
+	return g.listener.Close()
+}
+
+func (g *tcpsGate) serveTCP() { // runner
+	connID := int64(0)
+	for {
+		tcpConn, err := g.listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncSub(1)
+		if g.ReachLimit() {
+			g.justClose(tcpConn)
+		} else {
+			rawConn, err := tcpConn.SyscallConn()
+			if err != nil {
+				g.justClose(tcpConn)
+				continue
+			}
+			conn := getTCPSConn(connID, g, tcpConn, rawConn)
+			if Debug() >= 1 {
+				Printf("%+v\n", conn)
+			}
+			go conn.mesh() // conn is put to pool in mesh()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("tcpsGate=%d TCP done\n", g.id)
+	}
+	g.server.SubDone()
+}
+func (g *tcpsGate) serveTLS() { // runner
+	connID := int64(0)
+	for {
+		tcpConn, err := g.listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncSub(1)
+		if g.ReachLimit() {
+			g.justClose(tcpConn)
+		} else {
+			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+				g.justClose(tlsConn)
+				continue
+			}
+			conn := getTCPSConn(connID, g, tlsConn, nil)
+			go conn.mesh() // conn is put to pool in mesh()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("tcpsGate=%d TLS done\n", g.id)
+	}
+	g.server.SubDone()
+}
+func (g *tcpsGate) serveUDS() { // runner
+	// TODO
+}
+
+func (g *tcpsGate) justClose(netConn net.Conn) {
+	netConn.Close()
+	g.OnConnClosed()
+}
+
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
-func getTCPSConn(id int64, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+func getTCPSConn(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
 	var tcpsConn *TCPSConn
 	if x := poolTCPSConn.Get(); x == nil {
 		tcpsConn = new(TCPSConn)
 	} else {
 		tcpsConn = x.(*TCPSConn)
 	}
-	tcpsConn.onGet(id, router, gate, netConn, rawConn)
+	tcpsConn.onGet(id, gate, netConn, rawConn)
 	return tcpsConn
 }
 func putTCPSConn(tcpsConn *TCPSConn) {
@@ -339,8 +337,8 @@ type TCPSConn struct {
 type tcpsConn0 struct { // for fast reset, entirely
 }
 
-func (c *TCPSConn) onGet(id int64, router *TCPSRouter, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.onGet(id, router, gate)
+func (c *TCPSConn) onGet(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.ServerConn_.OnGet(id, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.region.Init()
@@ -356,11 +354,11 @@ func (c *TCPSConn) onPut() {
 		c.input = nil
 	}
 	c.tcpsConn0 = tcpsConn0{}
-	c.ServerConn_.onPut()
+	c.ServerConn_.OnPut()
 }
 
 func (c *TCPSConn) mesh() { // runner
-	router := c.server.(*TCPSRouter)
+	router := c.Server().(*TCPSRouter)
 	router.dispatch(c)
 	c.closeConn()
 	putTCPSConn(c)
@@ -394,9 +392,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if c.server.IsUDS() {
+	if router := c.Server(); router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if c.server.IsTLS() {
+	} else if router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

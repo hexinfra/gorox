@@ -37,7 +37,7 @@ type broker_ struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	readTimeout  time.Duration // read() timeout
 	writeTimeout time.Duration // write() timeout
@@ -79,10 +79,13 @@ type Server interface {
 	broker
 	// Methods
 	Serve() // runner
-	IsUDS() bool
-	IsTLS() bool
+	Address() string
 	ColonPort() string
 	ColonPortBytes() []byte
+	IsUDS() bool
+	IsTLS() bool
+	TLSConfig() *tls.Config
+	MaxConnsPerGate() int32
 }
 
 // Server_ is the mixin for all servers.
@@ -95,7 +98,7 @@ type Server_[G Gate] struct {
 	address         string      // hostname:port, /path/to/unix.sock
 	colonPort       string      // like: ":9876"
 	colonPortBytes  []byte      // like: []byte(":9876")
-	udsMode         bool        // address is a unix domain socket?
+	udsMode         bool        // is address a unix domain socket?
 	tlsMode         bool        // tls mode?
 	tlsConfig       *tls.Config // set if is tls mode
 	numGates        int32       // number of gates
@@ -106,9 +109,9 @@ func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
 	s.broker_.onCreate(name, stage)
 }
 func (s *Server_[G]) OnShutdown() {
-	// Notify gates. We don't use close(s.ShutChan) here.
+	// We don't use close(s.ShutChan) to notify gates.
 	for _, gate := range s.gates {
-		gate.Shut()
+		gate.Shut() // this causes gate to return immediately
 	}
 }
 
@@ -118,11 +121,11 @@ func (s *Server_[G]) OnConfigure() {
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
-			if p := strings.IndexByte(address, ':'); p != -1 && p != len(address)-1 {
+			if p := strings.IndexByte(address, ':'); p == -1 {
+				s.udsMode = true
+			} else {
 				s.colonPort = address[p:]
 				s.colonPortBytes = []byte(s.colonPort)
-			} else {
-				s.udsMode = true
 			}
 			s.address = address
 		} else {
@@ -165,12 +168,16 @@ func (s *Server_[G]) ColonPort() string      { return s.colonPort }
 func (s *Server_[G]) ColonPortBytes() []byte { return s.colonPortBytes }
 func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
+func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
 func (s *Server_[G]) NumGates() int32        { return s.numGates }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
+	Server() Server
+	IsUDS() bool
+	IsTLS() bool
 	ID() int32
 	IsShut() bool
 	Open() error
@@ -183,39 +190,32 @@ type Gate_ struct {
 	// Mixins
 	subsWaiter_ // for conns
 	// Assocs
-	stage *Stage // current stage
+	server Server
 	// States
-	id       int32 // gate id
-	udsMode  bool
-	tlsMode  bool
-	address  string       // listening address
+	id       int32        // gate id
 	isShut   atomic.Bool  // is gate shut?
-	maxConns int32        // max concurrent conns allowed
 	numConns atomic.Int32 // TODO: false sharing
 }
 
-func (g *Gate_) Init(stage *Stage, id int32, udsMode bool, tlsMode bool, address string, maxConns int32) {
-	g.stage = stage
+func (g *Gate_) Init(id int32, server Server) {
+	g.server = server
 	g.id = id
-	g.udsMode = udsMode
-	g.tlsMode = tlsMode
-	g.address = address
 	g.isShut.Store(false)
-	g.maxConns = maxConns
 	g.numConns.Store(0)
 }
 
-func (g *Gate_) Stage() *Stage   { return g.stage }
-func (g *Gate_) ID() int32       { return g.id }
-func (g *Gate_) Address() string { return g.address }
-func (g *Gate_) IsUDS() bool     { return g.udsMode }
-func (g *Gate_) IsTLS() bool     { return g.tlsMode }
+func (g *Gate_) Server() Server  { return g.server }
+func (g *Gate_) Address() string { return g.server.Address() }
+func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
+func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
+
+func (g *Gate_) ID() int32 { return g.id }
 
 func (g *Gate_) MarkShut()    { g.isShut.Store(true) }
 func (g *Gate_) IsShut() bool { return g.isShut.Load() }
 
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
-func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConnsPerGate() }
 
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
@@ -233,15 +233,18 @@ type ServerConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *ServerConn_) onGet(id int64, server Server, gate Gate) {
+func (c *ServerConn_) OnGet(id int64, gate Gate) {
 	c.id = id
-	c.server = server
+	c.server = gate.Server()
 	c.gate = gate
 }
-func (c *ServerConn_) onPut() {
+func (c *ServerConn_) OnPut() {
 	c.server = nil
 	c.gate = nil
 }
+
+func (c *ServerConn_) Server() Server { return c.server }
+func (c *ServerConn_) Gate() Gate     { return c.gate }
 
 func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }

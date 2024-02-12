@@ -51,7 +51,7 @@ func (s *helloServer) OnPrepare() {
 func (s *helloServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(helloGate)
-		gate.init(s, id)
+		gate.init(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -71,14 +71,12 @@ type helloGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *helloServer
 	// States
-	gate *net.TCPListener
+	listener *net.TCPListener
 }
 
-func (g *helloGate) init(server *helloServer, id int32) {
-	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
-	g.server = server
+func (g *helloGate) init(id int32, server *helloServer) {
+	g.Gate_.Init(id, server)
 }
 
 func (g *helloGate) Open() error {
@@ -86,21 +84,21 @@ func (g *helloGate) Open() error {
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
 	}
-	gate, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
+	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
 	if err == nil {
-		g.gate = gate.(*net.TCPListener)
+		g.listener = listener.(*net.TCPListener)
 	}
 	return err
 }
 func (g *helloGate) Shut() error {
 	g.MarkShut()
-	return g.gate.Close()
+	return g.listener.Close()
 }
 
 func (g *helloGate) serve() { // runner
 	connID := int64(0)
 	for {
-		tcpConn, err := g.gate.AcceptTCP()
+		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -112,7 +110,7 @@ func (g *helloGate) serve() { // runner
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			helloConn := getHelloConn(connID, g.Stage(), g.server, g, tcpConn)
+			helloConn := getHelloConn(connID, g, tcpConn)
 			go helloConn.serve() // helloConn is put to pool in serve()
 			connID++
 		}
@@ -121,7 +119,7 @@ func (g *helloGate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("helloGate=%d done\n", g.ID())
 	}
-	g.server.SubDone()
+	g.Server().SubDone()
 }
 
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {
@@ -132,14 +130,14 @@ func (g *helloGate) justClose(tcpConn *net.TCPConn) {
 // poolHelloConn
 var poolHelloConn sync.Pool
 
-func getHelloConn(id int64, stage *Stage, server *helloServer, gate *helloGate, tcpConn *net.TCPConn) *helloConn {
+func getHelloConn(id int64, gate *helloGate, tcpConn *net.TCPConn) *helloConn {
 	var conn *helloConn
 	if x := poolHelloConn.Get(); x == nil {
 		conn = new(helloConn)
 	} else {
 		conn = x.(*helloConn)
 	}
-	conn.onGet(id, stage, server, gate, tcpConn)
+	conn.onGet(id, gate, tcpConn)
 	return conn
 }
 func putHelloConn(conn *helloConn) {
@@ -149,29 +147,21 @@ func putHelloConn(conn *helloConn) {
 
 // helloConn
 type helloConn struct {
+	ServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage
-	server  *helloServer
-	gate    *helloGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *helloConn) onGet(id int64, stage *Stage, server *helloServer, gate *helloGate, tcpConn *net.TCPConn) {
-	c.id = id
-	c.stage = stage
-	c.server = server
-	c.gate = gate
+func (c *helloConn) onGet(id int64, gate *helloGate, tcpConn *net.TCPConn) {
+	c.ServerConn_.OnGet(id, gate)
 	c.tcpConn = tcpConn
 }
 func (c *helloConn) onPut() {
-	c.stage = nil
-	c.server = nil
-	c.gate = nil
 	c.tcpConn = nil
+	c.ServerConn_.OnPut()
 }
 
 func (c *helloConn) serve() { // runner
@@ -182,5 +172,5 @@ func (c *helloConn) serve() { // runner
 
 func (c *helloConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.OnConnClosed()
+	c.Gate().OnConnClosed()
 }

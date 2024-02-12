@@ -22,14 +22,14 @@ import (
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+func getHTTP2Conn(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		httpConn = new(http2Conn)
 	} else {
 		httpConn = x.(*http2Conn)
 	}
-	httpConn.onGet(id, server, gate, netConn, rawConn)
+	httpConn.onGet(id, gate, netConn, rawConn)
 	return httpConn
 }
 func putHTTP2Conn(httpConn *http2Conn) {
@@ -79,8 +79,8 @@ type http2Conn0 struct { // for fast reset, entirely
 	//queuedControlFrames?
 }
 
-func (c *http2Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webServerConn_.onGet(id, server, gate)
+func (c *http2Conn) onGet(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webServerConn_.onGet(id, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.frames == nil {
@@ -210,7 +210,7 @@ func (c *http2Conn) receive() { // runner
 
 func (c *http2Conn) handshake() error {
 	// Set deadline for the first request headers
-	if err := c.setReadDeadline(time.Now().Add(c.server.ReadTimeout())); err != nil {
+	if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
 		return err
 	}
 	if err := c.growFrame(uint32(len(http2BytesPrism))); err != nil {
@@ -621,7 +621,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 			}
 		}
 		// Got a new headers. Set deadline for next headers
-		if err := c.setReadDeadline(time.Now().Add(c.server.ReadTimeout())); err != nil {
+		if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
 			return nil, err
 		}
 	}

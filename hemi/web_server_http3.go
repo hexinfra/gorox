@@ -51,13 +51,13 @@ func (s *http3Server) OnPrepare() {
 func (s *http3Server) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
-		gate.init(s, id)
+		gate.init(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
 		s.IncSub(1)
-		if s.udsMode {
+		if s.IsUDS() {
 			go gate.serveUDS()
 		} else { // tls mode is always enabled
 			go gate.serveTLS()
@@ -75,33 +75,31 @@ type http3Gate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *http3Server
 	// States
-	gate *quix.Gate // the real gate. set after open
+	listener *quix.Listener // the real gate. set after open
 }
 
-func (g *http3Gate) init(server *http3Server, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
-	g.server = server
+func (g *http3Gate) init(id int32, server *http3Server) {
+	g.Gate_.Init(id, server)
 }
 
 func (g *http3Gate) Open() error {
-	gate := quix.NewGate(g.address)
-	if err := gate.Open(); err != nil {
+	listener := quix.NewListener(g.Address())
+	if err := listener.Open(); err != nil {
 		return err
 	}
-	g.gate = gate
+	g.listener = listener
 	return nil
 }
 func (g *http3Gate) Shut() error {
 	g.MarkShut()
-	return g.gate.Close()
+	return g.listener.Close()
 }
 
 func (g *http3Gate) serveTLS() { // runner
 	connID := int64(0)
 	for {
-		quixConn, err := g.gate.Accept()
+		quixConn, err := g.listener.Accept()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -113,7 +111,7 @@ func (g *http3Gate) serveTLS() { // runner
 		if g.ReachLimit() {
 			g.justClose(quixConn)
 		} else {
-			http3Conn := getHTTP3Conn(connID, g.server, g, quixConn)
+			http3Conn := getHTTP3Conn(connID, g, quixConn)
 			go http3Conn.serve() // http3Conn is put to pool in serve()
 			connID++
 		}
@@ -136,14 +134,14 @@ func (g *http3Gate) justClose(quixConn *quix.Conn) {
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, server *http3Server, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
+func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
 	var httpConn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		httpConn = new(http3Conn)
 	} else {
 		httpConn = x.(*http3Conn)
 	}
-	httpConn.onGet(id, server, gate, quixConn)
+	httpConn.onGet(id, gate, quixConn)
 	return httpConn
 }
 func putHTTP3Conn(httpConn *http3Conn) {
@@ -171,8 +169,8 @@ type http3Conn0 struct { // for fast reset, entirely
 	pFore      uint32 // incoming frame part (header or payload) ends at c.frames.buf[c.pFore]
 }
 
-func (c *http3Conn) onGet(id int64, server *http3Server, gate *http3Gate, quixConn *quix.Conn) {
-	c.webServerConn_.onGet(id, server, gate)
+func (c *http3Conn) onGet(id int64, gate *http3Gate, quixConn *quix.Conn) {
+	c.webServerConn_.onGet(id, gate)
 	c.quixConn = quixConn
 	if c.frames == nil {
 		c.frames = getHTTP3Frames()

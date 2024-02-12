@@ -45,13 +45,11 @@ type hrpcGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *hrpcServer
 	// States
 }
 
-func (g *hrpcGate) init(server *hrpcServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
-	g.server = server
+func (g *hrpcGate) init(id int32, server *hrpcServer) {
+	g.Gate_.Init(id, server)
 }
 
 func (g *hrpcGate) Open() error {

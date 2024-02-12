@@ -52,7 +52,7 @@ func (r *QUICRouter) createCase(name string) *quicCase {
 func (r *QUICRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quicGate)
-		gate.init(r, id)
+		gate.init(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -83,47 +83,6 @@ func (r *QUICRouter) dispatch(conn *QUICConn) {
 			break
 		}
 	}
-}
-
-// quicGate is an opening gate of QUICRouter.
-type quicGate struct {
-	// Mixins
-	Gate_
-	// Assocs
-	router *QUICRouter
-	// States
-	gate *quix.Gate // the real gate. set after open
-}
-
-func (g *quicGate) init(router *QUICRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, true, router.address, router.maxConnsPerGate)
-	g.router = router
-}
-
-func (g *quicGate) Open() error {
-	// TODO
-	// set g.gate
-	return nil
-}
-func (g *quicGate) Shut() error {
-	g.MarkShut()
-	return g.gate.Close()
-}
-
-func (g *quicGate) serve() { // runner
-	// TODO
-	for !g.IsShut() {
-		time.Sleep(time.Second)
-	}
-	g.router.SubDone()
-}
-
-func (g *quicGate) justClose(quixConn *quix.Conn) {
-	quixConn.Close()
-	g.onConnectionClosed()
-}
-func (g *quicGate) onConnectionClosed() {
-	g.DecConns()
 }
 
 // QUICDealet
@@ -221,17 +180,56 @@ var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []b
 	"!~": (*quicCase).notRegexpMatch,
 }
 
+// quicGate is an opening gate of QUICRouter.
+type quicGate struct {
+	// Mixins
+	Gate_
+	// Assocs
+	// States
+	listener *quix.Listener // the real gate. set after open
+}
+
+func (g *quicGate) init(id int32, router *QUICRouter) {
+	g.Gate_.Init(id, router)
+}
+
+func (g *quicGate) Open() error {
+	// TODO
+	// set g.listener
+	return nil
+}
+func (g *quicGate) Shut() error {
+	g.MarkShut()
+	return g.listener.Close()
+}
+
+func (g *quicGate) serve() { // runner
+	// TODO
+	for !g.IsShut() {
+		time.Sleep(time.Second)
+	}
+	g.server.SubDone()
+}
+
+func (g *quicGate) justClose(quixConn *quix.Conn) {
+	quixConn.Close()
+	g.onConnectionClosed()
+}
+func (g *quicGate) onConnectionClosed() {
+	g.DecConns()
+}
+
 // poolQUICConn
 var poolQUICConn sync.Pool
 
-func getQUICConn(id int64, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) *QUICConn {
+func getQUICConn(id int64, gate *quicGate, quixConn *quix.Conn) *QUICConn {
 	var quicConn *QUICConn
 	if x := poolQUICConn.Get(); x == nil {
 		quicConn = new(QUICConn)
 	} else {
 		quicConn = x.(*QUICConn)
 	}
-	quicConn.onGet(id, router, gate, quixConn)
+	quicConn.onGet(id, gate, quixConn)
 	return quicConn
 }
 func putQUICConn(quicConn *QUICConn) {
@@ -253,18 +251,18 @@ type QUICConn struct {
 type quicConn0 struct { // for fast reset, entirely
 }
 
-func (c *QUICConn) onGet(id int64, router *QUICRouter, gate *quicGate, quixConn *quix.Conn) {
-	c.ServerConn_.onGet(id, router, gate)
+func (c *QUICConn) onGet(id int64, gate *quicGate, quixConn *quix.Conn) {
+	c.ServerConn_.OnGet(id, gate)
 	c.quixConn = quixConn
 }
 func (c *QUICConn) onPut() {
 	c.quixConn = nil
 	c.quicConn0 = quicConn0{}
-	c.ServerConn_.onPut()
+	c.ServerConn_.OnPut()
 }
 
 func (c *QUICConn) mesh() { // runner
-	router := c.server.(*QUICRouter)
+	router := c.Server().(*QUICRouter)
 	router.dispatch(c)
 	c.Close()
 	putQUICConn(c)

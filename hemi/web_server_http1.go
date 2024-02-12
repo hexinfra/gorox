@@ -80,7 +80,7 @@ func (s *httpServer) OnConfigure() {
 }
 func (s *httpServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
-	if s.tlsMode {
+	if s.IsTLS() {
 		var nextProtos []string
 		if !s.enableHTTP2 {
 			nextProtos = []string{"http/1.1"}
@@ -96,7 +96,7 @@ func (s *httpServer) OnPrepare() {
 }
 
 func (s *httpServer) Serve() { // runner
-	if s.udsMode {
+	if s.IsUDS() {
 		s.serveUDS()
 	} else {
 		s.serveTCP()
@@ -104,7 +104,7 @@ func (s *httpServer) Serve() { // runner
 }
 func (s *httpServer) serveUDS() {
 	gate := new(httpGate)
-	gate.init(s, 0)
+	gate.init(0, s)
 	if err := gate.Open(); err != nil {
 		EnvExitln(err.Error())
 	}
@@ -120,13 +120,13 @@ func (s *httpServer) serveUDS() {
 func (s *httpServer) serveTCP() {
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpGate)
-		gate.init(s, id)
+		gate.init(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
 		s.IncSub(1)
-		if s.tlsMode {
+		if s.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -144,29 +144,27 @@ type httpGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *httpServer
 	// States
-	gate net.Listener // the real gate. set after open
+	listener net.Listener // the real gate. set after open
 }
 
-func (g *httpGate) init(server *httpServer, id int32) {
-	g.Gate_.Init(server.stage, id, server.udsMode, server.tlsMode, server.address, server.maxConnsPerGate)
-	g.server = server
+func (g *httpGate) init(id int32, server *httpServer) {
+	g.Gate_.Init(id, server)
 }
 
 func (g *httpGate) Open() error {
-	if g.udsMode {
+	if g.IsUDS() {
 		return g.openUDS()
 	} else {
 		return g.openTCP()
 	}
 }
 func (g *httpGate) openUDS() error {
-	gate, err := net.Listen("unix", g.address)
+	listener, err := net.Listen("unix", g.Address())
 	if err == nil {
-		g.gate = gate.(*net.UnixListener)
+		g.listener = listener.(*net.UnixListener)
 		if Debug() >= 1 {
-			Printf("httpGate id=%d address=%s opened!\n", g.id, g.address)
+			Printf("httpGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
 	return err
@@ -179,29 +177,29 @@ func (g *httpGate) openTCP() error {
 		}
 		return system.SetDeferAccept(rawConn)
 	}
-	gate, err := listenConfig.Listen(context.Background(), "tcp", g.address)
+	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
 	if err == nil {
-		g.gate = gate.(*net.TCPListener)
+		g.listener = listener.(*net.TCPListener)
 		if Debug() >= 1 {
-			Printf("httpGate id=%d address=%s opened!\n", g.id, g.address)
+			Printf("httpGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
 	return err
 }
 func (g *httpGate) Shut() error {
 	g.MarkShut()
-	return g.gate.Close()
+	return g.listener.Close()
 }
 
 func (g *httpGate) serveUDS() { // runner
 	getHTTPConn := getHTTP1Conn
-	if g.server.http2Only {
+	if g.server.(*httpServer).http2Only {
 		getHTTPConn = getHTTP2Conn
 	}
-	gate := g.gate.(*net.UnixListener)
+	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
 	for {
-		unixConn, err := gate.AcceptUnix()
+		unixConn, err := listener.AcceptUnix()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -220,7 +218,7 @@ func (g *httpGate) serveUDS() { // runner
 				//g.stage.Logf("httpServer[%s] httpGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g.server, g, unixConn, rawConn)
+			httpConn := getHTTPConn(connID, g, unixConn, rawConn)
 			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
@@ -233,13 +231,13 @@ func (g *httpGate) serveUDS() { // runner
 }
 func (g *httpGate) serveTCP() { // runner
 	getHTTPConn := getHTTP1Conn
-	if g.server.http2Only {
+	if g.server.(*httpServer).http2Only {
 		getHTTPConn = getHTTP2Conn
 	}
-	gate := g.gate.(*net.TCPListener)
+	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
-		tcpConn, err := gate.AcceptTCP()
+		tcpConn, err := listener.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -258,7 +256,7 @@ func (g *httpGate) serveTCP() { // runner
 				//g.stage.Logf("httpServer[%s] httpGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tcpConn, rawConn)
+			httpConn := getHTTPConn(connID, g, tcpConn, rawConn)
 			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
@@ -270,10 +268,10 @@ func (g *httpGate) serveTCP() { // runner
 	g.server.SubDone()
 }
 func (g *httpGate) serveTLS() { // runner
-	gate := g.gate.(*net.TCPListener)
+	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
-		tcpConn, err := gate.AcceptTCP()
+		tcpConn, err := listener.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -286,7 +284,7 @@ func (g *httpGate) serveTLS() { // runner
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			tlsConn := tls.Server(tcpConn, g.server.tlsConfig)
+			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
 			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 				g.justClose(tlsConn)
 				continue
@@ -296,7 +294,7 @@ func (g *httpGate) serveTLS() { // runner
 			if connState.NegotiatedProtocol == "h2" {
 				getHTTPConn = getHTTP2Conn
 			}
-			httpConn := getHTTPConn(connID, g.server, g, tlsConn, nil)
+			httpConn := getHTTPConn(connID, g, tlsConn, nil)
 			go httpConn.serve() // httpConn is put to pool in serve()
 			connID++
 		}
@@ -321,7 +319,7 @@ type httpxConn interface {
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+func getHTTP1Conn(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		httpConn = new(http1Conn)
@@ -335,7 +333,7 @@ func getHTTP1Conn(id int64, server *httpServer, gate *httpGate, netConn net.Conn
 	} else {
 		httpConn = x.(*http1Conn)
 	}
-	httpConn.onGet(id, server, gate, netConn, rawConn)
+	httpConn.onGet(id, gate, netConn, rawConn)
 	return httpConn
 }
 func putHTTP1Conn(httpConn *http1Conn) {
@@ -359,8 +357,8 @@ type http1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn) onGet(id int64, server *httpServer, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webServerConn_.onGet(id, server, gate)
+func (c *http1Conn) onGet(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webServerConn_.onGet(id, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -464,7 +462,7 @@ func (s *http1Stream) execute() {
 		return
 	}
 
-	server := s.conn.server.(*httpServer)
+	server := s.conn.Server().(*httpServer)
 
 	// RFC 7230 (section 5.5):
 	// If the server's configuration (or outbound gateway) provides a
@@ -553,7 +551,7 @@ func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr()
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.
-	if s.setWriteDeadline(time.Now().Add(s.conn.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline(time.Now().Add(s.conn.Server().WriteTimeout())) == nil {
 		if _, err := s.write(http1BytesContinue); err == nil {
 			return true
 		}
@@ -577,7 +575,7 @@ func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *htt
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s.conn
 	if Debug() >= 2 {
-		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	s.conn.keepConn = false // close anyway.
 	status := req.headResult
@@ -616,7 +614,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
 	// Ignore any error, as the connection will be closed anyway.
-	if s.setWriteDeadline(time.Now().Add(conn.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline(time.Now().Add(conn.Server().WriteTimeout())) == nil {
 		s.writev(&resp.vector)
 	}
 }

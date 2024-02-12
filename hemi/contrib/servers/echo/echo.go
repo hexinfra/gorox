@@ -52,7 +52,7 @@ func (s *echoServer) OnPrepare() {
 func (s *echoServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(echoGate)
-		gate.init(s, id)
+		gate.init(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -72,14 +72,12 @@ type echoGate struct {
 	// Mixins
 	Gate_
 	// Assocs
-	server *echoServer
 	// States
-	gate *net.TCPListener
+	listener *net.TCPListener
 }
 
-func (g *echoGate) init(server *echoServer, id int32) {
-	g.Gate_.Init(server.Stage(), id, server.IsUDS(), server.IsTLS(), server.Address(), server.MaxConnsPerGate())
-	g.server = server
+func (g *echoGate) init(id int32, server *echoServer) {
+	g.Gate_.Init(id, server)
 }
 
 func (g *echoGate) Open() error {
@@ -87,21 +85,21 @@ func (g *echoGate) Open() error {
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		return system.SetReusePort(rawConn)
 	}
-	gate, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
+	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
 	if err == nil {
-		g.gate = gate.(*net.TCPListener)
+		g.listener = listener.(*net.TCPListener)
 	}
 	return err
 }
 func (g *echoGate) Shut() error {
 	g.MarkShut()
-	return g.gate.Close()
+	return g.listener.Close()
 }
 
 func (g *echoGate) serve() { // runner
 	connID := int64(0)
 	for {
-		tcpConn, err := g.gate.AcceptTCP()
+		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -113,7 +111,7 @@ func (g *echoGate) serve() { // runner
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			echoConn := getEchoConn(connID, g.Stage(), g.server, g, tcpConn)
+			echoConn := getEchoConn(connID, g, tcpConn)
 			go echoConn.serve() // echoConn is put to pool in serve()
 			connID++
 		}
@@ -122,7 +120,7 @@ func (g *echoGate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	g.server.SubDone()
+	g.Server().SubDone()
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
@@ -133,14 +131,14 @@ func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 // poolEchoConn
 var poolEchoConn sync.Pool
 
-func getEchoConn(id int64, stage *Stage, server *echoServer, gate *echoGate, tcpConn *net.TCPConn) *echoConn {
+func getEchoConn(id int64, gate *echoGate, tcpConn *net.TCPConn) *echoConn {
 	var conn *echoConn
 	if x := poolEchoConn.Get(); x == nil {
 		conn = new(echoConn)
 	} else {
 		conn = x.(*echoConn)
 	}
-	conn.onGet(id, stage, server, gate, tcpConn)
+	conn.onGet(id, gate, tcpConn)
 	return conn
 }
 func putEchoConn(conn *echoConn) {
@@ -150,30 +148,23 @@ func putEchoConn(conn *echoConn) {
 
 // echoConn
 type echoConn struct {
+	// Mixins
+	ServerConn_
 	// Conn states (stocks)
 	buffer [8152]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
-	stage   *Stage
-	server  *echoServer
-	gate    *echoGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
-func (c *echoConn) onGet(id int64, stage *Stage, server *echoServer, gate *echoGate, tcpConn *net.TCPConn) {
-	c.id = id
-	c.stage = stage
-	c.server = server
-	c.gate = gate
+func (c *echoConn) onGet(id int64, gate *echoGate, tcpConn *net.TCPConn) {
+	c.ServerConn_.OnGet(id, gate)
 	c.tcpConn = tcpConn
 }
 func (c *echoConn) onPut() {
-	c.stage = nil
-	c.server = nil
-	c.gate = nil
 	c.tcpConn = nil
+	c.ServerConn_.OnPut()
 }
 
 func (c *echoConn) serve() { // runner
@@ -185,5 +176,5 @@ func (c *echoConn) serve() { // runner
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.OnConnClosed()
+	c.Gate().OnConnClosed()
 }

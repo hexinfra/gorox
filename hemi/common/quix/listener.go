@@ -3,28 +3,28 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// QUIC gate.
+// QUIC listener.
 
 package quix
 
-// Gate
-type Gate struct {
+// Listener
+type Listener struct {
 	address string
 }
 
-func NewGate(address string) *Gate {
-	g := new(Gate)
-	g.address = address
-	return g
+func NewListener(address string) *Listener {
+	l := new(Listener)
+	l.address = address
+	return l
 }
 
-func (g *Gate) Open() error {
+func (l *Listener) Open() error {
 	// reuseport by default
 	return nil
 }
-func (g *Gate) Accept() (*Conn, error) {
+func (l *Listener) Accept() (*Conn, error) {
 	return nil, nil
 }
-func (g *Gate) Close() error {
+func (l *Listener) Close() error {
 	return nil
 }

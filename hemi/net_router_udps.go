@@ -52,15 +52,15 @@ func (r *UDPSRouter) createCase(name string) *udpsCase {
 func (r *UDPSRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpsGate)
-		gate.init(r, id)
+		gate.init(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
 		r.IncSub(1)
-		if r.udsMode {
+		if r.IsUDS() {
 			go gate.serveUDS()
-		} else if r.tlsMode {
+		} else if r.IsTLS() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveUDP()
@@ -89,53 +89,6 @@ func (r *UDPSRouter) dispatch(conn *UDPSConn) {
 			break
 		}
 	}
-}
-
-// udpsGate is an opening gate of UDPSRouter.
-type udpsGate struct {
-	// Mixins
-	Gate_
-	// Assocs
-	router *UDPSRouter
-	// States
-}
-
-func (g *udpsGate) init(router *UDPSRouter, id int32) {
-	g.Gate_.Init(router.stage, id, router.udsMode, router.tlsMode, router.address, router.maxConnsPerGate)
-	g.router = router
-}
-
-func (g *udpsGate) Open() error {
-	// TODO
-	return nil
-}
-func (g *udpsGate) Shut() error {
-	g.isShut.Store(true)
-	// TODO
-	return nil
-}
-
-func (g *udpsGate) serveUDP() { // runner
-	// TODO
-	for !g.isShut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.router.SubDone()
-}
-func (g *udpsGate) serveTLS() { // runner
-	// TODO
-	for !g.isShut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.router.SubDone()
-}
-func (g *udpsGate) serveUDS() { // runner
-	// TODO
-}
-
-func (g *udpsGate) justClose(udpConn *net.UDPConn) {
-	udpConn.Close()
-	g.OnConnClosed()
 }
 
 // UDPSDealet
@@ -237,17 +190,62 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 	"!~": (*udpsCase).notRegexpMatch,
 }
 
+// udpsGate is an opening gate of UDPSRouter.
+type udpsGate struct {
+	// Mixins
+	Gate_
+	// Assocs
+	// States
+}
+
+func (g *udpsGate) init(id int32, router *UDPSRouter) {
+	g.Gate_.Init(id, router)
+}
+
+func (g *udpsGate) Open() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) Shut() error {
+	g.isShut.Store(true)
+	// TODO
+	return nil
+}
+
+func (g *udpsGate) serveUDP() { // runner
+	// TODO
+	for !g.isShut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.server.SubDone()
+}
+func (g *udpsGate) serveTLS() { // runner
+	// TODO
+	for !g.isShut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.server.SubDone()
+}
+func (g *udpsGate) serveUDS() { // runner
+	// TODO
+}
+
+func (g *udpsGate) justClose(udpConn *net.UDPConn) {
+	udpConn.Close()
+	g.OnConnClosed()
+}
+
 // poolUDPSConn
 var poolUDPSConn sync.Pool
 
-func getUDPSConn(id int64, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+func getUDPSConn(id int64, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
 	var udpsConn *UDPSConn
 	if x := poolUDPSConn.Get(); x == nil {
 		udpsConn = new(UDPSConn)
 	} else {
 		udpsConn = x.(*UDPSConn)
 	}
-	udpsConn.onGet(id, router, gate, udpConn, rawConn)
+	udpsConn.onGet(id, gate, udpConn, rawConn)
 	return udpsConn
 }
 func putUDPSConn(udpsConn *UDPSConn) {
@@ -268,19 +266,19 @@ type UDPSConn struct {
 	// Conn states (zeros)
 }
 
-func (c *UDPSConn) onGet(id int64, router *UDPSRouter, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
-	c.ServerConn_.onGet(id, router, gate)
+func (c *UDPSConn) onGet(id int64, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+	c.ServerConn_.OnGet(id, gate)
 	c.udpConn = udpConn
 	c.rawConn = rawConn
 }
 func (c *UDPSConn) onPut() {
 	c.udpConn = nil
 	c.rawConn = nil
-	c.ServerConn_.onPut()
+	c.ServerConn_.OnPut()
 }
 
 func (c *UDPSConn) mesh() { // runner
-	router := c.server.(*UDPSRouter)
+	router := c.Server().(*UDPSRouter)
 	router.dispatch(c)
 	c.closeConn()
 	putUDPSConn(c)
@@ -294,8 +292,8 @@ func (c *UDPSConn) Close() error {
 
 func (c *UDPSConn) closeConn() {
 	// TODO: uds, tls?
-	if c.server.IsUDS() {
-	} else if c.server.IsTLS() {
+	if router := c.Server(); router.IsUDS() {
+	} else if router.IsTLS() {
 	} else {
 	}
 	c.udpConn.Close()

@@ -99,14 +99,14 @@ type rpcServerConn_ struct {
 	ServerConn_
 }
 
-func (c *rpcServerConn_) onGet(id int64, server rpcServer, gate Gate) {
-	c.ServerConn_.onGet(id, server, gate)
+func (c *rpcServerConn_) onGet(id int64, gate Gate) {
+	c.ServerConn_.OnGet(id, gate)
 }
 func (c *rpcServerConn_) onPut() {
-	c.ServerConn_.onPut()
+	c.ServerConn_.OnPut()
 }
 
-func (c *rpcServerConn_) rpcServer() rpcServer { return c.server.(rpcServer) }
+func (c *rpcServerConn_) rpcServer() rpcServer { return c.Server().(rpcServer) }
 
 // rpcServerExchan_
 type rpcServerExchan_ struct {

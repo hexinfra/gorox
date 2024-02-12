@@ -81,13 +81,13 @@ func (s *webServer_[G]) onPrepare(shell Component) {
 }
 
 func (s *webServer_[G]) ColonPort() string {
-	if s.udsMode {
+	if s.IsUDS() {
 		return s.udsColonPort
 	}
 	return s.Server_.ColonPort()
 }
 func (s *webServer_[G]) ColonPortBytes() []byte {
-	if s.udsMode {
+	if s.IsUDS() {
 		return s.udsColonPortBytes
 	}
 	return s.Server_.ColonPortBytes()
@@ -167,8 +167,8 @@ type webServerConn_ struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *webServerConn_) onGet(id int64, server webServer, gate Gate) {
-	c.ServerConn_.onGet(id, server, gate)
+func (c *webServerConn_) onGet(id int64, gate Gate) {
+	c.ServerConn_.OnGet(id, gate)
 }
 func (c *webServerConn_) onPut() {
 	c.lastRead = time.Time{}
@@ -176,13 +176,13 @@ func (c *webServerConn_) onPut() {
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
-	c.ServerConn_.onPut()
+	c.ServerConn_.OnPut()
 }
 
-func (c *webServerConn_) webServer() webServer { return c.server.(webServer) }
+func (c *webServerConn_) webServer() webServer { return c.Server().(webServer) }
 
 func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *webServerConn_) isBroken() bool { return c.broken.Load() }

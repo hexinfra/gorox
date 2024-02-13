@@ -274,7 +274,7 @@ func (s *http3Stream) execute() { // runner
 	putHTTP3Stream(s)
 }
 
-func (s *http3Stream) webBroker() webBroker { return s.conn.webServer() }
+func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
 func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 

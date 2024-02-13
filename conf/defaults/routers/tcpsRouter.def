@@ -4,7 +4,7 @@ tcpsRouter "tm1" {
 	.readTimeout     = 60s
 	.writeTimeout    = 60s
 	.numGates        = runtime.NumCPU()
-	.maxConnsPerGate = 100000
+	.maxConnsPerGate = 10000
 
 	// dealets
 

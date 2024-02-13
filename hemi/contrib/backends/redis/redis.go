@@ -8,7 +8,9 @@
 package redis
 
 import (
+	"net"
 	"sync"
+	"syscall"
 
 	. "github.com/hexinfra/gorox/hemi"
 
@@ -30,7 +32,7 @@ type RedisBackend struct {
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b.NewNode)
 }
 
 func (b *RedisBackend) OnConfigure() {
@@ -38,7 +40,7 @@ func (b *RedisBackend) OnConfigure() {
 func (b *RedisBackend) OnPrepare() {
 }
 
-func (b *RedisBackend) CreateNode(id int32) *redisNode {
+func (b *RedisBackend) NewNode(id int32) *redisNode {
 	node := new(redisNode)
 	node.init(id, b)
 	return node
@@ -49,46 +51,62 @@ type redisNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *RedisBackend
 }
 
 func (n *redisNode) init(id int32, backend *RedisBackend) {
-	//n.Node.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *redisNode) Maintain() { // runner
 }
 
-func (n *redisNode) dial() (*redisConn, error) {
+func (n *redisNode) dial() (*RedisConn, error) {
 	return nil, nil
 }
 
-func (n *redisNode) fetchConn() (*redisConn, error) {
+func (n *redisNode) fetchConn() (*RedisConn, error) {
 	return nil, nil
 }
-func (n *redisNode) storeConn(rConn *redisConn) {
+func (n *redisNode) storeConn(redisConn *RedisConn) {
 }
 
-func (n *redisNode) closeConn(rConn *redisConn) {
+func (n *redisNode) closeConn(redisConn *RedisConn) {
 }
 
 var poolRedisConn sync.Pool
 
-func getRedisConn() {
+func getRedisConn(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) *RedisConn {
+	var redisConn *RedisConn
+	if x := poolRedisConn.Get(); x == nil {
+		redisConn = new(RedisConn)
+	} else {
+		redisConn = x.(*RedisConn)
+	}
+	redisConn.onGet(id, node, netConn, rawConn)
+	return redisConn
 }
-func putRedisConn() {
+func putRedisConn(redisConn *RedisConn) {
+	redisConn.onPut()
+	poolRedisConn.Put(redisConn)
 }
 
-// redisConn is a connection to redisNode.
-type redisConn struct {
+// RedisConn is a connection to redisNode.
+type RedisConn struct {
 	// Mixins
 	BackendConn_
 	// Conn states (non-zeros)
+	netConn net.Conn
+	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
-func (c *redisConn) onGet() {
+func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.BackendConn_.OnGet(id, node)
+	c.netConn = netConn
+	c.rawConn = rawConn
 }
-func (c *redisConn) onPut() {
+func (c *RedisConn) onPut() {
+	c.netConn = nil
+	c.rawConn = nil
+	c.BackendConn_.OnPut()
 }

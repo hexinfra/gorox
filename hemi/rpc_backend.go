@@ -24,22 +24,22 @@ type rpcBackend interface {
 type rpcBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	rpcBroker_
+	_rpcAgent_
 	// States
 	health any // TODO
 }
 
-func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, creator interface{ CreateNode(id int32) N }) {
-	b.Backend_.OnCreate(name, stage, creator)
+func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
+	b.Backend_.OnCreate(name, stage, newNode)
 }
 
 func (b *rpcBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
-	b.rpcBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b._rpcAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 }
 func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.OnPrepare()
-	b.rpcBroker_.onPrepare(shell)
+	b._rpcAgent_.onPrepare(shell)
 }
 
 // rpcBackendConn_
@@ -52,14 +52,14 @@ type rpcBackendConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *rpcBackendConn_) onGet(id int64, backend rpcBackend, node Node) {
-	c.BackendConn_.onGet(id, backend, node)
+func (c *rpcBackendConn_) onGet(id int64, node Node) {
+	c.BackendConn_.OnGet(id, node)
 }
 func (c *rpcBackendConn_) onPut() {
-	c.BackendConn_.onPut()
+	c.BackendConn_.OnPut()
 }
 
-func (c *rpcBackendConn_) Backend() rpcBackend { return c.backend.(rpcBackend) }
+func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.Backend().(rpcBackend) }
 
 // rpcBackendExchan_
 type rpcBackendExchan_ struct {

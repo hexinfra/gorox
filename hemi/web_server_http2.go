@@ -865,7 +865,7 @@ func (s *http2Stream) execute() { // runner
 	putHTTP2Stream(s)
 }
 
-func (s *http2Stream) webBroker() webBroker { return s.conn.webServer() }
+func (s *http2Stream) webAgent() webAgent   { return s.conn.webServer() }
 func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

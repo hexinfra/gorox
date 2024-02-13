@@ -22,8 +22,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// broker is the interface for Server and Backend.
-type broker interface {
+// agent is the interface for Server and Backend.
+type agent interface {
 	// Imports
 	Component
 	// Methods
@@ -35,7 +35,7 @@ type broker interface {
 // Server component.
 type Server interface {
 	// Imports
-	broker
+	agent
 	// Methods
 	Serve() // runner
 	Address() string
@@ -47,12 +47,13 @@ type Server interface {
 	MaxConnsPerGate() int32
 }
 
-// Backend is a group of nodes.
+// Backend component. Backend is a group of nodes.
 type Backend interface {
 	// Imports
-	broker
+	agent
 	// Methods
 	Maintain() // runner
+	DialTimeout() time.Duration
 	AliveTimeout() time.Duration
 	nextConnID() int64
 }
@@ -78,6 +79,7 @@ type Node interface {
 	setTLS()
 	setWeight(weight int32)
 	setKeepConns(keepConns int32)
+	Backend() Backend
 	ID() int32
 	IsUDS() bool
 	IsTLS() bool
@@ -85,8 +87,8 @@ type Node interface {
 	shutdown()
 }
 
-// broker_ is the mixin for Server_ and Backend_.
-type broker_ struct {
+// agent_ is the mixin for Server_ and Backend_.
+type agent_ struct {
 	// Mixins
 	Component_
 	// Assocs
@@ -96,14 +98,14 @@ type broker_ struct {
 	writeTimeout time.Duration // write() timeout
 }
 
-func (b *broker_) onCreate(name string, stage *Stage) {
-	b.MakeComp(name)
-	b.stage = stage
+func (a *agent_) onCreate(name string, stage *Stage) {
+	a.MakeComp(name)
+	a.stage = stage
 }
 
-func (b *broker_) onConfigure(shell Component, readTimeout time.Duration, writeTimeout time.Duration) {
+func (a *agent_) onConfigure(shell Component, readTimeout time.Duration, writeTimeout time.Duration) {
 	// readTimeout
-	shell.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("readTimeout", &a.readTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -111,40 +113,40 @@ func (b *broker_) onConfigure(shell Component, readTimeout time.Duration, writeT
 	}, readTimeout)
 
 	// writeTimeout
-	shell.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("writeTimeout", &a.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".writeTimeout has an invalid value")
 	}, writeTimeout)
 }
-func (b *broker_) onPrepare() {
+func (a *agent_) onPrepare() {
 	// Currently nothing.
 }
 
-func (b *broker_) Stage() *Stage               { return b.stage }
-func (b *broker_) ReadTimeout() time.Duration  { return b.readTimeout }
-func (b *broker_) WriteTimeout() time.Duration { return b.writeTimeout }
+func (a *agent_) Stage() *Stage               { return a.stage }
+func (a *agent_) ReadTimeout() time.Duration  { return a.readTimeout }
+func (a *agent_) WriteTimeout() time.Duration { return a.writeTimeout }
 
 // Server_ is the mixin for all servers.
 type Server_[G Gate] struct {
 	// Mixins
-	broker_
+	agent_
 	// Assocs
-	gates []G // a server may has many gates
+	gates []G // a server has many gates
 	// States
 	address         string      // hostname:port, /path/to/unix.sock
 	colonPort       string      // like: ":9876"
 	colonPortBytes  []byte      // like: []byte(":9876")
 	udsMode         bool        // is address a unix domain socket?
-	tlsMode         bool        // tls mode?
-	tlsConfig       *tls.Config // set if is tls mode
+	tlsMode         bool        // use tls to secure the transport?
+	tlsConfig       *tls.Config // set if tls mode is true
 	maxConnsPerGate int32       // max concurrent connections allowed per gate
 	numGates        int32       // number of gates
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
-	s.broker_.onCreate(name, stage)
+	s.agent_.onCreate(name, stage)
 }
 func (s *Server_[G]) OnShutdown() {
 	// We don't use close(s.ShutChan) to notify gates.
@@ -154,7 +156,7 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
-	s.broker_.onConfigure(s, 60*time.Second, 60*time.Second)
+	s.agent_.onConfigure(s, 60*time.Second, 60*time.Second)
 
 	// address
 	if v, ok := s.Find("address"); ok {
@@ -170,7 +172,7 @@ func (s *Server_[G]) OnConfigure() {
 			UseExitln("address should be of string type")
 		}
 	} else {
-		UseExitln("address is required for servers")
+		UseExitln(".address is required for servers")
 	}
 
 	// tlsMode
@@ -185,7 +187,7 @@ func (s *Server_[G]) OnConfigure() {
 			return nil
 		}
 		return errors.New(".maxConnsPerGate has an invalid value")
-	}, 100000)
+	}, 10000)
 
 	// numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
@@ -196,7 +198,7 @@ func (s *Server_[G]) OnConfigure() {
 	}, s.stage.NumCPU())
 }
 func (s *Server_[G]) OnPrepare() {
-	s.broker_.onPrepare()
+	s.agent_.onPrepare()
 }
 
 func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
@@ -214,28 +216,26 @@ func (s *Server_[G]) NumGates() int32 { return s.numGates }
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
 	// Mixins
-	broker_
+	agent_
 	// Assocs
 	nodes   []N // nodes of this backend
-	creator interface {
-		CreateNode(id int32) N
-	} // if Go's generic supports new(N) then this is not needed.
+	newNode func(id int32) N
 	// States
 	dialTimeout  time.Duration // dial remote timeout
 	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 }
 
-func (b *Backend_[N]) OnCreate(name string, stage *Stage, creator interface{ CreateNode(id int32) N }) {
-	b.broker_.onCreate(name, stage)
-	b.creator = creator
+func (b *Backend_[N]) OnCreate(name string, stage *Stage, newNode func(id int32) N) {
+	b.agent_.onCreate(name, stage)
+	b.newNode = newNode
 }
 func (b *Backend_[N]) OnShutdown() {
 	close(b.ShutChan) // notifies run() or Maintain()
 }
 
 func (b *Backend_[N]) OnConfigure() {
-	b.broker_.onConfigure(b, 30*time.Second, 30*time.Second)
+	b.agent_.onConfigure(b, 30*time.Second, 30*time.Second)
 
 	// nodes
 	v, ok := b.Find("nodes")
@@ -251,28 +251,27 @@ func (b *Backend_[N]) OnConfigure() {
 		if !ok {
 			UseExitln("node in nodes must be a dict")
 		}
-		node := b.creator.CreateNode(int32(id))
+
+		node := b.newNode(int32(id))
 
 		// address
-		vAddress, ok := vNode["address"]
-		if !ok {
+		if vAddress, ok := vNode["address"]; !ok {
 			UseExitln("address is required in node")
-		}
-		if address, ok := vAddress.String(); ok && address != "" {
+		} else if address, ok := vAddress.String(); ok && address != "" {
 			node.setAddress(address)
+		} else {
+			UseExitln("bad address in node")
 		}
 
 		// tlsMode
-		vIsTLS, ok := vNode["tlsMode"]
-		if ok {
+		if vIsTLS, ok := vNode["tlsMode"]; ok {
 			if tlsMode, ok := vIsTLS.Bool(); ok && tlsMode {
 				node.setTLS()
 			}
 		}
 
 		// weight
-		vWeight, ok := vNode["weight"]
-		if !ok {
+		if vWeight, ok := vNode["weight"]; !ok {
 			node.setWeight(1)
 		} else if weight, ok := vWeight.Int32(); ok && weight > 0 {
 			node.setWeight(weight)
@@ -281,8 +280,7 @@ func (b *Backend_[N]) OnConfigure() {
 		}
 
 		// keepConns
-		vKeepConns, ok := vNode["keepConns"]
-		if !ok {
+		if vKeepConns, ok := vNode["keepConns"]; !ok {
 			node.setKeepConns(10)
 		} else if keepConns, ok := vKeepConns.Int32(); ok && keepConns > 0 {
 			node.setKeepConns(keepConns)
@@ -310,7 +308,7 @@ func (b *Backend_[N]) OnConfigure() {
 	}, 5*time.Second)
 }
 func (b *Backend_[N]) OnPrepare() {
-	b.broker_.onPrepare()
+	b.agent_.onPrepare()
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -331,6 +329,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	b.stage.SubDone()
 }
 
+func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
 func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
@@ -370,38 +369,13 @@ func (g *Gate_) OnConnClosed() {
 	g.SubDone()
 }
 
-// ServerConn_
-type ServerConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id     int64
-	server Server
-	gate   Gate
-	// Conn states (zeros)
-}
-
-func (c *ServerConn_) OnGet(id int64, gate Gate) {
-	c.id = id
-	c.server = gate.Server()
-	c.gate = gate
-}
-func (c *ServerConn_) OnPut() {
-	c.server = nil
-	c.gate = nil
-}
-
-func (c *ServerConn_) Server() Server { return c.server }
-func (c *ServerConn_) Gate() Gate     { return c.gate }
-
-func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
-func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
-
 // Node_ is the mixin for backend nodes.
 type Node_ struct {
 	// Mixins
 	subsWaiter_ // usually for conns
 	shutdownable_
+	// Assocs
+	backend Backend
 	// States
 	id        int32       // the node id
 	udsMode   bool        // uds or not
@@ -419,8 +393,9 @@ type Node_ struct {
 	}
 }
 
-func (n *Node_) init(id int32) {
+func (n *Node_) Init(id int32, backend Backend) {
 	n.shutdownable_.init()
+	n.backend = backend
 	n.id = id
 }
 
@@ -439,9 +414,10 @@ func (n *Node_) setTLS() {
 func (n *Node_) setWeight(weight int32)       { n.weight = weight }
 func (n *Node_) setKeepConns(keepConns int32) { n.keepConns = keepConns }
 
-func (n *Node_) ID() int32   { return n.id }
-func (n *Node_) IsUDS() bool { return n.udsMode }
-func (n *Node_) IsTLS() bool { return n.tlsMode }
+func (n *Node_) Backend() Backend { return n.backend }
+func (n *Node_) ID() int32        { return n.id }
+func (n *Node_) IsUDS() bool      { return n.udsMode }
+func (n *Node_) IsTLS() bool      { return n.tlsMode }
 
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
@@ -449,6 +425,7 @@ func (n *Node_) isDown() bool { return n.down.Load() }
 
 func (n *Node_) pullConn() backendConn {
 	list := &n.freeList
+
 	list.Lock()
 	defer list.Unlock()
 
@@ -459,10 +436,12 @@ func (n *Node_) pullConn() backendConn {
 	list.head = conn.getNext()
 	conn.setNext(nil)
 	list.qnty--
+
 	return conn
 }
 func (n *Node_) pushConn(conn backendConn) {
 	list := &n.freeList
+
 	list.Lock()
 	defer list.Unlock()
 
@@ -478,6 +457,7 @@ func (n *Node_) pushConn(conn backendConn) {
 
 func (n *Node_) closeFree() int {
 	list := &n.freeList
+
 	list.Lock()
 	defer list.Unlock()
 
@@ -487,12 +467,44 @@ func (n *Node_) closeFree() int {
 	qnty := list.qnty
 	list.qnty = 0
 	list.head, list.tail = nil, nil
+
 	return qnty
 }
 
 func (n *Node_) shutdown() {
 	close(n.ShutChan) // notifies Maintain()
 }
+
+// ServerConn_
+type ServerConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id     int64
+	server Server
+	gate   Gate
+	// Conn states (zeros)
+	lastRead  time.Time // deadline of last read operation
+	lastWrite time.Time // deadline of last write operation
+}
+
+func (c *ServerConn_) OnGet(id int64, gate Gate) {
+	c.id = id
+	c.server = gate.Server()
+	c.gate = gate
+}
+func (c *ServerConn_) OnPut() {
+	c.server = nil
+	c.gate = nil
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+}
+
+func (c *ServerConn_) Server() Server { return c.server }
+func (c *ServerConn_) Gate() Gate     { return c.gate }
+
+func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
+func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
 
 // BackendConn_ is the mixin for backend conns.
 type BackendConn_ struct {
@@ -507,13 +519,13 @@ type BackendConn_ struct {
 	lastRead  time.Time // deadline of last read operation
 }
 
-func (c *BackendConn_) onGet(id int64, backend Backend, node Node) {
+func (c *BackendConn_) OnGet(id int64, node Node) {
 	c.id = id
-	c.backend = backend
+	c.backend = node.Backend()
 	c.node = node
-	c.expire = time.Now().Add(backend.AliveTimeout())
+	c.expire = time.Now().Add(c.backend.AliveTimeout())
 }
-func (c *BackendConn_) onPut() {
+func (c *BackendConn_) OnPut() {
 	c.backend = nil
 	c.node = nil
 	c.expire = time.Time{}
@@ -521,21 +533,24 @@ func (c *BackendConn_) onPut() {
 	c.lastRead = time.Time{}
 }
 
+func (c *BackendConn_) Backend() Backend { return c.backend }
+func (c *BackendConn_) Node() Node       { return c.node }
+
 func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
+
+func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }
 
 func (c *BackendConn_) getNext() backendConn     { return c.next }
 func (c *BackendConn_) setNext(next backendConn) { c.next = next }
 
-func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }
-
 // backendConn is the backend conns.
 type backendConn interface {
 	// Methods
-	getNext() backendConn
-	setNext(next backendConn)
 	isAlive() bool
 	closeConn()
+	getNext() backendConn
+	setNext(next backendConn)
 }
 
 // Stream_

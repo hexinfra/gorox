@@ -15,7 +15,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -31,17 +30,17 @@ type webServer interface {
 	MaxContentSize() int64 // allowed
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
-	bindWebapps()
-	findWebapp(hostname []byte) *Webapp
+	bindApps()
+	findApp(hostname []byte) *Webapp
 }
 
 // webServer_ is the mixin for httpServer and http3Server.
 type webServer_[G Gate] struct {
 	// Mixins
 	Server_[G]
-	webBroker_
+	_webAgent_
 	streamHolder_
-	contentSaver_ // so requests can save their large contents in local file system. if request is dispatched to a webapp, we use webapp's contentSaver_.
+	contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -62,7 +61,7 @@ func (s *webServer_[G]) onShutdown() {
 
 func (s *webServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s.webBroker_.onConfigure(shell, 120*time.Second, 120*time.Second)
+	s._webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second)
 	s.streamHolder_.onConfigure(shell, 1000)
 	s.contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
 
@@ -75,7 +74,7 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 }
 func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
-	s.webBroker_.onPrepare(shell)
+	s._webAgent_.onPrepare(shell)
 	s.streamHolder_.onPrepare(shell)
 	s.contentSaver_.onPrepare(shell, 0755)
 }
@@ -93,7 +92,7 @@ func (s *webServer_[G]) ColonPortBytes() []byte {
 	return s.Server_.ColonPortBytes()
 }
 
-func (s *webServer_[G]) bindWebapps() {
+func (s *webServer_[G]) bindApps() {
 	for _, appName := range s.forApps {
 		webapp := s.stage.Webapp(appName)
 		if webapp == nil {
@@ -130,7 +129,7 @@ func (s *webServer_[G]) bindWebapps() {
 		}
 	}
 }
-func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
+func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -156,26 +155,19 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 type webServerConn_ struct {
 	// Mixins
 	ServerConn_
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
-	counter     atomic.Int64 // can be used to generate a random number
-	usedStreams atomic.Int32 // num of streams served or used
-	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *webServerConn_) onGet(id int64, gate Gate) {
 	c.ServerConn_.OnGet(id, gate)
+	c._webConn_.onGet()
 }
 func (c *webServerConn_) onPut() {
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
+	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
@@ -185,26 +177,24 @@ func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *webServerConn_) isBroken() bool { return c.broken.Load() }
-func (c *webServerConn_) markBroken()    { c.broken.Store(true) }
-
 // webServerStream_ is the mixin for http[1-3]Stream.
 type webServerStream_ struct {
 	// Mixins
 	Stream_
+	_webStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	isSocket bool // is websocket?
 }
 
 func (s *webServerStream_) onUse() { // for non-zeros
 	s.Stream_.onUse()
+	s._webStream_.onUse()
 }
 func (s *webServerStream_) onEnd() { // for zeros
+	s._webStream_.onEnd()
 	s.Stream_.onEnd()
-	s.isSocket = false
 }
 
 func (s *webServerStream_) serveSocket() {
@@ -1886,7 +1876,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 						part.base.edge = r.arrayEdge
 
 						part.path.from = r.arrayEdge
-						if !r.arrayCopy(risky.ConstBytes(r.webapp.SaveContentFilesDir())) { // add "/path/to/"
+						if !r.arrayCopy(risky.ConstBytes(r.saveContentFilesDir())) { // add "/path/to/"
 							r.stream.markBroken()
 							return
 						}
@@ -2287,11 +2277,7 @@ func (r *webServerRequest_) arrayCopy(p []byte) bool {
 }
 
 func (r *webServerRequest_) saveContentFilesDir() string {
-	if r.webapp == nil {
-		return r.stream.webBroker().SaveContentFilesDir()
-	} else {
-		return r.webapp.SaveContentFilesDir()
-	}
+	return r.stream.webAgent().SaveContentFilesDir()
 }
 
 func (r *webServerRequest_) hookReviser(reviser Reviser) {

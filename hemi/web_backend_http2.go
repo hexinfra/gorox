@@ -33,7 +33,7 @@ type H2Backend struct {
 }
 
 func (b *H2Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
 func (b *H2Backend) OnConfigure() {
@@ -43,7 +43,7 @@ func (b *H2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *H2Backend) CreateNode(id int32) *h2Node {
+func (b *H2Backend) NewNode(id int32) *h2Node {
 	node := new(h2Node)
 	node.init(id, b)
 	return node
@@ -62,13 +62,11 @@ type h2Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *H2Backend
 	// States
 }
 
 func (n *h2Node) init(id int32, backend *H2Backend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *h2Node) setTLS() {
@@ -94,7 +92,7 @@ func (n *h2Node) fetchConn() (*H2Conn, error) {
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
-	return getH2Conn(connID, n.backend, n, netConn, rawConn), nil
+	return getH2Conn(connID, n, netConn, rawConn), nil
 }
 func (n *h2Node) storeConn(h2Conn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
@@ -104,14 +102,14 @@ func (n *h2Node) storeConn(h2Conn *H2Conn) {
 // poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var h2Conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		h2Conn = new(H2Conn)
 	} else {
 		h2Conn = x.(*H2Conn)
 	}
-	h2Conn.onGet(id, backend, node, netConn, rawConn)
+	h2Conn.onGet(id, node, netConn, rawConn)
 	return h2Conn
 }
 func putH2Conn(h2Conn *H2Conn) {
@@ -132,8 +130,8 @@ type H2Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, backend *H2Backend, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, backend, node)
+func (c *H2Conn) onGet(id int64, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webBackendConn_.onGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
@@ -247,7 +245,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H2Stream) webBroker() webBroker { return s.conn.Backend() }
+func (s *H2Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -265,6 +263,9 @@ func (s *H2Stream) ReverseExchan(req Request, resp Response, bufferClientContent
 func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO, use s.startSocket()
 	return s.socket
+}
+func (s *H2Stream) ReverseSocket(req Request, sock Socket) error {
+	return nil
 }
 
 func (s *H2Stream) makeTempName(p []byte, unixTime int64) int {

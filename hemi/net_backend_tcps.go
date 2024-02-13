@@ -36,7 +36,7 @@ type TCPSBackend struct {
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b.NewNode)
 	b.loadBalancer_.init()
 }
 
@@ -51,7 +51,7 @@ func (b *TCPSBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *TCPSBackend) CreateNode(id int32) *tcpsNode {
+func (b *TCPSBackend) NewNode(id int32) *tcpsNode {
 	node := new(tcpsNode)
 	node.init(id, b)
 	return node
@@ -76,13 +76,11 @@ type tcpsNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *TCPSBackend
 	// States
 }
 
 func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *tcpsNode) Maintain() { // runner
@@ -114,7 +112,7 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 }
 func (n *tcpsNode) _dialTCP() (*TConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -128,11 +126,11 @@ func (n *tcpsNode) _dialTCP() (*TConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getTConn(connID, n.backend, n, netConn, rawConn), nil
+	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpsNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -146,7 +144,7 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 		tlsConn.Close()
 		return nil, err
 	}
-	return getTConn(connID, n.backend, n, tlsConn, nil), nil
+	return getTConn(connID, n, tlsConn, nil), nil
 }
 func (n *tcpsNode) _dialUDS() (*TConn, error) {
 	// TODO
@@ -195,14 +193,14 @@ func (n *tcpsNode) closeConn(tConn *TConn) {
 // poolTConn
 var poolTConn sync.Pool
 
-func getTConn(id int64, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+func getTConn(id int64, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
 	var tConn *TConn
 	if x := poolTConn.Get(); x == nil {
 		tConn = new(TConn)
 	} else {
 		tConn = x.(*TConn)
 	}
-	tConn.onGet(id, backend, node, netConn, rawConn)
+	tConn.onGet(id, node, netConn, rawConn)
 	return tConn
 }
 func putTConn(tConn *TConn) {
@@ -225,11 +223,11 @@ type TConn struct {
 	readBroken  atomic.Bool  // read-side broken?
 }
 
-func (c *TConn) onGet(id int64, backend *TCPSBackend, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.onGet(id, backend, node)
+func (c *TConn) onGet(id int64, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.BackendConn_.OnGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.maxStreams = backend.MaxStreamsPerConn()
+	c.maxStreams = node.Backend().(*TCPSBackend).MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
 	c.netConn = nil
@@ -238,10 +236,8 @@ func (c *TConn) onPut() {
 	c.usedStreams.Store(0)
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
-	c.BackendConn_.onPut()
+	c.BackendConn_.OnPut()
 }
-
-func (c *TConn) Backend() *TCPSBackend { return c.backend.(*TCPSBackend) }
 
 func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }

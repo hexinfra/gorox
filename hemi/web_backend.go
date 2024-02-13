@@ -9,7 +9,6 @@ package hemi
 
 import (
 	"bytes"
-	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -31,7 +30,7 @@ type webBackend interface {
 type webBackend_[N Node] struct {
 	// Mixins
 	Backend_[N]
-	webBroker_
+	_webAgent_
 	streamHolder_
 	contentSaver_ // so responses can save their large contents in local file system.
 	loadBalancer_
@@ -39,21 +38,21 @@ type webBackend_[N Node] struct {
 	health any // TODO
 }
 
-func (b *webBackend_[N]) onCreate(name string, stage *Stage, creator interface{ CreateNode(id int32) N }) {
-	b.Backend_.OnCreate(name, stage, creator)
+func (b *webBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
+	b.Backend_.OnCreate(name, stage, newNode)
 	b.loadBalancer_.init()
 }
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
-	b.webBroker_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 	b.streamHolder_.onConfigure(shell, 1000)
-	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+shell.Name())
+	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+b.name)
 	b.loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 	b.Backend_.OnPrepare()
-	b.webBroker_.onPrepare(shell)
+	b._webAgent_.onPrepare(shell)
 	b.streamHolder_.onPrepare(shell)
 	b.contentSaver_.onPrepare(shell, 0755)
 	b.loadBalancer_.onPrepare(numNodes)
@@ -63,54 +62,49 @@ func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
 type webBackendConn_ struct {
 	// Mixins
 	BackendConn_
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	usedStreams atomic.Int32 // num of streams served or used
-	broken      atomic.Bool  // is conn broken?
 }
 
-func (c *webBackendConn_) onGet(id int64, backend webBackend, node Node) {
-	c.BackendConn_.onGet(id, backend, node)
+func (c *webBackendConn_) onGet(id int64, node Node) {
+	c.BackendConn_.OnGet(id, node)
+	c._webConn_.onGet()
 }
 func (c *webBackendConn_) onPut() {
-	c.counter.Store(0)
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-	c.BackendConn_.onPut()
+	c._webConn_.onPut()
+	c.BackendConn_.OnPut()
 }
 
-func (c *webBackendConn_) Backend() webBackend { return c.backend.(webBackend) }
+func (c *webBackendConn_) webBackend() webBackend { return c.Backend().(webBackend) }
 
 func (c *webBackendConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.Backend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.webBackend().MaxStreamsPerConn()
 }
 
 func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *webBackendConn_) isBroken() bool { return c.broken.Load() }
-func (c *webBackendConn_) markBroken()    { c.broken.Store(true) }
 
 // webBackendStream_ is the mixin for H[1-3]Stream.
 type webBackendStream_ struct {
 	// Mixins
 	Stream_
+	_webStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	isSocket bool // is websocket?
 }
 
 func (s *webBackendStream_) onUse() { // for non-zeros
 	s.Stream_.onUse()
+	s._webStream_.onUse()
 }
 func (s *webBackendStream_) onEnd() { // for zeros
-	s.isSocket = false
+	s._webStream_.onEnd()
 	s.Stream_.onEnd()
 }
 
@@ -159,7 +153,7 @@ func (r *webBackendRequest_) Response() response { return r.response }
 func (r *webBackendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
 	return r.shell.(request).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
 }
-func (r *webBackendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only
+func (r *webBackendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }
@@ -797,7 +791,7 @@ func (r *webBackendResponse_) arrayCopy(p []byte) bool {
 }
 
 func (r *webBackendResponse_) saveContentFilesDir() string {
-	return r.stream.webBroker().SaveContentFilesDir()
+	return r.stream.webAgent().SaveContentFilesDir()
 }
 
 // webBackendSocket_ is the mixin for H[1-3]Socket.

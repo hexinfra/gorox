@@ -475,7 +475,7 @@ func (s *http1Stream) execute() {
 		req.schemeCode = SchemeHTTP
 	}
 
-	webapp := server.findWebapp(req.UnsafeHostname())
+	webapp := server.findApp(req.UnsafeHostname())
 
 	if webapp == nil || (!webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
@@ -540,7 +540,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s.webServerStream_.onEnd()
 }
 
-func (s *http1Stream) webBroker() webBroker { return s.conn.webServer() }
+func (s *http1Stream) webAgent() webAgent   { return s.conn.webServer() }
 func (s *http1Stream) webConn() webConn     { return s.conn }
 func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1265,7 +1265,7 @@ func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webBroker().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.webAgent().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {

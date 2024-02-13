@@ -35,7 +35,7 @@ type H1Backend struct {
 }
 
 func (b *H1Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
 func (b *H1Backend) OnConfigure() {
@@ -45,7 +45,7 @@ func (b *H1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *H1Backend) CreateNode(id int32) *h1Node {
+func (b *H1Backend) NewNode(id int32) *h1Node {
 	node := new(h1Node)
 	node.init(id, b)
 	return node
@@ -64,13 +64,11 @@ type h1Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *H1Backend
 	// States
 }
 
 func (n *h1Node) init(id int32, backend *H1Backend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *h1Node) setTLS() {
@@ -118,7 +116,7 @@ func (n *h1Node) fetchConn() (*H1Conn, error) {
 }
 func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -133,11 +131,11 @@ func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
+	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *h1Node) _fetchTLS() (*H1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.dialTimeout)
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -152,11 +150,11 @@ func (n *h1Node) _fetchTLS() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, n.backend, n, tlsConn, nil), nil
+	return getH1Conn(connID, n, tlsConn, nil), nil
 }
 func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.dialTimeout)
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -171,7 +169,7 @@ func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 		return nil, err
 	}
 	n.IncSub(1)
-	return getH1Conn(connID, n.backend, n, netConn, rawConn), nil
+	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *h1Node) storeConn(h1Conn *H1Conn) {
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
@@ -196,7 +194,7 @@ func (n *h1Node) closeConn(h1Conn *H1Conn) {
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
@@ -210,7 +208,7 @@ func getH1Conn(id int64, backend *H1Backend, node *h1Node, netConn net.Conn, raw
 	} else {
 		h1Conn = x.(*H1Conn)
 	}
-	h1Conn.onGet(id, backend, node, netConn, rawConn)
+	h1Conn.onGet(id, node, netConn, rawConn)
 	return h1Conn
 }
 func putH1Conn(h1Conn *H1Conn) {
@@ -233,8 +231,8 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, backend *H1Backend, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, backend, node)
+func (c *H1Conn) onGet(id int64, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
+	c.webBackendConn_.onGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.keepConn = true
@@ -291,7 +289,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H1Stream) webBroker() webBroker { return s.conn.Backend() }
+func (s *H1Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -310,6 +308,9 @@ func (s *H1Stream) ReverseExchan(req Request, resp Response, bufferClientContent
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO
 	return s.socket
+}
+func (s *H1Stream) ReverseSocket(req Request, sock Socket) error {
+	return nil
 }
 
 func (s *H1Stream) makeTempName(p []byte, unixTime int64) int {

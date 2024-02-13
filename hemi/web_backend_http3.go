@@ -33,7 +33,7 @@ type H3Backend struct {
 }
 
 func (b *H3Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b)
+	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
 func (b *H3Backend) OnConfigure() {
@@ -43,7 +43,7 @@ func (b *H3Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *H3Backend) CreateNode(id int32) *h3Node {
+func (b *H3Backend) NewNode(id int32) *h3Node {
 	node := new(h3Node)
 	node.init(id, b)
 	return node
@@ -62,13 +62,11 @@ type h3Node struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *H3Backend
 	// States
 }
 
 func (n *h3Node) init(id int32, backend *H3Backend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *h3Node) setTLS() {
@@ -91,12 +89,12 @@ func (n *h3Node) fetchConn() (*H3Conn, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: dynamic address names?
 	// TODO
-	conn, err := quix.DialTimeout(n.address, n.backend.dialTimeout)
+	conn, err := quix.DialTimeout(n.address, n.backend.DialTimeout())
 	if err != nil {
 		return nil, err
 	}
 	connID := n.backend.nextConnID()
-	return getH3Conn(connID, n.backend, n, conn), nil
+	return getH3Conn(connID, n, conn), nil
 }
 func (n *h3Node) storeConn(h3Conn *H3Conn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
@@ -106,14 +104,14 @@ func (n *h3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, backend *H3Backend, node *h3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, node *h3Node, quixConn *quix.Conn) *H3Conn {
 	var h3Conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		h3Conn = new(H3Conn)
 	} else {
 		h3Conn = x.(*H3Conn)
 	}
-	h3Conn.onGet(id, backend, node, quixConn)
+	h3Conn.onGet(id, node, quixConn)
 	return h3Conn
 }
 func putH3Conn(h3Conn *H3Conn) {
@@ -133,8 +131,8 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, backend *H3Backend, node *h3Node, quixConn *quix.Conn) {
-	c.webBackendConn_.onGet(id, backend, node)
+func (c *H3Conn) onGet(id int64, node *h3Node, quixConn *quix.Conn) {
+	c.webBackendConn_.onGet(id, node)
 	c.quixConn = quixConn
 }
 func (c *H3Conn) onPut() {
@@ -219,7 +217,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H3Stream) webBroker() webBroker { return s.conn.Backend() }
+func (s *H3Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -237,6 +235,9 @@ func (s *H3Stream) ReverseExchan(req Request, resp Response, bufferClientContent
 func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
 	// TODO, use s.startSocket()
 	return s.socket
+}
+func (s *H3Stream) ReverseSocket(req Request, sock Socket) error {
+	return nil
 }
 
 func (s *H3Stream) makeTempName(p []byte, unixTime int64) int {

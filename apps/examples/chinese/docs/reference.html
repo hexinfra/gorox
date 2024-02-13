@@ -539,7 +539,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 
 	webapp "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
-		.saveContentFilesDir = %tmpsDir + "/web/webapps/name"
 		.webRoot = %baseDir + "/apps/proxy/root"
 		.accessLog = [
 			"logFile": %logsDir + "/webapps/proxy.log",
@@ -577,13 +576,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法： .hostnames = ("example.com", "*.example.com")
 					默认值： -  //必须配置
 					取值范围：-
-				</code>
-				</li>
-				<li>
-					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
-					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tmpsDir + "/web/webapps/name"
-						取值范围：-
 				</code>
 				</li>
 				<li>
@@ -1481,7 +1473,7 @@ http1Proxy {
 		.readTimeout = 60s
 		.writeTimeout = 60s
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
-		.maxConnsPerGate = 100000
+		.maxConnsPerGate = 10000
 		.forApps = ("example_com")
 		.maxContentSize = 1T
 		.recvTimeout = 120s
@@ -1529,8 +1521,8 @@ http1Proxy {
 				</li>
 				<li>
 					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
-					<code>语法：.maxConnsPerGate = 100000
-						默认值：100000
+					<code>语法：.maxConnsPerGate = 10000
+						默认值：10000
 						取值范围： (0, MaxInt32]
 					</code>
 				</li>
@@ -1651,8 +1643,8 @@ http1Proxy {
 				</li>
 				<li>
 					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
-					<code>语法：.maxConnsPerGate = 100000
-						默认值：100000
+					<code>语法：.maxConnsPerGate = 10000
+						默认值：10000
 						取值范围： (0, MaxInt32]
 					</code>
 				</li>

@@ -10,7 +10,6 @@ webapp "a1" {
 	.settings             = []
 	.proxyOnly            = false
 	.withStater           = "ls"
-	.saveContentFilesDir  = %tmpsDir + "/web/webapps/a1"
 
 	// handlets
 

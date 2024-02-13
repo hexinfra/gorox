@@ -14,31 +14,32 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-// webBroker is a webServer or webBackend which keeps its connections and streams.
-type webBroker interface {
+// webAgent is a webServer or webBackend which keeps its connections and streams.
+type webAgent interface {
 	// Imports
-	broker
+	agent
+	contentSaver
 	// Methods
 	RecvTimeout() time.Duration // timeout to recv the whole message content
 	SendTimeout() time.Duration // timeout to send the whole message
 	MaxContentSize() int64      // allowed
-	SaveContentFilesDir() string
 }
 
-// webBroker_ is the mixin for webServer_ and webBackend_.
-type webBroker_ struct {
+// _webAgent_ is the mixin for webServer_ and webBackend_.
+type _webAgent_ struct {
 	// States
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	sendTimeout    time.Duration // timeout to send the whole message
 	maxContentSize int64         // max content size allowed
 }
 
-func (b *webBroker_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -46,7 +47,7 @@ func (b *webBroker_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, sendTimeout)
 
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -54,20 +55,20 @@ func (b *webBroker_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, recvTimeout)
 
 	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
+	shell.ConfigureInt64("maxContentSize", &a.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
-func (b *webBroker_) onPrepare(shell Component) {
+func (a *_webAgent_) onPrepare(shell Component) {
 	// Currently nothing
 }
 
-func (b *webBroker_) RecvTimeout() time.Duration { return b.recvTimeout }
-func (b *webBroker_) SendTimeout() time.Duration { return b.sendTimeout }
-func (b *webBroker_) MaxContentSize() int64      { return b.maxContentSize }
+func (a *_webAgent_) RecvTimeout() time.Duration { return a.recvTimeout }
+func (a *_webAgent_) SendTimeout() time.Duration { return a.sendTimeout }
+func (a *_webAgent_) MaxContentSize() int64      { return a.maxContentSize }
 
 // webConn is the interface for *http[1-3]Conn and *H[1-3]Conn.
 type webConn interface {
@@ -78,9 +79,31 @@ type webConn interface {
 	markBroken()
 }
 
+// _webConn_ is the mixin for webServerConn_ and webBackendConn_.
+type _webConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	usedStreams atomic.Int32 // num of streams served or used
+	broken      atomic.Bool  // is conn broken?
+}
+
+func (c *_webConn_) onGet() {
+}
+func (c *_webConn_) onPut() {
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
+}
+
+func (c *_webConn_) isBroken() bool { return c.broken.Load() }
+func (c *_webConn_) markBroken()    { c.broken.Store(true) }
+
 // webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
-	webBroker() webBroker
+	webAgent() webAgent
 	webConn() webConn
 	remoteAddr() net.Addr
 
@@ -98,6 +121,21 @@ type webStream interface {
 
 	isBroken() bool // if either side of the stream is broken, then it is broken
 	markBroken()    // mark stream as broken
+}
+
+// _webStream_ is the mixin for webServerStream_ and webBackendStream_.
+type _webStream_ struct {
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+	isSocket bool // is websocket?
+}
+
+func (s *_webStream_) onUse() {
+}
+func (s *_webStream_) onEnd() {
+	s.isSocket = false
 }
 
 const ( // version codes
@@ -452,7 +490,7 @@ var ( // misc web strings & byteses.
 	// HTTP/2 and HTTP/3 byteses, TODO
 	bytesSchemeHTTP           = []byte(":scheme http")
 	bytesSchemeHTTPS          = []byte(":scheme https")
-	bytesFixedRequestHeaders  = []byte("user-agent gorox")
+	bytesFixedRequestHeaders  = []byte("client gorox")
 	bytesFixedResponseHeaders = []byte("server gorox")
 )
 

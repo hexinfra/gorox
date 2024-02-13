@@ -33,7 +33,7 @@ type UDPSBackend struct {
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b.NewNode)
 	b.loadBalancer_.init()
 }
 
@@ -46,7 +46,7 @@ func (b *UDPSBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *UDPSBackend) CreateNode(id int32) *udpsNode {
+func (b *UDPSBackend) NewNode(id int32) *udpsNode {
 	node := new(udpsNode)
 	node.init(id, b)
 	return node
@@ -69,13 +69,11 @@ type udpsNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *UDPSBackend
 	// States
 }
 
 func (n *udpsNode) init(id int32, backend *UDPSBackend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *udpsNode) Maintain() { // runner
@@ -118,14 +116,14 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 // poolUConn
 var poolUConn sync.Pool
 
-func getUConn(id int64, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
+func getUConn(id int64, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
 	var uConn *UConn
 	if x := poolUConn.Get(); x == nil {
 		uConn = new(UConn)
 	} else {
 		uConn = x.(*UConn)
 	}
-	uConn.onGet(id, backend, node, netConn, rawConn)
+	uConn.onGet(id, node, netConn, rawConn)
 	return uConn
 }
 func putUConn(uConn *UConn) {
@@ -144,8 +142,8 @@ type UConn struct {
 	broken atomic.Bool // is conn broken?
 }
 
-func (c *UConn) onGet(id int64, backend *UDPSBackend, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.BackendConn_.onGet(id, backend, node)
+func (c *UConn) onGet(id int64, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
+	c.BackendConn_.OnGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
@@ -153,10 +151,8 @@ func (c *UConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.broken.Store(false)
-	c.BackendConn_.onPut()
+	c.BackendConn_.OnPut()
 }
-
-func (c *UConn) Backend() *UDPSBackend { return c.backend.(*UDPSBackend) }
 
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {

@@ -745,7 +745,7 @@ func (s *Stage) bindServerWebapps() {
 	}
 	for _, server := range s.servers {
 		if webServer, ok := server.(webServer); ok {
-			webServer.bindWebapps()
+			webServer.bindApps()
 		}
 	}
 }

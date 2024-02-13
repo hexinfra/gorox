@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"bytes"
+	"time"
 )
 
 // rpcServer
@@ -23,7 +24,7 @@ type rpcServer interface {
 type rpcServer_[G Gate] struct {
 	// Mixins
 	Server_[G]
-	rpcBroker_
+	_rpcAgent_
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
@@ -42,12 +43,14 @@ func (s *rpcServer_[G]) onShutdown() {
 
 func (s *rpcServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
+	s._rpcAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 
 	// forServices
 	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
 }
 func (s *rpcServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
+	s._rpcAgent_.onPrepare(shell)
 }
 
 func (s *rpcServer_[G]) BindServices() {

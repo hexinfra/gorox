@@ -27,7 +27,7 @@ type HRPCBackend struct {
 }
 
 func (b *HRPCBackend) onCreate(name string, stage *Stage) {
-	b.rpcBackend_.onCreate(name, stage, b)
+	b.rpcBackend_.onCreate(name, stage, b.NewNode)
 }
 
 func (b *HRPCBackend) OnConfigure() {
@@ -37,7 +37,7 @@ func (b *HRPCBackend) OnPrepare() {
 	b.rpcBackend_.onPrepare(b, len(b.nodes))
 }
 
-func (b *HRPCBackend) CreateNode(id int32) *hrpcNode {
+func (b *HRPCBackend) NewNode(id int32) *hrpcNode {
 	node := new(hrpcNode)
 	node.init(id, b)
 	return node
@@ -48,13 +48,11 @@ type hrpcNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *HRPCBackend
 	// States
 }
 
 func (n *hrpcNode) init(id int32, backend *HRPCBackend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *hrpcNode) Maintain() { // runner

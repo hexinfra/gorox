@@ -23,7 +23,6 @@ import (
 type Webapp struct {
 	// Mixins
 	Component_
-	contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
@@ -67,8 +66,6 @@ func (a *Webapp) OnShutdown() {
 }
 
 func (a *Webapp) OnConfigure() {
-	a.contentSaver_.onConfigure(a, TmpsDir()+"/web/webapps/"+a.name)
-
 	// hostnames
 	if v, ok := a.Find("hostnames"); ok {
 		hostnames, ok := v.StringList()
@@ -199,8 +196,6 @@ func (a *Webapp) OnConfigure() {
 	a.rules.walk((*Rule).OnConfigure)
 }
 func (a *Webapp) OnPrepare() {
-	a.contentSaver_.onPrepare(a, 0755)
-
 	if a.accessLog != nil {
 		//a.logger = newLogger(a.accessLog.logFile, a.accessLog.rotate)
 	}

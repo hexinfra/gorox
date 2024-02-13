@@ -34,7 +34,7 @@ type QUICBackend struct {
 }
 
 func (b *QUICBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b)
+	b.Backend_.OnCreate(name, stage, b.NewNode)
 	b.loadBalancer_.init()
 }
 
@@ -49,7 +49,7 @@ func (b *QUICBackend) OnPrepare() {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *QUICBackend) CreateNode(id int32) *quicNode {
+func (b *QUICBackend) NewNode(id int32) *quicNode {
 	node := new(quicNode)
 	node.init(id, b)
 	return node
@@ -72,13 +72,11 @@ type quicNode struct {
 	// Mixins
 	Node_
 	// Assocs
-	backend *QUICBackend
 	// States
 }
 
 func (n *quicNode) init(id int32, backend *QUICBackend) {
-	n.Node_.init(id)
-	n.backend = backend
+	n.Node_.Init(id, backend)
 }
 
 func (n *quicNode) Maintain() { // runner
@@ -109,14 +107,14 @@ func (n *quicNode) storeConn(qConn *QConn) {
 // poolQConn
 var poolQConn sync.Pool
 
-func getQConn(id int64, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) *QConn {
+func getQConn(id int64, node *quicNode, quixConn *quix.Conn) *QConn {
 	var qConn *QConn
 	if x := poolQConn.Get(); x == nil {
 		qConn = new(QConn)
 	} else {
 		qConn = x.(*QConn)
 	}
-	qConn.onGet(id, backend, node, quixConn)
+	qConn.onGet(id, node, quixConn)
 	return qConn
 }
 func putQConn(qConn *QConn) {
@@ -136,19 +134,17 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-func (c *QConn) onGet(id int64, backend *QUICBackend, node *quicNode, quixConn *quix.Conn) {
-	c.BackendConn_.onGet(id, backend, node)
+func (c *QConn) onGet(id int64, node *quicNode, quixConn *quix.Conn) {
+	c.BackendConn_.OnGet(id, node)
 	c.quixConn = quixConn
-	c.maxStreams = backend.MaxStreamsPerConn()
+	c.maxStreams = node.Backend().(*QUICBackend).MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
 	c.quixConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
-	c.BackendConn_.onPut()
+	c.BackendConn_.OnPut()
 }
-
-func (c *QConn) Backend() *QUICBackend { return c.backend.(*QUICBackend) }
 
 func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 

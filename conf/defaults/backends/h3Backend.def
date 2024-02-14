@@ -10,7 +10,7 @@ h3Backend "h3b1" {
 	)
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpsDir + "/web/backends/h3b"
-	.maxContentSize = 1T
+	.maxContentSizeAllowed = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
 	.balancer = "ipHash"

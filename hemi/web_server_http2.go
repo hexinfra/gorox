@@ -969,7 +969,7 @@ func (r *http2Response) AddDirectoryRedirection() bool {
 }
 func (r *http2Response) setConnectionClose() { BugExitln("not used in HTTP/2") }
 
-func (r *http2Response) SetCookie(cookie *Cookie) bool {
+func (r *http2Response) AddCookie(cookie *ServerCookie) bool {
 	// TODO
 	return false
 }

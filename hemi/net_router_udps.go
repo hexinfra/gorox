@@ -146,6 +146,19 @@ func (c *udpsCase) execute(conn *UDPSConn) (dealt bool) {
 	return false
 }
 
+var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []byte) bool{
+	"==": (*udpsCase).equalMatch,
+	"^=": (*udpsCase).prefixMatch,
+	"$=": (*udpsCase).suffixMatch,
+	"*=": (*udpsCase).containMatch,
+	"~=": (*udpsCase).regexpMatch,
+	"!=": (*udpsCase).notEqualMatch,
+	"!^": (*udpsCase).notPrefixMatch,
+	"!$": (*udpsCase).notSuffixMatch,
+	"!*": (*udpsCase).notContainMatch,
+	"!~": (*udpsCase).notRegexpMatch,
+}
+
 func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
 	return c.case_._equalMatch(value)
 }
@@ -177,19 +190,6 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value 
 	return c.case_._notRegexpMatch(value)
 }
 
-var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []byte) bool{
-	"==": (*udpsCase).equalMatch,
-	"^=": (*udpsCase).prefixMatch,
-	"$=": (*udpsCase).suffixMatch,
-	"*=": (*udpsCase).containMatch,
-	"~=": (*udpsCase).regexpMatch,
-	"!=": (*udpsCase).notEqualMatch,
-	"!^": (*udpsCase).notPrefixMatch,
-	"!$": (*udpsCase).notSuffixMatch,
-	"!*": (*udpsCase).notContainMatch,
-	"!~": (*udpsCase).notRegexpMatch,
-}
-
 // udpsGate is an opening gate of UDPSRouter.
 type udpsGate struct {
 	// Mixins
@@ -207,21 +207,21 @@ func (g *udpsGate) Open() error {
 	return nil
 }
 func (g *udpsGate) Shut() error {
-	g.isShut.Store(true)
+	g.shut.Store(true)
 	// TODO
 	return nil
 }
 
 func (g *udpsGate) serveUDP() { // runner
 	// TODO
-	for !g.isShut.Load() {
+	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.server.SubDone()
 }
 func (g *udpsGate) serveTLS() { // runner
 	// TODO
-	for !g.isShut.Load() {
+	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
 	g.server.SubDone()

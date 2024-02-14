@@ -6,7 +6,7 @@ httpServer "hs1" {
 	.writeTimeout        = 60s
 	.numGates            = runtime.NumCPU()
 	.maxConnsPerGate     = 10000
-	.maxContentSize      = 1T
+	.maxContentSizeAllowed      = 1T
 	.recvTimeout         = 120s
 	.sendTimeout         = 120s
 	.forceScheme         = ""

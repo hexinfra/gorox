@@ -10,7 +10,7 @@ h2Backend "h2b1" {
 	)
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpsDir + "/web/backends/h2b"
-	.maxContentSize = 1T
+	.maxContentSizeAllowed = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
 	.balancer = "roundRobin"

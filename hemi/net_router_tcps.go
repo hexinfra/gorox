@@ -166,6 +166,19 @@ func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
 	return false
 }
 
+var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
+	"==": (*tcpsCase).equalMatch,
+	"^=": (*tcpsCase).prefixMatch,
+	"$=": (*tcpsCase).suffixMatch,
+	"*=": (*tcpsCase).containMatch,
+	"~=": (*tcpsCase).regexpMatch,
+	"!=": (*tcpsCase).notEqualMatch,
+	"!^": (*tcpsCase).notPrefixMatch,
+	"!$": (*tcpsCase).notSuffixMatch,
+	"!*": (*tcpsCase).notContainMatch,
+	"!~": (*tcpsCase).notRegexpMatch,
+}
+
 func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
 	return c.case_._equalMatch(value)
 }
@@ -195,19 +208,6 @@ func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value
 }
 func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
 	return c.case_._notRegexpMatch(value)
-}
-
-var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
-	"==": (*tcpsCase).equalMatch,
-	"^=": (*tcpsCase).prefixMatch,
-	"$=": (*tcpsCase).suffixMatch,
-	"*=": (*tcpsCase).containMatch,
-	"~=": (*tcpsCase).regexpMatch,
-	"!=": (*tcpsCase).notEqualMatch,
-	"!^": (*tcpsCase).notPrefixMatch,
-	"!$": (*tcpsCase).notSuffixMatch,
-	"!*": (*tcpsCase).notContainMatch,
-	"!~": (*tcpsCase).notRegexpMatch,
 }
 
 // tcpsGate is an opening gate of TCPSRouter.

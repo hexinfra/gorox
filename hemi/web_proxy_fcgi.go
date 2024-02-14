@@ -47,19 +47,19 @@ type fcgiProxy struct {
 	backend *TCPSBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	bufferClientContent bool              // client content is buffered anyway?
-	bufferServerContent bool              // server content is buffered anyway?
-	keepConn            bool              // instructs FCGI server to keep conn?
-	preferUnderscore    bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename      []byte            // for SCRIPT_FILENAME
-	indexFile           []byte            // for indexFile
-	addRequestHeaders   map[string]Value  // headers appended to backend request
-	delRequestHeaders   [][]byte          // backend request headers to delete
-	addResponseHeaders  map[string]string // headers appended to server response
-	delResponseHeaders  [][]byte          // server response headers to delete
-	sendTimeout         time.Duration     // timeout to send the whole request
-	recvTimeout         time.Duration     // timeout to recv the whole response content
-	maxContentSize      int64             // max response content size allowed
+	bufferClientContent   bool              // client content is buffered anyway?
+	bufferServerContent   bool              // server content is buffered anyway?
+	keepConn              bool              // instructs FCGI server to keep conn?
+	preferUnderscore      bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
+	scriptFilename        []byte            // for SCRIPT_FILENAME
+	indexFile             []byte            // for indexFile
+	addRequestHeaders     map[string]Value  // headers appended to backend request
+	delRequestHeaders     [][]byte          // backend request headers to delete
+	addResponseHeaders    map[string]string // headers appended to server response
+	delResponseHeaders    [][]byte          // server response headers to delete
+	sendTimeout           time.Duration     // timeout to send the whole request
+	recvTimeout           time.Duration     // timeout to recv the whole response content
+	maxContentSizeAllowed int64             // max response content size allowed
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -139,12 +139,12 @@ func (h *fcgiProxy) OnConfigure() {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 
-	// maxContentSize
-	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
+	// maxContentSizeAllowed
+	h.ConfigureInt64("maxContentSizeAllowed", &h.maxContentSizeAllowed, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize has an invalid value")
+		return errors.New(".maxContentSizeAllowed has an invalid value")
 	}, _1T)
 }
 func (h *fcgiProxy) OnPrepare() {
@@ -740,15 +740,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Exchan states (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// Exchan states (non-zeros)
-	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
-	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	primes         []pair        // prime fcgi response headers
-	extras         []pair        // extra fcgi response headers
-	recvTimeout    time.Duration // timeout to recv the whole response content
-	maxContentSize int64         // max content size allowed for current response
-	status         int16         // 200, 302, 404, ...
-	headResult     int16         // result of receiving response head. values are same as http status for convenience
-	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
+	records               []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
+	input                 []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	primes                []pair        // prime fcgi response headers
+	extras                []pair        // extra fcgi response headers
+	recvTimeout           time.Duration // timeout to recv the whole response content
+	maxContentSizeAllowed int64         // max content size allowed for current response
+	status                int16         // 200, 302, 404, ...
+	headResult            int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult            int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
@@ -811,7 +811,7 @@ func (r *fcgiResponse) onUse() {
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.exchan.proxy.recvTimeout
-	r.maxContentSize = r.exchan.proxy.maxContentSize
+	r.maxContentSizeAllowed = r.exchan.proxy.maxContentSizeAllowed
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1219,7 +1219,7 @@ func (r *fcgiResponse) hasContent() bool {
 }
 func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r.recvContent().(type) {
-	case tempFile: // [0, r.maxContentSize]
+	case tempFile: // [0, r.maxContentSizeAllowed]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -1297,8 +1297,6 @@ func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value
 func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
-
-func (r *fcgiResponse) arrayCopy(p []byte) bool { return true } // not used, but required by webIn interface
 
 func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.proxy.SaveContentFilesDir() }
 

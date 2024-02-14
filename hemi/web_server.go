@@ -27,7 +27,8 @@ type webServer interface {
 	streamHolder
 	contentSaver
 	// Methods
-	MaxContentSize() int64 // allowed
+	MaxContentSizeAllowed() int64
+	MaxMemoryContentSize() int32
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 	bindApps()
@@ -590,7 +591,7 @@ func (r *webServerRequest_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
-	if r.contentSize > r.maxContentSize {
+	if r.contentSize > r.maxContentSizeAllowed {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds server's limit"
 		return false
 	}
@@ -2257,27 +2258,6 @@ func (r *webServerRequest_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
-}
-
-func (r *webServerRequest_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
-		}
-		if r.webapp != nil && edge > r.webapp.maxMemoryContentSize {
-			return false
-		}
-		if !r._growArray(int32(len(p))) {
-			return false
-		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
-	}
-	return true
-}
-
-func (r *webServerRequest_) saveContentFilesDir() string {
-	return r.stream.webAgent().SaveContentFilesDir()
 }
 
 func (r *webServerRequest_) hookReviser(reviser Reviser) {

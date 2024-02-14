@@ -378,7 +378,7 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			goto badRead
 		}
 		// Check target size
-		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
+		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSizeAllowed {
 			r.chunkSize = chunkSize
 		} else { // invalid target size.
 			// TODO: log error?
@@ -562,12 +562,12 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(trailer.nameAt(r.bodyWindow)) {
+		if !r.arrayCopy(trailer.nameAt(r.bodyWindow)) {
 			return false
 		}
 		trailer.nameFrom = fore
 		fore = r.arrayEdge
-		if !r.shell.arrayCopy(trailer.valueAt(r.bodyWindow)) {
+		if !r.arrayCopy(trailer.valueAt(r.bodyWindow)) {
 			return false
 		}
 		trailer.value.set(fore, r.arrayEdge)

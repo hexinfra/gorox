@@ -40,7 +40,6 @@ type Webapp struct {
 	tlsPrivateKey        string            // tls private key file, in pem format
 	accessLog            *logcfg           // ...
 	logger               *logger           // webapp access logger
-	maxMemoryContentSize int32             // max content size that can be loaded into memory
 	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
 	settings             map[string]string // webapp settings defined and used by users
 	settingsLock         sync.RWMutex      // protects settings
@@ -142,14 +141,6 @@ func (a *Webapp) OnConfigure() {
 	}, "")
 
 	// accessLog, TODO
-
-	// maxMemoryContentSize
-	a.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G {
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 
 	// maxUploadContentSize
 	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) error {
@@ -712,6 +703,30 @@ func (r *Rule) executeSocket(req Request, sock Socket) (served bool) {
 	return true
 }
 
+var ruleMatchers = map[string]struct {
+	matcher func(rule *Rule, req Request, value []byte) bool
+	fsCheck bool
+}{
+	"==": {(*Rule).equalMatch, false},
+	"^=": {(*Rule).prefixMatch, false},
+	"$=": {(*Rule).suffixMatch, false},
+	"*=": {(*Rule).containMatch, false},
+	"~=": {(*Rule).regexpMatch, false},
+	"-f": {(*Rule).fileMatch, true},
+	"-d": {(*Rule).dirMatch, true},
+	"-e": {(*Rule).existMatch, true},
+	"-D": {(*Rule).dirMatchWithWebRoot, true},
+	"-E": {(*Rule).existMatchWithWebRoot, true},
+	"!=": {(*Rule).notEqualMatch, false},
+	"!^": {(*Rule).notPrefixMatch, false},
+	"!$": {(*Rule).notSuffixMatch, false},
+	"!*": {(*Rule).notContainMatch, false},
+	"!~": {(*Rule).notRegexpMatch, false},
+	"!f": {(*Rule).notFileMatch, true},
+	"!d": {(*Rule).notDirMatch, true},
+	"!e": {(*Rule).notExistMatch, true},
+}
+
 func (r *Rule) equalMatch(req Request, value []byte) bool { // value == patterns
 	for _, pattern := range r.patterns {
 		if bytes.Equal(value, pattern) {
@@ -829,30 +844,6 @@ func (r *Rule) notDirMatch(req Request, value []byte) bool { // value !d
 func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	pathInfo := req.getPathInfo()
 	return pathInfo == nil
-}
-
-var ruleMatchers = map[string]struct {
-	matcher func(rule *Rule, req Request, value []byte) bool
-	fsCheck bool
-}{
-	"==": {(*Rule).equalMatch, false},
-	"^=": {(*Rule).prefixMatch, false},
-	"$=": {(*Rule).suffixMatch, false},
-	"*=": {(*Rule).containMatch, false},
-	"~=": {(*Rule).regexpMatch, false},
-	"-f": {(*Rule).fileMatch, true},
-	"-d": {(*Rule).dirMatch, true},
-	"-e": {(*Rule).existMatch, true},
-	"-D": {(*Rule).dirMatchWithWebRoot, true},
-	"-E": {(*Rule).existMatchWithWebRoot, true},
-	"!=": {(*Rule).notEqualMatch, false},
-	"!^": {(*Rule).notPrefixMatch, false},
-	"!$": {(*Rule).notSuffixMatch, false},
-	"!*": {(*Rule).notContainMatch, false},
-	"!~": {(*Rule).notRegexpMatch, false},
-	"!f": {(*Rule).notFileMatch, true},
-	"!d": {(*Rule).notDirMatch, true},
-	"!e": {(*Rule).notExistMatch, true},
 }
 
 // Request is the interface for *http[1-3]Request.
@@ -1006,8 +997,6 @@ type Request interface {
 	examineTail() bool
 	delHopTrailers()
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-	arrayCopy(p []byte) bool
-	saveContentFilesDir() string
 	hookReviser(reviser Reviser)
 	unsafeVariable(code int16, name string) (value []byte)
 }
@@ -1028,7 +1017,7 @@ type Response interface {
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
 
-	SetCookie(cookie *Cookie) bool
+	AddCookie(cookie *ServerCookie) bool
 
 	AddHeader(name string, value string) bool
 	AddHeaderBytes(name []byte, value []byte) bool
@@ -1193,8 +1182,8 @@ func (u *Upload) MoveTo(path string) error {
 	return nil
 }
 
-// Cookie is a "set-cookie" header sent to client.
-type Cookie struct {
+// ServerCookie is a "set-cookie" header sent to client.
+type ServerCookie struct {
 	name     string
 	value    string
 	expires  time.Time
@@ -1210,7 +1199,7 @@ type Cookie struct {
 	ageBuf   [10]byte
 }
 
-func (c *Cookie) Set(name string, value string) bool {
+func (c *ServerCookie) Set(name string, value string) bool {
 	// cookie-name = 1*cookie-octet
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
 	if name == "" {
@@ -1241,12 +1230,12 @@ func (c *Cookie) Set(name string, value string) bool {
 	return true
 }
 
-func (c *Cookie) SetDomain(domain string) bool {
+func (c *ServerCookie) SetDomain(domain string) bool {
 	// TODO: check domain
 	c.domain = domain
 	return true
 }
-func (c *Cookie) SetPath(path string) bool {
+func (c *ServerCookie) SetPath(path string) bool {
 	// path-value = *av-octet
 	// av-octet = %x20-3A / %x3C-7E
 	for i := 0; i < len(path); i++ {
@@ -1258,7 +1247,7 @@ func (c *Cookie) SetPath(path string) bool {
 	c.path = path
 	return true
 }
-func (c *Cookie) SetExpires(expires time.Time) bool {
+func (c *ServerCookie) SetExpires(expires time.Time) bool {
 	expires = expires.UTC()
 	if expires.Year() < 1601 {
 		c.invalid = true
@@ -1267,15 +1256,15 @@ func (c *Cookie) SetExpires(expires time.Time) bool {
 	c.expires = expires
 	return true
 }
-func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
-func (c *Cookie) SetSecure()              { c.secure = true }
-func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
-func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
-func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
-func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
-func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
+func (c *ServerCookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
+func (c *ServerCookie) SetSecure()              { c.secure = true }
+func (c *ServerCookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *ServerCookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *ServerCookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *ServerCookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *ServerCookie) SetSameSite(mode string) { c.sameSite = mode }
 
-func (c *Cookie) size() int {
+func (c *ServerCookie) size() int {
 	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
 	n := len(c.name) + 1 + len(c.value) // name=value
 	if c.quote {
@@ -1310,7 +1299,7 @@ func (c *Cookie) size() int {
 	}
 	return n
 }
-func (c *Cookie) writeTo(p []byte) int {
+func (c *ServerCookie) writeTo(p []byte) int {
 	i := copy(p, c.name)
 	p[i] = '='
 	i++
@@ -1380,8 +1369,8 @@ type upload struct {
 	// TODO
 }
 
-// SetCookie is a "set-cookie" header received from backend.
-type SetCookie struct { // 32 bytes
+// BackendCookie is a "set-cookie" header received from backend.
+type BackendCookie struct { // 32 bytes
 	input      *[]byte // the buffer holding data
 	expires    int64   // Expires=Wed, 09 Jun 2021 10:18:14 GMT
 	maxAge     int32   // Max-Age=123
@@ -1395,28 +1384,28 @@ type SetCookie struct { // 32 bytes
 	flags      uint8   // secure(1), httpOnly(1), sameSite(2), reserved(2), valueOffset(2)
 }
 
-func (c *SetCookie) zero() { *c = SetCookie{} }
+func (c *BackendCookie) zero() { *c = BackendCookie{} }
 
-func (c *SetCookie) Name() string {
+func (c *BackendCookie) Name() string {
 	p := *c.input
 	return string(p[c.nameFrom : c.nameFrom+int16(c.nameSize)])
 }
-func (c *SetCookie) Value() string {
+func (c *BackendCookie) Value() string {
 	p := *c.input
 	valueFrom := c.nameFrom + int16(c.nameSize) + 1 // name=value
 	return string(p[valueFrom:c.valueEdge])
 }
-func (c *SetCookie) Expires() int64 { return c.expires }
-func (c *SetCookie) MaxAge() int32  { return c.maxAge }
-func (c *SetCookie) domain() []byte {
+func (c *BackendCookie) Expires() int64 { return c.expires }
+func (c *BackendCookie) MaxAge() int32  { return c.maxAge }
+func (c *BackendCookie) domain() []byte {
 	p := *c.input
 	return p[c.domainFrom : c.domainFrom+int16(c.domainSize)]
 }
-func (c *SetCookie) path() []byte {
+func (c *BackendCookie) path() []byte {
 	p := *c.input
 	return p[c.pathFrom : c.pathFrom+int16(c.pathSize)]
 }
-func (c *SetCookie) sameSite() string {
+func (c *BackendCookie) sameSite() string {
 	switch c.flags & 0b00110000 {
 	case 0b00010000:
 		return "Lax"
@@ -1426,17 +1415,17 @@ func (c *SetCookie) sameSite() string {
 		return "None"
 	}
 }
-func (c *SetCookie) secure() bool   { return c.flags&0b10000000 > 0 }
-func (c *SetCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
+func (c *BackendCookie) secure() bool   { return c.flags&0b10000000 > 0 }
+func (c *BackendCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
 
-func (c *SetCookie) nameEqualString(name string) bool {
+func (c *BackendCookie) nameEqualString(name string) bool {
 	if int(c.nameSize) != len(name) {
 		return false
 	}
 	p := *c.input
 	return string(p[c.nameFrom:c.nameFrom+int16(c.nameSize)]) == name
 }
-func (c *SetCookie) nameEqualBytes(name []byte) bool {
+func (c *BackendCookie) nameEqualBytes(name []byte) bool {
 	if int(c.nameSize) != len(name) {
 		return false
 	}

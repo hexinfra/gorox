@@ -10,7 +10,7 @@ h1Backend "h1b1" {
 	)
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
-	.maxContentSize = 1T
+	.maxContentSizeAllowed = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
 	.balancer = "roundRobin"

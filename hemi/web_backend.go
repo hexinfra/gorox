@@ -21,7 +21,8 @@ type webBackend interface {
 	streamHolder
 	contentSaver
 	// Methods
-	MaxContentSize() int64 // allowed
+	MaxContentSizeAllowed() int64
+	MaxMemoryContentSize() int32
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
 }
@@ -349,11 +350,11 @@ type webBackendResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockSetCookies [8]SetCookie // for r.setCookies
+	stockCookies [8]BackendCookie // for r.cookies
 	// Stream states (controlled)
-	setCookie SetCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
+	cookie BackendCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
 	// Stream states (non-zeros)
-	setCookies []SetCookie // hold setCookies->r.input. [<r.stockSetCookies>/(make=32/128)]
+	cookies []BackendCookie // hold cookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
 	webBackendResponse0 // all values must be zero by default in this struct!
 }
@@ -399,14 +400,14 @@ func (r *webBackendResponse_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = true
 	r.webIn_.onUse(versionCode, asResponse)
 
-	r.setCookies = r.stockSetCookies[0:0:cap(r.stockSetCookies)] // use append()
+	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }
 func (r *webBackendResponse_) onEnd() { // for zeros
-	r.setCookie.input = nil
-	for i := 0; i < len(r.setCookies); i++ {
-		r.setCookies[i].input = nil
+	r.cookie.input = nil
+	for i := 0; i < len(r.cookies); i++ {
+		r.cookies[i].input = nil
 	}
-	r.setCookies = nil
+	r.cookies = nil
 	r.webBackendResponse0 = webBackendResponse0{}
 
 	r.webIn_.onEnd()
@@ -452,7 +453,7 @@ func (r *webBackendResponse_) examineHead() bool {
 		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
-	if r.contentSize > r.maxContentSize {
+	if r.contentSize > r.maxContentSizeAllowed {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http client's limit"
 		return false
 	}
@@ -557,19 +558,19 @@ func (r *webBackendResponse_) checkSetCookie(header *pair, index uint8) bool { /
 		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
 		return false
 	}
-	if len(r.setCookies) == cap(r.setCookies) {
-		if cap(r.setCookies) == cap(r.stockSetCookies) {
-			setCookies := make([]SetCookie, 0, 16)
-			r.setCookies = append(setCookies, r.setCookies...)
-		} else if cap(r.setCookies) == 16 {
-			setCookies := make([]SetCookie, 0, 128)
-			r.setCookies = append(setCookies, r.setCookies...)
+	if len(r.cookies) == cap(r.cookies) {
+		if cap(r.cookies) == cap(r.stockCookies) {
+			cookies := make([]BackendCookie, 0, 16)
+			r.cookies = append(cookies, r.cookies...)
+		} else if cap(r.cookies) == 16 {
+			cookies := make([]BackendCookie, 0, 128)
+			r.cookies = append(cookies, r.cookies...)
 		} else {
 			r.headResult = StatusRequestHeaderFieldsTooLarge
 			return false
 		}
 	}
-	r.setCookies = append(r.setCookies, r.setCookie)
+	r.cookies = append(r.cookies, r.cookie)
 	return true
 }
 
@@ -702,9 +703,9 @@ func (r *webBackendResponse_) parseSetCookie(setCookieString span) bool {
 	// httponly-av = "HttpOnly"
 	// samesite-av = "SameSite=" samesite-value
 	// extension-av = <any CHAR except CTLs or ";">
-	setCookie := &r.setCookie
-	setCookie.zero()
-	setCookie.input = &r.input
+	cookie := &r.cookie
+	cookie.zero()
+	cookie.input = &r.input
 	// TODO: parse
 	return true
 }
@@ -722,26 +723,26 @@ func (r *webBackendResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *webBackendResponse_) HasSetCookies() bool { return len(r.setCookies) > 0 }
-func (r *webBackendResponse_) GetSetCookie(name string) *SetCookie {
-	for i := 0; i < len(r.setCookies); i++ {
-		if setCookie := &r.setCookies[i]; setCookie.nameEqualString(name) {
-			return setCookie
+func (r *webBackendResponse_) HasCookies() bool { return len(r.cookies) > 0 }
+func (r *webBackendResponse_) GetCookie(name string) *BackendCookie {
+	for i := 0; i < len(r.cookies); i++ {
+		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
+			return cookie
 		}
 	}
 	return nil
 }
-func (r *webBackendResponse_) HasSetCookie(name string) bool {
-	for i := 0; i < len(r.setCookies); i++ {
-		if setCookie := &r.setCookies[i]; setCookie.nameEqualString(name) {
+func (r *webBackendResponse_) HasCookie(name string) bool {
+	for i := 0; i < len(r.cookies); i++ {
+		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
 			return true
 		}
 	}
 	return false
 }
-func (r *webBackendResponse_) forSetCookies(callback func(setCookie *SetCookie) bool) bool {
-	for i := 0; i < len(r.setCookies); i++ {
-		if !callback(&r.setCookies[i]) {
+func (r *webBackendResponse_) forCookies(callback func(cookie *BackendCookie) bool) bool {
+	for i := 0; i < len(r.cookies); i++ {
+		if !callback(&r.cookies[i]) {
 			return false
 		}
 	}
@@ -774,24 +775,6 @@ func (r *webBackendResponse_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
-}
-
-func (r *webBackendResponse_) arrayCopy(p []byte) bool {
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
-		if edge < r.arrayEdge { // overflow
-			return false
-		}
-		if !r._growArray(int32(len(p))) {
-			return false
-		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
-	}
-	return true
-}
-
-func (r *webBackendResponse_) saveContentFilesDir() string {
-	return r.stream.webAgent().SaveContentFilesDir()
 }
 
 // webBackendSocket_ is the mixin for H[1-3]Socket.

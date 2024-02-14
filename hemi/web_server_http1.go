@@ -493,11 +493,11 @@ func (s *http1Stream) execute() {
 		s.isSocket = true
 	} else { // exchan mode.
 		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-			req.maxContentSize = webapp.maxUploadContentSize
+			req.maxContentSizeAllowed = webapp.maxUploadContentSize
 		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
-			req.maxContentSize = int64(webapp.maxMemoryContentSize)
+			req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
 		}
-		if req.contentSize > req.maxContentSize {
+		if req.contentSize > req.maxContentSizeAllowed {
 			if req.expectContinue {
 				req.headResult = StatusExpectationFailed
 			} else {
@@ -1207,7 +1207,7 @@ func (r *http1Response) setConnectionClose() {
 	r.stream.(*http1Stream).conn.keepConn = false // explicitly
 }
 
-func (r *http1Response) SetCookie(cookie *Cookie) bool {
+func (r *http1Response) AddCookie(cookie *ServerCookie) bool {
 	if cookie.name == "" || cookie.invalid {
 		return false
 	}

@@ -342,14 +342,14 @@ type Gate_ struct {
 	server Server
 	// States
 	id       int32        // gate id
-	isShut   atomic.Bool  // is gate shut?
+	shut     atomic.Bool  // is gate shut?
 	numConns atomic.Int32 // TODO: false sharing
 }
 
 func (g *Gate_) Init(id int32, server Server) {
 	g.server = server
 	g.id = id
-	g.isShut.Store(false)
+	g.shut.Store(false)
 	g.numConns.Store(0)
 }
 
@@ -359,8 +359,8 @@ func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
 func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *Gate_) ID() int32        { return g.id }
-func (g *Gate_) IsShut() bool     { return g.isShut.Load() }
-func (g *Gate_) MarkShut()        { g.isShut.Store(true) }
+func (g *Gate_) IsShut() bool     { return g.shut.Load() }
+func (g *Gate_) MarkShut()        { g.shut.Store(true) }
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConnsPerGate() }
 
@@ -454,7 +454,6 @@ func (n *Node_) pushConn(conn backendConn) {
 	}
 	list.qnty++
 }
-
 func (n *Node_) closeFree() int {
 	list := &n.freeList
 

@@ -333,7 +333,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		)
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
-		.maxContentSize = 1T
+		.maxContentSizeAllowed = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
@@ -364,28 +364,28 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</li>
 				<li>
 					<p>.dialTimeout tcp 连接超时时间，包含 DNS 解析的时间。</p>
-					<code>语法：.dialTimeout = Durations
+					<code>语法：.dialTimeout = Duration
 						默认值：10s
 						取值范围： (1s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.writeTimeout = Durations
+					<code>语法：.writeTimeout = Duration
 						默认值：30s
 						取值范围： (1s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.readTimeout = Durations
+					<code>语法：.readTimeout = Duration
 						默认值：30s
 						取值范围： (1s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.aliveTimeout 连接存活时长，超过这个时间就从连接池剔除此连接。</p>
-					<code>语法：.aliveTimeout = Durations
+					<code>语法：.aliveTimeout = Duration
 						默认值：4s
 						取值范围：(1s, 10m]
 					</code>
@@ -406,7 +406,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</li>
 				<li>
 					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
-					<code>语法：.maxStreamsPerConn = Integers
+					<code>语法：.maxStreamsPerConn = Integer
 						默认值：1000
 						取值范围：[0, maxInt32)
 					</code>
@@ -419,15 +419,15 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize 整个 http 数据包最大限制。</p>
-					<code>语法：.maxContentSize = Sizes
+					<p>.maxContentSizeAllowed http 内容的最大限制。</p>
+					<code>语法：.maxContentSizeAllowed = Size
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
 				</li>
 				<li>
 					<p>.sendTimeout 发送整个 http 数据超时时间。</p>
-					<code>语法：.sendTimeout = Durations
+					<code>语法：.sendTimeout = Duration
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
@@ -545,7 +545,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			"rotate" : "day",
 			"format" : "%T",
 		]
-		.maxMemoryContentSize = 16M
 		.maxUploadContentSize = 128M
 		.settings = []
 		.proxyOnly = false
@@ -583,13 +582,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法： .webRoot = "path"
 					默认值： -  // 必须配置
 					取值范围：-
-				</code>
-				</li>
-				<li>
-					<p>.maxMemoryContentSize 一个请求可以加载到内存中的最大内容大小。</p>
-					<code>语法： .maxMemoryContentSize = Sizes
-					默认值： 16M
-					取值范围：(0, 1G]
 				</code>
 				</li>
 				<li>
@@ -1085,14 +1077,14 @@ stage {
 				</li>
 				<li>
 					<p>.recvTimeout 读取整个 cgi 数据包超时时间。0意味着不设置超时时间。</p>
-					<code>语法：.recvTimeout = Durations
+					<code>语法：.recvTimeout = Duration
 						默认值：60s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize cgi数据包最大限制</p>
-					<code>语法：.maxContentSize = 128M
+					<p>.maxContentSizeAllowed cgi 内容体最大限制</p>
+					<code>语法：.maxContentSizeAllowed = 128M
 						默认值：1T
 						取值范围： [0, +]
 					</code>
@@ -1475,7 +1467,7 @@ http1Proxy {
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConnsPerGate = 10000
 		.forApps = ("example_com")
-		.maxContentSize = 1T
+		.maxContentSizeAllowed = 1T
 		.recvTimeout = 120s
 		.sendTimeout = 120s
 		.forceScheme = ""
@@ -1499,14 +1491,14 @@ http1Proxy {
 				</code>
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.readTimeout = Durations
+					<code>语法：.readTimeout = Duration
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
 				</li>
 				<li>
 					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.writeTimeout = Durations
+					<code>语法：.writeTimeout = Duration
 						默认值：60s
 						取值范围： (0s, 10m]
 					</code>
@@ -1533,8 +1525,8 @@ http1Proxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize 数据包最大限制。</p>
-					<code>语法：.maxContentSize = Sizes
+					<p>.maxContentSizeAllowed 数据包最大限制。</p>
+					<code>语法：.maxContentSizeAllowed = Size
 						默认值：1T
 						取值范围： (0s, 内存最大值)
 					</code>

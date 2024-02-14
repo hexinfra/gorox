@@ -136,6 +136,19 @@ func (c *quicCase) execute(conn *QUICConn) (dealt bool) {
 	return false
 }
 
+var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []byte) bool{
+	"==": (*quicCase).equalMatch,
+	"^=": (*quicCase).prefixMatch,
+	"$=": (*quicCase).suffixMatch,
+	"*=": (*quicCase).containMatch,
+	"~=": (*quicCase).regexpMatch,
+	"!=": (*quicCase).notEqualMatch,
+	"!^": (*quicCase).notPrefixMatch,
+	"!$": (*quicCase).notSuffixMatch,
+	"!*": (*quicCase).notContainMatch,
+	"!~": (*quicCase).notRegexpMatch,
+}
+
 func (c *quicCase) equalMatch(conn *QUICConn, value []byte) bool { // value == patterns
 	return c.case_._equalMatch(value)
 }
@@ -165,19 +178,6 @@ func (c *quicCase) notContainMatch(conn *QUICConn, value []byte) bool { // value
 }
 func (c *quicCase) notRegexpMatch(conn *QUICConn, value []byte) bool { // value !~ patterns
 	return c.case_._notRegexpMatch(value)
-}
-
-var quicCaseMatchers = map[string]func(kase *quicCase, conn *QUICConn, value []byte) bool{
-	"==": (*quicCase).equalMatch,
-	"^=": (*quicCase).prefixMatch,
-	"$=": (*quicCase).suffixMatch,
-	"*=": (*quicCase).containMatch,
-	"~=": (*quicCase).regexpMatch,
-	"!=": (*quicCase).notEqualMatch,
-	"!^": (*quicCase).notPrefixMatch,
-	"!$": (*quicCase).notSuffixMatch,
-	"!*": (*quicCase).notContainMatch,
-	"!~": (*quicCase).notRegexpMatch,
 }
 
 // quicGate is an opening gate of QUICRouter.

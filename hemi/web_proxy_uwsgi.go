@@ -35,11 +35,11 @@ type uwsgiProxy struct {
 	backend *TCPSBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	bufferClientContent bool          // client content is buffered anyway?
-	bufferServerContent bool          // server content is buffered anyway?
-	sendTimeout         time.Duration // timeout to send the whole request
-	recvTimeout         time.Duration // timeout to recv the whole response content
-	maxContentSize      int64         // max response content size allowed
+	bufferClientContent   bool          // client content is buffered anyway?
+	bufferServerContent   bool          // server content is buffered anyway?
+	sendTimeout           time.Duration // timeout to send the whole request
+	recvTimeout           time.Duration // timeout to recv the whole response content
+	maxContentSizeAllowed int64         // max response content size allowed
 }
 
 func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -104,12 +104,12 @@ func (h *uwsgiProxy) OnConfigure() {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 
-	// maxContentSize
-	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
+	// maxContentSizeAllowed
+	h.ConfigureInt64("maxContentSizeAllowed", &h.maxContentSizeAllowed, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize has an invalid value")
+		return errors.New(".maxContentSizeAllowed has an invalid value")
 	}, _1T)
 }
 func (h *uwsgiProxy) OnPrepare() {

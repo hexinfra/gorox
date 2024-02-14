@@ -15,10 +15,142 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
+
+// webAgent is a webServer or webBackend which keeps its connections and streams.
+type webAgent interface {
+	// Imports
+	agent
+	contentSaver
+	// Methods
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	SendTimeout() time.Duration // timeout to send the whole message
+	MaxContentSizeAllowed() int64
+	MaxMemoryContentSize() int32
+}
+
+// _webAgent_ is the mixin for webServer_ and webBackend_.
+type _webAgent_ struct {
+	// States
+	recvTimeout           time.Duration // timeout to recv the whole message content
+	sendTimeout           time.Duration // timeout to send the whole message
+	maxContentSizeAllowed int64         // max content size allowed
+	maxMemoryContentSize  int32         // max content size that can be loaded into memory directly
+}
+
+func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
+
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, recvTimeout)
+
+	// maxContentSizeAllowed
+	shell.ConfigureInt64("maxContentSizeAllowed", &a.maxContentSizeAllowed, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSizeAllowed has an invalid value")
+	}, _1T)
+
+	// maxMemoryContentSize
+	shell.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G {
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize has an invalid value")
+	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
+}
+func (a *_webAgent_) onPrepare(shell Component) {
+	// Currently nothing
+}
+
+func (a *_webAgent_) RecvTimeout() time.Duration   { return a.recvTimeout }
+func (a *_webAgent_) SendTimeout() time.Duration   { return a.sendTimeout }
+func (a *_webAgent_) MaxContentSizeAllowed() int64 { return a.maxContentSizeAllowed }
+func (a *_webAgent_) MaxMemoryContentSize() int32  { return a.maxMemoryContentSize }
+
+// webConn is the interface for *http[1-3]Conn and *H[1-3]Conn.
+type webConn interface {
+	IsUDS() bool
+	IsTLS() bool
+	makeTempName(p []byte, unixTime int64) int
+	isBroken() bool
+	markBroken()
+}
+
+// _webConn_ is the mixin for webServerConn_ and webBackendConn_.
+type _webConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	usedStreams atomic.Int32 // num of streams served or used
+	broken      atomic.Bool  // is conn broken?
+}
+
+func (c *_webConn_) onGet() {
+}
+func (c *_webConn_) onPut() {
+	c.counter.Store(0)
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
+}
+
+func (c *_webConn_) isBroken() bool { return c.broken.Load() }
+func (c *_webConn_) markBroken()    { c.broken.Store(true) }
+
+// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
+type webStream interface {
+	webAgent() webAgent
+	webConn() webConn
+	remoteAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
+
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+
+	isBroken() bool // if either side of the stream is broken, then it is broken
+	markBroken()    // mark stream as broken
+}
+
+// _webStream_ is the mixin for webServerStream_ and webBackendStream_.
+type _webStream_ struct {
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+	isSocket bool // is websocket?
+}
+
+func (s *_webStream_) onUse() {
+}
+func (s *_webStream_) onEnd() {
+	s.isSocket = false
+}
 
 // webIn is the interface for *http[1-3]Request and *H[1-3]Response. Used as shell by webIn_.
 type webIn interface {
@@ -29,8 +161,6 @@ type webIn interface {
 	readContent() (p []byte, err error)
 	examineTail() bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-	arrayCopy(p []byte) bool
-	saveContentFilesDir() string
 }
 
 // webIn_ is the mixin for webServerRequest_ and webBackendResponse_.
@@ -50,19 +180,19 @@ type webIn_ struct { // incoming. needs parsing
 	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
-	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
-	recvTimeout    time.Duration // timeout to recv the whole message content
-	maxContentSize int64         // max content size allowed for current message. if content is vague, size will be calculated on receiving
-	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
-	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse     bool          // treat this message as response?
-	keepAlive      int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	_              byte          // padding
-	headResult     int16         // result of receiving message head. values are same as http status for convenience
-	bodyResult     int16         // result of receiving message body. values are same as http status for convenience
+	input                 []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	array                 []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes                []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras                []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	recvTimeout           time.Duration // timeout to recv the whole message content
+	maxContentSizeAllowed int64         // max content size allowed for current message. if content is vague, size will be calculated on receiving
+	contentSize           int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
+	versionCode           uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse            bool          // treat this message as response?
+	keepAlive             int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_                     byte          // padding
+	headResult            int16         // result of receiving message head. values are same as http status for convenience
+	bodyResult            int16         // result of receiving message body. values are same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
@@ -121,7 +251,7 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.stream.webAgent().RecvTimeout()
-	r.maxContentSize = r.stream.webAgent().MaxContentSize()
+	r.maxContentSizeAllowed = r.stream.webAgent().MaxContentSizeAllowed()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -793,7 +923,7 @@ func (r *webIn_) unsafeContent() []byte {
 	}
 	return r.contentText[0:r.receivedSize]
 }
-func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
+func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSizeAllowed]
 	if r.contentReceived {
 		// Content is in r.contentText already.
 		return
@@ -803,7 +933,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = webContentTextPool
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
 		contentFile := content.(*os.File)
 		if r.receivedSize == 0 { // vague content can has 0 size
 			r.contentText = r.input
@@ -844,7 +974,7 @@ func (r *webIn_) takeContent() any { // used by proxies
 		r.contentText = content
 		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
 		return r.contentText[0:r.receivedSize]
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -857,7 +987,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 	switch content := r.recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
 		if content != fakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
@@ -885,7 +1015,7 @@ func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content 
 		}
 		r.receivedSize += int64(n)
 		return contentText // []byte, fetched from pool
-	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when vague. save to tempFile and return the file
+	} else { // (64K1, r.maxContentSizeAllowed] when sized, or [0, r.maxContentSizeAllowed] when vague. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
 			return err
@@ -1288,6 +1418,22 @@ func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field
 	return true
 }
 
+func (r *webIn_) arrayCopy(p []byte) bool {
+	if len(p) > 0 {
+		edge := r.arrayEdge + int32(len(p))
+		if edge < r.arrayEdge { // overflow
+			return false
+		}
+		if edge > r.stream.webAgent().MaxMemoryContentSize() {
+			return false
+		}
+		if !r._growArray(int32(len(p))) {
+			return false
+		}
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
+	}
+	return true
+}
 func (r *webIn_) arrayPush(b byte) {
 	r.array[r.arrayEdge] = b
 	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
@@ -1347,11 +1493,14 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 	return true
 }
 
+func (r *webIn_) saveContentFilesDir() string {
+	return r.stream.webAgent().SaveContentFilesDir()
+}
 func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil
 	}
-	filesDir := r.shell.saveContentFilesDir()
+	filesDir := r.saveContentFilesDir()
 	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
 	n += r.stream.makeTempName(filePath[n:], r.recvTime.Unix())

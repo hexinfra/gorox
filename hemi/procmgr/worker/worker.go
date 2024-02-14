@@ -9,6 +9,9 @@ package worker
 
 import (
 	"net"
+	"os"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/hexinfra/gorox/hemi"
@@ -51,7 +54,7 @@ func Main(token string) {
 	}
 	curStage.Start(0)
 
-	// Stage started, now waiting for leader's commands.
+	// Initial stage started, now waiting for leader's commands.
 	for { // each message from leader process
 		req, err := msgx.Recv(admConn, 16<<20)
 		if err != nil { // leader must be gone
@@ -76,4 +79,47 @@ func Main(token string) {
 	}
 
 	common.Stop() // the loop is broken. simply stop worker
+}
+
+var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
+	common.ComdWorker: func(req *msgx.Message, resp *msgx.Message) {
+		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
+	},
+	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
+		newStage, err := hemi.BootFile(configBase, configFile)
+		if err != nil {
+			hemi.Errorln(err.Error())
+			resp.Flag = 500
+			return
+		}
+		oldStage := curStage
+		newStage.Start(oldStage.ID() + 1)
+		curStage = newStage
+		oldStage.Quit()
+	},
+}
+
+var onTells = map[uint8]func(req *msgx.Message){
+	common.ComdQuit: func(req *msgx.Message) {
+		curStage.Quit() // blocking
+		os.Exit(0)
+	},
+	common.ComdCPU: func(req *msgx.Message) {
+		curStage.ProfCPU()
+	},
+	common.ComdHeap: func(req *msgx.Message) {
+		curStage.ProfHeap()
+	},
+	common.ComdThread: func(req *msgx.Message) {
+		curStage.ProfThread()
+	},
+	common.ComdGoroutine: func(req *msgx.Message) {
+		curStage.ProfGoroutine()
+	},
+	common.ComdBlock: func(req *msgx.Message) {
+		curStage.ProfBlock()
+	},
+	common.ComdGC: func(req *msgx.Message) {
+		runtime.GC()
+	},
 }

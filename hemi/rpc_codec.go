@@ -7,6 +7,68 @@
 
 package hemi
 
+import (
+	"errors"
+	"time"
+)
+
+// rpcAgent
+type rpcAgent interface {
+	// Imports
+	agent
+	// Methods
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	SendTimeout() time.Duration // timeout to send the whole message
+}
+
+// rpcConn
+type rpcConn interface {
+	// TODO
+}
+
+// rpcStream is the interface for *hrpcStream and *HStream.
+type rpcStream interface {
+	// TODO
+}
+
+// _rpcAgent_
+type _rpcAgent_ struct {
+	// States
+	recvTimeout time.Duration // timeout to recv the whole message content
+	sendTimeout time.Duration // timeout to send the whole message
+}
+
+func (a *_rpcAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
+
+	// recvTimeout
+	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, recvTimeout)
+}
+func (a *_rpcAgent_) onPrepare(shell Component) {
+}
+
+func (a *_rpcAgent_) RecvTimeout() time.Duration { return a.recvTimeout }
+func (a *_rpcAgent_) SendTimeout() time.Duration { return a.sendTimeout }
+
+// _rpcConn_
+type _rpcConn_ struct {
+}
+
+// _rpcStream_
+type _rpcStream_ struct {
+}
+
 // rpcIn is the interface for *hrpcRequest and *HResponse. Used as shell by rpcIn_.
 type rpcIn interface {
 	// TODO

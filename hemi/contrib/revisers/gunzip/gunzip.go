@@ -25,7 +25,7 @@ type gunzipReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 	onContentTypes []string

@@ -28,7 +28,7 @@ type redisStater struct {
 	// Mixins
 	Stater_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	nodes []string
 }

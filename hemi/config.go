@@ -178,14 +178,18 @@ func (c *config) bootFile(base string, path string) (stage *Stage, err error) {
 	return c.doParse()
 }
 
-func (c *config) show() {
+func (c *config) showTokens() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
 		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
 
-func (c *config) current() *token           { return &c.tokens[c.index] }
+func (c *config) current() *token { return &c.tokens[c.index] }
+func (c *config) forward() *token {
+	c._forwardCheckEOF()
+	return &c.tokens[c.index]
+}
 func (c *config) currentIs(kind int16) bool { return c.tokens[c.index].kind == kind }
 func (c *config) nextIs(kind int16) bool {
 	if c.index == c.limit {
@@ -201,17 +205,15 @@ func (c *config) expect(kind int16) *token {
 	return current
 }
 func (c *config) forwardExpect(kind int16) *token {
-	if c.index++; c.index == c.limit {
-		panic(errors.New("config: unexpected EOF"))
-	}
+	c._forwardCheckEOF()
 	return c.expect(kind)
 }
-func (c *config) forward() *token {
+func (c *config) _forwardCheckEOF() {
 	if c.index++; c.index == c.limit {
 		panic(errors.New("config: unexpected EOF"))
 	}
-	return &c.tokens[c.index]
 }
+
 func (c *config) newName() string {
 	c.counter++
 	return strconv.Itoa(c.counter)

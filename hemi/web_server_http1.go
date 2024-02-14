@@ -614,7 +614,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 }
 func (s *http1Stream) executeSocket() { // upgrade: websocket
-	// TODO(diogin): implementation (RFC 6455), use s.serveSocket()
+	// TODO(diogin): implementation (RFC 6455). use s.serveSocket()?
 	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 	s.conn.closeConn()
@@ -682,7 +682,7 @@ func (r *http1Request) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if Debug() >= 2 {
-		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.(*http1Stream).conn.id, r.input[r.head.from:r.head.edge])
+		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *http1Request) recvControl() bool { // method SP request-target SP HTTP-version CRLF
@@ -1204,7 +1204,7 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 	}
 }
 func (r *http1Response) setConnectionClose() {
-	r.stream.(*http1Stream).conn.keepConn = false // explicitly
+	r.stream.webConn().(*http1Conn).keepConn = false // explicitly
 }
 
 func (r *http1Response) AddCookie(cookie *ServerCookie) bool {
@@ -1265,7 +1265,7 @@ func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webAgent().Stage().clock.writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {
@@ -1287,7 +1287,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
 				// response containing Transfer-Encoding unless the corresponding
 				// request indicates HTTP/1.1 (or later).
-				r.stream.(*http1Stream).conn.keepConn = false // close conn anyway for HTTP/1.0
+				r.stream.webConn().(*http1Conn).keepConn = false // close conn anyway for HTTP/1.0
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
@@ -1295,7 +1295,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
-	if r.stream.(*http1Stream).conn.keepConn { // connection: keep-alive\r\n
+	if r.stream.webConn().(*http1Conn).keepConn { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))

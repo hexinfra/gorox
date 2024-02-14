@@ -79,6 +79,7 @@ OPTIONS
 
 `
 
+// Args is the args passed to Main() to control its behavior.
 type Args struct {
 	Title      string
 	Program    string
@@ -88,6 +89,7 @@ type Args struct {
 	Usage      string
 }
 
+// Main is the main() for both leader process and worker process.
 func Main(args *Args) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
@@ -165,63 +167,61 @@ func Main(args *Args) {
 			} else {
 				fmt.Println("PASS")
 			}
-			return
-		}
-
-		// Now serve.
-		if common.SingleMode { // run as single foreground process. for single mode
-			if stage, err := hemi.BootFile(common.GetConfig()); err == nil {
-				stage.Start(0)
-				select {} // waiting forever
-			} else {
-				fmt.Fprintln(os.Stderr, err.Error())
-			}
-		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run leader process as daemon
-			if token == "leader" { // leader daemon
-				system.DaemonInit()
-				leader.Main()
-			} else { // worker daemon
-				worker.Main(token)
-			}
-		} else if common.DaemonMode { // start leader daemon and exit
-			newFile := func(file string, ext string, osFile *os.File) *os.File {
-				if file == "" {
-					file = common.LogsDir + "/" + common.Program + ext
-				} else if !filepath.IsAbs(file) {
-					file = common.BaseDir + "/" + file
+		} else { // serve!
+			if common.SingleMode { // run as single foreground process. for single mode
+				if stage, err := hemi.BootFile(common.GetConfig()); err == nil {
+					stage.Start(0)
+					select {} // waiting forever
+				} else {
+					fmt.Fprintln(os.Stderr, err.Error())
 				}
-				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-					common.Crash(err.Error())
+			} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run process as daemon
+				if token == "leader" { // leader daemon
+					system.DaemonInit()
+					leader.Main()
+				} else { // worker daemon
+					worker.Main(token)
 				}
-				if !common.DaemonMode {
-					osFile.Close()
+			} else if common.DaemonMode { // start leader daemon and exit
+				newFile := func(file string, ext string, osFile *os.File) *os.File {
+					if file == "" {
+						file = common.LogsDir + "/" + common.Program + ext
+					} else if !filepath.IsAbs(file) {
+						file = common.BaseDir + "/" + file
+					}
+					if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+						common.Crash(err.Error())
+					}
+					if !common.DaemonMode {
+						osFile.Close()
+					}
+					osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+					if err != nil {
+						common.Crash(err.Error())
+					}
+					return osFile
 				}
-				osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
+				stdout := newFile(common.OutFile, ".out", os.Stdout)
+				stderr := newFile(common.ErrFile, ".err", os.Stderr)
+				devNull, err := os.Open(os.DevNull)
 				if err != nil {
 					common.Crash(err.Error())
 				}
-				return osFile
+				if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+					Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+					Files: []*os.File{devNull, stdout, stderr},
+					Sys:   system.DaemonSysAttr(),
+				}); err == nil { // leader process started
+					process.Release()
+					devNull.Close()
+					stdout.Close()
+					stderr.Close()
+				} else {
+					common.Crash(err.Error())
+				}
+			} else { // run as foreground leader. default case
+				leader.Main()
 			}
-			stdout := newFile(common.OutFile, ".out", os.Stdout)
-			stderr := newFile(common.ErrFile, ".err", os.Stderr)
-			devNull, err := os.Open(os.DevNull)
-			if err != nil {
-				common.Crash(err.Error())
-			}
-			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-				Files: []*os.File{devNull, stdout, stderr},
-				Sys:   system.DaemonSysAttr(),
-			}); err == nil { // leader process started
-				process.Release()
-				devNull.Close()
-				stdout.Close()
-				stderr.Close()
-			} else {
-				common.Crash(err.Error())
-			}
-		} else { // run as foreground leader. default case
-			leader.Main()
 		}
 	default: // as control client
 		client.Main(action)

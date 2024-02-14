@@ -17,12 +17,7 @@ import (
 
 const Version = "0.2.0-dev"
 
-var _debug atomic.Int32 // debug level
-
-func SetDebug(level int32) { _debug.Store(level) }
-func Debug() int32         { return _debug.Load() }
-
-var (
+var ( // basic variables
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
 	_logsOnce sync.Once    // protects _logsDir
@@ -31,6 +26,8 @@ var (
 	_tmpsDir  atomic.Value // directory of the temp files
 	_varsOnce sync.Once    // protects _varsDir
 	_varsDir  atomic.Value // directory of the run-time data
+
+	_debug atomic.Int32 // debug level
 )
 
 func SetBaseDir(dir string) { // only once!
@@ -63,6 +60,25 @@ func _mkdir(dir string) {
 	}
 }
 
+func SetDebug(level int32) { _debug.Store(level) }
+
+func BootText(text string) (*Stage, error) {
+	_checkDirs()
+	var c config
+	return c.bootText(text)
+}
+func BootFile(base string, file string) (*Stage, error) {
+	_checkDirs()
+	var c config
+	return c.bootFile(base, file)
+}
+func _checkDirs() {
+	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tmpsDir.Load() == nil || _varsDir.Load() == nil {
+		UseExitln("baseDir, logsDir, tmpsDir, and varsDir must all be set")
+	}
+}
+
+func Debug() int32    { return _debug.Load() }
 func BaseDir() string { return _baseDir.Load().(string) }
 func LogsDir() string { return _logsDir.Load().(string) }
 func TmpsDir() string { return _tmpsDir.Load().(string) }
@@ -118,20 +134,4 @@ func _exitln(exitCode int, prefix string, args ...any) {
 func _exitf(exitCode int, prefix, format string, args ...any) {
 	fmt.Fprintf(os.Stderr, prefix+format, args...)
 	os.Exit(exitCode)
-}
-
-func BootText(text string) (*Stage, error) {
-	_checkDirs()
-	var c config
-	return c.bootText(text)
-}
-func BootFile(base string, file string) (*Stage, error) {
-	_checkDirs()
-	var c config
-	return c.bootFile(base, file)
-}
-func _checkDirs() {
-	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tmpsDir.Load() == nil || _varsDir.Load() == nil {
-		UseExitln("baseDir, logsDir, tmpsDir, and varsDir must all be set")
-	}
 }

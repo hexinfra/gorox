@@ -28,7 +28,7 @@ type redisCacher struct {
 	// Mixins
 	Cacher_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	nodes []string
 }

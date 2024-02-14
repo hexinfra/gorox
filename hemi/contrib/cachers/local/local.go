@@ -28,7 +28,7 @@ type localCacher struct {
 	// Mixins
 	Cacher_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	cacheDir string // /path/to/dir
 }

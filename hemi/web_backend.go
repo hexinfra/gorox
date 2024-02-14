@@ -51,12 +51,12 @@ func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+b.name)
 	b.loadBalancer_.onConfigure(shell)
 }
-func (b *webBackend_[N]) onPrepare(shell Component, numNodes int) {
+func (b *webBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._webAgent_.onPrepare(shell)
 	b.streamHolder_.onPrepare(shell)
 	b.contentSaver_.onPrepare(shell, 0755)
-	b.loadBalancer_.onPrepare(numNodes)
+	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
 // webBackendConn_ is the mixin for H[1-3]Conn.

@@ -40,7 +40,7 @@ func (b *H2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
 func (b *H2Backend) OnPrepare() {
-	b.webBackend_.onPrepare(b, len(b.nodes))
+	b.webBackend_.onPrepare(b)
 }
 
 func (b *H2Backend) NewNode(id int32) *h2Node {

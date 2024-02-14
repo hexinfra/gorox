@@ -36,7 +36,7 @@ type accessChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 	allow []string // allows access for the specified network or address.

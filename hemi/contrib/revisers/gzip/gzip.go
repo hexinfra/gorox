@@ -27,7 +27,7 @@ type gzipReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 	compressLevel  int

@@ -24,7 +24,7 @@ type helloDealet struct {
 	// Mixins
 	TCPSDealet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	router *TCPSRouter
 	// States
 }

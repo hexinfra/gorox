@@ -30,7 +30,7 @@ type clockFixture struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	resolution time.Duration
 	date       atomic.Int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit

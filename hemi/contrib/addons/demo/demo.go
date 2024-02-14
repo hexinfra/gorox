@@ -26,7 +26,7 @@ type demoAddon struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 }
 

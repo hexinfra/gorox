@@ -37,7 +37,7 @@ func (b *rpcBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
 	b._rpcAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 }
-func (b *rpcBackend_[N]) onPrepare(shell Component, numNodes int) {
+func (b *rpcBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._rpcAgent_.onPrepare(shell)
 }
@@ -61,18 +61,18 @@ func (c *rpcBackendConn_) onPut() {
 
 func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.Backend().(rpcBackend) }
 
-// rpcBackendExchan_
-type rpcBackendExchan_ struct {
+// rpcBackendStream_
+type rpcBackendStream_ struct {
 	// Mixins
 	Stream_
 	// TODO
 }
 
-func (x *rpcBackendExchan_) onUse() {
-	x.Stream_.onUse()
+func (s *rpcBackendStream_) onUse() {
+	s.Stream_.onUse()
 }
-func (x *rpcBackendExchan_) onEnd() {
-	x.Stream_.onEnd()
+func (s *rpcBackendStream_) onEnd() {
+	s.Stream_.onEnd()
 }
 
 // rpcBackendRequest_

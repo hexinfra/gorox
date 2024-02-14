@@ -24,7 +24,7 @@ type limitChecker struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 }

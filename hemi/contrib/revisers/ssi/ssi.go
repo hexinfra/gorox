@@ -27,7 +27,7 @@ type ssiReviser struct {
 	// Mixins
 	Reviser_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 	rank int8

@@ -359,7 +359,7 @@ func (a *Webapp) exchanDispatch(req Request, resp Response) {
 			return
 		}
 	}
-	// If we reach here, it means the stream is not handled by any rules or handlets in this webapp.
+	// If we reach here, it means the exchan is not handled by any rules or handlets in this webapp.
 	resp.SendNotFound(a.text404)
 }
 func (a *Webapp) socketDispatch(req Request, sock Socket) {
@@ -1065,7 +1065,7 @@ type Response interface {
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	pass1xx(resp response) bool                      // used by proxies
-	pass(resp webIn) error                           // used by proxies
+	pass(resp _webIn) error                          // used by proxies
 	post(content any, hasTrailers bool) error        // used by proxies
 	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
 	copyTailFrom(resp response) bool                 // used by proxies

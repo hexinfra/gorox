@@ -24,7 +24,7 @@ type dnsDealet struct {
 	// Mixins
 	UDPSDealet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	router *UDPSRouter
 	// States
 }

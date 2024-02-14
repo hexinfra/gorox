@@ -42,7 +42,7 @@ func (b *H1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
 func (b *H1Backend) OnPrepare() {
-	b.webBackend_.onPrepare(b, len(b.nodes))
+	b.webBackend_.onPrepare(b)
 }
 
 func (b *H1Backend) NewNode(id int32) *h1Node {
@@ -509,7 +509,7 @@ func (r *H1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if Debug() >= 2 {
-		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.(*H1Stream).conn.id, r.input[r.head.from:r.head.edge])
+		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

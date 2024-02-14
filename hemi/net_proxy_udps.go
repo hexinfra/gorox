@@ -20,7 +20,7 @@ type udpsProxy struct {
 	// Mixins
 	UDPSDealet_
 	// Assocs
-	stage   *Stage
+	stage   *Stage // current stage
 	router  *UDPSRouter
 	backend *UDPSBackend
 	// States

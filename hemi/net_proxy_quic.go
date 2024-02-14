@@ -20,7 +20,7 @@ type quicProxy struct {
 	// Mixins
 	QUICDealet_
 	// Assocs
-	stage   *Stage
+	stage   *Stage // current stage
 	router  *QUICRouter
 	backend *QUICBackend
 	// States

@@ -28,7 +28,7 @@ type localStater struct {
 	// Mixins
 	Stater_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	stateDir string // /path/to/dir
 }

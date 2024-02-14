@@ -111,18 +111,18 @@ func (c *rpcServerConn_) onPut() {
 
 func (c *rpcServerConn_) rpcServer() rpcServer { return c.Server().(rpcServer) }
 
-// rpcServerExchan_
-type rpcServerExchan_ struct {
+// rpcServerStream_
+type rpcServerStream_ struct {
 	// Mixins
 	Stream_
 	// TODO
 }
 
-func (x *rpcServerExchan_) onUse() {
-	x.Stream_.onUse()
+func (s *rpcServerStream_) onUse() {
+	s.Stream_.onUse()
 }
-func (x *rpcServerExchan_) onEnd() {
-	x.Stream_.onEnd()
+func (s *rpcServerStream_) onEnd() {
+	s.Stream_.onEnd()
 }
 
 // rpcServerRequest_

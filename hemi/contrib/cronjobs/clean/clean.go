@@ -26,7 +26,7 @@ type cleanCronjob struct {
 	// Mixins
 	Cronjob_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 }
 

@@ -36,7 +36,7 @@ type fcacheFixture struct {
 	// Mixins
 	Component_
 	// Assocs
-	stage *Stage
+	stage *Stage // current stage
 	// States
 	smallFileSize int64 // what size is considered as small file
 	maxSmallFiles int32 // max number of small files. for small files, contents are cached

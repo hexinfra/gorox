@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webAgent is a webServer or webBackend which keeps its connections and streams.
+// webAgent collects shared methods between webServer or webBackend.
 type webAgent interface {
 	// Imports
 	agent
@@ -31,6 +31,38 @@ type webAgent interface {
 	SendTimeout() time.Duration // timeout to send the whole message
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
+}
+
+// webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
+type webConn interface {
+	ID() int64
+	IsUDS() bool
+	IsTLS() bool
+	makeTempName(p []byte, unixTime int64) int
+	isBroken() bool
+	markBroken()
+}
+
+// webStream collects shared methods between *http[1-3]Stream and *H[1-3]Stream.
+type webStream interface {
+	webAgent() webAgent
+	webConn() webConn
+	remoteAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
+
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+
+	isBroken() bool // if either side of the stream is broken, then it is broken
+	markBroken()    // mark stream as broken
 }
 
 // _webAgent_ is the mixin for webServer_ and webBackend_.
@@ -84,15 +116,6 @@ func (a *_webAgent_) SendTimeout() time.Duration   { return a.sendTimeout }
 func (a *_webAgent_) MaxContentSizeAllowed() int64 { return a.maxContentSizeAllowed }
 func (a *_webAgent_) MaxMemoryContentSize() int32  { return a.maxMemoryContentSize }
 
-// webConn is the interface for *http[1-3]Conn and *H[1-3]Conn.
-type webConn interface {
-	IsUDS() bool
-	IsTLS() bool
-	makeTempName(p []byte, unixTime int64) int
-	isBroken() bool
-	markBroken()
-}
-
 // _webConn_ is the mixin for webServerConn_ and webBackendConn_.
 type _webConn_ struct {
 	// Conn states (stocks)
@@ -115,28 +138,6 @@ func (c *_webConn_) onPut() {
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
 func (c *_webConn_) markBroken()    { c.broken.Store(true) }
 
-// webStream is the interface for *http[1-3]Stream and *H[1-3]Stream.
-type webStream interface {
-	webAgent() webAgent
-	webConn() webConn
-	remoteAddr() net.Addr
-
-	buffer256() []byte
-	unsafeMake(size int) []byte
-	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
-
-	setReadDeadline(deadline time.Time) error
-	setWriteDeadline(deadline time.Time) error
-
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
-
-	isBroken() bool // if either side of the stream is broken, then it is broken
-	markBroken()    // mark stream as broken
-}
-
 // _webStream_ is the mixin for webServerStream_ and webBackendStream_.
 type _webStream_ struct {
 	// Stream states (stocks)
@@ -152,8 +153,8 @@ func (s *_webStream_) onEnd() {
 	s.isSocket = false
 }
 
-// webIn is the interface for *http[1-3]Request and *H[1-3]Response. Used as shell by webIn_.
-type webIn interface {
+// _webIn collects shared methods between *http[1-3]Request and *H[1-3]Response. Used as shell by webIn_.
+type _webIn interface {
 	ContentSize() int64
 	IsVague() bool
 	HasTrailers() bool
@@ -166,7 +167,7 @@ type webIn interface {
 // webIn_ is the mixin for webServerRequest_ and webBackendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell  webIn     // *http[1-3]Request, *H[1-3]Response
+	shell  _webIn    // *http[1-3]Request, *H[1-3]Response
 	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
@@ -1173,7 +1174,7 @@ func (r *webIn_) hasPairs(primes zone, extraKind int8) bool {
 }
 func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collect values of main fields
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collects values of main fields
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
@@ -1211,7 +1212,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 	if hash == 0 {
 		hash = stringHash(name)
 	}
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1258,7 +1259,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 	if hash == 0 {
 		hash = stringHash(name)
 	}
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collect data of fields without comma
+	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1391,10 +1392,10 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	}
 }
 
-func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.copyHeadFrom(). excluding sub headers
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by _webOut.copyHeadFrom(). excluding sub headers
 	return r._forMainFields(r.headers, kindHeader, callback)
 }
-func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.copyTailFrom(). excluding sub trailers
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by _webOut.copyTailFrom(). excluding sub trailers
 	return r._forMainFields(r.trailers, kindTrailer, callback)
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
@@ -1522,8 +1523,8 @@ var ( // web incoming message errors
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
-// webOut is the interface for *http[1-3]Response and *H[1-3]Request. Used as shell by webOut_.
-type webOut interface {
+// _webOut collects shared methods between *http[1-3]Response and *H[1-3]Request. Used as shell by webOut_.
+type _webOut interface {
 	control() []byte
 	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
@@ -1552,7 +1553,7 @@ type webOut interface {
 // webOut_ is the mixin for webServerResponse_ and webBackendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell  webOut    // *http[1-3]Response, *H[1-3]Request
+	shell  _webOut   // *http[1-3]Response, *H[1-3]Request
 	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
@@ -1565,7 +1566,7 @@ type webOut_ struct { // outgoing. needs building
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	versionCode uint8         // Version1_1, Version2, Version3
-	asRequest   bool          // use webOut as request?
+	asRequest   bool          // treat this message as request?
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
@@ -1803,7 +1804,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
-func (r *webOut_) pass(in webIn) error { // used by proxes, to sync content to the other side directly
+func (r *webOut_) pass(in _webIn) error { // used by proxes, to sync content to the other side directly
 	pass := r.shell.passBytes
 	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -1852,9 +1853,9 @@ func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies
 			return err
 		}
 		if hasTrailers { // we must use vague
-			return r.echoFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
+			return r.echoFile(contentFile, fileInfo, false) // false means don't close on end. this file doesn't belong to r
 		} else {
-			return r.sendFile(contentFile, fileInfo, false) // false means don't close on end. this file belongs to webIn
+			return r.sendFile(contentFile, fileInfo, false) // false means don't close on end. this file doesn't belong to r
 		}
 	} else { // nil means no content.
 		if err := r._beforeSend(); err != nil {

@@ -24,7 +24,7 @@ type helloSocklet struct {
 	// Mixins
 	Socklet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 }

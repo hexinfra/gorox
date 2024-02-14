@@ -479,7 +479,7 @@ type ServerConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64
+	id     int64 // the conn id
 	server Server
 	gate   Gate
 	// Conn states (zeros)
@@ -499,6 +499,7 @@ func (c *ServerConn_) OnPut() {
 	c.lastWrite = time.Time{}
 }
 
+func (c *ServerConn_) ID() int64      { return c.id }
 func (c *ServerConn_) Server() Server { return c.server }
 func (c *ServerConn_) Gate() Gate     { return c.gate }
 
@@ -532,6 +533,7 @@ func (c *BackendConn_) OnPut() {
 	c.lastRead = time.Time{}
 }
 
+func (c *BackendConn_) ID() int64        { return c.id }
 func (c *BackendConn_) Backend() Backend { return c.backend }
 func (c *BackendConn_) Node() Node       { return c.node }
 

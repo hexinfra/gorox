@@ -34,7 +34,7 @@ func (b *HRPCBackend) OnConfigure() {
 	b.rpcBackend_.onConfigure(b)
 }
 func (b *HRPCBackend) OnPrepare() {
-	b.rpcBackend_.onPrepare(b, len(b.nodes))
+	b.rpcBackend_.onPrepare(b)
 }
 
 func (b *HRPCBackend) NewNode(id int32) *hrpcNode {
@@ -76,37 +76,37 @@ func (c *HConn) Close() error { // only used by clients of dial
 	return nil
 }
 
-// HExchan is the backend-side HRPC exchan.
-type HExchan struct {
+// HStream is the backend-side HRPC stream.
+type HStream struct {
 	// Mixins
-	rpcBackendExchan_
+	rpcBackendStream_
 	// Assocs
 	request  HRequest
 	response HResponse
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
 	node *hrpcNode
 	id   int32
-	// Exchan states (zeros)
+	// Stream states (zeros)
 }
 
 // HRequest is the backend-side HRPC request.
 type HRequest struct {
 	// Mixins
 	rpcBackendRequest_
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	// Exchan states (zeros)
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
 // HResponse is the backend-side HRPC response.
 type HResponse struct {
 	// Mixins
 	rpcBackendResponse_
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	// Exchan states (zeros)
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }

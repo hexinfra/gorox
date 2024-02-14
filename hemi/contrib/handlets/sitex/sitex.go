@@ -29,7 +29,7 @@ type Sitex struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage  *Stage
+	stage  *Stage // current stage
 	webapp *Webapp
 	// States
 	sites         map[string]*Site // name -> site

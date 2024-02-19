@@ -110,3 +110,9 @@ func (c *RedisConn) onPut() {
 	c.rawConn = nil
 	c.BackendConn_.OnPut()
 }
+
+func (c *RedisConn) Close() error {
+	netConn := c.netConn
+	putRedisConn(c)
+	return netConn.Close()
+}

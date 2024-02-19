@@ -264,7 +264,7 @@ func (g *tcpsGate) serveTCP() { // runner
 			if Debug() >= 1 {
 				Printf("%+v\n", conn)
 			}
-			go conn.mesh() // conn is put to pool in mesh()
+			go conn.serve() // conn is put to pool in serve()
 			connID++
 		}
 	}
@@ -295,7 +295,7 @@ func (g *tcpsGate) serveTLS() { // runner
 				continue
 			}
 			conn := getTCPSConn(connID, g, tlsConn, nil)
-			go conn.mesh() // conn is put to pool in mesh()
+			go conn.serve() // conn is put to pool in serve()
 			connID++
 		}
 	}
@@ -372,7 +372,7 @@ func (c *TCPSConn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *TCPSConn) mesh() { // runner
+func (c *TCPSConn) serve() { // runner
 	router := c.Server().(*TCPSRouter)
 	router.dispatch(c)
 	c.closeConn()

@@ -32,61 +32,6 @@ type agent interface {
 	WriteTimeout() time.Duration
 }
 
-// Server component.
-type Server interface {
-	// Imports
-	agent
-	// Methods
-	Serve() // runner
-	Address() string
-	ColonPort() string
-	ColonPortBytes() []byte
-	IsUDS() bool
-	IsTLS() bool
-	TLSConfig() *tls.Config
-	MaxConnsPerGate() int32
-}
-
-// Backend component. Backend is a group of nodes.
-type Backend interface {
-	// Imports
-	agent
-	// Methods
-	Maintain() // runner
-	DialTimeout() time.Duration
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
-
-// Gate is the interface for all gates. Gates are not components.
-type Gate interface {
-	// Methods
-	Server() Server
-	Address() string
-	IsUDS() bool
-	IsTLS() bool
-	ID() int32
-	IsShut() bool
-	Open() error
-	Shut() error
-	OnConnClosed()
-}
-
-// Node is a member of backend. Nodes are not components.
-type Node interface {
-	// Methods
-	setAddress(address string)
-	setTLS()
-	setWeight(weight int32)
-	setKeepConns(keepConns int32)
-	Backend() Backend
-	ID() int32
-	IsUDS() bool
-	IsTLS() bool
-	Maintain() // runner
-	shutdown()
-}
-
 // agent_ is the mixin for Server_ and Backend_.
 type agent_ struct {
 	// Mixins
@@ -127,6 +72,21 @@ func (a *agent_) onPrepare() {
 func (a *agent_) Stage() *Stage               { return a.stage }
 func (a *agent_) ReadTimeout() time.Duration  { return a.readTimeout }
 func (a *agent_) WriteTimeout() time.Duration { return a.writeTimeout }
+
+// Server component.
+type Server interface {
+	// Imports
+	agent
+	// Methods
+	Serve() // runner
+	Address() string
+	ColonPort() string
+	ColonPortBytes() []byte
+	IsUDS() bool
+	IsTLS() bool
+	TLSConfig() *tls.Config
+	MaxConnsPerGate() int32
+}
 
 // Server_ is the mixin for all servers.
 type Server_[G Gate] struct {
@@ -212,6 +172,17 @@ func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
+
+// Backend component. Backend is a group of nodes.
+type Backend interface {
+	// Imports
+	agent
+	// Methods
+	Maintain() // runner
+	DialTimeout() time.Duration
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
 
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
@@ -334,6 +305,20 @@ func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
+// Gate is the interface for all gates. Gates are not components.
+type Gate interface {
+	// Methods
+	Server() Server
+	Address() string
+	IsUDS() bool
+	IsTLS() bool
+	ID() int32
+	IsShut() bool
+	Open() error
+	Shut() error
+	OnConnClosed()
+}
+
 // Gate_ is the mixin for all gates.
 type Gate_ struct {
 	// Mixins
@@ -367,6 +352,21 @@ func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConns
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
 	g.SubDone()
+}
+
+// Node is a member of backend. Nodes are not components.
+type Node interface {
+	// Methods
+	setAddress(address string)
+	setTLS()
+	setWeight(weight int32)
+	setKeepConns(keepConns int32)
+	Backend() Backend
+	ID() int32
+	IsUDS() bool
+	IsTLS() bool
+	Maintain() // runner
+	shutdown()
 }
 
 // Node_ is the mixin for backend nodes.
@@ -423,6 +423,10 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
+func (n *Node_) shutdown() {
+	close(n.ShutChan) // notifies Maintain()
+}
+
 func (n *Node_) pullConn() backendConn {
 	list := &n.freeList
 
@@ -461,17 +465,13 @@ func (n *Node_) closeFree() int {
 	defer list.Unlock()
 
 	for conn := list.head; conn != nil; conn = conn.getNext() {
-		conn.closeConn()
+		conn.Close()
 	}
 	qnty := list.qnty
 	list.qnty = 0
 	list.head, list.tail = nil, nil
 
 	return qnty
-}
-
-func (n *Node_) shutdown() {
-	close(n.ShutChan) // notifies Maintain()
 }
 
 // ServerConn_
@@ -505,6 +505,14 @@ func (c *ServerConn_) Gate() Gate     { return c.gate }
 
 func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
+
+// backendConn is the backend conns.
+type backendConn interface {
+	// Methods
+	getNext() backendConn
+	setNext(next backendConn)
+	Close() error
+}
 
 // BackendConn_ is the mixin for backend conns.
 type BackendConn_ struct {
@@ -544,15 +552,6 @@ func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }
 
 func (c *BackendConn_) getNext() backendConn     { return c.next }
 func (c *BackendConn_) setNext(next backendConn) { c.next = next }
-
-// backendConn is the backend conns.
-type backendConn interface {
-	// Methods
-	isAlive() bool
-	closeConn()
-	getNext() backendConn
-	setNext(next backendConn)
-}
 
 // Stream_
 type Stream_ struct {

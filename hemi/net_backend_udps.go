@@ -53,12 +53,10 @@ func (b *UDPSBackend) NewNode(id int32) *udpsNode {
 }
 
 func (b *UDPSBackend) Conn() (*UConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.conn()
+	return b.nodes[b.getNext()].dial()
 }
 func (b *UDPSBackend) FetchConn() (*UConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+	return b.nodes[b.getNext()].fetchConn()
 }
 func (b *UDPSBackend) StoreConn(uConn *UConn) {
 	uConn.node.(*udpsNode).storeConn(uConn)
@@ -87,7 +85,7 @@ func (n *udpsNode) Maintain() { // runner
 	n.backend.SubDone()
 }
 
-func (n *udpsNode) conn() (*UConn, error) {
+func (n *udpsNode) dial() (*UConn, error) {
 	// TODO
 	return nil, nil
 }
@@ -99,18 +97,21 @@ func (n *udpsNode) fetchConn() (*UConn, error) {
 		if uConn.isAlive() {
 			return uConn, nil
 		}
-		uConn.closeConn()
-		putUConn(uConn)
+		n.closeConn(uConn)
 	}
-	return n.conn()
+	return n.dial()
 }
 func (n *udpsNode) storeConn(uConn *UConn) {
 	if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
-		uConn.closeConn()
-		putUConn(uConn)
+		n.closeConn(uConn)
 	} else {
 		n.pushConn(uConn)
 	}
+}
+
+func (n *udpsNode) closeConn(uConn *UConn) {
+	uConn.Close()
+	n.SubDone()
 }
 
 // poolUConn
@@ -181,10 +182,8 @@ func (c *UConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) { return c.
 func (c *UConn) isBroken() bool { return c.broken.Load() }
 func (c *UConn) markBroken()    { c.broken.Store(true) }
 
-func (c *UConn) Close() error { // only used by clients of dial
+func (c *UConn) Close() error {
 	netConn := c.netConn
 	putUConn(c)
 	return netConn.Close()
 }
-
-func (c *UConn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store

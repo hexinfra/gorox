@@ -8,10 +8,10 @@
 package contrib
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/contrib/addons/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
+	_ "github.com/hexinfra/gorox/hemi/contrib/complets/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcps/echo"

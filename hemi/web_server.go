@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -152,6 +153,11 @@ func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 	return s.defaultApp // may be nil
 }
 
+// webServerConn is the interface for *http[1-3]Conn.
+type webServerConn interface {
+	serve() // runner
+}
+
 // webServerConn_ is the mixin for http[1-3]Conn.
 type webServerConn_ struct {
 	// Mixins
@@ -178,6 +184,11 @@ func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
+// webServerStream is the interface for *http[1-3]Stream.
+type webServerStream interface {
+	execute() // runner
+}
+
 // webServerStream_ is the mixin for http[1-3]Stream.
 type webServerStream_ struct {
 	// Mixins
@@ -202,16 +213,171 @@ func (s *webServerStream_) serveSocket() {
 	// TODO
 }
 
+// Request is the interface for *http[1-3]Request.
+type Request interface {
+	RemoteAddr() net.Addr
+	Webapp() *Webapp
+
+	VersionCode() uint8
+	IsHTTP1_0() bool
+	IsHTTP1_1() bool
+	IsHTTP1() bool
+	IsHTTP2() bool
+	IsHTTP3() bool
+	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
+
+	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
+	IsHTTP() bool
+	IsHTTPS() bool
+	Scheme() string // http, https
+
+	MethodCode() uint32
+	Method() string // GET, POST, ...
+	IsGET() bool
+	IsPOST() bool
+	IsPUT() bool
+	IsDELETE() bool
+
+	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
+	IsAsteriskOptions() bool // OPTIONS *
+
+	Authority() string // hostname[:port]
+	Hostname() string  // hostname
+	ColonPort() string // :port
+
+	URI() string         // /encodedPath?queryString
+	Path() string        // /decodedPath
+	EncodedPath() string // /encodedPath
+	QueryString() string // including '?' if query string exists, otherwise empty
+
+	AddQuery(name string, value string) bool
+	HasQueries() bool
+	AllQueries() (queries [][2]string)
+	Q(name string) string
+	Qstr(name string, defaultValue string) string
+	Qint(name string, defaultValue int) int
+	Query(name string) (value string, ok bool)
+	Queries(name string) (values []string, ok bool)
+	HasQuery(name string) bool
+	DelQuery(name string) (deleted bool)
+
+	AddHeader(name string, value string) bool
+	HasHeaders() bool
+	AllHeaders() (headers [][2]string)
+	H(name string) string
+	Hstr(name string, defaultValue string) string
+	Hint(name string, defaultValue int) int
+	Header(name string) (value string, ok bool)
+	Headers(name string) (values []string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) (deleted bool)
+
+	ContentType() string
+	ContentSize() int64
+	AcceptTrailers() bool
+	HasRanges() bool
+	HasIfRange() bool
+	UserAgent() string
+
+	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
+	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
+
+	MeasureRanges(size int64) []Range
+
+	AddCookie(name string, value string) bool
+	HasCookies() bool
+	AllCookies() (cookies [][2]string)
+	C(name string) string
+	Cstr(name string, defaultValue string) string
+	Cint(name string, defaultValue int) int
+	Cookie(name string) (value string, ok bool)
+	Cookies(name string) (values []string, ok bool)
+	HasCookie(name string) bool
+	DelCookie(name string) (deleted bool)
+
+	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	HasContent() bool // true if content exists
+	IsVague() bool    // true if content exists and is not sized
+	Content() string
+
+	AddForm(name string, value string) bool
+	HasForms() bool
+	AllForms() (forms [][2]string)
+	F(name string) string
+	Fstr(name string, defaultValue string) string
+	Fint(name string, defaultValue int) int
+	Form(name string) (value string, ok bool)
+	Forms(name string) (values []string, ok bool)
+	HasForm(name string) bool
+
+	HasUpfiles() bool
+	AllUpfiles() (upfiles []*ServerUpfile)
+	U(name string) *ServerUpfile
+	ServerUpfile(name string) (upfile *ServerUpfile, ok bool)
+	Upfiles(name string) (upfiles []*ServerUpfile, ok bool)
+	HasUpfile(name string) bool
+
+	AddTrailer(name string, value string) bool
+	HasTrailers() bool
+	AllTrailers() (trailers [][2]string)
+	T(name string) string
+	Tstr(name string, defaultValue string) string
+	Tint(name string, defaultValue int) int
+	Trailer(name string) (value string, ok bool)
+	Trailers(name string) (values []string, ok bool)
+	HasTrailer(name string) bool
+	DelTrailer(name string) (deleted bool)
+
+	// Unsafe
+	UnsafeMake(size int) []byte
+	UnsafeVersion() []byte
+	UnsafeScheme() []byte
+	UnsafeMethod() []byte
+	UnsafeAuthority() []byte // hostname[:port]
+	UnsafeHostname() []byte  // hostname
+	UnsafeColonPort() []byte // :port
+	UnsafeURI() []byte
+	UnsafePath() []byte
+	UnsafeEncodedPath() []byte
+	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
+	UnsafeQuery(name string) (value []byte, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
+	UnsafeUserAgent() []byte
+	UnsafeContentLength() []byte
+	UnsafeContentType() []byte
+	UnsafeContent() []byte
+	UnsafeForm(name string) (value []byte, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
+
+	// Internal only
+	getPathInfo() os.FileInfo
+	unsafeAbsPath() []byte
+	makeAbsPath()
+	delHopHeaders()
+	delHopTrailers()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	unsetHost()
+	takeContent() any
+	readContent() (p []byte, err error)
+	examineTail() bool
+	hookReviser(reviser Reviser)
+	unsafeVariable(code int16, name string) (value []byte)
+}
+
 // webServerRequest_ is the mixin for http[1-3]Request.
 type webServerRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockUploads [2]Upload // for r.uploads. 96B
+	stockUpfiles [2]ServerUpfile // for r.upfiles. 96B
 	// Stream states (controlled)
 	ranges [4]Range // parsed range fields. at most 4 range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
-	uploads []Upload // decoded uploads -> r.array (for metadata) and temp files in local file system. [<r.stockUploads>/(make=16/128)]
+	upfiles []ServerUpfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
 	path              []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath           []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
@@ -290,24 +456,24 @@ func (r *webServerRequest_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = false
 	r.webIn_.onUse(versionCode, asResponse)
 
-	r.uploads = r.stockUploads[0:0:cap(r.stockUploads)] // use append()
+	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
 func (r *webServerRequest_) onEnd() { // for zeros
-	for _, upload := range r.uploads {
-		if upload.isMoved() {
+	for _, upfile := range r.upfiles {
+		if upfile.isMoved() {
 			continue
 		}
 		var path string
-		if upload.metaSet() {
-			path = upload.Path()
+		if upfile.metaSet() {
+			path = upfile.Path()
 		} else {
-			path = risky.WeakString(r.array[upload.pathFrom : upload.pathFrom+int32(upload.pathSize)])
+			path = risky.WeakString(r.array[upfile.pathFrom : upfile.pathFrom+int32(upfile.pathSize)])
 		}
 		if err := os.Remove(path); err != nil {
 			r.webapp.Logf("failed to remove uploaded file: %s, error: %s\n", path, err.Error())
 		}
 	}
-	r.uploads = nil
+	r.upfiles = nil
 
 	r.path = nil
 	r.absPath = nil
@@ -1572,7 +1738,7 @@ func (r *webServerRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *webServerRequest_) parseHTMLForm() { // to populate r.forms and r.uploads
+func (r *webServerRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
 	if r.formKind == webFormNotForm || r.formReceived {
 		return
 	}
@@ -1591,7 +1757,7 @@ func (r *webServerRequest_) _loadURLEncodedForm() { // into memory entirely
 		return
 	}
 	var (
-		state = 2 // to be consistent with r.recvControl() in HTTP/1
+		state = 2 // to be consistent with r._recvControl() in HTTP/1
 		octet byte
 	)
 	form := &r.mainPair
@@ -1688,7 +1854,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
-		case tempFile: // [0, r.webapp.maxUploadContentSize]. case happens when sized content > 64K1, or content is vague.
+		case tempFile: // [0, r.webapp.maxUpfileSize]. case happens when sized content > 64K1, or content is vague.
 			r.contentFile = content.(*os.File)
 			if r.receivedSize == 0 {
 				return // vague content can be empty
@@ -1750,16 +1916,16 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 		}
 		// r.pFore is at fields of current part.
 		var part struct { // current part
-			valid  bool     // true if "name" parameter in "content-disposition" field is found
-			isFile bool     // true if "filename" parameter in "content-disposition" field is found
-			hash   uint16   // name hash
-			name   span     // to r.array. like: "avatar"
-			base   span     // to r.array. like: "michael.jpg", or empty if part is not a file
-			type_  span     // to r.array. like: "image/jpeg", or empty if part is not a file
-			path   span     // to r.array. like: "/path/to/391384576", or empty if part is not a file
-			osFile *os.File // if part is a file, this is used
-			form   pair     // if part is a form, this is used
-			upload Upload   // if part is a file, this is used. zeroed
+			valid  bool         // true if "name" parameter in "content-disposition" field is found
+			isFile bool         // true if "filename" parameter in "content-disposition" field is found
+			hash   uint16       // name hash
+			name   span         // to r.array. like: "avatar"
+			base   span         // to r.array. like: "michael.jpg", or empty if part is not a file
+			type_  span         // to r.array. like: "image/jpeg", or empty if part is not a file
+			path   span         // to r.array. like: "/path/to/391384576", or empty if part is not a file
+			osFile *os.File     // if part is a file, this is used
+			form   pair         // if part is a form, this is used
+			upfile ServerUpfile // if part is a file, this is used. zeroed
 		}
 		part.form.kind = kindForm
 		part.form.place = placeArray // all received forms are placed in r.array
@@ -1941,11 +2107,11 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 		}
 		if part.isFile {
 			// TODO: upload code
-			part.upload.hash = part.hash
-			part.upload.nameSize, part.upload.nameFrom = uint8(part.name.size()), part.name.from
-			part.upload.baseSize, part.upload.baseFrom = uint8(part.base.size()), part.base.from
-			part.upload.typeSize, part.upload.typeFrom = uint8(part.type_.size()), part.type_.from
-			part.upload.pathSize, part.upload.pathFrom = uint8(part.path.size()), part.path.from
+			part.upfile.hash = part.hash
+			part.upfile.nameSize, part.upfile.nameFrom = uint8(part.name.size()), part.name.from
+			part.upfile.baseSize, part.upfile.baseFrom = uint8(part.base.size()), part.base.from
+			part.upfile.typeSize, part.upfile.typeFrom = uint8(part.type_.size()), part.type_.from
+			part.upfile.pathSize, part.upfile.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
 				if Debug() >= 2 {
 					Println("OPENED")
@@ -1993,7 +2159,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 			} else if part.osFile != nil {
 				part.osFile.Write(partial)
 				if mode == 1 { // file part ends
-					r.addUpload(&part.upload)
+					r.addUpfile(&part.upfile)
 					part.osFile.Close()
 					if Debug() >= 2 {
 						Println("CLOSED")
@@ -2178,70 +2344,70 @@ func (r *webServerRequest_) DelForm(name string) (deleted bool) {
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 
-func (r *webServerRequest_) addUpload(upload *Upload) {
-	if len(r.uploads) == cap(r.uploads) {
-		if cap(r.uploads) == cap(r.stockUploads) {
-			uploads := make([]Upload, 0, 16)
-			r.uploads = append(uploads, r.uploads...)
-		} else if cap(r.uploads) == 16 {
-			uploads := make([]Upload, 0, 128)
-			r.uploads = append(uploads, r.uploads...)
+func (r *webServerRequest_) addUpfile(upfile *ServerUpfile) {
+	if len(r.upfiles) == cap(r.upfiles) {
+		if cap(r.upfiles) == cap(r.stockUpfiles) {
+			upfiles := make([]ServerUpfile, 0, 16)
+			r.upfiles = append(upfiles, r.upfiles...)
+		} else if cap(r.upfiles) == 16 {
+			upfiles := make([]ServerUpfile, 0, 128)
+			r.upfiles = append(upfiles, r.upfiles...)
 		} else {
-			// Ignore too many uploads
+			// Ignore too many upfiles
 			return
 		}
 	}
-	r.uploads = append(r.uploads, *upload)
+	r.upfiles = append(r.upfiles, *upfile)
 }
-func (r *webServerRequest_) HasUploads() bool {
+func (r *webServerRequest_) HasUpfiles() bool {
 	r.parseHTMLForm()
-	return len(r.uploads) != 0
+	return len(r.upfiles) != 0
 }
-func (r *webServerRequest_) AllUploads() (uploads []*Upload) {
+func (r *webServerRequest_) AllUpfiles() (upfiles []*ServerUpfile) {
 	r.parseHTMLForm()
-	for i := 0; i < len(r.uploads); i++ {
-		upload := &r.uploads[i]
-		upload.setMeta(r.array)
-		uploads = append(uploads, upload)
+	for i := 0; i < len(r.upfiles); i++ {
+		upfile := &r.upfiles[i]
+		upfile.setMeta(r.array)
+		upfiles = append(upfiles, upfile)
 	}
-	return uploads
+	return upfiles
 }
-func (r *webServerRequest_) U(name string) *Upload {
-	upload, _ := r.Upload(name)
-	return upload
+func (r *webServerRequest_) U(name string) *ServerUpfile {
+	upfile, _ := r.ServerUpfile(name)
+	return upfile
 }
-func (r *webServerRequest_) Upload(name string) (upload *Upload, ok bool) {
+func (r *webServerRequest_) ServerUpfile(name string) (upfile *ServerUpfile, ok bool) {
 	r.parseHTMLForm()
-	if n := len(r.uploads); n > 0 && name != "" {
+	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
 		for i := 0; i < n; i++ {
-			if upload := &r.uploads[i]; upload.hash == hash && upload.nameEqualString(r.array, name) {
-				upload.setMeta(r.array)
-				return upload, true
+			if upfile := &r.upfiles[i]; upfile.hash == hash && upfile.nameEqualString(r.array, name) {
+				upfile.setMeta(r.array)
+				return upfile, true
 			}
 		}
 	}
 	return
 }
-func (r *webServerRequest_) Uploads(name string) (uploads []*Upload, ok bool) {
+func (r *webServerRequest_) Upfiles(name string) (upfiles []*ServerUpfile, ok bool) {
 	r.parseHTMLForm()
-	if n := len(r.uploads); n > 0 && name != "" {
+	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
 		for i := 0; i < n; i++ {
-			if upload := &r.uploads[i]; upload.hash == hash && upload.nameEqualString(r.array, name) {
-				upload.setMeta(r.array)
-				uploads = append(uploads, upload)
+			if upfile := &r.upfiles[i]; upfile.hash == hash && upfile.nameEqualString(r.array, name) {
+				upfile.setMeta(r.array)
+				upfiles = append(upfiles, upfile)
 			}
 		}
-		if len(uploads) > 0 {
+		if len(upfiles) > 0 {
 			ok = true
 		}
 	}
 	return
 }
-func (r *webServerRequest_) HasUpload(name string) bool {
+func (r *webServerRequest_) HasUpfile(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.Upload(name)
+	_, ok := r.ServerUpfile(name)
 	return ok
 }
 
@@ -2307,6 +2473,78 @@ var webServerRequestVariables = [...]func(*webServerRequest_) []byte{ // keep sy
 	(*webServerRequest_).UnsafeContentType, // contentType
 }
 
+// Response is the interface for *http[1-3]Response.
+type Response interface {
+	Request() Request
+
+	SetStatus(status int16) error
+	Status() int16
+
+	MakeETagFrom(date int64, size int64) ([]byte, bool) // with `""`
+	SetExpires(expires int64) bool
+	SetLastModified(lastModified int64) bool
+	AddContentType(contentType string) bool
+	AddContentTypeBytes(contentType []byte) bool
+	AddHTTPSRedirection(authority string) bool
+	AddHostnameRedirection(hostname string) bool
+	AddDirectoryRedirection() bool
+
+	AddCookie(cookie *ServerCookie) bool
+
+	AddHeader(name string, value string) bool
+	AddHeaderBytes(name []byte, value []byte) bool
+	Header(name string) (value string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) bool
+	DelHeaderBytes(name []byte) bool
+
+	IsSent() bool
+	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	Send(content string) error
+	SendBytes(content []byte) error
+	SendJSON(content any) error
+	SendFile(contentPath string) error
+	SendBadRequest(content []byte) error                             // 400
+	SendForbidden(content []byte) error                              // 403
+	SendNotFound(content []byte) error                               // 404
+	SendMethodNotAllowed(allow string, content []byte) error         // 405
+	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
+	SendInternalServerError(content []byte) error                    // 500
+	SendNotImplemented(content []byte) error                         // 501
+	SendBadGateway(content []byte) error                             // 502
+	SendGatewayTimeout(content []byte) error                         // 504
+
+	Echo(chunk string) error
+	EchoBytes(chunk []byte) error
+	EchoFile(chunkPath string) error
+
+	AddTrailer(name string, value string) bool
+	AddTrailerBytes(name []byte, value []byte) bool
+
+	// Internal only
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
+	delHeader(name []byte) bool
+	setConnectionClose()
+	employRanges(ranges []Range, rangeType string)
+	sendText(content []byte) error
+	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
+	sendChain() error                                             // content
+	echoHeaders() error
+	echoChain() error // chunks
+	addTrailer(name []byte, value []byte) bool
+	endVague() error
+	proxyPass1xx(resp WebBackendResponse) bool
+	proxyPass(resp _webIn) error
+	proxyPost(content any, hasTrailers bool) error
+	copyHeadFrom(resp WebBackendResponse, viaName []byte) bool // used by proxies
+	copyTailFrom(resp WebBackendResponse) bool                 // used by proxies
+	hookReviser(reviser Reviser)
+	unsafeMake(size int) []byte
+}
+
 // webServerResponse_ is the mixin for http[1-3]Response.
 type webServerResponse_ struct { // outgoing. needs building
 	// Mixins
@@ -2350,20 +2588,6 @@ func (r *webServerResponse_) onEnd() { // for zeros
 }
 
 func (r *webServerResponse_) Request() Request { return r.request }
-
-func (r *webServerResponse_) control() []byte { // only for HTTP/2 and HTTP/3. HTTP/1 has its own control()
-	var start []byte
-	if r.status >= int16(len(webControls)) || webControls[r.status] == nil {
-		copy(r.start[:], webTemplate[:])
-		r.start[8] = byte(r.status/100 + '0')
-		r.start[9] = byte(r.status/10%10 + '0')
-		r.start[10] = byte(r.status%10 + '0')
-		start = r.start[:len(webTemplate)]
-	} else {
-		start = webControls[r.status]
-	}
-	return start
-}
 
 func (r *webServerResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {
@@ -2586,7 +2810,7 @@ func (r *webServerResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *webServerResponse_) copyHeadFrom(resp response, viaName []byte) bool { // used by proxies
+func (r *webServerResponse_) copyHeadFrom(resp WebBackendResponse, viaName []byte) bool { // used by proxies
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2607,7 +2831,7 @@ func (r *webServerResponse_) copyHeadFrom(resp response, viaName []byte) bool { 
 
 	return true
 }
-func (r *webServerResponse_) copyTailFrom(resp response) bool { // used by proxies
+func (r *webServerResponse_) copyTailFrom(resp WebBackendResponse) bool { // used by proxies
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
@@ -2649,8 +2873,17 @@ footer{padding:20px;}
 	return pages
 }()
 
+// Socket is the interface for *http[1-3]Socket.
+type Socket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+}
+
 // webServerSocket_ is the mixin for http[1-3]Socket.
 type webServerSocket_ struct {
+	// Mixins
+	webSocket_
 	// Assocs
 	shell Socket // the concrete Socket
 	// Stream states (non-zeros)

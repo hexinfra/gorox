@@ -5,7 +5,7 @@
 
 // HTTP/3 server implementation. See RFC 9114 and 9204.
 
-// For simplicity, HTTP/3 Server Push is not supported.
+// Server Push is not supported because it's rarely used.
 
 package hemi
 
@@ -134,7 +134,7 @@ func (g *http3Gate) justClose(quixConn *quix.Conn) {
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
+func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) webServerConn {
 	var httpConn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		httpConn = new(http3Conn)
@@ -343,6 +343,20 @@ type http3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
+func (r *http3Response) control() []byte { // :status xxx
+	var start []byte
+	if r.status >= int16(len(http3Controls)) || http3Controls[r.status] == nil {
+		copy(r.start[:], http3Template[:])
+		r.start[8] = byte(r.status/100 + '0')
+		r.start[9] = byte(r.status/10%10 + '0')
+		r.start[10] = byte(r.status%10 + '0')
+		start = r.start[:len(http3Template)]
+	} else {
+		start = http3Controls[r.status]
+	}
+	return start
+}
+
 func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
 func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
 func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
@@ -380,7 +394,7 @@ func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
 	return r.trailer3(name)
 }
 
-func (r *http3Response) pass1xx(resp response) bool { // used by proxies
+func (r *http3Response) proxyPass1xx(resp WebBackendResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -399,6 +413,12 @@ func (r *http3Response) passBytes(p []byte) error { return r.passBytes3(p) }
 
 func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
+	/*
+		// date: Sun, 06 Nov 1994 08:49:37 GMT
+		if r.iDate == 0 {
+			r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+		}
+	*/
 }
 func (r *http3Response) finalizeVague() error {
 	// TODO
@@ -419,4 +439,9 @@ type http3Socket struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (s *http3Socket) onUse() {
+}
+func (s *http3Socket) onEnd() {
 }

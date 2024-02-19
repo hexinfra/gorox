@@ -8,7 +8,6 @@
 package exts
 
 import ( // import contrib components, vendor exts, and your exts
-	_ "github.com/hexinfra/gorox/hemi/contrib/addons/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mongo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/mysql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/backends/pgsql"
@@ -16,6 +15,7 @@ import ( // import contrib components, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cachers/redis"
+	_ "github.com/hexinfra/gorox/hemi/contrib/complets/demo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcps/access"

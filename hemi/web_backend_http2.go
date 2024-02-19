@@ -5,7 +5,7 @@
 
 // HTTP/2 backend implementation. See RFC 9113 and 7541.
 
-// For simplicity, HTTP/2 Server Push is not supported.
+// Server Push is not supported.
 
 package hemi
 
@@ -18,75 +18,70 @@ import (
 )
 
 func init() {
-	RegisterBackend("h2Backend", func(name string, stage *Stage) Backend {
-		b := new(H2Backend)
+	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP2Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// H2Backend
-type H2Backend struct {
+// HTTP2Backend
+type HTTP2Backend struct {
 	// Mixins
-	webBackend_[*h2Node]
+	webBackend_[*http2Node]
 	// States
 }
 
-func (b *H2Backend) onCreate(name string, stage *Stage) {
+func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
-func (b *H2Backend) OnConfigure() {
+func (b *HTTP2Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *H2Backend) OnPrepare() {
+func (b *HTTP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *H2Backend) NewNode(id int32) *h2Node {
-	node := new(h2Node)
+func (b *HTTP2Backend) NewNode(id int32) *http2Node {
+	node := new(http2Node)
 	node.init(id, b)
 	return node
 }
-
-func (b *H2Backend) FetchConn() (*H2Conn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
-}
-func (b *H2Backend) StoreConn(conn *H2Conn) {
-	conn.node.(*h2Node).storeConn(conn)
+func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
+	return b.nodes[b.getNext()].fetchConn()
 }
 
-// h2Node
-type h2Node struct {
+// http2Node
+type http2Node struct {
 	// Mixins
-	Node_
+	webNode_
 	// Assocs
 	// States
 }
 
-func (n *h2Node) init(id int32, backend *H2Backend) {
-	n.Node_.Init(id, backend)
+func (n *http2Node) init(id int32, backend *HTTP2Backend) {
+	n.webNode_.Init(id, backend)
 }
 
-func (n *h2Node) setTLS() {
-	n.Node_.setTLS()
+func (n *http2Node) setTLS() {
+	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
 }
 
-func (n *h2Node) Maintain() { // runner
+func (n *http2Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("h2Node=%d done\n", n.id)
+		Printf("http2Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *h2Node) fetchConn() (*H2Conn, error) {
+func (n *http2Node) fetchConn() (WebBackendConn, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var netConn net.Conn
@@ -94,7 +89,8 @@ func (n *h2Node) fetchConn() (*H2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *h2Node) storeConn(h2Conn *H2Conn) {
+
+func (n *http2Node) storeConn(conn WebBackendConn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -102,7 +98,7 @@ func (n *h2Node) storeConn(h2Conn *H2Conn) {
 // poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
 
-func getH2Conn(id int64, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
+func getH2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *H2Conn {
 	var h2Conn *H2Conn
 	if x := poolH2Conn.Get(); x == nil {
 		h2Conn = new(H2Conn)
@@ -130,7 +126,7 @@ type H2Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H2Conn) onGet(id int64, node *h2Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.webBackendConn_.onGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -142,18 +138,13 @@ func (c *H2Conn) onPut() {
 	c.webBackendConn_.onPut()
 }
 
-func (c *H2Conn) FetchStream() *H2Stream {
+func (c *H2Conn) FetchStream() WebBackendStream {
 	// TODO: stream.onUse()
 	return nil
 }
-func (c *H2Conn) StoreStream(stream *H2Stream) {
+func (c *H2Conn) StoreStream(stream WebBackendStream) {
 	// TODO
-	stream.onEnd()
-}
-
-func (c *H2Conn) Close() error { // only used by clients of dial
-	// TODO
-	return nil
+	//stream.onEnd()
 }
 
 func (c *H2Conn) setWriteDeadline(deadline time.Time) error {
@@ -184,7 +175,11 @@ func (c *H2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.netConn, p, n)
 }
 
-func (c *H2Conn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store
+func (c *H2Conn) Close() error {
+	netConn := c.netConn
+	putH2Conn(c)
+	return netConn.Close()
+}
 
 // poolH2Stream
 var poolH2Stream sync.Pool
@@ -224,9 +219,6 @@ type H2Stream struct {
 	conn *H2Conn
 	id   uint32
 	// Stream states (zeros)
-	h2Stream0 // all values must be zero by default in this struct!
-}
-type h2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
@@ -241,7 +233,6 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.h2Stream0 = h2Stream0{}
 	s.webBackendStream_.onEnd()
 }
 
@@ -249,8 +240,8 @@ func (s *H2Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
-func (s *H2Stream) Request() *H2Request   { return &s.request }
-func (s *H2Stream) Response() *H2Response { return &s.response }
+func (s *H2Stream) Request() WebBackendRequest   { return &s.request }
+func (s *H2Stream) Response() WebBackendResponse { return &s.response }
 
 func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -365,6 +356,8 @@ type H2Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
+func (r *H2Response) recvHead() {} // head is immediate, so do nothing.
+
 func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2() }
 
 // poolH2Socket
@@ -378,4 +371,9 @@ type H2Socket struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (s *H2Socket) onUse() {
+}
+func (s *H2Socket) onEnd() {
 }

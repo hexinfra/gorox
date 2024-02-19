@@ -12,6 +12,12 @@ import (
 	"sync/atomic"
 )
 
+const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
+	http2MaxFrameSize     = _16K
+	http2MaxTableSize     = _4K
+	http2MaxActiveStreams = 127
+)
+
 // poolHTTP2Frames
 var poolHTTP2Frames sync.Pool
 
@@ -28,7 +34,7 @@ func putHTTP2Frames(frames *http2Frames) { poolHTTP2Frames.Put(frames) }
 
 // http2Frames
 type http2Frames struct {
-	buf [9 + http2FrameMaxSize]byte // header + payload
+	buf [9 + http2MaxFrameSize]byte // header + payload
 	ref atomic.Int32
 }
 
@@ -44,11 +50,6 @@ func (p *http2Frames) decRef() {
 	}
 }
 
-const ( // HTTP/2 sizes and limits
-	http2FrameMaxSize     = _16K // for both of our HTTP/2 server and HTTP/2 backend
-	http2MaxTableSize     = _4K  // for both of our HTTP/2 server and HTTP/2 backend
-	http2MaxActiveStreams = 127  // for both of our HTTP/2 server and HTTP/2 backend
-)
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
 	http2FrameHeaders      = 0x1
@@ -422,11 +423,6 @@ func http2EncodeString(S string, literal bool, dst []byte) (int, bool) {
 	return 0, false
 }
 
-var ( // HTTP/2 byteses
-	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
-)
-
 // http2InFrame is the server-side HTTP/2 incoming frame.
 type http2InFrame struct { // 32 bytes
 	length     uint32       // length of payload. the real type is uint24
@@ -446,7 +442,7 @@ func (f *http2InFrame) zero() { *f = http2InFrame{} }
 
 func (f *http2InFrame) decodeHeader(header []byte) error {
 	f.length = uint32(header[0])<<16 | uint32(header[1])<<8 | uint32(header[2])
-	if f.length > http2FrameMaxSize {
+	if f.length > http2MaxFrameSize {
 		return http2ErrorFrameSize
 	}
 	f.streamID = uint32(header[5]&0x7f)<<24 | uint32(header[6])<<16 | uint32(header[7])<<8 | uint32(header[8])
@@ -641,8 +637,80 @@ func (f *http2OutFrame) encodeHeader() (header []byte) { // caller must ensure t
 	return
 }
 
-var ( // HTTP/2 byteses, TODO
+var ( // HTTP/2 byteses
+	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 )
+
+var http2Template = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
+var http2Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Control and http3Control!
+	// 1XX
+	StatusContinue:           []byte(":status 100"),
+	StatusSwitchingProtocols: []byte(":status 101"),
+	StatusProcessing:         []byte(":status 102"),
+	StatusEarlyHints:         []byte(":status 103"),
+	// 2XX
+	StatusOK:                         []byte(":status 200"),
+	StatusCreated:                    []byte(":status 201"),
+	StatusAccepted:                   []byte(":status 202"),
+	StatusNonAuthoritativeInfomation: []byte(":status 203"),
+	StatusNoContent:                  []byte(":status 204"),
+	StatusResetContent:               []byte(":status 205"),
+	StatusPartialContent:             []byte(":status 206"),
+	StatusMultiStatus:                []byte(":status 207"),
+	StatusAlreadyReported:            []byte(":status 208"),
+	StatusIMUsed:                     []byte(":status 226"),
+	// 3XX
+	StatusMultipleChoices:   []byte(":status 300"),
+	StatusMovedPermanently:  []byte(":status 301"),
+	StatusFound:             []byte(":status 302"),
+	StatusSeeOther:          []byte(":status 303"),
+	StatusNotModified:       []byte(":status 304"),
+	StatusUseProxy:          []byte(":status 305"),
+	StatusTemporaryRedirect: []byte(":status 307"),
+	StatusPermanentRedirect: []byte(":status 308"),
+	// 4XX
+	StatusBadRequest:                  []byte(":status 400"),
+	StatusUnauthorized:                []byte(":status 401"),
+	StatusPaymentRequired:             []byte(":status 402"),
+	StatusForbidden:                   []byte(":status 403"),
+	StatusNotFound:                    []byte(":status 404"),
+	StatusMethodNotAllowed:            []byte(":status 405"),
+	StatusNotAcceptable:               []byte(":status 406"),
+	StatusProxyAuthenticationRequired: []byte(":status 407"),
+	StatusRequestTimeout:              []byte(":status 408"),
+	StatusConflict:                    []byte(":status 409"),
+	StatusGone:                        []byte(":status 410"),
+	StatusLengthRequired:              []byte(":status 411"),
+	StatusPreconditionFailed:          []byte(":status 412"),
+	StatusContentTooLarge:             []byte(":status 413"),
+	StatusURITooLong:                  []byte(":status 414"),
+	StatusUnsupportedMediaType:        []byte(":status 415"),
+	StatusRangeNotSatisfiable:         []byte(":status 416"),
+	StatusExpectationFailed:           []byte(":status 417"),
+	StatusMisdirectedRequest:          []byte(":status 421"),
+	StatusUnprocessableEntity:         []byte(":status 422"),
+	StatusLocked:                      []byte(":status 423"),
+	StatusFailedDependency:            []byte(":status 424"),
+	StatusTooEarly:                    []byte(":status 425"),
+	StatusUpgradeRequired:             []byte(":status 426"),
+	StatusPreconditionRequired:        []byte(":status 428"),
+	StatusTooManyRequests:             []byte(":status 429"),
+	StatusRequestHeaderFieldsTooLarge: []byte(":status 431"),
+	StatusUnavailableForLegalReasons:  []byte(":status 451"),
+	// 5XX
+	StatusInternalServerError:           []byte(":status 500"),
+	StatusNotImplemented:                []byte(":status 501"),
+	StatusBadGateway:                    []byte(":status 502"),
+	StatusServiceUnavailable:            []byte(":status 503"),
+	StatusGatewayTimeout:                []byte(":status 504"),
+	StatusHTTPVersionNotSupported:       []byte(":status 505"),
+	StatusVariantAlsoNegotiates:         []byte(":status 506"),
+	StatusInsufficientStorage:           []byte(":status 507"),
+	StatusLoopDetected:                  []byte(":status 508"),
+	StatusNotExtended:                   []byte(":status 510"),
+	StatusNetworkAuthenticationRequired: []byte(":status 511"),
+}
 
 // HTTP/2 incoming
 
@@ -738,4 +806,9 @@ func (r *webOut_) writeVector2() error {
 func (r *webOut_) writeBytes2(p []byte) error {
 	// TODO
 	return nil
+}
+
+// HTTP/2 websocket
+
+func (s *webSocket_) example2() {
 }

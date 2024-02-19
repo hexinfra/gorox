@@ -58,13 +58,11 @@ func (b *TCPSBackend) NewNode(id int32) *tcpsNode {
 }
 
 func (b *TCPSBackend) Dial() (*TConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.dial()
+	return b.nodes[b.getNext()].dial()
 }
 
 func (b *TCPSBackend) FetchConn() (*TConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+	return b.nodes[b.getNext()].fetchConn()
 }
 
 func (b *TCPSBackend) StoreConn(tConn *TConn) {
@@ -140,7 +138,11 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 	}
 	connID := n.backend.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
-	if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		tlsConn.Close()
+		return nil, err
+	}
+	if err := tlsConn.Handshake(); err != nil {
 		tlsConn.Close()
 		return nil, err
 	}
@@ -185,8 +187,7 @@ func (n *tcpsNode) storeConn(tConn *TConn) {
 }
 
 func (n *tcpsNode) closeConn(tConn *TConn) {
-	tConn.closeConn()
-	putTConn(tConn)
+	tConn.Close()
 	n.SubDone()
 }
 
@@ -295,10 +296,8 @@ func (c *TConn) CloseWrite() error {
 	}
 }
 
-func (c *TConn) Close() error { // only used by clients of dial
+func (c *TConn) Close() error {
 	netConn := c.netConn
 	putTConn(c)
 	return netConn.Close()
 }
-
-func (c *TConn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store

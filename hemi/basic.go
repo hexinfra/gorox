@@ -62,15 +62,15 @@ func _mkdir(dir string) {
 
 func SetDebug(level int32) { _debug.Store(level) }
 
-func BootText(text string) (*Stage, error) {
+func NewStageText(text string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.bootText(text)
+	return c.newStageText(text)
 }
-func BootFile(base string, file string) (*Stage, error) {
+func NewStageFile(base string, file string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.bootFile(base, file)
+	return c.newStageFile(base, file)
 }
 func _checkDirs() {
 	if _baseDir.Load() == nil || _logsDir.Load() == nil || _tmpsDir.Load() == nil || _varsDir.Load() == nil {

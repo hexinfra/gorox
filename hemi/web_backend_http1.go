@@ -5,7 +5,7 @@
 
 // HTTP/1 backend implementation. See RFC 9112.
 
-// Only HTTP/1.1 is used. For simplicity, HTTP/1.1 pipelining is not used.
+// Only HTTP/1.1 is used, so backends MUST support HTTP/1.1. Pipelining is not used.
 
 package hemi
 
@@ -20,64 +20,59 @@ import (
 )
 
 func init() {
-	RegisterBackend("h1Backend", func(name string, stage *Stage) Backend {
-		b := new(H1Backend)
+	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP1Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// H1Backend
-type H1Backend struct {
+// HTTP1Backend
+type HTTP1Backend struct {
 	// Mixins
-	webBackend_[*h1Node]
+	webBackend_[*http1Node]
 	// States
 }
 
-func (b *H1Backend) onCreate(name string, stage *Stage) {
+func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
-func (b *H1Backend) OnConfigure() {
+func (b *HTTP1Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *H1Backend) OnPrepare() {
+func (b *HTTP1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *H1Backend) NewNode(id int32) *h1Node {
-	node := new(h1Node)
+func (b *HTTP1Backend) NewNode(id int32) *http1Node {
+	node := new(http1Node)
 	node.init(id, b)
 	return node
 }
-
-func (b *H1Backend) FetchConn() (*H1Conn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
-}
-func (b *H1Backend) StoreConn(conn *H1Conn) {
-	conn.node.(*h1Node).storeConn(conn)
+func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
+	return b.nodes[b.getNext()].fetchConn()
 }
 
-// h1Node is a node in H1Backend.
-type h1Node struct {
+// http1Node is a node in HTTP1Backend.
+type http1Node struct {
 	// Mixins
-	Node_
+	webNode_
 	// Assocs
 	// States
 }
 
-func (n *h1Node) init(id int32, backend *H1Backend) {
-	n.Node_.Init(id, backend)
+func (n *http1Node) init(id int32, backend *HTTP1Backend) {
+	n.webNode_.Init(id, backend)
 }
 
-func (n *h1Node) setTLS() {
-	n.Node_.setTLS()
+func (n *http1Node) setTLS() {
+	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
 }
 
-func (n *h1Node) Maintain() { // runner
+func (n *http1Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markUp()
 	})
@@ -87,12 +82,12 @@ func (n *h1Node) Maintain() { // runner
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
-		Printf("h1Node=%d done\n", n.id)
+		Printf("http1Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *h1Node) fetchConn() (*H1Conn, error) {
+func (n *http1Node) fetchConn() (WebBackendConn, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -114,7 +109,7 @@ func (n *h1Node) fetchConn() (*H1Conn, error) {
 		return n._fetchTCP()
 	}
 }
-func (n *h1Node) _fetchTCP() (*H1Conn, error) {
+func (n *http1Node) _fetchTCP() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -122,7 +117,7 @@ func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
@@ -133,7 +128,7 @@ func (n *h1Node) _fetchTCP() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *h1Node) _fetchTLS() (*H1Conn, error) {
+func (n *http1Node) _fetchTLS() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -141,18 +136,22 @@ func (n *h1Node) _fetchTLS() (*H1Conn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
-	if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		tlsConn.Close()
+		return nil, err
+	}
+	if err := tlsConn.Handshake(); err != nil {
 		tlsConn.Close()
 		return nil, err
 	}
 	n.IncSub(1)
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
-func (n *h1Node) _fetchUDS() (*H1Conn, error) {
+func (n *http1Node) _fetchUDS() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -160,7 +159,7 @@ func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("h1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -171,7 +170,9 @@ func (n *h1Node) _fetchUDS() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *h1Node) storeConn(h1Conn *H1Conn) {
+
+func (n *http1Node) storeConn(conn WebBackendConn) {
+	h1Conn := conn.(*H1Conn)
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if Debug() >= 2 {
 			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.ID(), h1Conn.id)
@@ -185,16 +186,10 @@ func (n *h1Node) storeConn(h1Conn *H1Conn) {
 	}
 }
 
-func (n *h1Node) closeConn(h1Conn *H1Conn) {
-	h1Conn.closeConn()
-	putH1Conn(h1Conn)
-	n.SubDone()
-}
-
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
-func getH1Conn(id int64, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
+func getH1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *H1Conn {
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
@@ -231,7 +226,7 @@ type H1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *H1Conn) onGet(id int64, node *h1Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *H1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.webBackendConn_.onGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -243,22 +238,20 @@ func (c *H1Conn) onPut() {
 	c.webBackendConn_.onPut()
 }
 
-func (c *H1Conn) UseStream() *H1Stream {
+func (c *H1Conn) FetchStream() WebBackendStream {
 	stream := &c.stream
 	stream.onUse(c)
 	return stream
 }
-func (c *H1Conn) EndStream(stream *H1Stream) {
-	stream.onEnd()
+func (c *H1Conn) StoreStream(stream WebBackendStream) {
+	stream.(*H1Stream).onEnd()
 }
 
-func (c *H1Conn) Close() error { // only used by clients of dial
+func (c *H1Conn) Close() error {
 	netConn := c.netConn
 	putH1Conn(c)
 	return netConn.Close()
 }
-
-func (c *H1Conn) closeConn() { c.netConn.Close() } // used by codes which use fetch/store
 
 // H1Stream is the backend-side HTTP/1 stream.
 type H1Stream struct {
@@ -293,8 +286,8 @@ func (s *H1Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
-func (s *H1Stream) Request() *H1Request   { return &s.request }
-func (s *H1Stream) Response() *H1Response { return &s.response }
+func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
+func (s *H1Stream) Response() WebBackendResponse { return &s.response }
 
 func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -503,7 +496,7 @@ func (r *H1Response) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	if !r.recvControl() || !r.recvHeaders1() || !r.examineHead() {
+	if !r._recvControl() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -512,7 +505,7 @@ func (r *H1Response) recvHead() { // control + headers
 		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *H1Response) recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
+func (r *H1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
 	if have := r.inputEdge - r.pFore; have >= 9 {
@@ -642,4 +635,9 @@ type H1Socket struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (s *H1Socket) onUse() {
+}
+func (s *H1Socket) onEnd() {
 }

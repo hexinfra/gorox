@@ -45,7 +45,7 @@ The logical architecture of a stage in Hemi looks like this:
    |     +---+--------+----------+------+-------+------+     |
    |     |                  backend                    |     |
    |     +                  <node>       +-------------+     |
-   |     |                  <conn>       |    addon    |     |
+   |     |                  <conn>       |   complet   |     |
    |     +-----------+---------------+---+-------------+     |
    |     |   clock   |     fcache    |      namer      |     |
 prepare  +-----------+---------------+-----------------+     v

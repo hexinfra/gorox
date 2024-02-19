@@ -30,7 +30,7 @@ var ( // HTTP/1 byteses
 )
 
 var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', '?', '\r', '\n'}
-var http1Controls = [...][]byte{ // size: 512*24B=12K
+var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Control and http3Control!
 	// 1XX
 	StatusContinue:           []byte("HTTP/1.1 100 Continue\r\n"),
 	StatusSwitchingProtocols: []byte("HTTP/1.1 101 Switching Protocols\r\n"),
@@ -927,7 +927,7 @@ func (r *webOut_) _writeTextPiece1(piece *Piece, chunked bool) error {
 	}
 }
 func (r *webOut_) _writeFilePiece1(piece *Piece, chunked bool) error {
-	// file piece. we don't use sendfile(2).
+	// file piece. currently we don't use sendfile(2).
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
 	sizeRead := int64(0)
@@ -995,4 +995,9 @@ func (r *webOut_) writeBytes1(p []byte) error {
 	}
 	_, err := r.stream.write(p)
 	return r._slowCheck(err)
+}
+
+// HTTP/1 websocket
+
+func (s *webSocket_) example1() {
 }

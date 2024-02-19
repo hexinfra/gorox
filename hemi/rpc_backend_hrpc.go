@@ -71,8 +71,7 @@ type HConn struct {
 	rpcBackendConn_
 }
 
-func (c *HConn) Close() error { // only used by clients of dial
-	// TODO
+func (c *HConn) Close() error {
 	return nil
 }
 

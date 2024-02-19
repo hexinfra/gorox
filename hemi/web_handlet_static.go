@@ -39,7 +39,6 @@ type staticHandlet struct {
 	mimeTypes     map[string]string // ...
 	defaultType   string            // ...
 	useAppWebRoot bool              // true if webRoot is same with webapp.webRoot
-	developerMode bool              // no cache, no etag and so on if true
 }
 
 func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -118,8 +117,6 @@ func (h *staticHandlet) OnConfigure() {
 
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
-	// developerMode
-	h.ConfigureBool("developerMode", &h.developerMode, false)
 }
 func (h *staticHandlet) OnPrepare() {
 	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
@@ -221,7 +218,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
 		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
 		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
-		if h.developerMode { // TODO
+		if Debug() >= 2 { // TODO
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
 		} else {
 			resp.AddHeaderBytes(bytesETag, etag)

@@ -48,7 +48,7 @@ func Main(token string) {
 	}
 
 	// Register succeeded. Now start the initial stage
-	curStage, err = hemi.BootFile(configBase, configFile)
+	curStage, err = hemi.NewStageFile(configBase, configFile)
 	if err != nil {
 		common.Crash(err.Error())
 	}
@@ -86,7 +86,7 @@ var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
-		newStage, err := hemi.BootFile(configBase, configFile)
+		newStage, err := hemi.NewStageFile(configBase, configFile)
 		if err != nil {
 			hemi.Errorln(err.Error())
 			resp.Flag = 500

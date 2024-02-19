@@ -14,13 +14,15 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webBackend is the interface for *HTTP[1-3]Backend.
-type webBackend interface {
+// WebBackend is the interface for *HTTP[1-3]Backend.
+type WebBackend interface {
 	// Imports
 	Backend
 	streamHolder
 	contentSaver
 	// Methods
+	FetchConn() (WebBackendConn, error)
+	StoreConn(conn WebBackendConn)
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
 	SendTimeout() time.Duration
@@ -59,6 +61,44 @@ func (b *webBackend_[N]) onPrepare(shell Component) {
 	b.loadBalancer_.onPrepare(len(b.nodes))
 }
 
+func (b *webBackend_[N]) StoreConn(conn WebBackendConn) {
+	conn.webNode().storeConn(conn)
+}
+
+// WebNode is the interface for *http[1-3]Node.
+type WebNode interface {
+	// Imports
+	Node
+	// Methods
+	fetchConn() (WebBackendConn, error)
+	storeConn(conn WebBackendConn)
+}
+
+// webNode_ is the mixin for http[1-3]Node.
+type webNode_ struct {
+	// Mixins
+	Node_
+	// Assocs
+	// States
+}
+
+func (n *webNode_) init(id int32, backend Backend) {
+	n.Node_.Init(id, backend)
+}
+
+func (n *webNode_) closeConn(conn WebBackendConn) {
+	conn.Close()
+	n.SubDone()
+}
+
+// WebBackendConn is the interface for *H[1-3]Conn.
+type WebBackendConn interface {
+	FetchStream() WebBackendStream
+	StoreStream(stream WebBackendStream)
+	Close() error
+	webNode() WebNode
+}
+
 // webBackendConn_ is the mixin for H[1-3]Conn.
 type webBackendConn_ struct {
 	// Mixins
@@ -79,7 +119,8 @@ func (c *webBackendConn_) onPut() {
 	c.BackendConn_.OnPut()
 }
 
-func (c *webBackendConn_) webBackend() webBackend { return c.Backend().(webBackend) }
+func (c *webBackendConn_) webBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *webBackendConn_) webNode() WebNode       { return c.Node().(WebNode) }
 
 func (c *webBackendConn_) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.webBackend().MaxStreamsPerConn()
@@ -87,6 +128,15 @@ func (c *webBackendConn_) reachLimit() bool {
 
 func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+// WebBackendStream is the interface for *H[1-3]Stream.
+type WebBackendStream interface {
+	Request() WebBackendRequest
+	Response() WebBackendResponse
+	ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error
+	ReverseSocket(req Request, sock Socket) error
+	markBroken()
 }
 
 // webBackendStream_ is the mixin for H[1-3]Stream.
@@ -113,12 +163,25 @@ func (s *webBackendStream_) startSocket() {
 	// TODO
 }
 
+// WebBackendRequest is the interface for *H[1-3]Request.
+type WebBackendRequest interface {
+	setMethodURI(method []byte, uri []byte, hasContent bool) bool
+	setAuthority(hostname []byte, colonPort []byte) bool
+	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
+	proxyPost(content any, hasTrailers bool) error
+	proxyPass(in _webIn) error
+	copyTailFrom(req Request) bool
+	isVague() bool
+	endVague() error
+}
+
 // webBackendRequest_ is the mixin for H[1-3]Request.
 type webBackendRequest_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
-	response response // the corresponding response
+	response WebBackendResponse // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -149,10 +212,10 @@ func (r *webBackendRequest_) onEnd() { // for zeros
 	r.webOut_.onEnd()
 }
 
-func (r *webBackendRequest_) Response() response { return r.response }
+func (r *webBackendRequest_) Response() WebBackendResponse { return r.response }
 
 func (r *webBackendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(request).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
+	return r.shell.(WebBackendRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
 }
 func (r *webBackendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -268,7 +331,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.shell.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(WebBackendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -284,7 +347,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 			if len(colonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
 			}
-			if !r.shell.(request).setAuthority(hostname, colonPort) {
+			if !r.shell.(WebBackendRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -304,7 +367,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(request).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(WebBackendRequest).copyCookies(req) {
 		return false
 	}
 	if !r.shell.addHeader(bytesVia, viaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -343,6 +406,27 @@ func (r *webBackendRequest_) copyTailFrom(req Request) bool { // used by proxies
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
+}
+
+// WebBackendResponse is the interface for *H[1-3]Response.
+type WebBackendResponse interface {
+	HeadResult() int16
+	BodyResult() int16
+	Status() int16
+	HasContent() bool
+	ContentSize() int64
+	HasTrailers() bool
+	IsVague() bool
+	examineTail() bool
+	takeContent() any
+	readContent() (p []byte, err error)
+	delHopHeaders()
+	delHopTrailers()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
+	recvHead()
+	onUse(versionCode uint8)
+	onEnd()
 }
 
 // webBackendResponse_ is the mixin for H[1-3]Response.
@@ -777,10 +861,19 @@ func (r *webBackendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
+// WebBackendSocket is the interface for *H[1-3]Socket.
+type WebBackendSocket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+}
+
 // webBackendSocket_ is the mixin for H[1-3]Socket.
 type webBackendSocket_ struct {
+	// Mixins
+	webSocket_
 	// Assocs
-	shell socket // the concrete socket
+	shell WebBackendSocket // the concrete socket
 	// Stream states (zeros)
 }
 

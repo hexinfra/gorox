@@ -101,10 +101,10 @@ article table.none tr td {
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
 		<li><a href="#stage-namer">stage &gt; namer</a></li>
-		<li><a href="#stage-demoAddon">stage &gt; demoAddon</a></li>
-		<li><a href="#stage-h1Backend">stage &gt; h1Backend</a></li>
-		<li><a href="#stage-h2Backend">stage &gt; h2Backend</a></li>
-		<li><a href="#stage-h3Backend">stage &gt; h3Backend</a></li>
+		<li><a href="#stage-demoComplet">stage &gt; demoComplet</a></li>
+		<li><a href="#stage-http1Backend">stage &gt; http1Backend</a></li>
+		<li><a href="#stage-http2Backend">stage &gt; http2Backend</a></li>
+		<li><a href="#stage-http3Backend">stage &gt; http3Backend</a></li>
 		<li><a href="#stage-quicBackend">stage &gt; quicBackend</a></li>
 		<li><a href="#stage-tcpsBackend">stage &gt; tcpsBackend</a></li>
 		<li><a href="#stage-udpsBackend">stage &gt; udpsBackend</a></li>
@@ -136,9 +136,7 @@ article table.none tr td {
 		<li> <a href="#stage-webapp-rewriter">stage &gt; webapp &gt; [rule &gt;] rewriter</a></li>
 		<li> <a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
 		<li> <a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
-		<li> <a href="#stage-webapp-http1Proxy">stage &gt; webapp &gt; [rule &gt;] http1Proxy</a></li>
-		<li> <a href="#stage-webapp-http2Proxy">stage &gt; webapp &gt; [rule &gt;] http2Proxy</a></li>
-		<li> <a href="#stage-webapp-http3Proxy">stage &gt; webapp &gt; [rule &gt;] http3Proxy</a></li>
+		<li> <a href="#stage-webapp-httpProxy">stage &gt; webapp &gt; [rule &gt;] httpProxy</a></li>
 		<li> <a href="#stage-webapp-sitex">stage &gt; webapp &gt; [rule &gt;] sitex</a></li>
 		<li> <a href="#stage-webapp-static">stage &gt; webapp &gt; [rule &gt;] static</a></li>
 		<li> <a href="#stage-webapp-uwsgiProxy">stage &gt; webapp &gt; [rule &gt;] uwsgiProxy</a></li>
@@ -149,9 +147,7 @@ article table.none tr td {
 		<li> <a href="#stage-webapp-ssiReviser">stage &gt; webapp &gt; [rule &gt;] ssiReviser</a></li>
 		<li> <a href="#stage-webapp-wrapReviser">stage &gt; webapp &gt; [rule &gt;] wrapReviser</a></li>
 		<li> <a href="#stage-webapp-helloSocklet">stage &gt; webapp &gt; [rule &gt;] helloSocklet</a></li>
-		<li> <a href="#stage-webapp-sock1Proxy">stage &gt; webapp &gt; [rule &gt;] sock1Proxy</a></li>
-		<li> <a href="#stage-webapp-sock2Proxy">stage &gt; webapp &gt; [rule &gt;] sock2Proxy</a></li>
-		<li> <a href="#stage-webapp-sock3Proxy">stage &gt; webapp &gt; [rule &gt;] sock3Proxy</a></li>
+		<li> <a href="#stage-webapp-sockProxy">stage &gt; webapp &gt; [rule &gt;] sockProxy</a></li>
 		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li><a href="#stage-echoServer">stage &gt; echoServer</a></li>
 		<li><a href="#stage-httpServer">stage &gt; httpServer</a></li>
@@ -311,17 +307,17 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			<h4>stage &gt; namer</h4>
 			<p>namer: 用于DNS解析ip4、ip6等。</p>
 		</li>
-		<li id="stage-demoAddon">
-			<h4>stage &gt; demoAddon</h4>
+		<li id="stage-demoComplet">
+			<h4>stage &gt; demoComplet</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-h1Backend">
-			<h4>stage &gt; h1Backend</h4>
+		<li id="stage-http1Backend">
+			<h4>stage &gt; http1Backend</h4>
 			<p>例子</p>
 			<code class="pre">stage {
-	h1Backend "h1b" {
+	http1Backend "h1b" {
 		.tlsMode = false
 		.dialTimeout = 10s
 		.writeTimeout = 30s
@@ -342,7 +338,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	webapp "proxy" {
 		.hostnames = ("*")
 		rule { // match all url
-			http1Proxy {
+			httpProxy {
 				.toBackend = "h1b"
 			}
 		}
@@ -452,14 +448,14 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</li>
 			</ul>
 		</li>
-		<li id="stage-h2Backend">
-			<h4>stage &gt; h2Backend</h4>
+		<li id="stage-http2Backend">
+			<h4>stage &gt; http2Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-h3Backend">
-			<h4>stage &gt; h3Backend</h4>
+		<li id="stage-http3Backend">
+			<h4>stage &gt; http3Backend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
@@ -529,7 +525,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</code>
 					<p>例子</p>
 					<code class="pre">stage {
-	h1Backend "h1b" {
+	http1Backend "h1b" {
 		.balancer = "roundRobin"
 		.nodes = (
 			["address": "127.0.0.1:3080", "weight": 1],
@@ -545,7 +541,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			"rotate" : "day",
 			"format" : "%T",
 		]
-		.maxUploadContentSize = 128M
+		.maxUpfileSize = 128M
 		.settings = []
 		.proxyOnly = false
 		.withStater = ""
@@ -558,7 +554,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		}
 
 		rule { // 文件以外的全部转发到 h1b 对应的服务上
-			http1Proxy {
+			httpProxy {
 				.toBackend = "h1b"
 			}
 		}
@@ -585,8 +581,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				</code>
 				</li>
 				<li>
-					<p>.maxUploadContentSize 一个请求可以上传最大文件的上限。</p>
-					<code>语法： .maxUploadContentSize = Sizes
+					<p>.maxUpfileSize 一个请求可以上传的最大文件上限。</p>
+					<code>语法： .maxUpfileSize = Size
 					默认值：128M
 					取值范围：(0, 1T]
 				</code>
@@ -774,13 +770,13 @@ webapp "main" {
 
 	// 通过前缀匹配，划分子服务
 	rule $path ^= "/user" { // 用户服务
-		http1Proxy { 
+		httpProxy { 
 			.toBackend = "user_center"
 		}
 	}
 
 	rule $path ^= "/order" { // 订单服务
-		http1Proxy {
+		httpProxy {
 			.toBackend = "order_server"
 		}
 	}
@@ -1129,13 +1125,13 @@ stage {
 				</li>
 			</ul>
 		</li>
-		<li id="stage-webapp-http1Proxy">
-			<h4>stage &gt; webapp &gt; http1Proxy </h4>
-			<p>http1Proxy 用于 http1.x 协议的后端代理。</p>
-			<code class="pre">语法：http1Proxy [name] { ... }
+		<li id="stage-webapp-httpProxy">
+			<h4>stage &gt; webapp &gt; httpProxy </h4>
+			<p>httpProxy 用于 http 协议的后端代理。</p>
+			<code class="pre">语法：httpProxy [name] { ... }
 
-http1Proxy {
-	.toBackend = "proxy_name"
+httpProxy {
+	.toBackend = "backendName"
 	.viaName = "gorox"
 	.bufferClientContent = true
 	.bufferServerContent = true
@@ -1212,14 +1208,6 @@ http1Proxy {
 </code>
 				</li>
 			</ul>
-		</li>
-
-		<li id="stage-webapp-http2Proxy">
-			<h4>stage &gt; webapp &gt; http2Proxy </h4>
-		</li>
-
-		<li id="stage-webapp-http3Proxy">
-			<h4>stage &gt; webapp &gt; http3Proxy </h4>
 		</li>
 
 		<li id="stage-webapp-sitex">
@@ -1431,16 +1419,8 @@ http1Proxy {
 			<h4>stage &gt; webapp &gt; wrapReviser </h4>
 		</li>
 
-		<li id="stage-webapp-sock1Proxy">
-			<h4>stage &gt; webapp &gt; sock1Proxy </h4>
-		</li>
-
-		<li id="stage-webapp-sock2Proxy">
-			<h4>stage &gt; webapp &gt; sock2Proxy </h4>
-		</li>
-
-		<li id="stage-webapp-sock3Proxy">
-			<h4>stage &gt; webapp &gt; sock3Proxy </h4>
+		<li id="stage-webapp-sockProxy">
+			<h4>stage &gt; webapp &gt; sockProxy </h4>
 		</li>
 
 		<li id="stage-service">

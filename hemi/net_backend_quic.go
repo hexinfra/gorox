@@ -104,6 +104,11 @@ func (n *quicNode) storeConn(qConn *QConn) {
 	// TODO
 }
 
+func (n *quicNode) closeConn(qConn *QConn) {
+	qConn.Close()
+	n.SubDone()
+}
+
 // poolQConn
 var poolQConn sync.Pool
 
@@ -159,9 +164,10 @@ func (c *QConn) StoreStream(stream *QStream) {
 	// TODO
 }
 
-func (c *QConn) Close() error { // only used by clients of dial
-	// TODO
-	return nil
+func (c *QConn) Close() error {
+	quixConn := c.quixConn
+	putQConn(c)
+	return quixConn.Close()
 }
 
 // poolQStream
@@ -207,7 +213,7 @@ func (s *QStream) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (s *QStream) Close() error { // only used by clients of dial
+func (s *QStream) Close() error {
 	// TODO
 	return nil
 }

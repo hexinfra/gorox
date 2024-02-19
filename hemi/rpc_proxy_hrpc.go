@@ -9,7 +9,5 @@ package hemi
 
 // hrpcProxy
 type hrpcProxy struct {
-	// Mixins
-	rpcProxy_
 	// TODO
 }

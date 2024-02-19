@@ -277,7 +277,7 @@ func (c *UDPSConn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *UDPSConn) mesh() { // runner
+func (c *UDPSConn) serve() { // runner
 	router := c.Server().(*UDPSRouter)
 	router.dispatch(c)
 	c.closeConn()

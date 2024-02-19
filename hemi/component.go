@@ -23,8 +23,8 @@ import (
 const ( // component list
 	compStage      = 1 + iota // stage
 	compFixture               // clock, fcache, namer, ...
-	compAddon                 // ...
-	compBackend               // H1Backend, QUICBackend, UDPSBackend, ...
+	compComplet               // ...
+	compBackend               // HTTP1Backend, QUICBackend, UDPSBackend, ...
 	compQUICRouter            // quicRouter
 	compQUICDealet            // quicProxy, ...
 	compTCPSRouter            // tcpsRouter
@@ -74,7 +74,7 @@ func registerFixture(sign string) {
 
 var (
 	creatorsLock       sync.RWMutex
-	addonCreators      = make(map[string]func(name string, stage *Stage) Addon) // indexed by sign, same below.
+	completCreators    = make(map[string]func(name string, stage *Stage) Complet) // indexed by sign, same below.
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend)
 	quicDealetCreators = make(map[string]func(name string, stage *Stage, router *QUICRouter) QUICDealet)
 	tcpsDealetCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSDealet)
@@ -88,8 +88,8 @@ var (
 	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 )
 
-func RegisterAddon(sign string, create func(name string, stage *Stage) Addon) {
-	_registerComponent0(sign, compAddon, addonCreators, create)
+func RegisterComplet(sign string, create func(name string, stage *Stage) Complet) {
+	_registerComponent0(sign, compComplet, completCreators, create)
 }
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
@@ -125,7 +125,7 @@ func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
-func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // addon, backend, stater, cacher, server, cronjob
+func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // complet, backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -344,7 +344,7 @@ type Stage struct {
 	clock       *clockFixture         // for fast accessing
 	fcache      *fcacheFixture        // for fast accessing
 	namer       *namerFixture         // for fast accessing
-	addons      compDict[Addon]       // indexed by addonName
+	complets    compDict[Complet]     // indexed by completName
 	backends    compDict[Backend]     // indexed by backendName
 	quicRouters compDict[*QUICRouter] // indexed by routerName
 	tcpsRouters compDict[*TCPSRouter] // indexed by routerName
@@ -376,7 +376,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signNamer] = s.namer
 
-	s.addons = make(compDict[Addon])
+	s.complets = make(compDict[Complet])
 	s.backends = make(compDict[Backend])
 	s.quicRouters = make(compDict[*QUICRouter])
 	s.tcpsRouters = make(compDict[*TCPSRouter])
@@ -427,9 +427,9 @@ func (s *Stage) OnShutdown() {
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
-	// addons
-	s.IncSub(len(s.addons))
-	s.addons.goWalk(Addon.OnShutdown)
+	// complets
+	s.IncSub(len(s.complets))
+	s.complets.goWalk(Complet.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures
@@ -496,7 +496,7 @@ func (s *Stage) OnConfigure() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
-	s.addons.walk(Addon.OnConfigure)
+	s.complets.walk(Complet.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
 	s.quicRouters.walk((*QUICRouter).OnConfigure)
 	s.tcpsRouters.walk((*TCPSRouter).OnConfigure)
@@ -517,7 +517,7 @@ func (s *Stage) OnPrepare() {
 
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
-	s.addons.walk(Addon.OnPrepare)
+	s.complets.walk(Complet.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
 	s.quicRouters.walk((*QUICRouter).OnPrepare)
 	s.tcpsRouters.walk((*TCPSRouter).OnPrepare)
@@ -530,18 +530,18 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createAddon(sign string, name string) Addon {
-	if s.Addon(name) != nil {
-		UseExitf("conflicting addon with a same name '%s'\n", name)
+func (s *Stage) createComplet(sign string, name string) Complet {
+	if s.Complet(name) != nil {
+		UseExitf("conflicting complet with a same name '%s'\n", name)
 	}
-	create, ok := addonCreators[sign]
+	create, ok := completCreators[sign]
 	if !ok {
-		UseExitln("unknown addon type: " + sign)
+		UseExitln("unknown complet type: " + sign)
 	}
-	addon := create(name, s)
-	addon.setShell(addon)
-	s.addons[name] = addon
-	return addon
+	complet := create(name, s)
+	complet.setShell(complet)
+	s.complets[name] = complet
+	return complet
 }
 func (s *Stage) createBackend(sign string, name string) Backend {
 	if s.Backend(name) != nil {
@@ -664,7 +664,7 @@ func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
 func (s *Stage) Namer() *namerFixture        { return s.namer }
 func (s *Stage) fixture(sign string) fixture { return s.fixtures[sign] }
 
-func (s *Stage) Addon(name string) Addon            { return s.addons[name] }
+func (s *Stage) Complet(name string) Complet        { return s.complets[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUICRouter(name string) *QUICRouter { return s.quicRouters[name] }
 func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
@@ -722,7 +722,7 @@ func (s *Stage) Start(id int32) {
 
 	// Start all components
 	s.startFixtures() // go fixture.run()
-	s.startAddons()   // go addon.Run()
+	s.startComplets() // go complet.Run()
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
 	s.startStaters()  // go stater.Maintain()
@@ -768,12 +768,12 @@ func (s *Stage) startFixtures() {
 		go fixture.run()
 	}
 }
-func (s *Stage) startAddons() {
-	for _, addon := range s.addons {
+func (s *Stage) startComplets() {
+	for _, complet := range s.complets {
 		if Debug() >= 1 {
-			Printf("addon=%s go Run()\n", addon.Name())
+			Printf("complet=%s go Run()\n", complet.Name())
 		}
-		go addon.Run()
+		go complet.Run()
 	}
 }
 func (s *Stage) startBackends() {
@@ -950,10 +950,10 @@ type fixture interface {
 	run() // runner
 }
 
-// Addon component.
+// Complet component.
 //
-// Addons are addons for Hemi. Users can create their own addons.
-type Addon interface {
+// Complets are optional components for Hemi. Users can create their own complets.
+type Complet interface {
 	// Imports
 	Component
 	// Methods

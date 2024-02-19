@@ -10,7 +10,6 @@ package hemi
 import (
 	"bytes"
 	"errors"
-	"net"
 	"os"
 	"reflect"
 	"regexp"
@@ -32,24 +31,24 @@ type Webapp struct {
 	socklets compDict[Socklet] // defined socklets. indexed by name
 	rules    compList[*Rule]   // defined rules. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	hostnames            [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
-	webRoot              string            // root dir for the web
-	file404              string            // 404 file path
-	text404              []byte            // bytes of the default 404 file
-	tlsCertificate       string            // tls certificate file, in pem format
-	tlsPrivateKey        string            // tls private key file, in pem format
-	accessLog            *logcfg           // ...
-	logger               *logger           // webapp access logger
-	maxUploadContentSize int64             // max content size that uploads files through multipart/form-data
-	settings             map[string]string // webapp settings defined and used by users
-	settingsLock         sync.RWMutex      // protects settings
-	isDefault            bool              // is this webapp the default webapp of its belonging web servers?
-	proxyOnly            bool              // is this webapp a proxy-only webapp?
-	exactHostnames       [][]byte          // like: ("example.com")
-	suffixHostnames      [][]byte          // like: ("*.example.com")
-	prefixHostnames      [][]byte          // like: ("www.example.*")
-	revisersByID         [256]Reviser      // for fast searching. position 0 is not used
-	nRevisers            uint8             // used number of revisersByID in this webapp
+	hostnames       [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
+	webRoot         string            // root dir for the web
+	file404         string            // 404 file path
+	text404         []byte            // bytes of the default 404 file
+	tlsCertificate  string            // tls certificate file, in pem format
+	tlsPrivateKey   string            // tls private key file, in pem format
+	accessLog       *logcfg           // ...
+	logger          *logger           // webapp access logger
+	maxUpfileSize   int64             // max content size that uploads files through multipart/form-data
+	settings        map[string]string // webapp settings defined and used by users
+	settingsLock    sync.RWMutex      // protects settings
+	isDefault       bool              // is this webapp the default webapp of its belonging web servers?
+	proxyOnly       bool              // is this webapp a proxy-only webapp?
+	exactHostnames  [][]byte          // like: ("example.com")
+	suffixHostnames [][]byte          // like: ("*.example.com")
+	prefixHostnames [][]byte          // like: ("www.example.*")
+	revisersByID    [256]Reviser      // for fast searching. position 0 is not used
+	nRevisers       uint8             // used number of revisersByID in this webapp
 }
 
 func (a *Webapp) onCreate(name string, stage *Stage) {
@@ -142,12 +141,12 @@ func (a *Webapp) OnConfigure() {
 
 	// accessLog, TODO
 
-	// maxUploadContentSize
-	a.ConfigureInt64("maxUploadContentSize", &a.maxUploadContentSize, func(value int64) error {
+	// maxUpfileSize
+	a.ConfigureInt64("maxUpfileSize", &a.maxUpfileSize, func(value int64) error {
 		if value > 0 && value <= _1T {
 			return nil
 		}
-		return errors.New(".maxUploadContentSize has an invalid value")
+		return errors.New(".maxUpfileSize has an invalid value")
 	}, _128M)
 
 	// settings
@@ -433,6 +432,34 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	} else {
 		notFound(req, resp)
 	}
+}
+
+// Cacher component is the interface to storages of Web caching. See RFC 9111.
+type Cacher interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(key []byte, wobject *Wobject)
+	Get(key []byte) (wobject *Wobject)
+	Del(key []byte) bool
+}
+
+// Cacher_
+type Cacher_ struct {
+	// Mixins
+	Component_
+	// Assocs
+	// States
+}
+
+// Wobject is a Web object in Cacher.
+type Wobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
 }
 
 // Reviser component revises incoming requests and outgoing responses.
@@ -846,244 +873,10 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-// Request is the interface for *http[1-3]Request.
-type Request interface {
-	RemoteAddr() net.Addr
-	Webapp() *Webapp
-
-	VersionCode() uint8
-	IsHTTP1_0() bool
-	IsHTTP1_1() bool
-	IsHTTP1() bool
-	IsHTTP2() bool
-	IsHTTP3() bool
-	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
-
-	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
-	IsHTTP() bool
-	IsHTTPS() bool
-	Scheme() string // http, https
-
-	MethodCode() uint32
-	Method() string // GET, POST, ...
-	IsGET() bool
-	IsPOST() bool
-	IsPUT() bool
-	IsDELETE() bool
-
-	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
-	IsAsteriskOptions() bool // OPTIONS *
-
-	Authority() string // hostname[:port]
-	Hostname() string  // hostname
-	ColonPort() string // :port
-
-	URI() string         // /encodedPath?queryString
-	Path() string        // /decodedPath
-	EncodedPath() string // /encodedPath
-	QueryString() string // including '?' if query string exists, otherwise empty
-
-	AddQuery(name string, value string) bool
-	HasQueries() bool
-	AllQueries() (queries [][2]string)
-	Q(name string) string
-	Qstr(name string, defaultValue string) string
-	Qint(name string, defaultValue int) int
-	Query(name string) (value string, ok bool)
-	Queries(name string) (values []string, ok bool)
-	HasQuery(name string) bool
-	DelQuery(name string) (deleted bool)
-
-	AddHeader(name string, value string) bool
-	HasHeaders() bool
-	AllHeaders() (headers [][2]string)
-	H(name string) string
-	Hstr(name string, defaultValue string) string
-	Hint(name string, defaultValue int) int
-	Header(name string) (value string, ok bool)
-	Headers(name string) (values []string, ok bool)
-	HasHeader(name string) bool
-	DelHeader(name string) (deleted bool)
-
-	ContentType() string
-	ContentSize() int64
-	AcceptTrailers() bool
-	HasRanges() bool
-	HasIfRange() bool
-	UserAgent() string
-
-	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
-	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
-
-	MeasureRanges(size int64) []Range
-
-	AddCookie(name string, value string) bool
-	HasCookies() bool
-	AllCookies() (cookies [][2]string)
-	C(name string) string
-	Cstr(name string, defaultValue string) string
-	Cint(name string, defaultValue int) int
-	Cookie(name string) (value string, ok bool)
-	Cookies(name string) (values []string, ok bool)
-	HasCookie(name string) bool
-	DelCookie(name string) (deleted bool)
-
-	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
-
-	HasContent() bool // true if content exists
-	IsVague() bool    // true if content exists and is not sized
-	Content() string
-
-	AddForm(name string, value string) bool
-	HasForms() bool
-	AllForms() (forms [][2]string)
-	F(name string) string
-	Fstr(name string, defaultValue string) string
-	Fint(name string, defaultValue int) int
-	Form(name string) (value string, ok bool)
-	Forms(name string) (values []string, ok bool)
-	HasForm(name string) bool
-
-	HasUploads() bool
-	AllUploads() (uploads []*Upload)
-	U(name string) *Upload
-	Upload(name string) (upload *Upload, ok bool)
-	Uploads(name string) (uploads []*Upload, ok bool)
-	HasUpload(name string) bool
-
-	AddTrailer(name string, value string) bool
-	HasTrailers() bool
-	AllTrailers() (trailers [][2]string)
-	T(name string) string
-	Tstr(name string, defaultValue string) string
-	Tint(name string, defaultValue int) int
-	Trailer(name string) (value string, ok bool)
-	Trailers(name string) (values []string, ok bool)
-	HasTrailer(name string) bool
-	DelTrailer(name string) (deleted bool)
-
-	// Unsafe
-	UnsafeMake(size int) []byte
-	UnsafeVersion() []byte
-	UnsafeScheme() []byte
-	UnsafeMethod() []byte
-	UnsafeAuthority() []byte // hostname[:port]
-	UnsafeHostname() []byte  // hostname
-	UnsafeColonPort() []byte // :port
-	UnsafeURI() []byte
-	UnsafePath() []byte
-	UnsafeEncodedPath() []byte
-	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
-	UnsafeQuery(name string) (value []byte, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
-	UnsafeUserAgent() []byte
-	UnsafeContentLength() []byte
-	UnsafeContentType() []byte
-	UnsafeContent() []byte
-	UnsafeForm(name string) (value []byte, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
-
-	// Internal only
-	getPathInfo() os.FileInfo
-	unsafeAbsPath() []byte
-	makeAbsPath()
-	delHopHeaders()
-	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	unsetHost()
-	takeContent() any
-	readContent() (p []byte, err error)
-	examineTail() bool
-	delHopTrailers()
-	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-	hookReviser(reviser Reviser)
-	unsafeVariable(code int16, name string) (value []byte)
-}
-
-// Response is the interface for *http[1-3]Response.
-type Response interface {
-	Request() Request
-
-	SetStatus(status int16) error
-	Status() int16
-
-	MakeETagFrom(date int64, size int64) ([]byte, bool) // with `""`
-	SetExpires(expires int64) bool
-	SetLastModified(lastModified int64) bool
-	AddContentType(contentType string) bool
-	AddContentTypeBytes(contentType []byte) bool
-	AddHTTPSRedirection(authority string) bool
-	AddHostnameRedirection(hostname string) bool
-	AddDirectoryRedirection() bool
-
-	AddCookie(cookie *ServerCookie) bool
-
-	AddHeader(name string, value string) bool
-	AddHeaderBytes(name []byte, value []byte) bool
-	Header(name string) (value string, ok bool)
-	HasHeader(name string) bool
-	DelHeader(name string) bool
-	DelHeaderBytes(name []byte) bool
-
-	IsSent() bool
-	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
-
-	Send(content string) error
-	SendBytes(content []byte) error
-	SendJSON(content any) error
-	SendFile(contentPath string) error
-	SendBadRequest(content []byte) error                             // 400
-	SendForbidden(content []byte) error                              // 403
-	SendNotFound(content []byte) error                               // 404
-	SendMethodNotAllowed(allow string, content []byte) error         // 405
-	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
-	SendInternalServerError(content []byte) error                    // 500
-	SendNotImplemented(content []byte) error                         // 501
-	SendBadGateway(content []byte) error                             // 502
-	SendGatewayTimeout(content []byte) error                         // 504
-
-	Echo(chunk string) error
-	EchoBytes(chunk []byte) error
-	EchoFile(chunkPath string) error
-
-	AddTrailer(name string, value string) bool
-	AddTrailerBytes(name []byte, value []byte) bool
-
-	// Internal only
-	addHeader(name []byte, value []byte) bool
-	header(name []byte) (value []byte, ok bool)
-	hasHeader(name []byte) bool
-	delHeader(name []byte) bool
-	setConnectionClose()
-	employRanges(ranges []Range, rangeType string)
-	sendText(content []byte) error
-	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
-	sendChain() error                                             // content
-	echoHeaders() error
-	echoChain() error // chunks
-	addTrailer(name []byte, value []byte) bool
-	endVague() error
-	pass1xx(resp response) bool                      // used by proxies
-	pass(resp _webIn) error                          // used by proxies
-	post(content any, hasTrailers bool) error        // used by proxies
-	copyHeadFrom(resp response, viaName []byte) bool // used by proxies
-	copyTailFrom(resp response) bool                 // used by proxies
-	hookReviser(reviser Reviser)
-	unsafeMake(size int) []byte
-}
-
-// Socket is the interface for *http[1-3]Socket.
-type Socket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-}
-
-// Upload is a file uploaded by client.
-type Upload struct { // 48 bytes
+// Upfile is a file uploaded by client.
+type ServerUpfile struct { // 48 bytes
 	hash     uint16 // hash of name, to support fast comparison
-	flags    uint8  // see upload flags
+	flags    uint8  // see upfile flags
 	errCode  int8   // error code
 	nameSize uint8  // name size
 	baseSize uint8  // base size
@@ -1097,7 +890,7 @@ type Upload struct { // 48 bytes
 	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
 }
 
-func (u *Upload) nameEqualString(p []byte, x string) bool {
+func (u *ServerUpfile) nameEqualString(p []byte, x string) bool {
 	if int(u.nameSize) != len(x) {
 		return false
 	}
@@ -1107,16 +900,16 @@ func (u *Upload) nameEqualString(p []byte, x string) bool {
 	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
 }
 
-const ( // upload flags
-	uploadFlagMetaSet = 0b10000000
-	uploadFlagIsMoved = 0b01000000
+const ( // upfile flags
+	upfileFlagMetaSet = 0b10000000
+	upfileFlagIsMoved = 0b01000000
 )
 
-func (u *Upload) setMeta(p []byte) {
-	if u.flags&uploadFlagMetaSet > 0 {
+func (u *ServerUpfile) setMeta(p []byte) {
+	if u.flags&upfileFlagMetaSet > 0 {
 		return
 	}
-	u.flags |= uploadFlagMetaSet
+	u.flags |= upfileFlagMetaSet
 	from := u.nameFrom
 	if u.baseFrom < from {
 		from = u.baseFrom
@@ -1146,20 +939,20 @@ func (u *Upload) setMeta(p []byte) {
 	u.typeFrom -= from
 	u.pathFrom -= from
 }
-func (u *Upload) metaSet() bool { return u.flags&uploadFlagMetaSet > 0 }
-func (u *Upload) setMoved()     { u.flags |= uploadFlagIsMoved }
-func (u *Upload) isMoved() bool { return u.flags&uploadFlagIsMoved > 0 }
+func (u *ServerUpfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
+func (u *ServerUpfile) setMoved()     { u.flags |= upfileFlagIsMoved }
+func (u *ServerUpfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
 
-const ( // upload error codes
-	uploadOK        = 0
-	uploadError     = 1
-	uploadCantWrite = 2
-	uploadTooLarge  = 3
-	uploadPartial   = 4
-	uploadNoFile    = 5
+const ( // upfile error codes
+	upfileOK        = 0
+	upfileError     = 1
+	upfileCantWrite = 2
+	upfileTooLarge  = 3
+	upfilePartial   = 4
+	upfileNoFile    = 5
 )
 
-var uploadErrors = [...]error{
+var upfileErrors = [...]error{
 	nil, // no error
 	errors.New("general error"),
 	errors.New("cannot write"),
@@ -1168,16 +961,16 @@ var uploadErrors = [...]error{
 	errors.New("no file"),
 }
 
-func (u *Upload) IsOK() bool   { return u.errCode == 0 }
-func (u *Upload) Error() error { return uploadErrors[u.errCode] }
+func (u *ServerUpfile) IsOK() bool   { return u.errCode == 0 }
+func (u *ServerUpfile) Error() error { return upfileErrors[u.errCode] }
 
-func (u *Upload) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
-func (u *Upload) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
-func (u *Upload) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
-func (u *Upload) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
-func (u *Upload) Size() int64  { return u.size }
+func (u *ServerUpfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *ServerUpfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *ServerUpfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *ServerUpfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *ServerUpfile) Size() int64  { return u.size }
 
-func (u *Upload) MoveTo(path string) error {
+func (u *ServerUpfile) MoveTo(path string) error {
 	// TODO. Remember to mark as moved
 	return nil
 }
@@ -1341,31 +1134,8 @@ func (c *ServerCookie) writeTo(p []byte) int {
 	return i
 }
 
-// request is the interface for *H[1-3]Request.
-type request interface {
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool
-	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-}
-
-// response is the interface for *H[1-3]Response.
-type response interface {
-	Status() int16
-	delHopHeaders()
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	delHopTrailers()
-	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
-}
-
-// socket is the interface for *H[1-3]Socket.
-type socket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-}
-
-// upload is a file to be uploaded.
-type upload struct {
+// BackendUpfile is a file to be uploaded to backend.
+type BackendUpfile struct {
 	// TODO
 }
 

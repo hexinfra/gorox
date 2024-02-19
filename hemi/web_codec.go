@@ -33,38 +33,6 @@ type webAgent interface {
 	MaxMemoryContentSize() int32
 }
 
-// webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
-type webConn interface {
-	ID() int64
-	IsUDS() bool
-	IsTLS() bool
-	makeTempName(p []byte, unixTime int64) int
-	isBroken() bool
-	markBroken()
-}
-
-// webStream collects shared methods between *http[1-3]Stream and *H[1-3]Stream.
-type webStream interface {
-	webAgent() webAgent
-	webConn() webConn
-	remoteAddr() net.Addr
-
-	buffer256() []byte
-	unsafeMake(size int) []byte
-	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
-
-	setReadDeadline(deadline time.Time) error
-	setWriteDeadline(deadline time.Time) error
-
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
-
-	isBroken() bool // if either side of the stream is broken, then it is broken
-	markBroken()    // mark stream as broken
-}
-
 // _webAgent_ is the mixin for webServer_ and webBackend_.
 type _webAgent_ struct {
 	// States
@@ -75,14 +43,6 @@ type _webAgent_ struct {
 }
 
 func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
-	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, sendTimeout)
-
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -90,6 +50,14 @@ func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, rec
 		}
 		return errors.New(".recvTimeout has an invalid value")
 	}, recvTimeout)
+
+	// sendTimeout
+	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
 
 	// maxContentSizeAllowed
 	shell.ConfigureInt64("maxContentSizeAllowed", &a.maxContentSizeAllowed, func(value int64) error {
@@ -116,6 +84,16 @@ func (a *_webAgent_) SendTimeout() time.Duration   { return a.sendTimeout }
 func (a *_webAgent_) MaxContentSizeAllowed() int64 { return a.maxContentSizeAllowed }
 func (a *_webAgent_) MaxMemoryContentSize() int32  { return a.maxMemoryContentSize }
 
+// webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
+type webConn interface {
+	ID() int64
+	IsUDS() bool
+	IsTLS() bool
+	makeTempName(p []byte, unixTime int64) int
+	isBroken() bool
+	markBroken()
+}
+
 // _webConn_ is the mixin for webServerConn_ and webBackendConn_.
 type _webConn_ struct {
 	// Conn states (stocks)
@@ -137,6 +115,28 @@ func (c *_webConn_) onPut() {
 
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
 func (c *_webConn_) markBroken()    { c.broken.Store(true) }
+
+// webStream collects shared methods between *http[1-3]Stream and *H[1-3]Stream.
+type webStream interface {
+	webAgent() webAgent
+	webConn() webConn
+	remoteAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
+
+	setReadDeadline(deadline time.Time) error
+	setWriteDeadline(deadline time.Time) error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+
+	isBroken() bool // if either side of the stream is broken, then it is broken
+	markBroken()    // mark stream as broken
+}
 
 // _webStream_ is the mixin for webServerStream_ and webBackendStream_.
 type _webStream_ struct {
@@ -335,6 +335,9 @@ func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
 func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
+
+func (r *webIn_) HeadResult() int16 { return r.headResult }
+func (r *webIn_) BodyResult() int16 { return r.bodyResult }
 
 func (r *webIn_) addHeader(header *pair) bool { // as prime
 	if edge, ok := r._addPrime(header); ok {
@@ -1804,7 +1807,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
-func (r *webOut_) pass(in _webIn) error { // used by proxes, to sync content to the other side directly
+func (r *webOut_) proxyPass(in _webIn) error { // sync content to the other side directly
 	pass := r.shell.passBytes
 	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -1839,7 +1842,7 @@ func (r *webOut_) pass(in _webIn) error { // used by proxes, to sync content to 
 	}
 	return nil
 }
-func (r *webOut_) post(content any, hasTrailers bool) error { // used by proxies, to post held content to the other side
+func (r *webOut_) proxyPost(content any, hasTrailers bool) error { // post held content to the other side
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
 			return r.echoText(contentText)
@@ -2008,3 +2011,13 @@ var ( // web outgoing message errors
 	webOutMixedContent  = errors.New("mixed content mode")
 	webOutTrailerFailed = errors.New("add trailer failed")
 )
+
+// _webSocket collects shared methods between *http[1-3]Socket and *H[1-3]Socket.
+type _webSocket interface {
+	// TODO
+}
+
+// webSocket_
+type webSocket_ struct {
+	// TODO
+}

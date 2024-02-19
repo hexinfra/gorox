@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// rpcAgent
+// rpcAgent collects shared methods between rpcServer or rpcBackend.
 type rpcAgent interface {
 	// Imports
 	agent

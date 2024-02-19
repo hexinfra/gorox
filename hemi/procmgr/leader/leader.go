@@ -26,7 +26,7 @@ func Main() {
 	if hemi.Debug() >= 1 {
 		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
 	}
-	if _, err := hemi.BootFile(configBase, configFile); err != nil { // the returned stage is ignored and not used
+	if _, err := hemi.NewStageFile(configBase, configFile); err != nil { // the returned stage is ignored and not used
 		common.Crash("leader: " + err.Error())
 	}
 

@@ -168,10 +168,6 @@ type http3DynamicTable struct {
 	content [_4K]byte
 }
 
-var ( // HTTP/3 byteses
-	http3BytesStatic = []byte(":authority:path/age0content-dispositioncontent-length0cookiedateetagif-modified-sinceif-none-matchlast-modifiedlinklocationrefererset-cookie:methodCONNECTDELETEGETHEADOPTIONSPOSTPUT:schemehttphttps:status103200304404503accept*/*application/dns-messageaccept-encodinggzip, deflate, braccept-rangesbytesaccess-control-allow-headerscache-controlcontent-typeaccess-control-allow-origin*cache-controlmax-age=0max-age=2592000max-age=604800no-cacheno-storepublic, max-age=31536000content-encodingbrgzipcontent-typeapplication/dns-messageapplication/javascriptapplication/jsonapplication/x-www-form-urlencodedimage/gifimage/jpegimage/pngtext/csstext/html; charset=utf-8text/plaintext/plain;charset=utf-8rangebytes=0-strict-transport-securitymax-age=31536000max-age=31536000; includesubdomainsmax-age=31536000; includesubdomains; preloadvaryaccept-encodingoriginx-content-type-optionsnosniffx-xss-protection1; mode=block:status100204206302400403421425500accept-languageaccess-control-allow-credentialsFALSETRUEaccess-control-allow-headers*access-control-allow-methodsgetget, post, optionsoptionsaccess-control-expose-headerscontent-lengthaccess-control-request-headerscontent-typeaccess-control-request-methodgetpostalt-svcclearauthorizationcontent-security-policyscript-src 'none'; object-src 'none'; base-uri 'none'early-data1expect-ctforwardedif-rangeoriginpurposeprefetchservertiming-allow-origin*upgrade-insecure-requests1user-agentx-forwarded-forx-frame-optionsdenysameorigin") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
-)
-
 // http3InFrame is the server-side HTTP/3 incoming frame.
 type http3InFrame struct {
 	// TODO
@@ -186,8 +182,79 @@ type http3OutFrame struct {
 
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
-var ( // HTTP/3 byteses, TODO
+var ( // HTTP/3 byteses
+	http3BytesStatic = []byte(":authority:path/age0content-dispositioncontent-length0cookiedateetagif-modified-sinceif-none-matchlast-modifiedlinklocationrefererset-cookie:methodCONNECTDELETEGETHEADOPTIONSPOSTPUT:schemehttphttps:status103200304404503accept*/*application/dns-messageaccept-encodinggzip, deflate, braccept-rangesbytesaccess-control-allow-headerscache-controlcontent-typeaccess-control-allow-origin*cache-controlmax-age=0max-age=2592000max-age=604800no-cacheno-storepublic, max-age=31536000content-encodingbrgzipcontent-typeapplication/dns-messageapplication/javascriptapplication/jsonapplication/x-www-form-urlencodedimage/gifimage/jpegimage/pngtext/csstext/html; charset=utf-8text/plaintext/plain;charset=utf-8rangebytes=0-strict-transport-securitymax-age=31536000max-age=31536000; includesubdomainsmax-age=31536000; includesubdomains; preloadvaryaccept-encodingoriginx-content-type-optionsnosniffx-xss-protection1; mode=block:status100204206302400403421425500accept-languageaccess-control-allow-credentialsFALSETRUEaccess-control-allow-headers*access-control-allow-methodsgetget, post, optionsoptionsaccess-control-expose-headerscontent-lengthaccess-control-request-headerscontent-typeaccess-control-request-methodgetpostalt-svcclearauthorizationcontent-security-policyscript-src 'none'; object-src 'none'; base-uri 'none'early-data1expect-ctforwardedif-rangeoriginpurposeprefetchservertiming-allow-origin*upgrade-insecure-requests1user-agentx-forwarded-forx-frame-optionsdenysameorigin") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 )
+
+var http3Template = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
+var http3Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Control and http2Control!
+	// 1XX
+	StatusContinue:           []byte(":status 100"),
+	StatusSwitchingProtocols: []byte(":status 101"),
+	StatusProcessing:         []byte(":status 102"),
+	StatusEarlyHints:         []byte(":status 103"),
+	// 2XX
+	StatusOK:                         []byte(":status 200"),
+	StatusCreated:                    []byte(":status 201"),
+	StatusAccepted:                   []byte(":status 202"),
+	StatusNonAuthoritativeInfomation: []byte(":status 203"),
+	StatusNoContent:                  []byte(":status 204"),
+	StatusResetContent:               []byte(":status 205"),
+	StatusPartialContent:             []byte(":status 206"),
+	StatusMultiStatus:                []byte(":status 207"),
+	StatusAlreadyReported:            []byte(":status 208"),
+	StatusIMUsed:                     []byte(":status 226"),
+	// 3XX
+	StatusMultipleChoices:   []byte(":status 300"),
+	StatusMovedPermanently:  []byte(":status 301"),
+	StatusFound:             []byte(":status 302"),
+	StatusSeeOther:          []byte(":status 303"),
+	StatusNotModified:       []byte(":status 304"),
+	StatusUseProxy:          []byte(":status 305"),
+	StatusTemporaryRedirect: []byte(":status 307"),
+	StatusPermanentRedirect: []byte(":status 308"),
+	// 4XX
+	StatusBadRequest:                  []byte(":status 400"),
+	StatusUnauthorized:                []byte(":status 401"),
+	StatusPaymentRequired:             []byte(":status 402"),
+	StatusForbidden:                   []byte(":status 403"),
+	StatusNotFound:                    []byte(":status 404"),
+	StatusMethodNotAllowed:            []byte(":status 405"),
+	StatusNotAcceptable:               []byte(":status 406"),
+	StatusProxyAuthenticationRequired: []byte(":status 407"),
+	StatusRequestTimeout:              []byte(":status 408"),
+	StatusConflict:                    []byte(":status 409"),
+	StatusGone:                        []byte(":status 410"),
+	StatusLengthRequired:              []byte(":status 411"),
+	StatusPreconditionFailed:          []byte(":status 412"),
+	StatusContentTooLarge:             []byte(":status 413"),
+	StatusURITooLong:                  []byte(":status 414"),
+	StatusUnsupportedMediaType:        []byte(":status 415"),
+	StatusRangeNotSatisfiable:         []byte(":status 416"),
+	StatusExpectationFailed:           []byte(":status 417"),
+	StatusMisdirectedRequest:          []byte(":status 421"),
+	StatusUnprocessableEntity:         []byte(":status 422"),
+	StatusLocked:                      []byte(":status 423"),
+	StatusFailedDependency:            []byte(":status 424"),
+	StatusTooEarly:                    []byte(":status 425"),
+	StatusUpgradeRequired:             []byte(":status 426"),
+	StatusPreconditionRequired:        []byte(":status 428"),
+	StatusTooManyRequests:             []byte(":status 429"),
+	StatusRequestHeaderFieldsTooLarge: []byte(":status 431"),
+	StatusUnavailableForLegalReasons:  []byte(":status 451"),
+	// 5XX
+	StatusInternalServerError:           []byte(":status 500"),
+	StatusNotImplemented:                []byte(":status 501"),
+	StatusBadGateway:                    []byte(":status 502"),
+	StatusServiceUnavailable:            []byte(":status 503"),
+	StatusGatewayTimeout:                []byte(":status 504"),
+	StatusHTTPVersionNotSupported:       []byte(":status 505"),
+	StatusVariantAlsoNegotiates:         []byte(":status 506"),
+	StatusInsufficientStorage:           []byte(":status 507"),
+	StatusLoopDetected:                  []byte(":status 508"),
+	StatusNotExtended:                   []byte(":status 510"),
+	StatusNetworkAuthenticationRequired: []byte(":status 511"),
+}
 
 // HTTP/3 incoming
 
@@ -272,4 +339,9 @@ func (r *webOut_) writeVector3() error {
 func (r *webOut_) writeBytes3(p []byte) error {
 	// TODO
 	return nil
+}
+
+// HTTP/3 websocket
+
+func (s *webSocket_) example3() {
 }

@@ -11,7 +11,7 @@ used as:
   * Go Application Server (Frameworks, Applications)
   * RPC Framework for Go (HRPC, gRPC)
   * Layer 7 Reverse Proxy (Various Layer 7 Protocols)
-  * Layer 4 Reverse Proxy (TCP/TLS, UDP, QUIC)
+  * Layer 4 Reverse Proxy (TCP/TLS, UDP, QUIC, UDS)
   * SOCKS Proxy, HTTP Tunnel Proxy
   * Service Mesh (Data Plane), API Gateway
   * ... and more through its highly extensible compoments design!

@@ -262,14 +262,14 @@ func (c *QUICConn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *QUICConn) mesh() { // runner
+func (c *QUICConn) serve() { // runner
 	router := c.Server().(*QUICRouter)
 	router.dispatch(c)
-	c.Close()
+	c.closeConn()
 	putQUICConn(c)
 }
 
-func (c *QUICConn) Close() error {
+func (c *QUICConn) closeConn() error {
 	// TODO
 	return nil
 }

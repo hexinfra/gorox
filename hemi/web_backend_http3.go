@@ -5,7 +5,7 @@
 
 // HTTP/3 backend implementation. See RFC 9114 and 9204.
 
-// For simplicity, HTTP/3 Server Push is not supported.
+// Server Push is not supported.
 
 package hemi
 
@@ -18,74 +18,69 @@ import (
 )
 
 func init() {
-	RegisterBackend("h3Backend", func(name string, stage *Stage) Backend {
-		b := new(H3Backend)
+	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP3Backend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// H3Backend
-type H3Backend struct {
+// HTTP3Backend
+type HTTP3Backend struct {
 	// Mixins
-	webBackend_[*h3Node]
+	webBackend_[*http3Node]
 	// States
 }
 
-func (b *H3Backend) onCreate(name string, stage *Stage) {
+func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
 	b.webBackend_.onCreate(name, stage, b.NewNode)
 }
 
-func (b *H3Backend) OnConfigure() {
+func (b *HTTP3Backend) OnConfigure() {
 	b.webBackend_.onConfigure(b)
 }
-func (b *H3Backend) OnPrepare() {
+func (b *HTTP3Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *H3Backend) NewNode(id int32) *h3Node {
-	node := new(h3Node)
+func (b *HTTP3Backend) NewNode(id int32) *http3Node {
+	node := new(http3Node)
 	node.init(id, b)
 	return node
 }
-
-func (b *H3Backend) FetchConn() (*H3Conn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
-}
-func (b *H3Backend) StoreConn(conn *H3Conn) {
-	conn.node.(*h3Node).storeConn(conn)
+func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
+	return b.nodes[b.getNext()].fetchConn()
 }
 
-// h3Node
-type h3Node struct {
+// http3Node
+type http3Node struct {
 	// Mixins
-	Node_
+	webNode_
 	// Assocs
 	// States
 }
 
-func (n *h3Node) init(id int32, backend *H3Backend) {
-	n.Node_.Init(id, backend)
+func (n *http3Node) init(id int32, backend *HTTP3Backend) {
+	n.webNode_.Init(id, backend)
 }
 
-func (n *h3Node) setTLS() {
-	n.Node_.setTLS()
+func (n *http3Node) setTLS() {
+	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 }
 
-func (n *h3Node) Maintain() { // runner
+func (n *http3Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("h3Node=%d done\n", n.id)
+		Printf("http3Node=%d done\n", n.id)
 	}
 	n.backend.SubDone()
 }
 
-func (n *h3Node) fetchConn() (*H3Conn, error) {
+func (n *http3Node) fetchConn() (WebBackendConn, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: dynamic address names?
 	// TODO
@@ -96,7 +91,8 @@ func (n *h3Node) fetchConn() (*H3Conn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, n, conn), nil
 }
-func (n *h3Node) storeConn(h3Conn *H3Conn) {
+
+func (n *http3Node) storeConn(conn WebBackendConn) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -104,7 +100,7 @@ func (n *h3Node) storeConn(h3Conn *H3Conn) {
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, node *h3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, node *http3Node, quixConn *quix.Conn) *H3Conn {
 	var h3Conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		h3Conn = new(H3Conn)
@@ -131,7 +127,7 @@ type H3Conn struct {
 	activeStreams int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, node *h3Node, quixConn *quix.Conn) {
+func (c *H3Conn) onGet(id int64, node *http3Node, quixConn *quix.Conn) {
 	c.webBackendConn_.onGet(id, node)
 	c.quixConn = quixConn
 }
@@ -141,21 +137,20 @@ func (c *H3Conn) onPut() {
 	c.webBackendConn_.onPut()
 }
 
-func (c *H3Conn) FetchStream() *H3Stream {
+func (c *H3Conn) FetchStream() WebBackendStream {
 	// TODO: stream.onUse()
 	return nil
 }
-func (c *H3Conn) StoreStream(stream *H3Stream) {
+func (c *H3Conn) StoreStream(stream WebBackendStream) {
 	// TODO
-	stream.onEnd()
+	//stream.onEnd()
 }
 
-func (c *H3Conn) Close() error { // only used by clients of dial
-	// TODO
-	return nil
+func (c *H3Conn) Close() error {
+	quixConn := c.quixConn
+	putH3Conn(c)
+	return quixConn.Close()
 }
-
-func (c *H3Conn) closeConn() { c.quixConn.Close() } // used by codes which use fetch/store
 
 // poolH3Stream
 var poolH3Stream sync.Pool
@@ -195,9 +190,6 @@ type H3Stream struct {
 	conn       *H3Conn
 	quixStream *quix.Stream // the underlying quic stream
 	// Stream states (zeros)
-	h3Stream0 // all values must be zero by default in this struct!
-}
-type h3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quixStream *quix.Stream) { // for non-zeros
@@ -213,7 +205,6 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.socket = nil
 	s.conn = nil
 	s.quixStream = nil
-	s.h3Stream0 = h3Stream0{}
 	s.webBackendStream_.onEnd()
 }
 
@@ -221,8 +212,8 @@ func (s *H3Stream) webAgent() webAgent   { return s.conn.webBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
-func (s *H3Stream) Request() *H3Request   { return &s.request }
-func (s *H3Stream) Response() *H3Response { return &s.response }
+func (s *H3Stream) Request() WebBackendRequest   { return &s.request }
+func (s *H3Stream) Response() WebBackendResponse { return &s.response }
 
 func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -337,6 +328,10 @@ type H3Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
+func (r *H3Response) recvHead() {
+	// TODO
+}
+
 func (r *H3Response) readContent() (p []byte, err error) { return r.readContent3() }
 
 // poolH3Socket
@@ -350,4 +345,9 @@ type H3Socket struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (s *H3Socket) onUse() {
+}
+func (s *H3Socket) onEnd() {
 }

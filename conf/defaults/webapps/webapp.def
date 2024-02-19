@@ -5,7 +5,7 @@ webapp "a1" {
 	.tlsCertificate       = ""
 	.tlsPrivateKey        = ""
 	.accessLog            = []
-	.maxUploadContentSize = 128M
+	.maxUpfileSize = 128M
 	.settings             = []
 	.proxyOnly            = false
 	.withStater           = "ls"

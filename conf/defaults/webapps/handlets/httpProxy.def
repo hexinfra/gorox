@@ -1,5 +1,5 @@
-http1Proxy "h1p1" {
-	.toBackend = "proxy_name"
+httpProxy "h1p1" {
+	.toBackend = "backendName"
 	.viaName = "gorox"
 	.bufferClientContent = true
 	.bufferServerContent = true

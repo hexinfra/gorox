@@ -1,4 +1,4 @@
-h3Backend "h3b1" {
+http1Backend "h1b1" {
 	.tlsMode = false
 	.dialTimeout = 10s
 	.writeTimeout = 30s
@@ -9,9 +9,9 @@ h3Backend "h3b1" {
 		["address": "127.0.0.1:3080", "weight": 8, "keepConns": 3],
 	)
 	.maxStreamsPerConn = 1000
-	.saveContentFilesDir = %tmpsDir + "/web/backends/h3b"
+	.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
 	.maxContentSizeAllowed = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s
-	.balancer = "ipHash"
+	.balancer = "roundRobin"
 }

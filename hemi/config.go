@@ -157,7 +157,7 @@ type config struct {
 	counter int     // the name for components without a name
 }
 
-func (c *config) bootText(text string) (stage *Stage, err error) {
+func (c *config) newStageText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -167,7 +167,7 @@ func (c *config) bootText(text string) (stage *Stage, err error) {
 	c.tokens = l.scanText(text)
 	return c.doParse()
 }
-func (c *config) bootFile(base string, path string) (stage *Stage, err error) {
+func (c *config) newStageFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -246,8 +246,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		switch current.info {
 		case compFixture:
 			c.parseFixture(current, stage)
-		case compAddon:
-			c.parseAddon(current, stage)
+		case compComplet:
+			c.parseComplet(current, stage)
 		case compBackend:
 			c.parseBackend(current, stage)
 		case compQUICRouter:
@@ -283,8 +283,8 @@ func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	c.forward()
 	c._parseLeaf(fixture)
 }
-func (c *config) parseAddon(sign *token, stage *Stage) { // xxxAddon <name> {}
-	parseComponent0(c, sign, stage, stage.createAddon)
+func (c *config) parseComplet(sign *token, stage *Stage) { // xxxComplet <name> {}
+	parseComponent0(c, sign, stage, stage.createComplet)
 }
 func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
@@ -774,7 +774,7 @@ func (c *config) _parseDict(component Component, prop string, value *Value) {
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // addon, backend, stater, cacher, server, cronjob
+func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // complet, backend, stater, cacher, server, cronjob
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)

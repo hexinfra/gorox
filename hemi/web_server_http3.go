@@ -73,14 +73,14 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Mixins
-	Gate_
+	webGate_
 	// Assocs
 	// States
 	listener *quix.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.Gate_.Init(id, server)
+	g.webGate_.Init(id, server)
 }
 
 func (g *http3Gate) Open() error {
@@ -96,6 +96,9 @@ func (g *http3Gate) Shut() error {
 	return g.listener.Close()
 }
 
+func (g *http3Gate) serveUDS() { // runner
+	// TODO
+}
 func (g *http3Gate) serveTLS() { // runner
 	connID := int64(0)
 	for {
@@ -122,9 +125,6 @@ func (g *http3Gate) serveTLS() { // runner
 	}
 	g.server.SubDone()
 }
-func (g *http3Gate) serveUDS() { // runner
-	// TODO
-}
 
 func (g *http3Gate) justClose(quixConn *quix.Conn) {
 	quixConn.Close()
@@ -134,7 +134,7 @@ func (g *http3Gate) justClose(quixConn *quix.Conn) {
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) webServerConn {
+func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
 	var httpConn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		httpConn = new(http3Conn)
@@ -377,7 +377,7 @@ func (r *http3Response) AddDirectoryRedirection() bool {
 }
 func (r *http3Response) setConnectionClose() { BugExitln("not used in HTTP/3") }
 
-func (r *http3Response) AddCookie(cookie *ServerCookie) bool {
+func (r *http3Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
 }

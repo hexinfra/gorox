@@ -5,7 +5,7 @@ stage {
 	.grtFile = %tmpsDir + "/grt.prof"
 	.blkFile = %tmpsDir + "/blk.prof"
 
-	// fixtures. fixtures are singletons
+	// fixtures
 
 	// complets
 

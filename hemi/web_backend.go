@@ -30,7 +30,7 @@ type WebBackend interface {
 }
 
 // webBackend_ is the mixin for HTTP[1-3]Backend.
-type webBackend_[N Node] struct {
+type webBackend_[N WebNode] struct {
 	// Mixins
 	Backend_[N]
 	_webAgent_
@@ -93,10 +93,10 @@ func (n *webNode_) closeConn(conn WebBackendConn) {
 
 // WebBackendConn is the interface for *H[1-3]Conn.
 type WebBackendConn interface {
+	webNode() WebNode
 	FetchStream() WebBackendStream
 	StoreStream(stream WebBackendStream)
 	Close() error
-	webNode() WebNode
 }
 
 // webBackendConn_ is the mixin for H[1-3]Conn.
@@ -408,6 +408,11 @@ func (r *webBackendRequest_) copyTailFrom(req Request) bool { // used by proxies
 	})
 }
 
+// WebBackendUpfile is a file to be uploaded to backend.
+type WebBackendUpfile struct {
+	// TODO
+}
+
 // WebBackendResponse is the interface for *H[1-3]Response.
 type WebBackendResponse interface {
 	HeadResult() int16
@@ -434,11 +439,11 @@ type webBackendResponse_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockCookies [8]BackendCookie // for r.cookies
+	stockCookies [8]WebBackendCookie // for r.cookies
 	// Stream states (controlled)
-	cookie BackendCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
+	cookie WebBackendCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
 	// Stream states (non-zeros)
-	cookies []BackendCookie // hold cookies->r.input. [<r.stockCookies>/(make=32/128)]
+	cookies []WebBackendCookie // hold cookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
 	webBackendResponse0 // all values must be zero by default in this struct!
 }
@@ -644,10 +649,10 @@ func (r *webBackendResponse_) checkSetCookie(header *pair, index uint8) bool { /
 	}
 	if len(r.cookies) == cap(r.cookies) {
 		if cap(r.cookies) == cap(r.stockCookies) {
-			cookies := make([]BackendCookie, 0, 16)
+			cookies := make([]WebBackendCookie, 0, 16)
 			r.cookies = append(cookies, r.cookies...)
 		} else if cap(r.cookies) == 16 {
-			cookies := make([]BackendCookie, 0, 128)
+			cookies := make([]WebBackendCookie, 0, 128)
 			r.cookies = append(cookies, r.cookies...)
 		} else {
 			r.headResult = StatusRequestHeaderFieldsTooLarge
@@ -808,7 +813,7 @@ func (r *webBackendResponse_) unsafeLastModified() []byte {
 }
 
 func (r *webBackendResponse_) HasCookies() bool { return len(r.cookies) > 0 }
-func (r *webBackendResponse_) GetCookie(name string) *BackendCookie {
+func (r *webBackendResponse_) GetCookie(name string) *WebBackendCookie {
 	for i := 0; i < len(r.cookies); i++ {
 		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
 			return cookie
@@ -824,7 +829,7 @@ func (r *webBackendResponse_) HasCookie(name string) bool {
 	}
 	return false
 }
-func (r *webBackendResponse_) forCookies(callback func(cookie *BackendCookie) bool) bool {
+func (r *webBackendResponse_) forCookies(callback func(cookie *WebBackendCookie) bool) bool {
 	for i := 0; i < len(r.cookies); i++ {
 		if !callback(&r.cookies[i]) {
 			return false
@@ -859,6 +864,70 @@ func (r *webBackendResponse_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
+}
+
+// WebBackendCookie is a "set-cookie" header received from backend.
+type WebBackendCookie struct { // 32 bytes
+	input      *[]byte // the buffer holding data
+	expires    int64   // Expires=Wed, 09 Jun 2021 10:18:14 GMT
+	maxAge     int32   // Max-Age=123
+	nameFrom   int16   // foo
+	valueEdge  int16   // bar
+	domainFrom int16   // Domain=example.com
+	pathFrom   int16   // Path=/abc
+	nameSize   uint8   // <= 255
+	domainSize uint8   // <= 255
+	pathSize   uint8   // <= 255
+	flags      uint8   // secure(1), httpOnly(1), sameSite(2), reserved(2), valueOffset(2)
+}
+
+func (c *WebBackendCookie) zero() { *c = WebBackendCookie{} }
+
+func (c *WebBackendCookie) Name() string {
+	p := *c.input
+	return string(p[c.nameFrom : c.nameFrom+int16(c.nameSize)])
+}
+func (c *WebBackendCookie) Value() string {
+	p := *c.input
+	valueFrom := c.nameFrom + int16(c.nameSize) + 1 // name=value
+	return string(p[valueFrom:c.valueEdge])
+}
+func (c *WebBackendCookie) Expires() int64 { return c.expires }
+func (c *WebBackendCookie) MaxAge() int32  { return c.maxAge }
+func (c *WebBackendCookie) domain() []byte {
+	p := *c.input
+	return p[c.domainFrom : c.domainFrom+int16(c.domainSize)]
+}
+func (c *WebBackendCookie) path() []byte {
+	p := *c.input
+	return p[c.pathFrom : c.pathFrom+int16(c.pathSize)]
+}
+func (c *WebBackendCookie) sameSite() string {
+	switch c.flags & 0b00110000 {
+	case 0b00010000:
+		return "Lax"
+	case 0b00100000:
+		return "Strict"
+	default:
+		return "None"
+	}
+}
+func (c *WebBackendCookie) secure() bool   { return c.flags&0b10000000 > 0 }
+func (c *WebBackendCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
+
+func (c *WebBackendCookie) nameEqualString(name string) bool {
+	if int(c.nameSize) != len(name) {
+		return false
+	}
+	p := *c.input
+	return string(p[c.nameFrom:c.nameFrom+int16(c.nameSize)]) == name
+}
+func (c *WebBackendCookie) nameEqualBytes(name []byte) bool {
+	if int(c.nameSize) != len(name) {
+		return false
+	}
+	p := *c.input
+	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
 
 // WebBackendSocket is the interface for *H[1-3]Socket.

@@ -82,16 +82,23 @@ func (n *http2Node) Maintain() { // runner
 }
 
 func (n *http2Node) fetchConn() (WebBackendConn, error) {
-	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n, netConn, rawConn), nil
 }
+func (n *http2Node) _fetchTCP() (WebBackendConn, error) {
+	return nil, nil
+}
+func (n *http2Node) _fetchTLS() (WebBackendConn, error) {
+	return nil, nil
+}
+func (n *http2Node) _fetchUDS() (WebBackendConn, error) {
+	return nil, nil
+}
 
 func (n *http2Node) storeConn(conn WebBackendConn) {
-	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
@@ -139,10 +146,12 @@ func (c *H2Conn) onPut() {
 }
 
 func (c *H2Conn) FetchStream() WebBackendStream {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
 	return nil
 }
 func (c *H2Conn) StoreStream(stream WebBackendStream) {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
 }
@@ -362,6 +371,12 @@ func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2
 
 // poolH2Socket
 var poolH2Socket sync.Pool
+
+func getH2Socket(stream *H2Stream) *H2Socket {
+	return nil
+}
+func putH2Socket(socket *H2Socket) {
+}
 
 // H2Socket is the backend-side HTTP/2 websocket.
 type H2Socket struct {

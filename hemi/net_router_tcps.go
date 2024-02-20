@@ -19,6 +19,14 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
+func init() {
+	RegisterTCPSDealet("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealet {
+		d := new(tcpsProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
+
 // TCPSRouter
 type TCPSRouter struct {
 	// Mixins
@@ -57,6 +65,8 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 func (r *TCPSRouter) Serve() { // runner
 	if r.IsUDS() {
 		r.serveUDS()
+	} else if r.IsTLS() {
+		r.serveTLS()
 	} else {
 		r.serveTCP()
 	}
@@ -83,6 +93,18 @@ func (r *TCPSRouter) serveUDS() {
 	r.IncSub(1)
 	go gate.serveUDS()
 }
+func (r *TCPSRouter) serveTLS() {
+	for id := int32(0); id < r.numGates; id++ {
+		gate := new(tcpsGate)
+		gate.init(id, r)
+		if err := gate.Open(); err != nil {
+			EnvExitln(err.Error())
+		}
+		r.AddGate(gate)
+		r.IncSub(1)
+		go gate.serveTLS()
+	}
+}
 func (r *TCPSRouter) serveTCP() {
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpsGate)
@@ -92,11 +114,7 @@ func (r *TCPSRouter) serveTCP() {
 		}
 		r.AddGate(gate)
 		r.IncSub(1)
-		if r.IsTLS() {
-			go gate.serveTLS()
-		} else {
-			go gate.serveTCP()
-		}
+		go gate.serveTCP()
 	}
 }
 
@@ -434,4 +452,51 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes 
 	nil, // tlsMode
 	nil, // serverName
 	nil, // nextProto
+}
+
+// tcpsProxy passes TCPS connections to another/backend TCPS server.
+type tcpsProxy struct {
+	// Mixins
+	TCPSDealet_
+	// Assocs
+	stage   *Stage      // current stage
+	router  *TCPSRouter // the router to which the dealet belongs
+	backend *TCPSBackend
+	// States
+}
+
+func (d *tcpsProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.router = router
+}
+func (d *tcpsProxy) OnShutdown() {
+	d.router.SubDone()
+}
+
+func (d *tcpsProxy) OnConfigure() {
+	// toBackend
+	if v, ok := d.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := d.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
+				d.backend = tcpsBackend
+			} else {
+				UseExitf("incorrect backend '%s' for tcpsProxy\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for tcpsProxy proxy")
+	}
+}
+func (d *tcpsProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (d *tcpsProxy) Deal(conn *TCPSConn) (dealt bool) {
+	// TODO
+	return true
 }

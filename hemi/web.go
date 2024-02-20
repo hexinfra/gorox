@@ -13,10 +13,21 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/common/risky"
 )
+
+func init() {
+	RegisterHandlet("static", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(staticHandlet)
+		h.onCreate(name, stage, webapp)
+		return h
+	})
+}
 
 // Webapp is the Web application.
 type Webapp struct {
@@ -873,332 +884,285 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-// Upfile is a file uploaded by client.
-type ServerUpfile struct { // 48 bytes
-	hash     uint16 // hash of name, to support fast comparison
-	flags    uint8  // see upfile flags
-	errCode  int8   // error code
-	nameSize uint8  // name size
-	baseSize uint8  // base size
-	typeSize uint8  // type size
-	pathSize uint8  // path size
-	nameFrom int32  // like: "avatar"
-	baseFrom int32  // like: "michael.jpg"
-	typeFrom int32  // like: "image/jpeg"
-	pathFrom int32  // like: "/path/to/391384576"
-	size     int64  // file size
-	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+// staticHandlet
+type staticHandlet struct {
+	// Mixins
+	Handlet_
+	// Assocs
+	stage  *Stage // current stage
+	webapp *Webapp
+	// States
+	webRoot       string            // root dir for the web
+	aliasTo       []string          // from is an alias to to
+	indexFile     string            // ...
+	autoIndex     bool              // ...
+	mimeTypes     map[string]string // ...
+	defaultType   string            // ...
+	useAppWebRoot bool              // true if webRoot is same with webapp.webRoot
 }
 
-func (u *ServerUpfile) nameEqualString(p []byte, x string) bool {
-	if int(u.nameSize) != len(x) {
-		return false
-	}
-	if u.metaSet() {
-		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
-	}
-	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(name)
+	h.stage = stage
+	h.webapp = webapp
+}
+func (h *staticHandlet) OnShutdown() {
+	h.webapp.SubDone()
 }
 
-const ( // upfile flags
-	upfileFlagMetaSet = 0b10000000
-	upfileFlagIsMoved = 0b01000000
-)
+func (h *staticHandlet) OnConfigure() {
+	// webRoot
+	if v, ok := h.Find("webRoot"); ok {
+		if dir, ok := v.String(); ok && dir != "" {
+			h.webRoot = dir
+		} else {
+			UseExitln("invalid webRoot")
+		}
+	} else {
+		UseExitln("webRoot is required for staticHandlet")
+	}
+	h.webRoot = strings.TrimRight(h.webRoot, "/")
+	h.useAppWebRoot = h.webRoot == h.webapp.webRoot
+	if Debug() >= 1 {
+		if h.useAppWebRoot {
+			Printf("static=%s use webapp web root\n", h.Name())
+		} else {
+			Printf("static=%s NOT use webapp web root\n", h.Name())
+		}
+	}
 
-func (u *ServerUpfile) setMeta(p []byte) {
-	if u.flags&upfileFlagMetaSet > 0 {
+	// aliasTo
+	if v, ok := h.Find("aliasTo"); ok {
+		if fromTo, ok := v.StringListN(2); ok {
+			h.aliasTo = fromTo
+		} else {
+			UseExitln("invalid aliasTo")
+		}
+	} else {
+		h.aliasTo = nil
+	}
+
+	// indexFile
+	h.ConfigureString("indexFile", &h.indexFile, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile has an invalid value")
+	}, "index.html")
+
+	// mimeTypes
+	if v, ok := h.Find("mimeTypes"); ok {
+		if mimeTypes, ok := v.StringDict(); ok {
+			h.mimeTypes = make(map[string]string)
+			for ext, mimeType := range staticDefaultMimeTypes {
+				h.mimeTypes[ext] = mimeType
+			}
+			for ext, mimeType := range mimeTypes { // overwrite default
+				h.mimeTypes[ext] = mimeType
+			}
+		} else {
+			UseExitln("invalid mimeTypes")
+		}
+	} else {
+		h.mimeTypes = staticDefaultMimeTypes
+	}
+
+	// defaultType
+	h.ConfigureString("defaultType", &h.defaultType, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile has an invalid value")
+	}, "application/octet-stream")
+
+	// autoIndex
+	h.ConfigureBool("autoIndex", &h.autoIndex, false)
+}
+
+var staticDefaultMimeTypes = map[string]string{
+	"7z":   "application/x-7z-compressed",
+	"atom": "application/atom+xml",
+	"bin":  "application/octet-stream",
+	"bmp":  "image/x-ms-bmp",
+	"css":  "text/css",
+	"deb":  "application/octet-stream",
+	"dll":  "application/octet-stream",
+	"doc":  "application/msword",
+	"dmg":  "application/octet-stream",
+	"exe":  "application/octet-stream",
+	"flv":  "video/x-flv",
+	"gif":  "image/gif",
+	"htm":  "text/html",
+	"html": "text/html",
+	"ico":  "image/x-icon",
+	"img":  "application/octet-stream",
+	"iso":  "application/octet-stream",
+	"jar":  "application/java-archive",
+	"jpg":  "image/jpeg",
+	"jpeg": "image/jpeg",
+	"js":   "application/javascript",
+	"json": "application/json",
+	"m4a":  "audio/x-m4a",
+	"mov":  "video/quicktime",
+	"mp3":  "audio/mpeg",
+	"mp4":  "video/mp4",
+	"mpeg": "video/mpeg",
+	"mpg":  "video/mpeg",
+	"pdf":  "application/pdf",
+	"png":  "image/png",
+	"ppt":  "application/vnd.ms-powerpoint",
+	"ps":   "application/postscript",
+	"rar":  "application/x-rar-compressed",
+	"rss":  "application/rss+xml",
+	"rtf":  "application/rtf",
+	"svg":  "image/svg+xml",
+	"txt":  "text/plain",
+	"war":  "application/java-archive",
+	"webm": "video/webm",
+	"webp": "image/webp",
+	"xls":  "application/vnd.ms-excel",
+	"xml":  "text/xml",
+	"zip":  "application/zip",
+}
+
+func (h *staticHandlet) OnPrepare() {
+	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
+		EnvExitln("indexFile must be a regular file")
+	}
+}
+
+func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
+	if req.MethodCode()&(MethodGET|MethodHEAD) == 0 {
+		resp.SendMethodNotAllowed("GET, HEAD", nil)
+		return true
+	}
+
+	var fullPath []byte
+	var pathSize int
+	if h.useAppWebRoot {
+		fullPath = req.unsafeAbsPath()
+		pathSize = len(fullPath)
+	} else { // custom web root
+		userPath := req.UnsafePath()
+		fullPath = req.UnsafeMake(len(h.webRoot) + len(userPath) + len(h.indexFile))
+		pathSize = copy(fullPath, h.webRoot)
+		pathSize += copy(fullPath[pathSize:], userPath)
+	}
+	isFile := fullPath[pathSize-1] != '/'
+	var openPath []byte
+	if isFile {
+		openPath = fullPath[:pathSize]
+	} else { // is directory, add indexFile to openPath
+		if h.useAppWebRoot {
+			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
+			copy(openPath, fullPath)
+			copy(openPath[pathSize:], h.indexFile)
+			fullPath = openPath
+		} else { // custom web root
+			openPath = fullPath
+		}
+	}
+
+	fcache := h.stage.Fcache()
+	entry, err := fcache.getEntry(openPath)
+	if err != nil { // entry does not exist
+		if Debug() >= 1 {
+			Println("entry MISS")
+		}
+		if entry, err = fcache.newEntry(string(openPath)); err != nil {
+			if !os.IsNotExist(err) {
+				h.webapp.Logf("open file error=%s\n", err.Error())
+				resp.SendInternalServerError(nil)
+			} else if isFile { // file not found
+				resp.SendNotFound(h.webapp.text404)
+			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
+				if dir, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
+					h.listDir(dir, resp)
+					dir.Close()
+				} else if !os.IsNotExist(err) {
+					h.webapp.Logf("open dir error=%s\n", err.Error())
+					resp.SendInternalServerError(nil)
+				} else { // directory not found
+					resp.SendNotFound(h.webapp.text404)
+				}
+			} else { // not auto index
+				resp.SendForbidden(nil)
+			}
+			return true
+		}
+	}
+	if entry.isDir() {
+		resp.SetStatus(StatusFound)
+		resp.AddDirectoryRedirection()
+		resp.SendBytes(nil)
+		return true
+	}
+
+	if entry.isLarge() {
+		defer entry.decRef()
+	}
+
+	date := entry.info.ModTime().Unix()
+	size := entry.info.Size()
+	etag, _ := resp.MakeETagFrom(date, size) // with ""
+	const asOrigin = true
+	if status, normal := req.EvalPreconditions(date, etag, asOrigin); !normal { // not modified, or precondition failed
+		resp.SetStatus(status)
+		if status == StatusNotModified {
+			resp.AddHeaderBytes(bytesETag, etag)
+		}
+		resp.SendBytes(nil)
+		return true
+	}
+	contentType := h.defaultType
+	filePath := risky.WeakString(openPath)
+	if p := strings.LastIndex(filePath, "."); p >= 0 {
+		ext := filePath[p+1:]
+		if mimeType, ok := h.mimeTypes[ext]; ok {
+			contentType = mimeType
+		}
+	}
+	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
+		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
+		if Debug() >= 2 { // TODO
+			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
+		} else {
+			resp.AddHeaderBytes(bytesETag, etag)
+			resp.SetLastModified(date)
+		}
+	} else if ranges := req.MeasureRanges(size); ranges != nil { // ranges are satisfiable
+		resp.employRanges(ranges, contentType)
+	} else { // ranges are not satisfiable
+		resp.SendRangeNotSatisfiable(size, nil)
+		return true
+	}
+	if entry.isSmall() {
+		resp.sendText(entry.text)
+	} else {
+		resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
+	}
+	return true
+}
+
+func (h *staticHandlet) listDir(dir *os.File, resp Response) {
+	fis, err := dir.Readdir(-1)
+	if err != nil {
+		resp.SendInternalServerError([]byte("Internal Server Error 5"))
 		return
 	}
-	u.flags |= upfileFlagMetaSet
-	from := u.nameFrom
-	if u.baseFrom < from {
-		from = u.baseFrom
+	resp.Echo(`<table border="1">`)
+	resp.Echo(`<tr><th>name</th><th>size(in bytes)</th><th>time</th></tr>`)
+	for _, fi := range fis {
+		name := fi.Name()
+		size := strconv.FormatInt(fi.Size(), 10)
+		date := fi.ModTime().String()
+		line := `<tr><td><a href="` + htmlEscape(name) + `">` + htmlEscape(name) + `</a></td><td>` + size + `</td><td>` + date + `</td></tr>`
+		resp.Echo(line)
 	}
-	if u.pathFrom < from {
-		from = u.pathFrom
-	}
-	if u.typeFrom < from {
-		from = u.typeFrom
-	}
-	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
-	if u.pathFrom > max {
-		max = u.pathFrom
-		edge = u.pathFrom + int32(u.pathSize)
-	}
-	if u.baseFrom > max {
-		max = u.baseFrom
-		edge = u.baseFrom + int32(u.baseSize)
-	}
-	if u.nameFrom > max {
-		max = u.nameFrom
-		edge = u.nameFrom + int32(u.nameSize)
-	}
-	u.meta = string(p[from:edge]) // dup to avoid memory leak
-	u.nameFrom -= from
-	u.baseFrom -= from
-	u.typeFrom -= from
-	u.pathFrom -= from
-}
-func (u *ServerUpfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
-func (u *ServerUpfile) setMoved()     { u.flags |= upfileFlagIsMoved }
-func (u *ServerUpfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
-
-const ( // upfile error codes
-	upfileOK        = 0
-	upfileError     = 1
-	upfileCantWrite = 2
-	upfileTooLarge  = 3
-	upfilePartial   = 4
-	upfileNoFile    = 5
-)
-
-var upfileErrors = [...]error{
-	nil, // no error
-	errors.New("general error"),
-	errors.New("cannot write"),
-	errors.New("too large"),
-	errors.New("partial"),
-	errors.New("no file"),
+	resp.Echo("</table>")
 }
 
-func (u *ServerUpfile) IsOK() bool   { return u.errCode == 0 }
-func (u *ServerUpfile) Error() error { return upfileErrors[u.errCode] }
+func htmlEscape(s string) string { return htmlEscaper.Replace(s) }
 
-func (u *ServerUpfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
-func (u *ServerUpfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
-func (u *ServerUpfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
-func (u *ServerUpfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
-func (u *ServerUpfile) Size() int64  { return u.size }
-
-func (u *ServerUpfile) MoveTo(path string) error {
-	// TODO. Remember to mark as moved
-	return nil
-}
-
-// ServerCookie is a "set-cookie" header sent to client.
-type ServerCookie struct {
-	name     string
-	value    string
-	expires  time.Time
-	domain   string
-	path     string
-	sameSite string
-	maxAge   int32
-	secure   bool
-	httpOnly bool
-	invalid  bool
-	quote    bool // if true, quote value with ""
-	aSize    int8
-	ageBuf   [10]byte
-}
-
-func (c *ServerCookie) Set(name string, value string) bool {
-	// cookie-name = 1*cookie-octet
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	if name == "" {
-		c.invalid = true
-		return false
-	}
-	for i := 0; i < len(name); i++ {
-		if b := name[i]; webKchar[b] == 0 {
-			c.invalid = true
-			return false
-		}
-	}
-	c.name = name
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	for i := 0; i < len(value); i++ {
-		b := value[i]
-		if webKchar[b] == 1 {
-			continue
-		}
-		if b == ' ' || b == ',' {
-			c.quote = true
-			continue
-		}
-		c.invalid = true
-		return false
-	}
-	c.value = value
-	return true
-}
-
-func (c *ServerCookie) SetDomain(domain string) bool {
-	// TODO: check domain
-	c.domain = domain
-	return true
-}
-func (c *ServerCookie) SetPath(path string) bool {
-	// path-value = *av-octet
-	// av-octet = %x20-3A / %x3C-7E
-	for i := 0; i < len(path); i++ {
-		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
-			c.invalid = true
-			return false
-		}
-	}
-	c.path = path
-	return true
-}
-func (c *ServerCookie) SetExpires(expires time.Time) bool {
-	expires = expires.UTC()
-	if expires.Year() < 1601 {
-		c.invalid = true
-		return false
-	}
-	c.expires = expires
-	return true
-}
-func (c *ServerCookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
-func (c *ServerCookie) SetSecure()              { c.secure = true }
-func (c *ServerCookie) SetHttpOnly()            { c.httpOnly = true }
-func (c *ServerCookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
-func (c *ServerCookie) SetSameSiteLax()         { c.sameSite = "Lax" }
-func (c *ServerCookie) SetSameSiteNone()        { c.sameSite = "None" }
-func (c *ServerCookie) SetSameSite(mode string) { c.sameSite = mode }
-
-func (c *ServerCookie) size() int {
-	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
-	n := len(c.name) + 1 + len(c.value) // name=value
-	if c.quote {
-		n += 2 // ""
-	}
-	if !c.expires.IsZero() {
-		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
-	}
-	if c.maxAge > 0 {
-		m := i32ToDec(c.maxAge, c.ageBuf[:])
-		c.aSize = int8(m)
-		n += len("; Max-Age=") + m
-	} else if c.maxAge < 0 {
-		c.ageBuf[0] = '0'
-		c.aSize = 1
-		n += len("; Max-Age=0")
-	}
-	if c.domain != "" {
-		n += len("; Domain=") + len(c.domain)
-	}
-	if c.path != "" {
-		n += len("; Path=") + len(c.path)
-	}
-	if c.secure {
-		n += len("; Secure")
-	}
-	if c.httpOnly {
-		n += len("; HttpOnly")
-	}
-	if c.sameSite != "" {
-		n += len("; SameSite=") + len(c.sameSite)
-	}
-	return n
-}
-func (c *ServerCookie) writeTo(p []byte) int {
-	i := copy(p, c.name)
-	p[i] = '='
-	i++
-	if c.quote {
-		p[i] = '"'
-		i++
-		i += copy(p[i:], c.value)
-		p[i] = '"'
-		i++
-	} else {
-		i += copy(p[i:], c.value)
-	}
-	if !c.expires.IsZero() {
-		i += copy(p[i:], "; Expires=")
-		i += clockWriteHTTPDate(p[i:], c.expires)
-	}
-	if c.maxAge != 0 {
-		i += copy(p[i:], "; Max-Age=")
-		i += copy(p[i:], c.ageBuf[0:c.aSize])
-	}
-	if c.domain != "" {
-		i += copy(p[i:], "; Domain=")
-		i += copy(p[i:], c.domain)
-	}
-	if c.path != "" {
-		i += copy(p[i:], "; Path=")
-		i += copy(p[i:], c.path)
-	}
-	if c.secure {
-		i += copy(p[i:], "; Secure")
-	}
-	if c.httpOnly {
-		i += copy(p[i:], "; HttpOnly")
-	}
-	if c.sameSite != "" {
-		i += copy(p[i:], "; SameSite=")
-		i += copy(p[i:], c.sameSite)
-	}
-	return i
-}
-
-// BackendUpfile is a file to be uploaded to backend.
-type BackendUpfile struct {
-	// TODO
-}
-
-// BackendCookie is a "set-cookie" header received from backend.
-type BackendCookie struct { // 32 bytes
-	input      *[]byte // the buffer holding data
-	expires    int64   // Expires=Wed, 09 Jun 2021 10:18:14 GMT
-	maxAge     int32   // Max-Age=123
-	nameFrom   int16   // foo
-	valueEdge  int16   // bar
-	domainFrom int16   // Domain=example.com
-	pathFrom   int16   // Path=/abc
-	nameSize   uint8   // <= 255
-	domainSize uint8   // <= 255
-	pathSize   uint8   // <= 255
-	flags      uint8   // secure(1), httpOnly(1), sameSite(2), reserved(2), valueOffset(2)
-}
-
-func (c *BackendCookie) zero() { *c = BackendCookie{} }
-
-func (c *BackendCookie) Name() string {
-	p := *c.input
-	return string(p[c.nameFrom : c.nameFrom+int16(c.nameSize)])
-}
-func (c *BackendCookie) Value() string {
-	p := *c.input
-	valueFrom := c.nameFrom + int16(c.nameSize) + 1 // name=value
-	return string(p[valueFrom:c.valueEdge])
-}
-func (c *BackendCookie) Expires() int64 { return c.expires }
-func (c *BackendCookie) MaxAge() int32  { return c.maxAge }
-func (c *BackendCookie) domain() []byte {
-	p := *c.input
-	return p[c.domainFrom : c.domainFrom+int16(c.domainSize)]
-}
-func (c *BackendCookie) path() []byte {
-	p := *c.input
-	return p[c.pathFrom : c.pathFrom+int16(c.pathSize)]
-}
-func (c *BackendCookie) sameSite() string {
-	switch c.flags & 0b00110000 {
-	case 0b00010000:
-		return "Lax"
-	case 0b00100000:
-		return "Strict"
-	default:
-		return "None"
-	}
-}
-func (c *BackendCookie) secure() bool   { return c.flags&0b10000000 > 0 }
-func (c *BackendCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
-
-func (c *BackendCookie) nameEqualString(name string) bool {
-	if int(c.nameSize) != len(name) {
-		return false
-	}
-	p := *c.input
-	return string(p[c.nameFrom:c.nameFrom+int16(c.nameSize)]) == name
-}
-func (c *BackendCookie) nameEqualBytes(name []byte) bool {
-	if int(c.nameSize) != len(name) {
-		return false
-	}
-	p := *c.input
-	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
-}
+var htmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")

@@ -1,4 +1,4 @@
-httpServer "hs1" {
+httpxServer "hs1" {
 	.forApps             = ("foo", "bar")
 	.address             = string,required
 	.tlsMode             = false

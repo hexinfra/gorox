@@ -81,7 +81,7 @@ func (h *helloHandlet) POST_def(req Request, resp Response) { // POST /def
 	resp.Send("this is POST /def")
 }
 func (h *helloHandlet) GET_cookie(req Request, resp Response) { // GET /cookie
-	cookie := new(ServerCookie)
+	cookie := new(Cookie)
 	cookie.Set("name1", "value1")
 	resp.AddCookie(cookie)
 	resp.Send("this is GET /cookie")

@@ -10,6 +10,7 @@ package hemi
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -21,8 +22,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// webServer is the interface for *httpServer and *http3Server.
-type webServer interface {
+// webServer
+type webServer interface { // for *httpxServer and *http3Server
 	// Imports
 	Server
 	streamHolder
@@ -36,8 +37,8 @@ type webServer interface {
 	findApp(hostname []byte) *Webapp
 }
 
-// webServer_ is the mixin for httpServer and http3Server.
-type webServer_[G Gate] struct {
+// webServer_
+type webServer_[G webGate] struct { // mixin for httpxServer and http3Server
 	// Mixins
 	Server_[G]
 	_webAgent_
@@ -153,13 +154,32 @@ func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 	return s.defaultApp // may be nil
 }
 
-// webServerConn is the interface for *http[1-3]Conn.
-type webServerConn interface {
+// webGate
+type webGate interface { // for *httpxGate and *http3Gate
+	// Imports
+	Gate
+	// Methods
+}
+
+// webGate_
+type webGate_ struct { // mixin for httpxGate and http3Gate
+	// Mixins
+	Gate_
+	// Assocs
+	// States
+}
+
+func (g *webGate_) init(id int32, server Server) {
+	g.Gate_.Init(id, server)
+}
+
+// webServerConn
+type webServerConn interface { // for *http[1-3]Conn
 	serve() // runner
 }
 
-// webServerConn_ is the mixin for http[1-3]Conn.
-type webServerConn_ struct {
+// webServerConn_
+type webServerConn_ struct { // mixin for http[1-3]Conn
 	// Mixins
 	ServerConn_
 	_webConn_
@@ -184,13 +204,13 @@ func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// webServerStream is the interface for *http[1-3]Stream.
-type webServerStream interface {
+// webServerStream
+type webServerStream interface { // for *http[1-3]Stream
 	execute() // runner
 }
 
-// webServerStream_ is the mixin for http[1-3]Stream.
-type webServerStream_ struct {
+// webServerStream_
+type webServerStream_ struct { // mixin for http[1-3]Stream
 	// Mixins
 	Stream_
 	_webStream_
@@ -213,8 +233,8 @@ func (s *webServerStream_) serveSocket() {
 	// TODO
 }
 
-// Request is the interface for *http[1-3]Request.
-type Request interface {
+// Request
+type Request interface { // for *http[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
@@ -312,10 +332,10 @@ type Request interface {
 	HasForm(name string) bool
 
 	HasUpfiles() bool
-	AllUpfiles() (upfiles []*ServerUpfile)
-	U(name string) *ServerUpfile
-	ServerUpfile(name string) (upfile *ServerUpfile, ok bool)
-	Upfiles(name string) (upfiles []*ServerUpfile, ok bool)
+	AllUpfiles() (upfiles []*Upfile)
+	U(name string) *Upfile
+	Upfile(name string) (upfile *Upfile, ok bool)
+	Upfiles(name string) (upfiles []*Upfile, ok bool)
 	HasUpfile(name string) bool
 
 	AddTrailer(name string, value string) bool
@@ -368,16 +388,16 @@ type Request interface {
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// webServerRequest_ is the mixin for http[1-3]Request.
-type webServerRequest_ struct { // incoming. needs parsing
+// webServerRequest_
+type webServerRequest_ struct { // mixin for http[1-3]Request. incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockUpfiles [2]ServerUpfile // for r.upfiles. 96B
+	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
 	ranges [4]Range // parsed range fields. at most 4 range fields are allowed. controlled by r.nRanges
 	// Stream states (non-zeros)
-	upfiles []ServerUpfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
+	upfiles []Upfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
 	path              []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath           []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
@@ -1916,16 +1936,16 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 		}
 		// r.pFore is at fields of current part.
 		var part struct { // current part
-			valid  bool         // true if "name" parameter in "content-disposition" field is found
-			isFile bool         // true if "filename" parameter in "content-disposition" field is found
-			hash   uint16       // name hash
-			name   span         // to r.array. like: "avatar"
-			base   span         // to r.array. like: "michael.jpg", or empty if part is not a file
-			type_  span         // to r.array. like: "image/jpeg", or empty if part is not a file
-			path   span         // to r.array. like: "/path/to/391384576", or empty if part is not a file
-			osFile *os.File     // if part is a file, this is used
-			form   pair         // if part is a form, this is used
-			upfile ServerUpfile // if part is a file, this is used. zeroed
+			valid  bool     // true if "name" parameter in "content-disposition" field is found
+			isFile bool     // true if "filename" parameter in "content-disposition" field is found
+			hash   uint16   // name hash
+			name   span     // to r.array. like: "avatar"
+			base   span     // to r.array. like: "michael.jpg", or empty if part is not a file
+			type_  span     // to r.array. like: "image/jpeg", or empty if part is not a file
+			path   span     // to r.array. like: "/path/to/391384576", or empty if part is not a file
+			osFile *os.File // if part is a file, this is used
+			form   pair     // if part is a form, this is used
+			upfile Upfile   // if part is a file, this is used. zeroed
 		}
 		part.form.kind = kindForm
 		part.form.place = placeArray // all received forms are placed in r.array
@@ -2344,13 +2364,13 @@ func (r *webServerRequest_) DelForm(name string) (deleted bool) {
 	return r.delPair(name, 0, r.forms, kindForm)
 }
 
-func (r *webServerRequest_) addUpfile(upfile *ServerUpfile) {
+func (r *webServerRequest_) addUpfile(upfile *Upfile) {
 	if len(r.upfiles) == cap(r.upfiles) {
 		if cap(r.upfiles) == cap(r.stockUpfiles) {
-			upfiles := make([]ServerUpfile, 0, 16)
+			upfiles := make([]Upfile, 0, 16)
 			r.upfiles = append(upfiles, r.upfiles...)
 		} else if cap(r.upfiles) == 16 {
-			upfiles := make([]ServerUpfile, 0, 128)
+			upfiles := make([]Upfile, 0, 128)
 			r.upfiles = append(upfiles, r.upfiles...)
 		} else {
 			// Ignore too many upfiles
@@ -2363,7 +2383,7 @@ func (r *webServerRequest_) HasUpfiles() bool {
 	r.parseHTMLForm()
 	return len(r.upfiles) != 0
 }
-func (r *webServerRequest_) AllUpfiles() (upfiles []*ServerUpfile) {
+func (r *webServerRequest_) AllUpfiles() (upfiles []*Upfile) {
 	r.parseHTMLForm()
 	for i := 0; i < len(r.upfiles); i++ {
 		upfile := &r.upfiles[i]
@@ -2372,11 +2392,11 @@ func (r *webServerRequest_) AllUpfiles() (upfiles []*ServerUpfile) {
 	}
 	return upfiles
 }
-func (r *webServerRequest_) U(name string) *ServerUpfile {
-	upfile, _ := r.ServerUpfile(name)
+func (r *webServerRequest_) U(name string) *Upfile {
+	upfile, _ := r.Upfile(name)
 	return upfile
 }
-func (r *webServerRequest_) ServerUpfile(name string) (upfile *ServerUpfile, ok bool) {
+func (r *webServerRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2389,7 +2409,7 @@ func (r *webServerRequest_) ServerUpfile(name string) (upfile *ServerUpfile, ok 
 	}
 	return
 }
-func (r *webServerRequest_) Upfiles(name string) (upfiles []*ServerUpfile, ok bool) {
+func (r *webServerRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2407,7 +2427,7 @@ func (r *webServerRequest_) Upfiles(name string) (upfiles []*ServerUpfile, ok bo
 }
 func (r *webServerRequest_) HasUpfile(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.ServerUpfile(name)
+	_, ok := r.Upfile(name)
 	return ok
 }
 
@@ -2473,8 +2493,110 @@ var webServerRequestVariables = [...]func(*webServerRequest_) []byte{ // keep sy
 	(*webServerRequest_).UnsafeContentType, // contentType
 }
 
-// Response is the interface for *http[1-3]Response.
-type Response interface {
+// Upfile is a file uploaded by client.
+type Upfile struct { // 48 bytes
+	hash     uint16 // hash of name, to support fast comparison
+	flags    uint8  // see upfile flags
+	errCode  int8   // error code
+	nameSize uint8  // name size
+	baseSize uint8  // base size
+	typeSize uint8  // type size
+	pathSize uint8  // path size
+	nameFrom int32  // like: "avatar"
+	baseFrom int32  // like: "michael.jpg"
+	typeFrom int32  // like: "image/jpeg"
+	pathFrom int32  // like: "/path/to/391384576"
+	size     int64  // file size
+	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+}
+
+func (u *Upfile) nameEqualString(p []byte, x string) bool {
+	if int(u.nameSize) != len(x) {
+		return false
+	}
+	if u.metaSet() {
+		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
+	}
+	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+}
+
+const ( // upfile flags
+	upfileFlagMetaSet = 0b10000000
+	upfileFlagIsMoved = 0b01000000
+)
+
+func (u *Upfile) setMeta(p []byte) {
+	if u.flags&upfileFlagMetaSet > 0 {
+		return
+	}
+	u.flags |= upfileFlagMetaSet
+	from := u.nameFrom
+	if u.baseFrom < from {
+		from = u.baseFrom
+	}
+	if u.pathFrom < from {
+		from = u.pathFrom
+	}
+	if u.typeFrom < from {
+		from = u.typeFrom
+	}
+	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
+	if u.pathFrom > max {
+		max = u.pathFrom
+		edge = u.pathFrom + int32(u.pathSize)
+	}
+	if u.baseFrom > max {
+		max = u.baseFrom
+		edge = u.baseFrom + int32(u.baseSize)
+	}
+	if u.nameFrom > max {
+		max = u.nameFrom
+		edge = u.nameFrom + int32(u.nameSize)
+	}
+	u.meta = string(p[from:edge]) // dup to avoid memory leak
+	u.nameFrom -= from
+	u.baseFrom -= from
+	u.typeFrom -= from
+	u.pathFrom -= from
+}
+func (u *Upfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
+func (u *Upfile) setMoved()     { u.flags |= upfileFlagIsMoved }
+func (u *Upfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
+
+const ( // upfile error codes
+	upfileOK        = 0
+	upfileError     = 1
+	upfileCantWrite = 2
+	upfileTooLarge  = 3
+	upfilePartial   = 4
+	upfileNoFile    = 5
+)
+
+var upfileErrors = [...]error{
+	nil, // no error
+	errors.New("general error"),
+	errors.New("cannot write"),
+	errors.New("too large"),
+	errors.New("partial"),
+	errors.New("no file"),
+}
+
+func (u *Upfile) IsOK() bool   { return u.errCode == 0 }
+func (u *Upfile) Error() error { return upfileErrors[u.errCode] }
+
+func (u *Upfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *Upfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *Upfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *Upfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *Upfile) Size() int64  { return u.size }
+
+func (u *Upfile) MoveTo(path string) error {
+	// TODO. Remember to mark as moved
+	return nil
+}
+
+// Response
+type Response interface { // for *http[1-3]Response
 	Request() Request
 
 	SetStatus(status int16) error
@@ -2489,7 +2611,7 @@ type Response interface {
 	AddHostnameRedirection(hostname string) bool
 	AddDirectoryRedirection() bool
 
-	AddCookie(cookie *ServerCookie) bool
+	AddCookie(cookie *Cookie) bool
 
 	AddHeader(name string, value string) bool
 	AddHeaderBytes(name []byte, value []byte) bool
@@ -2545,8 +2667,8 @@ type Response interface {
 	unsafeMake(size int) []byte
 }
 
-// webServerResponse_ is the mixin for http[1-3]Response.
-type webServerResponse_ struct { // outgoing. needs building
+// webServerResponse_
+type webServerResponse_ struct { // mixin for http[1-3]Response. outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
@@ -2873,15 +2995,174 @@ footer{padding:20px;}
 	return pages
 }()
 
-// Socket is the interface for *http[1-3]Socket.
-type Socket interface {
+// Cookie is a "set-cookie" header sent to client.
+type Cookie struct {
+	name     string
+	value    string
+	expires  time.Time
+	domain   string
+	path     string
+	sameSite string
+	maxAge   int32
+	secure   bool
+	httpOnly bool
+	invalid  bool
+	quote    bool // if true, quote value with ""
+	aSize    int8
+	ageBuf   [10]byte
+}
+
+func (c *Cookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	if name == "" {
+		c.invalid = true
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; webKchar[b] == 0 {
+			c.invalid = true
+			return false
+		}
+	}
+	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	for i := 0; i < len(value); i++ {
+		b := value[i]
+		if webKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		c.invalid = true
+		return false
+	}
+	c.value = value
+	return true
+}
+
+func (c *Cookie) SetDomain(domain string) bool {
+	// TODO: check domain
+	c.domain = domain
+	return true
+}
+func (c *Cookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
+			return false
+		}
+	}
+	c.path = path
+	return true
+}
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	expires = expires.UTC()
+	if expires.Year() < 1601 {
+		c.invalid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()              { c.secure = true }
+func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
+
+func (c *Cookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if !c.expires.IsZero() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		m := i32ToDec(c.maxAge, c.ageBuf[:])
+		c.aSize = int8(m)
+		n += len("; Max-Age=") + m
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aSize = 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *Cookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if !c.expires.IsZero() {
+		i += copy(p[i:], "; Expires=")
+		i += clockWriteHTTPDate(p[i:], c.expires)
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[0:c.aSize])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
+}
+
+// Socket
+type Socket interface { // for *http[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
 }
 
-// webServerSocket_ is the mixin for http[1-3]Socket.
-type webServerSocket_ struct {
+// webServerSocket_
+type webServerSocket_ struct { // mixin for http[1-3]Socket
 	// Mixins
 	webSocket_
 	// Assocs

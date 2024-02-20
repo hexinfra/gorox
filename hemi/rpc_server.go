@@ -21,7 +21,7 @@ type rpcServer interface {
 }
 
 // rpcServer_
-type rpcServer_[G Gate] struct {
+type rpcServer_[G rpcGate] struct {
 	// Mixins
 	Server_[G]
 	_rpcAgent_
@@ -94,6 +94,11 @@ func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 		}
 	}
 	return nil
+}
+
+// rpcGate
+type rpcGate interface {
+	Gate
 }
 
 // rpcServerConn_

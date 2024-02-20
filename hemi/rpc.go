@@ -109,7 +109,8 @@ func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 	// TODO
 }
 
-// Bundlet is a bundle of procedures in a Service. Bundlets are not components.
+// Bundlet is a collection of related procedures in a service. A service has many bundlets.
+// Bundlets are not components.
 type Bundlet interface {
 }
 

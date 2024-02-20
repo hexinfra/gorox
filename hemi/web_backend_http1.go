@@ -109,9 +109,9 @@ func (n *http1Node) fetchConn() (WebBackendConn, error) {
 		return n._fetchTCP()
 	}
 }
-func (n *http1Node) _fetchTCP() (*H1Conn, error) {
+func (n *http1Node) _fetchUDS() (WebBackendConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -120,7 +120,7 @@ func (n *http1Node) _fetchTCP() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
 		return nil, err
@@ -128,7 +128,7 @@ func (n *http1Node) _fetchTCP() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) _fetchTLS() (*H1Conn, error) {
+func (n *http1Node) _fetchTLS() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -151,9 +151,9 @@ func (n *http1Node) _fetchTLS() (*H1Conn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
-func (n *http1Node) _fetchUDS() (*H1Conn, error) {
+func (n *http1Node) _fetchTCP() (WebBackendConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -162,7 +162,7 @@ func (n *http1Node) _fetchUDS() (*H1Conn, error) {
 		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
 	}
 	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
 		return nil, err
@@ -626,6 +626,12 @@ func (r *H1Response) readContent() (p []byte, err error) { return r.readContent1
 
 // poolH1Socket
 var poolH1Socket sync.Pool
+
+func getH1Socket(stream *H1Stream) *H1Socket {
+	return nil
+}
+func putH1Socket(socket *H1Socket) {
+}
 
 // H1Socket is the backend-side HTTP/1 websocket.
 type H1Socket struct {

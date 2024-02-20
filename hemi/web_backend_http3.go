@@ -81,7 +81,6 @@ func (n *http3Node) Maintain() { // runner
 }
 
 func (n *http3Node) fetchConn() (WebBackendConn, error) {
-	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: dynamic address names?
 	// TODO
 	conn, err := quix.DialTimeout(n.address, n.backend.DialTimeout())
@@ -93,7 +92,6 @@ func (n *http3Node) fetchConn() (WebBackendConn, error) {
 }
 
 func (n *http3Node) storeConn(conn WebBackendConn) {
-	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
@@ -138,10 +136,12 @@ func (c *H3Conn) onPut() {
 }
 
 func (c *H3Conn) FetchStream() WebBackendStream {
+	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
 	return nil
 }
 func (c *H3Conn) StoreStream(stream WebBackendStream) {
+	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
 }
@@ -336,6 +336,12 @@ func (r *H3Response) readContent() (p []byte, err error) { return r.readContent3
 
 // poolH3Socket
 var poolH3Socket sync.Pool
+
+func getH3Socket(stream *H3Stream) *H3Socket {
+	return nil
+}
+func putH3Socket(socket *H3Socket) {
+}
 
 // H3Socket is the backend-side HTTP/3 websocket.
 type H3Socket struct {

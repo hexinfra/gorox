@@ -21,7 +21,7 @@ type rpcBackend interface {
 }
 
 // rpcBackend_
-type rpcBackend_[N Node] struct {
+type rpcBackend_[N rpcNode] struct {
 	// Mixins
 	Backend_[N]
 	_rpcAgent_
@@ -40,6 +40,11 @@ func (b *rpcBackend_[N]) onConfigure(shell Component) {
 func (b *rpcBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._rpcAgent_.onPrepare(shell)
+}
+
+// rpcNode
+type rpcNode interface {
+	Node
 }
 
 // rpcBackendConn_

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP server implementation. See RFC 9112 for HTTP/1. See RFC 9113 and 7541 for HTTP/2.
+// HTTP/1 and HTTP/2 server implementation. See RFC 9112 for HTTP/1. See RFC 9113 and 7541 for HTTP/2.
 
 // For HTTP/1, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
 // For HTTP/2, Server Push is not supported because it's rarely used.
@@ -27,17 +27,17 @@ import (
 )
 
 func init() {
-	RegisterServer("httpServer", func(name string, stage *Stage) Server {
-		s := new(httpServer)
+	RegisterServer("httpxServer", func(name string, stage *Stage) Server {
+		s := new(httpxServer)
 		s.onCreate(name, stage)
 		return s
 	})
 }
 
-// httpServer is the HTTP/1 and HTTP/2 server.
-type httpServer struct {
+// httpxServer is the HTTP/1 and HTTP/2 server.
+type httpxServer struct {
 	// Mixins
-	webServer_[*httpGate]
+	webServer_[*httpxGate]
 	// States
 	forceScheme  int8 // scheme (http/https) that must be used
 	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
@@ -45,15 +45,15 @@ type httpServer struct {
 	http2Only    bool // if true, server runs HTTP/2 *only*. requires enableHTTP2 to be true, otherwise ignored
 }
 
-func (s *httpServer) onCreate(name string, stage *Stage) {
+func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 	s.forceScheme = -1 // not forced
 }
-func (s *httpServer) OnShutdown() {
+func (s *httpxServer) OnShutdown() {
 	s.webServer_.onShutdown()
 }
 
-func (s *httpServer) OnConfigure() {
+func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure(s)
 
 	var scheme string
@@ -80,7 +80,7 @@ func (s *httpServer) OnConfigure() {
 		s.ConfigureBool("http2Only", &s.http2Only, false)
 	}
 }
-func (s *httpServer) OnPrepare() {
+func (s *httpxServer) OnPrepare() {
 	s.webServer_.onPrepare(s)
 	if s.IsTLS() {
 		var nextProtos []string
@@ -97,20 +97,22 @@ func (s *httpServer) OnPrepare() {
 	}
 }
 
-func (s *httpServer) Serve() { // runner
+func (s *httpxServer) Serve() { // runner
 	if s.IsUDS() {
 		s.serveUDS()
+	} else if s.IsTLS() {
+		s.serveTLS()
 	} else {
 		s.serveTCP()
 	}
 	s.WaitSubs() // gates
 	if Debug() >= 2 {
-		Printf("httpServer=%s done\n", s.Name())
+		Printf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.SubDone()
 }
-func (s *httpServer) serveUDS() {
-	gate := new(httpGate)
+func (s *httpxServer) serveUDS() {
+	gate := new(httpxGate)
 	gate.init(0, s)
 	if err := gate.Open(); err != nil {
 		EnvExitln(err.Error())
@@ -119,54 +121,62 @@ func (s *httpServer) serveUDS() {
 	s.IncSub(1)
 	go gate.serveUDS()
 }
-func (s *httpServer) serveTCP() {
+func (s *httpxServer) serveTLS() {
 	for id := int32(0); id < s.numGates; id++ {
-		gate := new(httpGate)
+		gate := new(httpxGate)
 		gate.init(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
 		s.IncSub(1)
-		if s.IsTLS() {
-			go gate.serveTLS()
-		} else {
-			go gate.serveTCP()
+		go gate.serveTLS()
+	}
+}
+func (s *httpxServer) serveTCP() {
+	for id := int32(0); id < s.numGates; id++ {
+		gate := new(httpxGate)
+		gate.init(id, s)
+		if err := gate.Open(); err != nil {
+			EnvExitln(err.Error())
 		}
+		s.AddGate(gate)
+		s.IncSub(1)
+		go gate.serveTCP()
 	}
 }
 
-// httpGate is a gate of httpServer.
-type httpGate struct {
+// httpxGate is a gate of httpxServer.
+type httpxGate struct {
 	// Mixins
-	Gate_
+	webGate_
 	// Assocs
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
-func (g *httpGate) init(id int32, server *httpServer) {
-	g.Gate_.Init(id, server)
+func (g *httpxGate) init(id int32, server *httpxServer) {
+	g.webGate_.Init(id, server)
 }
 
-func (g *httpGate) Open() error {
+func (g *httpxGate) Open() error {
 	if g.IsUDS() {
-		return g.openUDS()
+		return g.openUnix()
 	} else {
-		return g.openTCP()
+		return g.openInet()
 	}
 }
-func (g *httpGate) openUDS() error {
+func (g *httpxGate) openUnix() error {
 	listener, err := net.Listen("unix", g.Address())
 	if err == nil {
 		g.listener = listener.(*net.UnixListener)
 		if Debug() >= 1 {
-			Printf("httpGate id=%d address=%s opened!\n", g.id, g.Address())
+			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
 	return err
 }
-func (g *httpGate) openTCP() error {
+func (g *httpxGate) openInet() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		if err := system.SetReusePort(rawConn); err != nil {
@@ -178,19 +188,19 @@ func (g *httpGate) openTCP() error {
 	if err == nil {
 		g.listener = listener.(*net.TCPListener)
 		if Debug() >= 1 {
-			Printf("httpGate id=%d address=%s opened!\n", g.id, g.Address())
+			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
 	return err
 }
-func (g *httpGate) Shut() error {
+func (g *httpxGate) Shut() error {
 	g.MarkShut()
 	return g.listener.Close()
 }
 
-func (g *httpGate) serveUDS() { // runner
+func (g *httpxGate) serveUDS() { // runner
 	getHTTPConn := getHTTP1Conn
-	if g.server.(*httpServer).http2Only {
+	if g.server.(*httpxServer).http2Only {
 		getHTTPConn = getHTTP2Conn
 	}
 	listener := g.listener.(*net.UnixListener)
@@ -201,7 +211,7 @@ func (g *httpGate) serveUDS() { // runner
 			if g.IsShut() {
 				break
 			} else {
-				//g.stage.Logf("httpServer[%s] httpGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 		}
@@ -212,7 +222,7 @@ func (g *httpGate) serveUDS() { // runner
 			rawConn, err := unixConn.SyscallConn()
 			if err != nil {
 				g.justClose(unixConn)
-				//g.stage.Logf("httpServer[%s] httpGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 			httpConn := getHTTPConn(connID, g, unixConn, rawConn)
@@ -222,15 +232,11 @@ func (g *httpGate) serveUDS() { // runner
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if Debug() >= 2 {
-		Printf("httpGate=%d TCP done\n", g.id)
+		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
 }
-func (g *httpGate) serveTCP() { // runner
-	getHTTPConn := getHTTP1Conn
-	if g.server.(*httpServer).http2Only {
-		getHTTPConn = getHTTP2Conn
-	}
+func (g *httpxGate) serveTLS() { // runner
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
@@ -239,41 +245,7 @@ func (g *httpGate) serveTCP() { // runner
 			if g.IsShut() {
 				break
 			} else {
-				//g.stage.Logf("httpServer[%s] httpGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub(1)
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				g.justClose(tcpConn)
-				//g.stage.Logf("httpServer[%s] httpGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			httpConn := getHTTPConn(connID, g, tcpConn, rawConn)
-			go httpConn.serve() // httpConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
-		Printf("httpGate=%d TCP done\n", g.id)
-	}
-	g.server.SubDone()
-}
-func (g *httpGate) serveTLS() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("httpServer[%s] httpGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
 				continue
 			}
 		}
@@ -298,12 +270,50 @@ func (g *httpGate) serveTLS() { // runner
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
 	if Debug() >= 2 {
-		Printf("httpGate=%d TLS done\n", g.id)
+		Printf("httpxGate=%d TLS done\n", g.id)
+	}
+	g.server.SubDone()
+}
+func (g *httpxGate) serveTCP() { // runner
+	getHTTPConn := getHTTP1Conn
+	if g.server.(*httpxServer).http2Only {
+		getHTTPConn = getHTTP2Conn
+	}
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+		}
+		g.IncSub(1)
+		if g.ReachLimit() {
+			g.justClose(tcpConn)
+		} else {
+			rawConn, err := tcpConn.SyscallConn()
+			if err != nil {
+				g.justClose(tcpConn)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+			httpConn := getHTTPConn(connID, g, tcpConn, rawConn)
+			go httpConn.serve() // httpConn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.SubDone()
 }
 
-func (g *httpGate) justClose(netConn net.Conn) {
+func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.OnConnClosed()
 }
@@ -311,7 +321,7 @@ func (g *httpGate) justClose(netConn net.Conn) {
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
+func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
 	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		httpConn = new(http1Conn)
@@ -349,7 +359,7 @@ type http1Conn struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn) onGet(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.webServerConn_.onGet(id, gate)
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
@@ -372,6 +382,7 @@ func (c *http1Conn) onPut() {
 }
 
 func (c *http1Conn) serve() { // runner
+	defer putHTTP1Conn(c)
 	stream := &c.stream
 	for c.keepConn { // each stream
 		stream.onUse(c)
@@ -386,7 +397,6 @@ func (c *http1Conn) serve() { // runner
 	if !stream.isSocket {
 		c.closeConn()
 	}
-	putHTTP1Conn(c)
 }
 
 func (c *http1Conn) closeConn() {
@@ -427,7 +437,7 @@ func (c *http1Conn) closeConn() {
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
+func getHTTP2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
 	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		httpConn = new(http2Conn)
@@ -484,7 +494,7 @@ type http2Conn0 struct { // for fast reset, entirely
 	//queuedControlFrames?
 }
 
-func (c *http2Conn) onGet(id int64, gate *httpGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *http2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.webServerConn_.onGet(id, gate)
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -1228,7 +1238,7 @@ func (s *http1Stream) execute() {
 		return
 	}
 
-	server := s.conn.Server().(*httpServer)
+	server := s.conn.Server().(*httpxServer)
 
 	// RFC 7230 (section 5.5):
 	// If the server's configuration (or outbound gateway) provides a
@@ -2124,7 +2134,7 @@ func (r *http1Response) setConnectionClose() {
 	r.stream.webConn().(*http1Conn).keepConn = false // explicitly
 }
 
-func (r *http1Response) AddCookie(cookie *ServerCookie) bool {
+func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
 		return false
 	}
@@ -2192,6 +2202,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.unixTimes.lastModified >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
+	conn := r.stream.webConn().(*http1Conn)
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n
@@ -2204,7 +2215,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
 				// response containing Transfer-Encoding unless the corresponding
 				// request indicates HTTP/1.1 (or later).
-				r.stream.webConn().(*http1Conn).keepConn = false // close conn anyway for HTTP/1.0
+				conn.keepConn = false // close conn anyway for HTTP/1.0
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
@@ -2212,7 +2223,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
-	if r.stream.webConn().(*http1Conn).keepConn { // connection: keep-alive\r\n
+	if conn.keepConn { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
@@ -2272,7 +2283,7 @@ func (r *http2Response) AddDirectoryRedirection() bool {
 }
 func (r *http2Response) setConnectionClose() { BugExitln("not used in HTTP/2") }
 
-func (r *http2Response) AddCookie(cookie *ServerCookie) bool {
+func (r *http2Response) AddCookie(cookie *Cookie) bool {
 	// TODO
 	return false
 }

@@ -167,11 +167,11 @@ func (s *webBackendStream_) startSocket() {
 type WebBackendRequest interface { // for *H[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
-	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
+	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
 	proxyPost(content any, hasTrailers bool) error
 	proxyPass(in _webIn) error
-	copyTailFrom(req Request) bool
+	proxyCopyTail(req Request) bool
 	isVague() bool
 	endVague() error
 }
@@ -320,7 +320,7 @@ func (r *webBackendRequest_) deleteIfRange() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
-func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool { // used by proxies
+func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -367,7 +367,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(WebBackendRequest).copyCookies(req) {
+	if req.HasCookies() && !r.shell.(WebBackendRequest).proxyCopyCookies(req) {
 		return false
 	}
 	if !r.shell.addHeader(bytesVia, viaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -402,7 +402,7 @@ func (r *webBackendRequest_) copyHeadFrom(req Request, hostname []byte, colonPor
 
 	return true
 }
-func (r *webBackendRequest_) copyTailFrom(req Request) bool { // used by proxies
+func (r *webBackendRequest_) proxyCopyTail(req Request) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

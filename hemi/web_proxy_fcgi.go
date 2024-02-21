@@ -191,7 +191,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	defer putFCGIExchan(fExchan)
 
 	fReq := &fExchan.request
-	if !fReq.copyHeadFrom(req, h.scriptFilename, h.indexFile) {
+	if !fReq.proxyCopyHead(req, h.scriptFilename, h.indexFile) {
 		fExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -248,7 +248,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.copyHeadFrom(fResp, nil) { // viaName = nil
+	if !resp.proxyCopyHead(fResp, nil) { // viaName = nil
 		fExchan.markBroken()
 		return
 	}
@@ -381,7 +381,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) copyHeadFrom(req Request, scriptFilename, indexFile []byte) bool {
+func (r *fcgiRequest) proxyCopyHead(req Request, scriptFilename, indexFile []byte) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -1293,7 +1293,7 @@ func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't suppo
 func (r *fcgiResponse) delHopHeaders()  {} // for fcgi, nothing to delete
 func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 
-func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.copyHeadFrom(). excluding sub headers
+func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHead(). excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
 			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {

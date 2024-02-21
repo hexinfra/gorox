@@ -288,7 +288,7 @@ func (r *H3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H3Request) copyCookies(req Request) bool { // used by proxies. DO NOT merge into one "cookie" header
+func (r *H3Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

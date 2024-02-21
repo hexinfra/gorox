@@ -160,7 +160,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 	// TODO: use bStream.ReverseExchan()
 
 	bReq := bStream.Request()
-	if !bReq.copyHeadFrom(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
+	if !bReq.proxyCopyHead(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
 		bStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
@@ -170,7 +170,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		hasTrailers := req.HasTrailers()
 		bErr = bReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
 		if bErr == nil && hasTrailers {
-			if !bReq.copyTailFrom(req) {
+			if !bReq.proxyCopyTail(req) {
 				bStream.markBroken()
 				bErr = webOutTrailerFailed
 			} else if bErr = bReq.endVague(); bErr != nil {
@@ -240,7 +240,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.copyHeadFrom(bResp, nil) { // viaName = nil
+	if !resp.proxyCopyHead(bResp, nil) { // viaName = nil
 		bStream.markBroken()
 		return
 	}
@@ -252,7 +252,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 			}
 			return
 		}
-		if bHasTrailers && !resp.copyTailFrom(bResp) {
+		if bHasTrailers && !resp.proxyCopyTail(bResp) {
 			return
 		}
 	} else if err := resp.proxyPass(bResp); err != nil {

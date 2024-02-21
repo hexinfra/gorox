@@ -1395,10 +1395,10 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	}
 }
 
-func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by _webOut.copyHeadFrom(). excluding sub headers
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by _webOut.proxyCopyHead(). excluding sub headers
 	return r._forMainFields(r.headers, kindHeader, callback)
 }
-func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by _webOut.copyTailFrom(). excluding sub trailers
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by _webOut.proxyCopyTail(). excluding sub trailers
 	return r._forMainFields(r.trailers, kindTrailer, callback)
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {

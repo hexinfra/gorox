@@ -404,7 +404,7 @@ func (r *H1Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *H1Request) copyCookies(req Request) bool { // used by proxies. merge into one "cookie" header
+func (r *H1Request) proxyCopyCookies(req Request) bool { // merge into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `

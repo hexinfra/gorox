@@ -2661,8 +2661,8 @@ type Response interface { // for *http[1-3]Response
 	proxyPass1xx(resp WebBackendResponse) bool
 	proxyPass(resp _webIn) error
 	proxyPost(content any, hasTrailers bool) error
-	copyHeadFrom(resp WebBackendResponse, viaName []byte) bool // used by proxies
-	copyTailFrom(resp WebBackendResponse) bool                 // used by proxies
+	proxyCopyHead(resp WebBackendResponse, viaName []byte) bool
+	proxyCopyTail(resp WebBackendResponse) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2932,7 +2932,7 @@ func (r *webServerResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *webServerResponse_) copyHeadFrom(resp WebBackendResponse, viaName []byte) bool { // used by proxies
+func (r *webServerResponse_) proxyCopyHead(resp WebBackendResponse, viaName []byte) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2953,7 +2953,7 @@ func (r *webServerResponse_) copyHeadFrom(resp WebBackendResponse, viaName []byt
 
 	return true
 }
-func (r *webServerResponse_) copyTailFrom(resp WebBackendResponse) bool { // used by proxies
+func (r *webServerResponse_) proxyCopyTail(resp WebBackendResponse) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

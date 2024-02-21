@@ -1,7 +1,7 @@
 This directory holds auxiliary commands, basically one command per directory.
 
-To build (take goben as an example):
+To build (take hello as an example):
 
   shell> cd ..
-  shell> go build ./bins/goben
+  shell> go build ./bins/hello
   shell> ls

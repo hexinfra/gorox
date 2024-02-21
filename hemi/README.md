@@ -12,7 +12,8 @@ Hemi uses these directories:
   * common/   - Place general purpose libraries,
   * contrib/  - Place community contributed components,
   * develop/  - A prototype application used to develop Hemi,
-  * procmgr/  - A process manager for applications using Hemi.
+  * procmgr/  - A process manager for applications using Hemi,
+  * toolkit/  - Place optional commands.
 
 
 How to use

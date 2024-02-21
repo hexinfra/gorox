@@ -60,14 +60,14 @@ func (n *redisNode) init(id int32, backend *RedisBackend) {
 func (n *redisNode) Maintain() { // runner
 }
 
-func (n *redisNode) dial() (*RedisConn, error) {
-	return nil, nil
-}
-
 func (n *redisNode) fetchConn() (*RedisConn, error) {
 	return nil, nil
 }
 func (n *redisNode) storeConn(redisConn *RedisConn) {
+}
+
+func (n *redisNode) dial() (*RedisConn, error) {
+	return nil, nil
 }
 
 func (n *redisNode) closeConn(redisConn *RedisConn) {

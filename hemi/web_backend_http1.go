@@ -66,7 +66,7 @@ func (n *http1Node) init(id int32, backend *HTTP1Backend) {
 	n.webNode_.Init(id, backend)
 }
 
-func (n *http1Node) setTLS() {
+func (n *http1Node) setTLS() { // override
 	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"http/1.1"}
@@ -101,15 +101,15 @@ func (n *http1Node) fetchConn() (WebBackendConn, error) {
 		return nil, errNodeDown
 	}
 
-	if n.udsMode {
-		return n._fetchUDS()
-	} else if n.tlsMode {
-		return n._fetchTLS()
+	if n.IsUDS() {
+		return n._dialUDS()
+	} else if n.IsTLS() {
+		return n._dialTLS()
 	} else {
-		return n._fetchTCP()
+		return n._dialTCP()
 	}
 }
-func (n *http1Node) _fetchUDS() (WebBackendConn, error) {
+func (n *http1Node) _dialUDS() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -128,7 +128,7 @@ func (n *http1Node) _fetchUDS() (WebBackendConn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) _fetchTLS() (WebBackendConn, error) {
+func (n *http1Node) _dialTLS() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -151,7 +151,7 @@ func (n *http1Node) _fetchTLS() (WebBackendConn, error) {
 	n.IncSub(1)
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
-func (n *http1Node) _fetchTCP() (WebBackendConn, error) {
+func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {

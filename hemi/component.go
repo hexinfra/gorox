@@ -200,8 +200,8 @@ type Component interface {
 // Component_ is the mixin for all components.
 type Component_ struct {
 	// Mixins
-	subsWaiter_
-	shutdownable_
+	_subsWaiter_
+	_shutdownable_
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
@@ -212,7 +212,7 @@ type Component_ struct {
 }
 
 func (c *Component_) MakeComp(name string) {
-	c.shutdownable_.init()
+	c._shutdownable_.init()
 	c.name = name
 	c.props = make(map[string]Value)
 }

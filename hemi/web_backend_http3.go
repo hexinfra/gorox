@@ -12,6 +12,7 @@ package hemi
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/quix"
@@ -64,7 +65,7 @@ func (n *http3Node) init(id int32, backend *HTTP3Backend) {
 	n.webNode_.Init(id, backend)
 }
 
-func (n *http3Node) setTLS() {
+func (n *http3Node) setTLS() { // override
 	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 }
@@ -122,7 +123,7 @@ type H3Conn struct {
 	// Conn states (non-zeros)
 	quixConn *quix.Conn // the underlying quic connection
 	// Conn states (zeros)
-	activeStreams int32 // concurrent streams
+	nStreams atomic.Int32 // concurrent streams
 }
 
 func (c *H3Conn) onGet(id int64, node *http3Node, quixConn *quix.Conn) {
@@ -131,7 +132,7 @@ func (c *H3Conn) onGet(id int64, node *http3Node, quixConn *quix.Conn) {
 }
 func (c *H3Conn) onPut() {
 	c.quixConn = nil
-	c.activeStreams = 0
+	c.nStreams.Store(0)
 	c.webBackendConn_.onPut()
 }
 

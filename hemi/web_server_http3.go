@@ -57,11 +57,7 @@ func (s *http3Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub(1)
-		if s.IsUDS() {
-			go gate.serveUDS()
-		} else { // tls mode is always enabled
-			go gate.serveTLS()
-		}
+		go gate.serve()
 	}
 	s.WaitSubs() // gates
 	if Debug() >= 2 {
@@ -96,10 +92,7 @@ func (g *http3Gate) Shut() error {
 	return g.listener.Close()
 }
 
-func (g *http3Gate) serveUDS() { // runner
-	// TODO
-}
-func (g *http3Gate) serveTLS() { // runner
+func (g *http3Gate) serve() { // runner
 	connID := int64(0)
 	for {
 		quixConn, err := g.listener.Accept()

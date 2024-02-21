@@ -33,7 +33,7 @@ type webAgent interface {
 	MaxMemoryContentSize() int32
 }
 
-// _webAgent_ is the mixin for webServer_ and webBackend_.
+// _webAgent_ is a mixin for webServer_ and webBackend_.
 type _webAgent_ struct {
 	// States
 	recvTimeout           time.Duration // timeout to recv the whole message content
@@ -94,7 +94,7 @@ type webConn interface {
 	markBroken()
 }
 
-// _webConn_ is the mixin for webServerConn_ and webBackendConn_.
+// _webConn_ is a mixin for webServerConn_ and webBackendConn_.
 type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -138,7 +138,7 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// _webStream_ is the mixin for webServerStream_ and webBackendStream_.
+// _webStream_ is a mixin for webServerStream_ and webBackendStream_.
 type _webStream_ struct {
 	// Stream states (stocks)
 	// Stream states (controlled)

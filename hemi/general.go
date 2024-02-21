@@ -22,20 +22,16 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// agent is the interface for Server and Backend.
+// agent collects shared methods between Server and Backend.
 type agent interface {
-	// Imports
-	Component
 	// Methods
 	Stage() *Stage
 	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
 }
 
-// agent_ is the mixin for Server_ and Backend_.
-type agent_ struct {
-	// Mixins
-	Component_
+// _agent_ is a mixin for Server_ and Backend_.
+type _agent_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
@@ -43,12 +39,11 @@ type agent_ struct {
 	writeTimeout time.Duration // write() timeout
 }
 
-func (a *agent_) onCreate(name string, stage *Stage) {
-	a.MakeComp(name)
+func (a *_agent_) onCreate(name string, stage *Stage) {
 	a.stage = stage
 }
 
-func (a *agent_) onConfigure(shell Component, readTimeout time.Duration, writeTimeout time.Duration) {
+func (a *_agent_) onConfigure(shell Component, readTimeout time.Duration, writeTimeout time.Duration) {
 	// readTimeout
 	shell.ConfigureDuration("readTimeout", &a.readTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -65,17 +60,18 @@ func (a *agent_) onConfigure(shell Component, readTimeout time.Duration, writeTi
 		return errors.New(".writeTimeout has an invalid value")
 	}, writeTimeout)
 }
-func (a *agent_) onPrepare() {
+func (a *_agent_) onPrepare() {
 	// Currently nothing.
 }
 
-func (a *agent_) Stage() *Stage               { return a.stage }
-func (a *agent_) ReadTimeout() time.Duration  { return a.readTimeout }
-func (a *agent_) WriteTimeout() time.Duration { return a.writeTimeout }
+func (a *_agent_) Stage() *Stage               { return a.stage }
+func (a *_agent_) ReadTimeout() time.Duration  { return a.readTimeout }
+func (a *_agent_) WriteTimeout() time.Duration { return a.writeTimeout }
 
-// Server component.
+// Server component. A Server is a group of gates.
 type Server interface {
 	// Imports
+	Component
 	agent
 	// Methods
 	Serve() // runner
@@ -91,7 +87,8 @@ type Server interface {
 // Server_ is the mixin for all servers.
 type Server_[G Gate] struct {
 	// Mixins
-	agent_
+	Component_
+	_agent_
 	// Assocs
 	gates []G // a server has many gates
 	// States
@@ -106,7 +103,8 @@ type Server_[G Gate] struct {
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
-	s.agent_.onCreate(name, stage)
+	s.MakeComp(name)
+	s._agent_.onCreate(name, stage)
 }
 func (s *Server_[G]) OnShutdown() {
 	// We don't use close(s.ShutChan) to notify gates.
@@ -116,7 +114,7 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
-	s.agent_.onConfigure(s, 60*time.Second, 60*time.Second)
+	s._agent_.onConfigure(s, 60*time.Second, 60*time.Second)
 
 	// address
 	if v, ok := s.Find("address"); ok {
@@ -158,7 +156,7 @@ func (s *Server_[G]) OnConfigure() {
 	}, s.stage.NumCPU())
 }
 func (s *Server_[G]) OnPrepare() {
-	s.agent_.onPrepare()
+	s._agent_.onPrepare()
 }
 
 func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
@@ -173,9 +171,10 @@ func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
-// Backend component. Backend is a group of nodes.
+// Backend component. A Backend is a group of nodes.
 type Backend interface {
 	// Imports
+	Component
 	agent
 	// Methods
 	Maintain() // runner
@@ -187,7 +186,8 @@ type Backend interface {
 // Backend_ is the mixin for backends.
 type Backend_[N Node] struct {
 	// Mixins
-	agent_
+	Component_
+	_agent_
 	// Assocs
 	nodes   []N // nodes of this backend
 	newNode func(id int32) N
@@ -198,7 +198,8 @@ type Backend_[N Node] struct {
 }
 
 func (b *Backend_[N]) OnCreate(name string, stage *Stage, newNode func(id int32) N) {
-	b.agent_.onCreate(name, stage)
+	b.MakeComp(name)
+	b._agent_.onCreate(name, stage)
 	b.newNode = newNode
 }
 func (b *Backend_[N]) OnShutdown() {
@@ -206,7 +207,7 @@ func (b *Backend_[N]) OnShutdown() {
 }
 
 func (b *Backend_[N]) OnConfigure() {
-	b.agent_.onConfigure(b, 30*time.Second, 30*time.Second)
+	b._agent_.onConfigure(b, 30*time.Second, 30*time.Second)
 
 	// nodes
 	v, ok := b.Find("nodes")
@@ -279,7 +280,7 @@ func (b *Backend_[N]) OnConfigure() {
 	}, 5*time.Second)
 }
 func (b *Backend_[N]) OnPrepare() {
-	b.agent_.onPrepare()
+	b._agent_.onPrepare()
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -322,7 +323,7 @@ type Gate interface {
 // Gate_ is the mixin for all gates.
 type Gate_ struct {
 	// Mixins
-	subsWaiter_ // for conns
+	_subsWaiter_ // for conns
 	// Assocs
 	server Server
 	// States
@@ -372,8 +373,8 @@ type Node interface {
 // Node_ is the mixin for backend nodes.
 type Node_ struct {
 	// Mixins
-	subsWaiter_ // usually for conns
-	shutdownable_
+	_subsWaiter_ // usually for conns
+	_shutdownable_
 	// Assocs
 	backend Backend
 	// States
@@ -394,7 +395,7 @@ type Node_ struct {
 }
 
 func (n *Node_) Init(id int32, backend Backend) {
-	n.shutdownable_.init()
+	n._shutdownable_.init()
 	n.backend = backend
 	n.id = id
 }
@@ -474,7 +475,7 @@ func (n *Node_) closeFree() int {
 	return qnty
 }
 
-// ServerConn_
+// ServerConn_ is the mixin for server conns.
 type ServerConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -506,7 +507,7 @@ func (c *ServerConn_) Gate() Gate     { return c.gate }
 func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
 
-// backendConn is the backend conns.
+// backendConn is the linked-list item.
 type backendConn interface {
 	// Methods
 	getNext() backendConn
@@ -667,13 +668,13 @@ type contentSaver interface {
 	SaveContentFilesDir() string
 }
 
-// contentSaver_ is a mixin.
-type contentSaver_ struct {
+// _contentSaver_ is a mixin.
+type _contentSaver_ struct {
 	// States
 	saveContentFilesDir string
 }
 
-func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
+func (s *_contentSaver_) onConfigure(shell Component, defaultDir string) {
 	// saveContentFilesDir
 	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
@@ -682,7 +683,7 @@ func (s *contentSaver_) onConfigure(shell Component, defaultDir string) {
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 }
-func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
+func (s *_contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
 		EnvExitln(err.Error())
 	}
@@ -691,20 +692,20 @@ func (s *contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 	}
 }
 
-func (s *contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
+func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
 
 // streamHolder
 type streamHolder interface {
 	MaxStreamsPerConn() int32
 }
 
-// streamHolder_ is a mixin.
-type streamHolder_ struct {
+// _streamHolder_ is a mixin.
+type _streamHolder_ struct {
 	// States
 	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
 }
 
-func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
+func (s *_streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
 	// maxStreamsPerConn
 	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
@@ -713,13 +714,13 @@ func (s *streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
-func (s *streamHolder_) onPrepare(shell Component) {
+func (s *_streamHolder_) onPrepare(shell Component) {
 }
 
-func (s *streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
+func (s *_streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
 
-// loadBalancer_ is a mixin.
-type loadBalancer_ struct {
+// _loadBalancer_ is a mixin.
+type _loadBalancer_ struct {
 	// States
 	balancer  string       // roundRobin, ipHash, random, ...
 	indexGet  func() int64 // ...
@@ -727,11 +728,11 @@ type loadBalancer_ struct {
 	numNodes  int64        // num of nodes
 }
 
-func (b *loadBalancer_) init() {
+func (b *_loadBalancer_) init() {
 	b.nodeIndex.Store(-1)
 }
 
-func (b *loadBalancer_) onConfigure(shell Component) {
+func (b *_loadBalancer_) onConfigure(shell Component) {
 	// balancer
 	shell.ConfigureString("balancer", &b.balancer, func(value string) error {
 		if value == "roundRobin" || value == "ipHash" || value == "random" {
@@ -740,7 +741,7 @@ func (b *loadBalancer_) onConfigure(shell Component) {
 		return errors.New(".balancer has an invalid value")
 	}, "roundRobin")
 }
-func (b *loadBalancer_) onPrepare(numNodes int) {
+func (b *_loadBalancer_) onPrepare(numNodes int) {
 	switch b.balancer {
 	case "roundRobin":
 		b.indexGet = b.getNextByRoundRobin
@@ -754,39 +755,39 @@ func (b *loadBalancer_) onPrepare(numNodes int) {
 	b.numNodes = int64(numNodes)
 }
 
-func (b *loadBalancer_) getNext() int64 { return b.indexGet() }
+func (b *_loadBalancer_) getNext() int64 { return b.indexGet() }
 
-func (b *loadBalancer_) getNextByRoundRobin() int64 {
+func (b *_loadBalancer_) getNextByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes
 }
-func (b *loadBalancer_) getNextByIPHash() int64 {
+func (b *_loadBalancer_) getNextByIPHash() int64 {
 	// TODO
 	return 0
 }
-func (b *loadBalancer_) getNextByRandom() int64 {
+func (b *_loadBalancer_) getNextByRandom() int64 {
 	return rand.Int63n(b.numNodes)
 }
 
-// subsWaiter_ is a mixin.
-type subsWaiter_ struct {
+// _subsWaiter_ is a mixin.
+type _subsWaiter_ struct {
 	subs sync.WaitGroup
 }
 
-func (w *subsWaiter_) IncSub(n int) { w.subs.Add(n) }
-func (w *subsWaiter_) WaitSubs()    { w.subs.Wait() }
-func (w *subsWaiter_) SubDone()     { w.subs.Done() }
+func (w *_subsWaiter_) IncSub(n int) { w.subs.Add(n) }
+func (w *_subsWaiter_) WaitSubs()    { w.subs.Wait() }
+func (w *_subsWaiter_) SubDone()     { w.subs.Done() }
 
-// shutdownable_ is a mixin.
-type shutdownable_ struct {
+// _shutdownable_ is a mixin.
+type _shutdownable_ struct {
 	ShutChan chan struct{} // used to notify target to shutdown
 }
 
-func (s *shutdownable_) init() {
+func (s *_shutdownable_) init() {
 	s.ShutChan = make(chan struct{})
 }
 
-func (s *shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
+func (s *_shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -805,14 +806,14 @@ type identifiable interface {
 	setID(id uint8)
 }
 
-// identifiable_ is a mixin.
-type identifiable_ struct {
+// _identifiable_ is a mixin.
+type _identifiable_ struct {
 	id uint8
 }
 
-func (i *identifiable_) ID() uint8 { return i.id }
+func (i *_identifiable_) ID() uint8 { return i.id }
 
-func (i *identifiable_) setID(id uint8) { i.id = id }
+func (i *_identifiable_) setID(id uint8) { i.id = id }
 
 // logcfg
 type logcfg struct {

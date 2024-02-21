@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -64,7 +65,7 @@ func (n *http2Node) init(id int32, backend *HTTP2Backend) {
 	n.webNode_.Init(id, backend)
 }
 
-func (n *http2Node) setTLS() {
+func (n *http2Node) setTLS() { // override
 	n.webNode_.setTLS()
 	n.tlsConfig.InsecureSkipVerify = true
 	n.tlsConfig.NextProtos = []string{"h2"}
@@ -82,24 +83,27 @@ func (n *http2Node) Maintain() { // runner
 }
 
 func (n *http2Node) fetchConn() (WebBackendConn, error) {
-	// TODO
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http2Node) _fetchTCP() (WebBackendConn, error) {
+func (n *http2Node) _dialTCP() (WebBackendConn, error) {
 	return nil, nil
 }
-func (n *http2Node) _fetchTLS() (WebBackendConn, error) {
+func (n *http2Node) _dialTLS() (WebBackendConn, error) {
 	return nil, nil
 }
-func (n *http2Node) _fetchUDS() (WebBackendConn, error) {
+func (n *http2Node) _dialUDS() (WebBackendConn, error) {
 	return nil, nil
 }
 
 func (n *http2Node) storeConn(conn WebBackendConn) {
-	// TODO
+	// TODO: decRef
+	h2Conn := conn.(*H2Conn)
+	if h2Conn.nStreams.Add(-1) > 0 {
+		return
+	}
 }
 
 // poolH2Conn is the backend-side HTTP/2 connection pool.
@@ -130,7 +134,7 @@ type H2Conn struct {
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
-	activeStreams int32 // concurrent streams
+	nStreams atomic.Int32 // concurrent streams
 }
 
 func (c *H2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -141,13 +145,13 @@ func (c *H2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn sysc
 func (c *H2Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.activeStreams = 0
+	c.nStreams.Store(0)
 	c.webBackendConn_.onPut()
 }
 
 func (c *H2Conn) FetchStream() WebBackendStream {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
-	// TODO: stream.onUse()
+	// TODO: incRef, stream.onUse()
 	return nil
 }
 func (c *H2Conn) StoreStream(stream WebBackendStream) {
@@ -365,7 +369,9 @@ type H2Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *H2Response) recvHead() {} // head is immediate, so do nothing.
+func (r *H2Response) recvHead() {
+	// TODO
+}
 
 func (r *H2Response) readContent() (p []byte, err error) { return r.readContent2() }
 

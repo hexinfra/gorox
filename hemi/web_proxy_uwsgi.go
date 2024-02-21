@@ -28,7 +28,7 @@ func init() {
 type uwsgiProxy struct {
 	// Mixins
 	Handlet_
-	contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
 	webapp  *Webapp      // the webapp to which the proxy belongs
@@ -52,7 +52,7 @@ func (h *uwsgiProxy) OnShutdown() {
 }
 
 func (h *uwsgiProxy) OnConfigure() {
-	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/uwsgi/"+h.name)
+	h._contentSaver_.onConfigure(h, TmpsDir()+"/web/uwsgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
@@ -113,7 +113,7 @@ func (h *uwsgiProxy) OnConfigure() {
 	}, _1T)
 }
 func (h *uwsgiProxy) OnPrepare() {
-	h.contentSaver_.onPrepare(h, 0755)
+	h._contentSaver_.onPrepare(h, 0755)
 }
 
 func (h *uwsgiProxy) IsProxy() bool { return true }

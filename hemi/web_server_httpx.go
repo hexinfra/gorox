@@ -99,11 +99,11 @@ func (s *httpxServer) OnPrepare() {
 
 func (s *httpxServer) Serve() { // runner
 	if s.IsUDS() {
-		s.serveUDS()
+		s._serveUDS()
 	} else if s.IsTLS() {
-		s.serveTLS()
+		s._serveTLS()
 	} else {
-		s.serveTCP()
+		s._serveTCP()
 	}
 	s.WaitSubs() // gates
 	if Debug() >= 2 {
@@ -111,7 +111,7 @@ func (s *httpxServer) Serve() { // runner
 	}
 	s.stage.SubDone()
 }
-func (s *httpxServer) serveUDS() {
+func (s *httpxServer) _serveUDS() {
 	gate := new(httpxGate)
 	gate.init(0, s)
 	if err := gate.Open(); err != nil {
@@ -121,7 +121,7 @@ func (s *httpxServer) serveUDS() {
 	s.IncSub(1)
 	go gate.serveUDS()
 }
-func (s *httpxServer) serveTLS() {
+func (s *httpxServer) _serveTLS() {
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
 		gate.init(id, s)
@@ -133,7 +133,7 @@ func (s *httpxServer) serveTLS() {
 		go gate.serveTLS()
 	}
 }
-func (s *httpxServer) serveTCP() {
+func (s *httpxServer) _serveTCP() {
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
 		gate.init(id, s)
@@ -161,12 +161,12 @@ func (g *httpxGate) init(id int32, server *httpxServer) {
 
 func (g *httpxGate) Open() error {
 	if g.IsUDS() {
-		return g.openUnix()
+		return g._openUnix()
 	} else {
-		return g.openInet()
+		return g._openInet()
 	}
 }
-func (g *httpxGate) openUnix() error {
+func (g *httpxGate) _openUnix() error {
 	listener, err := net.Listen("unix", g.Address())
 	if err == nil {
 		g.listener = listener.(*net.UnixListener)
@@ -176,7 +176,7 @@ func (g *httpxGate) openUnix() error {
 	}
 	return err
 }
-func (g *httpxGate) openInet() error {
+func (g *httpxGate) _openInet() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		if err := system.SetReusePort(rawConn); err != nil {
@@ -611,7 +611,7 @@ func (c *http2Conn) handshake() error {
 	if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
 		return err
 	}
-	if err := c.growFrame(uint32(len(http2BytesPrism))); err != nil {
+	if err := c._growFrame(uint32(len(http2BytesPrism))); err != nil {
 		return err
 	}
 	if !bytes.Equal(c.frames.buf[0:len(http2BytesPrism)], http2BytesPrism) {
@@ -994,9 +994,9 @@ func (c *http2Conn) quitStream(streamID uint32) {
 }
 
 func (c *http2Conn) recvFrame() (*http2InFrame, error) {
-	// Receive frame header
+	// Receive frame header, 9 bytes
 	c.pBack = c.pFore
-	if err := c.growFrame(9); err != nil {
+	if err := c._growFrame(9); err != nil {
 		return nil, err
 	}
 	// Decode frame header
@@ -1011,7 +1011,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 	}
 	// Receive frame payload
 	c.pBack = c.pFore
-	if err := c.growFrame(inFrame.length); err != nil {
+	if err := c._growFrame(inFrame.length); err != nil {
 		return nil, err
 	}
 	// Mark frame payload
@@ -1031,7 +1031,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 	}
 	if inFrame.kind == http2FrameHeaders {
 		if !inFrame.endHeaders { // continuations follow
-			if err := c.joinContinuations(inFrame); err != nil {
+			if err := c._joinContinuations(inFrame); err != nil {
 				return nil, err
 			}
 		}
@@ -1045,7 +1045,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 	}
 	return inFrame, nil
 }
-func (c *http2Conn) growFrame(size uint32) error {
+func (c *http2Conn) _growFrame(size uint32) error {
 	c.pFore += size // size is limited, so won't overflow
 	if c.pFore <= c.framesEdge {
 		return nil
@@ -1064,9 +1064,9 @@ func (c *http2Conn) growFrame(size uint32) error {
 		c.pFore -= c.pBack
 		c.pBack = 0
 	}
-	return c.fillFrames(c.pFore - c.framesEdge)
+	return c._fillFrames(c.pFore - c.framesEdge)
 }
-func (c *http2Conn) fillFrames(size uint32) error {
+func (c *http2Conn) _fillFrames(size uint32) error {
 	n, err := c.readAtLeast(c.frames.buf[c.framesEdge:], int(size))
 	if Debug() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
@@ -1077,13 +1077,13 @@ func (c *http2Conn) fillFrames(size uint32) error {
 	c.framesEdge += uint32(n)
 	return err
 }
-func (c *http2Conn) joinContinuations(headers *http2InFrame) error { // into a single headers frame
+func (c *http2Conn) _joinContinuations(headers *http2InFrame) error { // into a single headers frame
 	headers.frames = nil // will be restored at the end of continuations
 	var continuation http2InFrame
 	c.cBack, c.cFore = c.pFore, c.pFore
 	for { // each continuation frame
 		// Receive continuation header
-		if err := c.growContinuation(9, headers); err != nil {
+		if err := c._growContinuation(9, headers); err != nil {
 			return err
 		}
 		// Decode continuation header
@@ -1099,7 +1099,7 @@ func (c *http2Conn) joinContinuations(headers *http2InFrame) error { // into a s
 		}
 		// Receive continuation payload
 		c.cBack = c.cFore
-		if err := c.growContinuation(continuation.length, headers); err != nil {
+		if err := c._growContinuation(continuation.length, headers); err != nil {
 			return err
 		}
 		c.nInFrames++
@@ -1120,7 +1120,7 @@ func (c *http2Conn) joinContinuations(headers *http2InFrame) error { // into a s
 	}
 	return nil
 }
-func (c *http2Conn) growContinuation(size uint32, headers *http2InFrame) error {
+func (c *http2Conn) _growContinuation(size uint32, headers *http2InFrame) error {
 	c.cFore += size // won't overflow
 	if c.cFore <= c.framesEdge {
 		return nil
@@ -1152,7 +1152,7 @@ func (c *http2Conn) growContinuation(size uint32, headers *http2InFrame) error {
 		c.cBack = c.pFore
 		c.cFore = c.cBack + size
 	}
-	return c.fillFrames(c.cFore - c.framesEdge)
+	return c._fillFrames(c.cFore - c.framesEdge)
 }
 
 func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
@@ -1220,6 +1220,19 @@ type http1Stream struct {
 	// Stream states (non-zeros)
 	conn *http1Conn // associated conn
 	// Stream states (zeros)
+}
+
+func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
+	s.webServerStream_.onUse()
+	s.conn = conn
+	s.request.onUse(Version1_1)
+	s.response.onUse(Version1_1)
+}
+func (s *http1Stream) onEnd() { // for zeros
+	s.response.onEnd()
+	s.request.onEnd()
+	s.conn = nil
+	s.webServerStream_.onEnd()
 }
 
 func (s *http1Stream) execute() {
@@ -1306,19 +1319,6 @@ func (s *http1Stream) execute() {
 			s.conn.keepConn = false // i/o error
 		}
 	}
-}
-
-func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s.webServerStream_.onUse()
-	s.conn = conn
-	s.request.onUse(Version1_1)
-	s.response.onUse(Version1_1)
-}
-func (s *http1Stream) onEnd() { // for zeros
-	s.response.onEnd()
-	s.request.onEnd()
-	s.conn = nil
-	s.webServerStream_.onEnd()
 }
 
 func (s *http1Stream) webAgent() webAgent   { return s.conn.webServer() }

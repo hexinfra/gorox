@@ -859,8 +859,8 @@ var varCodes = map[string]int16{ // TODO
 	// general conn vars for quic, tcps, and udps
 	"srcHost": 0,
 	"srcPort": 1,
-	"udsMode": 2,
-	"tlsMode": 3,
+	"isUDS":   2,
+	"isTLS":   3,
 
 	// quic conn vars
 

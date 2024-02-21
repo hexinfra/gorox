@@ -40,7 +40,7 @@ func init() {
 type fcgiProxy struct {
 	// Mixins
 	Handlet_
-	contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
 	webapp  *Webapp      // the webapp to which the proxy belongs
@@ -72,7 +72,7 @@ func (h *fcgiProxy) OnShutdown() {
 }
 
 func (h *fcgiProxy) OnConfigure() {
-	h.contentSaver_.onConfigure(h, TmpsDir()+"/web/fcgi/"+h.name)
+	h._contentSaver_.onConfigure(h, TmpsDir()+"/web/fcgi/"+h.name)
 
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
@@ -148,7 +148,7 @@ func (h *fcgiProxy) OnConfigure() {
 	}, _1T)
 }
 func (h *fcgiProxy) OnPrepare() {
-	h.contentSaver_.onPrepare(h, 0755)
+	h._contentSaver_.onPrepare(h, 0755)
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }
@@ -231,8 +231,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 			fExchan.markBroken()
 			return
 		}
-		fResp.onEnd()
-		fResp.onUse(Version1_0)
+		fResp.reuse()
 	}
 
 	var fContent any
@@ -307,7 +306,7 @@ func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn *TConn) {
 	x.proxy = proxy
 	x.conn = conn
 	x.request.onUse()
-	x.response.onUse(Version1_0)
+	x.response.onUse()
 }
 func (x *fcgiExchan) onEnd() {
 	x.request.onEnd()
@@ -807,7 +806,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *fcgiResponse) onUse(versionCode uint8) { // versionCode is required by WebBackendResponse but not used
+func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
@@ -856,6 +855,11 @@ func (r *fcgiResponse) onEnd() {
 	}
 
 	r.fcgiResponse0 = fcgiResponse0{}
+}
+
+func (r *fcgiResponse) reuse() {
+	r.onEnd()
+	r.onUse()
 }
 
 func (r *fcgiResponse) HeadResult() int16 { return r.headResult }

@@ -37,13 +37,13 @@ type webServer interface { // for *httpxServer and *http3Server
 	findApp(hostname []byte) *Webapp
 }
 
-// webServer_
-type webServer_[G webGate] struct { // mixin for httpxServer and http3Server
+// webServer_ is the mixin for httpxServer and http3Server.
+type webServer_[G webGate] struct {
 	// Mixins
 	Server_[G]
 	_webAgent_
-	streamHolder_
-	contentSaver_ // so requests can save their large contents in local file system.
+	_streamHolder_
+	_contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -51,8 +51,8 @@ type webServer_[G webGate] struct { // mixin for httpxServer and http3Server
 	exactApps         []*hostnameTo[*Webapp] // like: ("example.com")
 	suffixApps        []*hostnameTo[*Webapp] // like: ("*.example.com")
 	prefixApps        []*hostnameTo[*Webapp] // like: ("www.example.*")
-	udsColonPort      string                 // what colonPort to use if web server is listening on uds
-	udsColonPortBytes []byte
+	udsColonPort      string                 // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonPortBytes []byte                 // []byte(udsColonPort)
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
@@ -65,8 +65,8 @@ func (s *webServer_[G]) onShutdown() {
 func (s *webServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
 	s._webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second)
-	s.streamHolder_.onConfigure(shell, 1000)
-	s.contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
+	s._streamHolder_.onConfigure(shell, 1000)
+	s._contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
 
 	// forApps
 	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
@@ -78,8 +78,8 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s._webAgent_.onPrepare(shell)
-	s.streamHolder_.onPrepare(shell)
-	s.contentSaver_.onPrepare(shell, 0755)
+	s._streamHolder_.onPrepare(shell)
+	s._contentSaver_.onPrepare(shell, 0755)
 }
 
 func (s *webServer_[G]) ColonPort() string {
@@ -161,8 +161,8 @@ type webGate interface { // for *httpxGate and *http3Gate
 	// Methods
 }
 
-// webGate_
-type webGate_ struct { // mixin for httpxGate and http3Gate
+// webGate_ is the mixin for httpxGate and http3Gate.
+type webGate_ struct {
 	// Mixins
 	Gate_
 	// Assocs
@@ -178,8 +178,8 @@ type webServerConn interface { // for *http[1-3]Conn
 	serve() // runner
 }
 
-// webServerConn_
-type webServerConn_ struct { // mixin for http[1-3]Conn
+// webServerConn_ is the mixin for http[1-3]Conn.
+type webServerConn_ struct {
 	// Mixins
 	ServerConn_
 	_webConn_
@@ -209,8 +209,8 @@ type webServerStream interface { // for *http[1-3]Stream
 	execute() // runner
 }
 
-// webServerStream_
-type webServerStream_ struct { // mixin for http[1-3]Stream
+// webServerStream_ is the mixin for http[1-3]Stream.
+type webServerStream_ struct {
 	// Mixins
 	Stream_
 	_webStream_
@@ -388,8 +388,8 @@ type Request interface { // for *http[1-3]Request
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// webServerRequest_
-type webServerRequest_ struct { // mixin for http[1-3]Request. incoming. needs parsing
+// webServerRequest_ is the mixin for http[1-3]Request.
+type webServerRequest_ struct { // incoming. needs parsing
 	// Mixins
 	webIn_ // incoming web message
 	// Stream states (stocks)
@@ -2667,8 +2667,8 @@ type Response interface { // for *http[1-3]Response
 	unsafeMake(size int) []byte
 }
 
-// webServerResponse_
-type webServerResponse_ struct { // mixin for http[1-3]Response. outgoing. needs building
+// webServerResponse_ is the mixin for http[1-3]Response.
+type webServerResponse_ struct { // outgoing. needs building
 	// Mixins
 	webOut_ // outgoing web message
 	// Assocs
@@ -3161,8 +3161,8 @@ type Socket interface { // for *http[1-3]Socket
 	Close() error
 }
 
-// webServerSocket_
-type webServerSocket_ struct { // mixin for http[1-3]Socket
+// webServerSocket_ is the mixin for http[1-3]Socket.
+type webServerSocket_ struct {
 	// Mixins
 	webSocket_
 	// Assocs

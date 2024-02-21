@@ -14,8 +14,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
-// WebBackend is the interface for *HTTP[1-3]Backend.
-type WebBackend interface {
+// WebBackend
+type WebBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	streamHolder
@@ -34,39 +34,39 @@ type webBackend_[N WebNode] struct {
 	// Mixins
 	Backend_[N]
 	_webAgent_
-	streamHolder_
-	contentSaver_ // so responses can save their large contents in local file system.
-	loadBalancer_
+	_streamHolder_
+	_contentSaver_ // so responses can save their large contents in local file system.
+	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
 	b.Backend_.OnCreate(name, stage, newNode)
-	b.loadBalancer_.init()
+	b._loadBalancer_.init()
 }
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
 	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
-	b.streamHolder_.onConfigure(shell, 1000)
-	b.contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+b.name)
-	b.loadBalancer_.onConfigure(shell)
+	b._streamHolder_.onConfigure(shell, 1000)
+	b._contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+b.name)
+	b._loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._webAgent_.onPrepare(shell)
-	b.streamHolder_.onPrepare(shell)
-	b.contentSaver_.onPrepare(shell, 0755)
-	b.loadBalancer_.onPrepare(len(b.nodes))
+	b._streamHolder_.onPrepare(shell)
+	b._contentSaver_.onPrepare(shell, 0755)
+	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 func (b *webBackend_[N]) StoreConn(conn WebBackendConn) {
 	conn.webNode().storeConn(conn)
 }
 
-// WebNode is the interface for *http[1-3]Node.
-type WebNode interface {
+// WebNode
+type WebNode interface { // for *http[1-3]Node
 	// Imports
 	Node
 	// Methods
@@ -91,8 +91,8 @@ func (n *webNode_) closeConn(conn WebBackendConn) {
 	n.SubDone()
 }
 
-// WebBackendConn is the interface for *H[1-3]Conn.
-type WebBackendConn interface {
+// WebBackendConn
+type WebBackendConn interface { // *H[1-3]Conn
 	webNode() WebNode
 	FetchStream() WebBackendStream
 	StoreStream(stream WebBackendStream)
@@ -130,8 +130,8 @@ func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// WebBackendStream is the interface for *H[1-3]Stream.
-type WebBackendStream interface {
+// WebBackendStream
+type WebBackendStream interface { // for *H[1-3]Stream
 	Request() WebBackendRequest
 	Response() WebBackendResponse
 	ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error
@@ -163,8 +163,8 @@ func (s *webBackendStream_) startSocket() {
 	// TODO
 }
 
-// WebBackendRequest is the interface for *H[1-3]Request.
-type WebBackendRequest interface {
+// WebBackendRequest
+type WebBackendRequest interface { // for *H[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	copyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -413,8 +413,8 @@ type WebBackendUpfile struct {
 	// TODO
 }
 
-// WebBackendResponse is the interface for *H[1-3]Response.
-type WebBackendResponse interface {
+// WebBackendResponse
+type WebBackendResponse interface { // for *H[1-3]Response
 	HeadResult() int16
 	BodyResult() int16
 	Status() int16
@@ -430,8 +430,7 @@ type WebBackendResponse interface {
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 	recvHead()
-	onUse(versionCode uint8)
-	onEnd()
+	reuse()
 }
 
 // webBackendResponse_ is the mixin for H[1-3]Response.
@@ -500,6 +499,12 @@ func (r *webBackendResponse_) onEnd() { // for zeros
 	r.webBackendResponse0 = webBackendResponse0{}
 
 	r.webIn_.onEnd()
+}
+
+func (r *webBackendResponse_) reuse() {
+	versionCode := r.versionCode
+	r.onEnd()
+	r.onUse(versionCode)
 }
 
 func (r *webBackendResponse_) Status() int16 { return r.status }
@@ -930,8 +935,8 @@ func (c *WebBackendCookie) nameEqualBytes(name []byte) bool {
 	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
 
-// WebBackendSocket is the interface for *H[1-3]Socket.
-type WebBackendSocket interface {
+// WebBackendSocket
+type WebBackendSocket interface { // for *H[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error

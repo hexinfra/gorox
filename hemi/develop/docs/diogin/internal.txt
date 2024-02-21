@@ -26,7 +26,7 @@ THE WEB PICTURE
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
-     [webServer]   [Handlet]/[webProxy]          [webClient]
+     [webServer]   [Handlet]/[httpProxy]         [webBackend]
         1/2/3      /          /       \             1/2/3
                   /          /         \
                             /           \
@@ -59,8 +59,8 @@ NOTES
   * adding headers to outgoing messages: insert + append.
   * deleting headers from outgoing messages: remove + delete.
 
-WEB SERVER -> WEB PROXY -> WEB CLIENT
--------------------------------------
+WEB SERVER -> WEB PROXY -> WEB BACKEND
+--------------------------------------
 
   * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in backend side.
   * we support revisers in server side, but we don't support revisers in backend side.

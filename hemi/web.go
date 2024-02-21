@@ -496,7 +496,7 @@ type Reviser interface {
 type Reviser_ struct {
 	// Mixins
 	Component_
-	identifiable_
+	_identifiable_
 	// States
 }
 

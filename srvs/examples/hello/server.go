@@ -165,9 +165,9 @@ func (c *helloConn) onPut() {
 }
 
 func (c *helloConn) serve() { // runner
+	defer putHelloConn(c)
 	c.tcpConn.Write([]byte("hello, world!"))
 	c.closeConn()
-	putHelloConn(c)
 }
 
 func (c *helloConn) closeConn() {

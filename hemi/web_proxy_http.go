@@ -29,10 +29,10 @@ type httpProxy struct {
 	// Mixins
 	Handlet_
 	// Assocs
-	stage   *Stage  // current stage
-	webapp  *Webapp // the webapp to which the proxy belongs
-	backend WebBackend
-	cacher  Cacher // the cacher which is used by this proxy
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to
+	cacher  Cacher     // the cacher which is used by this proxy
 	// States
 	hostname            []byte            // hostname used in ":authority" and "host" header
 	colonPort           []byte            // colonPort used in ":authority" and "host" header
@@ -223,8 +223,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 			bStream.markBroken()
 			return
 		}
-		bResp.onEnd()
-		bResp.onUse(Version1_1)
+		bResp.reuse()
 	}
 
 	var bContent any
@@ -252,7 +251,8 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 				bStream.markBroken()
 			}
 			return
-		} else if bHasTrailers && !resp.copyTailFrom(bResp) {
+		}
+		if bHasTrailers && !resp.copyTailFrom(bResp) {
 			return
 		}
 	} else if err := resp.proxyPass(bResp); err != nil {

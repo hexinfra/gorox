@@ -28,7 +28,7 @@ func init() {
 
 // HTTP2Backend
 type HTTP2Backend struct {
-	// Mixins
+	// Parent
 	webBackend_[*http2Node]
 	// States
 }
@@ -55,7 +55,7 @@ func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
 
 // http2Node
 type http2Node struct {
-	// Mixins
+	// Parent
 	webNode_
 	// Assocs
 	// States
@@ -79,7 +79,7 @@ func (n *http2Node) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("http2Node=%d done\n", n.id)
 	}
-	n.backend.SubDone()
+	n.backend.DecSub()
 }
 
 func (n *http2Node) fetchConn() (WebBackendConn, error) {
@@ -126,7 +126,7 @@ func putH2Conn(h2Conn *H2Conn) {
 
 // H2Conn
 type H2Conn struct {
-	// Mixins
+	// Parent
 	webBackendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -220,7 +220,7 @@ func putH2Stream(stream *H2Stream) {
 
 // H2Stream
 type H2Stream struct {
-	// Mixins
+	// Parent
 	webBackendStream_
 	// Assocs
 	request  H2Request
@@ -249,7 +249,7 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H2Stream) webAgent() webAgent   { return s.conn.webBackend() }
+func (s *H2Stream) webAgent() webAgent   { return s.conn.WebBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -301,7 +301,7 @@ func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 
 // H2Request is the backend-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -361,7 +361,7 @@ func (r *H2Request) fixedHeaders() []byte { return nil } // TODO
 
 // H2Response is the backend-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -386,7 +386,7 @@ func putH2Socket(socket *H2Socket) {
 
 // H2Socket is the backend-side HTTP/2 websocket.
 type H2Socket struct {
-	// Mixins
+	// Parent
 	webBackendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)

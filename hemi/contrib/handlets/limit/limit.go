@@ -21,7 +21,7 @@ func init() {
 
 // limitChecker
 type limitChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (h *limitChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *limitChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *limitChecker) OnConfigure() {

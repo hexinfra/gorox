@@ -28,7 +28,7 @@ func init() {
 
 // http3Server is the HTTP/3 server.
 type http3Server struct {
-	// Mixins
+	// Parent
 	webServer_[*http3Gate]
 	// States
 }
@@ -63,12 +63,12 @@ func (s *http3Server) Serve() { // runner
 	if Debug() >= 2 {
 		Printf("http3Server=%s done\n", s.Name())
 	}
-	s.stage.SubDone()
+	s.stage.DecSub()
 }
 
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
-	// Mixins
+	// Parent
 	webGate_
 	// Assocs
 	// States
@@ -116,7 +116,7 @@ func (g *http3Gate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
-	g.server.SubDone()
+	g.server.DecSub()
 }
 
 func (g *http3Gate) justClose(quixConn *quix.Conn) {
@@ -144,7 +144,7 @@ func putHTTP3Conn(httpConn *http3Conn) {
 
 // http3Conn is the server-side HTTP/3 connection.
 type http3Conn struct {
-	// Mixins
+	// Parent
 	webServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -227,7 +227,7 @@ func putHTTP3Stream(stream *http3Stream) {
 
 // http3Stream is the server-side HTTP/3 stream.
 type http3Stream struct {
-	// Mixins
+	// Parent
 	webServerStream_
 	// Assocs
 	request  http3Request  // the http/3 request.
@@ -316,7 +316,7 @@ func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limi
 
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webServerRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -328,7 +328,7 @@ func (r *http3Request) readContent() (p []byte, err error) { return r.readConten
 
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webServerResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -426,7 +426,7 @@ var poolHTTP3Socket sync.Pool
 
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
-	// Mixins
+	// Parent
 	webServerSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)

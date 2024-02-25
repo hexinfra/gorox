@@ -14,7 +14,7 @@ import (
 
 // Service is the RPC service.
 type Service struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage   *Stage      // current stage
@@ -102,7 +102,7 @@ func (s *Service) maintain() { // runner
 	if Debug() >= 2 {
 		Printf("service=%s done\n", s.Name())
 	}
-	s.stage.SubDone()
+	s.stage.DecSub()
 }
 
 func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
@@ -114,7 +114,7 @@ func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 type Bundlet interface {
 }
 
-// Bundlet_ is the mixin for all bundlets.
+// Bundlet_ is the parent for all bundlets.
 type Bundlet_ struct {
 }
 

@@ -21,7 +21,7 @@ func init() {
 
 // httpsChecker
 type httpsChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -37,7 +37,7 @@ func (h *httpsChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *httpsChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *httpsChecker) OnConfigure() {

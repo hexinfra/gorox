@@ -21,7 +21,7 @@ func init() {
 
 // dnsDealet
 type dnsDealet struct {
-	// Mixins
+	// Parent
 	UDPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *dnsDealet) onCreate(name string, stage *Stage, router *UDPSRouter) {
 	d.router = router
 }
 func (d *dnsDealet) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *dnsDealet) OnConfigure() {

@@ -23,7 +23,7 @@ func init() {
 
 // cleanCronjob
 type cleanCronjob struct {
-	// Mixins
+	// Parent
 	Cronjob_
 	// Assocs
 	stage *Stage // current stage
@@ -52,5 +52,5 @@ func (j *cleanCronjob) Schedule() { // runner
 	if Debug() >= 2 {
 		Printf("cleanCronjob=%s done\n", j.Name())
 	}
-	j.stage.SubDone()
+	j.stage.DecSub()
 }

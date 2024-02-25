@@ -24,7 +24,7 @@ func init() {
 
 // gzipReviser
 type gzipReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -41,7 +41,7 @@ func (r *gzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *gzipReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *gzipReviser) OnConfigure() {

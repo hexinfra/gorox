@@ -27,7 +27,7 @@ func init() {
 
 // sunleiHandlet
 type sunleiHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage
@@ -41,7 +41,7 @@ func (h *sunleiHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *sunleiHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *sunleiHandlet) OnConfigure() {

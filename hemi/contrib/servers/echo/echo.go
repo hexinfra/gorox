@@ -29,7 +29,7 @@ func init() {
 
 // echoServer
 type echoServer struct {
-	// Mixins
+	// Parent
 	Server_[*echoGate]
 	// Assocs
 	// States
@@ -64,12 +64,12 @@ func (s *echoServer) Serve() { // runner
 	if Debug() >= 2 {
 		Printf("echoServer=%s done\n", s.Name())
 	}
-	s.Stage().SubDone()
+	s.Stage().DecSub()
 }
 
 // echoGate
 type echoGate struct {
-	// Mixins
+	// Parent
 	Gate_
 	// Assocs
 	// States
@@ -120,7 +120,7 @@ func (g *echoGate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	g.Server().SubDone()
+	g.Server().DecSub()
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
@@ -148,7 +148,7 @@ func putEchoConn(conn *echoConn) {
 
 // echoConn
 type echoConn struct {
-	// Mixins
+	// Parent
 	ServerConn_
 	// Conn states (stocks)
 	buffer [8152]byte

@@ -21,7 +21,7 @@ func init() {
 
 // pgsqlProxy
 type pgsqlProxy struct {
-	// Mixins
+	// Parent
 	TCPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *pgsqlProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.router = router
 }
 func (d *pgsqlProxy) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *pgsqlProxy) OnConfigure() {

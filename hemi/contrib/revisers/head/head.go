@@ -22,7 +22,7 @@ func init() {
 
 // headReviser
 type headReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -40,7 +40,7 @@ func (r *headReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *headReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *headReviser) OnConfigure() {

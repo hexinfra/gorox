@@ -30,7 +30,7 @@ func init() {
 
 // refererChecker
 type refererChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -50,7 +50,7 @@ func (h *refererChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *refererChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *refererChecker) OnConfigure() {

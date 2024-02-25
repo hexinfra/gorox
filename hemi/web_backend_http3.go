@@ -28,7 +28,7 @@ func init() {
 
 // HTTP3Backend
 type HTTP3Backend struct {
-	// Mixins
+	// Parent
 	webBackend_[*http3Node]
 	// States
 }
@@ -55,7 +55,7 @@ func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
 
 // http3Node
 type http3Node struct {
-	// Mixins
+	// Parent
 	webNode_
 	// Assocs
 	// States
@@ -78,7 +78,7 @@ func (n *http3Node) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("http3Node=%d done\n", n.id)
 	}
-	n.backend.SubDone()
+	n.backend.DecSub()
 }
 
 func (n *http3Node) fetchConn() (WebBackendConn, error) {
@@ -116,7 +116,7 @@ func putH3Conn(h3Conn *H3Conn) {
 
 // H3Conn
 type H3Conn struct {
-	// Mixins
+	// Parent
 	webBackendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -179,7 +179,7 @@ func putH3Stream(stream *H3Stream) {
 
 // H3Stream
 type H3Stream struct {
-	// Mixins
+	// Parent
 	webBackendStream_
 	// Assocs
 	request  H3Request
@@ -209,7 +209,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H3Stream) webAgent() webAgent   { return s.conn.webBackend() }
+func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -261,7 +261,7 @@ func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit t
 
 // H3Request is the backend-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -321,7 +321,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil } // TODO
 
 // H3Response is the backend-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -346,7 +346,7 @@ func putH3Socket(socket *H3Socket) {
 
 // H3Socket is the backend-side HTTP/3 websocket.
 type H3Socket struct {
-	// Mixins
+	// Parent
 	webBackendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)

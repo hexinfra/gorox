@@ -17,7 +17,7 @@ func init() {
 
 // hrpcServer is the HRPC server.
 type hrpcServer struct {
-	// Mixins
+	// Parent
 	rpcServer_[*hrpcGate]
 	// States
 }
@@ -42,7 +42,7 @@ func (s *hrpcServer) Serve() { // runner
 
 // hrpcGate is a gate of hrpcServer.
 type hrpcGate struct {
-	// Mixins
+	// Parent
 	Gate_
 	// Assocs
 	// States

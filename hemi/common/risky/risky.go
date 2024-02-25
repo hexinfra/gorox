@@ -8,51 +8,12 @@
 package risky
 
 import (
-	"reflect"
 	"unsafe"
 )
 
-func init() {
-	// ensure compatability
-	if unsafe.Sizeof(Refer{}) != unsafe.Sizeof(reflect.StringHeader{}) {
-		panic("layout of string has changed!")
-	}
-	if unsafe.Sizeof(Bytes{}) != unsafe.Sizeof(reflect.SliceHeader{}) {
-		panic("layout of []byte has changed!")
-	}
+func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* mutate s through p!
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
-
-// Refer
-type Refer struct { // same as string, 16 bytes
-	Ptr unsafe.Pointer
-	Len int
-}
-
-func ReferTo(p []byte) Refer {
-	return *(*Refer)(unsafe.Pointer(&p))
-}
-func (r *Refer) Reset() {
-	r.Ptr, r.Len = nil, 0
-}
-func (r Refer) Bytes() (p []byte) {
-	h := (*Bytes)(unsafe.Pointer(&p))
-	h.Ptr, h.Len, h.Cap = r.Ptr, r.Len, r.Len
-	return
-}
-
-// Bytes
-type Bytes struct { // same as []byte, 24 bytes
-	Ptr unsafe.Pointer
-	Len int
-	Cap int
-}
-
-func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* change s through p!
-	sh := (*Refer)(unsafe.Pointer(&s))
-	ph := (*Bytes)(unsafe.Pointer(&p))
-	ph.Ptr, ph.Len, ph.Cap = sh.Ptr, sh.Len, sh.Len
-	return
-}
-func WeakString(p []byte) (s string) { // WARNING: *DO NOT* change p while using s!
-	return *(*string)(unsafe.Pointer(&p))
+func WeakString(p []byte) (s string) { // WARNING: *DO NOT* mutate p while s is in use!
+	return unsafe.String(unsafe.SliceData(p), len(p))
 }

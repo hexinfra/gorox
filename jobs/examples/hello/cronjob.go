@@ -24,7 +24,7 @@ func init() {
 
 // helloCronjob
 type helloCronjob struct {
-	// Mixins
+	// Parent
 	Cronjob_
 	// Assocs
 	stage *Stage
@@ -59,5 +59,5 @@ loop:
 	if Debug() >= 2 {
 		Printf("helloCronjob=%s done\n", j.Name())
 	}
-	j.stage.SubDone()
+	j.stage.DecSub()
 }

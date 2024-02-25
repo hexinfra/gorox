@@ -15,13 +15,13 @@ import (
 
 // MongoBackend is a group of mongo nodes.
 type MongoBackend struct {
-	// Mixins
+	// Parent
 	Backend_[*mongoNode]
 }
 
 // mongoNode is a node in MongoBackend.
 type mongoNode struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 	backend *MongoBackend

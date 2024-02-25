@@ -25,7 +25,7 @@ func init() {
 
 // localCacher
 type localCacher struct {
-	// Mixins
+	// Parent
 	Cacher_
 	// Assocs
 	stage *Stage // current stage
@@ -64,7 +64,7 @@ func (c *localCacher) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("localCacher=%s done\n", c.Name())
 	}
-	c.stage.SubDone()
+	c.stage.DecSub()
 }
 
 func (c *localCacher) Set(key []byte, wobject *Wobject) {

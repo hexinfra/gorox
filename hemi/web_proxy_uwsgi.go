@@ -26,8 +26,9 @@ func init() {
 
 // uwsgiProxy handlet passes web requests to backend uWSGI servers and cache responses.
 type uwsgiProxy struct {
-	// Mixins
+	// Parent
 	Handlet_
+	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
@@ -48,7 +49,7 @@ func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *uwsgiProxy) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *uwsgiProxy) OnConfigure() {
@@ -149,7 +150,7 @@ func putUWSGIExchan(exchan *uwsgiExchan) {
 
 // uwsgiExchan
 type uwsgiExchan struct {
-	// Mixins
+	// Parent
 	Stream_
 	// Assocs
 	request  uwsgiRequest  // the uwsgi request

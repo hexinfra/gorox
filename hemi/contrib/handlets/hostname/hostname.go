@@ -21,7 +21,7 @@ func init() {
 
 // hostnameChecker
 type hostnameChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -37,7 +37,7 @@ func (h *hostnameChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *hostnameChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *hostnameChecker) OnConfigure() {

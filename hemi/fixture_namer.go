@@ -26,7 +26,7 @@ func createNamer(stage *Stage) *namerFixture {
 
 // namerFixture
 type namerFixture struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage *Stage // current stage
@@ -53,7 +53,7 @@ func (f *namerFixture) run() { // runner
 	if Debug() >= 2 {
 		Println("namer done")
 	}
-	f.stage.SubDone()
+	f.stage.DecSub()
 }
 
 func (f *namerFixture) Register(name string, address string) bool {

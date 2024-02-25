@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP proxy implementation.
+// HTTP reverse proxy implementation.
 
 package hemi
 
@@ -26,7 +26,7 @@ func init() {
 
 // httpProxy handlet passes web requests to backend HTTP servers and cache responses.
 type httpProxy struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage   *Stage     // current stage
@@ -51,7 +51,7 @@ func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *httpProxy) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *httpProxy) OnConfigure() {
@@ -265,7 +265,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 
 // sockProxy socklet passes websockets to backend WebSocket servers.
 type sockProxy struct {
-	// Mixins
+	// Parent
 	Socklet_
 	// Assocs
 	stage   *Stage  // current stage
@@ -280,7 +280,7 @@ func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	s.webapp = webapp
 }
 func (s *sockProxy) OnShutdown() {
-	s.webapp.SubDone()
+	s.webapp.DecSub()
 }
 
 func (s *sockProxy) OnConfigure() {

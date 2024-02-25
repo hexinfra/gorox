@@ -21,7 +21,7 @@ func init() {
 
 // HRPCBackend
 type HRPCBackend struct {
-	// Mixins
+	// Parent
 	rpcBackend_[*hrpcNode]
 	// States
 }
@@ -45,7 +45,7 @@ func (b *HRPCBackend) NewNode(id int32) *hrpcNode {
 
 // hrpcNode
 type hrpcNode struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 	// States
@@ -63,7 +63,7 @@ func (n *hrpcNode) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("hrpcNode=%d done\n", n.id)
 	}
-	n.backend.SubDone()
+	n.backend.DecSub()
 }
 
 // HConn
@@ -77,7 +77,7 @@ func (c *HConn) Close() error {
 
 // HStream is the backend-side HRPC stream.
 type HStream struct {
-	// Mixins
+	// Parent
 	rpcBackendStream_
 	// Assocs
 	request  HRequest
@@ -92,7 +92,7 @@ type HStream struct {
 
 // HRequest is the backend-side HRPC request.
 type HRequest struct {
-	// Mixins
+	// Parent
 	rpcBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -102,7 +102,7 @@ type HRequest struct {
 
 // HResponse is the backend-side HRPC response.
 type HResponse struct {
-	// Mixins
+	// Parent
 	rpcBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)

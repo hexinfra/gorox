@@ -12,9 +12,9 @@ import (
 	"regexp"
 )
 
-// router_ is the mixin for QUICRouter, TCPSRouter, UDPSRouter.
+// router_ is the parent for QUICRouter, TCPSRouter, UDPSRouter.
 type router_[R Server, G Gate, D _dealet, C _case] struct {
-	// Mixins
+	// Parent
 	Server_[G]
 	// Assocs
 	dealets compDict[D] // defined dealets. indexed by name
@@ -112,9 +112,9 @@ type _case interface {
 	Component
 }
 
-// case_ is the mixin for *quicCase, *tcpsCase, *udpsCase.
+// case_ is the parent for *quicCase, *tcpsCase, *udpsCase.
 type case_[R Server, D _dealet] struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	router  R   // associated router
@@ -132,7 +132,7 @@ func (c *case_[R, D]) onCreate(name string, router R) {
 	c.router = router
 }
 func (c *case_[R, D]) OnShutdown() {
-	c.router.SubDone()
+	c.router.DecSub()
 }
 
 func (c *case_[R, D]) OnConfigure() {

@@ -25,7 +25,7 @@ func init() {
 
 // localStater
 type localStater struct {
-	// Mixins
+	// Parent
 	Stater_
 	// Assocs
 	stage *Stage // current stage
@@ -64,7 +64,7 @@ func (s *localStater) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("localStater=%s done\n", s.Name())
 	}
-	s.stage.SubDone()
+	s.stage.DecSub()
 }
 
 func (s *localStater) Set(sid []byte, session *Session) {

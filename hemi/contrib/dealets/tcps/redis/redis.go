@@ -21,7 +21,7 @@ func init() {
 
 // redisProxy
 type redisProxy struct {
-	// Mixins
+	// Parent
 	TCPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *redisProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.router = router
 }
 func (d *redisProxy) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *redisProxy) OnConfigure() {

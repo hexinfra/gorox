@@ -18,35 +18,35 @@ const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 back
 	http2MaxActiveStreams = 127
 )
 
-// poolHTTP2Frames
-var poolHTTP2Frames sync.Pool
+// poolHTTP2Buffer
+var poolHTTP2Buffer sync.Pool
 
-func getHTTP2Frames() *http2Frames {
-	var frames *http2Frames
-	if x := poolHTTP2Frames.Get(); x == nil {
-		frames = new(http2Frames)
+func getHTTP2Buffer() *http2Buffer {
+	var buffer *http2Buffer
+	if x := poolHTTP2Buffer.Get(); x == nil {
+		buffer = new(http2Buffer)
 	} else {
-		frames = x.(*http2Frames)
+		buffer = x.(*http2Buffer)
 	}
-	return frames
+	return buffer
 }
-func putHTTP2Frames(frames *http2Frames) { poolHTTP2Frames.Put(frames) }
+func putHTTP2Buffer(buffer *http2Buffer) { poolHTTP2Buffer.Put(buffer) }
 
-// http2Frames
-type http2Frames struct {
+// http2Buffer
+type http2Buffer struct {
 	buf [9 + http2MaxFrameSize]byte // header + payload
 	ref atomic.Int32
 }
 
-func (p *http2Frames) size() uint32  { return uint32(cap(p.buf)) }
-func (p *http2Frames) getRef() int32 { return p.ref.Load() }
-func (p *http2Frames) incRef()       { p.ref.Add(1) }
-func (p *http2Frames) decRef() {
+func (p *http2Buffer) size() uint32  { return uint32(cap(p.buf)) }
+func (p *http2Buffer) getRef() int32 { return p.ref.Load() }
+func (p *http2Buffer) incRef()       { p.ref.Add(1) }
+func (p *http2Buffer) decRef() {
 	if p.ref.Add(-1) == 0 {
 		if Debug() >= 1 {
-			Printf("putHTTP2Frames ref=%d\n", p.ref.Load())
+			Printf("putHTTP2Buffer ref=%d\n", p.ref.Load())
 		}
-		putHTTP2Frames(p)
+		putHTTP2Buffer(p)
 	}
 }
 
@@ -433,7 +433,7 @@ type http2InFrame struct { // 32 bytes
 	ack        bool         // is ACK flag set?
 	padded     bool         // is PADDED flag set?
 	priority   bool         // is PRIORITY flag set?
-	frames     *http2Frames // the frames holding payload
+	buffer     *http2Buffer // the buffer holding payload
 	pFrom      uint32       // (effective) payload from
 	pEdge      uint32       // (effective) payload edge
 }
@@ -459,7 +459,7 @@ func (f *http2InFrame) decodeHeader(header []byte) error {
 	return nil
 }
 func (f *http2InFrame) isUnknown() bool   { return f.kind > http2FrameMax }
-func (f *http2InFrame) effective() []byte { return f.frames.buf[f.pFrom:f.pEdge] } // effective payload
+func (f *http2InFrame) effective() []byte { return f.buffer.buf[f.pFrom:f.pEdge] } // effective payload
 
 var http2InFrameCheckers = [...]func(*http2InFrame) error{
 	(*http2InFrame).checkAsData,
@@ -496,7 +496,7 @@ func (f *http2InFrame) checkAsHeaders() error {
 	}
 	var padLength, othersLen uint32 = 0, 0
 	if f.padded { // skip pad length byte
-		padLength = uint32(f.frames.buf[f.pFrom])
+		padLength = uint32(f.buffer.buf[f.pFrom])
 		othersLen += 1
 		f.pFrom += 1
 	}
@@ -525,7 +525,7 @@ func (f *http2InFrame) checkAsData() error {
 	}
 	var padLength, othersLen uint32 = 0, 0
 	if f.padded {
-		padLength = uint32(f.frames.buf[f.pFrom])
+		padLength = uint32(f.buffer.buf[f.pFrom])
 		othersLen += 1
 		f.pFrom += 1
 	}

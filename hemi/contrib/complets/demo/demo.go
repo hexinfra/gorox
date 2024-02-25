@@ -23,7 +23,7 @@ func init() {
 }
 
 type demoComplet struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage *Stage // current stage
@@ -52,5 +52,5 @@ func (c *demoComplet) Run() { // runner
 	if Debug() >= 2 {
 		Printf("demoComplet=%s done\n", c.Name())
 	}
-	c.stage.SubDone()
+	c.stage.DecSub()
 }

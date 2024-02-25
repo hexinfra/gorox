@@ -25,7 +25,7 @@ func init() {
 
 // redisStater
 type redisStater struct {
-	// Mixins
+	// Parent
 	Stater_
 	// Assocs
 	stage *Stage // current stage
@@ -55,7 +55,7 @@ func (s *redisStater) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("redisStater=%s done\n", s.Name())
 	}
-	s.stage.SubDone()
+	s.stage.DecSub()
 }
 
 func (s *redisStater) Set(sid []byte, session *Session) {

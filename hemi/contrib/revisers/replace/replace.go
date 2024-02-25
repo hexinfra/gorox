@@ -24,7 +24,7 @@ func init() {
 
 // replaceReviser
 type replaceReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -39,7 +39,7 @@ func (r *replaceReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *replaceReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *replaceReviser) OnConfigure() {

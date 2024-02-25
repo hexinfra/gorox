@@ -33,7 +33,7 @@ func init() {
 
 // accessChecker
 type accessChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -52,7 +52,7 @@ func (h *accessChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *accessChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *accessChecker) OnConfigure() {

@@ -29,7 +29,7 @@ func init() {
 
 // HTTP1Backend
 type HTTP1Backend struct {
-	// Mixins
+	// Parent
 	webBackend_[*http1Node]
 	// States
 }
@@ -56,7 +56,7 @@ func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
 
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
-	// Mixins
+	// Parent
 	webNode_
 	// Assocs
 	// States
@@ -84,7 +84,7 @@ func (n *http1Node) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("http1Node=%d done\n", n.id)
 	}
-	n.backend.SubDone()
+	n.backend.DecSub()
 }
 
 func (n *http1Node) fetchConn() (WebBackendConn, error) {
@@ -213,7 +213,7 @@ func putH1Conn(h1Conn *H1Conn) {
 
 // H1Conn is the backend-side HTTP/1 connection.
 type H1Conn struct {
-	// Mixins
+	// Parent
 	webBackendConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
@@ -255,7 +255,7 @@ func (c *H1Conn) Close() error {
 
 // H1Stream is the backend-side HTTP/1 stream.
 type H1Stream struct {
-	// Mixins
+	// Parent
 	webBackendStream_
 	// Assocs
 	request  H1Request  // the backend-side http/1 request
@@ -282,7 +282,7 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.webBackendStream_.onEnd()
 }
 
-func (s *H1Stream) webAgent() webAgent   { return s.conn.webBackend() }
+func (s *H1Stream) webAgent() webAgent   { return s.conn.WebBackend() }
 func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -299,7 +299,7 @@ func (s *H1Stream) ReverseExchan(req Request, resp Response, bufferClientContent
 }
 
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
-	// TODO
+	// TODO, use s.startSocket()
 	return s.socket
 }
 func (s *H1Stream) ReverseSocket(req Request, sock Socket) error {
@@ -341,7 +341,7 @@ func (s *H1Stream) markBroken()    { s.conn.markBroken() }
 
 // H1Request is the backend-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webBackendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -400,11 +400,11 @@ func (r *H1Request) hasHeader(name []byte) bool                 { return r.hasHe
 func (r *H1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
 func (r *H1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
-func (r *H1Request) AddCookie(name string, value string) bool {
+func (r *H1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *H1Request) proxyCopyCookies(req Request) bool { // merge into one "cookie" header
+func (r *H1Request) proxyCopyCookies(req Request) bool { // merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
@@ -478,7 +478,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 
 // H1Response is the backend-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webBackendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -635,7 +635,7 @@ func putH1Socket(socket *H1Socket) {
 
 // H1Socket is the backend-side HTTP/1 websocket.
 type H1Socket struct {
-	// Mixins
+	// Parent
 	webBackendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)

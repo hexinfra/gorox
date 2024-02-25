@@ -24,7 +24,7 @@ func init() {
 
 // wrapReviser
 type wrapReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -39,7 +39,7 @@ func (r *wrapReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *wrapReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *wrapReviser) OnConfigure() {

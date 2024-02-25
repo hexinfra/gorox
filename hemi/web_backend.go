@@ -29,10 +29,11 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	RecvTimeout() time.Duration
 }
 
-// webBackend_ is the mixin for HTTP[1-3]Backend.
+// webBackend_ is the parent for HTTP[1-3]Backend.
 type webBackend_[N WebNode] struct {
-	// Mixins
+	// Parent
 	Backend_[N]
+	// Mixins
 	_webAgent_
 	_streamHolder_
 	_contentSaver_ // so responses can save their large contents in local file system.
@@ -62,7 +63,7 @@ func (b *webBackend_[N]) onPrepare(shell Component) {
 }
 
 func (b *webBackend_[N]) StoreConn(conn WebBackendConn) {
-	conn.webNode().storeConn(conn)
+	conn.WebNode().storeConn(conn)
 }
 
 // WebNode
@@ -74,9 +75,9 @@ type WebNode interface { // for *http[1-3]Node
 	storeConn(conn WebBackendConn)
 }
 
-// webNode_ is the mixin for http[1-3]Node.
+// webNode_ is the parent for http[1-3]Node.
 type webNode_ struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 	// States
@@ -88,21 +89,22 @@ func (n *webNode_) init(id int32, backend Backend) {
 
 func (n *webNode_) closeConn(conn WebBackendConn) {
 	conn.Close()
-	n.SubDone()
+	n.DecSub()
 }
 
 // WebBackendConn
 type WebBackendConn interface { // *H[1-3]Conn
-	webNode() WebNode
+	WebNode() WebNode
 	FetchStream() WebBackendStream
 	StoreStream(stream WebBackendStream)
 	Close() error
 }
 
-// webBackendConn_ is the mixin for H[1-3]Conn.
+// webBackendConn_ is the parent for H[1-3]Conn.
 type webBackendConn_ struct {
-	// Mixins
+	// Parent
 	BackendConn_
+	// Mixins
 	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -119,11 +121,11 @@ func (c *webBackendConn_) onPut() {
 	c.BackendConn_.OnPut()
 }
 
-func (c *webBackendConn_) webBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *webBackendConn_) webNode() WebNode       { return c.Node().(WebNode) }
+func (c *webBackendConn_) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *webBackendConn_) WebNode() WebNode       { return c.Node().(WebNode) }
 
 func (c *webBackendConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.webBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
 func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
@@ -139,10 +141,11 @@ type WebBackendStream interface { // for *H[1-3]Stream
 	markBroken()
 }
 
-// webBackendStream_ is the mixin for H[1-3]Stream.
+// webBackendStream_ is the parent for H[1-3]Stream.
 type webBackendStream_ struct {
-	// Mixins
+	// Parent
 	Stream_
+	// Mixins
 	_webStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -176,9 +179,9 @@ type WebBackendRequest interface { // for *H[1-3]Request
 	endVague() error
 }
 
-// webBackendRequest_ is the mixin for H[1-3]Request.
+// webBackendRequest_ is the parent for H[1-3]Request.
 type webBackendRequest_ struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webOut_ // outgoing web message
 	// Assocs
 	response WebBackendResponse // the corresponding response
@@ -433,9 +436,9 @@ type WebBackendResponse interface { // for *H[1-3]Response
 	reuse()
 }
 
-// webBackendResponse_ is the mixin for H[1-3]Response.
+// webBackendResponse_ is the parent for H[1-3]Response.
 type webBackendResponse_ struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webIn_ // incoming web message
 	// Stream states (stocks)
 	stockCookies [8]WebBackendCookie // for r.cookies
@@ -942,9 +945,9 @@ type WebBackendSocket interface { // for *H[1-3]Socket
 	Close() error
 }
 
-// webBackendSocket_ is the mixin for H[1-3]Socket.
+// webBackendSocket_ is the parent for H[1-3]Socket.
 type webBackendSocket_ struct {
-	// Mixins
+	// Parent
 	webSocket_
 	// Assocs
 	shell WebBackendSocket // the concrete socket

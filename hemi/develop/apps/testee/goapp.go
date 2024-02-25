@@ -27,7 +27,7 @@ func init() {
 
 // testeeHandlet
 type testeeHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage
@@ -41,7 +41,7 @@ func (h *testeeHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *testeeHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *testeeHandlet) OnConfigure() {

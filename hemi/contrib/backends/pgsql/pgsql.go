@@ -15,13 +15,13 @@ import (
 
 // PgSQLBackend is a group of pgsql nodes.
 type PgSQLBackend struct {
-	// Mixins
+	// Parent
 	Backend_[*pgsqlNode]
 }
 
 // pgsqlNode is a node in PgSQLBackend.
 type pgsqlNode struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 	backend *PgSQLBackend

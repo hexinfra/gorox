@@ -15,13 +15,13 @@ import (
 
 // MySQLBackend is a group of mysql nodes.
 type MySQLBackend struct {
-	// Mixins
+	// Parent
 	Backend_[*mysqlNode]
 }
 
 // mysqlNode is a node in MySQLBackend.
 type mysqlNode struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 	backend *MySQLBackend

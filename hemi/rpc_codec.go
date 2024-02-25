@@ -74,7 +74,7 @@ type rpcIn interface {
 	// TODO
 }
 
-// rpcIn_ is the mixin for rpcServerRequest_ and rpcBackendResponse_.
+// rpcIn_ is the parent for rpcServerRequest_ and rpcBackendResponse_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
@@ -90,7 +90,7 @@ type rpcOut interface {
 	// TODO
 }
 
-// rpcOut_ is the mixin for rpcServerResponse_ and rpcBackendRequest_.
+// rpcOut_ is the parent for rpcServerResponse_ and rpcBackendRequest_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

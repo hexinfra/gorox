@@ -27,7 +27,7 @@ func init() {
 
 // RedisBackend is a group of redis nodes.
 type RedisBackend struct {
-	// Mixins
+	// Parent
 	Backend_[*redisNode]
 }
 
@@ -48,7 +48,7 @@ func (b *RedisBackend) NewNode(id int32) *redisNode {
 
 // redisNode is a node in RedisBackend.
 type redisNode struct {
-	// Mixins
+	// Parent
 	Node_
 	// Assocs
 }
@@ -92,7 +92,7 @@ func putRedisConn(redisConn *RedisConn) {
 
 // RedisConn is a connection to redisNode.
 type RedisConn struct {
-	// Mixins
+	// Parent
 	BackendConn_
 	// Conn states (non-zeros)
 	netConn net.Conn

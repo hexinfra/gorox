@@ -22,8 +22,9 @@ type rpcServer interface {
 
 // rpcServer_
 type rpcServer_[G rpcGate] struct {
-	// Mixins
+	// Parent
 	Server_[G]
+	// Mixins
 	_rpcAgent_
 	// Assocs
 	defaultService *Service // default service if not found
@@ -103,7 +104,7 @@ type rpcGate interface {
 
 // rpcServerConn_
 type rpcServerConn_ struct {
-	// Mixins
+	// Parent
 	ServerConn_
 }
 
@@ -118,7 +119,7 @@ func (c *rpcServerConn_) rpcServer() rpcServer { return c.Server().(rpcServer) }
 
 // rpcServerStream_
 type rpcServerStream_ struct {
-	// Mixins
+	// Parent
 	Stream_
 	// TODO
 }
@@ -132,14 +133,14 @@ func (s *rpcServerStream_) onEnd() {
 
 // rpcServerRequest_
 type rpcServerRequest_ struct {
-	// Mixins
+	// Parent
 	rpcIn_
 	// TODO
 }
 
 // rpcServerResponse_
 type rpcServerResponse_ struct {
-	// Mixins
+	// Parent
 	rpcOut_
 	// TODO
 }

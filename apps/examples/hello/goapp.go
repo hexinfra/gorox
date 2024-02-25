@@ -23,7 +23,7 @@ func init() {
 
 // helloHandlet
 type helloHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage  // current stage
@@ -38,7 +38,7 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *helloHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *helloHandlet) OnConfigure() {

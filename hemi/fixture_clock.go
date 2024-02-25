@@ -27,7 +27,7 @@ func createClock(stage *Stage) *clockFixture {
 
 // clockFixture
 type clockFixture struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage *Stage // current stage
@@ -77,7 +77,7 @@ func (f *clockFixture) run() { // runner
 	if Debug() >= 2 {
 		Println("clock done")
 	}
-	f.stage.SubDone()
+	f.stage.DecSub()
 }
 
 func (f *clockFixture) writeDate1(p []byte) int {

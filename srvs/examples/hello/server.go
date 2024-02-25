@@ -28,7 +28,7 @@ func init() {
 
 // helloServer
 type helloServer struct {
-	// Mixins
+	// Parent
 	Server_[*helloGate]
 	// Assocs
 	// States
@@ -63,12 +63,12 @@ func (s *helloServer) Serve() { // runner
 	if Debug() >= 2 {
 		Printf("helloServer=%s done\n", s.Name())
 	}
-	s.Stage().SubDone()
+	s.Stage().DecSub()
 }
 
 // helloGate
 type helloGate struct {
-	// Mixins
+	// Parent
 	Gate_
 	// Assocs
 	// States
@@ -119,7 +119,7 @@ func (g *helloGate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("helloGate=%d done\n", g.ID())
 	}
-	g.Server().SubDone()
+	g.Server().DecSub()
 }
 
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {

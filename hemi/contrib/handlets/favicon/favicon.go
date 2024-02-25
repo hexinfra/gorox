@@ -21,7 +21,7 @@ func init() {
 
 // faviconHandlet
 type faviconHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (h *faviconHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *faviconHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *faviconHandlet) OnConfigure() {

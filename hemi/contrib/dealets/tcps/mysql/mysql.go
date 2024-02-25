@@ -21,7 +21,7 @@ func init() {
 
 // mysqlProxy
 type mysqlProxy struct {
-	// Mixins
+	// Parent
 	TCPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *mysqlProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.router = router
 }
 func (d *mysqlProxy) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *mysqlProxy) OnConfigure() {

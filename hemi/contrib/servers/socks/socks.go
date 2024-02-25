@@ -30,7 +30,7 @@ func init() {
 
 // socksServer
 type socksServer struct {
-	// Mixins
+	// Parent
 	Server_[*socksGate]
 	// Assocs
 	// States
@@ -65,12 +65,12 @@ func (s *socksServer) Serve() { // runner
 	if Debug() >= 2 {
 		Printf("socksServer=%s done\n", s.Name())
 	}
-	s.Stage().SubDone()
+	s.Stage().DecSub()
 }
 
 // socksGate
 type socksGate struct {
-	// Mixins
+	// Parent
 	Gate_
 	// Assocs
 	// States
@@ -121,7 +121,7 @@ func (g *socksGate) serve() { // runner
 	if Debug() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	g.Server().SubDone()
+	g.Server().DecSub()
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
@@ -149,7 +149,7 @@ func putSocksConn(conn *socksConn) {
 
 // socksConn
 type socksConn struct {
-	// Mixins
+	// Parent
 	ServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)

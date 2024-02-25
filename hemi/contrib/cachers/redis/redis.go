@@ -25,7 +25,7 @@ func init() {
 
 // redisCacher
 type redisCacher struct {
-	// Mixins
+	// Parent
 	Cacher_
 	// Assocs
 	stage *Stage // current stage
@@ -55,7 +55,7 @@ func (c *redisCacher) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("redisCacher=%s done\n", c.Name())
 	}
-	c.stage.SubDone()
+	c.stage.DecSub()
 }
 
 func (c *redisCacher) Set(key []byte, wobject *Wobject) {

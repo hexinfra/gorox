@@ -21,7 +21,7 @@ func init() {
 
 // webdavHandlet
 type webdavHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (h *webdavHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *webdavHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *webdavHandlet) OnConfigure() {

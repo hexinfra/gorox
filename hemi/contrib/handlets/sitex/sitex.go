@@ -26,7 +26,7 @@ func init() {
 
 // Sitex handlet implements a simple MVC Web application framework.
 type Sitex struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -45,7 +45,7 @@ func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) { // exporte
 	h.sites = make(map[string]*Site)
 }
 func (h *Sitex) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *Sitex) OnConfigure() {

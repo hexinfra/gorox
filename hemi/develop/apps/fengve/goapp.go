@@ -27,7 +27,7 @@ func init() {
 
 // fengveHandlet
 type fengveHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage
@@ -41,7 +41,7 @@ func (h *fengveHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *fengveHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *fengveHandlet) OnConfigure() {

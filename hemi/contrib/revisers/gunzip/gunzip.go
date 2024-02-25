@@ -22,7 +22,7 @@ func init() {
 
 // gunzipReviser
 type gunzipReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -37,7 +37,7 @@ func (r *gunzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *gunzipReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *gunzipReviser) OnConfigure() {

@@ -21,7 +21,7 @@ func init() {
 
 // helloSocklet
 type helloSocklet struct {
-	// Mixins
+	// Parent
 	Socklet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (s *helloSocklet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	s.webapp = webapp
 }
 func (s *helloSocklet) OnShutdown() {
-	s.webapp.SubDone()
+	s.webapp.DecSub()
 }
 
 func (s *helloSocklet) OnConfigure() {

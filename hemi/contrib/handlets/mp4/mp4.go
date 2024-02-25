@@ -21,7 +21,7 @@ func init() {
 
 // mp4Handlet
 type mp4Handlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (h *mp4Handlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *mp4Handlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *mp4Handlet) OnConfigure() {

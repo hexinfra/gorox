@@ -38,8 +38,9 @@ func init() {
 
 // fcgiProxy handlet passes web requests to backend FCGI servers and cache responses.
 type fcgiProxy struct {
-	// Mixins
+	// Parent
 	Handlet_
+	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
@@ -68,7 +69,7 @@ func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *fcgiProxy) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *fcgiProxy) OnConfigure() {
@@ -288,7 +289,7 @@ func putFCGIExchan(exchan *fcgiExchan) {
 
 // fcgiExchan
 type fcgiExchan struct {
-	// Mixins
+	// Parent
 	Stream_
 	// Assocs
 	request  fcgiRequest  // the fcgi request

@@ -37,10 +37,11 @@ type webServer interface { // for *httpxServer and *http3Server
 	findApp(hostname []byte) *Webapp
 }
 
-// webServer_ is the mixin for httpxServer and http3Server.
+// webServer_ is the parent for httpxServer and http3Server.
 type webServer_[G webGate] struct {
-	// Mixins
+	// Parent
 	Server_[G]
+	// Mixins
 	_webAgent_
 	_streamHolder_
 	_contentSaver_ // so requests can save their large contents in local file system.
@@ -161,9 +162,9 @@ type webGate interface { // for *httpxGate and *http3Gate
 	// Methods
 }
 
-// webGate_ is the mixin for httpxGate and http3Gate.
+// webGate_ is the parent for httpxGate and http3Gate.
 type webGate_ struct {
-	// Mixins
+	// Parent
 	Gate_
 	// Assocs
 	// States
@@ -178,10 +179,11 @@ type webServerConn interface { // for *http[1-3]Conn
 	serve() // runner
 }
 
-// webServerConn_ is the mixin for http[1-3]Conn.
+// webServerConn_ is the parent for http[1-3]Conn.
 type webServerConn_ struct {
-	// Mixins
+	// Parent
 	ServerConn_
+	// Mixins
 	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -209,10 +211,11 @@ type webServerStream interface { // for *http[1-3]Stream
 	execute() // runner
 }
 
-// webServerStream_ is the mixin for http[1-3]Stream.
+// webServerStream_ is the parent for http[1-3]Stream.
 type webServerStream_ struct {
-	// Mixins
+	// Parent
 	Stream_
+	// Mixins
 	_webStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -388,9 +391,9 @@ type Request interface { // for *http[1-3]Request
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// webServerRequest_ is the mixin for http[1-3]Request.
+// webServerRequest_ is the parent for http[1-3]Request.
 type webServerRequest_ struct { // incoming. needs parsing
-	// Mixins
+	// Parent
 	webIn_ // incoming web message
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
@@ -2667,9 +2670,9 @@ type Response interface { // for *http[1-3]Response
 	unsafeMake(size int) []byte
 }
 
-// webServerResponse_ is the mixin for http[1-3]Response.
+// webServerResponse_ is the parent for http[1-3]Response.
 type webServerResponse_ struct { // outgoing. needs building
-	// Mixins
+	// Parent
 	webOut_ // outgoing web message
 	// Assocs
 	request Request // related request
@@ -3161,9 +3164,9 @@ type Socket interface { // for *http[1-3]Socket
 	Close() error
 }
 
-// webServerSocket_ is the mixin for http[1-3]Socket.
+// webServerSocket_ is the parent for http[1-3]Socket.
 type webServerSocket_ struct {
-	// Mixins
+	// Parent
 	webSocket_
 	// Assocs
 	shell Socket // the concrete Socket

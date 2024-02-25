@@ -33,7 +33,7 @@ func createFcache(stage *Stage) *fcacheFixture {
 
 // fcacheFixture
 type fcacheFixture struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage *Stage // current stage
@@ -115,7 +115,7 @@ func (f *fcacheFixture) run() { // runner
 	if Debug() >= 2 {
 		Println("fcache done")
 	}
-	f.stage.SubDone()
+	f.stage.DecSub()
 }
 
 func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {

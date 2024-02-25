@@ -31,7 +31,7 @@ func init() {
 
 // Webapp is the Web application.
 type Webapp struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	stage    *Stage            // current stage
@@ -226,6 +226,27 @@ func (a *Webapp) OnPrepare() {
 	}
 }
 
+func (a *Webapp) maintain() { // runner
+	a.Loop(time.Second, func(now time.Time) {
+		// TODO
+	})
+
+	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
+	a.rules.goWalk((*Rule).OnShutdown)
+	a.socklets.goWalk(Socklet.OnShutdown)
+	a.revisers.goWalk(Reviser.OnShutdown)
+	a.handlets.goWalk(Handlet.OnShutdown)
+	a.WaitSubs() // handlets, revisers, socklets, rules
+
+	if a.logger != nil {
+		a.logger.Close()
+	}
+	if Debug() >= 2 {
+		Printf("webapp=%s done\n", a.Name())
+	}
+	a.stage.DecSub()
+}
+
 func (a *Webapp) createHandlet(sign string, name string) Handlet {
 	if a.Handlet(name) != nil {
 		UseExitln("conflicting handlet with a same name in webapp")
@@ -300,6 +321,8 @@ func (a *Webapp) Rule(name string) *Rule {
 	return nil
 }
 
+func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
+
 func (a *Webapp) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
 
 func (a *Webapp) AddSetting(name string, value string) {
@@ -328,29 +351,6 @@ func (a *Webapp) Logf(format string, args ...any) {
 	if a.logger != nil {
 		a.logger.Logf(format, args...)
 	}
-}
-
-func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
-
-func (a *Webapp) maintain() { // runner
-	a.Loop(time.Second, func(now time.Time) {
-		// TODO
-	})
-
-	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
-	a.rules.goWalk((*Rule).OnShutdown)
-	a.socklets.goWalk(Socklet.OnShutdown)
-	a.revisers.goWalk(Reviser.OnShutdown)
-	a.handlets.goWalk(Handlet.OnShutdown)
-	a.WaitSubs() // handlets, revisers, socklets, rules
-
-	if a.logger != nil {
-		a.logger.Close()
-	}
-	if Debug() >= 2 {
-		Printf("webapp=%s done\n", a.Name())
-	}
-	a.stage.SubDone()
 }
 
 func (a *Webapp) exchanDispatch(req Request, resp Response) {
@@ -408,9 +408,9 @@ type Handlet interface {
 	Handle(req Request, resp Response) (handled bool)
 }
 
-// Handlet_ is the mixin for all handlets.
+// Handlet_ is the parent for all handlets.
 type Handlet_ struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	mapper Mapper
@@ -458,7 +458,7 @@ type Cacher interface {
 
 // Cacher_
 type Cacher_ struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	// States
@@ -492,10 +492,11 @@ type Reviser interface {
 	FinishEcho(req Request, resp Response) // for vague content
 }
 
-// Reviser_ is the mixin for all revisers.
+// Reviser_ is the parent for all revisers.
 type Reviser_ struct {
-	// Mixins
+	// Parent
 	Component_
+	// Mixins
 	_identifiable_
 	// States
 }
@@ -509,9 +510,9 @@ type Socklet interface {
 	Serve(req Request, sock Socket)
 }
 
-// Socklet_ is the mixin for all socklets.
+// Socklet_ is the parent for all socklets.
 type Socklet_ struct {
-	// Mixins
+	// Parent
 	Component_
 	// States
 }
@@ -520,7 +521,7 @@ func (s *Socklet_) IsProxy() bool { return false } // override this for proxy so
 
 // Rule component
 type Rule struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	webapp   *Webapp   // associated webapp
@@ -544,7 +545,7 @@ func (r *Rule) onCreate(name string, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *Rule) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *Rule) OnConfigure() {
@@ -886,7 +887,7 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 
 // staticHandlet
 type staticHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -907,7 +908,7 @@ func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *staticHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *staticHandlet) OnConfigure() {

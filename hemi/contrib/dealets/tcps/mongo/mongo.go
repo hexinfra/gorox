@@ -21,7 +21,7 @@ func init() {
 
 // mongoProxy
 type mongoProxy struct {
-	// Mixins
+	// Parent
 	TCPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *mongoProxy) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.router = router
 }
 func (d *mongoProxy) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *mongoProxy) OnConfigure() {

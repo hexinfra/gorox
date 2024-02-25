@@ -167,7 +167,7 @@ func RegisterServiceInit(name string, init func(service *Service) error) {
 type Component interface {
 	MakeComp(name string)
 	OnShutdown()
-	SubDone() // sub components call this
+	DecSub() // sub components call this
 
 	Name() string
 
@@ -197,7 +197,7 @@ type Component interface {
 	setProp(name string, value Value)
 }
 
-// Component_ is the mixin for all components.
+// Component_ is the parent for all components.
 type Component_ struct {
 	// Mixins
 	_subsWaiter_
@@ -337,7 +337,7 @@ func createStage() *Stage {
 // when new configuration is applied, a new stage is created, or the
 // old one is told to quit.
 type Stage struct {
-	// Mixins
+	// Parent
 	Component_
 	// Assocs
 	fixtures    compDict[fixture]     // indexed by sign
@@ -971,9 +971,9 @@ type Stater interface {
 	Del(sid []byte) bool
 }
 
-// Stater_ is the mixin for all staters.
+// Stater_ is the parent for all staters.
 type Stater_ struct {
-	// Mixins
+	// Parent
 	Component_
 }
 
@@ -1008,9 +1008,9 @@ type Cronjob interface {
 	Schedule() // runner
 }
 
-// Cronjob_ is the mixin for all cronjobs.
+// Cronjob_ is the parent for all cronjobs.
 type Cronjob_ struct {
-	// Mixins
+	// Parent
 	Component_
 	// States
 }

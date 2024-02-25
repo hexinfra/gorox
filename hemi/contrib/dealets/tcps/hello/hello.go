@@ -21,7 +21,7 @@ func init() {
 
 // helloDealet
 type helloDealet struct {
-	// Mixins
+	// Parent
 	TCPSDealet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (d *helloDealet) onCreate(name string, stage *Stage, router *TCPSRouter) {
 	d.router = router
 }
 func (d *helloDealet) OnShutdown() {
-	d.router.SubDone()
+	d.router.DecSub()
 }
 
 func (d *helloDealet) OnConfigure() {

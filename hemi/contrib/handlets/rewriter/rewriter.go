@@ -21,7 +21,7 @@ func init() {
 
 // rewriterChecker
 type rewriterChecker struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage // current stage
@@ -35,7 +35,7 @@ func (h *rewriterChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *rewriterChecker) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *rewriterChecker) OnConfigure() {

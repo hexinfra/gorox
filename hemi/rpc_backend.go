@@ -22,24 +22,29 @@ type rpcBackend interface {
 
 // rpcBackend_
 type rpcBackend_[N rpcNode] struct {
-	// Mixins
+	// Parent
 	Backend_[N]
+	// Mixins
 	_rpcAgent_
+	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
 	b.Backend_.OnCreate(name, stage, newNode)
+	b._loadBalancer_.init()
 }
 
 func (b *rpcBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
 	b._rpcAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
+	b._loadBalancer_.onConfigure(shell)
 }
 func (b *rpcBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._rpcAgent_.onPrepare(shell)
+	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 // rpcNode
@@ -49,7 +54,7 @@ type rpcNode interface {
 
 // rpcBackendConn_
 type rpcBackendConn_ struct {
-	// Mixins
+	// Parent
 	BackendConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -68,7 +73,7 @@ func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.Backend().(rpcBacke
 
 // rpcBackendStream_
 type rpcBackendStream_ struct {
-	// Mixins
+	// Parent
 	Stream_
 	// TODO
 }
@@ -82,14 +87,14 @@ func (s *rpcBackendStream_) onEnd() {
 
 // rpcBackendRequest_
 type rpcBackendRequest_ struct {
-	// Mixins
+	// Parent
 	rpcOut_
 	// TODO
 }
 
 // rpcBackendResponse_
 type rpcBackendResponse_ struct {
-	// Mixins
+	// Parent
 	rpcIn_
 	// TODO
 }

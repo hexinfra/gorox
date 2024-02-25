@@ -164,7 +164,7 @@ type _webIn interface {
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 }
 
-// webIn_ is the mixin for webServerRequest_ and webBackendResponse_.
+// webIn_ is the parent for webServerRequest_ and webBackendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell  _webIn    // *http[1-3]Request, *H[1-3]Response
@@ -1347,10 +1347,10 @@ func (r *webIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
-func (r *webIn_) delHopHeaders() { // used by proxies
+func (r *webIn_) delHopHeaders() {
 	r._delHopFields(r.headers, kindHeader, r.delHeader)
 }
-func (r *webIn_) delHopTrailers() { // used by proxies
+func (r *webIn_) delHopTrailers() {
 	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
 }
 func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
@@ -1549,11 +1549,11 @@ type _webOut interface {
 	addTrailer(name []byte, value []byte) bool
 	trailer(name []byte) (value []byte, ok bool)
 	finalizeVague() error
-	passHeaders() error       // used by proxies
-	passBytes(p []byte) error // used by proxies
+	passHeaders() error
+	passBytes(p []byte) error
 }
 
-// webOut_ is the mixin for webServerResponse_ and webBackendRequest_.
+// webOut_ is the parent for webServerResponse_ and webBackendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
 	shell  _webOut   // *http[1-3]Response, *H[1-3]Request

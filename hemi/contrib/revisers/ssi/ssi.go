@@ -24,7 +24,7 @@ func init() {
 
 // ssiReviser
 type ssiReviser struct {
-	// Mixins
+	// Parent
 	Reviser_
 	// Assocs
 	stage  *Stage // current stage
@@ -39,7 +39,7 @@ func (r *ssiReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *ssiReviser) OnShutdown() {
-	r.webapp.SubDone()
+	r.webapp.DecSub()
 }
 
 func (r *ssiReviser) OnConfigure() {

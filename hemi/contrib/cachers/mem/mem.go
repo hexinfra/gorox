@@ -23,7 +23,7 @@ func init() {
 
 // memCacher
 type memCacher struct {
-	// Mixins
+	// Parent
 	Cacher_
 	// Assocs
 	stage *Stage // current stage
@@ -52,7 +52,7 @@ func (c *memCacher) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("memCacher=%s done\n", c.Name())
 	}
-	c.stage.SubDone()
+	c.stage.DecSub()
 }
 
 func (c *memCacher) Set(key []byte, wobject *Wobject) {

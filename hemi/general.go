@@ -84,10 +84,11 @@ type Server interface {
 	MaxConnsPerGate() int32
 }
 
-// Server_ is the mixin for all servers.
+// Server_ is the parent for all servers.
 type Server_[G Gate] struct {
-	// Mixins
+	// Parent
 	Component_
+	// Mixins
 	_agent_
 	// Assocs
 	gates []G // a server has many gates
@@ -183,10 +184,11 @@ type Backend interface {
 	nextConnID() int64
 }
 
-// Backend_ is the mixin for backends.
+// Backend_ is the parent for backends.
 type Backend_[N Node] struct {
-	// Mixins
+	// Parent
 	Component_
+	// Mixins
 	_agent_
 	// Assocs
 	nodes   []N // nodes of this backend
@@ -298,7 +300,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	if Debug() >= 2 {
 		Printf("backend=%s done\n", b.Name())
 	}
-	b.stage.SubDone()
+	b.stage.DecSub()
 }
 
 func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
@@ -320,7 +322,7 @@ type Gate interface {
 	OnConnClosed()
 }
 
-// Gate_ is the mixin for all gates.
+// Gate_ is the parent for all gates.
 type Gate_ struct {
 	// Mixins
 	_subsWaiter_ // for conns
@@ -352,7 +354,7 @@ func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConns
 
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
-	g.SubDone()
+	g.DecSub()
 }
 
 // Node is a member of backend. Nodes are not components.
@@ -370,7 +372,7 @@ type Node interface {
 	shutdown()
 }
 
-// Node_ is the mixin for backend nodes.
+// Node_ is the parent for all backend nodes.
 type Node_ struct {
 	// Mixins
 	_subsWaiter_ // usually for conns
@@ -475,7 +477,7 @@ func (n *Node_) closeFree() int {
 	return qnty
 }
 
-// ServerConn_ is the mixin for server conns.
+// ServerConn_ is the parent for server conns.
 type ServerConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -515,7 +517,7 @@ type backendConn interface {
 	Close() error
 }
 
-// BackendConn_ is the mixin for backend conns.
+// BackendConn_ is the parent for backend conns.
 type BackendConn_ struct {
 	// Conn states (non-zeros)
 	next    backendConn // the linked-list
@@ -776,7 +778,7 @@ type _subsWaiter_ struct {
 
 func (w *_subsWaiter_) IncSub(n int) { w.subs.Add(n) }
 func (w *_subsWaiter_) WaitSubs()    { w.subs.Wait() }
-func (w *_subsWaiter_) SubDone()     { w.subs.Done() }
+func (w *_subsWaiter_) DecSub()      { w.subs.Done() }
 
 // _shutdownable_ is a mixin.
 type _shutdownable_ struct {

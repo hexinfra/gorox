@@ -27,7 +27,7 @@ func init() {
 
 // dioginHandlet
 type dioginHandlet struct {
-	// Mixins
+	// Parent
 	Handlet_
 	// Assocs
 	stage  *Stage
@@ -41,7 +41,7 @@ func (h *dioginHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *dioginHandlet) OnShutdown() {
-	h.webapp.SubDone()
+	h.webapp.DecSub()
 }
 
 func (h *dioginHandlet) OnConfigure() {

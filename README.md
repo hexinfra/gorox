@@ -49,7 +49,7 @@ Quickstart
 ==========
 
 To start using Gorox, you can download the official binary distributions. If you
-need to build from source, please ensure you have Go >= 1.19 installed:
+need to build from source, please ensure you have Go >= 1.20 installed:
 
     shell> go version
 

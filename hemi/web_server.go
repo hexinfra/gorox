@@ -83,13 +83,13 @@ func (s *webServer_[G]) onPrepare(shell Component) {
 	s._contentSaver_.onPrepare(shell, 0755)
 }
 
-func (s *webServer_[G]) ColonPort() string {
+func (s *webServer_[G]) ColonPort() string { // override
 	if s.IsUDS() {
 		return s.udsColonPort
 	}
 	return s.Server_.ColonPort()
 }
-func (s *webServer_[G]) ColonPortBytes() []byte {
+func (s *webServer_[G]) ColonPortBytes() []byte { // override
 	if s.IsUDS() {
 		return s.udsColonPortBytes
 	}
@@ -102,7 +102,7 @@ func (s *webServer_[G]) bindApps() {
 		if webapp == nil {
 			continue
 		}
-		if s.tlsConfig != nil {
+		if s.IsTLS() {
 			if webapp.tlsCertificate == "" || webapp.tlsPrivateKey == "" {
 				UseExitln("webapps that bound to tls server must have certificates and private keys")
 			}
@@ -2070,9 +2070,9 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 							r.stream.markBroken()
 							return
 						}
-						tempName := r.stream.buffer256() // buffer is enough for tempName
-						m := r.stream.makeTempName(tempName, r.recvTime.Unix())
-						if !r.arrayCopy(tempName[:m]) { // add "391384576"
+						nameBuffer := r.stream.buffer256() // enough for tempName
+						m := r.stream.makeTempName(nameBuffer, r.recvTime.Unix())
+						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return
 						}
@@ -2770,10 +2770,10 @@ func (r *webServerResponse_) SendMethodNotAllowed(allow string, content []byte) 
 }
 func (r *webServerResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
 	// add a header like: content-range: bytes */1234
-	value := r.stream.buffer256()
-	n := copy(value, bytesBytesStarSlash)
-	n += i64ToDec(contentSize, value[n:])
-	r.AddHeaderBytes(bytesContentRange, value[:n])
+	valueBuffer := r.stream.buffer256()
+	n := copy(valueBuffer, bytesBytesStarSlash)
+	n += i64ToDec(contentSize, valueBuffer[n:])
+	r.AddHeaderBytes(bytesContentRange, valueBuffer[:n])
 	return r.sendError(StatusRangeNotSatisfiable, content)
 }
 func (r *webServerResponse_) SendInternalServerError(content []byte) error { // 500

@@ -783,25 +783,25 @@ func (r *webOut_) _sendEntireChain1() error {
 }
 func (r *webOut_) _sendSingleRange1() error {
 	r.AddContentType(r.rangeType)
-	value := r.stream.buffer256()
-	n := copy(value, "bytes ")
+	valueBuffer := r.stream.buffer256()
+	n := copy(valueBuffer, "bytes ")
 	theRange := r.ranges[0]
-	n += i64ToDec(theRange.from, value[n:])
-	value[n] = '-'
+	n += i64ToDec(theRange.from, valueBuffer[n:])
+	valueBuffer[n] = '-'
 	n++
-	n += i64ToDec(theRange.last-1, value[n:])
-	value[n] = '/'
+	n += i64ToDec(theRange.last-1, valueBuffer[n:])
+	valueBuffer[n] = '/'
 	n++
-	n += i64ToDec(r.contentSize, value[n:])
-	r.AddHeaderBytes(bytesContentRange, value[:n])
+	n += i64ToDec(r.contentSize, valueBuffer[n:])
+	r.AddHeaderBytes(bytesContentRange, valueBuffer[:n])
 	//return r._sendEntireChain1()
 	return nil
 }
 func (r *webOut_) _sendMultiRanges1() error {
-	value := r.stream.buffer256()
-	n := copy(value, "multipart/byteranges; boundary=")
-	n += copy(value[n:], "xsd3lxT9b5c")
-	r.AddHeaderBytes(bytesContentType, value[:n])
+	valueBuffer := r.stream.buffer256()
+	n := copy(valueBuffer, "multipart/byteranges; boundary=")
+	n += copy(valueBuffer[n:], "xsd3lxT9b5c")
+	r.AddHeaderBytes(bytesContentType, valueBuffer[:n])
 	// TODO
 	return nil
 }

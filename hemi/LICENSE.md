@@ -1,4 +1,4 @@
-The Gorox server is distributed under the following license:  
+The Hemi engine is distributed under the following license:  
 
 Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.  
 Copyright (c) 2022-2024 HexInfra Co., Ltd.  

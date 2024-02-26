@@ -38,15 +38,15 @@ type http2Buffer struct {
 	ref atomic.Int32
 }
 
-func (p *http2Buffer) size() uint32  { return uint32(cap(p.buf)) }
-func (p *http2Buffer) getRef() int32 { return p.ref.Load() }
-func (p *http2Buffer) incRef()       { p.ref.Add(1) }
-func (p *http2Buffer) decRef() {
-	if p.ref.Add(-1) == 0 {
+func (b *http2Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http2Buffer) getRef() int32 { return b.ref.Load() }
+func (b *http2Buffer) incRef()       { b.ref.Add(1) }
+func (b *http2Buffer) decRef() {
+	if b.ref.Add(-1) == 0 {
 		if Debug() >= 1 {
-			Printf("putHTTP2Buffer ref=%d\n", p.ref.Load())
+			Printf("putHTTP2Buffer ref=%d\n", b.ref.Load())
 		}
-		putHTTP2Buffer(p)
+		putHTTP2Buffer(b)
 	}
 }
 

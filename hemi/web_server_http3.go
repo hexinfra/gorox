@@ -150,30 +150,30 @@ type http3Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quixConn *quix.Conn        // the quic connection
-	frames   *http3Frames      // ...
+	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
 	streams    [http3MaxActiveStreams]*http3Stream // active (open, remoteClosed, localClosed) streams
 	http3Conn0                                     // all values must be zero by default in this struct!
 }
 type http3Conn0 struct { // for fast reset, entirely
-	framesEdge uint32 // incoming data ends at c.frames.buf[c.framesEdge]
-	pBack      uint32 // incoming frame part (header or payload) begins from c.frames.buf[c.pBack]
-	pFore      uint32 // incoming frame part (header or payload) ends at c.frames.buf[c.pFore]
+	bufferEdge uint32 // incoming data ends at c.buffer.buf[c.bufferEdge]
+	pBack      uint32 // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
+	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
 }
 
 func (c *http3Conn) onGet(id int64, gate *http3Gate, quixConn *quix.Conn) {
 	c.webServerConn_.onGet(id, gate)
 	c.quixConn = quixConn
-	if c.frames == nil {
-		c.frames = getHTTP3Frames()
-		c.frames.incRef()
+	if c.buffer == nil {
+		c.buffer = getHTTP3Buffer()
+		c.buffer.incRef()
 	}
 }
 func (c *http3Conn) onPut() {
 	c.webServerConn_.onPut()
 	c.quixConn = nil
-	// c.frames is reserved
+	// c.buffer is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*http3Stream{}
 	c.http3Conn0 = http3Conn0{}

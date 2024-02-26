@@ -12,35 +12,35 @@ import (
 	"sync/atomic"
 )
 
-// poolHTTP3Frames
-var poolHTTP3Frames sync.Pool
+// poolHTTP3Buffer
+var poolHTTP3Buffer sync.Pool
 
-func getHTTP3Frames() *http3Frames {
-	var frames *http3Frames
-	if x := poolHTTP3Frames.Get(); x == nil {
-		frames = new(http3Frames)
+func getHTTP3Buffer() *http3Buffer {
+	var buffer *http3Buffer
+	if x := poolHTTP3Buffer.Get(); x == nil {
+		buffer = new(http3Buffer)
 	} else {
-		frames = x.(*http3Frames)
+		buffer = x.(*http3Buffer)
 	}
-	return frames
+	return buffer
 }
-func putHTTP3Frames(frames *http3Frames) { poolHTTP3Frames.Put(frames) }
+func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
 
-// http3Frames
-type http3Frames struct {
+// http3Buffer
+type http3Buffer struct {
 	buf [_16K]byte // header + payload
 	ref atomic.Int32
 }
 
-func (p *http3Frames) size() uint32  { return uint32(cap(p.buf)) }
-func (p *http3Frames) getRef() int32 { return p.ref.Load() }
-func (p *http3Frames) incRef()       { p.ref.Add(1) }
-func (p *http3Frames) decRef() {
-	if p.ref.Add(-1) == 0 {
+func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
+func (b *http3Buffer) incRef()       { b.ref.Add(1) }
+func (b *http3Buffer) decRef() {
+	if b.ref.Add(-1) == 0 {
 		if Debug() >= 1 {
-			Printf("putHTTP3Frames ref=%d\n", p.ref.Load())
+			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
 		}
-		putHTTP3Frames(p)
+		putHTTP3Buffer(b)
 	}
 }
 

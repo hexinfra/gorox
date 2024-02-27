@@ -561,19 +561,19 @@ type pair struct { // 24 bytes
 
 const ( // pair kinds
 	kindUnknown = iota
-	kindQuery   // general
-	kindHeader  // field
-	kindCookie  // general
-	kindForm    // general
+	kindQuery
+	kindHeader // field
+	kindCookie
+	kindForm
 	kindTrailer // field
-	kindParam   // general. parameter of fields
+	kindParam   // parameter of fields
 )
 
 const ( // pair places
-	placeInput = iota
-	placeArray
-	placeStatic2
-	placeStatic3
+	placeInput   = iota
+	placeArray   // parsed
+	placeStatic2 // http/2 static table
+	placeStatic3 // http/3 static table
 )
 
 const ( // field flags
@@ -694,9 +694,7 @@ func GetPiece() *Piece {
 		return x.(*Piece)
 	}
 }
-func putPiece(piece *Piece) {
-	poolPiece.Put(piece)
-}
+func putPiece(piece *Piece) { poolPiece.Put(piece) }
 
 // Piece is a member of content chain.
 type Piece struct { // 64 bytes
@@ -945,6 +943,7 @@ type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	keepConn bool // keep the connection after current stream? true by default
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
 	usedStreams atomic.Int32 // num of streams served or used
@@ -952,12 +951,15 @@ type _webConn_ struct {
 }
 
 func (c *_webConn_) onGet() {
+	c.keepConn = true
 }
 func (c *_webConn_) onPut() {
 	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
+
+func (c *_webConn_) setKeepConn(keepConn bool) { c.keepConn = keepConn }
 
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
 func (c *_webConn_) markBroken()    { c.broken.Store(true) }
@@ -1181,6 +1183,8 @@ func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
 func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
 func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
+
+func (r *webIn_) KeepAlive() int8 { return r.keepAlive }
 
 func (r *webIn_) HeadResult() int16 { return r.headResult }
 func (r *webIn_) BodyResult() int16 { return r.bodyResult }
@@ -2241,10 +2245,10 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	}
 }
 
-func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by _webOut.proxyCopyHead(). excluding sub headers
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyHead(). excluding sub headers
 	return r._forMainFields(r.headers, kindHeader, callback)
 }
-func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by _webOut.proxyCopyTail(). excluding sub trailers
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyTail(). excluding sub trailers
 	return r._forMainFields(r.trailers, kindTrailer, callback)
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
@@ -2603,14 +2607,6 @@ func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeou
 
 func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
-func (r *webOut_) SendJSON(content any) error { // TODO: optimize performance
-	r.AddContentTypeBytes(bytesTypeJSON)
-	data, err := json.Marshal(content)
-	if err != nil {
-		return err
-	}
-	return r.sendText(data)
-}
 func (r *webOut_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)
 	if err != nil {
@@ -2622,6 +2618,14 @@ func (r *webOut_) SendFile(contentPath string) error {
 		return err
 	}
 	return r.sendFile(file, info, true) // true to close on end
+}
+func (r *webOut_) SendJSON(content any) error { // TODO: optimize performance
+	r.AddContentTypeBytes(bytesTypeJSON)
+	data, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	return r.sendText(data)
 }
 
 func (r *webOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }

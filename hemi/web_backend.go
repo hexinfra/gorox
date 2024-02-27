@@ -92,12 +92,13 @@ func (n *webNode_) closeConn(conn WebBackendConn) {
 	n.DecSub()
 }
 
-// WebBackendConn
+// WebBackendConn is the backend-side web conn.
 type WebBackendConn interface { // *H[1-3]Conn
 	WebNode() WebNode
 	FetchStream() WebBackendStream
 	StoreStream(stream WebBackendStream)
 	Close() error
+	setKeepConn(keepConn bool)
 }
 
 // webBackendConn_ is the parent for H[1-3]Conn.
@@ -132,7 +133,7 @@ func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// WebBackendStream
+// WebBackendStream is the backend-side web stream.
 type WebBackendStream interface { // for *H[1-3]Stream
 	Request() WebBackendRequest
 	Response() WebBackendResponse
@@ -166,14 +167,14 @@ func (s *webBackendStream_) startSocket() {
 	// TODO
 }
 
-// WebBackendRequest
+// WebBackendRequest is the backend-side web request.
 type WebBackendRequest interface { // for *H[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
 	proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
 	proxyPost(content any, hasTrailers bool) error
-	proxyPass(in _webIn) error
+	proxyPass(req _webIn) error // the real type of req is Request
 	proxyCopyTail(req Request) bool
 	isVague() bool
 	endVague() error
@@ -416,8 +417,9 @@ type WebBackendUpfile struct {
 	// TODO
 }
 
-// WebBackendResponse
+// WebBackendResponse is the backend-side web response.
 type WebBackendResponse interface { // for *H[1-3]Response
+	KeepAlive() int8
 	HeadResult() int16
 	BodyResult() int16
 	Status() int16
@@ -539,6 +541,7 @@ func (r *webBackendResponse_) examineHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
+		r.keepAlive = 1 // default is keep-alive for HTTP/2 and HTTP/3
 		// TODO: add checks here
 	}
 
@@ -938,7 +941,7 @@ func (c *WebBackendCookie) nameEqualBytes(name []byte) bool {
 	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
 
-// WebBackendSocket
+// WebBackendSocket is the backend-side web socket.
 type WebBackendSocket interface { // for *H[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)

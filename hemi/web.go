@@ -911,6 +911,52 @@ func (h *staticHandlet) OnShutdown() {
 	h.webapp.DecSub()
 }
 
+var staticDefaultMimeTypes = map[string]string{
+	"7z":   "application/x-7z-compressed",
+	"atom": "application/atom+xml",
+	"bin":  "application/octet-stream",
+	"bmp":  "image/x-ms-bmp",
+	"css":  "text/css",
+	"deb":  "application/octet-stream",
+	"dll":  "application/octet-stream",
+	"doc":  "application/msword",
+	"dmg":  "application/octet-stream",
+	"exe":  "application/octet-stream",
+	"flv":  "video/x-flv",
+	"gif":  "image/gif",
+	"htm":  "text/html",
+	"html": "text/html",
+	"ico":  "image/x-icon",
+	"img":  "application/octet-stream",
+	"iso":  "application/octet-stream",
+	"jar":  "application/java-archive",
+	"jpg":  "image/jpeg",
+	"jpeg": "image/jpeg",
+	"js":   "application/javascript",
+	"json": "application/json",
+	"m4a":  "audio/x-m4a",
+	"mov":  "video/quicktime",
+	"mp3":  "audio/mpeg",
+	"mp4":  "video/mp4",
+	"mpeg": "video/mpeg",
+	"mpg":  "video/mpeg",
+	"pdf":  "application/pdf",
+	"png":  "image/png",
+	"ppt":  "application/vnd.ms-powerpoint",
+	"ps":   "application/postscript",
+	"rar":  "application/x-rar-compressed",
+	"rss":  "application/rss+xml",
+	"rtf":  "application/rtf",
+	"svg":  "image/svg+xml",
+	"txt":  "text/plain",
+	"war":  "application/java-archive",
+	"webm": "video/webm",
+	"webp": "image/webp",
+	"xls":  "application/vnd.ms-excel",
+	"xml":  "text/xml",
+	"zip":  "application/zip",
+}
+
 func (h *staticHandlet) OnConfigure() {
 	// webRoot
 	if v, ok := h.Find("webRoot"); ok {
@@ -979,53 +1025,6 @@ func (h *staticHandlet) OnConfigure() {
 	// autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
 }
-
-var staticDefaultMimeTypes = map[string]string{
-	"7z":   "application/x-7z-compressed",
-	"atom": "application/atom+xml",
-	"bin":  "application/octet-stream",
-	"bmp":  "image/x-ms-bmp",
-	"css":  "text/css",
-	"deb":  "application/octet-stream",
-	"dll":  "application/octet-stream",
-	"doc":  "application/msword",
-	"dmg":  "application/octet-stream",
-	"exe":  "application/octet-stream",
-	"flv":  "video/x-flv",
-	"gif":  "image/gif",
-	"htm":  "text/html",
-	"html": "text/html",
-	"ico":  "image/x-icon",
-	"img":  "application/octet-stream",
-	"iso":  "application/octet-stream",
-	"jar":  "application/java-archive",
-	"jpg":  "image/jpeg",
-	"jpeg": "image/jpeg",
-	"js":   "application/javascript",
-	"json": "application/json",
-	"m4a":  "audio/x-m4a",
-	"mov":  "video/quicktime",
-	"mp3":  "audio/mpeg",
-	"mp4":  "video/mp4",
-	"mpeg": "video/mpeg",
-	"mpg":  "video/mpeg",
-	"pdf":  "application/pdf",
-	"png":  "image/png",
-	"ppt":  "application/vnd.ms-powerpoint",
-	"ps":   "application/postscript",
-	"rar":  "application/x-rar-compressed",
-	"rss":  "application/rss+xml",
-	"rtf":  "application/rtf",
-	"svg":  "image/svg+xml",
-	"txt":  "text/plain",
-	"war":  "application/java-archive",
-	"webm": "video/webm",
-	"webp": "image/webp",
-	"xls":  "application/vnd.ms-excel",
-	"xml":  "text/xml",
-	"zip":  "application/zip",
-}
-
 func (h *staticHandlet) OnPrepare() {
 	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
 		EnvExitln("indexFile must be a regular file")

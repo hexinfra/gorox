@@ -220,9 +220,8 @@ type H1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	netConn  net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn  syscall.RawConn // used when netConn is TCP or UDS
-	keepConn bool            // keep the connection after current stream? true by default
+	netConn net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn syscall.RawConn // used when netConn is TCP or UDS
 	// Conn states (zeros)
 }
 
@@ -230,7 +229,6 @@ func (c *H1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn sysc
 	c.webBackendConn_.onGet(id, node)
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.keepConn = true
 }
 func (c *H1Conn) onPut() {
 	c.netConn = nil

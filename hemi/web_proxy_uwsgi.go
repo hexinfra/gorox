@@ -196,7 +196,7 @@ func (r *uwsgiRequest) onEnd() {
 	// TODO
 }
 
-// uwsgiResponse
+// uwsgiResponse must implements the _webIn and WebBackendResponse interface.
 type uwsgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *uwsgiExchan

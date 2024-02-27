@@ -204,10 +204,10 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 			return
 		}
 		if bResp.Status() >= StatusOK {
-			// TODO: fixme
-			//if bResp.keepAlive == 0 {
-			//bConn.keepConn = false
-			//}
+			// Only HTTP/1 concerns this. But the code is general between all HTTP versions.
+			if bResp.KeepAlive() == 0 {
+				bConn.setKeepConn(false)
+			}
 			break
 		}
 		// We got 1xx

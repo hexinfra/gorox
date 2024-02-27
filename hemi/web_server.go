@@ -174,7 +174,7 @@ func (g *webGate_) init(id int32, server Server) {
 	g.Gate_.Init(id, server)
 }
 
-// webServerConn
+// webServerConn is the server-side web conn.
 type webServerConn interface { // for *http[1-3]Conn
 	serve() // runner
 }
@@ -206,7 +206,7 @@ func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-// webServerStream
+// webServerStream is the server-side web stream.
 type webServerStream interface { // for *http[1-3]Stream
 	execute() // runner
 }
@@ -236,7 +236,7 @@ func (s *webServerStream_) serveSocket() {
 	// TODO
 }
 
-// Request
+// Request is the server-side web request.
 type Request interface { // for *http[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
@@ -773,6 +773,7 @@ func (r *webServerRequest_) examineHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
+		r.keepAlive = 1 // default is keep-alive for HTTP/2 and HTTP/3
 		// TODO: Add checks here
 	}
 
@@ -2496,7 +2497,7 @@ var webServerRequestVariables = [...]func(*webServerRequest_) []byte{ // keep sy
 	(*webServerRequest_).UnsafeContentType, // contentType
 }
 
-// Upfile is a file uploaded by client.
+// Upfile is a file uploaded by web client.
 type Upfile struct { // 48 bytes
 	hash     uint16 // hash of name, to support fast comparison
 	flags    uint8  // see upfile flags
@@ -2598,7 +2599,7 @@ func (u *Upfile) MoveTo(path string) error {
 	return nil
 }
 
-// Response
+// Response is the server-side web response.
 type Response interface { // for *http[1-3]Response
 	Request() Request
 
@@ -2628,8 +2629,8 @@ type Response interface { // for *http[1-3]Response
 
 	Send(content string) error
 	SendBytes(content []byte) error
-	SendJSON(content any) error
 	SendFile(contentPath string) error
+	SendJSON(content any) error
 	SendBadRequest(content []byte) error                             // 400
 	SendForbidden(content []byte) error                              // 403
 	SendNotFound(content []byte) error                               // 404
@@ -2662,7 +2663,7 @@ type Response interface { // for *http[1-3]Response
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	proxyPass1xx(resp WebBackendResponse) bool
-	proxyPass(resp _webIn) error
+	proxyPass(resp _webIn) error // the real type of resp is WebBackendResponse
 	proxyPost(content any, hasTrailers bool) error
 	proxyCopyHead(resp WebBackendResponse, viaName []byte) bool
 	proxyCopyTail(resp WebBackendResponse) bool
@@ -3157,7 +3158,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
-// Socket
+// Socket is the server-side web socket.
 type Socket interface { // for *http[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)

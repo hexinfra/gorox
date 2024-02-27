@@ -538,7 +538,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) proxyPass(req _webIn) error { // only for sized (>0) content. vague content must use proxyPost(), as we don't use backend-side chunking
+func (r *fcgiRequest) proxyPass(req Request) error { // only for sized (>0) content. vague content must use proxyPost(), as we don't use backend-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -862,6 +862,8 @@ func (r *fcgiResponse) reuse() {
 	r.onEnd()
 	r.onUse()
 }
+
+func (r *fcgiResponse) KeepAlive() int8 { return -1 } // TODO: confirm this
 
 func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }

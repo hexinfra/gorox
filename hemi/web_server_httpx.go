@@ -354,7 +354,6 @@ type http1Conn struct {
 	// Conn states (non-zeros)
 	netConn   net.Conn        // the connection (UDS/TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
-	keepConn  bool            // keep the connection after current stream? true by default
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
@@ -365,7 +364,6 @@ func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.keepConn = true
 	c.closeSafe = true
 }
 func (c *http1Conn) onPut() {
@@ -2023,9 +2021,7 @@ func (r *http2Request) joinHeaders(p []byte) bool {
 	}
 	return true
 }
-
 func (r *http2Request) readContent() (p []byte, err error) { return r.readContent2() }
-
 func (r *http2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false

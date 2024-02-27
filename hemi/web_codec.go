@@ -1002,21 +1002,18 @@ func (s *_webStream_) onEnd() {
 	s.isSocket = false
 }
 
-// _webIn collects shared methods between *http[1-3]Request and *H[1-3]Response. Used as shell by webIn_.
-type _webIn interface {
-	ContentSize() int64
-	IsVague() bool
-	HasTrailers() bool
-
-	readContent() (p []byte, err error)
-	examineTail() bool
-	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-}
-
 // webIn_ is the parent for webServerRequest_ and webBackendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell  _webIn    // *http[1-3]Request, *H[1-3]Response
+	shell interface { // *http[1-3]Request, *H[1-3]Response
+		ContentSize() int64
+		IsVague() bool
+		HasTrailers() bool
+
+		readContent() (p []byte, err error)
+		examineTail() bool
+		forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	}
 	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockInput  [1536]byte // for r.input
@@ -1100,8 +1097,9 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.stream.webAgent().RecvTimeout()
-	r.maxContentSizeAllowed = r.stream.webAgent().MaxContentSizeAllowed()
+	agent := r.stream.webAgent()
+	r.recvTimeout = agent.RecvTimeout()
+	r.maxContentSizeAllowed = agent.MaxContentSizeAllowed()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -1185,8 +1183,7 @@ func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
 func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
 func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
 
-func (r *webIn_) KeepAlive() int8 { return r.keepAlive }
-
+func (r *webIn_) KeepAlive() int8   { return r.keepAlive }
 func (r *webIn_) HeadResult() int16 { return r.headResult }
 func (r *webIn_) BodyResult() int16 { return r.bodyResult }
 
@@ -2377,37 +2374,34 @@ var ( // web incoming message errors
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
-// _webOut collects shared methods between *http[1-3]Response and *H[1-3]Request. Used as shell by webOut_.
-type _webOut interface {
-	control() []byte
-	addHeader(name []byte, value []byte) bool
-	header(name []byte) (value []byte, ok bool)
-	hasHeader(name []byte) bool
-	delHeader(name []byte) (deleted bool)
-	delHeaderAt(i uint8)
-	insertHeader(hash uint16, name []byte, value []byte) bool
-	removeHeader(hash uint16, name []byte) (deleted bool)
-	addedHeaders() []byte
-	fixedHeaders() []byte
-	finalizeHeaders()
-	beforeSend()
-	doSend() error
-	sendChain() error // content
-	beforeEcho()
-	echoHeaders() error
-	doEcho() error
-	echoChain() error // chunks
-	addTrailer(name []byte, value []byte) bool
-	trailer(name []byte) (value []byte, ok bool)
-	finalizeVague() error
-	passHeaders() error
-	passBytes(p []byte) error
-}
-
 // webOut_ is the parent for webServerResponse_ and webBackendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell  _webOut   // *http[1-3]Response, *H[1-3]Request
+	shell interface { // *http[1-3]Response, *H[1-3]Request
+		control() []byte
+		addHeader(name []byte, value []byte) bool
+		header(name []byte) (value []byte, ok bool)
+		hasHeader(name []byte) bool
+		delHeader(name []byte) (deleted bool)
+		delHeaderAt(i uint8)
+		insertHeader(hash uint16, name []byte, value []byte) bool
+		removeHeader(hash uint16, name []byte) (deleted bool)
+		addedHeaders() []byte
+		fixedHeaders() []byte
+		finalizeHeaders()
+		beforeSend()
+		doSend() error
+		sendChain() error // content
+		beforeEcho()
+		echoHeaders() error
+		doEcho() error
+		echoChain() error // chunks
+		addTrailer(name []byte, value []byte) bool
+		trailer(name []byte) (value []byte, ok bool)
+		finalizeVague() error
+		passHeaders() error
+		passBytes(p []byte) error
+	}
 	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
@@ -2658,41 +2652,6 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
-func (r *webOut_) proxyPass(in _webIn) error { // sync content to the other side directly
-	pass := r.shell.passBytes
-	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
-		pass = r.EchoBytes
-	} else { // in is sized and there are no revisers, use passBytes
-		r.isSent = true
-		r.contentSize = in.ContentSize()
-		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.shell.passHeaders(); err != nil {
-			return err
-		}
-	}
-	for {
-		p, err := in.readContent()
-		if len(p) >= 0 {
-			if e := pass(p); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	if in.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !in.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.shell.addTrailer(name, value)
-		}) {
-			return webOutTrailerFailed
-		}
-	}
-	return nil
-}
 func (r *webOut_) proxyPost(content any, hasTrailers bool) error { // post held content to the other side
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens

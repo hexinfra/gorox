@@ -394,54 +394,54 @@ func (s *Stage) OnShutdown() {
 	}
 
 	// cronjobs
-	s.IncSub(len(s.cronjobs))
+	s.SubsAddn(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.WaitSubs()
 
 	// servers
-	s.IncSub(len(s.servers))
+	s.SubsAddn(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
 	// services & webapps
-	s.IncSub(len(s.services) + len(s.webapps))
+	s.SubsAddn(len(s.services) + len(s.webapps))
 	s.services.goWalk((*Service).OnShutdown)
 	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.WaitSubs()
 
 	// cachers & staters
-	s.IncSub(len(s.cachers) + len(s.staters))
+	s.SubsAddn(len(s.cachers) + len(s.staters))
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
 	// routers
-	s.IncSub(len(s.udpsRouters) + len(s.tcpsRouters) + len(s.quixRouters))
+	s.SubsAddn(len(s.udpsRouters) + len(s.tcpsRouters) + len(s.quixRouters))
 	s.udpsRouters.goWalk((*UDPSRouter).OnShutdown)
 	s.tcpsRouters.goWalk((*TCPSRouter).OnShutdown)
 	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
 	s.WaitSubs()
 
 	// backends
-	s.IncSub(len(s.backends))
+	s.SubsAddn(len(s.backends))
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
 	// complets
-	s.IncSub(len(s.complets))
+	s.SubsAddn(len(s.complets))
 	s.complets.goWalk(Complet.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures
-	s.IncSub(1)
+	s.IncSub()
 	s.fcache.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub(1)
+	s.IncSub()
 	s.namer.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub(1)
+	s.IncSub()
 	s.clock.OnShutdown()
 	s.WaitSubs()
 

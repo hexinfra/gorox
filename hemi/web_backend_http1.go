@@ -51,7 +51,8 @@ func (b *HTTP1Backend) NewNode(id int32) *http1Node {
 	return node
 }
 func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
-	return b.nodes[b.getNext()].fetchConn()
+	node := b.nodes[b.getNext()]
+	return node.fetchConn()
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -78,7 +79,7 @@ func (n *http1Node) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.IncSub(0 - size)
+		n.SubsAddn(-size)
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
@@ -125,7 +126,7 @@ func (n *http1Node) _dialUDS() (WebBackendConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	n.IncSub(1)
+	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) _dialTLS() (WebBackendConn, error) {
@@ -148,7 +149,7 @@ func (n *http1Node) _dialTLS() (WebBackendConn, error) {
 		tlsConn.Close()
 		return nil, err
 	}
-	n.IncSub(1)
+	n.IncSub()
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
 func (n *http1Node) _dialTCP() (WebBackendConn, error) {
@@ -167,7 +168,7 @@ func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	n.IncSub(1)
+	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 

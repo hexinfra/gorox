@@ -59,14 +59,16 @@ func (b *UDPSBackend) NewNode(id int32) *udpsNode {
 }
 
 func (b *UDPSBackend) FetchConn() (*UConn, error) {
-	return b.nodes[b.getNext()].fetchConn()
+	node := b.nodes[b.getNext()]
+	return node.fetchConn()
 }
 func (b *UDPSBackend) StoreConn(uConn *UConn) {
 	uConn.node.(*udpsNode).storeConn(uConn)
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
-	return b.nodes[b.getNext()].dial()
+	node := b.nodes[b.getNext()]
+	return node.dial()
 }
 
 // udpsNode is a node in UDPSBackend.
@@ -238,7 +240,7 @@ func (r *UDPSRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub(1)
+		r.IncSub()
 		if r.IsUDS() {
 			go gate.serveUDS()
 		} else if r.IsTLS() {
@@ -248,7 +250,7 @@ func (r *UDPSRouter) Serve() { // runner
 		}
 	}
 	r.WaitSubs() // gates
-	r.IncSub(len(r.dealets) + len(r.cases))
+	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.shutdownSubs()
 	r.WaitSubs() // dealets, cases
 

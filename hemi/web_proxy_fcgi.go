@@ -171,94 +171,94 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	}
 
 	var (
-		fConn *TConn
-		fErr  error
+		fcgiConn *TConn
+		fcgiErr  error
 	)
 	if h.keepConn {
-		if fConn, fErr = h.backend.FetchConn(); fErr == nil {
-			defer h.backend.StoreConn(fConn)
+		if fcgiConn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
+			defer h.backend.StoreConn(fcgiConn)
 		}
 	} else {
-		if fConn, fErr = h.backend.Dial(); fErr == nil {
-			defer fConn.Close()
+		if fcgiConn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
+			defer fcgiConn.Close()
 		}
 	}
-	if fErr != nil {
+	if fcgiErr != nil {
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	fExchan := getFCGIExchan(h, fConn)
-	defer putFCGIExchan(fExchan)
+	fcgiExchan := getFCGIExchan(h, fcgiConn)
+	defer putFCGIExchan(fcgiExchan)
 
-	fReq := &fExchan.request
-	if !fReq.proxyCopyHead(req, h.scriptFilename, h.indexFile) {
-		fExchan.markBroken()
+	fcgiReq := &fcgiExchan.request
+	if !fcgiReq.proxyCopyHead(req, h.scriptFilename, h.indexFile) {
+		fcgiExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 	if hasContent && !h.bufferClientContent && !req.IsVague() {
-		fErr = fReq.proxyPass(req)
+		fcgiErr = fcgiReq.proxyPass(req)
 	} else { // nil, []byte, tempFile
-		fErr = fReq.proxyPost(content)
+		fcgiErr = fcgiReq.proxyPost(content)
 	}
-	if fErr != nil {
-		fExchan.markBroken()
+	if fcgiErr != nil {
+		fcgiExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	fResp := &fExchan.response
+	fcgiResp := &fcgiExchan.response
 	for { // until we found a non-1xx status (>= 200)
-		fResp.recvHead()
-		if fResp.HeadResult() != StatusOK || fResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
-			fExchan.markBroken()
+		fcgiResp.recvHead()
+		if fcgiResp.HeadResult() != StatusOK || fcgiResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
+			fcgiExchan.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
-		if fResp.status >= StatusOK {
+		if fcgiResp.status >= StatusOK {
 			break
 		}
 		// We got 1xx
 		if req.VersionCode() == Version1_0 {
-			fExchan.markBroken()
+			fcgiExchan.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.proxyPass1xx(fResp) {
-			fExchan.markBroken()
+		if !resp.proxyPass1xx(fcgiResp) {
+			fcgiExchan.markBroken()
 			return
 		}
-		fResp.reuse()
+		fcgiResp.reuse()
 	}
 
-	var fContent any
-	fHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
+	var fcgiContent any
+	fcgiHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
 	if req.MethodCode() != MethodHEAD {
-		fHasContent = fResp.HasContent()
+		fcgiHasContent = fcgiResp.HasContent()
 	}
-	if fHasContent && h.bufferServerContent { // including size 0
-		fContent = fResp.takeContent()
-		if fContent == nil { // take failed
-			// fExchan is marked as broken
+	if fcgiHasContent && h.bufferServerContent { // including size 0
+		fcgiContent = fcgiResp.takeContent()
+		if fcgiContent == nil { // take failed
+			// fcgiExchan is marked as broken
 			resp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !resp.proxyCopyHead(fResp, nil) { // viaName = nil
-		fExchan.markBroken()
+	if !resp.proxyCopyHead(fcgiResp, nil) { // viaName = nil
+		fcgiExchan.markBroken()
 		return
 	}
-	if fHasContent && !h.bufferServerContent {
-		if err := resp.proxyPass(fResp); err != nil {
-			fExchan.markBroken()
+	if fcgiHasContent && !h.bufferServerContent {
+		if err := resp.proxyPass(fcgiResp); err != nil {
+			fcgiExchan.markBroken()
 			return
 		}
-	} else if err := resp.proxyPost(fContent, false); err != nil { // false means no trailers
+	} else if err := resp.proxyPost(fcgiContent, false); err != nil { // false means no trailers
 		return
 	}
 
@@ -730,7 +730,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse must implements the _webIn and WebBackendResponse interface.
+// fcgiResponse must implements the WebBackendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

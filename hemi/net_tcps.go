@@ -67,14 +67,16 @@ func (b *TCPSBackend) NewNode(id int32) *tcpsNode {
 }
 
 func (b *TCPSBackend) FetchConn() (*TConn, error) {
-	return b.nodes[b.getNext()].fetchConn()
+	node := b.nodes[b.getNext()]
+	return node.fetchConn()
 }
 func (b *TCPSBackend) StoreConn(tConn *TConn) {
 	tConn.node.(*tcpsNode).storeConn(tConn)
 }
 
 func (b *TCPSBackend) Dial() (*TConn, error) {
-	return b.nodes[b.getNext()].dial()
+	node := b.nodes[b.getNext()]
+	return node.dial()
 }
 
 // tcpsNode is a node in TCPSBackend.
@@ -95,7 +97,7 @@ func (n *tcpsNode) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.IncSub(0 - size)
+		n.SubsAddn(-size)
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
@@ -119,7 +121,7 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 	}
 	tConn, err := n.dial()
 	if err == nil {
-		n.IncSub(1)
+		n.IncSub()
 	}
 	return tConn, err
 }
@@ -354,7 +356,7 @@ func (r *TCPSRouter) Serve() { // runner
 		r._serveTCP()
 	}
 	r.WaitSubs() // gates
-	r.IncSub(len(r.dealets) + len(r.cases))
+	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.shutdownSubs()
 	r.WaitSubs() // dealets, cases
 
@@ -373,7 +375,7 @@ func (r *TCPSRouter) _serveUDS() {
 		EnvExitln(err.Error())
 	}
 	r.AddGate(gate)
-	r.IncSub(1)
+	r.IncSub()
 	go gate.serveUDS()
 }
 func (r *TCPSRouter) _serveTLS() {
@@ -384,7 +386,7 @@ func (r *TCPSRouter) _serveTLS() {
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub(1)
+		r.IncSub()
 		go gate.serveTLS()
 	}
 }
@@ -396,7 +398,7 @@ func (r *TCPSRouter) _serveTCP() {
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub(1)
+		r.IncSub()
 		go gate.serveTCP()
 	}
 }
@@ -552,7 +554,7 @@ func (g *tcpsGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -586,7 +588,7 @@ func (g *tcpsGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {

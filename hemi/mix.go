@@ -284,7 +284,7 @@ func (b *Backend_[N]) OnPrepare() {
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
-		b.IncSub(1)
+		b.IncSub()
 		go node.Maintain()
 	}
 	<-b.ShutChan
@@ -773,9 +773,10 @@ type _subsWaiter_ struct {
 	subs sync.WaitGroup
 }
 
-func (w *_subsWaiter_) IncSub(n int) { w.subs.Add(n) }
-func (w *_subsWaiter_) WaitSubs()    { w.subs.Wait() }
-func (w *_subsWaiter_) DecSub()      { w.subs.Done() }
+func (w *_subsWaiter_) IncSub()        { w.subs.Add(1) }
+func (w *_subsWaiter_) SubsAddn(n int) { w.subs.Add(n) }
+func (w *_subsWaiter_) WaitSubs()      { w.subs.Wait() }
+func (w *_subsWaiter_) DecSub()        { w.subs.Done() }
 
 // _shutdownable_ is a mixin.
 type _shutdownable_ struct {

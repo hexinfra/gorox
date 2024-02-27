@@ -144,119 +144,119 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	bConn, bErr := h.backend.FetchConn()
-	if bErr != nil {
+	backConn, backErr := h.backend.FetchConn()
+	if backErr != nil {
 		if Debug() >= 1 {
-			Println(bErr.Error())
+			Println(backErr.Error())
 		}
 		resp.SendBadGateway(nil)
 		return
 	}
-	defer h.backend.StoreConn(bConn)
+	defer h.backend.StoreConn(backConn)
 
-	bStream := bConn.FetchStream()
-	defer bConn.StoreStream(bStream)
+	backStream := backConn.FetchStream()
+	defer backConn.StoreStream(backStream)
 
-	// TODO: use bStream.ReverseExchan()
+	// TODO: use backStream.ReverseExchan()
 
-	bReq := bStream.Request()
-	if !bReq.proxyCopyHead(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
-		bStream.markBroken()
+	backReq := backStream.Request()
+	if !backReq.proxyCopyHead(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
+		backStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
 	if !hasContent || h.bufferClientContent {
 		hasTrailers := req.HasTrailers()
-		bErr = bReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
-		if bErr == nil && hasTrailers {
-			if !bReq.proxyCopyTail(req) {
-				bStream.markBroken()
-				bErr = webOutTrailerFailed
-			} else if bErr = bReq.endVague(); bErr != nil {
-				bStream.markBroken()
+		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
+		if backErr == nil && hasTrailers {
+			if !backReq.proxyCopyTail(req) {
+				backStream.markBroken()
+				backErr = webOutTrailerFailed
+			} else if backErr = backReq.endVague(); backErr != nil {
+				backStream.markBroken()
 			}
 		} else if hasTrailers {
-			bStream.markBroken()
+			backStream.markBroken()
 		}
-	} else if bErr = bReq.proxyPass(req); bErr != nil {
-		bStream.markBroken()
-	} else if bReq.isVague() { // must write last chunk and trailers (if exist)
-		if bErr = bReq.endVague(); bErr != nil {
-			bStream.markBroken()
+	} else if backErr = backReq.proxyPass(req); backErr != nil {
+		backStream.markBroken()
+	} else if backReq.isVague() { // must write last chunk and trailers (if exist)
+		if backErr = backReq.endVague(); backErr != nil {
+			backStream.markBroken()
 		}
 	}
-	if bErr != nil {
+	if backErr != nil {
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	bResp := bStream.Response()
+	backResp := backStream.Response()
 	for { // until we found a non-1xx status (>= 200)
-		bResp.recvHead()
-		if bResp.HeadResult() != StatusOK || bResp.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
-			bStream.markBroken()
-			if bResp.HeadResult() == StatusRequestTimeout {
+		backResp.recvHead()
+		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
+			backStream.markBroken()
+			if backResp.HeadResult() == StatusRequestTimeout {
 				resp.SendGatewayTimeout(nil)
 			} else {
 				resp.SendBadGateway(nil)
 			}
 			return
 		}
-		if bResp.Status() >= StatusOK {
+		if backResp.Status() >= StatusOK {
 			// Only HTTP/1 concerns this. But the code is general between all HTTP versions.
-			if bResp.KeepAlive() == 0 {
-				bConn.setKeepConn(false)
+			if backResp.KeepAlive() == 0 {
+				backConn.setKeepConn(false)
 			}
 			break
 		}
 		// We got 1xx
 		if req.VersionCode() == Version1_0 {
-			bStream.markBroken()
+			backStream.markBroken()
 			resp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.proxyPass1xx(bResp) {
-			bStream.markBroken()
+		if !resp.proxyPass1xx(backResp) {
+			backStream.markBroken()
 			return
 		}
-		bResp.reuse()
+		backResp.reuse()
 	}
 
-	var bContent any
-	bHasContent := false
+	var backContent any
+	backHasContent := false
 	if req.MethodCode() != MethodHEAD {
-		bHasContent = bResp.HasContent()
+		backHasContent = backResp.HasContent()
 	}
-	if bHasContent && h.bufferServerContent { // including size 0
-		bContent = bResp.takeContent()
-		if bContent == nil { // take failed
-			// bStream is marked as broken
+	if backHasContent && h.bufferServerContent { // including size 0
+		backContent = backResp.takeContent()
+		if backContent == nil { // take failed
+			// backStream is marked as broken
 			resp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !resp.proxyCopyHead(bResp, nil) { // viaName = nil
-		bStream.markBroken()
+	if !resp.proxyCopyHead(backResp, nil) { // viaName = nil
+		backStream.markBroken()
 		return
 	}
-	if !bHasContent || h.bufferServerContent {
-		bHasTrailers := bResp.HasTrailers()
-		if resp.proxyPost(bContent, bHasTrailers) != nil { // nil (no content), []byte, tempFile
+	if !backHasContent || h.bufferServerContent {
+		bHasTrailers := backResp.HasTrailers()
+		if resp.proxyPost(backContent, bHasTrailers) != nil { // nil (no content), []byte, tempFile
 			if bHasTrailers {
-				bStream.markBroken()
+				backStream.markBroken()
 			}
 			return
 		}
-		if bHasTrailers && !resp.proxyCopyTail(bResp) {
+		if bHasTrailers && !resp.proxyCopyTail(backResp) {
 			return
 		}
-	} else if err := resp.proxyPass(bResp); err != nil {
-		bStream.markBroken()
+	} else if err := resp.proxyPass(backResp); err != nil {
+		backStream.markBroken()
 		return
 	}
 

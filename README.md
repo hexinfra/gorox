@@ -3,7 +3,7 @@ Welcome
 
 Welcome to Gorox!
 
-Gorox is an advanced Network Proxy, Webapp Server, and RPC Framework. It can be
+Gorox is a pragmatic Network Proxy, Webapp Server, and RPC Framework. It can be
 used as:
 
   * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)

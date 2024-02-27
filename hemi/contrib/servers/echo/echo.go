@@ -57,7 +57,7 @@ func (s *echoServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub(1)
+		s.IncSub()
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
@@ -107,7 +107,7 @@ func (g *echoGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {

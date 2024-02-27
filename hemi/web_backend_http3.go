@@ -50,7 +50,8 @@ func (b *HTTP3Backend) NewNode(id int32) *http3Node {
 	return node
 }
 func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
-	return b.nodes[b.getNext()].fetchConn()
+	node := b.nodes[b.getNext()]
+	return node.fetchConn()
 }
 
 // http3Node

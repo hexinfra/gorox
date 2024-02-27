@@ -118,7 +118,7 @@ func (s *httpxServer) _serveUDS() {
 		EnvExitln(err.Error())
 	}
 	s.AddGate(gate)
-	s.IncSub(1)
+	s.IncSub()
 	go gate.serveUDS()
 }
 func (s *httpxServer) _serveTLS() {
@@ -129,7 +129,7 @@ func (s *httpxServer) _serveTLS() {
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub(1)
+		s.IncSub()
 		go gate.serveTLS()
 	}
 }
@@ -141,7 +141,7 @@ func (s *httpxServer) _serveTCP() {
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub(1)
+		s.IncSub()
 		go gate.serveTCP()
 	}
 }
@@ -215,7 +215,7 @@ func (g *httpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(unixConn)
 		} else {
@@ -249,7 +249,7 @@ func (g *httpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -291,7 +291,7 @@ func (g *httpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {

@@ -56,7 +56,7 @@ func (s *http3Server) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub(1)
+		s.IncSub()
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
@@ -103,7 +103,7 @@ func (g *http3Gate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub(1)
+		g.IncSub()
 		if g.ReachLimit() {
 			g.justClose(quicConn)
 		} else {

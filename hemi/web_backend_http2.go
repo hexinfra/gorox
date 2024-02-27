@@ -50,7 +50,8 @@ func (b *HTTP2Backend) NewNode(id int32) *http2Node {
 	return node
 }
 func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
-	return b.nodes[b.getNext()].fetchConn()
+	node := b.nodes[b.getNext()]
+	return node.fetchConn()
 }
 
 // http2Node
@@ -83,6 +84,8 @@ func (n *http2Node) Maintain() { // runner
 }
 
 func (n *http2Node) fetchConn() (WebBackendConn, error) {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
+	// TODO
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
@@ -99,6 +102,7 @@ func (n *http2Node) _dialUDS() (WebBackendConn, error) {
 }
 
 func (n *http2Node) storeConn(conn WebBackendConn) {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: decRef
 	h2Conn := conn.(*H2Conn)
 	if h2Conn.nStreams.Add(-1) > 0 {

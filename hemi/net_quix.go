@@ -267,11 +267,11 @@ func (r *QUIXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub(1)
+		r.IncSub()
 		go gate.serve()
 	}
 	r.WaitSubs() // gates
-	r.IncSub(len(r.dealets) + len(r.cases))
+	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.shutdownSubs()
 	r.WaitSubs() // dealets, cases
 

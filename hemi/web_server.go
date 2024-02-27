@@ -2667,7 +2667,7 @@ type Response interface { // for *http[1-3]Response
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	proxyPass1xx(resp WebBackendResponse) bool
-	proxyPass(resp _webIn) error // the real type of resp is WebBackendResponse
+	proxyPass(resp WebBackendResponse) error
 	proxyPost(content any, hasTrailers bool) error
 	proxyCopyHead(resp WebBackendResponse, viaName []byte) bool
 	proxyCopyTail(resp WebBackendResponse) bool
@@ -2940,6 +2940,41 @@ func (r *webServerResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
+func (r *webServerResponse_) proxyPass(resp WebBackendResponse) error { // sync content to the other side directly
+	pass := r.shell.passBytes
+	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
+		pass = r.EchoBytes
+	} else { // resp is sized and there are no revisers, use passBytes
+		r.isSent = true
+		r.contentSize = resp.ContentSize()
+		// TODO: find a way to reduce i/o syscalls if content is small?
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := resp.readContent()
+		if len(p) >= 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	if resp.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}) {
+			return webOutTrailerFailed
+		}
+	}
+	return nil
+}
 func (r *webServerResponse_) proxyCopyHead(resp WebBackendResponse, viaName []byte) bool {
 	resp.delHopHeaders()
 

@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"bytes"
+	"io"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/common/risky"
@@ -173,8 +174,8 @@ type WebBackendRequest interface { // for *H[1-3]Request
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
 	proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
+	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyPass(req _webIn) error // the real type of req is Request
 	proxyCopyTail(req Request) bool
 	isVague() bool
 	endVague() error
@@ -324,6 +325,41 @@ func (r *webBackendRequest_) deleteIfRange() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
+func (r *webBackendRequest_) proxyPass(req Request) error { // sync content to backend directly
+	pass := r.shell.passBytes
+	if req.IsVague() {
+		pass = r.EchoBytes
+	} else {
+		r.isSent = true
+		r.contentSize = req.ContentSize()
+		// TODO: find a way to reduce i/o syscalls if content is small?
+		if err := r.shell.passHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := req.readContent()
+		if len(p) >= 0 {
+			if e := pass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	if req.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+			return r.shell.addTrailer(name, value)
+		}) {
+			return webOutTrailerFailed
+		}
+	}
+	return nil
+}
 func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool {
 	req.delHopHeaders()
 

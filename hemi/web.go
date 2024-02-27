@@ -231,7 +231,7 @@ func (a *Webapp) maintain() { // runner
 		// TODO
 	})
 
-	a.IncSub(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
+	a.SubsAddn(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
 	a.rules.goWalk((*Rule).OnShutdown)
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)

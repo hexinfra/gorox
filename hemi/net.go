@@ -12,7 +12,7 @@ import (
 	"regexp"
 )
 
-// router_ is the parent for QUICRouter, TCPSRouter, UDPSRouter.
+// router_ is the parent for QUIXRouter, TCPSRouter, UDPSRouter.
 type router_[R Server, G Gate, D _dealet, C _case] struct {
 	// Parent
 	Server_[G]
@@ -102,17 +102,17 @@ func (r *router_[R, G, D, C]) Logf(format string, args ...any) {
 	}
 }
 
-// _dealet is the interface for *QUICDealet, *TCPSDealet, and *UDPSDealet.
+// _dealet is the interface for *QUIXDealet, *TCPSDealet, and *UDPSDealet.
 type _dealet interface {
 	Component
 }
 
-// _case is the interface for *quicCase, *tcpsCase, and *udpsCase.
+// _case is the interface for *quixCase, *tcpsCase, and *udpsCase.
 type _case interface {
 	Component
 }
 
-// case_ is the parent for *quicCase, *tcpsCase, *udpsCase.
+// case_ is the parent for *quixCase, *tcpsCase, *udpsCase.
 type case_[R Server, D _dealet] struct {
 	// Parent
 	Component_

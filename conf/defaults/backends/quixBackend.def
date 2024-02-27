@@ -1,4 +1,4 @@
-quicBackend "qb1" {
+quixBackend "qb1" {
 	.tlsMode = false
 	.dialTimeout = 10s
 	.writeTimeout = 30s

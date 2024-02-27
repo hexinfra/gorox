@@ -2126,9 +2126,7 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *http1Response) setConnectionClose() {
-	r.stream.webConn().(*http1Conn).keepConn = false // explicitly
-}
+func (r *http1Response) setConnectionClose() { r.stream.webConn().setKeepConn(false) }
 
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {

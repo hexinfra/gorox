@@ -5,7 +5,7 @@
 
 // QUIC connection.
 
-package quix
+package quic
 
 import (
 	"net"

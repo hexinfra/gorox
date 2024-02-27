@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/common/quix"
+	"github.com/hexinfra/gorox/hemi/common/quic"
 )
 
 func init() {
@@ -84,7 +84,7 @@ func (n *http3Node) Maintain() { // runner
 func (n *http3Node) fetchConn() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	// TODO
-	conn, err := quix.DialTimeout(n.address, n.backend.DialTimeout())
+	conn, err := quic.DialTimeout(n.address, n.backend.DialTimeout())
 	if err != nil {
 		return nil, err
 	}
@@ -99,14 +99,14 @@ func (n *http3Node) storeConn(conn WebBackendConn) {
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
 
-func getH3Conn(id int64, node *http3Node, quixConn *quix.Conn) *H3Conn {
+func getH3Conn(id int64, node *http3Node, quicConn *quic.Conn) *H3Conn {
 	var h3Conn *H3Conn
 	if x := poolH3Conn.Get(); x == nil {
 		h3Conn = new(H3Conn)
 	} else {
 		h3Conn = x.(*H3Conn)
 	}
-	h3Conn.onGet(id, node, quixConn)
+	h3Conn.onGet(id, node, quicConn)
 	return h3Conn
 }
 func putH3Conn(h3Conn *H3Conn) {
@@ -121,17 +121,17 @@ type H3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quixConn *quix.Conn // the underlying quic connection
+	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
 	nStreams atomic.Int32 // concurrent streams
 }
 
-func (c *H3Conn) onGet(id int64, node *http3Node, quixConn *quix.Conn) {
+func (c *H3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 	c.webBackendConn_.onGet(id, node)
-	c.quixConn = quixConn
+	c.quicConn = quicConn
 }
 func (c *H3Conn) onPut() {
-	c.quixConn = nil
+	c.quicConn = nil
 	c.nStreams.Store(0)
 	c.webBackendConn_.onPut()
 }
@@ -148,15 +148,15 @@ func (c *H3Conn) StoreStream(stream WebBackendStream) {
 }
 
 func (c *H3Conn) Close() error {
-	quixConn := c.quixConn
+	quicConn := c.quicConn
 	putH3Conn(c)
-	return quixConn.Close()
+	return quicConn.Close()
 }
 
 // poolH3Stream
 var poolH3Stream sync.Pool
 
-func getH3Stream(conn *H3Conn, quixStream *quix.Stream) *H3Stream {
+func getH3Stream(conn *H3Conn, quicStream *quic.Stream) *H3Stream {
 	var stream *H3Stream
 	if x := poolH3Stream.Get(); x == nil {
 		stream = new(H3Stream)
@@ -169,7 +169,7 @@ func getH3Stream(conn *H3Conn, quixStream *quix.Stream) *H3Stream {
 	} else {
 		stream = x.(*H3Stream)
 	}
-	stream.onUse(conn, quixStream)
+	stream.onUse(conn, quicStream)
 	return stream
 }
 func putH3Stream(stream *H3Stream) {
@@ -189,14 +189,14 @@ type H3Stream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *H3Conn
-	quixStream *quix.Stream // the underlying quic stream
+	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 }
 
-func (s *H3Stream) onUse(conn *H3Conn, quixStream *quix.Stream) { // for non-zeros
+func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zeros
 	s.webBackendStream_.onUse()
 	s.conn = conn
-	s.quixStream = quixStream
+	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
@@ -205,7 +205,7 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.socket = nil
 	s.conn = nil
-	s.quixStream = nil
+	s.quicStream = nil
 	s.webBackendStream_.onEnd()
 }
 

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/common/quix"
+	"github.com/hexinfra/gorox/hemi/common/quic"
 )
 
 func init() {
@@ -72,7 +72,7 @@ type http3Gate struct {
 	webGate_
 	// Assocs
 	// States
-	listener *quix.Listener // the real gate. set after open
+	listener *quic.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
@@ -80,7 +80,7 @@ func (g *http3Gate) init(id int32, server *http3Server) {
 }
 
 func (g *http3Gate) Open() error {
-	listener := quix.NewListener(g.Address())
+	listener := quic.NewListener(g.Address())
 	if err := listener.Open(); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (g *http3Gate) Shut() error {
 func (g *http3Gate) serve() { // runner
 	connID := int64(0)
 	for {
-		quixConn, err := g.listener.Accept()
+		quicConn, err := g.listener.Accept()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -105,9 +105,9 @@ func (g *http3Gate) serve() { // runner
 		}
 		g.IncSub(1)
 		if g.ReachLimit() {
-			g.justClose(quixConn)
+			g.justClose(quicConn)
 		} else {
-			http3Conn := getHTTP3Conn(connID, g, quixConn)
+			http3Conn := getHTTP3Conn(connID, g, quicConn)
 			go http3Conn.serve() // http3Conn is put to pool in serve()
 			connID++
 		}
@@ -119,22 +119,22 @@ func (g *http3Gate) serve() { // runner
 	g.server.DecSub()
 }
 
-func (g *http3Gate) justClose(quixConn *quix.Conn) {
-	quixConn.Close()
+func (g *http3Gate) justClose(quicConn *quic.Conn) {
+	quicConn.Close()
 	g.OnConnClosed()
 }
 
 // poolHTTP3Conn is the server-side HTTP/3 connection pool.
 var poolHTTP3Conn sync.Pool
 
-func getHTTP3Conn(id int64, gate *http3Gate, quixConn *quix.Conn) *http3Conn {
+func getHTTP3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *http3Conn {
 	var httpConn *http3Conn
 	if x := poolHTTP3Conn.Get(); x == nil {
 		httpConn = new(http3Conn)
 	} else {
 		httpConn = x.(*http3Conn)
 	}
-	httpConn.onGet(id, gate, quixConn)
+	httpConn.onGet(id, gate, quicConn)
 	return httpConn
 }
 func putHTTP3Conn(httpConn *http3Conn) {
@@ -149,7 +149,7 @@ type http3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quixConn *quix.Conn        // the quic connection
+	quicConn *quic.Conn        // the quic connection
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
@@ -162,9 +162,9 @@ type http3Conn0 struct { // for fast reset, entirely
 	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
 }
 
-func (c *http3Conn) onGet(id int64, gate *http3Gate, quixConn *quix.Conn) {
+func (c *http3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 	c.webServerConn_.onGet(id, gate)
-	c.quixConn = quixConn
+	c.quicConn = quicConn
 	if c.buffer == nil {
 		c.buffer = getHTTP3Buffer()
 		c.buffer.incRef()
@@ -172,7 +172,7 @@ func (c *http3Conn) onGet(id int64, gate *http3Gate, quixConn *quix.Conn) {
 }
 func (c *http3Conn) onPut() {
 	c.webServerConn_.onPut()
-	c.quixConn = nil
+	c.quicConn = nil
 	// c.buffer is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*http3Stream{}
@@ -197,14 +197,14 @@ func (c *http3Conn) setWriteDeadline(deadline time.Time) error {
 }
 
 func (c *http3Conn) closeConn() {
-	c.quixConn.Close()
+	c.quicConn.Close()
 	c.gate.OnConnClosed()
 }
 
 // poolHTTP3Stream is the server-side HTTP/3 stream pool.
 var poolHTTP3Stream sync.Pool
 
-func getHTTP3Stream(conn *http3Conn, quixStream *quix.Stream) *http3Stream {
+func getHTTP3Stream(conn *http3Conn, quicStream *quic.Stream) *http3Stream {
 	var stream *http3Stream
 	if x := poolHTTP3Stream.Get(); x == nil {
 		stream = new(http3Stream)
@@ -217,7 +217,7 @@ func getHTTP3Stream(conn *http3Conn, quixStream *quix.Stream) *http3Stream {
 	} else {
 		stream = x.(*http3Stream)
 	}
-	stream.onUse(conn, quixStream)
+	stream.onUse(conn, quicStream)
 	return stream
 }
 func putHTTP3Stream(stream *http3Stream) {
@@ -236,7 +236,7 @@ type http3Stream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *http3Conn   // ...
-	quixStream *quix.Stream // the underlying quic stream
+	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 	http3Stream0 // all values must be zero by default in this struct!
 }
@@ -246,10 +246,10 @@ type http3Stream0 struct { // for fast reset, entirely
 	reset bool
 }
 
-func (s *http3Stream) onUse(conn *http3Conn, quixStream *quix.Stream) { // for non-zeros
+func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for non-zeros
 	s.webServerStream_.onUse()
 	s.conn = conn
-	s.quixStream = quixStream
+	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
@@ -258,7 +258,7 @@ func (s *http3Stream) onEnd() { // for zeros
 	s.request.onEnd()
 	s.webServerStream_.onEnd()
 	s.conn = nil
-	s.quixStream = nil
+	s.quicStream = nil
 	s.http3Stream0 = http3Stream0{}
 }
 

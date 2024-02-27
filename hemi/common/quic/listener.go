@@ -5,7 +5,7 @@
 
 // QUIC listener.
 
-package quix
+package quic
 
 // Listener
 type Listener struct {

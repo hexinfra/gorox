@@ -5,4 +5,4 @@
 
 // QUIC config.
 
-package quix
+package quic

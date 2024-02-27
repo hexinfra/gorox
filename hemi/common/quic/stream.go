@@ -5,7 +5,7 @@
 
 // QUIC stream.
 
-package quix
+package quic
 
 import (
 	"time"

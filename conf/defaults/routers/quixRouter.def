@@ -1,4 +1,4 @@
-quicRouter "qm1" {
+quixRouter "qm1" {
 	.address         = string,required
 	.tlsMode         = false
 	.readTimeout     = 60s

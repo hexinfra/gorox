@@ -250,8 +250,8 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseComplet(current, stage)
 		case compBackend:
 			c.parseBackend(current, stage)
-		case compQUICRouter:
-			c.parseQUICRouter(stage)
+		case compQUIXRouter:
+			c.parseQUIXRouter(stage)
 		case compTCPSRouter:
 			c.parseTCPSRouter(stage)
 		case compUDPSRouter:
@@ -289,13 +289,13 @@ func (c *config) parseComplet(sign *token, stage *Stage) { // xxxComplet <name> 
 func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	parseComponent0(c, sign, stage, stage.createBackend)
 }
-func (c *config) parseQUICRouter(stage *Stage) { // quicRouter <name> {}
-	parseComponentR(c, stage, stage.createQUICRouter, compQUICDealet, c.parseQUICDealet, c.parseQUICCase)
+func (c *config) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
+	parseComponentR(c, stage, stage.createQUIXRouter, compQUIXDealet, c.parseQUIXDealet, c.parseQUIXCase)
 }
-func (c *config) parseQUICDealet(sign *token, router *QUICRouter, kase *quicCase) { // qqqDealet <name> {}, qqqDealet {}
+func (c *config) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -324,10 +324,10 @@ func (c *config) parseQUICCase(router *QUICRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compQUICDealet:
-			c.parseQUICDealet(current, router, kase)
+		case compQUIXDealet:
+			c.parseQUIXDealet(current, router, kase)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}
 	}
 }
@@ -369,7 +369,7 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 		case compTCPSDealet:
 			c.parseTCPSDealet(current, router, kase)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}
 	}
 }
@@ -411,7 +411,7 @@ func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <na
 		case compUDPSDealet:
 			c.parseUDPSDealet(current, router, kase)
 		default:
-			panic(fmt.Errorf("unknown component '%s' in quicCase\n", current.text))
+			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}
 	}
 }
@@ -856,13 +856,13 @@ type ruleCond struct {
 }
 
 var varCodes = map[string]int16{ // TODO
-	// general conn vars for quic, tcps, and udps
+	// general conn vars for quix, tcps, and udps
 	"srcHost": 0,
 	"srcPort": 1,
 	"isUDS":   2,
 	"isTLS":   3,
 
-	// quic conn vars
+	// quix conn vars
 
 	// tcps conn vars
 	"serverName": 4,

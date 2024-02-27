@@ -86,14 +86,16 @@ func (s *webServer_[G]) onPrepare(shell Component) {
 func (s *webServer_[G]) ColonPort() string { // override
 	if s.IsUDS() {
 		return s.udsColonPort
+	} else {
+		return s.Server_.ColonPort()
 	}
-	return s.Server_.ColonPort()
 }
 func (s *webServer_[G]) ColonPortBytes() []byte { // override
 	if s.IsUDS() {
 		return s.udsColonPortBytes
+	} else {
+		return s.Server_.ColonPortBytes()
 	}
-	return s.Server_.ColonPortBytes()
 }
 
 func (s *webServer_[G]) bindApps() {
@@ -483,17 +485,17 @@ func (r *webServerRequest_) onUse(versionCode uint8) { // for non-zeros
 }
 func (r *webServerRequest_) onEnd() { // for zeros
 	for _, upfile := range r.upfiles {
-		if upfile.isMoved() {
+		if upfile.isMoved() { // file was moved, don't remove it
 			continue
 		}
-		var path string
+		var filePath string
 		if upfile.metaSet() {
-			path = upfile.Path()
+			filePath = upfile.Path()
 		} else {
-			path = risky.WeakString(r.array[upfile.pathFrom : upfile.pathFrom+int32(upfile.pathSize)])
+			filePath = risky.WeakString(r.array[upfile.pathFrom : upfile.pathFrom+int32(upfile.pathSize)])
 		}
-		if err := os.Remove(path); err != nil {
-			r.webapp.Logf("failed to remove uploaded file: %s, error: %s\n", path, err.Error())
+		if err := os.Remove(filePath); err != nil {
+			r.webapp.Logf("failed to remove uploaded file: %s, error: %s\n", filePath, err.Error())
 		}
 	}
 	r.upfiles = nil
@@ -725,7 +727,7 @@ func (r *webServerRequest_) examineHead() bool {
 		}
 	}
 	if r.cookies.notEmpty() { // in HTTP/2 and HTTP/3, there can be multiple cookie fields.
-		cookies := r.cookies // make a copy, as r.cookies is changed as cookie pairs below
+		cookies := r.cookies // make a copy, as r.cookies will be changed as cookie pairs below
 		r.cookies.from = uint8(len(r.primes))
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
@@ -763,18 +765,18 @@ func (r *webServerRequest_) examineHead() bool {
 			r.keepAlive = 0 // default is close for HTTP/1.0
 		}
 	case Version1_1:
+		if r.keepAlive == -1 { // no connection header
+			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
+		}
 		if r.indexes.host == 0 {
 			// RFC 7230 (section 5.4):
 			// A client MUST send a Host header field in all HTTP/1.1 request messages.
 			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
 			return false
 		}
-		if r.keepAlive == -1 { // no connection header
-			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
-		}
 	default: // HTTP/2 and HTTP/3
 		r.keepAlive = 1 // default is keep-alive for HTTP/2 and HTTP/3
-		// TODO: Add checks here
+		// TODO: Add other checks here
 	}
 
 	if !r.determineContentMode() {
@@ -786,11 +788,13 @@ func (r *webServerRequest_) examineHead() bool {
 		return false
 	}
 
-	if r.upgradeSocket && (r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1) {
+	if r.upgradeSocket {
 		// RFC 6455 (section 4.1):
 		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
-		return false
+		if r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1 {
+			r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
+			return false
+		}
 	}
 	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
 		// RFC 7232 (section 5):

@@ -934,6 +934,7 @@ type webConn interface {
 	IsUDS() bool
 	IsTLS() bool
 	makeTempName(p []byte, unixTime int64) int
+	setKeepConn(keepConn bool)
 	isBroken() bool
 	markBroken()
 }

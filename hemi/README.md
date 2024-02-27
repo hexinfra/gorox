@@ -35,7 +35,7 @@ The logical architecture of a stage in Hemi looks like this:
    |     |                  cronjob(*)                 |     |
    |     +---+--------+--------------+-----------------+     |
    |     |   |        |    rpc[+]    |     web[+]      |     |
-   |     | s | [quic] |    server    |     server      |     |
+   |     | s | [quix] |    server    |     server      |     |
    |     | e | [tcps] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udps] +--------------+-----------------+     |
    |     | v | router |              |webapp(*) handlet|     |

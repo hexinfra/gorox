@@ -5,7 +5,7 @@
 
 // Common elements.
 
-package quix
+package quic
 
 import (
 	"sync"

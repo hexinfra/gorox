@@ -23,7 +23,7 @@ COMPONENTS
     fixture (clock, fcache, namer, ...)
     complet (...)
     backend (http1Backend, tcpsBackend, ...)
-    router (quicRouter, tcpsRouter, udpsRouter)
+    router (quixRouter, tcpsRouter, udpsRouter)
       dealet (...)
       case [*]
     stater (localStater, redisStater, ...)

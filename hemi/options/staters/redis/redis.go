@@ -12,7 +12,7 @@ import (
 
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/contrib/backends/redis"
+	_ "github.com/hexinfra/gorox/hemi/options/backends/redis"
 )
 
 func init() {

@@ -10,10 +10,10 @@ Layout
 Hemi uses these directories:
 
   * common/   - Place general purpose libraries,
-  * contrib/  - Place community contributed components,
   * develop/  - A prototype application used to develop Hemi,
+  * options/  - Place optional components,
   * procmgr/  - A process manager for applications using Hemi,
-  * toolkit/  - Place optional commands.
+  * toolkit/  - Place useful commands.
 
 
 How to use
@@ -70,7 +70,7 @@ A program (like Gorox) using Hemi typically has the following dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <contrib>       |-->+              <hemi>             |
+  |       <options>       |-->+              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

@@ -6,7 +6,7 @@
 package webui
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
+	"github.com/hexinfra/gorox/hemi/options/handlets/sitex"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

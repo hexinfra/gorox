@@ -7,6 +7,6 @@
 
 package exts
 
-import ( // import extra contrib components, vendor exts, and your exts
-	_ "github.com/hexinfra/gorox/hemi/contrib"
+import ( // import extra optional components, vendor exts, and your exts
+	_ "github.com/hexinfra/gorox/hemi/options"
 )

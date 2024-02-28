@@ -6,7 +6,7 @@
 package testee
 
 import (
-	"github.com/hexinfra/gorox/hemi/contrib/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/options/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

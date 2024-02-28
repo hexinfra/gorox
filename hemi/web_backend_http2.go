@@ -399,6 +399,8 @@ type H2Socket struct {
 }
 
 func (s *H2Socket) onUse() {
+	s.webBackendSocket_.onUse()
 }
 func (s *H2Socket) onEnd() {
+	s.webBackendSocket_.onEnd()
 }

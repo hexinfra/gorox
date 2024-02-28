@@ -994,6 +994,8 @@ type webBackendSocket_ struct {
 }
 
 func (s *webBackendSocket_) onUse() {
+	s.webSocket_.onUse()
 }
 func (s *webBackendSocket_) onEnd() {
+	s.webSocket_.onEnd()
 }

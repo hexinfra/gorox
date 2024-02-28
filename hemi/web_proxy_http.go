@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// httpProxy handlet passes web requests to backend HTTP servers and cache responses.
+// httpProxy handlet passes web requests to backend web servers and cache responses.
 type httpProxy struct {
 	// Parent
 	Handlet_
@@ -245,14 +245,14 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		return
 	}
 	if !backHasContent || h.bufferServerContent {
-		bHasTrailers := backResp.HasTrailers()
-		if resp.proxyPost(backContent, bHasTrailers) != nil { // nil (no content), []byte, tempFile
-			if bHasTrailers {
+		backHasTrailers := backResp.HasTrailers()
+		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
+			if backHasTrailers {
 				backStream.markBroken()
 			}
 			return
 		}
-		if bHasTrailers && !resp.proxyCopyTail(backResp) {
+		if backHasTrailers && !resp.proxyCopyTail(backResp) {
 			return
 		}
 	} else if err := resp.proxyPass(backResp); err != nil {
@@ -263,7 +263,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 	return
 }
 
-// sockProxy socklet passes websockets to backend WebSocket servers.
+// sockProxy socklet passes web sockets to backend websocket servers.
 type sockProxy struct {
 	// Parent
 	Socklet_

@@ -12,6 +12,103 @@ import (
 	"sync/atomic"
 )
 
+// HTTP/3 incoming
+
+func (r *webIn_) _growHeaders3(size int32) bool {
+	// TODO
+	// use r.input
+	return false
+}
+
+func (r *webIn_) readContent3() (p []byte, err error) {
+	// TODO
+	return
+}
+
+// HTTP/3 outgoing
+
+func (r *webOut_) addHeader3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) header3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *webOut_) hasHeader3(name []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) delHeader3(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+func (r *webOut_) delHeaderAt3(i uint8) {
+	// TODO
+}
+
+func (r *webOut_) sendChain3() error {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) echoChain3() error {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) addTrailer3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) trailer3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *webOut_) trailers3() []byte {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) passBytes3(p []byte) error { return r.writeBytes3(p) }
+
+func (r *webOut_) finalizeVague3() error {
+	// TODO
+	if r.nTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
+	return nil
+}
+
+func (r *webOut_) writeHeaders3() error { // used by echo and pass
+	// TODO
+	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	return nil
+}
+func (r *webOut_) writePiece3(piece *Piece, vague bool) error {
+	// TODO
+	return nil
+}
+func (r *webOut_) writeVector3() error {
+	return nil
+}
+func (r *webOut_) writeBytes3(p []byte) error {
+	// TODO
+	return nil
+}
+
+// HTTP/3 websocket
+
+func (s *webSocket_) example3() {
+}
+
+// HTTP/3 protocol
+
+const ( // HTTP/2 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
+	http3MaxActiveStreams = 127
+	http3MaxTableSize     = _4K
+)
+
 // poolHTTP3Buffer
 var poolHTTP3Buffer sync.Pool
 
@@ -43,11 +140,6 @@ func (b *http3Buffer) decRef() {
 		putHTTP3Buffer(b)
 	}
 }
-
-const ( // HTTP/3 sizes and limits
-	http3MaxActiveStreams = 127
-	http3MaxTableSize     = _4K
-)
 
 // http3StaticTable
 var http3StaticTable = [99]pair{ // TODO
@@ -182,10 +274,6 @@ type http3OutFrame struct {
 
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
-var ( // HTTP/3 byteses
-	http3BytesStatic = []byte(":authority:path/age0content-dispositioncontent-length0cookiedateetagif-modified-sinceif-none-matchlast-modifiedlinklocationrefererset-cookie:methodCONNECTDELETEGETHEADOPTIONSPOSTPUT:schemehttphttps:status103200304404503accept*/*application/dns-messageaccept-encodinggzip, deflate, braccept-rangesbytesaccess-control-allow-headerscache-controlcontent-typeaccess-control-allow-origin*cache-controlmax-age=0max-age=2592000max-age=604800no-cacheno-storepublic, max-age=31536000content-encodingbrgzipcontent-typeapplication/dns-messageapplication/javascriptapplication/jsonapplication/x-www-form-urlencodedimage/gifimage/jpegimage/pngtext/csstext/html; charset=utf-8text/plaintext/plain;charset=utf-8rangebytes=0-strict-transport-securitymax-age=31536000max-age=31536000; includesubdomainsmax-age=31536000; includesubdomains; preloadvaryaccept-encodingoriginx-content-type-optionsnosniffx-xss-protection1; mode=block:status100204206302400403421425500accept-languageaccess-control-allow-credentialsFALSETRUEaccess-control-allow-headers*access-control-allow-methodsgetget, post, optionsoptionsaccess-control-expose-headerscontent-lengthaccess-control-request-headerscontent-typeaccess-control-request-methodgetpostalt-svcclearauthorizationcontent-security-policyscript-src 'none'; object-src 'none'; base-uri 'none'early-data1expect-ctforwardedif-rangeoriginpurposeprefetchservertiming-allow-origin*upgrade-insecure-requests1user-agentx-forwarded-forx-frame-optionsdenysameorigin") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
-)
-
 var http3Template = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
 var http3Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Control and http2Control!
 	// 1XX
@@ -256,92 +344,6 @@ var http3Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Contr
 	StatusNetworkAuthenticationRequired: []byte(":status 511"),
 }
 
-// HTTP/3 incoming
-
-func (r *webIn_) _growHeaders3(size int32) bool {
-	// TODO
-	// use r.input
-	return false
-}
-
-func (r *webIn_) readContent3() (p []byte, err error) {
-	// TODO
-	return
-}
-
-// HTTP/3 outgoing
-
-func (r *webOut_) addHeader3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) header3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *webOut_) hasHeader3(name []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) delHeader3(name []byte) (deleted bool) {
-	// TODO
-	return false
-}
-func (r *webOut_) delHeaderAt3(i uint8) {
-	// TODO
-}
-
-func (r *webOut_) sendChain3() error {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) echoChain3() error {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) addTrailer3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) trailer3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *webOut_) trailers3() []byte {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) passBytes3(p []byte) error { return r.writeBytes3(p) }
-
-func (r *webOut_) finalizeVague3() error {
-	// TODO
-	if r.nTrailers == 1 { // no trailers
-	} else { // with trailers
-	}
-	return nil
-}
-
-func (r *webOut_) writeHeaders3() error { // used by echo and pass
-	// TODO
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
-	return nil
-}
-func (r *webOut_) writePiece3(piece *Piece, vague bool) error {
-	// TODO
-	return nil
-}
-func (r *webOut_) writeVector3() error {
-	return nil
-}
-func (r *webOut_) writeBytes3(p []byte) error {
-	// TODO
-	return nil
-}
-
-// HTTP/3 websocket
-
-func (s *webSocket_) example3() {
-}
+var ( // HTTP/3 byteses
+	http3BytesStatic = []byte(":authority:path/age0content-dispositioncontent-length0cookiedateetagif-modified-sinceif-none-matchlast-modifiedlinklocationrefererset-cookie:methodCONNECTDELETEGETHEADOPTIONSPOSTPUT:schemehttphttps:status103200304404503accept*/*application/dns-messageaccept-encodinggzip, deflate, braccept-rangesbytesaccess-control-allow-headerscache-controlcontent-typeaccess-control-allow-origin*cache-controlmax-age=0max-age=2592000max-age=604800no-cacheno-storepublic, max-age=31536000content-encodingbrgzipcontent-typeapplication/dns-messageapplication/javascriptapplication/jsonapplication/x-www-form-urlencodedimage/gifimage/jpegimage/pngtext/csstext/html; charset=utf-8text/plaintext/plain;charset=utf-8rangebytes=0-strict-transport-securitymax-age=31536000max-age=31536000; includesubdomainsmax-age=31536000; includesubdomains; preloadvaryaccept-encodingoriginx-content-type-optionsnosniffx-xss-protection1; mode=block:status100204206302400403421425500accept-languageaccess-control-allow-credentialsFALSETRUEaccess-control-allow-headers*access-control-allow-methodsgetget, post, optionsoptionsaccess-control-expose-headerscontent-lengthaccess-control-request-headerscontent-typeaccess-control-request-methodgetpostalt-svcclearauthorizationcontent-security-policyscript-src 'none'; object-src 'none'; base-uri 'none'early-data1expect-ctforwardedif-rangeoriginpurposeprefetchservertiming-allow-origin*upgrade-insecure-requests1user-agentx-forwarded-forx-frame-optionsdenysameorigin") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+)

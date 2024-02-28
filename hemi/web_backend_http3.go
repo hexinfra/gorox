@@ -356,6 +356,8 @@ type H3Socket struct {
 }
 
 func (s *H3Socket) onUse() {
+	s.webBackendSocket_.onUse()
 }
 func (s *H3Socket) onEnd() {
+	s.webBackendSocket_.onEnd()
 }

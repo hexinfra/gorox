@@ -424,6 +424,12 @@ func (r *http3Response) fixedHeaders() []byte { return nil }
 // poolHTTP3Socket
 var poolHTTP3Socket sync.Pool
 
+func getHTTP3Socket(stream *http3Stream) *http3Socket {
+	return nil
+}
+func putHTTP3Socket(socket *http3Socket) {
+}
+
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
 	// Parent
@@ -435,6 +441,8 @@ type http3Socket struct {
 }
 
 func (s *http3Socket) onUse() {
+	s.webServerSocket_.onUse()
 }
 func (s *http3Socket) onEnd() {
+	s.webServerSocket_.onEnd()
 }

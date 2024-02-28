@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// The name resolver. Resolves DNS and names.
+// The name resolver fixture. Resolves names.
 
 package hemi
 
@@ -56,7 +56,7 @@ func (f *namerFixture) run() { // runner
 	f.stage.DecSub()
 }
 
-func (f *namerFixture) Register(name string, address string) bool {
+func (f *namerFixture) Register(name string, addresses []string) bool {
 	// TODO
 	return false
 }

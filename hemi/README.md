@@ -39,13 +39,13 @@ The logical architecture of a stage in Hemi looks like this:
    |     | e | [tcps] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udps] +--------------+-----------------+     |
    |     | v | router |              |webapp(*) handlet|     |
-   |     | e | dealet |              | socklet reviser |     |
-   |     | r |  case  |  service(*)  |     rule        |     |
+   |     | e | dealet |  service(*)  | socklet reviser |     |
+   |     | r |  case  |              |     rule        |     |
    |     |(*)|        |          +---+--+       +------+     |
    |     |   |        |          |stater|       |cacher|     |
    |     +---+--------+----------+------+-------+------+     |
    |     |                  backend                    |     |
-   |     +                  <node>       +-------------+     |
+   |     |                  <node>       +-------------+     |
    |     |                  <conn>       |   complet   |     |
    |     +-----------+---------------+---+-------------+     |
    |     |   clock   |     fcache    |      namer      |     |

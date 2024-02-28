@@ -2331,6 +2331,12 @@ func (r *http2Response) fixedHeaders() []byte { return nil } // TODO
 // poolHTTP1Socket
 var poolHTTP1Socket sync.Pool
 
+func getHTTP1Socket(stream *http1Stream) *http1Socket {
+	return nil
+}
+func putHTTP1Socket(socket *http1Socket) {
+}
+
 // http1Socket is the server-side HTTP/1 websocket.
 type http1Socket struct {
 	// Parent
@@ -2342,12 +2348,20 @@ type http1Socket struct {
 }
 
 func (s *http1Socket) onUse() {
+	s.webServerSocket_.onUse()
 }
 func (s *http1Socket) onEnd() {
+	s.webServerSocket_.onEnd()
 }
 
 // poolHTTP2Socket
 var poolHTTP2Socket sync.Pool
+
+func getHTTP2Socket(stream *http2Stream) *http2Socket {
+	return nil
+}
+func putHTTP2Socket(socket *http2Socket) {
+}
 
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {
@@ -2360,6 +2374,8 @@ type http2Socket struct {
 }
 
 func (s *http2Socket) onUse() {
+	s.webServerSocket_.onUse()
 }
 func (s *http2Socket) onEnd() {
+	s.webServerSocket_.onEnd()
 }

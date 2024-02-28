@@ -643,6 +643,8 @@ type H1Socket struct {
 }
 
 func (s *H1Socket) onUse() {
+	s.webBackendSocket_.onUse()
 }
 func (s *H1Socket) onEnd() {
+	s.webBackendSocket_.onEnd()
 }

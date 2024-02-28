@@ -3215,6 +3215,8 @@ type webServerSocket_ struct {
 }
 
 func (s *webServerSocket_) onUse() {
+	s.webSocket_.onUse()
 }
 func (s *webServerSocket_) onEnd() {
+	s.webSocket_.onEnd()
 }

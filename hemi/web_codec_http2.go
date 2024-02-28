@@ -12,6 +12,109 @@ import (
 	"sync/atomic"
 )
 
+// HTTP/2 incoming
+
+func (r *webIn_) _growHeaders2(size int32) bool {
+	edge := r.inputEdge + size      // size is ensured to not overflow
+	if edge < int32(cap(r.input)) { // fast path
+		return true
+	}
+	if edge > _16K { // exceeds the max headers limit
+		return false
+	}
+	input := GetNK(int64(edge)) // 4K/16K
+	copy(input, r.input[0:r.inputEdge])
+	if cap(r.input) != cap(r.stockInput) {
+		PutNK(r.input)
+	}
+	r.input = input
+	return true
+}
+
+func (r *webIn_) readContent2() (p []byte, err error) {
+	// TODO
+	return
+}
+
+// HTTP/2 outgoing
+
+func (r *webOut_) addHeader2(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) header2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *webOut_) hasHeader2(name []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) delHeader2(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+func (r *webOut_) delHeaderAt2(i uint8) {
+	// TODO
+}
+
+func (r *webOut_) sendChain2() error {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) echoChain2() error {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) addTrailer2(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *webOut_) trailer2(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *webOut_) trailers2() []byte {
+	// TODO
+	return nil
+}
+
+func (r *webOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
+
+func (r *webOut_) finalizeVague2() error {
+	// TODO
+	if r.nTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
+	return nil
+}
+
+func (r *webOut_) writeHeaders2() error { // used by echo and pass
+	// TODO
+	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	return nil
+}
+func (r *webOut_) writePiece2(piece *Piece, vague bool) error {
+	// TODO
+	return nil
+}
+func (r *webOut_) writeVector2() error {
+	return nil
+}
+func (r *webOut_) writeBytes2(p []byte) error {
+	// TODO
+	return nil
+}
+
+// HTTP/2 websocket
+
+func (s *webSocket_) example2() {
+}
+
+// HTTP/2 protocol
+
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
 	http2MaxFrameSize     = _16K
 	http2MaxTableSize     = _4K
@@ -637,11 +740,6 @@ func (f *http2OutFrame) encodeHeader() (header []byte) { // caller must ensure t
 	return
 }
 
-var ( // HTTP/2 byteses
-	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
-)
-
 var http2Template = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
 var http2Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Control and http3Control!
 	// 1XX
@@ -712,103 +810,7 @@ var http2Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Contr
 	StatusNetworkAuthenticationRequired: []byte(":status 511"),
 }
 
-// HTTP/2 incoming
-
-func (r *webIn_) _growHeaders2(size int32) bool {
-	edge := r.inputEdge + size      // size is ensured to not overflow
-	if edge < int32(cap(r.input)) { // fast path
-		return true
-	}
-	if edge > _16K { // exceeds the max headers limit
-		return false
-	}
-	input := GetNK(int64(edge)) // 4K/16K
-	copy(input, r.input[0:r.inputEdge])
-	if cap(r.input) != cap(r.stockInput) {
-		PutNK(r.input)
-	}
-	r.input = input
-	return true
-}
-
-func (r *webIn_) readContent2() (p []byte, err error) {
-	// TODO
-	return
-}
-
-// HTTP/2 outgoing
-
-func (r *webOut_) addHeader2(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) header2(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *webOut_) hasHeader2(name []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) delHeader2(name []byte) (deleted bool) {
-	// TODO
-	return false
-}
-func (r *webOut_) delHeaderAt2(i uint8) {
-	// TODO
-}
-
-func (r *webOut_) sendChain2() error {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) echoChain2() error {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) addTrailer2(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *webOut_) trailer2(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *webOut_) trailers2() []byte {
-	// TODO
-	return nil
-}
-
-func (r *webOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
-
-func (r *webOut_) finalizeVague2() error {
-	// TODO
-	if r.nTrailers == 1 { // no trailers
-	} else { // with trailers
-	}
-	return nil
-}
-
-func (r *webOut_) writeHeaders2() error { // used by echo and pass
-	// TODO
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
-	return nil
-}
-func (r *webOut_) writePiece2(piece *Piece, vague bool) error {
-	// TODO
-	return nil
-}
-func (r *webOut_) writeVector2() error {
-	return nil
-}
-func (r *webOut_) writeBytes2(p []byte) error {
-	// TODO
-	return nil
-}
-
-// HTTP/2 websocket
-
-func (s *webSocket_) example2() {
-}
+var ( // HTTP/2 byteses
+	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+)

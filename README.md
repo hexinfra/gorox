@@ -178,34 +178,34 @@ A typical deployment architecture using Gorox might looks like this:
                |    |   |
                v    v   v
              +------------+
-+------------| edgeProxy1 |-------------+ gorox cluster
-|            +--+---+--+--+             |
-|    web        |   |  |       tcp      |
-|      +--------+   |  +-------+        |
-|      |            |          |        |
-|      v           rpc         v        |
-|   +------+        |       +------+    |
-|   | app1 +----+   |   +---+ srv1 |    |
-|   +------+    |   |   |   +---+--+    |
-|               |   |   |       |       | stateless layer
-|               v   v   v       v       |
-|  +------+   +----------+  +--------+  |   +------------------+
-|  | svc1 |<->| sidecar1 |  | proxy2 |--+-->| php-fpm / tomcat |
-|  +------+   +----+-----+  +--------+  |   +------------------+
-|                  |                    |
-|                  v                    |
-|  +------+   +----------+   +------+   |
-|  | svc2 |<--+ sidecar2 |   | job1 |   |
-|  +------+   +----------+   +------+   |
-|                                       |
-+-----------+------+---------+----------+
++------------| edgeProxy1 |--------------+ gorox cluster
+|            +--+---+--+--+              |
+|    web        |   |  |       tcp       |
+|      +--------+   |  +-------+         |
+|      |            |          |         |
+|      v           rpc         v         |
+|   +------+        |       +------+     |
+|   | app1 +----+   |   +---+ srv1 |     |
+|   +------+    |   |   |   +---+--+     |
+|               |   |   |       |        | stateless layer
+|               v   v   v       v        |
+|  +------+   +-----------+  +--------+  |   +------------------+
+|  | svc1 |<->| svcProxy1 |  | proxy2 |--+-->| php-fpm / tomcat |
+|  +------+   +-----+-----+  +--------+  |   +------------------+
+|                   |                    |
+|                   v                    |
+|  +------+   +-----------+   +------+   |
+|  | svc2 |<--+ svcProxy2 |   | job1 |   |
+|  +------+   +-----------+   +------+   |
+|                                        |
++-----------+------+---------+-----------+
             |      |         |
             v      v         v
-+---------------------------------------+
-|     +------+  +-----+  +--------+     |
-| ... | db1  |  | mq1 |  | cache1 | ... | stateful layer
-|     +------+  +-----+  +--------+     |
-+---------------------------------------+
++----------------------------------------+
+|     +-------+  +-----+  +--------+     |
+| ... |  db1  |  | mq1 |  | cache1 | ... | stateful layer
+|     +-------+  +-----+  +--------+     |
++----------------------------------------+
 
 ```
 
@@ -216,10 +216,10 @@ of the roles in "gorox cluster":
   * app1      : A Web application implemented directly on Gorox,
   * srv1      : A TCP server implemented directly on Gorox,
   * svc1      : A public RPC service implemented directly on Gorox,
-  * sidecar1  : A sidecar for svc1,
+  * svcProxy1 : A service proxy for svc1,
   * proxy2    : A gateway proxy passing requests to PHP-FPM / Tomcat server,
   * svc2      : A private RPC service implemented directly on Gorox,
-  * sidecar2  : A sidecar for svc2,
+  * svcProxy2 : A service proxy for svc2,
   * job1      : A background application in Gorox doing something periodically.
 
 The whole Gorox cluster can alternatively be managed by a Myrox instance, which

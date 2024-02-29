@@ -11,7 +11,7 @@ import (
 	"errors"
 
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/options/revisers"
+	. "github.com/hexinfra/gorox/hemi/addons/revisers"
 )
 
 func init() {

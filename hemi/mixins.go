@@ -401,7 +401,7 @@ func (n *Node_) Init(id int32, backend Backend) {
 func (n *Node_) setAddress(address string) {
 	if address[0] == '@' { // abstract uds
 		n.udsMode = true
-	} else if _, err := os.Stat(address); err == nil { // normal uds
+	} else if _, err := os.Stat(address); err == nil { // pathname uds
 		n.udsMode = true
 	}
 	n.address = address

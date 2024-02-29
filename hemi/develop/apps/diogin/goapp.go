@@ -6,7 +6,7 @@
 package diogin
 
 import (
-	"github.com/hexinfra/gorox/hemi/options/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/addons/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

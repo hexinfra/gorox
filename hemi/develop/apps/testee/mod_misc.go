@@ -31,14 +31,14 @@ func (h *testeeHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or O
 		}
 	}
 }
-func (h *testeeHandlet) GET_json(req Request, resp Response) {
+func (h *testeeHandlet) GET_json(req Request, resp Response) { // GET /json
 	user := struct {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}{"jack", 25}
 	resp.SendJSON(user)
 }
-func (h *testeeHandlet) PUT_file(req Request, resp Response) {
+func (h *testeeHandlet) PUT_file(req Request, resp Response) { // PUT /file
 	content := req.Content()
 	resp.Send(content)
 }

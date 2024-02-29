@@ -9,9 +9,9 @@ Layout
 
 Hemi uses these directories:
 
+  * addons/   - Place optional addons,
   * common/   - Place general purpose libraries,
   * develop/  - A prototype application used to develop Hemi,
-  * options/  - Place optional components,
   * procmgr/  - A process manager for applications using Hemi,
   * toolkit/  - Place useful commands.
 
@@ -70,7 +70,7 @@ A program (like Gorox) using Hemi typically has the following dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <options>       |-->+              <hemi>             |
+  |       <addons>        |-->+              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

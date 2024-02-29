@@ -28,11 +28,11 @@ COMPONENTS
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)
+    service [*]
     webapp [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)
       socklet (hello, ...)
       rule [*]
-    service [*]
     server (httpxServer, http3Server, echoServer, ...)
     cronjob (clean, stat, ...)

@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -519,7 +520,7 @@ type tcpsGate struct {
 	Gate_
 	// Assocs
 	// States
-	listener *net.TCPListener // the real gate. set after open
+	listener net.Listener // the real gate. set after open
 }
 
 func (g *tcpsGate) init(id int32, router *TCPSRouter) {
@@ -527,6 +528,24 @@ func (g *tcpsGate) init(id int32, router *TCPSRouter) {
 }
 
 func (g *tcpsGate) Open() error {
+	if g.IsUDS() {
+		return g._openUnix()
+	} else {
+		return g._openInet()
+	}
+}
+func (g *tcpsGate) _openUnix() error {
+	address := g.Address()
+	// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
+	// This affects graceful upgrading, maybe we can implement fd transfer in the future.
+	os.Remove(address)
+	listener, err := net.Listen("unix", address)
+	if err == nil {
+		g.listener = listener.(*net.UnixListener)
+	}
+	return err
+}
+func (g *tcpsGate) _openInet() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
 		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
@@ -543,10 +562,75 @@ func (g *tcpsGate) Shut() error {
 	return g.listener.Close()
 }
 
-func (g *tcpsGate) serveTCP() { // runner
+func (g *tcpsGate) serveUDS() { // runner
+	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
 	for {
-		tcpConn, err := g.listener.AcceptTCP()
+		unixConn, err := listener.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncSub()
+		if g.ReachLimit() {
+			g.justClose(unixConn)
+		} else {
+			rawConn, err := unixConn.SyscallConn()
+			if err != nil {
+				g.justClose(unixConn)
+				continue
+			}
+			conn := getTCPSConn(connID, g, unixConn, rawConn)
+			go conn.serve() // conn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("tcpsGate=%d TCP done\n", g.id)
+	}
+	g.server.DecSub()
+}
+func (g *tcpsGate) serveTLS() { // runner
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncSub()
+		if g.ReachLimit() {
+			g.justClose(tcpConn)
+		} else {
+			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+				g.justClose(tlsConn)
+				continue
+			}
+			conn := getTCPSConn(connID, g, tlsConn, nil)
+			go conn.serve() // conn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if Debug() >= 2 {
+		Printf("tcpsGate=%d TLS done\n", g.id)
+	}
+	g.server.DecSub()
+}
+func (g *tcpsGate) serveTCP() { // runner
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := listener.AcceptTCP()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -576,40 +660,6 @@ func (g *tcpsGate) serveTCP() { // runner
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
-}
-func (g *tcpsGate) serveTLS() { // runner
-	connID := int64(0)
-	for {
-		tcpConn, err := g.listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				continue
-			}
-		}
-		g.IncSub()
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
-			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-				g.justClose(tlsConn)
-				continue
-			}
-			conn := getTCPSConn(connID, g, tlsConn, nil)
-			go conn.serve() // conn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
-		Printf("tcpsGate=%d TLS done\n", g.id)
-	}
-	g.server.DecSub()
-}
-func (g *tcpsGate) serveUDS() { // runner
-	// TODO
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {

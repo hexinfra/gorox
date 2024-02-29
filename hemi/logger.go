@@ -22,7 +22,7 @@ type logcfg struct {
 	bufSize int
 }
 
-// logger is logger for routers, webapps, and services.
+// logger is logger for routers, services, and webapps.
 type logger struct {
 	file   *os.File
 	queue  chan string

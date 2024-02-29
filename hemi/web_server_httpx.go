@@ -18,6 +18,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -167,7 +168,11 @@ func (g *httpxGate) Open() error {
 	}
 }
 func (g *httpxGate) _openUnix() error {
-	listener, err := net.Listen("unix", g.Address())
+	address := g.Address()
+	// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
+	// This affects graceful upgrading, maybe we can implement fd transfer in the future.
+	os.Remove(address)
+	listener, err := net.Listen("unix", address)
 	if err == nil {
 		g.listener = listener.(*net.UnixListener)
 		if Debug() >= 1 {

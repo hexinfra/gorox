@@ -56,6 +56,14 @@ func (g *hrpcGate) Open() error {
 	// TODO
 	return nil
 }
+func (g *hrpcGate) _openUnix() error {
+	// TODO
+	return nil
+}
+func (g *hrpcGate) _openInet() error {
+	// TODO
+	return nil
+}
 func (g *hrpcGate) Shut() error {
 	g.MarkShut()
 	// TODO

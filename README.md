@@ -6,7 +6,7 @@ Welcome to Gorox!
 Gorox is a pragmatic Webapp Server, RPC Framework, and Network Proxy. It can be
 used as:
 
-  * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)
+  * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi, AJP)
   * Go Application Server (Frameworks, Applications)
   * RPC Framework for Go (HRPC, gRPC)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
@@ -47,24 +47,41 @@ Other platforms are currently not tested and probably don't work.
 Quickstart
 ==========
 
-To start using Gorox, you can download the official binary distributions. If you
-need to build from source, please ensure you have Go >= 1.20 installed:
+Use Gorox as a Network Proxy
+----------------------------
+
+If you would like to use Gorox as a Network Proxy, you can download the official
+binary distribution and read the "Start and stop Gorox" section below. But if
+you need to build it from source, please read below.
+
+
+Use Gorox as a Webapp Server or RPC Framework
+---------------------------------------------
+
+When using Gorox as a Webapp Server or RPC Framework, you need to build it from
+source. Before building, please ensure you have Go >= 1.20 installed:
 
     shell> go version
 
-Then build Gorox with Go (replace x.y.z as version number):
+Then download the source code tarball, uncompress it, and build it with Go:
 
     shell> cd gorox-x.y.z
     shell> go build
 
-If build failed, set CGO_ENABLED=0 and build again:
+If build failed, set CGO_ENABLED=0 and try again:
 
     shell> go env -w CGO_ENABLED=0
     shell> go build
 
-After you have successfully built binaries from source, or have downloaded and
-uncompressed the official binary distributions, you can run Gorox as a daemon
-(remove the "-daemon" option if you don't like to run as a daemon):
+On succeed, a "gorox" or "gorox.exe" binary will be generated.
+
+
+Start and stop Gorox
+--------------------
+
+After you have downloaded and uncompressed the official binary distribution, or
+have successfully built the binary from source, you can run Gorox as a daemon
+(or remove the "-daemon" option if you don't like to run as a daemon):
 
     shell> ./gorox serve -daemon
 
@@ -72,7 +89,7 @@ To ensure the leader and the worker process have been both started:
 
     shell> ./gorox pids
 
-Now visit http://localhost:3080 to check if it works. To exit server gracefully:
+Now visit http://localhost:3080 to see if it works. To exit server gracefully:
 
     shell> ./gorox quit
 
@@ -80,8 +97,18 @@ For more actions and options, run:
 
     shell> ./gorox help
 
-To install, move the whole Gorox directory to where you like. To uninstall, just
-remove the whole Gorox directory.
+To install, move the whole Gorox directory to where you like. To uninstall,
+simply remove the whole Gorox directory.
+
+
+More usage examples
+-------------------
+
+We provide some example configs for Gorox to use, see them under conf/examples.
+For example, if you are using Gorox as an HTTP reverse proxy, there is a demo
+in conf/examples/http_proxy.conf, you can modify it and start Gorox like:
+
+    shell> ./gorox -daemon -config conf/examples/http_proxy.conf
 
 
 Performance

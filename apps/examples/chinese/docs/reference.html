@@ -126,29 +126,30 @@ article table.none tr td {
 		<li>stage &gt; redisStater</li>
 		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
 		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
+		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
 		<li><a href="#stage-webapp-accessChecker">stage &gt; webapp &gt; [rule &gt;] accessChecker</a></li>
+		<li><a href="#stage-webapp-ajpProxy">stage &gt; webapp &gt; [rule &gt;] ajpProxy</a></li>
 		<li><a href="#stage-webapp-hostnameChecker">stage &gt; webapp &gt; [rule &gt;] hostnameChecker</a></li>
 		<li><a href="#stage-webapp-httpsChecker">stage &gt; webapp &gt; [rule &gt;] httpsChecker</a></li>
-		<li> <a href="#stage-webapp-limitChecker">stage &gt; webapp &gt; [rule &gt;] limitChecker</a></li>
-		<li> <a href="#stage-webapp-refererChecker">stage &gt; webapp &gt; [rule &gt;] refererChecker</a></li>
-		<li> <a href="#stage-webapp-rewriter">stage &gt; webapp &gt; [rule &gt;] rewriter</a></li>
-		<li> <a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
-		<li> <a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
-		<li> <a href="#stage-webapp-httpProxy">stage &gt; webapp &gt; [rule &gt;] httpProxy</a></li>
-		<li> <a href="#stage-webapp-sitex">stage &gt; webapp &gt; [rule &gt;] sitex</a></li>
-		<li> <a href="#stage-webapp-static">stage &gt; webapp &gt; [rule &gt;] static</a></li>
-		<li> <a href="#stage-webapp-uwsgiProxy">stage &gt; webapp &gt; [rule &gt;] uwsgiProxy</a></li>
-		<li> <a href="#stage-webapp-webdavHandlet">stage &gt; webapp &gt; [rule &gt;] webdavHandlet</a></li>
-		<li> <a href="#stage-webapp-gzipReviser">stage &gt; webapp &gt; [rule &gt;] gzipReviser</a></li>
-		<li> <a href="#stage-webapp-headReviser">stage &gt; webapp &gt; [rule &gt;] headReviser</a></li>
-		<li> <a href="#stage-webapp-replaceReviser">stage &gt; webapp &gt; [rule &gt;] replaceReviser</a></li>
-		<li> <a href="#stage-webapp-ssiReviser">stage &gt; webapp &gt; [rule &gt;] ssiReviser</a></li>
-		<li> <a href="#stage-webapp-wrapReviser">stage &gt; webapp &gt; [rule &gt;] wrapReviser</a></li>
-		<li> <a href="#stage-webapp-helloSocklet">stage &gt; webapp &gt; [rule &gt;] helloSocklet</a></li>
-		<li> <a href="#stage-webapp-sockProxy">stage &gt; webapp &gt; [rule &gt;] sockProxy</a></li>
-		<li><a href="#stage-service">stage &gt; service</a></li>
+		<li><a href="#stage-webapp-limitChecker">stage &gt; webapp &gt; [rule &gt;] limitChecker</a></li>
+		<li><a href="#stage-webapp-refererChecker">stage &gt; webapp &gt; [rule &gt;] refererChecker</a></li>
+		<li><a href="#stage-webapp-rewriter">stage &gt; webapp &gt; [rule &gt;] rewriter</a></li>
+		<li><a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
+		<li><a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
+		<li><a href="#stage-webapp-httpProxy">stage &gt; webapp &gt; [rule &gt;] httpProxy</a></li>
+		<li><a href="#stage-webapp-sitex">stage &gt; webapp &gt; [rule &gt;] sitex</a></li>
+		<li><a href="#stage-webapp-static">stage &gt; webapp &gt; [rule &gt;] static</a></li>
+		<li><a href="#stage-webapp-uwsgiProxy">stage &gt; webapp &gt; [rule &gt;] uwsgiProxy</a></li>
+		<li><a href="#stage-webapp-webdavHandlet">stage &gt; webapp &gt; [rule &gt;] webdavHandlet</a></li>
+		<li><a href="#stage-webapp-gzipReviser">stage &gt; webapp &gt; [rule &gt;] gzipReviser</a></li>
+		<li><a href="#stage-webapp-headReviser">stage &gt; webapp &gt; [rule &gt;] headReviser</a></li>
+		<li><a href="#stage-webapp-replaceReviser">stage &gt; webapp &gt; [rule &gt;] replaceReviser</a></li>
+		<li><a href="#stage-webapp-ssiReviser">stage &gt; webapp &gt; [rule &gt;] ssiReviser</a></li>
+		<li><a href="#stage-webapp-wrapReviser">stage &gt; webapp &gt; [rule &gt;] wrapReviser</a></li>
+		<li><a href="#stage-webapp-helloSocklet">stage &gt; webapp &gt; [rule &gt;] helloSocklet</a></li>
+		<li><a href="#stage-webapp-sockProxy">stage &gt; webapp &gt; [rule &gt;] sockProxy</a></li>
 		<li><a href="#stage-echoServer">stage &gt; echoServer</a></li>
 		<li><a href="#stage-httpxServer">stage &gt; httpxServer</a></li>
 		<li><a href="#stage-http3Server">stage &gt; http3Server</a></li>
@@ -175,7 +176,7 @@ article table.none tr td {
 	}
 
 	httpxServer "main" {
-		.forApps = ("example")
+		.webapps = ("example")
 		.address = ":3080"
 	}
 }</code>
@@ -345,7 +346,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	}
 
 	httpxServer "main" {
-		.forApps = ("proxy")
+		.webapps = ("proxy")
 		.address = ":3080"
 	}
 }
@@ -514,6 +515,10 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			</ul>
 		</li>
 
+		<li id="stage-service">
+			<h4>stage &gt; service </h4>
+		</li>
+
 		<li id="stage-webapp">
 			<h4>stage &gt; webapp </h4>
 			<p>webapp：Web 应用的配置说明。</p>
@@ -561,7 +566,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	}
 
 	httpxServer "main" {
-		.forApps = ("proxy")
+		.webapps = ("proxy")
 		.address = ":80"
 	}
 }</code>
@@ -967,6 +972,10 @@ webapp "main" {
 
 		<li id="stage-webapp-favicon">
 			<h4>stage &gt; webapp &gt; favicon </h4>
+		</li>
+
+		<li id="stage-webapp-ajpProxy">
+			<h4>stage &gt; webapp &gt; ajpProxy </h4>
 		</li>
 
 		<li id="stage-webapp-uwsgiProxy">
@@ -1423,10 +1432,6 @@ httpProxy {
 			<h4>stage &gt; webapp &gt; sockProxy </h4>
 		</li>
 
-		<li id="stage-service">
-			<h4>stage &gt; service </h4>
-		</li>
-
 		<li id="stage-httpxServer">
 			<h4>stage &gt; httpxServer </h4>
 			<p>httpxServer gorox 中对 http1.1 和 http2 服务端配置。</p>
@@ -1446,7 +1451,7 @@ httpProxy {
 		.writeTimeout = 60s
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConnsPerGate = 10000
-		.forApps = ("example_com")
+		.webapps = ("example_com")
 		.maxContentSizeAllowed = 1T
 		.recvTimeout = 120s
 		.sendTimeout = 120s
@@ -1499,8 +1504,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.forApps 当前 httpxServer 应用于那些 Webapp。</p>
-					<code>语法：.forApps = ("test", "test2")
+					<p>.webapps 当前 httpxServer 应用于那些 Webapp。</p>
+					<code>语法：.webapps = ("test", "test2")
 						默认值：nil
 					</code>
 				</li>

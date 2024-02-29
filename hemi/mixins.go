@@ -106,7 +106,7 @@ func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
 func (s *Server_[G]) OnShutdown() {
 	// We don't use close(s.ShutChan) to notify gates.
 	for _, gate := range s.gates {
-		gate.Shut() // this causes gate to return immediately
+		gate.Shut() // this causes gate to close and return immediately
 	}
 }
 
@@ -572,6 +572,31 @@ func (s *Stream_) onEnd() { // for zeros
 func (s *Stream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *Stream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
+// streamHolder
+type streamHolder interface {
+	MaxStreamsPerConn() int32
+}
+
+// _streamHolder_ is a mixin.
+type _streamHolder_ struct {
+	// States
+	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
+}
+
+func (s *_streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
+	// maxStreamsPerConn
+	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, defaultMaxStreams)
+}
+func (s *_streamHolder_) onPrepare(shell Component) {
+}
+
+func (s *_streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
+
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
@@ -602,31 +627,6 @@ func (s *_contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-
-// streamHolder
-type streamHolder interface {
-	MaxStreamsPerConn() int32
-}
-
-// _streamHolder_ is a mixin.
-type _streamHolder_ struct {
-	// States
-	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
-}
-
-func (s *_streamHolder_) onConfigure(shell Component, defaultMaxStreams int32) {
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, defaultMaxStreams)
-}
-func (s *_streamHolder_) onPrepare(shell Component) {
-}
-
-func (s *_streamHolder_) MaxStreamsPerConn() int32 { return s.maxStreamsPerConn }
 
 // _loadBalancer_ is a mixin.
 type _loadBalancer_ struct {

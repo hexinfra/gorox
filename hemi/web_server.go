@@ -48,7 +48,7 @@ type webServer_[G webGate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	forApps           []string               // for what webapps
+	webapps           []string               // for what webapps
 	exactApps         []*hostnameTo[*Webapp] // like: ("example.com")
 	suffixApps        []*hostnameTo[*Webapp] // like: ("*.example.com")
 	prefixApps        []*hostnameTo[*Webapp] // like: ("www.example.*")
@@ -69,8 +69,8 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 	s._streamHolder_.onConfigure(shell, 1000)
 	s._contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
 
-	// forApps
-	s.ConfigureStringList("forApps", &s.forApps, nil, []string{})
+	// webapps
+	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 
 	// udsColonPort
 	s.ConfigureString("udsColonPort", &s.udsColonPort, nil, ":80")
@@ -99,7 +99,7 @@ func (s *webServer_[G]) ColonPortBytes() []byte { // override
 }
 
 func (s *webServer_[G]) bindApps() {
-	for _, appName := range s.forApps {
+	for _, appName := range s.webapps {
 		webapp := s.stage.Webapp(appName)
 		if webapp == nil {
 			continue

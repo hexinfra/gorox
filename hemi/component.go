@@ -34,12 +34,12 @@ const ( // component list
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
+	compService               // service
 	compWebapp                // webapp
 	compHandlet               // static, ...
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
-	compService               // service
 	compServer                // httpxServer, echoServer, ...
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
@@ -50,9 +50,9 @@ var signedComps = map[string]int16{ // static comps. more dynamic comps are sign
 	"tcpsRouter": compTCPSRouter,
 	"udpsRouter": compUDPSRouter,
 	"case":       compCase,
+	"service":    compService,
 	"webapp":     compWebapp,
 	"rule":       compRule,
-	"service":    compService,
 }
 
 func signComp(sign string, comp int16) {
@@ -148,18 +148,18 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 
 var (
 	initsLock    sync.RWMutex
-	webappInits  = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
 	serviceInits = make(map[string]func(service *Service) error) // indexed by service name.
+	webappInits  = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
 )
 
-func RegisterWebappInit(name string, init func(webapp *Webapp) error) {
-	initsLock.Lock()
-	webappInits[name] = init
-	initsLock.Unlock()
-}
 func RegisterServiceInit(name string, init func(service *Service) error) {
 	initsLock.Lock()
 	serviceInits[name] = init
+	initsLock.Unlock()
+}
+func RegisterWebappInit(name string, init func(webapp *Webapp) error) {
+	initsLock.Lock()
+	webappInits[name] = init
 	initsLock.Unlock()
 }
 
@@ -351,8 +351,8 @@ type Stage struct {
 	udpsRouters compDict[*UDPSRouter] // indexed by routerName
 	staters     compDict[Stater]      // indexed by staterName
 	cachers     compDict[Cacher]      // indexed by cacherName
-	webapps     compDict[*Webapp]     // indexed by webappName
 	services    compDict[*Service]    // indexed by serviceName
+	webapps     compDict[*Webapp]     // indexed by webappName
 	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by cronjobName
 	// States
@@ -383,8 +383,8 @@ func (s *Stage) onCreate() {
 	s.udpsRouters = make(compDict[*UDPSRouter])
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
-	s.webapps = make(compDict[*Webapp])
 	s.services = make(compDict[*Service])
+	s.webapps = make(compDict[*Webapp])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
 }
@@ -403,10 +403,10 @@ func (s *Stage) OnShutdown() {
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
-	// services & webapps
-	s.SubsAddn(len(s.services) + len(s.webapps))
-	s.services.goWalk((*Service).OnShutdown)
+	// webapps & services
+	s.SubsAddn(len(s.webapps) + len(s.services))
 	s.webapps.goWalk((*Webapp).OnShutdown)
+	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
 	// cachers & staters
@@ -503,8 +503,8 @@ func (s *Stage) OnConfigure() {
 	s.udpsRouters.walk((*UDPSRouter).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
-	s.webapps.walk((*Webapp).OnConfigure)
 	s.services.walk((*Service).OnConfigure)
+	s.webapps.walk((*Webapp).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
@@ -524,8 +524,8 @@ func (s *Stage) OnPrepare() {
 	s.udpsRouters.walk((*UDPSRouter).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
-	s.webapps.walk((*Webapp).OnPrepare)
 	s.services.walk((*Service).OnPrepare)
+	s.webapps.walk((*Webapp).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
@@ -612,16 +612,6 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	s.cachers[name] = cacher
 	return cacher
 }
-func (s *Stage) createWebapp(name string) *Webapp {
-	if s.Webapp(name) != nil {
-		UseExitf("conflicting webapp with a same name '%s'\n", name)
-	}
-	webapp := new(Webapp)
-	webapp.onCreate(name, s)
-	webapp.setShell(webapp)
-	s.webapps[name] = webapp
-	return webapp
-}
 func (s *Stage) createService(name string) *Service {
 	if s.Service(name) != nil {
 		UseExitf("conflicting service with a same name '%s'\n", name)
@@ -631,6 +621,16 @@ func (s *Stage) createService(name string) *Service {
 	service.setShell(service)
 	s.services[name] = service
 	return service
+}
+func (s *Stage) createWebapp(name string) *Webapp {
+	if s.Webapp(name) != nil {
+		UseExitf("conflicting webapp with a same name '%s'\n", name)
+	}
+	webapp := new(Webapp)
+	webapp.onCreate(name, s)
+	webapp.setShell(webapp)
+	s.webapps[name] = webapp
+	return webapp
 }
 func (s *Stage) createServer(sign string, name string) Server {
 	if s.Server(name) != nil {
@@ -671,8 +671,8 @@ func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name]
 func (s *Stage) UDPSRouter(name string) *UDPSRouter { return s.udpsRouters[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
 func (s *Stage) Service(name string) *Service       { return s.services[name] }
+func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
 
@@ -712,8 +712,8 @@ func (s *Stage) Start(id int32) {
 		UseExitln(err.Error())
 	}
 
-	s.bindServerWebapps()
 	s.bindServerServices()
+	s.bindServerWebapps()
 
 	// Prepare all components
 	if err := s.prepare(); err != nil {
@@ -727,8 +727,8 @@ func (s *Stage) Start(id int32) {
 	s.startRouters()  // go router.serve()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
-	s.startWebapps()  // go webapp.maintain()
 	s.startServices() // go service.maintain()
+	s.startWebapps()  // go webapp.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 }
@@ -739,16 +739,6 @@ func (s *Stage) Quit() {
 	}
 }
 
-func (s *Stage) bindServerWebapps() {
-	if Debug() >= 1 {
-		Println("bind webapps to web servers")
-	}
-	for _, server := range s.servers {
-		if webServer, ok := server.(webServer); ok {
-			webServer.bindApps()
-		}
-	}
-}
 func (s *Stage) bindServerServices() {
 	if Debug() >= 1 {
 		Println("bind services to rpc servers")
@@ -756,6 +746,16 @@ func (s *Stage) bindServerServices() {
 	for _, server := range s.servers {
 		if rpcServer, ok := server.(rpcServer); ok {
 			rpcServer.BindServices()
+		}
+	}
+}
+func (s *Stage) bindServerWebapps() {
+	if Debug() >= 1 {
+		Println("bind webapps to web servers")
+	}
+	for _, server := range s.servers {
+		if webServer, ok := server.(webServer); ok {
+			webServer.bindApps()
 		}
 	}
 }
@@ -820,20 +820,20 @@ func (s *Stage) startCachers() {
 		go cacher.Maintain()
 	}
 }
-func (s *Stage) startWebapps() {
-	for _, webapp := range s.webapps {
-		if Debug() >= 1 {
-			Printf("webapp=%s go maintain()\n", webapp.Name())
-		}
-		go webapp.maintain()
-	}
-}
 func (s *Stage) startServices() {
 	for _, service := range s.services {
 		if Debug() >= 1 {
 			Printf("service=%s go maintain()\n", service.Name())
 		}
 		go service.maintain()
+	}
+}
+func (s *Stage) startWebapps() {
+	for _, webapp := range s.webapps {
+		if Debug() >= 1 {
+			Printf("webapp=%s go maintain()\n", webapp.Name())
+		}
+		go webapp.maintain()
 	}
 }
 func (s *Stage) startServers() {

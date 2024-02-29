@@ -260,10 +260,10 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseStater(current, stage)
 		case compCacher:
 			c.parseCacher(current, stage)
-		case compWebapp:
-			c.parseWebapp(current, stage)
 		case compService:
 			c.parseService(current, stage)
+		case compWebapp:
+			c.parseWebapp(current, stage)
 		case compServer:
 			c.parseServer(current, stage)
 		case compCronjob:
@@ -456,6 +456,13 @@ func (c *config) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
 func (c *config) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
+func (c *config) parseService(sign *token, stage *Stage) { // service <name> {}
+	serviceName := c.forwardExpect(tokenString)
+	service := stage.createService(serviceName.text)
+	service.setParent(stage)
+	c.forward()
+	c._parseLeaf(service)
+}
 func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 	webappName := c.forwardExpect(tokenString)
 	webapp := stage.createWebapp(webappName.text)
@@ -575,13 +582,6 @@ func (c *config) parseRuleCond(rule *Rule) {
 	}
 	cond.compare = compare.text
 	rule.setInfo(cond)
-}
-func (c *config) parseService(sign *token, stage *Stage) { // service <name> {}
-	serviceName := c.forwardExpect(tokenString)
-	service := stage.createService(serviceName.text)
-	service.setParent(stage)
-	c.forward()
-	c._parseLeaf(service)
 }
 func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)

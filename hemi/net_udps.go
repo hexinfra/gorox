@@ -389,6 +389,14 @@ func (g *udpsGate) Open() error {
 	// TODO
 	return nil
 }
+func (g *udpsGate) _openUnix() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) _openInet() error {
+	// TODO
+	return nil
+}
 func (g *udpsGate) Shut() error {
 	g.shut.Store(true)
 	// TODO

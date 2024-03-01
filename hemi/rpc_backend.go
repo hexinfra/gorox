@@ -71,18 +71,18 @@ func (c *rpcBackendConn_) onPut() {
 
 func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.Backend().(rpcBackend) }
 
-// rpcBackendStream_
-type rpcBackendStream_ struct {
+// rpcBackendExchan_
+type rpcBackendExchan_ struct {
 	// Parent
 	Stream_
 	// TODO
 }
 
-func (s *rpcBackendStream_) onUse() {
-	s.Stream_.onUse()
+func (x *rpcBackendExchan_) onUse() {
+	x.Stream_.onUse()
 }
-func (s *rpcBackendStream_) onEnd() {
-	s.Stream_.onEnd()
+func (x *rpcBackendExchan_) onEnd() {
+	x.Stream_.onEnd()
 }
 
 // rpcBackendRequest_

@@ -80,36 +80,36 @@ type hrpcConn struct {
 	rpcServerConn_
 }
 
-// hrpcStream is the server-side HRPC stream.
-type hrpcStream struct {
+// hrpcExchan is the server-side HRPC exchan.
+type hrpcExchan struct {
 	// Mixins
-	rpcServerStream_
+	rpcServerExchan_
 	// Assocs
 	request  hrpcRequest
 	response hrpcResponse
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	gate *hrpcGate
-	// Stream states (zeros)
+	// Exchan states (zeros)
 }
 
 // hrpcRequest is the server-side HRPC request.
 type hrpcRequest struct {
 	// Mixins
 	rpcServerRequest_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 // hrpcResponse is the server-side HRPC response.
 type hrpcResponse struct {
 	// Mixins
 	rpcServerResponse_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }

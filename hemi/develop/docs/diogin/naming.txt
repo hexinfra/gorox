@@ -24,7 +24,7 @@ COMPONENTS
     complet (...)
     backend (http1Backend, tcpsBackend, ...)
     router (quixRouter, tcpsRouter, udpsRouter)
-      dealet (...)
+      dealet (quixProxy, tcpsProxy, udpsProxy, ...)
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)

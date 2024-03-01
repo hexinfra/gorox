@@ -26,8 +26,8 @@ type rpcConn interface {
 	// TODO
 }
 
-// rpcStream is the interface for *hrpcStream and *HStream.
-type rpcStream interface {
+// rpcExchan is the interface for *hrpcExchan and *HExchan.
+type rpcExchan interface {
 	// TODO
 }
 
@@ -65,8 +65,8 @@ func (a *_rpcAgent_) SendTimeout() time.Duration { return a.sendTimeout }
 type _rpcConn_ struct {
 }
 
-// _rpcStream_
-type _rpcStream_ struct {
+// _rpcExchan_
+type _rpcExchan_ struct {
 }
 
 // rpcIn is the interface for *hrpcRequest and *HResponse. Used as shell by rpcIn_.

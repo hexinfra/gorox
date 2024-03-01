@@ -15,7 +15,7 @@ used as:
   * SOCKS Proxy, HTTP Tunnel Proxy (TCP, UDP)
   * ... and more through its highly extensible compoments design!
 
-For more details about Gorox, please see: https://gorox.io/ .
+For more details about Gorox, see: https://gorox.io/.
 
 
 Motivation
@@ -47,16 +47,16 @@ Other platforms are currently not tested and probably don't work.
 Quickstart
 ==========
 
-Use Gorox as a Network Proxy
-----------------------------
+Using Gorox as a Network Proxy
+------------------------------
 
 If you would like to use Gorox as a Network Proxy, you can download the official
 binary distribution and read the "Start and stop Gorox" section below. But if
 you need to build it from source, please read below.
 
 
-Use Gorox as a Webapp Server or RPC Framework
----------------------------------------------
+Using Gorox as a Webapp Server or RPC Framework
+-----------------------------------------------
 
 When using Gorox as a Webapp Server or RPC Framework, you need to build it from
 source. Before building, please ensure you have Go >= 1.20 installed:
@@ -68,7 +68,7 @@ Then download the source code tarball, uncompress it, and build it with Go:
     shell> cd gorox-x.y.z
     shell> go build
 
-If build failed, set CGO_ENABLED=0 and try again:
+If build failed, set CGO_ENABLED to 0 and try again:
 
     shell> go env -w CGO_ENABLED=0
     shell> go build

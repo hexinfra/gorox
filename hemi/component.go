@@ -166,10 +166,10 @@ func RegisterWebappInit(name string, init func(webapp *Webapp) error) {
 // Component is the interface for all components.
 type Component interface {
 	MakeComp(name string)
-	OnShutdown()
-	DecSub() // sub components call this
-
 	Name() string
+
+	OnShutdown()
+	DecSub() // called by sub components
 
 	OnConfigure()
 	Find(name string) (value Value, ok bool)
@@ -200,13 +200,13 @@ type Component interface {
 // Component_ is the parent for all components.
 type Component_ struct {
 	// Mixins
-	_subsWaiter_
-	_shutdownable_
+	_subsWaiter_   // components can have sub components
+	_shutdownable_ // to support shutdown
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
 	// States
-	name  string           // main, ...
+	name  string           // main, proxy1, ...
 	props map[string]Value // name1=value1, ...
 	info  any              // extra info about this component, used by config
 }
@@ -340,10 +340,10 @@ type Stage struct {
 	// Parent
 	Component_
 	// Assocs
-	fixtures    compDict[fixture]     // indexed by sign
 	clock       *clockFixture         // for fast accessing
 	fcache      *fcacheFixture        // for fast accessing
 	namer       *namerFixture         // for fast accessing
+	fixtures    compDict[fixture]     // indexed by sign
 	complets    compDict[Complet]     // indexed by completName
 	backends    compDict[Backend]     // indexed by backendName
 	quixRouters compDict[*QUIXRouter] // indexed by routerName
@@ -375,7 +375,6 @@ func (s *Stage) onCreate() {
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signNamer] = s.namer
-
 	s.complets = make(compDict[Complet])
 	s.backends = make(compDict[Backend])
 	s.quixRouters = make(compDict[*QUIXRouter])
@@ -659,11 +658,10 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) Clock() *clockFixture        { return s.clock }
-func (s *Stage) Fcache() *fcacheFixture      { return s.fcache }
-func (s *Stage) Namer() *namerFixture        { return s.namer }
-func (s *Stage) fixture(sign string) fixture { return s.fixtures[sign] }
-
+func (s *Stage) Clock() *clockFixture               { return s.clock }
+func (s *Stage) Fcache() *fcacheFixture             { return s.fcache }
+func (s *Stage) Namer() *namerFixture               { return s.namer }
+func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Complet(name string) Complet        { return s.complets[name] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUIXRouter(name string) *QUIXRouter { return s.quixRouters[name] }
@@ -707,11 +705,12 @@ func (s *Stage) Start(id int32) {
 		EnvExitln(err.Error())
 	}
 
-	// Configure all components
+	// Configure all components in current stage
 	if err := s.configure(); err != nil {
 		UseExitln(err.Error())
 	}
 
+	// Bind services and webapps to servers
 	s.bindServerServices()
 	s.bindServerWebapps()
 

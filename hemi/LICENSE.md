@@ -1,4 +1,4 @@
-The Hemi engine is distributed under the following license:  
+The Hemi engine is distributed under the 2-clause BSD license:  
 
 Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.  
 Copyright (c) 2022-2024 HexInfra Co., Ltd.  

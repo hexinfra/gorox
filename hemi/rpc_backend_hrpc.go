@@ -75,37 +75,37 @@ func (c *HConn) Close() error {
 	return nil
 }
 
-// HStream is the backend-side HRPC stream.
-type HStream struct {
+// HExchan is the backend-side HRPC exchan.
+type HExchan struct {
 	// Parent
-	rpcBackendStream_
+	rpcBackendExchan_
 	// Assocs
 	request  HRequest
 	response HResponse
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	node *hrpcNode
 	id   int32
-	// Stream states (zeros)
+	// Exchan states (zeros)
 }
 
 // HRequest is the backend-side HRPC request.
 type HRequest struct {
 	// Parent
 	rpcBackendRequest_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }
 
 // HResponse is the backend-side HRPC response.
 type HResponse struct {
 	// Parent
 	rpcBackendResponse_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 }

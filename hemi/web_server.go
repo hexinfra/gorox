@@ -18,8 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // webServer
@@ -492,7 +490,7 @@ func (r *webServerRequest_) onEnd() { // for zeros
 		if upfile.metaSet() {
 			filePath = upfile.Path()
 		} else {
-			filePath = risky.WeakString(r.array[upfile.pathFrom : upfile.pathFrom+int32(upfile.pathSize)])
+			filePath = WeakString(r.array[upfile.pathFrom : upfile.pathFrom+int32(upfile.pathSize)])
 		}
 		if err := os.Remove(filePath); err != nil {
 			r.webapp.Logf("failed to remove uploaded file: %s, error: %s\n", filePath, err.Error())
@@ -657,7 +655,7 @@ func (r *webServerRequest_) makeAbsPath() {
 func (r *webServerRequest_) getPathInfo() os.FileInfo {
 	if !r.pathInfoGot {
 		r.pathInfoGot = true
-		if pathInfo, err := os.Stat(risky.WeakString(r.absPath)); err == nil {
+		if pathInfo, err := os.Stat(WeakString(r.absPath)); err == nil {
 			r.pathInfo = pathInfo
 		}
 	}
@@ -2071,7 +2069,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 						part.base.edge = r.arrayEdge
 
 						part.path.from = r.arrayEdge
-						if !r.arrayCopy(risky.ConstBytes(r.saveContentFilesDir())) { // add "/path/to/"
+						if !r.arrayCopy(ConstBytes(r.saveContentFilesDir())) { // add "/path/to/"
 							r.stream.markBroken()
 							return
 						}
@@ -2140,7 +2138,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 			part.upfile.baseSize, part.upfile.baseFrom = uint8(part.base.size()), part.base.from
 			part.upfile.typeSize, part.upfile.typeFrom = uint8(part.type_.size()), part.type_.from
 			part.upfile.pathSize, part.upfile.pathFrom = uint8(part.path.size()), part.path.from
-			if osFile, err := os.OpenFile(risky.WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
+			if osFile, err := os.OpenFile(WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
 				if Debug() >= 2 {
 					Println("OPENED")
 				}
@@ -2770,7 +2768,7 @@ func (r *webServerResponse_) SendNotFound(content []byte) error { // 404
 	return r.sendError(StatusNotFound, content)
 }
 func (r *webServerResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
-	r.AddHeaderBytes(bytesAllow, risky.ConstBytes(allow))
+	r.AddHeaderBytes(bytesAllow, ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
 func (r *webServerResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416

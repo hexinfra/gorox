@@ -17,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {
@@ -1076,7 +1074,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			} else if isFile { // file not found
 				resp.SendNotFound(h.webapp.text404)
 			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
-				if dir, err := os.Open(risky.WeakString(fullPath[:pathSize])); err == nil {
+				if dir, err := os.Open(WeakString(fullPath[:pathSize])); err == nil {
 					h.listDir(dir, resp)
 					dir.Close()
 				} else if !os.IsNotExist(err) {
@@ -1115,7 +1113,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		return true
 	}
 	contentType := h.defaultType
-	filePath := risky.WeakString(openPath)
+	filePath := WeakString(openPath)
 	if p := strings.LastIndex(filePath, "."); p >= 0 {
 		ext := filePath[p+1:]
 		if mimeType, ok := h.mimeTypes[ext]; ok {
@@ -1123,7 +1121,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
-		resp.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+		resp.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
 		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
 		if Debug() >= 2 { // TODO
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))

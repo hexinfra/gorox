@@ -22,7 +22,7 @@ type udpsProxy struct {
 	// Assocs
 	stage   *Stage // current stage
 	router  *UDPSRouter
-	backend *UDPSBackend
+	backend *UDPSBackend // the backend to pass to
 	// States
 }
 

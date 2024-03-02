@@ -24,8 +24,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {
@@ -1317,7 +1315,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
 	n += r.exchan.makeTempName(filePath[n:], r.recvTime.Unix())
-	return os.OpenFile(risky.WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
+	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	now := time.Now()

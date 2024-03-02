@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 const ( // units & sizes
@@ -84,6 +85,13 @@ func PutNK(p []byte) {
 	default:
 		BugExitln("bad buffer")
 	}
+}
+
+func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* mutate s through p!
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}
+func WeakString(p []byte) (s string) { // WARNING: *DO NOT* mutate p while s is in use!
+	return unsafe.String(unsafe.SliceData(p), len(p))
 }
 
 func hexToI64(hex []byte) (int64, bool) {

@@ -14,8 +14,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 func init() {
@@ -122,7 +120,7 @@ func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {
 	f.rwMutex.RLock()
 	defer f.rwMutex.RUnlock()
 
-	if entry, ok := f.entries[risky.WeakString(path)]; ok {
+	if entry, ok := f.entries[WeakString(path)]; ok {
 		if entry.isLarge() {
 			entry.addRef()
 		}

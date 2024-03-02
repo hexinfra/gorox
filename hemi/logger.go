@@ -10,8 +10,6 @@ package hemi
 import (
 	"fmt"
 	"os"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // logcfg
@@ -93,7 +91,7 @@ func (l *logger) write(s string) {
 	n := len(s)
 	if n >= l.size {
 		l.clear()
-		l.flush(risky.ConstBytes(s))
+		l.flush(ConstBytes(s))
 		return
 	}
 	w := copy(l.buffer[l.used:], s)

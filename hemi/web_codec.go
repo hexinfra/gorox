@@ -19,8 +19,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // webAgent collects shared methods between webServer or webBackend.
@@ -393,7 +391,7 @@ func (r *webIn_) DelHeader(name string) (deleted bool) {
 	return r.delPair(name, 0, r.headers, kindHeader)
 }
 func (r *webIn_) delHeader(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.headers, kindHeader)
+	r.delPair(WeakString(name), hash, r.headers, kindHeader)
 }
 
 func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) bool { // for field data and value params
@@ -1105,7 +1103,7 @@ func (r *webIn_) DelTrailer(name string) (deleted bool) {
 	return r.delPair(name, 0, r.trailers, kindTrailer)
 }
 func (r *webIn_) delTrailer(name []byte, hash uint16) {
-	r.delPair(risky.WeakString(name), hash, r.trailers, kindTrailer)
+	r.delPair(WeakString(name), hash, r.trailers, kindTrailer)
 }
 
 func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
@@ -1509,7 +1507,7 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
 	n += r.stream.makeTempName(filePath[n:], r.recvTime.Unix())
-	return os.OpenFile(risky.WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
+	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	now := time.Now()
@@ -1616,21 +1614,21 @@ func (r *webOut_) onEnd() { // for zeros
 func (r *webOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 
 func (r *webOut_) AddContentType(contentType string) bool {
-	return r.AddHeaderBytes(bytesContentType, risky.ConstBytes(contentType))
+	return r.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
 }
 func (r *webOut_) AddContentTypeBytes(contentType []byte) bool {
 	return r.AddHeaderBytes(bytesContentType, contentType)
 }
 
 func (r *webOut_) Header(name string) (value string, ok bool) {
-	v, ok := r.shell.header(risky.ConstBytes(name))
+	v, ok := r.shell.header(ConstBytes(name))
 	return string(v), ok
 }
 func (r *webOut_) HasHeader(name string) bool {
-	return r.shell.hasHeader(risky.ConstBytes(name))
+	return r.shell.hasHeader(ConstBytes(name))
 }
 func (r *webOut_) AddHeader(name string, value string) bool {
-	return r.AddHeaderBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
@@ -1645,7 +1643,7 @@ func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
 	return r.shell.insertHeader(hash, lower, value)
 }
 func (r *webOut_) DelHeader(name string) bool {
-	return r.DelHeaderBytes(risky.ConstBytes(name))
+	return r.DelHeaderBytes(ConstBytes(name))
 }
 func (r *webOut_) DelHeaderBytes(name []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
@@ -1753,7 +1751,7 @@ func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 
 func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *webOut_) Send(content string) error      { return r.sendText(risky.ConstBytes(content)) }
+func (r *webOut_) Send(content string) error      { return r.sendText(ConstBytes(content)) }
 func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
 func (r *webOut_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)
@@ -1776,7 +1774,7 @@ func (r *webOut_) SendJSON(content any) error { // TODO: optimize performance
 	return r.sendText(data)
 }
 
-func (r *webOut_) Echo(chunk string) error      { return r.echoText(risky.ConstBytes(chunk)) }
+func (r *webOut_) Echo(chunk string) error      { return r.echoText(ConstBytes(chunk)) }
 func (r *webOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
 func (r *webOut_) EchoFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
@@ -1792,7 +1790,7 @@ func (r *webOut_) EchoFile(chunkPath string) error {
 }
 
 func (r *webOut_) AddTrailer(name string, value string) bool {
-	return r.AddTrailerBytes(risky.ConstBytes(name), risky.ConstBytes(value))
+	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
@@ -1801,7 +1799,7 @@ func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	return false
 }
 func (r *webOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.shell.trailer(risky.ConstBytes(name))
+	v, ok := r.shell.trailer(ConstBytes(name))
 	return string(v), ok
 }
 

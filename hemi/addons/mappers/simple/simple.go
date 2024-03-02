@@ -8,8 +8,6 @@
 package simple
 
 import (
-	"github.com/hexinfra/gorox/hemi/common/risky"
-
 	. "github.com/hexinfra/gorox/hemi"
 )
 
@@ -78,5 +76,5 @@ func (m *simpleMapper) HandleName(req Request) string {
 			name[i] = '_'
 		}
 	}
-	return risky.WeakString(name)
+	return WeakString(name)
 }

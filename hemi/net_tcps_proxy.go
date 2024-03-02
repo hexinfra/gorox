@@ -20,9 +20,9 @@ type tcpsProxy struct {
 	// Parent
 	TCPSDealet_
 	// Assocs
-	stage   *Stage      // current stage
-	router  *TCPSRouter // the router to which the dealet belongs
-	backend *TCPSBackend
+	stage   *Stage       // current stage
+	router  *TCPSRouter  // the router to which the dealet belongs
+	backend *TCPSBackend // the backend to pass to
 	// States
 }
 

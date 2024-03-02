@@ -22,7 +22,7 @@ type quixProxy struct {
 	// Assocs
 	stage   *Stage // current stage
 	router  *QUIXRouter
-	backend *QUIXBackend
+	backend *QUIXBackend // the backend to pass to
 	// States
 }
 

@@ -268,9 +268,9 @@ type sockProxy struct {
 	// Parent
 	Socklet_
 	// Assocs
-	stage   *Stage  // current stage
-	webapp  *Webapp // the webapp to which the proxy belongs
-	backend WebBackend
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to
 	// States
 }
 

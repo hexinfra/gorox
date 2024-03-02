@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/common/risky"
 	"github.com/hexinfra/gorox/hemi/common/system"
 )
 
@@ -1372,7 +1371,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	} else if req.failReason == "" {
 		content = errorPage
 	} else {
-		content = risky.ConstBytes(req.failReason)
+		content = ConstBytes(req.failReason)
 	}
 	// Use response as a dumb struct here, don't use its methods (like Send) to send anything!
 	resp.status = status

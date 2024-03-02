@@ -11,8 +11,6 @@ import (
 	"bytes"
 	"io"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/common/risky"
 )
 
 // WebBackend
@@ -220,7 +218,7 @@ func (r *webBackendRequest_) onEnd() { // for zeros
 func (r *webBackendRequest_) Response() WebBackendResponse { return r.response }
 
 func (r *webBackendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(WebBackendRequest).setMethodURI(risky.ConstBytes(method), risky.ConstBytes(uri), hasContent)
+	return r.shell.(WebBackendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *webBackendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -424,7 +422,7 @@ func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPo
 		} else {
 			// Invalid values are treated as empty
 		}
-		if !r.shell.addHeader(risky.ConstBytes(name), value) {
+		if !r.shell.addHeader(ConstBytes(name), value) {
 			return false
 		}
 	}

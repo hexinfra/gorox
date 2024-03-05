@@ -34,7 +34,7 @@ type HTTP2Backend struct {
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b.NewNode)
+	b.webBackend_.onCreate(name, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
@@ -44,9 +44,10 @@ func (b *HTTP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *HTTP2Backend) NewNode(id int32) *http2Node {
+func (b *HTTP2Backend) CreateNode(name string) Node {
 	node := new(http2Node)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
@@ -62,14 +63,19 @@ type http2Node struct {
 	// States
 }
 
-func (n *http2Node) init(id int32, backend *HTTP2Backend) {
-	n.webNode_.Init(id, backend)
+func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
+	n.webNode_.OnCreate(name, backend)
 }
 
-func (n *http2Node) setTLS() { // override
-	n.webNode_.setTLS()
-	n.tlsConfig.InsecureSkipVerify = true
-	n.tlsConfig.NextProtos = []string{"h2"}
+func (n *http2Node) OnConfigure() {
+	n.webNode_.onConfigure()
+	if n.tlsMode {
+		n.tlsConfig.InsecureSkipVerify = true
+		n.tlsConfig.NextProtos = []string{"h2"}
+	}
+}
+func (n *http2Node) OnPrepare() {
+	n.webNode_.onPrepare()
 }
 
 func (n *http2Node) Maintain() { // runner
@@ -78,7 +84,7 @@ func (n *http2Node) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("http2Node=%d done\n", n.id)
+		Printf("http2Node=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }
@@ -100,7 +106,6 @@ func (n *http2Node) _dialTLS() (WebBackendConn, error) {
 func (n *http2Node) _dialUDS() (WebBackendConn, error) {
 	return nil, nil
 }
-
 func (n *http2Node) storeConn(conn WebBackendConn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: decRef

@@ -34,21 +34,11 @@ func (r *router_[R, G, D, C]) onShutdown() {
 	r.Server_.OnShutdown()
 }
 
-func (r *router_[R, G, D, C]) shutdownSubs() { // cases, dealets
-	r.cases.walk(C.OnShutdown)
-	r.dealets.walk(D.OnShutdown)
-}
-
 func (r *router_[R, G, D, C]) onConfigure() {
 	r.Server_.OnConfigure()
 
 	// accessLog, TODO
 }
-func (r *router_[R, G, D, C]) configureSubs() { // dealets, cases
-	r.dealets.walk(D.OnConfigure)
-	r.cases.walk(C.OnConfigure)
-}
-
 func (r *router_[R, G, D, C]) onPrepare() {
 	r.Server_.OnPrepare()
 
@@ -56,10 +46,6 @@ func (r *router_[R, G, D, C]) onPrepare() {
 	if r.accessLog != nil {
 		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
-}
-func (r *router_[R, G, D, C]) prepareSubs() { // dealets, cases
-	r.dealets.walk(D.OnPrepare)
-	r.cases.walk(C.OnPrepare)
 }
 
 func (r *router_[R, G, D, C]) createDealet(sign string, name string) D {

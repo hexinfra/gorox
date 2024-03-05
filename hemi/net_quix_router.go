@@ -29,13 +29,15 @@ func (r *QUIXRouter) OnShutdown() {
 
 func (r *QUIXRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// TODO: configure r
-	r.configureSubs()
+
+	r.dealets.walk(QUIXDealet.OnConfigure)
+	r.cases.walk((*quixCase).OnConfigure)
 }
 func (r *QUIXRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// TODO: prepare r
-	r.prepareSubs()
+
+	r.dealets.walk(QUIXDealet.OnPrepare)
+	r.cases.walk((*quixCase).OnPrepare)
 }
 
 func (r *QUIXRouter) createCase(name string) *quixCase {
@@ -62,7 +64,8 @@ func (r *QUIXRouter) Serve() { // runner
 	}
 	r.WaitSubs() // gates
 	r.SubsAddn(len(r.dealets) + len(r.cases))
-	r.shutdownSubs()
+	r.cases.walk((*quixCase).OnShutdown)
+	r.dealets.walk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {
@@ -279,13 +282,19 @@ func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
 }
 
 // quixConnVariables
-var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes in config.go
+var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 	// TODO
 }
 
 // QUIXStream
 type QUIXStream struct {
+	// Parent
+	// Stream states (non-zeros)
 	quicStream *quic.Stream
+	// Stream states (zeros)
+	quixStream0
+}
+type quixStream0 struct { // for fast reset, entirely
 }
 
 func (s *QUIXStream) Write(p []byte) (n int, err error) {

@@ -324,10 +324,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.writeTimeout = 30s
 		.readTimeout = 30s
 		.aliveTimeout = 4s
-		.nodes = (
-			["address": "127.0.0.1:3080", "weight": 9, "keepConns": 20],
-			["address": "127.0.0.1:3080", "weight": 8, "keepConns": 30],
-		)
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
 		.maxContentSizeAllowed = 1T
@@ -385,20 +381,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法：.aliveTimeout = Duration
 						默认值：4s
 						取值范围：(1s, 10m]
-					</code>
-				</li>
-				<li>
-					<p>.node 反向代理的服务列表。</p>
-					<code>语法：.nodes = (
-								["address": "127.0.0.1:3080", "weight": 9, "keepConns": 20],
-								["address": "127.0.0.1:3080", "weight": 8, "keepConns": 30],
-							)
-					默认值：nil
-					取值范围： -
-
-					address: 服务地址，必选项且不能为空。
-					weight: 权重，默认值 1。
-					keepConns: 当前 address 最多创建长连接数量，默认值10。
 					</code>
 				</li>
 				<li>
@@ -497,22 +479,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		<li id="stage-redisCacher">
 			<h4>stage &gt; redisCacher</h4>
 			<p>redisCacher：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
-			<ul>
-				<li>
-					<p>.node redis 的服务列表。</p>
-					<code>语法：.nodes = (
-								["address": "127.0.0.1:3080", "weight": 9, "keepConns": 20],
-								["address": "127.0.0.1:3080", "weight": 8, "keepConns": 30],
-							)
-					默认值：nil
-					取值范围： -
-
-					address: 服务地址，必选项且不能为空。
-					weight: 权重，默认值 1。
-					keepConns: 当前 address 最多创建长连接数量，默认值10。
-					</code>
-				</li>
-			</ul>
 		</li>
 
 		<li id="stage-service">
@@ -532,10 +498,10 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code class="pre">stage {
 	http1Backend "h1b" {
 		.balancer = "roundRobin"
-		.nodes = (
-			["address": "127.0.0.1:3080", "weight": 1],
-			["address": "127.0.0.1:3090", "weight": 1],
-		)
+		node {
+			.address = "127.0.0.1:3080"
+			.weight = 1
+		}
 	}
 
 	webapp "proxy" {
@@ -756,9 +722,9 @@ $=	变量和给定值，是否后缀匹配。
 					<p>rule 例子</p>
 					<code class="pre">tcpsBackend "fpm" {
 	.balancer = "roundRobin"
-	.nodes = (
-		["address": "127.0.0.1:9000"],
-	)
+	node {
+		.address = "127.0.0.1:9000"
+	}
 }
 
 webapp "main" {
@@ -991,10 +957,12 @@ webapp "main" {
 stage {
 	tcpsBackend "php-fpm" {
 		.balancer = "roundRobin"
-		.nodes = (
-			["address": "127.0.0.1:9000"],
-			["address": "127.0.0.1:9001"],
-		)
+		node {
+			.address = "127.0.0.1:9000"
+		}
+		node {
+			.address = "127.0.0.1:9001"
+		}
 	}
 
 	webapp "main" {
@@ -1106,10 +1074,12 @@ stage {
 					<code class="pre">stage {
 	tcpsBackend "php-fpm" {
 		.balancer = "roundRobin"
-		.nodes = (
-			["address": "127.0.0.1:9000"],
-			["address": "127.0.0.1:9001"],
-		)
+		node {
+			.address = "127.0.0.1:9000"
+		}
+		node {
+			.address = "127.0.0.1:9001"
+		}
 	}
 
 	webapp "main" {

@@ -34,7 +34,7 @@ type UDPSBackend struct {
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b.NewNode)
+	b.Backend_.OnCreate(name, stage)
 	b._loadBalancer_.init()
 }
 
@@ -47,9 +47,10 @@ func (b *UDPSBackend) OnPrepare() {
 	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *UDPSBackend) NewNode(id int32) *udpsNode {
+func (b *UDPSBackend) CreateNode(name string) Node {
 	node := new(udpsNode)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 
@@ -74,8 +75,15 @@ type udpsNode struct {
 	// States
 }
 
-func (n *udpsNode) init(id int32, backend *UDPSBackend) {
-	n.Node_.Init(id, backend)
+func (n *udpsNode) onCreate(name string, backend *UDPSBackend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *udpsNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *udpsNode) OnPrepare() {
+	n.Node_.OnPrepare()
 }
 
 func (n *udpsNode) Maintain() { // runner
@@ -84,9 +92,14 @@ func (n *udpsNode) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("udpsNode=%d done\n", n.id)
+		Printf("udpsNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
+}
+
+func (n *udpsNode) dial() (*UConn, error) {
+	// TODO
+	return nil, nil
 }
 
 func (n *udpsNode) fetchConn() (*UConn, error) {
@@ -106,16 +119,6 @@ func (n *udpsNode) storeConn(uConn *UConn) {
 	} else {
 		n.pushConn(uConn)
 	}
-}
-
-func (n *udpsNode) dial() (*UConn, error) {
-	// TODO
-	return nil, nil
-}
-
-func (n *udpsNode) closeConn(uConn *UConn) {
-	uConn.Close()
-	n.DecSub()
 }
 
 // poolUConn

@@ -35,7 +35,7 @@ type HTTP1Backend struct {
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b.NewNode)
+	b.webBackend_.onCreate(name, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
@@ -45,9 +45,10 @@ func (b *HTTP1Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *HTTP1Backend) NewNode(id int32) *http1Node {
+func (b *HTTP1Backend) CreateNode(name string) Node {
 	node := new(http1Node)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
@@ -63,14 +64,19 @@ type http1Node struct {
 	// States
 }
 
-func (n *http1Node) init(id int32, backend *HTTP1Backend) {
-	n.webNode_.Init(id, backend)
+func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
+	n.webNode_.OnCreate(name, backend)
 }
 
-func (n *http1Node) setTLS() { // override
-	n.webNode_.setTLS()
-	n.tlsConfig.InsecureSkipVerify = true
-	n.tlsConfig.NextProtos = []string{"http/1.1"}
+func (n *http1Node) OnConfigure() {
+	n.webNode_.onConfigure()
+	if n.tlsMode {
+		n.tlsConfig.InsecureSkipVerify = true
+		n.tlsConfig.NextProtos = []string{"http/1.1"}
+	}
+}
+func (n *http1Node) OnPrepare() {
+	n.webNode_.onPrepare()
 }
 
 func (n *http1Node) Maintain() { // runner
@@ -83,7 +89,7 @@ func (n *http1Node) Maintain() { // runner
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
-		Printf("http1Node=%d done\n", n.id)
+		Printf("http1Node=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }
@@ -118,7 +124,7 @@ func (n *http1Node) _dialUDS() (WebBackendConn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -137,7 +143,7 @@ func (n *http1Node) _dialTLS() (WebBackendConn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
@@ -160,7 +166,7 @@ func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 		return nil, err
 	}
 	if Debug() >= 2 {
-		Printf("http1Node=%d dial %s OK!\n", n.id, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
@@ -171,17 +177,16 @@ func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-
 func (n *http1Node) storeConn(conn WebBackendConn) {
 	h1Conn := conn.(*H1Conn)
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
 		if Debug() >= 2 {
-			Printf("H1Conn[node=%d id=%d] closed\n", h1Conn.node.ID(), h1Conn.id)
+			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
 		}
 		n.closeConn(h1Conn)
 	} else {
 		if Debug() >= 2 {
-			Printf("H1Conn[node=%d id=%d] pushed\n", h1Conn.node.ID(), h1Conn.id)
+			Printf("H1Conn[node=%s id=%d] pushed\n", h1Conn.node.Name(), h1Conn.id)
 		}
 		n.pushConn(h1Conn)
 	}

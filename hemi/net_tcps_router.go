@@ -35,13 +35,15 @@ func (r *TCPSRouter) OnShutdown() {
 
 func (r *TCPSRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// configure r here
-	r.configureSubs()
+
+	r.dealets.walk(TCPSDealet.OnConfigure)
+	r.cases.walk((*tcpsCase).OnConfigure)
 }
 func (r *TCPSRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// prepare r here
-	r.prepareSubs()
+
+	r.dealets.walk(TCPSDealet.OnPrepare)
+	r.cases.walk((*tcpsCase).OnPrepare)
 }
 
 func (r *TCPSRouter) createCase(name string) *tcpsCase {
@@ -65,7 +67,8 @@ func (r *TCPSRouter) Serve() { // runner
 	}
 	r.WaitSubs() // gates
 	r.SubsAddn(len(r.dealets) + len(r.cases))
-	r.shutdownSubs()
+	r.cases.walk((*tcpsCase).OnShutdown)
+	r.dealets.walk(TCPSDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {
@@ -486,7 +489,7 @@ func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {
 }
 
 // tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes in config.go
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
 	// TODO
 	nil, // srcHost
 	nil, // srcPort

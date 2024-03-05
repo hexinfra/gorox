@@ -35,7 +35,7 @@ type QUIXBackend struct {
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b.NewNode)
+	b.Backend_.OnCreate(name, stage)
 	b._loadBalancer_.init()
 }
 
@@ -50,9 +50,10 @@ func (b *QUIXBackend) OnPrepare() {
 	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *QUIXBackend) NewNode(id int32) *quixNode {
+func (b *QUIXBackend) CreateNode(name string) Node {
 	node := new(quixNode)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 
@@ -76,8 +77,15 @@ type quixNode struct {
 	// States
 }
 
-func (n *quixNode) init(id int32, backend *QUIXBackend) {
-	n.Node_.Init(id, backend)
+func (n *quixNode) onCreate(name string, backend *QUIXBackend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *quixNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *quixNode) OnPrepare() {
+	n.Node_.OnPrepare()
 }
 
 func (n *quixNode) Maintain() { // runner
@@ -86,7 +94,7 @@ func (n *quixNode) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("quixNode=%d done\n", n.id)
+		Printf("quixNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }
@@ -95,6 +103,7 @@ func (n *quixNode) dial() (*QConn, error) {
 	// TODO
 	return nil, nil
 }
+
 func (n *quixNode) fetchConn() (*QConn, error) {
 	// Note: A QConn can be used concurrently, limited by maxStreams.
 	// TODO
@@ -103,11 +112,6 @@ func (n *quixNode) fetchConn() (*QConn, error) {
 func (n *quixNode) storeConn(qConn *QConn) {
 	// Note: A QConn can be used concurrently, limited by maxStreams.
 	// TODO
-}
-
-func (n *quixNode) closeConn(qConn *QConn) {
-	qConn.Close()
-	n.DecSub()
 }
 
 // poolQConn

@@ -213,24 +213,27 @@ type webServerStream interface { // for *http[1-3]Stream
 
 // webServerStream_ is the parent for http[1-3]Stream.
 type webServerStream_ struct {
-	// Parent
-	Stream_
 	// Mixins
 	_webStream_
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *webServerStream_) onUse() { // for non-zeros
-	s.Stream_.onUse()
 	s._webStream_.onUse()
+	s.region.Init()
 }
 func (s *webServerStream_) onEnd() { // for zeros
+	s.region.Free()
 	s._webStream_.onEnd()
-	s.Stream_.onEnd()
 }
+
+func (s *webServerStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webServerStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *webServerStream_) serveSocket() {
 	// TODO
@@ -2486,7 +2489,7 @@ const ( // web server request prefixes
 	webServerRequestPrefixCookie = "cookie_"
 )
 
-var webServerRequestVariables = [...]func(*webServerRequest_) []byte{ // keep sync with varCodes in config.go
+var webServerRequestVariables = [...]func(*webServerRequest_) []byte{ // keep sync with varCodes
 	(*webServerRequest_).UnsafeMethod,      // method
 	(*webServerRequest_).UnsafeScheme,      // scheme
 	(*webServerRequest_).UnsafeAuthority,   // authority

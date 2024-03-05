@@ -10,7 +10,7 @@ func main() {
 	//println(sum("last-modified"))
 }
 
-type Node struct {
+type Word struct {
 	hash int
 	from int
 	edge int
@@ -25,32 +25,32 @@ func sum(s string) int {
 }
 
 func calc(s []byte) {
-	var nodes []Node
+	var words []Word
 
 	hash, from := 0, 0
 	for edge := 0; edge < len(s); edge++ {
 		b := s[edge]
 		if b == ' ' {
-			nodes = append(nodes, Node{hash, from, edge})
+			words = append(words, Word{hash, from, edge})
 			from = edge + 1
 			hash = 0
 		} else {
 			hash += int(b)
 		}
 	}
-	nodes = append(nodes, Node{hash, from, len(s)})
+	words = append(words, Word{hash, from, len(s)})
 
-	size := len(nodes)
+	size := len(words)
 	zero := make([]int, size)
 	this := make([]int, size)
 	good := 0
 search:
 	for k := 1; k < 1148924604; k++ {
 		copy(this, zero)
-		for _, node := range nodes {
-			i := k / node.hash % size
+		for _, word := range words {
+			i := k / word.hash % size
 			if this[i] == 0 {
-				this[i] = node.hash
+				this[i] = word.hash
 			} else {
 				continue search
 			}
@@ -60,9 +60,9 @@ search:
 	}
 
 	fmt.Printf("good=%d size=%d\n", good, size)
-	for _, node := range nodes {
-		name := showName(string(s[node.from:node.edge]))
-		fmt.Printf("%d:{%s, %d, %d, %s},\n", good/node.hash%size, "hash"+name, node.from, node.edge, "check"+name)
+	for _, word := range words {
+		name := showName(string(s[word.from:word.edge]))
+		fmt.Printf("%d:{%s, %d, %d, %s},\n", good/word.hash%size, "hash"+name, word.from, word.edge, "check"+name)
 	}
 }
 

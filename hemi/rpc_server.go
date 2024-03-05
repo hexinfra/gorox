@@ -119,17 +119,23 @@ func (c *rpcServerConn_) rpcServer() rpcServer { return c.Server().(rpcServer) }
 
 // rpcServerExchan_
 type rpcServerExchan_ struct {
-	// Parent
-	Stream_
-	// TODO
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
 }
 
 func (x *rpcServerExchan_) onUse() {
-	x.Stream_.onUse()
+	x.region.Init()
 }
 func (x *rpcServerExchan_) onEnd() {
-	x.Stream_.onEnd()
+	x.region.Free()
 }
+
+func (x *rpcServerExchan_) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *rpcServerExchan_) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // rpcServerRequest_
 type rpcServerRequest_ struct {

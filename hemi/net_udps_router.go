@@ -29,13 +29,15 @@ func (r *UDPSRouter) OnShutdown() {
 
 func (r *UDPSRouter) OnConfigure() {
 	r.router_.onConfigure()
-	// TODO: configure r
-	r.configureSubs()
+
+	r.dealets.walk(UDPSDealet.OnConfigure)
+	r.cases.walk((*udpsCase).OnConfigure)
 }
 func (r *UDPSRouter) OnPrepare() {
 	r.router_.onPrepare()
-	// TODO: prepare r
-	r.prepareSubs()
+
+	r.dealets.walk(UDPSDealet.OnPrepare)
+	r.cases.walk((*udpsCase).OnPrepare)
 }
 
 func (r *UDPSRouter) createCase(name string) *udpsCase {
@@ -68,7 +70,8 @@ func (r *UDPSRouter) Serve() { // runner
 	}
 	r.WaitSubs() // gates
 	r.SubsAddn(len(r.dealets) + len(r.cases))
-	r.shutdownSubs()
+	r.cases.walk((*udpsCase).OnShutdown)
+	r.dealets.walk(UDPSDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {
@@ -312,6 +315,6 @@ func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
 }
 
 // udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes in config.go
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
 	// TODO
 }

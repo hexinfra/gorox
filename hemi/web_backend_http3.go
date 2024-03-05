@@ -34,7 +34,7 @@ type HTTP3Backend struct {
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage, b.NewNode)
+	b.webBackend_.onCreate(name, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
@@ -44,9 +44,10 @@ func (b *HTTP3Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
 }
 
-func (b *HTTP3Backend) NewNode(id int32) *http3Node {
+func (b *HTTP3Backend) CreateNode(name string) Node {
 	node := new(http3Node)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
@@ -62,13 +63,18 @@ type http3Node struct {
 	// States
 }
 
-func (n *http3Node) init(id int32, backend *HTTP3Backend) {
-	n.webNode_.Init(id, backend)
+func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
+	n.webNode_.OnCreate(name, backend)
 }
 
-func (n *http3Node) setTLS() { // override
-	n.webNode_.setTLS()
-	n.tlsConfig.InsecureSkipVerify = true
+func (n *http3Node) OnConfigure() {
+	n.webNode_.onConfigure()
+	if n.tlsMode {
+		n.tlsConfig.InsecureSkipVerify = true
+	}
+}
+func (n *http3Node) OnPrepare() {
+	n.webNode_.onPrepare()
 }
 
 func (n *http3Node) Maintain() { // runner
@@ -77,7 +83,7 @@ func (n *http3Node) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("http3Node=%d done\n", n.id)
+		Printf("http3Node=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }
@@ -92,7 +98,6 @@ func (n *http3Node) fetchConn() (WebBackendConn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, n, conn), nil
 }
-
 func (n *http3Node) storeConn(conn WebBackendConn) {
 	// TODO
 }

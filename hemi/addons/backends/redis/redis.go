@@ -32,7 +32,7 @@ type RedisBackend struct {
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b.NewNode)
+	b.Backend_.OnCreate(name, stage)
 }
 
 func (b *RedisBackend) OnConfigure() {
@@ -40,9 +40,10 @@ func (b *RedisBackend) OnConfigure() {
 func (b *RedisBackend) OnPrepare() {
 }
 
-func (b *RedisBackend) NewNode(id int32) *redisNode {
+func (b *RedisBackend) CreateNode(name string) Node {
 	node := new(redisNode)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 
@@ -53,11 +54,22 @@ type redisNode struct {
 	// Assocs
 }
 
-func (n *redisNode) init(id int32, backend *RedisBackend) {
-	n.Node_.Init(id, backend)
+func (n *redisNode) onCreate(name string, backend *RedisBackend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *redisNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *redisNode) OnPrepare() {
+	n.Node_.OnPrepare()
 }
 
 func (n *redisNode) Maintain() { // runner
+}
+
+func (n *redisNode) dial() (*RedisConn, error) {
+	return nil, nil
 }
 
 func (n *redisNode) fetchConn() (*RedisConn, error) {
@@ -66,11 +78,7 @@ func (n *redisNode) fetchConn() (*RedisConn, error) {
 func (n *redisNode) storeConn(redisConn *RedisConn) {
 }
 
-func (n *redisNode) dial() (*RedisConn, error) {
-	return nil, nil
-}
-
-func (n *redisNode) closeConn(redisConn *RedisConn) {
+func (n *redisNode) closeConn(redisConn *RedisConn) { // TODO: use Node_.closeConn?
 }
 
 var poolRedisConn sync.Pool

@@ -31,8 +31,8 @@ type rpcBackend_[N rpcNode] struct {
 	health any // TODO
 }
 
-func (b *rpcBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
-	b.Backend_.OnCreate(name, stage, newNode)
+func (b *rpcBackend_[N]) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
 	b._loadBalancer_.init()
 }
 
@@ -50,6 +50,30 @@ func (b *rpcBackend_[N]) onPrepare(shell Component) {
 // rpcNode
 type rpcNode interface {
 	Node
+}
+
+// rpcNode_
+type rpcNode_ struct {
+	// Parent
+	Node_
+	// Assocs
+	// States
+}
+
+func (n *rpcNode_) onCreate(name string, backend Backend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *rpcNode_) onConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *rpcNode_) onPrepare() {
+	n.Node_.OnPrepare()
+}
+
+// rpcBackendConn
+type rpcBackendConn interface {
+	Close() error
 }
 
 // rpcBackendConn_
@@ -73,17 +97,23 @@ func (c *rpcBackendConn_) rpcBackend() rpcBackend { return c.Backend().(rpcBacke
 
 // rpcBackendExchan_
 type rpcBackendExchan_ struct {
-	// Parent
-	Stream_
-	// TODO
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
 }
 
 func (x *rpcBackendExchan_) onUse() {
-	x.Stream_.onUse()
+	x.region.Init()
 }
 func (x *rpcBackendExchan_) onEnd() {
-	x.Stream_.onEnd()
+	x.region.Free()
 }
+
+func (x *rpcBackendExchan_) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *rpcBackendExchan_) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // rpcBackendRequest_
 type rpcBackendRequest_ struct {

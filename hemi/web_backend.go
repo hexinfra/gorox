@@ -41,8 +41,8 @@ type webBackend_[N WebNode] struct {
 	health any // TODO
 }
 
-func (b *webBackend_[N]) onCreate(name string, stage *Stage, newNode func(id int32) N) {
-	b.Backend_.OnCreate(name, stage, newNode)
+func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
 	b._loadBalancer_.init()
 }
 
@@ -82,13 +82,15 @@ type webNode_ struct {
 	// States
 }
 
-func (n *webNode_) init(id int32, backend Backend) {
-	n.Node_.Init(id, backend)
+func (n *webNode_) onCreate(name string, backend Backend) {
+	n.Node_.OnCreate(name, backend)
 }
 
-func (n *webNode_) closeConn(conn WebBackendConn) {
-	conn.Close()
-	n.DecSub()
+func (n *webNode_) onConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *webNode_) onPrepare() {
+	n.Node_.OnPrepare()
 }
 
 // WebBackendConn is the backend-side web conn.
@@ -143,24 +145,27 @@ type WebBackendStream interface { // for *H[1-3]Stream
 
 // webBackendStream_ is the parent for H[1-3]Stream.
 type webBackendStream_ struct {
-	// Parent
-	Stream_
 	// Mixins
 	_webStream_
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *webBackendStream_) onUse() { // for non-zeros
-	s.Stream_.onUse()
 	s._webStream_.onUse()
+	s.region.Init()
 }
 func (s *webBackendStream_) onEnd() { // for zeros
+	s.region.Free()
 	s._webStream_.onEnd()
-	s.Stream_.onEnd()
 }
+
+func (s *webBackendStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webBackendStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *webBackendStream_) startSocket() {
 	// TODO

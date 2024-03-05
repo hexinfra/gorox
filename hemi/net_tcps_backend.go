@@ -37,7 +37,7 @@ type TCPSBackend struct {
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage, b.NewNode)
+	b.Backend_.OnCreate(name, stage)
 	b._loadBalancer_.init()
 }
 
@@ -52,9 +52,10 @@ func (b *TCPSBackend) OnPrepare() {
 	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
-func (b *TCPSBackend) NewNode(id int32) *tcpsNode {
+func (b *TCPSBackend) CreateNode(name string) Node {
 	node := new(tcpsNode)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 
@@ -79,8 +80,15 @@ type tcpsNode struct {
 	// States
 }
 
-func (n *tcpsNode) init(id int32, backend *TCPSBackend) {
-	n.Node_.Init(id, backend)
+func (n *tcpsNode) onCreate(name string, backend *TCPSBackend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *tcpsNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *tcpsNode) OnPrepare() {
+	n.Node_.OnPrepare()
 }
 
 func (n *tcpsNode) Maintain() { // runner
@@ -93,9 +101,66 @@ func (n *tcpsNode) Maintain() { // runner
 	}
 	n.WaitSubs() // conns
 	if Debug() >= 2 {
-		Printf("tcpsNode=%d done\n", n.id)
+		Printf("tcpsNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
+}
+
+func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
+	if Debug() >= 2 {
+		Printf("tcpsNode=%s dial %s\n", n.name, n.address)
+	}
+	if n.IsUDS() {
+		return n._dialUDS()
+	} else if n.IsTLS() {
+		return n._dialTLS()
+	} else {
+		return n._dialTCP()
+	}
+}
+func (n *tcpsNode) _dialUDS() (*TConn, error) {
+	// TODO
+	return nil, nil
+}
+func (n *tcpsNode) _dialTLS() (*TConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if Debug() >= 2 {
+		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	tlsConn := tls.Client(netConn, n.tlsConfig)
+	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		tlsConn.Close()
+		return nil, err
+	}
+	if err := tlsConn.Handshake(); err != nil {
+		tlsConn.Close()
+		return nil, err
+	}
+	return getTConn(connID, n, tlsConn, nil), nil
+}
+func (n *tcpsNode) _dialTCP() (*TConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if Debug() >= 2 {
+		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getTConn(connID, n, netConn, rawConn), nil
 }
 
 func (n *tcpsNode) fetchConn() (*TConn, error) {
@@ -120,77 +185,15 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
 		if Debug() >= 2 {
-			Printf("TConn[node=%d id=%d] closed\n", tConn.node.ID(), tConn.id)
+			Printf("TConn[node=%s id=%d] closed\n", tConn.node.Name(), tConn.id)
 		}
 		n.closeConn(tConn)
 	} else {
 		if Debug() >= 2 {
-			Printf("TConn[node=%d id=%d] pushed\n", tConn.node.ID(), tConn.id)
+			Printf("TConn[node=%s id=%d] pushed\n", tConn.node.Name(), tConn.id)
 		}
 		n.pushConn(tConn)
 	}
-}
-
-func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
-	if Debug() >= 2 {
-		Printf("tcpsNode=%d dial %s\n", n.id, n.address)
-	}
-	if n.IsUDS() {
-		return n._dialUDS()
-	} else if n.IsTLS() {
-		return n._dialTLS()
-	} else {
-		return n._dialTCP()
-	}
-}
-func (n *tcpsNode) _dialUDS() (*TConn, error) {
-	// TODO
-	return nil, nil
-}
-func (n *tcpsNode) _dialTLS() (*TConn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if Debug() >= 2 {
-		Printf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
-	}
-	connID := n.backend.nextConnID()
-	tlsConn := tls.Client(netConn, n.tlsConfig)
-	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
-		tlsConn.Close()
-		return nil, err
-	}
-	if err := tlsConn.Handshake(); err != nil {
-		tlsConn.Close()
-		return nil, err
-	}
-	return getTConn(connID, n, tlsConn, nil), nil
-}
-func (n *tcpsNode) _dialTCP() (*TConn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if Debug() >= 2 {
-		Printf("tcpsNode=%d dial %s OK!\n", n.id, n.address)
-	}
-	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
-	if err != nil {
-		netConn.Close()
-		return nil, err
-	}
-	return getTConn(connID, n, netConn, rawConn), nil
-}
-
-func (n *tcpsNode) closeConn(tConn *TConn) {
-	tConn.Close()
-	n.DecSub()
 }
 
 // poolTConn

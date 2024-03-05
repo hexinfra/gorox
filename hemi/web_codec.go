@@ -24,10 +24,12 @@ import (
 // webAgent collects shared methods between webServer or webBackend.
 type webAgent interface {
 	// Imports
-	agent
 	contentSaver
 	// Methods
+	Stage() *Stage
+	ReadTimeout() time.Duration
 	RecvTimeout() time.Duration // timeout to recv the whole message content
+	WriteTimeout() time.Duration
 	SendTimeout() time.Duration // timeout to send the whole message
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32

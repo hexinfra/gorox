@@ -15,20 +15,12 @@ import (
 // rpcAgent collects shared methods between rpcServer or rpcBackend.
 type rpcAgent interface {
 	// Imports
-	agent
 	// Methods
+	Stage() *Stage
+	ReadTimeout() time.Duration
 	RecvTimeout() time.Duration // timeout to recv the whole message content
+	WriteTimeout() time.Duration
 	SendTimeout() time.Duration // timeout to send the whole message
-}
-
-// rpcConn
-type rpcConn interface {
-	// TODO
-}
-
-// rpcExchan is the interface for *hrpcExchan and *HExchan.
-type rpcExchan interface {
-	// TODO
 }
 
 // _rpcAgent_
@@ -61,8 +53,18 @@ func (a *_rpcAgent_) onPrepare(shell Component) {
 func (a *_rpcAgent_) RecvTimeout() time.Duration { return a.recvTimeout }
 func (a *_rpcAgent_) SendTimeout() time.Duration { return a.sendTimeout }
 
+// rpcConn
+type rpcConn interface {
+	// TODO
+}
+
 // _rpcConn_
 type _rpcConn_ struct {
+}
+
+// rpcExchan is the interface for *hrpcExchan and *HExchan.
+type rpcExchan interface {
+	// TODO
 }
 
 // _rpcExchan_

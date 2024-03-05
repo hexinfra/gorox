@@ -27,7 +27,7 @@ type HRPCBackend struct {
 }
 
 func (b *HRPCBackend) onCreate(name string, stage *Stage) {
-	b.rpcBackend_.onCreate(name, stage, b.NewNode)
+	b.rpcBackend_.onCreate(name, stage)
 }
 
 func (b *HRPCBackend) OnConfigure() {
@@ -37,22 +37,30 @@ func (b *HRPCBackend) OnPrepare() {
 	b.rpcBackend_.onPrepare(b)
 }
 
-func (b *HRPCBackend) NewNode(id int32) *hrpcNode {
+func (b *HRPCBackend) CreateNode(name string) Node {
 	node := new(hrpcNode)
-	node.init(id, b)
+	node.onCreate(name, b)
+	b.AddNode(node)
 	return node
 }
 
 // hrpcNode
 type hrpcNode struct {
 	// Parent
-	Node_
+	rpcNode_
 	// Assocs
 	// States
 }
 
-func (n *hrpcNode) init(id int32, backend *HRPCBackend) {
-	n.Node_.Init(id, backend)
+func (n *hrpcNode) onCreate(name string, backend *HRPCBackend) {
+	n.rpcNode_.onCreate(name, backend)
+}
+
+func (n *hrpcNode) OnConfigure() {
+	n.rpcNode_.onConfigure()
+}
+func (n *hrpcNode) OnPrepare() {
+	n.rpcNode_.onPrepare()
 }
 
 func (n *hrpcNode) Maintain() { // runner
@@ -61,7 +69,7 @@ func (n *hrpcNode) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if Debug() >= 2 {
-		Printf("hrpcNode=%d done\n", n.id)
+		Printf("hrpcNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }

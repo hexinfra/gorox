@@ -32,6 +32,7 @@ func (v *Value) IsString() bool   { return v.kind == tokenString }
 func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
 func (v *Value) IsList() bool     { return v.kind == tokenList }
 func (v *Value) IsDict() bool     { return v.kind == tokenDict }
+func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
 
 func (v *Value) Bool() (b bool, ok bool) {
 	b, ok = v.value.(bool)
@@ -134,18 +135,11 @@ func (v *Value) StringDict() (dict map[string]string, ok bool) {
 	return
 }
 
-func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
-
 func (v *Value) BytesVar(keeper varKeeper) []byte {
 	return keeper.unsafeVariable(v.code, v.name)
 }
 func (v *Value) StringVar(keeper varKeeper) string {
 	return string(keeper.unsafeVariable(v.code, v.name))
-}
-
-// varKeeper holdes values of variables.
-type varKeeper interface {
-	unsafeVariable(code int16, name string) (value []byte)
 }
 
 // config applies configuration and creates a new stage.
@@ -165,7 +159,7 @@ func (c *config) newStageText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	return c.doParse()
+	return c.parse()
 }
 func (c *config) newStageFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
@@ -175,7 +169,7 @@ func (c *config) newStageFile(base string, path string) (stage *Stage, err error
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	return c.doParse()
+	return c.parse()
 }
 
 func (c *config) showTokens() {
@@ -219,11 +213,11 @@ func (c *config) newName() string {
 	return strconv.Itoa(c.counter)
 }
 
-func (c *config) doParse() (stage *Stage, err error) {
+func (c *config) parse() (stage *Stage, err error) {
 	if current := c.current(); current.kind != tokenComponent || current.info != compStage {
 		panic(errors.New("config error: root component is not stage"))
 	}
-	stage = createStage()
+	stage = newStage()
 	stage.setParent(nil)
 	c.parseStage(stage)
 	return stage, nil
@@ -287,12 +281,59 @@ func (c *config) parseComplet(sign *token, stage *Stage) { // xxxComplet <name> 
 	parseComponent0(c, sign, stage, stage.createComplet)
 }
 func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
-	parseComponent0(c, sign, stage, stage.createBackend)
+	backendName := c.forwardExpect(tokenString)
+	backend := stage.createBackend(sign.text, backendName.text)
+	backend.setParent(stage)
+	c.forwardExpect(tokenLeftBrace) // {
+	for {
+		current := c.forward()
+		if current.kind == tokenRightBrace { // }
+			return
+		}
+		if current.kind == tokenProperty { // .property
+			c._parseAssign(current, backend)
+			continue
+		}
+		if current.kind != tokenComponent {
+			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in backend\n", current.name(), current.text, current.line))
+		}
+		switch current.info {
+		case compNode:
+			c.parseNode(backend)
+		default:
+			panic(fmt.Errorf("unknown component '%s' in backend\n", current.text))
+		}
+	}
+}
+func (c *config) parseNode(backend Backend) { // node <name> {}
+	var nodeName string
+	if current := c.forward(); current.kind == tokenString {
+		nodeName = current.text
+		c.forward()
+	} else {
+		nodeName = c.newName()
+	}
+	node := backend.CreateNode(nodeName)
+	node.setParent(backend)
+	c.forward()
+	c._parseLeaf(node)
 }
 func (c *config) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
 	parseComponentR(c, stage, stage.createQUIXRouter, compQUIXDealet, c.parseQUIXDealet, c.parseQUIXCase)
 }
+func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
+	parseComponentR(c, stage, stage.createTCPSRouter, compTCPSDealet, c.parseTCPSDealet, c.parseTCPSCase)
+}
+func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
+	parseComponentR(c, stage, stage.createUDPSRouter, compUDPSDealet, c.parseUDPSDealet, c.parseUDPSCase)
+}
 func (c *config) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
+	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
+}
+func (c *config) parseTCPSDealet(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
+	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
+}
+func (c *config) parseUDPSDealet(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
@@ -331,12 +372,6 @@ func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <na
 		}
 	}
 }
-func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
-	parseComponentR(c, stage, stage.createTCPSRouter, compTCPSDealet, c.parseTCPSDealet, c.parseTCPSCase)
-}
-func (c *config) parseTCPSDealet(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
-	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
-}
 func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
@@ -372,12 +407,6 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}
 	}
-}
-func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
-	parseComponentR(c, stage, stage.createUDPSRouter, compUDPSDealet, c.parseUDPSDealet, c.parseUDPSCase)
-}
-func (c *config) parseUDPSDealet(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
-	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
@@ -855,33 +884,101 @@ type ruleCond struct {
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }
 
-var varCodes = map[string]int16{ // TODO
-	// general conn vars for quix, tcps, and udps
-	"srcHost": 0,
-	"srcPort": 1,
-	"isUDS":   2,
-	"isTLS":   3,
+const ( // list of tokens. if you change this list, change in tokenNames too.
+	// Components
+	tokenComponent = 1 + iota // stage, httpxServer, ...
+	// Properties
+	tokenProperty // .listen, .maxSize, ...
+	// Operators
+	tokenLeftBrace    // {
+	tokenRightBrace   // }
+	tokenLeftBracket  // [
+	tokenRightBracket // ]
+	tokenLeftParen    // (
+	tokenRightParen   // )
+	tokenComma        // ,
+	tokenColon        // :
+	tokenPlus         // +
+	tokenEqual        // =
+	tokenCompare      // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
+	tokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
+	tokenAND          // &&
+	tokenOR           // ||
+	// Values
+	tokenBool     // true, false
+	tokenInteger  // 123, 16K, 256M, ...
+	tokenString   // "", "abc", `def`, ...
+	tokenDuration // 1s, 2m, 3h, 4d, ...
+	tokenList     // lists: (...)
+	tokenDict     // dicts: [...]
+	tokenVariable // $method, $path, ...
+)
 
-	// quix conn vars
-
-	// tcps conn vars
-	"serverName": 4,
-	"nextProto":  5,
-
-	// udps conn vars
-
-	// web request vars
-	"method":      0, // GET, POST, ...
-	"scheme":      1, // http, https
-	"authority":   2, // example.com, example.org:8080
-	"hostname":    3, // example.com, example.org
-	"colonPort":   4, // :80, :8080
-	"path":        5, // /abc, /def/
-	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
-	"encodedPath": 7, // /abc, /%cc%dd
-	"queryString": 8, // ?x=y, ?y=z&z=%ff
-	"contentType": 9, // application/json
+var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
+	// Components
+	tokenComponent: "component",
+	// Properties
+	tokenProperty: "property",
+	// Operators
+	tokenLeftBrace:    "leftBrace",
+	tokenRightBrace:   "rightBrace",
+	tokenLeftBracket:  "leftBracket",
+	tokenRightBracket: "rightBracket",
+	tokenLeftParen:    "leftParen",
+	tokenRightParen:   "rightParen",
+	tokenComma:        "comma",
+	tokenColon:        "colon",
+	tokenPlus:         "plus",
+	tokenEqual:        "equal",
+	tokenCompare:      "compare",
+	tokenFSCheck:      "fsCheck",
+	tokenAND:          "and",
+	tokenOR:           "or",
+	// Values
+	tokenBool:     "bool",
+	tokenInteger:  "integer",
+	tokenString:   "string",
+	tokenDuration: "duration",
+	tokenList:     "list",
+	tokenDict:     "dict",
+	tokenVariable: "variable",
 }
+
+var ( // solos
+	soloKinds = [256]int16{ // keep sync with soloTexts
+		'{': tokenLeftBrace,
+		'}': tokenRightBrace,
+		'[': tokenLeftBracket,
+		']': tokenRightBracket,
+		'(': tokenLeftParen,
+		')': tokenRightParen,
+		',': tokenComma,
+		':': tokenColon,
+		'+': tokenPlus,
+	}
+	soloTexts = [...]string{ // keep sync with soloKinds
+		'{': "{",
+		'}': "}",
+		'[': "[",
+		']': "]",
+		'(': "(",
+		')': ")",
+		',': ",",
+		':': ":",
+		'+': "+",
+	}
+)
+
+// token is a token in config file.
+type token struct { // 40 bytes
+	kind int16  // tokenXXX
+	info int16  // compXXX for components, or code for variables
+	line int32  // at line number
+	file string // file path
+	text string // text literal
+}
+
+func (t token) name() string { return tokenNames[t.kind] }
 
 // lexer
 type lexer struct {
@@ -1136,99 +1233,3 @@ func (l *lexer) _loadURL(base string, file string) string {
 		return data
 	}
 }
-
-const ( // token list. if you change this list, change in tokenNames too.
-	// Components
-	tokenComponent = 1 + iota // stage, httpxServer, ...
-	// Properties
-	tokenProperty // .listen, .maxSize, ...
-	// Operators
-	tokenLeftBrace    // {
-	tokenRightBrace   // }
-	tokenLeftBracket  // [
-	tokenRightBracket // ]
-	tokenLeftParen    // (
-	tokenRightParen   // )
-	tokenComma        // ,
-	tokenColon        // :
-	tokenPlus         // +
-	tokenEqual        // =
-	tokenCompare      // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
-	tokenFSCheck      // -f, -d, -e, -D, -E, !f, !d, !e
-	tokenAND          // &&
-	tokenOR           // ||
-	// Values
-	tokenBool     // true, false
-	tokenInteger  // 123, 16K, 256M, ...
-	tokenString   // "", "abc", `def`, ...
-	tokenDuration // 1s, 2m, 3h, 4d, ...
-	tokenList     // lists: (...)
-	tokenDict     // dicts: [...]
-	tokenVariable // $method, $path, ...
-)
-
-// token is a token in config file.
-type token struct { // 40 bytes
-	kind int16  // tokenXXX
-	info int16  // compXXX for components, or code for variables
-	line int32  // at line number
-	file string // file path
-	text string // text literal
-}
-
-func (t token) name() string { return tokenNames[t.kind] }
-
-var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
-	// Components
-	tokenComponent: "component",
-	// Properties
-	tokenProperty: "property",
-	// Operators
-	tokenLeftBrace:    "leftBrace",
-	tokenRightBrace:   "rightBrace",
-	tokenLeftBracket:  "leftBracket",
-	tokenRightBracket: "rightBracket",
-	tokenLeftParen:    "leftParen",
-	tokenRightParen:   "rightParen",
-	tokenComma:        "comma",
-	tokenColon:        "colon",
-	tokenPlus:         "plus",
-	tokenEqual:        "equal",
-	tokenCompare:      "compare",
-	tokenFSCheck:      "fsCheck",
-	tokenAND:          "and",
-	tokenOR:           "or",
-	// Values
-	tokenBool:     "bool",
-	tokenInteger:  "integer",
-	tokenString:   "string",
-	tokenDuration: "duration",
-	tokenList:     "list",
-	tokenDict:     "dict",
-	tokenVariable: "variable",
-}
-
-var ( // solos
-	soloKinds = [256]int16{ // keep sync with soloTexts
-		'{': tokenLeftBrace,
-		'}': tokenRightBrace,
-		'[': tokenLeftBracket,
-		']': tokenRightBracket,
-		'(': tokenLeftParen,
-		')': tokenRightParen,
-		',': tokenComma,
-		':': tokenColon,
-		'+': tokenPlus,
-	}
-	soloTexts = [...]string{ // keep sync with soloKinds
-		'{': "{",
-		'}': "}",
-		'[': "[",
-		']': "]",
-		'(': "(",
-		')': ")",
-		',': ",",
-		':': ":",
-		'+': "+",
-	}
-)

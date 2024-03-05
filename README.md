@@ -52,8 +52,7 @@ Using Gorox as a Network Proxy
 
 If you would like to use Gorox as a Network Proxy, you can download the official
 binary distribution and read the "Start and stop Gorox" section below. But if
-you need to build it from source, please read below.
-
+you choose to build it from source, please read below.
 
 Using Gorox as a Webapp Server or RPC Framework
 -----------------------------------------------
@@ -74,7 +73,6 @@ If build failed, set CGO_ENABLED to 0 and try again:
     shell> go build
 
 On succeed, a "gorox" or "gorox.exe" binary will be generated.
-
 
 Start and stop Gorox
 --------------------
@@ -100,13 +98,12 @@ For more actions and options, run:
 To install, move the whole Gorox directory to where you like. To uninstall,
 simply remove the whole Gorox directory.
 
-
 More usage examples
 -------------------
 
 We provide some example configs for Gorox to use, see them under conf/examples.
 For example, if you are using Gorox as an HTTP reverse proxy, there is a demo
-in conf/examples/http_proxy.conf, you can modify it and start Gorox like:
+config in conf/examples/http_proxy.conf, you can modify it and start Gorox like:
 
     shell> ./gorox -daemon -config conf/examples/http_proxy.conf
 

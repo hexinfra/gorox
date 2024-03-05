@@ -13,7 +13,7 @@ NAMING
     as mixin types:
 
       webServer_
-	  _client_
+      _client_
 
 
 COMPONENTS
@@ -23,6 +23,7 @@ COMPONENTS
     fixture (clock, fcache, namer, ...)
     complet (...)
     backend (http1Backend, tcpsBackend, ...)
+      node [*]
     router (quixRouter, tcpsRouter, udpsRouter)
       dealet (quixProxy, tcpsProxy, udpsProxy, ...)
       case [*]

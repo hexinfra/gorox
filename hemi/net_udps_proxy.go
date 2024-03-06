@@ -15,7 +15,7 @@ func init() {
 	})
 }
 
-// udpsProxy passes UDPS (UDP/TLS/UDS) conns to backend UDPS server.
+// udpsProxy passes UDPS conns to backend UDPS server.
 type udpsProxy struct {
 	// Parent
 	UDPSDealet_

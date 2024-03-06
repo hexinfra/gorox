@@ -15,7 +15,7 @@ import (
 
 // Conn
 type Conn struct {
-	udpConn *net.UDPConn
+	pktConn net.PacketConn
 	rawConn syscall.RawConn
 }
 

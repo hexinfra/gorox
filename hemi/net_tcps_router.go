@@ -23,29 +23,58 @@ import (
 // TCPSRouter
 type TCPSRouter struct {
 	// Parent
-	router_[*TCPSRouter, *tcpsGate, TCPSDealet, *tcpsCase]
+	Server_[*tcpsGate]
+	// Assocs
+	dealets compDict[TCPSDealet] // defined dealets. indexed by name
+	cases   compList[*tcpsCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	// States
+	accessLog *logcfg // ...
+	logger    *logger // router access logger
 }
 
 func (r *TCPSRouter) onCreate(name string, stage *Stage) {
-	r.router_.onCreate(name, stage, tcpsDealetCreators)
+	r.Server_.OnCreate(name, stage)
+	r.dealets = make(compDict[TCPSDealet])
 }
 func (r *TCPSRouter) OnShutdown() {
-	r.router_.onShutdown()
+	r.Server_.OnShutdown()
 }
 
 func (r *TCPSRouter) OnConfigure() {
-	r.router_.onConfigure()
+	r.Server_.OnConfigure()
+
+	// accessLog, TODO
 
 	r.dealets.walk(TCPSDealet.OnConfigure)
 	r.cases.walk((*tcpsCase).OnConfigure)
 }
 func (r *TCPSRouter) OnPrepare() {
-	r.router_.onPrepare()
+	r.Server_.OnPrepare()
+
+	// accessLog, TODO
+	if r.accessLog != nil {
+		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+	}
 
 	r.dealets.walk(TCPSDealet.OnPrepare)
 	r.cases.walk((*tcpsCase).OnPrepare)
 }
 
+func (r *TCPSRouter) createDealet(sign string, name string) TCPSDealet {
+	if _, ok := r.dealets[name]; ok {
+		UseExitln("conflicting dealet with a same name in router")
+	}
+	creatorsLock.RLock()
+	defer creatorsLock.RUnlock()
+	create, ok := tcpsDealetCreators[sign]
+	if !ok {
+		UseExitln("unknown dealet sign: " + sign)
+	}
+	dealet := create(name, r.stage, r)
+	dealet.setShell(dealet)
+	r.dealets[name] = dealet
+	return dealet
+}
 func (r *TCPSRouter) createCase(name string) *tcpsCase {
 	if r.hasCase(name) {
 		UseExitln("conflicting case with a same name")
@@ -55,6 +84,21 @@ func (r *TCPSRouter) createCase(name string) *tcpsCase {
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
+}
+func (r *TCPSRouter) hasCase(name string) bool {
+	for _, kase := range r.cases {
+		if kase.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *TCPSRouter) Log(str string) {
+}
+func (r *TCPSRouter) Logln(str string) {
+}
+func (r *TCPSRouter) Logf(str string) {
 }
 
 func (r *TCPSRouter) Serve() { // runner
@@ -123,105 +167,6 @@ func (r *TCPSRouter) dispatch(conn *TCPSConn) {
 			break
 		}
 	}
-}
-
-// TCPSDealet
-type TCPSDealet interface {
-	// Imports
-	Component
-	// Methods
-	Deal(conn *TCPSConn) (dealt bool)
-}
-
-// TCPSDealet_
-type TCPSDealet_ struct {
-	// Parent
-	Component_
-	// States
-}
-
-// tcpsCase
-type tcpsCase struct {
-	// Parent
-	case_[*TCPSRouter, TCPSDealet]
-	// States
-	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
-}
-
-func (c *tcpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
-		}
-	}
-}
-func (c *tcpsCase) OnPrepare() {
-	c.case_.OnPrepare()
-}
-
-func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
-	if c.general {
-		return true
-	}
-	value := conn.unsafeVariable(c.varCode, c.varName)
-	return c.matcher(c, conn, value)
-}
-
-func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
-	for _, dealet := range c.dealets {
-		if dealt := dealet.Deal(conn); dealt {
-			return true
-		}
-	}
-	return false
-}
-
-var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
-	"==": (*tcpsCase).equalMatch,
-	"^=": (*tcpsCase).prefixMatch,
-	"$=": (*tcpsCase).suffixMatch,
-	"*=": (*tcpsCase).containMatch,
-	"~=": (*tcpsCase).regexpMatch,
-	"!=": (*tcpsCase).notEqualMatch,
-	"!^": (*tcpsCase).notPrefixMatch,
-	"!$": (*tcpsCase).notSuffixMatch,
-	"!*": (*tcpsCase).notContainMatch,
-	"!~": (*tcpsCase).notRegexpMatch,
-}
-
-func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
-	return c.case_._equalMatch(value)
-}
-func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
-	return c.case_._prefixMatch(value)
-}
-func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
-	return c.case_._suffixMatch(value)
-}
-func (c *tcpsCase) containMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
-	return c.case_._containMatch(value)
-}
-func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
-	return c.case_._regexpMatch(value)
-}
-func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
-	return c.case_._notEqualMatch(value)
-}
-func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
-	return c.case_._notPrefixMatch(value)
-}
-func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
-	return c.case_._notSuffixMatch(value)
-}
-func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
-	return c.case_._notContainMatch(value)
-}
-func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
-	return c.case_._notRegexpMatch(value)
 }
 
 // tcpsGate is an opening gate of TCPSRouter.
@@ -377,6 +322,109 @@ func (g *tcpsGate) justClose(netConn net.Conn) {
 	g.OnConnClosed()
 }
 
+// TCPSDealet
+type TCPSDealet interface {
+	// Imports
+	Component
+	// Methods
+	Deal(conn *TCPSConn) (dealt bool)
+}
+
+// TCPSDealet_
+type TCPSDealet_ struct {
+	// Parent
+	Component_
+	// States
+}
+
+// tcpsCase
+type tcpsCase struct {
+	// Parent
+	case_[*TCPSRouter]
+	// Assocs
+	dealets []TCPSDealet
+	// States
+	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
+}
+
+func (c *tcpsCase) OnConfigure() {
+	c.case_.OnConfigure()
+	if c.info != nil {
+		cond := c.info.(caseCond)
+		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
+			c.matcher = matcher
+		} else {
+			UseExitln("unknown compare in case condition")
+		}
+	}
+}
+func (c *tcpsCase) OnPrepare() {
+	c.case_.OnPrepare()
+}
+
+func (c *tcpsCase) addDealet(dealet TCPSDealet) { c.dealets = append(c.dealets, dealet) }
+
+func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
+	if c.general {
+		return true
+	}
+	value := conn.unsafeVariable(c.varCode, c.varName)
+	return c.matcher(c, conn, value)
+}
+
+func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
+	for _, dealet := range c.dealets {
+		if dealt := dealet.Deal(conn); dealt {
+			return true
+		}
+	}
+	return false
+}
+
+var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
+	"==": (*tcpsCase).equalMatch,
+	"^=": (*tcpsCase).prefixMatch,
+	"$=": (*tcpsCase).suffixMatch,
+	"*=": (*tcpsCase).containMatch,
+	"~=": (*tcpsCase).regexpMatch,
+	"!=": (*tcpsCase).notEqualMatch,
+	"!^": (*tcpsCase).notPrefixMatch,
+	"!$": (*tcpsCase).notSuffixMatch,
+	"!*": (*tcpsCase).notContainMatch,
+	"!~": (*tcpsCase).notRegexpMatch,
+}
+
+func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
+	return c.case_._equalMatch(value)
+}
+func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
+	return c.case_._prefixMatch(value)
+}
+func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
+	return c.case_._suffixMatch(value)
+}
+func (c *tcpsCase) containMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
+	return c.case_._containMatch(value)
+}
+func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
+	return c.case_._regexpMatch(value)
+}
+func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
+	return c.case_._notEqualMatch(value)
+}
+func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
+	return c.case_._notPrefixMatch(value)
+}
+func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
+	return c.case_._notSuffixMatch(value)
+}
+func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
+	return c.case_._notContainMatch(value)
+}
+func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
+	return c.case_._notRegexpMatch(value)
+}
+
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
@@ -395,7 +443,7 @@ func putTCPSConn(tcpsConn *TCPSConn) {
 	poolTCPSConn.Put(tcpsConn)
 }
 
-// TCPSConn is a TCP/TLS/UDS connection coming from TCPSRouter.
+// TCPSConn is a TCPS connection coming from TCPSRouter.
 type TCPSConn struct {
 	// Parent
 	ServerConn_

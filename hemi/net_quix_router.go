@@ -17,29 +17,56 @@ import (
 // QUIXRouter
 type QUIXRouter struct {
 	// Parent
-	router_[*QUIXRouter, *quixGate, QUIXDealet, *quixCase]
+	Server_[*quixGate]
+	// Assocs
+	dealets compDict[QUIXDealet] // defined dealets. indexed by name
+	cases   compList[*quixCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	// States
+	accessLog *logcfg // ...
+	logger    *logger // router access logger
 }
 
 func (r *QUIXRouter) onCreate(name string, stage *Stage) {
-	r.router_.onCreate(name, stage, quixDealetCreators)
+	r.Server_.OnCreate(name, stage)
+	r.dealets = make(compDict[QUIXDealet])
 }
 func (r *QUIXRouter) OnShutdown() {
-	r.router_.onShutdown()
+	r.Server_.OnShutdown()
 }
 
 func (r *QUIXRouter) OnConfigure() {
-	r.router_.onConfigure()
+	r.Server_.OnConfigure()
 
 	r.dealets.walk(QUIXDealet.OnConfigure)
 	r.cases.walk((*quixCase).OnConfigure)
 }
 func (r *QUIXRouter) OnPrepare() {
-	r.router_.onPrepare()
+	r.Server_.OnPrepare()
+
+	// accessLog, TODO
+	if r.accessLog != nil {
+		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+	}
 
 	r.dealets.walk(QUIXDealet.OnPrepare)
 	r.cases.walk((*quixCase).OnPrepare)
 }
 
+func (r *QUIXRouter) createDealet(sign string, name string) QUIXDealet {
+	if _, ok := r.dealets[name]; ok {
+		UseExitln("conflicting dealet with a same name in router")
+	}
+	creatorsLock.RLock()
+	defer creatorsLock.RUnlock()
+	create, ok := quixDealetCreators[sign]
+	if !ok {
+		UseExitln("unknown dealet sign: " + sign)
+	}
+	dealet := create(name, r.stage, r)
+	dealet.setShell(dealet)
+	r.dealets[name] = dealet
+	return dealet
+}
 func (r *QUIXRouter) createCase(name string) *quixCase {
 	if r.hasCase(name) {
 		UseExitln("conflicting case with a same name")
@@ -49,6 +76,21 @@ func (r *QUIXRouter) createCase(name string) *quixCase {
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
+}
+func (r *QUIXRouter) hasCase(name string) bool {
+	for _, kase := range r.cases {
+		if kase.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *QUIXRouter) Log(str string) {
+}
+func (r *QUIXRouter) Logln(str string) {
+}
+func (r *QUIXRouter) Logf(str string) {
 }
 
 func (r *QUIXRouter) Serve() { // runner
@@ -88,6 +130,42 @@ func (r *QUIXRouter) dispatch(conn *QUIXConn) {
 	}
 }
 
+// quixGate is an opening gate of QUIXRouter.
+type quixGate struct {
+	// Parent
+	Gate_
+	// Assocs
+	// States
+	listener *quic.Listener // the real gate. set after open
+}
+
+func (g *quixGate) init(id int32, router *QUIXRouter) {
+	g.Gate_.Init(id, router)
+}
+
+func (g *quixGate) Open() error {
+	// TODO
+	// set g.listener
+	return nil
+}
+func (g *quixGate) Shut() error {
+	g.MarkShut()
+	return g.listener.Close()
+}
+
+func (g *quixGate) serve() { // runner
+	// TODO
+	for !g.IsShut() {
+		time.Sleep(time.Second)
+	}
+	g.server.DecSub()
+}
+
+func (g *quixGate) justClose(quicConn *quic.Conn) {
+	quicConn.Close()
+	g.OnConnClosed()
+}
+
 // QUIXDealet
 type QUIXDealet interface {
 	// Imports
@@ -106,7 +184,9 @@ type QUIXDealet_ struct {
 // quixCase
 type quixCase struct {
 	// Parent
-	case_[*QUIXRouter, QUIXDealet]
+	case_[*QUIXRouter]
+	// Assocs
+	dealets []QUIXDealet
 	// States
 	matcher func(kase *quixCase, conn *QUIXConn, value []byte) bool
 }
@@ -125,6 +205,8 @@ func (c *quixCase) OnConfigure() {
 func (c *quixCase) OnPrepare() {
 	c.case_.OnPrepare()
 }
+
+func (c *quixCase) addDealet(dealet QUIXDealet) { c.dealets = append(c.dealets, dealet) }
 
 func (c *quixCase) isMatch(conn *QUIXConn) bool {
 	if c.general {
@@ -181,45 +263,6 @@ func (c *quixCase) notContainMatch(conn *QUIXConn, value []byte) bool { // value
 }
 func (c *quixCase) notRegexpMatch(conn *QUIXConn, value []byte) bool { // value !~ patterns
 	return c.case_._notRegexpMatch(value)
-}
-
-// quixGate is an opening gate of QUIXRouter.
-type quixGate struct {
-	// Parent
-	Gate_
-	// Assocs
-	// States
-	listener *quic.Listener // the real gate. set after open
-}
-
-func (g *quixGate) init(id int32, router *QUIXRouter) {
-	g.Gate_.Init(id, router)
-}
-
-func (g *quixGate) Open() error {
-	// TODO
-	// set g.listener
-	return nil
-}
-func (g *quixGate) Shut() error {
-	g.MarkShut()
-	return g.listener.Close()
-}
-
-func (g *quixGate) serve() { // runner
-	// TODO
-	for !g.IsShut() {
-		time.Sleep(time.Second)
-	}
-	g.server.DecSub()
-}
-
-func (g *quixGate) justClose(quicConn *quic.Conn) {
-	quicConn.Close()
-	g.onConnectionClosed()
-}
-func (g *quixGate) onConnectionClosed() {
-	g.DecConns()
 }
 
 // poolQUIXConn

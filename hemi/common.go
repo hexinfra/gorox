@@ -20,12 +20,14 @@ import (
 	"unsafe"
 )
 
-const ( // units & sizes
+const ( // units
 	K = 1 << 10
 	M = 1 << 20
 	G = 1 << 30
 	T = 1 << 40
+)
 
+const ( // sizes
 	_1K   = 1 * K    // mostly used by stock buffers
 	_4K   = 4 * K    // mostly used by pooled buffers
 	_16K  = 16 * K   // mostly used by pooled buffers

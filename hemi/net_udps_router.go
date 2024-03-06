@@ -17,29 +17,58 @@ import (
 // UDPSRouter
 type UDPSRouter struct {
 	// Parent
-	router_[*UDPSRouter, *udpsGate, UDPSDealet, *udpsCase]
+	Server_[*udpsGate]
+	// Assocs
+	dealets compDict[UDPSDealet] // defined dealets. indexed by name
+	cases   compList[*udpsCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	// States
+	accessLog *logcfg // ...
+	logger    *logger // router access logger
 }
 
 func (r *UDPSRouter) onCreate(name string, stage *Stage) {
-	r.router_.onCreate(name, stage, udpsDealetCreators)
+	r.Server_.OnCreate(name, stage)
+	r.dealets = make(compDict[UDPSDealet])
 }
 func (r *UDPSRouter) OnShutdown() {
-	r.router_.onShutdown()
+	r.Server_.OnShutdown()
 }
 
 func (r *UDPSRouter) OnConfigure() {
-	r.router_.onConfigure()
+	r.Server_.OnConfigure()
+
+	// accessLog, TODO
 
 	r.dealets.walk(UDPSDealet.OnConfigure)
 	r.cases.walk((*udpsCase).OnConfigure)
 }
 func (r *UDPSRouter) OnPrepare() {
-	r.router_.onPrepare()
+	r.Server_.OnPrepare()
+
+	// accessLog, TODO
+	if r.accessLog != nil {
+		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+	}
 
 	r.dealets.walk(UDPSDealet.OnPrepare)
 	r.cases.walk((*udpsCase).OnPrepare)
 }
 
+func (r *UDPSRouter) createDealet(sign string, name string) UDPSDealet {
+	if _, ok := r.dealets[name]; ok {
+		UseExitln("conflicting dealet with a same name in router")
+	}
+	creatorsLock.RLock()
+	defer creatorsLock.RUnlock()
+	create, ok := udpsDealetCreators[sign]
+	if !ok {
+		UseExitln("unknown dealet sign: " + sign)
+	}
+	dealet := create(name, r.stage, r)
+	dealet.setShell(dealet)
+	r.dealets[name] = dealet
+	return dealet
+}
 func (r *UDPSRouter) createCase(name string) *udpsCase {
 	if r.hasCase(name) {
 		UseExitln("conflicting case with a same name")
@@ -49,6 +78,21 @@ func (r *UDPSRouter) createCase(name string) *udpsCase {
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
+}
+func (r *UDPSRouter) hasCase(name string) bool {
+	for _, kase := range r.cases {
+		if kase.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *UDPSRouter) Log(str string) {
+}
+func (r *UDPSRouter) Logln(str string) {
+}
+func (r *UDPSRouter) Logf(str string) {
 }
 
 func (r *UDPSRouter) Serve() { // runner
@@ -94,6 +138,59 @@ func (r *UDPSRouter) dispatch(conn *UDPSConn) {
 	}
 }
 
+// udpsGate is an opening gate of UDPSRouter.
+type udpsGate struct {
+	// Parent
+	Gate_
+	// Assocs
+	// States
+}
+
+func (g *udpsGate) init(id int32, router *UDPSRouter) {
+	g.Gate_.Init(id, router)
+}
+
+func (g *udpsGate) Open() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) _openUnix() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) _openInet() error {
+	// TODO
+	return nil
+}
+func (g *udpsGate) Shut() error {
+	g.shut.Store(true)
+	// TODO
+	return nil
+}
+
+func (g *udpsGate) serveUDP() { // runner
+	// TODO
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.server.DecSub()
+}
+func (g *udpsGate) serveTLS() { // runner
+	// TODO
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.server.DecSub()
+}
+func (g *udpsGate) serveUDS() { // runner
+	// TODO
+}
+
+func (g *udpsGate) justClose(pktConn net.PacketConn) {
+	pktConn.Close()
+	g.OnConnClosed()
+}
+
 // UDPSDealet
 type UDPSDealet interface {
 	// Imports
@@ -112,7 +209,9 @@ type UDPSDealet_ struct {
 // udpsCase
 type udpsCase struct {
 	// Parent
-	case_[*UDPSRouter, UDPSDealet]
+	case_[*UDPSRouter]
+	// Assocs
+	dealets []UDPSDealet
 	// States
 	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
 }
@@ -131,6 +230,8 @@ func (c *udpsCase) OnConfigure() {
 func (c *udpsCase) OnPrepare() {
 	c.case_.OnPrepare()
 }
+
+func (c *udpsCase) addDealet(dealet UDPSDealet) { c.dealets = append(c.dealets, dealet) }
 
 func (c *udpsCase) isMatch(conn *UDPSConn) bool {
 	if c.general {
@@ -193,70 +294,17 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value 
 	return c.case_._notRegexpMatch(value)
 }
 
-// udpsGate is an opening gate of UDPSRouter.
-type udpsGate struct {
-	// Parent
-	Gate_
-	// Assocs
-	// States
-}
-
-func (g *udpsGate) init(id int32, router *UDPSRouter) {
-	g.Gate_.Init(id, router)
-}
-
-func (g *udpsGate) Open() error {
-	// TODO
-	return nil
-}
-func (g *udpsGate) _openUnix() error {
-	// TODO
-	return nil
-}
-func (g *udpsGate) _openInet() error {
-	// TODO
-	return nil
-}
-func (g *udpsGate) Shut() error {
-	g.shut.Store(true)
-	// TODO
-	return nil
-}
-
-func (g *udpsGate) serveUDP() { // runner
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.server.DecSub()
-}
-func (g *udpsGate) serveTLS() { // runner
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.server.DecSub()
-}
-func (g *udpsGate) serveUDS() { // runner
-	// TODO
-}
-
-func (g *udpsGate) justClose(udpConn *net.UDPConn) {
-	udpConn.Close()
-	g.OnConnClosed()
-}
-
 // poolUDPSConn
 var poolUDPSConn sync.Pool
 
-func getUDPSConn(id int64, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) *UDPSConn {
+func getUDPSConn(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPSConn {
 	var udpsConn *UDPSConn
 	if x := poolUDPSConn.Get(); x == nil {
 		udpsConn = new(UDPSConn)
 	} else {
 		udpsConn = x.(*UDPSConn)
 	}
-	udpsConn.onGet(id, gate, udpConn, rawConn)
+	udpsConn.onGet(id, gate, pktConn, rawConn)
 	return udpsConn
 }
 func putUDPSConn(udpsConn *UDPSConn) {
@@ -272,18 +320,18 @@ type UDPSConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	udpConn *net.UDPConn
+	pktConn net.PacketConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
-func (c *UDPSConn) onGet(id int64, gate *udpsGate, udpConn *net.UDPConn, rawConn syscall.RawConn) {
+func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id, gate)
-	c.udpConn = udpConn
+	c.pktConn = pktConn
 	c.rawConn = rawConn
 }
 func (c *UDPSConn) onPut() {
-	c.udpConn = nil
+	c.pktConn = nil
 	c.rawConn = nil
 	c.ServerConn_.OnPut()
 }
@@ -296,9 +344,9 @@ func (c *UDPSConn) serve() { // runner
 }
 
 func (c *UDPSConn) Close() error {
-	udpConn := c.udpConn
+	pktConn := c.pktConn
 	putUDPSConn(c)
-	return udpConn.Close()
+	return pktConn.Close()
 }
 
 func (c *UDPSConn) closeConn() {
@@ -307,7 +355,7 @@ func (c *UDPSConn) closeConn() {
 	} else if router.IsTLS() {
 	} else {
 	}
-	c.udpConn.Close()
+	c.pktConn.Close()
 }
 
 func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {

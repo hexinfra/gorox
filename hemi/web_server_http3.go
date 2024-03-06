@@ -37,12 +37,10 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // tls mode is always enabled
 }
-func (s *http3Server) OnShutdown() {
-	s.webServer_.onShutdown()
-}
 
 func (s *http3Server) OnConfigure() {
 	s.webServer_.onConfigure(s)
+	// TODO: forceScheme & adjustScheme?
 }
 func (s *http3Server) OnPrepare() {
 	s.webServer_.onPrepare(s)
@@ -69,14 +67,14 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of HTTP/3 server.
 type http3Gate struct {
 	// Parent
-	webGate_
+	Gate_
 	// Assocs
 	// States
 	listener *quic.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.webGate_.Init(id, server)
+	g.Gate_.Init(id, server)
 }
 
 func (g *http3Gate) Open() error {
@@ -145,7 +143,9 @@ func putHTTP3Conn(httpConn *http3Conn) {
 // http3Conn is the server-side HTTP/3 connection.
 type http3Conn struct {
 	// Parent
-	webServerConn_
+	ServerConn_
+	// Mixins
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -163,7 +163,8 @@ type http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c.webServerConn_.onGet(id, gate)
+	c.ServerConn_.OnGet(id, gate)
+	c._webConn_.onGet()
 	c.quicConn = quicConn
 	if c.buffer == nil {
 		c.buffer = getHTTP3Buffer()
@@ -171,12 +172,19 @@ func (c *http3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 	}
 }
 func (c *http3Conn) onPut() {
-	c.webServerConn_.onPut()
 	c.quicConn = nil
 	// c.buffer is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*http3Stream{}
 	c.http3Conn0 = http3Conn0{}
+	c._webConn_.onPut()
+	c.ServerConn_.OnPut()
+}
+
+func (c *http3Conn) webServer() webServer { return c.Server().(webServer) }
+
+func (c *http3Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *http3Conn) serve() { // runner
@@ -227,28 +235,28 @@ func putHTTP3Stream(stream *http3Stream) {
 
 // http3Stream is the server-side HTTP/3 stream.
 type http3Stream struct {
-	// Parent
-	webServerStream_
+	// Mixins
+	_webStream_[*http3Conn]
 	// Assocs
 	request  http3Request  // the http/3 request.
 	response http3Response // the http/3 response.
+	socket   *http3Socket  // ...
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn       *http3Conn   // ...
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 	http3Stream0 // all values must be zero by default in this struct!
 }
 type http3Stream0 struct { // for fast reset, entirely
-	index uint8
-	state uint8
-	reset bool
+	index    uint8
+	state    uint8
+	reset    bool
+	isSocket bool
 }
 
 func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.webServerStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -256,10 +264,10 @@ func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for n
 func (s *http3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.webServerStream_.onEnd()
-	s.conn = nil
 	s.quicStream = nil
 	s.http3Stream0 = http3Stream0{}
+	s._webStream_.onEnd()
+	s.conn = nil
 }
 
 func (s *http3Stream) execute() { // runner
@@ -268,7 +276,6 @@ func (s *http3Stream) execute() { // runner
 }
 
 func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue
@@ -285,10 +292,6 @@ func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { //
 }
 func (s *http3Stream) executeSocket() { // see RFC 9220
 	// TODO
-}
-
-func (s *http3Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *http3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only

@@ -37,6 +37,9 @@ type webAgent interface {
 
 // _webAgent_ is a mixin for webServer_ and webBackend_.
 type _webAgent_ struct {
+	// Mixins
+	_streamHolder_
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	recvTimeout           time.Duration // timeout to recv the whole message content
 	sendTimeout           time.Duration // timeout to send the whole message
@@ -44,7 +47,9 @@ type _webAgent_ struct {
 	maxMemoryContentSize  int32         // max content size that can be loaded into memory directly
 }
 
-func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
+func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+	a._streamHolder_.onConfigure(shell, defaultMaxStreams)
+	a._contentSaver_.onConfigure(shell, defaultDir)
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -78,7 +83,8 @@ func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
 }
 func (a *_webAgent_) onPrepare(shell Component) {
-	// Currently nothing
+	a._streamHolder_.onPrepare(shell)
+	a._contentSaver_.onPrepare(shell, 0755)
 }
 
 func (a *_webAgent_) RecvTimeout() time.Duration   { return a.recvTimeout }
@@ -97,7 +103,7 @@ type webConn interface {
 	markBroken()
 }
 
-// _webConn_ is a mixin for webServerConn_ and webBackendConn_.
+// _webConn_ is a mixin for http[1-3]Conn and H[1-3]Conn.
 type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -145,19 +151,33 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// _webStream_ is a mixin for webServerStream_ and webBackendStream_.
-type _webStream_ struct {
+// _webStream_ is a mixin for http[1-3]Stream and H[1-3]Stream.
+type _webStream_[C webConn] struct {
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	conn   C      // associated conn
 	// Stream states (zeros)
-	isSocket bool // is websocket?
 }
 
-func (s *_webStream_) onUse() {
+func (s *_webStream_[C]) onUse(conn C) {
+	s.region.Init()
+	s.conn = conn
 }
-func (s *_webStream_) onEnd() {
-	s.isSocket = false
+func (s *_webStream_[C]) onEnd() {
+	s.region.Free()
+	// s.conn is set as nil in concrete type due to Go's limited generic support :(
+}
+
+func (s *_webStream_[C]) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *_webStream_[C]) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (s *_webStream_[C]) webConn() webConn { return s.conn }
+
+func (s *_webStream_[C]) makeTempName(p []byte, unixTime int64) int {
+	return s.conn.makeTempName(p, unixTime)
 }
 
 // webIn_ is the parent for webServerRequest_ and webBackendResponse_.

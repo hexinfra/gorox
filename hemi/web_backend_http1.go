@@ -59,24 +59,24 @@ func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Parent
-	webNode_
+	Node_
 	// Assocs
 	// States
 }
 
 func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
-	n.webNode_.OnCreate(name, backend)
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *http1Node) OnConfigure() {
-	n.webNode_.onConfigure()
+	n.Node_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"http/1.1"}
 	}
 }
 func (n *http1Node) OnPrepare() {
-	n.webNode_.onPrepare()
+	n.Node_.OnPrepare()
 }
 
 func (n *http1Node) Maintain() { // runner
@@ -220,7 +220,9 @@ func putH1Conn(h1Conn *H1Conn) {
 // H1Conn is the backend-side HTTP/1 connection.
 type H1Conn struct {
 	// Parent
-	webBackendConn_
+	BackendConn_
+	// Mixins
+	_webConn_
 	// Assocs
 	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -232,14 +234,27 @@ type H1Conn struct {
 }
 
 func (c *H1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, node)
+	c.BackendConn_.OnGet(id, node)
+	c._webConn_.onGet()
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *H1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.webBackendConn_.onPut()
+	c._webConn_.onPut()
+	c.BackendConn_.OnPut()
+}
+
+func (c *H1Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *H1Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+
+func (c *H1Conn) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+}
+
+func (c *H1Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H1Conn) FetchStream() WebBackendStream {
@@ -259,8 +274,8 @@ func (c *H1Conn) Close() error {
 
 // H1Stream is the backend-side HTTP/1 stream.
 type H1Stream struct {
-	// Parent
-	webBackendStream_
+	// Mixins
+	_webStream_[*H1Conn]
 	// Assocs
 	request  H1Request  // the backend-side http/1 request
 	response H1Response // the backend-side http/1 response
@@ -268,13 +283,12 @@ type H1Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	conn *H1Conn // associated conn
 	// Stream states (zeros)
+	isSocket bool
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s.webBackendStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -282,12 +296,12 @@ func (s *H1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.socket = nil
+	s.isSocket = false
+	s._webStream_.onEnd()
 	s.conn = nil
-	s.webBackendStream_.onEnd()
 }
 
 func (s *H1Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H1Stream) webConn() webConn     { return s.conn }
 func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
@@ -308,10 +322,6 @@ func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 }
 func (s *H1Stream) ReverseSocket(req Request, sock Socket) error {
 	return nil
-}
-
-func (s *H1Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {

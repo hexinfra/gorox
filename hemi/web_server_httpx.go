@@ -49,9 +49,6 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 	s.forceScheme = -1 // not forced
 }
-func (s *httpxServer) OnShutdown() {
-	s.webServer_.onShutdown()
-}
 
 func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure(s)
@@ -149,14 +146,14 @@ func (s *httpxServer) _serveTCP() {
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	webGate_
+	Gate_
 	// Assocs
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
 func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.webGate_.Init(id, server)
+	g.Gate_.Init(id, server)
 }
 
 func (g *httpxGate) Open() error {
@@ -350,7 +347,9 @@ func putHTTP1Conn(httpConn *http1Conn) {
 // http1Conn is the server-side HTTP/1 connection.
 type http1Conn struct {
 	// Parent
-	webServerConn_
+	ServerConn_
+	// Mixins
+	_webConn_
 	// Assocs
 	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
@@ -363,7 +362,8 @@ type http1Conn struct {
 }
 
 func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webServerConn_.onGet(id, gate)
+	c.ServerConn_.OnGet(id, gate)
+	c._webConn_.onGet()
 	req := &c.stream.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
 	c.netConn = netConn
@@ -380,7 +380,14 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
-	c.webServerConn_.onPut()
+	c._webConn_.onPut()
+	c.ServerConn_.OnPut()
+}
+
+func (c *http1Conn) webServer() webServer { return c.Server().(webServer) }
+
+func (c *http1Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *http1Conn) serve() { // runner
@@ -457,7 +464,9 @@ func putHTTP2Conn(httpConn *http2Conn) {
 // http2Conn is the server-side HTTP/2 connection.
 type http2Conn struct {
 	// Parent
-	webServerConn_
+	ServerConn_
+	// Mixins
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
@@ -497,7 +506,8 @@ type http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webServerConn_.onGet(id, gate)
+	c.ServerConn_.OnGet(id, gate)
+	c._webConn_.onGet()
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.buffer == nil {
@@ -516,7 +526,6 @@ func (c *http2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 	}
 }
 func (c *http2Conn) onPut() {
-	c.webServerConn_.onPut()
 	c.netConn = nil
 	c.rawConn = nil
 	// c.buffer is reserved
@@ -530,6 +539,14 @@ func (c *http2Conn) onPut() {
 	c.vector = nil
 	c.fixedVector = [2][]byte{}
 	c.http2Conn0 = http2Conn0{}
+	c._webConn_.onPut()
+	c.ServerConn_.OnPut()
+}
+
+func (c *http2Conn) webServer() webServer { return c.Server().(webServer) }
+
+func (c *http2Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *http2Conn) serve() { // runner
@@ -1212,29 +1229,30 @@ func (c *http2Conn) closeConn() {
 
 // http1Stream is the server-side HTTP/1 stream.
 type http1Stream struct {
-	// Parent
-	webServerStream_
+	// Mixins
+	_webStream_[*http1Conn]
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
+	socket   *http1Socket  // ...
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *http1Conn // associated conn
 	// Stream states (zeros)
+	isSocket bool
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s.webServerStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
 func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
+	s.isSocket = false
+	s._webStream_.onEnd()
 	s.conn = nil
-	s.webServerStream_.onEnd()
 }
 
 func (s *http1Stream) execute() {
@@ -1324,7 +1342,6 @@ func (s *http1Stream) execute() {
 }
 
 func (s *http1Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http1Stream) webConn() webConn     { return s.conn }
 func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http1Stream) writeContinue() bool { // 100 continue
@@ -1404,10 +1421,6 @@ func (s *http1Stream) executeSocket() { // upgrade: websocket
 	s.onEnd()
 }
 
-func (s *http1Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
-}
-
 func (s *http1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s.conn
 	if deadline.Sub(conn.lastRead) >= time.Second {
@@ -1465,30 +1478,30 @@ func putHTTP2Stream(stream *http2Stream) {
 
 // http2Stream is the server-side HTTP/2 stream.
 type http2Stream struct {
-	// Parent
-	webServerStream_
+	// Mixins
+	_webStream_[*http2Conn]
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
+	socket   *http2Socket  // ...
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn      *http2Conn // ...
-	id        uint32     // stream id
-	inWindow  int32      // stream-level window size for incoming DATA frames
-	outWindow int32      // stream-level window size for outgoing DATA frames
+	id        uint32 // stream id
+	inWindow  int32  // stream-level window size for incoming DATA frames
+	outWindow int32  // stream-level window size for outgoing DATA frames
 	// Stream states (zeros)
 	http2Stream0 // all values must be zero by default in this struct!
 }
 type http2Stream0 struct { // for fast reset, entirely
-	index uint8 // index in s.conn.streams
-	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
-	reset bool  // received a RST_STREAM?
+	index    uint8 // index in s.conn.streams
+	state    uint8 // http2StateOpen, http2StateRemoteClosed, ...
+	reset    bool  // received a RST_STREAM?
+	isSocket bool
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
-	s.webServerStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
@@ -1498,9 +1511,9 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.webServerStream_.onEnd()
-	s.conn = nil
 	s.http2Stream0 = http2Stream0{}
+	s._webStream_.onEnd()
+	s.conn = nil
 }
 
 func (s *http2Stream) execute() { // runner
@@ -1512,7 +1525,6 @@ func (s *http2Stream) execute() { // runner
 }
 
 func (s *http2Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) writeContinue() bool { // 100 continue
@@ -1529,10 +1541,6 @@ func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { //
 }
 func (s *http2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO
-}
-
-func (s *http2Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *http2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only

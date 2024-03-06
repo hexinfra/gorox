@@ -58,23 +58,23 @@ func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
 // http3Node
 type http3Node struct {
 	// Parent
-	webNode_
+	Node_
 	// Assocs
 	// States
 }
 
 func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
-	n.webNode_.OnCreate(name, backend)
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *http3Node) OnConfigure() {
-	n.webNode_.onConfigure()
+	n.Node_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 	}
 }
 func (n *http3Node) OnPrepare() {
-	n.webNode_.onPrepare()
+	n.Node_.OnPrepare()
 }
 
 func (n *http3Node) Maintain() { // runner
@@ -123,23 +123,44 @@ func putH3Conn(h3Conn *H3Conn) {
 // H3Conn
 type H3Conn struct {
 	// Parent
-	webBackendConn_
+	BackendConn_
+	// Mixins
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
-	nStreams atomic.Int32 // concurrent streams
+	nStreams atomic.Int32                     // concurrent streams
+	streams  [http3MaxActiveStreams]*H3Stream // active (open, remoteClosed, localClosed) streams
+	h3Conn0                                   // all values must be zero by default in this struct!
+}
+type h3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *H3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.webBackendConn_.onGet(id, node)
+	c.BackendConn_.OnGet(id, node)
+	c._webConn_.onGet()
 	c.quicConn = quicConn
 }
 func (c *H3Conn) onPut() {
 	c.quicConn = nil
 	c.nStreams.Store(0)
-	c.webBackendConn_.onPut()
+	c.streams = [http3MaxActiveStreams]*H3Stream{}
+	c.h3Conn0 = h3Conn0{}
+	c._webConn_.onPut()
+	c.BackendConn_.OnPut()
+}
+
+func (c *H3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *H3Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+
+func (c *H3Conn) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+}
+
+func (c *H3Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H3Conn) FetchStream() WebBackendStream {
@@ -185,8 +206,8 @@ func putH3Stream(stream *H3Stream) {
 
 // H3Stream
 type H3Stream struct {
-	// Parent
-	webBackendStream_
+	// Mixins
+	_webStream_[*H3Conn]
 	// Assocs
 	request  H3Request
 	response H3Response
@@ -194,14 +215,13 @@ type H3Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn       *H3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
+	isSocket bool
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.webBackendStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -210,13 +230,13 @@ func (s *H3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.socket = nil
-	s.conn = nil
 	s.quicStream = nil
-	s.webBackendStream_.onEnd()
+	s.isSocket = false
+	s._webStream_.onEnd()
+	s.conn = nil
 }
 
 func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) Request() WebBackendRequest   { return &s.request }
@@ -236,10 +256,6 @@ func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
 }
 func (s *H3Stream) ReverseSocket(req Request, sock Socket) error {
 	return nil
-}
-
-func (s *H3Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?

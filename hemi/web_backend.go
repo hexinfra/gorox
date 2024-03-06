@@ -34,8 +34,6 @@ type webBackend_[N WebNode] struct {
 	Backend_[N]
 	// Mixins
 	_webAgent_
-	_streamHolder_
-	_contentSaver_ // so responses can save their large contents in local file system.
 	_loadBalancer_
 	// States
 	health any // TODO
@@ -48,16 +46,12 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
-	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
-	b._streamHolder_.onConfigure(shell, 1000)
-	b._contentSaver_.onConfigure(shell, TmpsDir()+"/web/backends/"+b.name)
+	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
 	b._loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._webAgent_.onPrepare(shell)
-	b._streamHolder_.onPrepare(shell)
-	b._contentSaver_.onPrepare(shell, 0755)
 	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
@@ -74,25 +68,6 @@ type WebNode interface { // for *http[1-3]Node
 	storeConn(conn WebBackendConn)
 }
 
-// webNode_ is the parent for http[1-3]Node.
-type webNode_ struct {
-	// Parent
-	Node_
-	// Assocs
-	// States
-}
-
-func (n *webNode_) onCreate(name string, backend Backend) {
-	n.Node_.OnCreate(name, backend)
-}
-
-func (n *webNode_) onConfigure() {
-	n.Node_.OnConfigure()
-}
-func (n *webNode_) onPrepare() {
-	n.Node_.OnPrepare()
-}
-
 // WebBackendConn is the backend-side web conn.
 type WebBackendConn interface { // *H[1-3]Conn
 	WebNode() WebNode
@@ -102,38 +77,6 @@ type WebBackendConn interface { // *H[1-3]Conn
 	setKeepConn(keepConn bool)
 }
 
-// webBackendConn_ is the parent for H[1-3]Conn.
-type webBackendConn_ struct {
-	// Parent
-	BackendConn_
-	// Mixins
-	_webConn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	// Conn states (zeros)
-}
-
-func (c *webBackendConn_) onGet(id int64, node Node) {
-	c.BackendConn_.OnGet(id, node)
-	c._webConn_.onGet()
-}
-func (c *webBackendConn_) onPut() {
-	c._webConn_.onPut()
-	c.BackendConn_.OnPut()
-}
-
-func (c *webBackendConn_) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *webBackendConn_) WebNode() WebNode       { return c.Node().(WebNode) }
-
-func (c *webBackendConn_) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
-}
-
-func (c *webBackendConn_) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
 // WebBackendStream is the backend-side web stream.
 type WebBackendStream interface { // for *H[1-3]Stream
 	Request() WebBackendRequest
@@ -141,34 +84,6 @@ type WebBackendStream interface { // for *H[1-3]Stream
 	ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error
 	ReverseSocket(req Request, sock Socket) error
 	markBroken()
-}
-
-// webBackendStream_ is the parent for H[1-3]Stream.
-type webBackendStream_ struct {
-	// Mixins
-	_webStream_
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	region Region // a region-based memory pool
-	// Stream states (zeros)
-}
-
-func (s *webBackendStream_) onUse() { // for non-zeros
-	s._webStream_.onUse()
-	s.region.Init()
-}
-func (s *webBackendStream_) onEnd() { // for zeros
-	s.region.Free()
-	s._webStream_.onEnd()
-}
-
-func (s *webBackendStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *webBackendStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-func (s *webBackendStream_) startSocket() {
-	// TODO
 }
 
 // WebBackendRequest is the backend-side web request.

@@ -365,4 +365,8 @@ func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
 // udpsConnVariables
 var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
 	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isUDS
+	nil, // isTLS
 }

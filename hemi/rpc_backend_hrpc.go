@@ -47,20 +47,20 @@ func (b *HRPCBackend) CreateNode(name string) Node {
 // hrpcNode
 type hrpcNode struct {
 	// Parent
-	rpcNode_
+	Node_
 	// Assocs
 	// States
 }
 
 func (n *hrpcNode) onCreate(name string, backend *HRPCBackend) {
-	n.rpcNode_.onCreate(name, backend)
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *hrpcNode) OnConfigure() {
-	n.rpcNode_.onConfigure()
+	n.Node_.OnConfigure()
 }
 func (n *hrpcNode) OnPrepare() {
-	n.rpcNode_.onPrepare()
+	n.Node_.OnPrepare()
 }
 
 func (n *hrpcNode) Maintain() { // runner
@@ -76,8 +76,11 @@ func (n *hrpcNode) Maintain() { // runner
 
 // HConn
 type HConn struct {
-	rpcBackendConn_
+	// Parent
+	BackendConn_
 }
+
+func (c *HConn) rpcBackend() rpcBackend { return c.Backend().(rpcBackend) }
 
 func (c *HConn) Close() error {
 	return nil
@@ -85,17 +88,23 @@ func (c *HConn) Close() error {
 
 // HExchan is the backend-side HRPC exchan.
 type HExchan struct {
-	// Parent
-	rpcBackendExchan_
+	// Mixins
+	_rpcExchan_
 	// Assocs
 	request  HRequest
 	response HResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	node *hrpcNode
-	id   int32
+	id int32
 	// Exchan states (zeros)
+}
+
+func (x *HExchan) onUse() {
+	x._rpcExchan_.onUse()
+}
+func (x *HExchan) onEnd() {
+	x._rpcExchan_.onEnd()
 }
 
 // HRequest is the backend-side HRPC request.

@@ -42,6 +42,7 @@ func (b *HTTP2Backend) OnConfigure() {
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.webBackend_.onPrepare(b)
+	// TODO: nextProtos?
 }
 
 func (b *HTTP2Backend) CreateNode(name string) Node {
@@ -58,24 +59,24 @@ func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
 // http2Node
 type http2Node struct {
 	// Parent
-	webNode_
+	Node_
 	// Assocs
 	// States
 }
 
 func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
-	n.webNode_.OnCreate(name, backend)
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *http2Node) OnConfigure() {
-	n.webNode_.onConfigure()
+	n.Node_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"h2"}
 	}
 }
 func (n *http2Node) OnPrepare() {
-	n.webNode_.onPrepare()
+	n.Node_.OnPrepare()
 }
 
 func (n *http2Node) Maintain() { // runner
@@ -136,18 +137,25 @@ func putH2Conn(h2Conn *H2Conn) {
 // H2Conn
 type H2Conn struct {
 	// Parent
-	webBackendConn_
+	BackendConn_
+	// Mixins
+	_webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
-	nStreams atomic.Int32 // concurrent streams
+	nStreams atomic.Int32                     // concurrent streams
+	streams  [http2MaxActiveStreams]*H2Stream // active (open, remoteClosed, localClosed) streams
+	h2Conn0                                   // all values must be zero by default in this struct!
+}
+type h2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *H2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webBackendConn_.onGet(id, node)
+	c.BackendConn_.OnGet(id, node)
+	c._webConn_.onGet()
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
@@ -155,7 +163,21 @@ func (c *H2Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.nStreams.Store(0)
-	c.webBackendConn_.onPut()
+	c.streams = [http2MaxActiveStreams]*H2Stream{}
+	c.h2Conn0 = h2Conn0{}
+	c._webConn_.onPut()
+	c.BackendConn_.OnPut()
+}
+
+func (c *H2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *H2Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+
+func (c *H2Conn) reachLimit() bool {
+	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+}
+
+func (c *H2Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H2Conn) FetchStream() WebBackendStream {
@@ -229,8 +251,8 @@ func putH2Stream(stream *H2Stream) {
 
 // H2Stream
 type H2Stream struct {
-	// Parent
-	webBackendStream_
+	// Mixins
+	_webStream_[*H2Conn]
 	// Assocs
 	request  H2Request
 	response H2Response
@@ -238,14 +260,13 @@ type H2Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *H2Conn
-	id   uint32
+	id uint32
 	// Stream states (zeros)
+	isSocket bool
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
-	s.webBackendStream_.onUse()
-	s.conn = conn
+	s._webStream_.onUse(conn)
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
@@ -254,12 +275,12 @@ func (s *H2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	s.socket = nil
+	s.isSocket = false
+	s._webStream_.onEnd()
 	s.conn = nil
-	s.webBackendStream_.onEnd()
 }
 
 func (s *H2Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) Request() WebBackendRequest   { return &s.request }
@@ -279,10 +300,6 @@ func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatrac
 }
 func (s *H2Stream) ReverseSocket(req Request, sock Socket) error {
 	return nil
-}
-
-func (s *H2Stream) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
 }
 
 func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?

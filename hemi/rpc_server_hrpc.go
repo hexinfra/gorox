@@ -76,14 +76,23 @@ func (g *hrpcGate) serve() { // runner
 
 // hrpcConn
 type hrpcConn struct {
-	// Mixins
-	rpcServerConn_
+	// Parent
+	ServerConn_
 }
+
+func (c *hrpcConn) onGet(id int64, gate Gate) {
+	c.ServerConn_.OnGet(id, gate)
+}
+func (c *hrpcConn) onPut() {
+	c.ServerConn_.OnPut()
+}
+
+func (c *hrpcConn) rpcServer() rpcServer { return c.Server().(rpcServer) }
 
 // hrpcExchan is the server-side HRPC exchan.
 type hrpcExchan struct {
 	// Mixins
-	rpcServerExchan_
+	_rpcExchan_
 	// Assocs
 	request  hrpcRequest
 	response hrpcResponse
@@ -92,6 +101,13 @@ type hrpcExchan struct {
 	// Exchan states (non-zeros)
 	gate *hrpcGate
 	// Exchan states (zeros)
+}
+
+func (x *hrpcExchan) onUse() {
+	x._rpcExchan_.onUse()
+}
+func (x *hrpcExchan) onEnd() {
+	x._rpcExchan_.onEnd()
 }
 
 // hrpcRequest is the server-side HRPC request.

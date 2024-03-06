@@ -322,109 +322,6 @@ func (g *tcpsGate) justClose(netConn net.Conn) {
 	g.OnConnClosed()
 }
 
-// TCPSDealet
-type TCPSDealet interface {
-	// Imports
-	Component
-	// Methods
-	Deal(conn *TCPSConn) (dealt bool)
-}
-
-// TCPSDealet_
-type TCPSDealet_ struct {
-	// Parent
-	Component_
-	// States
-}
-
-// tcpsCase
-type tcpsCase struct {
-	// Parent
-	case_[*TCPSRouter]
-	// Assocs
-	dealets []TCPSDealet
-	// States
-	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
-}
-
-func (c *tcpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
-		}
-	}
-}
-func (c *tcpsCase) OnPrepare() {
-	c.case_.OnPrepare()
-}
-
-func (c *tcpsCase) addDealet(dealet TCPSDealet) { c.dealets = append(c.dealets, dealet) }
-
-func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
-	if c.general {
-		return true
-	}
-	value := conn.unsafeVariable(c.varCode, c.varName)
-	return c.matcher(c, conn, value)
-}
-
-func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
-	for _, dealet := range c.dealets {
-		if dealt := dealet.Deal(conn); dealt {
-			return true
-		}
-	}
-	return false
-}
-
-var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
-	"==": (*tcpsCase).equalMatch,
-	"^=": (*tcpsCase).prefixMatch,
-	"$=": (*tcpsCase).suffixMatch,
-	"*=": (*tcpsCase).containMatch,
-	"~=": (*tcpsCase).regexpMatch,
-	"!=": (*tcpsCase).notEqualMatch,
-	"!^": (*tcpsCase).notPrefixMatch,
-	"!$": (*tcpsCase).notSuffixMatch,
-	"!*": (*tcpsCase).notContainMatch,
-	"!~": (*tcpsCase).notRegexpMatch,
-}
-
-func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
-	return c.case_._equalMatch(value)
-}
-func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
-	return c.case_._prefixMatch(value)
-}
-func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
-	return c.case_._suffixMatch(value)
-}
-func (c *tcpsCase) containMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
-	return c.case_._containMatch(value)
-}
-func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
-	return c.case_._regexpMatch(value)
-}
-func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
-	return c.case_._notEqualMatch(value)
-}
-func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
-	return c.case_._notPrefixMatch(value)
-}
-func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
-	return c.case_._notSuffixMatch(value)
-}
-func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
-	return c.case_._notContainMatch(value)
-}
-func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
-	return c.case_._notRegexpMatch(value)
-}
-
 // poolTCPSConn
 var poolTCPSConn sync.Pool
 
@@ -545,4 +442,107 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
 	nil, // isTLS
 	nil, // serverName
 	nil, // nextProto
+}
+
+// TCPSDealet
+type TCPSDealet interface {
+	// Imports
+	Component
+	// Methods
+	Deal(conn *TCPSConn) (dealt bool)
+}
+
+// TCPSDealet_
+type TCPSDealet_ struct {
+	// Parent
+	Component_
+	// States
+}
+
+// tcpsCase
+type tcpsCase struct {
+	// Parent
+	case_[*TCPSRouter]
+	// Assocs
+	dealets []TCPSDealet
+	// States
+	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
+}
+
+func (c *tcpsCase) OnConfigure() {
+	c.case_.OnConfigure()
+	if c.info != nil {
+		cond := c.info.(caseCond)
+		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
+			c.matcher = matcher
+		} else {
+			UseExitln("unknown compare in case condition")
+		}
+	}
+}
+func (c *tcpsCase) OnPrepare() {
+	c.case_.OnPrepare()
+}
+
+func (c *tcpsCase) addDealet(dealet TCPSDealet) { c.dealets = append(c.dealets, dealet) }
+
+func (c *tcpsCase) isMatch(conn *TCPSConn) bool {
+	if c.general {
+		return true
+	}
+	value := conn.unsafeVariable(c.varCode, c.varName)
+	return c.matcher(c, conn, value)
+}
+
+func (c *tcpsCase) execute(conn *TCPSConn) (dealt bool) {
+	for _, dealet := range c.dealets {
+		if dealt := dealet.Deal(conn); dealt {
+			return true
+		}
+	}
+	return false
+}
+
+var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []byte) bool{
+	"==": (*tcpsCase).equalMatch,
+	"^=": (*tcpsCase).prefixMatch,
+	"$=": (*tcpsCase).suffixMatch,
+	"*=": (*tcpsCase).containMatch,
+	"~=": (*tcpsCase).regexpMatch,
+	"!=": (*tcpsCase).notEqualMatch,
+	"!^": (*tcpsCase).notPrefixMatch,
+	"!$": (*tcpsCase).notSuffixMatch,
+	"!*": (*tcpsCase).notContainMatch,
+	"!~": (*tcpsCase).notRegexpMatch,
+}
+
+func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
+	return c.case_._equalMatch(value)
+}
+func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
+	return c.case_._prefixMatch(value)
+}
+func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
+	return c.case_._suffixMatch(value)
+}
+func (c *tcpsCase) containMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
+	return c.case_._containMatch(value)
+}
+func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
+	return c.case_._regexpMatch(value)
+}
+func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
+	return c.case_._notEqualMatch(value)
+}
+func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
+	return c.case_._notPrefixMatch(value)
+}
+func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
+	return c.case_._notSuffixMatch(value)
+}
+func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
+	return c.case_._notContainMatch(value)
+}
+func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
+	return c.case_._notRegexpMatch(value)
 }

@@ -41,8 +41,6 @@ type webServer_[G webGate] struct {
 	Server_[G]
 	// Mixins
 	_webAgent_
-	_streamHolder_
-	_contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -57,15 +55,10 @@ type webServer_[G webGate] struct {
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
-func (s *webServer_[G]) onShutdown() {
-	s.Server_.OnShutdown()
-}
 
 func (s *webServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s._webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second)
-	s._streamHolder_.onConfigure(shell, 1000)
-	s._contentSaver_.onConfigure(shell, TmpsDir()+"/web/servers/"+s.name)
+	s._webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -77,8 +70,6 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s._webAgent_.onPrepare(shell)
-	s._streamHolder_.onPrepare(shell)
-	s._contentSaver_.onPrepare(shell, 0755)
 }
 
 func (s *webServer_[G]) ColonPort() string { // override
@@ -162,81 +153,14 @@ type webGate interface { // for *httpxGate and *http3Gate
 	// Methods
 }
 
-// webGate_ is the parent for httpxGate and http3Gate.
-type webGate_ struct {
-	// Parent
-	Gate_
-	// Assocs
-	// States
-}
-
-func (g *webGate_) init(id int32, server Server) {
-	g.Gate_.Init(id, server)
-}
-
 // webServerConn is the server-side web conn.
 type webServerConn interface { // for *http[1-3]Conn
 	serve() // runner
 }
 
-// webServerConn_ is the parent for http[1-3]Conn.
-type webServerConn_ struct {
-	// Parent
-	ServerConn_
-	// Mixins
-	_webConn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	// Conn states (zeros)
-}
-
-func (c *webServerConn_) onGet(id int64, gate Gate) {
-	c.ServerConn_.OnGet(id, gate)
-	c._webConn_.onGet()
-}
-func (c *webServerConn_) onPut() {
-	c._webConn_.onPut()
-	c.ServerConn_.OnPut()
-}
-
-func (c *webServerConn_) webServer() webServer { return c.Server().(webServer) }
-
-func (c *webServerConn_) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
 // webServerStream is the server-side web stream.
 type webServerStream interface { // for *http[1-3]Stream
 	execute() // runner
-}
-
-// webServerStream_ is the parent for http[1-3]Stream.
-type webServerStream_ struct {
-	// Mixins
-	_webStream_
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	region Region // a region-based memory pool
-	// Stream states (zeros)
-}
-
-func (s *webServerStream_) onUse() { // for non-zeros
-	s._webStream_.onUse()
-	s.region.Init()
-}
-func (s *webServerStream_) onEnd() { // for zeros
-	s.region.Free()
-	s._webStream_.onEnd()
-}
-
-func (s *webServerStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *webServerStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-func (s *webServerStream_) serveSocket() {
-	// TODO
 }
 
 // Request is the server-side web request.

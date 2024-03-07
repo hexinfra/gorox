@@ -7,52 +7,6 @@
 
 package hemi
 
-import (
-	"errors"
-	"time"
-)
-
-// rpcAgent collects shared methods between rpcServer or rpcBackend.
-type rpcAgent interface {
-	// Imports
-	// Methods
-	Stage() *Stage
-	ReadTimeout() time.Duration
-	RecvTimeout() time.Duration // timeout to recv the whole message content
-	WriteTimeout() time.Duration
-	SendTimeout() time.Duration // timeout to send the whole message
-}
-
-// _rpcAgent_
-type _rpcAgent_ struct {
-	// States
-	recvTimeout time.Duration // timeout to recv the whole message content
-	sendTimeout time.Duration // timeout to send the whole message
-}
-
-func (a *_rpcAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration) {
-	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, sendTimeout)
-
-	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, recvTimeout)
-}
-func (a *_rpcAgent_) onPrepare(shell Component) {
-}
-
-func (a *_rpcAgent_) RecvTimeout() time.Duration { return a.recvTimeout }
-func (a *_rpcAgent_) SendTimeout() time.Duration { return a.sendTimeout }
-
 // rpcConn
 type rpcConn interface {
 	// TODO
@@ -93,7 +47,7 @@ type rpcIn interface {
 	// TODO
 }
 
-// rpcIn_ is the parent for rpcServerRequest_ and rpcBackendResponse_.
+// rpcIn_ is the parent for rpcServerRequest_ and rpcClientResponse_.
 type rpcIn_ struct {
 	// Assocs
 	shell rpcIn
@@ -109,7 +63,7 @@ type rpcOut interface {
 	// TODO
 }
 
-// rpcOut_ is the parent for rpcServerResponse_ and rpcBackendRequest_.
+// rpcOut_ is the parent for rpcServerResponse_ and rpcClientRequest_.
 type rpcOut_ struct {
 	// Assocs
 	shell rpcOut

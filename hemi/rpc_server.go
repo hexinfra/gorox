@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"bytes"
+	"errors"
 	"time"
 )
 
@@ -24,8 +25,6 @@ type rpcServer interface {
 type rpcServer_[G rpcGate] struct {
 	// Parent
 	Server_[G]
-	// Mixins
-	_rpcAgent_
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
@@ -33,6 +32,8 @@ type rpcServer_[G rpcGate] struct {
 	exactServices  []*hostnameTo[*Service] // like: ("example.com")
 	suffixServices []*hostnameTo[*Service] // like: ("*.example.com")
 	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
+	recvTimeout    time.Duration           // timeout to recv the whole message content
+	sendTimeout    time.Duration           // timeout to send the whole message
 }
 
 func (s *rpcServer_[G]) onCreate(name string, stage *Stage) {
@@ -44,14 +45,28 @@ func (s *rpcServer_[G]) onShutdown() {
 
 func (s *rpcServer_[G]) onConfigure(shell Component) {
 	s.Server_.OnConfigure()
-	s._rpcAgent_.onConfigure(shell, 60*time.Second, 60*time.Second)
 
 	// forServices
 	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
+
+	// sendTimeout
+	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// recvTimeout
+	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, 60*time.Second)
 }
 func (s *rpcServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
-	s._rpcAgent_.onPrepare(shell)
 }
 
 func (s *rpcServer_[G]) BindServices() {

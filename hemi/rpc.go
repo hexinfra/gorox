@@ -133,10 +133,10 @@ type rpcServerResponse interface {
 	// TODO
 }
 
-// rpcBackendRequest is the backend-side RPC request.
-type rpcBackendRequest interface {
+// rpcClientRequest is the client-side RPC request.
+type rpcClientRequest interface {
 }
 
-// rpcBackendResponse is the backend-side RPC response.
-type rpcBackendResponse interface {
+// rpcClientResponse is the client-side RPC response.
+type rpcClientResponse interface {
 }

@@ -217,7 +217,6 @@ type H3Stream struct {
 	// Stream states (non-zeros)
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
-	isSocket bool
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -229,9 +228,11 @@ func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zer
 func (s *H3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.socket = nil
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s.quicStream = nil
-	s.isSocket = false
 	s._webStream_.onEnd()
 	s.conn = nil
 }

@@ -206,7 +206,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		if backResp.Status() >= StatusOK {
 			// Only HTTP/1 concerns this. But the code is general between all HTTP versions.
 			if backResp.KeepAlive() == 0 {
-				backConn.setKeepConn(false)
+				backConn.setPersistent(false)
 			}
 			break
 		}

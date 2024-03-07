@@ -74,7 +74,7 @@ type WebBackendConn interface { // *H[1-3]Conn
 	FetchStream() WebBackendStream
 	StoreStream(stream WebBackendStream)
 	Close() error
-	setKeepConn(keepConn bool)
+	setPersistent(persistent bool)
 }
 
 // WebBackendStream is the backend-side web stream.

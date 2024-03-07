@@ -262,7 +262,6 @@ type H2Stream struct {
 	// Stream states (non-zeros)
 	id uint32
 	// Stream states (zeros)
-	isSocket bool
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
@@ -274,8 +273,10 @@ func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
 func (s *H2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.socket = nil
-	s.isSocket = false
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s._webStream_.onEnd()
 	s.conn = nil
 }

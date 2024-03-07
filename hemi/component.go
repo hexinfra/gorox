@@ -1419,11 +1419,12 @@ func (s *Server_[G]) OnConfigure() {
 	}, s.stage.NumCPU())
 }
 func (s *Server_[G]) OnPrepare() {
+	if s.udsMode { // unix domain socket does not support reuseaddr/reuseport.
+		s.numGates = 1
+	}
 }
 
-func (s *Server_[G]) AddGate(gate G) {
-	s.gates = append(s.gates, gate)
-}
+func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 
 func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }

@@ -12,8 +12,6 @@ import (
 
 	_ "github.com/hexinfra/gorox/apps"
 	_ "github.com/hexinfra/gorox/exts"
-	_ "github.com/hexinfra/gorox/jobs"
-	_ "github.com/hexinfra/gorox/srvs"
 	_ "github.com/hexinfra/gorox/svcs"
 )
 

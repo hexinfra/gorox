@@ -1021,8 +1021,8 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.keepConn gorox 和 FCGI 服务器之间是否保存长连接？</p>
-					<code>语法：.keepConn = false
+					<p>.persistent gorox 和 FCGI 服务器之间是否保存长连接？</p>
+					<code>语法：.persistent = false
 						默认值： false
 						取值范围：false | true
 					</code>
@@ -1091,7 +1091,7 @@ stage {
 			.recvTimeout = 60s
 			.scriptFilename = ""
 			.indexFile = "index.php"
-			.keepConn = true
+			.persistent = true
 			.preferUnderscore = true
 		}
 

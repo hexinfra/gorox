@@ -7,6 +7,14 @@
 
 package exts
 
-import ( // import extra addons, vendor exts, and your exts
+import ( // import extra addons
 	_ "github.com/hexinfra/gorox/hemi/addons"
+)
+
+import ( // import vendor exts
+)
+
+import ( // import your exts
+	_ "github.com/hexinfra/gorox/exts/cronjobs/hello"
+	_ "github.com/hexinfra/gorox/exts/servers/hello"
 )

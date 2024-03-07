@@ -95,52 +95,27 @@ func (s *httpxServer) OnPrepare() {
 }
 
 func (s *httpxServer) Serve() { // runner
-	if s.IsUDS() {
-		s._serveUDS()
-	} else if s.IsTLS() {
-		s._serveTLS()
-	} else {
-		s._serveTCP()
+	for id := int32(0); id < s.numGates; id++ {
+		gate := new(httpxGate)
+		gate.init(id, s)
+		if err := gate.Open(); err != nil {
+			EnvExitln(err.Error())
+		}
+		s.AddGate(gate)
+		s.IncSub()
+		if s.IsUDS() {
+			go gate.serveUDS()
+		} else if s.IsTLS() {
+			go gate.serveTLS()
+		} else {
+			go gate.serveTCP()
+		}
 	}
 	s.WaitSubs() // gates
 	if Debug() >= 2 {
 		Printf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.DecSub()
-}
-func (s *httpxServer) _serveUDS() {
-	gate := new(httpxGate)
-	gate.init(0, s)
-	if err := gate.Open(); err != nil {
-		EnvExitln(err.Error())
-	}
-	s.AddGate(gate)
-	s.IncSub()
-	go gate.serveUDS()
-}
-func (s *httpxServer) _serveTLS() {
-	for id := int32(0); id < s.numGates; id++ {
-		gate := new(httpxGate)
-		gate.init(id, s)
-		if err := gate.Open(); err != nil {
-			EnvExitln(err.Error())
-		}
-		s.AddGate(gate)
-		s.IncSub()
-		go gate.serveTLS()
-	}
-}
-func (s *httpxServer) _serveTCP() {
-	for id := int32(0); id < s.numGates; id++ {
-		gate := new(httpxGate)
-		gate.init(id, s)
-		if err := gate.Open(); err != nil {
-			EnvExitln(err.Error())
-		}
-		s.AddGate(gate)
-		s.IncSub()
-		go gate.serveTCP()
-	}
 }
 
 // httpxGate is a gate of httpxServer.
@@ -365,7 +340,7 @@ func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
 	req := &c.stream.request
-	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped c.request for convenience
+	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.closeSafe = true
@@ -379,7 +354,7 @@ func (c *http1Conn) onPut() {
 		PutNK(req.input)
 		req.input = nil
 	}
-	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped c.request for convenience
+	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped request for convenience
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
@@ -392,20 +367,15 @@ func (c *http1Conn) makeTempName(p []byte, unixTime int64) int {
 
 func (c *http1Conn) serve() { // runner
 	defer putHTTP1Conn(c)
+
 	stream := &c.stream
-	for c.keepConn { // each stream
+	for c.persistent { // each stream
 		stream.onUse(c)
 		stream.execute()
-		if !stream.isSocket {
-			stream.onEnd()
-		} else {
-			// It's switcher's responsibility to call stream.onEnd() and c.closeConn()
-			break
-		}
+		stream.onEnd()
 	}
-	if !stream.isSocket {
-		c.closeConn()
-	}
+
+	c.closeConn()
 }
 
 func (c *http1Conn) closeConn() {
@@ -1239,7 +1209,6 @@ type http1Stream struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	isSocket bool
 }
 
 func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
@@ -1250,7 +1219,10 @@ func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
 func (s *http1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.isSocket = false
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s._webStream_.onEnd()
 	s.conn = nil
 }
@@ -1272,40 +1244,45 @@ func (s *http1Stream) execute() {
 	}
 
 	server := s.conn.Server().(*httpxServer)
-
-	// RFC 7230 (section 5.5):
-	// If the server's configuration (or outbound gateway) provides a
-	// fixed URI scheme, that scheme is used for the effective request
-	// URI.  Otherwise, if the request is received over a TLS-secured TCP
-	// connection, the effective request URI's scheme is "https"; if not,
-	// the scheme is "http".
+	// RFC 9112:
+	// If the server's configuration provides for a fixed URI scheme, or a
+	// scheme is provided by a trusted outbound gateway, that scheme is
+	// used for the target URI. This is common in large-scale deployments
+	// because a gateway server will receive the client's connection context
+	// and replace that with their own connection to the inbound server.
+	// Otherwise, if the request is received over a secured connection, the
+	// target URI's scheme is "https"; if not, the scheme is "http".
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
-	} else if s.conn.IsTLS() {
-		if req.schemeCode == SchemeHTTP && server.adjustScheme {
-			req.schemeCode = SchemeHTTPS
+	} else { // scheme is not forced
+		if s.conn.IsTLS() {
+			if req.schemeCode == SchemeHTTP && server.adjustScheme {
+				req.schemeCode = SchemeHTTPS
+			}
+		} else { // not secured
+			if req.schemeCode == SchemeHTTPS && server.adjustScheme {
+				req.schemeCode = SchemeHTTP
+			}
 		}
-	} else if req.schemeCode == SchemeHTTPS && server.adjustScheme {
-		req.schemeCode = SchemeHTTP
 	}
 
 	webapp := server.findApp(req.UnsafeHostname())
 
-	if webapp == nil || (!webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes())) {
+	if webapp == nil {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
 		s.serveAbnormal(req, resp)
 		return
 	}
+	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes()) {
+		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
+		s.serveAbnormal(req, resp)
+		return
+	}
+
 	req.webapp = webapp
 	resp.webapp = webapp
 
-	if req.upgradeSocket { // socket mode?
-		if req.expectContinue && !s.writeContinue() {
-			return
-		}
-		s.executeSocket()
-		s.isSocket = true
-	} else { // exchan mode.
+	if !req.upgradeSocket { // exchan mode?
 		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 			req.maxContentSizeAllowed = webapp.maxUpfileSize
 		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
@@ -1321,7 +1298,7 @@ func (s *http1Stream) execute() {
 			return
 		}
 
-		// Prepare response according to request
+		// Prepare the response according to the request
 		if req.methodCode == MethodHEAD {
 			resp.forbidContent = true
 		}
@@ -1331,13 +1308,21 @@ func (s *http1Stream) execute() {
 		}
 		s.conn.usedStreams.Add(1)
 		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
-			s.conn.keepConn = false // reaches limit, or client told us to close, or gate was shut
+			s.conn.persistent = false // reaches limit, or client told us to close, or gate was shut
 		}
+
 		s.executeExchan(webapp, req, resp)
 
 		if s.isBroken() {
-			s.conn.keepConn = false // i/o error
+			s.conn.persistent = false // i/o error
 		}
+	} else { // socket mode.
+		if req.expectContinue && !s.writeContinue() {
+			return
+		}
+		s.executeSocket()
+
+		s.conn.persistent = false // explicitly
 	}
 }
 
@@ -1352,7 +1337,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 		}
 	}
 	// i/o error
-	s.conn.keepConn = false
+	s.conn.persistent = false
 	return false
 }
 
@@ -1372,7 +1357,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	if Debug() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
-	s.conn.keepConn = false // close anyway.
+	s.conn.persistent = false // close anyway.
 	status := req.headResult
 	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
 		return // send nothing.
@@ -1413,12 +1398,11 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 		s.writev(&resp.vector)
 	}
 }
+
 func (s *http1Stream) executeSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455). use s.serveSocket()?
 	// NOTICE: use idle timeout or clear read timeout otherwise
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
-	s.conn.closeConn()
-	s.onEnd()
 }
 
 func (s *http1Stream) setReadDeadline(deadline time.Time) error {
@@ -1494,10 +1478,9 @@ type http2Stream struct {
 	http2Stream0 // all values must be zero by default in this struct!
 }
 type http2Stream0 struct { // for fast reset, entirely
-	index    uint8 // index in s.conn.streams
-	state    uint8 // http2StateOpen, http2StateRemoteClosed, ...
-	reset    bool  // received a RST_STREAM?
-	isSocket bool
+	index uint8 // index in s.conn.streams
+	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
+	reset bool  // received a RST_STREAM?
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
@@ -1511,6 +1494,10 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 func (s *http2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s.http2Stream0 = http2Stream0{}
 	s._webStream_.onEnd()
 	s.conn = nil
@@ -1539,6 +1526,7 @@ func (s *http2Stream) executeExchan(webapp *Webapp, req *http2Request, resp *htt
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO
 }
+
 func (s *http2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO
 }
@@ -2138,7 +2126,7 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *http1Response) setConnectionClose() { r.stream.webConn().setKeepConn(false) }
+func (r *http1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
 
 func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
@@ -2221,7 +2209,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
 				// response containing Transfer-Encoding unless the corresponding
 				// request indicates HTTP/1.1 (or later).
-				conn.keepConn = false // close conn anyway for HTTP/1.0
+				conn.persistent = false // close conn anyway for HTTP/1.0
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
@@ -2229,7 +2217,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
-	if conn.keepConn { // connection: keep-alive\r\n
+	if conn.persistent { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))

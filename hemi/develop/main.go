@@ -12,8 +12,6 @@ import (
 
 	_ "github.com/hexinfra/gorox/hemi/develop/apps"
 	_ "github.com/hexinfra/gorox/hemi/develop/exts"
-	_ "github.com/hexinfra/gorox/hemi/develop/jobs"
-	_ "github.com/hexinfra/gorox/hemi/develop/srvs"
 	_ "github.com/hexinfra/gorox/hemi/develop/svcs"
 )
 

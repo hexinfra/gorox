@@ -50,6 +50,7 @@ type _webAgent_ struct {
 func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
 	a._streamHolder_.onConfigure(shell, defaultMaxStreams)
 	a._contentSaver_.onConfigure(shell, defaultDir)
+
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -76,11 +77,11 @@ func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, rec
 
 	// maxMemoryContentSize
 	shell.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G {
+		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
 		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M) // DO NOT CHANGE THIS, otherwise integer overflow may occur
+	}, _16M)
 }
 func (a *_webAgent_) onPrepare(shell Component) {
 	a._streamHolder_.onPrepare(shell)
@@ -98,7 +99,7 @@ type webConn interface {
 	IsUDS() bool
 	IsTLS() bool
 	makeTempName(p []byte, unixTime int64) int
-	setKeepConn(keepConn bool)
+	setPersistent(persistent bool)
 	isBroken() bool
 	markBroken()
 }
@@ -108,7 +109,7 @@ type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	keepConn bool // keep the connection after current stream? true by default
+	persistent bool // persist the connection after current stream? true by default
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
 	usedStreams atomic.Int32 // num of streams served or used
@@ -116,7 +117,7 @@ type _webConn_ struct {
 }
 
 func (c *_webConn_) onGet() {
-	c.keepConn = true
+	c.persistent = true
 }
 func (c *_webConn_) onPut() {
 	c.counter.Store(0)
@@ -124,7 +125,7 @@ func (c *_webConn_) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *_webConn_) setKeepConn(keepConn bool) { c.keepConn = keepConn }
+func (c *_webConn_) setPersistent(persistent bool) { c.persistent = persistent }
 
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
 func (c *_webConn_) markBroken()    { c.broken.Store(true) }
@@ -265,7 +266,7 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
-		// HTTP/1 supports request pipelining, so input related are not reset here.
+		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.

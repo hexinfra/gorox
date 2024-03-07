@@ -191,6 +191,7 @@ func (c *http3Conn) serve() { // runner
 	// TODO
 	// use go c.receive()?
 }
+
 func (c *http3Conn) receive() { // runner
 	// TODO
 }
@@ -203,6 +204,8 @@ func (c *http3Conn) setWriteDeadline(deadline time.Time) error {
 	// TODO
 	return nil
 }
+
+func (c *http3Conn) write(p []byte) (int, error) { return 0, nil } // TODO
 
 func (c *http3Conn) closeConn() {
 	c.quicConn.Close()
@@ -249,10 +252,9 @@ type http3Stream struct {
 	http3Stream0 // all values must be zero by default in this struct!
 }
 type http3Stream0 struct { // for fast reset, entirely
-	index    uint8
-	state    uint8
-	reset    bool
-	isSocket bool
+	index uint8
+	state uint8
+	reset bool
 }
 
 func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -264,6 +266,10 @@ func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for n
 func (s *http3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s.quicStream = nil
 	s.http3Stream0 = http3Stream0{}
 	s._webStream_.onEnd()
@@ -290,6 +296,7 @@ func (s *http3Stream) executeExchan(webapp *Webapp, req *http3Request, resp *htt
 func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { // 4xx & 5xx
 	// TODO
 }
+
 func (s *http3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }

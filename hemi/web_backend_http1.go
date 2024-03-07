@@ -179,7 +179,7 @@ func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 }
 func (n *http1Node) storeConn(conn WebBackendConn) {
 	h1Conn := conn.(*H1Conn)
-	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.keepConn {
+	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.persistent {
 		if Debug() >= 2 {
 			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
 		}
@@ -284,7 +284,6 @@ type H1Stream struct {
 	// Stream states (controlled)
 	// Stream states (non zeros)
 	// Stream states (zeros)
-	isSocket bool
 }
 
 func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
@@ -295,8 +294,10 @@ func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
 func (s *H1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
-	s.socket = nil
-	s.isSocket = false
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
 	s._webStream_.onEnd()
 	s.conn = nil
 }

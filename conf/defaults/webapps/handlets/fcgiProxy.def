@@ -5,7 +5,7 @@ fcgiProxy "fp1" {
 	.recvTimeout = 60s
 	.scriptFilename = ""
 	.indexFile = "index.php"
-	.keepConn = true
+	.persistent = true
 	.bufferClientContent = true
 	.bufferServerContent = true
 	.preferUnderscore = true

@@ -65,7 +65,7 @@ A program (like Gorox) using Hemi typically has the following dependencies:
                 |                               |          |
                 v                               v          v
   +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+ apps & jobs & srvs & svcs +-->| exts | |<procmgr>|
+  | libs |<--+        apps & svcs        +-->| exts | |<procmgr>|
   +------+   +--+---------------------+--+   +--+---+ +----+----+
                 |                     |         |          |
                 v                     v         v          v

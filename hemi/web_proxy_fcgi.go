@@ -48,7 +48,7 @@ type fcgiProxy struct {
 	// States
 	bufferClientContent   bool              // client content is buffered anyway?
 	bufferServerContent   bool              // server content is buffered anyway?
-	keepConn              bool              // instructs FCGI server to keep conn?
+	persistent            bool              // instructs FCGI server to keep conn?
 	preferUnderscore      bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 	scriptFilename        []byte            // for SCRIPT_FILENAME
 	indexFile             []byte            // for indexFile
@@ -107,8 +107,8 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
-	// keepConn
-	h.ConfigureBool("keepConn", &h.keepConn, false)
+	// persistent
+	h.ConfigureBool("persistent", &h.persistent, false)
 	// preferUnderscore
 	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 	// scriptFilename
@@ -172,7 +172,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		fcgiConn *TConn
 		fcgiErr  error
 	)
-	if h.keepConn {
+	if h.persistent {
 		if fcgiConn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
 			defer h.backend.StoreConn(fcgiConn)
 		}
@@ -668,7 +668,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.proxy.keepConn {
+	if r.exchan.proxy.persistent {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep

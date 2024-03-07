@@ -1919,11 +1919,11 @@ func (r *webOut_) _beforeEcho() error {
 	if r.isSent {
 		return nil
 	}
-	if r.contentSize != -1 {
+	if r.contentSize != -1 { // is set, either sized or vague
 		return webOutMixedContent
 	}
 	r.isSent = true
-	r.contentSize = -2
+	r.contentSize = -2 // vague
 	if r.hasRevisers {
 		r.shell.beforeEcho()
 	}

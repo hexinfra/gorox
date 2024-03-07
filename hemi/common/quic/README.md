@@ -1,5 +1,4 @@
-IETF QUIC Implementation.
-See RFC 8999-9002.
+IETF QUIC Implementation. See RFC 8999-9002.
 
 import:
 	net

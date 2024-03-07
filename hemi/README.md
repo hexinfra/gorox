@@ -45,9 +45,9 @@ The logical architecture of a stage in Hemi looks like this:
    |     |   |        |          |stater|       |cacher|     |
    |     +---+--------+----------+------+-------+------+     |
    |     |                  backend                    |     |
-   |     |                   node        +-------------+     |
-   |     |                  <conn>       |   complet   |     |
-   |     +-----------+---------------+---+-------------+     |
+   |     |                   node                      |     |
+   |     |                  <conn>                     |     |
+   |     +-----------+---------------+-----------------+     |
    |     |   clock   |     fcache    |      namer      |     |
 prepare  +-----------+---------------+-----------------+     v
 
@@ -88,6 +88,7 @@ Roadmap
   * [TODO] cacher implementation.
   * [TODO] tcpoh (tcp over http) server implementation.
   * [TODO] udpoh (udp over http) server implementation.
+  * [TODO] ipoh (ip over http) server implementation.
   * [TODO] web application framework implementation.
   * [TODO] documentation.
   * [TODO] official websites.

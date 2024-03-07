@@ -240,8 +240,6 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		switch current.info {
 		case compFixture:
 			c.parseFixture(current, stage)
-		case compComplet:
-			c.parseComplet(current, stage)
 		case compBackend:
 			c.parseBackend(current, stage)
 		case compQUIXRouter:
@@ -276,9 +274,6 @@ func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	fixture.setParent(stage)
 	c.forward()
 	c._parseLeaf(fixture)
-}
-func (c *config) parseComplet(sign *token, stage *Stage) { // xxxComplet <name> {}
-	parseComponent0(c, sign, stage, stage.createComplet)
 }
 func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	backendName := c.forwardExpect(tokenString)
@@ -803,7 +798,7 @@ func (c *config) _parseDict(component Component, prop string, value *Value) {
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // complet, backend, stater, cacher, server, cronjob
+func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)

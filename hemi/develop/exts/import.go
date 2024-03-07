@@ -7,7 +7,9 @@
 
 package exts
 
-import ( // import addons, vendor exts, and your exts
+import _ "github.com/hexinfra/gorox/hemi/addons"
+
+import ( // import extra addons here
 	_ "github.com/hexinfra/gorox/hemi/addons/backends/mongo"
 	_ "github.com/hexinfra/gorox/hemi/addons/backends/mysql"
 	_ "github.com/hexinfra/gorox/hemi/addons/backends/pgsql"
@@ -15,7 +17,6 @@ import ( // import addons, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/addons/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/addons/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/addons/cachers/redis"
-	_ "github.com/hexinfra/gorox/hemi/addons/complets/demo"
 	_ "github.com/hexinfra/gorox/hemi/addons/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/addons/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/addons/dealets/tcps/access"
@@ -44,8 +45,17 @@ import ( // import addons, vendor exts, and your exts
 	_ "github.com/hexinfra/gorox/hemi/addons/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/addons/revisers/wrap"
 	_ "github.com/hexinfra/gorox/hemi/addons/servers/echo"
+	_ "github.com/hexinfra/gorox/hemi/addons/servers/ipoh"
 	_ "github.com/hexinfra/gorox/hemi/addons/servers/socks"
+	_ "github.com/hexinfra/gorox/hemi/addons/servers/tcpoh"
+	_ "github.com/hexinfra/gorox/hemi/addons/servers/udpoh"
 	_ "github.com/hexinfra/gorox/hemi/addons/socklets/hello"
 	_ "github.com/hexinfra/gorox/hemi/addons/staters/local"
 	_ "github.com/hexinfra/gorox/hemi/addons/staters/redis"
+)
+
+import ( // import vendor exts here
+)
+
+import ( // import your exts here
 )

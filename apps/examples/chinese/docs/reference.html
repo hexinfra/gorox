@@ -101,7 +101,6 @@ article table.none tr td {
 		<li><a href="#stage-clock">stage &gt; clock</a></li>
 		<li><a href="#stage-fcache">stage &gt; fcache</a></li>
 		<li><a href="#stage-namer">stage &gt; namer</a></li>
-		<li><a href="#stage-demoComplet">stage &gt; demoComplet</a></li>
 		<li><a href="#stage-http1Backend">stage &gt; http1Backend</a></li>
 		<li><a href="#stage-http2Backend">stage &gt; http2Backend</a></li>
 		<li><a href="#stage-http3Backend">stage &gt; http3Backend</a></li>
@@ -176,8 +175,8 @@ article table.none tr td {
 	}
 
 	httpxServer "main" {
-		.webapps = ("example")
 		.address = ":3080"
+		.webapps = ("example")
 	}
 }</code>
 
@@ -308,12 +307,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			<h4>stage &gt; namer</h4>
 			<p>namer: 用于DNS解析ip4、ip6等。</p>
 		</li>
-		<li id="stage-demoComplet">
-			<h4>stage &gt; demoComplet</h4>
-			<ul>
-				<li>TODO</li>
-			</ul>
-		</li>
 		<li id="stage-http1Backend">
 			<h4>stage &gt; http1Backend</h4>
 			<p>例子</p>
@@ -342,8 +335,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	}
 
 	httpxServer "main" {
-		.webapps = ("proxy")
 		.address = ":3080"
+		.webapps = ("proxy")
 	}
 }
 </code>
@@ -532,8 +525,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	}
 
 	httpxServer "main" {
-		.webapps = ("proxy")
 		.address = ":80"
+		.webapps = ("proxy")
 	}
 }</code>
 				</li>

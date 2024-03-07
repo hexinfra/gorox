@@ -11,7 +11,6 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/addons/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/addons/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/addons/cachers/mem"
-	_ "github.com/hexinfra/gorox/hemi/addons/complets/demo"
 	_ "github.com/hexinfra/gorox/hemi/addons/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/addons/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/addons/dealets/tcps/echo"

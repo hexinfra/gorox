@@ -12,14 +12,14 @@ used as:
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
   * Layer 4 Reverse Proxy (TCP, UDP, QUIC, UDS, Load Balancing)
-  * SOCKS Proxy, HTTP Tunnel Proxy (TCP, UDP)
+  * SOCKS Proxy, HTTP Tunnel Proxy (TCP, UDP, IP)
   * ... and more through its highly extensible compoments design!
 
 For more details about Gorox, see: https://gorox.io/.
 
 
-Motivation
-==========
+Why?
+====
 
 To be written.
 
@@ -57,7 +57,7 @@ you choose to build it from source, please read below.
 Using Gorox as a Webapp Server or RPC Framework
 -----------------------------------------------
 
-When using Gorox as a Webapp Server or RPC Framework, you need to build it from
+When using Gorox as a Webapp Server or RPC Framework, you have to build it from
 source. Before building, please ensure you have Go >= 1.20 installed:
 
     shell> go version
@@ -74,6 +74,10 @@ If build failed, set CGO_ENABLED to 0 and try again:
 
 On succeed, a "gorox" or "gorox.exe" binary will be generated.
 
+Now, you can try to change some webapps under "apps/examples/", and build again.
+To follow the Gorox convention, put your new webapps under "apps/" and your new
+services under "svcs/".
+
 Start and stop Gorox
 --------------------
 
@@ -83,7 +87,7 @@ have successfully built the binary from source, you can run Gorox as a daemon
 
     shell> ./gorox serve -daemon
 
-To ensure the leader and the worker process have been both started:
+Then ensure the leader and the worker process have both been started:
 
     shell> ./gorox pids
 
@@ -95,8 +99,8 @@ For more actions and options, run:
 
     shell> ./gorox help
 
-To install, move the whole Gorox directory to where you like. To uninstall,
-simply remove the whole Gorox directory.
+To install Gorox, simply move the whole Gorox directory to where you like.
+To uninstall, simply remove the whole Gorox directory.
 
 More usage examples
 -------------------
@@ -175,13 +179,13 @@ A typical deployment architecture using Gorox might looks like this:
              +------------+
 +------------| edgeProxy1 |--------------+ gorox cluster
 |            +--+---+--+--+              |
-|    web        |   |  |       tcp       |
-|      +--------+   |  +-------+         |
-|      |            |          |         |
-|      v           rpc         v         |
-|   +------+        |       +------+     |
-|   | app1 +----+   |   +---+ srv1 |     |
-|   +------+    |   |   |   +---+--+     |
+|    web        |   |  |        tcp      |
+|      +--------+   |  +--------+        |
+|      |            |           |        |
+|      v           rpc          v        |
+|   +------+        |      +---------+   |
+|   | app1 +----+   |   +--+ server1 |   |
+|   +------+    |   |   |  +----+----+   |
 |               |   |   |       |        | stateless layer
 |               v   v   v       v        |
 |  +------+   +-----------+  +--------+  |   +------------------+
@@ -189,9 +193,9 @@ A typical deployment architecture using Gorox might looks like this:
 |  +------+   +-----+-----+  +--------+  |   +------------------+
 |                   |                    |
 |                   v                    |
-|  +------+   +-----------+   +------+   |
-|  | svc2 |<--+ svcProxy2 |   | job1 |   |
-|  +------+   +-----------+   +------+   |
+|  +------+   +-----------+  +--------+  |
+|  | svc2 |<--+ svcProxy2 |  |cronjob1|  |
+|  +------+   +-----------+  +--------+  |
 |                                        |
 +-----------+------+---------+-----------+
             |      |         |
@@ -209,13 +213,13 @@ of the roles in "gorox cluster":
 
   * edgeProxy1: The Edge Proxy, also works as an API Gateway or WAF,
   * app1      : A Web application implemented directly on Gorox,
-  * srv1      : A TCP server implemented directly on Gorox,
+  * server1   : A TCP server implemented directly on Gorox,
   * svc1      : A public RPC service implemented directly on Gorox,
   * svcProxy1 : A service proxy for svc1,
-  * proxy2    : A gateway proxy passing requests to PHP-FPM / Tomcat server,
+  * proxy2    : A gateway proxy passing requests to PHP-FPM or Tomcat server,
   * svc2      : A private RPC service implemented directly on Gorox,
   * svcProxy2 : A service proxy for svc2,
-  * job1      : A background application in Gorox doing something periodically.
+  * cronjob1  : A background application in Gorox doing something periodically.
 
 The whole Gorox cluster can alternatively be managed by a Myrox instance, which
 behaves like the control plane in Service Mesh. In this configuration, all Gorox

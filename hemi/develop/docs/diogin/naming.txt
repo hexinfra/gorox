@@ -21,7 +21,6 @@ COMPONENTS
 
   stage [*]
     fixture (clock, fcache, namer, ...)
-    complet (...)
     backend (http1Backend, tcpsBackend, ...)
       node [*]
     router (quixRouter, tcpsRouter, udpsRouter)

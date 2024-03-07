@@ -3,10 +3,10 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// UWSGI proxy implementation.
+// uwsgi proxy implementation.
 
-// UWSGI is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
-// UWSGI 1.9.13 seems to have vague content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+// uwsgi is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
+// uwsgi 1.9.13 seems to have vague content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
 
 package hemi
 
@@ -209,4 +209,4 @@ func (r *uwsgiResponse) onEnd() {
 	// TODO
 }
 
-//////////////////////////////////////// UWSGI protocol elements ////////////////////////////////////////
+//////////////////////////////////////// uwsgi protocol elements ////////////////////////////////////////

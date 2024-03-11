@@ -38,22 +38,22 @@ func SetBaseDir(dir string) { // only once!
 func SetLogsDir(dir string) { // only once!
 	_logsOnce.Do(func() {
 		_logsDir.Store(dir)
-		_mkdir(dir)
+		_mustMkdir(dir)
 	})
 }
 func SetTmpsDir(dir string) { // only once!
 	_tmpsOnce.Do(func() {
 		_tmpsDir.Store(dir)
-		_mkdir(dir)
+		_mustMkdir(dir)
 	})
 }
 func SetVarsDir(dir string) { // only once!
 	_varsOnce.Do(func() {
 		_varsDir.Store(dir)
-		_mkdir(dir)
+		_mustMkdir(dir)
 	})
 }
-func _mkdir(dir string) {
+func _mustMkdir(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(0)

@@ -67,7 +67,7 @@ func (h *httpProxy) OnConfigure() {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for web proxy")
+		UseExitln("toBackend is required for http proxy")
 	}
 
 	// withCacher
@@ -144,18 +144,12 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	backConn, backErr := h.backend.FetchConn()
+	backStream, backErr := h.backend.FetchStream()
 	if backErr != nil {
-		if Debug() >= 1 {
-			Println(backErr.Error())
-		}
 		resp.SendBadGateway(nil)
 		return
 	}
-	defer h.backend.StoreConn(backConn)
-
-	backStream := backConn.FetchStream()
-	defer backConn.StoreStream(backStream)
+	defer h.backend.StoreStream(backStream)
 
 	// TODO: use backStream.ReverseExchan()
 
@@ -206,7 +200,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		if backResp.Status() >= StatusOK {
 			// Only HTTP/1 concerns this. But the code is general between all HTTP versions.
 			if backResp.KeepAlive() == 0 {
-				backConn.setPersistent(false)
+				backStream.webConn().setPersistent(false)
 			}
 			break
 		}

@@ -51,9 +51,11 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 	b.AddNode(node)
 	return node
 }
-func (b *HTTP2Backend) FetchConn() (WebBackendConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+
+func (b *HTTP2Backend) FetchStream() (WebBackendStream, error) {
+	return nil, nil
+}
+func (b *HTTP2Backend) StoreStream(stream WebBackendStream) {
 }
 
 // http2Node
@@ -90,6 +92,7 @@ func (n *http2Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
+/*
 func (n *http2Node) fetchConn() (WebBackendConn, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
@@ -114,6 +117,13 @@ func (n *http2Node) storeConn(conn WebBackendConn) {
 	if h2Conn.nStreams.Add(-1) > 0 {
 		return
 	}
+}
+*/
+
+func (n *http2Node) fetchStream() (WebBackendStream, error) {
+	return nil, nil
+}
+func (n *http2Node) storeStream(stream WebBackendStream) {
 }
 
 // poolH2Conn is the backend-side HTTP/2 connection pool.
@@ -180,10 +190,10 @@ func (c *H2Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *H2Conn) FetchStream() WebBackendStream {
+func (c *H2Conn) FetchStream() (WebBackendStream, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: incRef, stream.onUse()
-	return nil
+	return nil, nil
 }
 func (c *H2Conn) StoreStream(stream WebBackendStream) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.

@@ -31,25 +31,21 @@ type TCPSBackend struct {
 	Backend_[*tcpsNode]
 	// Mixins
 	_streamHolder_
-	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b._loadBalancer_.init()
 }
 
 func (b *TCPSBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 	b._streamHolder_.onConfigure(b, 1000)
-	b._loadBalancer_.onConfigure(b)
 }
 func (b *TCPSBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 	b._streamHolder_.onPrepare(b)
-	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 func (b *TCPSBackend) CreateNode(name string) Node {
@@ -57,6 +53,11 @@ func (b *TCPSBackend) CreateNode(name string) Node {
 	node.onCreate(name, b)
 	b.AddNode(node)
 	return node
+}
+
+func (b *TCPSBackend) Dial() (*TConn, error) {
+	node := b.nodes[b.getNext()]
+	return node.dial()
 }
 
 func (b *TCPSBackend) FetchConn() (*TConn, error) {
@@ -67,17 +68,18 @@ func (b *TCPSBackend) StoreConn(tConn *TConn) {
 	tConn.node.(*tcpsNode).storeConn(tConn)
 }
 
-func (b *TCPSBackend) Dial() (*TConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.dial()
-}
-
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Parent
 	Node_
 	// Assocs
 	// States
+	connPool struct { // free list of conns in this node
+		sync.Mutex
+		head *TConn // head element
+		tail *TConn // tail element
+		qnty int    // size of the list
+	}
 }
 
 func (n *tcpsNode) onCreate(name string, backend *TCPSBackend) {
@@ -164,10 +166,9 @@ func (n *tcpsNode) _dialTCP() (*TConn, error) {
 }
 
 func (n *tcpsNode) fetchConn() (*TConn, error) {
-	conn := n.pullConn()
+	tConn := n.pullConn()
 	down := n.isDown()
-	if conn != nil {
-		tConn := conn.(*TConn)
+	if tConn != nil {
 		if tConn.isAlive() && !tConn.reachLimit() && !down {
 			return tConn, nil
 		}
@@ -196,6 +197,53 @@ func (n *tcpsNode) storeConn(tConn *TConn) {
 	}
 }
 
+func (n *tcpsNode) pullConn() *TConn {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.next
+	conn.next = nil
+	list.qnty--
+
+	return conn
+}
+func (n *tcpsNode) pushConn(conn *TConn) {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		list.head = conn
+		list.tail = conn
+	} else { // >= 1
+		list.tail.next = conn
+		list.tail = conn
+	}
+	list.qnty++
+}
+func (n *tcpsNode) closeFree() int {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	for conn := list.head; conn != nil; conn = conn.next {
+		conn.Close()
+	}
+	qnty := list.qnty
+	list.qnty = 0
+	list.head, list.tail = nil, nil
+
+	return qnty
+}
+
 // poolTConn
 var poolTConn sync.Pool
 
@@ -218,13 +266,15 @@ func putTConn(tConn *TConn) {
 type TConn struct {
 	// Parent
 	BackendConn_
+	// Assocs
+	next *TConn // the linked-list
 	// Conn states (non-zeros)
 	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
 	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)
 	counter     atomic.Int64 // used to make temp name
-	usedStreams atomic.Int32 // how many streams has been used?
+	usedStreams atomic.Int32 // how many streams have been used?
 	writeBroken atomic.Bool  // write-side broken?
 	readBroken  atomic.Bool  // read-side broken?
 }

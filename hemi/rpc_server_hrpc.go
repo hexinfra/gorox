@@ -80,7 +80,7 @@ type hrpcConn struct {
 	ServerConn_
 }
 
-func (c *hrpcConn) onGet(id int64, gate Gate) {
+func (c *hrpcConn) onGet(id int64, gate *hrpcGate) {
 	c.ServerConn_.OnGet(id, gate)
 }
 func (c *hrpcConn) onPut() {

@@ -201,17 +201,17 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 %logsDir : 启动 gorox 时候 参数 -logs 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则 %baseDir 加上 logs，作为日志目录。
+	 如果未指定目录，则以 %baseDir + "/data/logs" 做为日志目录。
 
 %tmpsDir : 启动 gorox 时候 参数 -tmps 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则 %baseDir 加上 tmps，作为临时文件的目录。
+	 如果未指定目录，则以 %baseDir + "/data/tmps"，做为临时文件的目录。
 
 %varsDir : 启动 gorox 时候 参数 -vars 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
 	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则 %baseDir 加上 vars，作为vars目录。</code>
+	 如果未指定目录，则以 %baseDir + "/data/vars"，做为vars目录。</code>
 				</li>
 			</ul>
 		</li>

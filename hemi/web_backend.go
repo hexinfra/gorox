@@ -20,8 +20,8 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	streamHolder
 	contentSaver
 	// Methods
-	FetchConn() (WebBackendConn, error)
-	StoreConn(conn WebBackendConn)
+	FetchStream() (WebBackendStream, error)
+	StoreStream(stream WebBackendStream)
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
 	SendTimeout() time.Duration
@@ -34,29 +34,21 @@ type webBackend_[N WebNode] struct {
 	Backend_[N]
 	// Mixins
 	_webAgent_
-	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b._loadBalancer_.init()
 }
 
 func (b *webBackend_[N]) onConfigure(shell Component) {
 	b.Backend_.OnConfigure()
 	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
-	b._loadBalancer_.onConfigure(shell)
 }
 func (b *webBackend_[N]) onPrepare(shell Component) {
 	b.Backend_.OnPrepare()
 	b._webAgent_.onPrepare(shell)
-	b._loadBalancer_.onPrepare(len(b.nodes))
-}
-
-func (b *webBackend_[N]) StoreConn(conn WebBackendConn) {
-	conn.WebNode().storeConn(conn)
 }
 
 // WebNode
@@ -64,17 +56,14 @@ type WebNode interface { // for *http[1-3]Node
 	// Imports
 	Node
 	// Methods
-	fetchConn() (WebBackendConn, error)
-	storeConn(conn WebBackendConn)
+	fetchStream() (WebBackendStream, error)
+	storeStream(stream WebBackendStream)
 }
 
 // WebBackendConn is the backend-side web conn.
 type WebBackendConn interface { // *H[1-3]Conn
 	WebNode() WebNode
-	FetchStream() WebBackendStream
-	StoreStream(stream WebBackendStream)
 	Close() error
-	setPersistent(persistent bool)
 }
 
 // WebBackendStream is the backend-side web stream.
@@ -83,6 +72,7 @@ type WebBackendStream interface { // for *H[1-3]Stream
 	Response() WebBackendResponse
 	ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error
 	ReverseSocket(req Request, sock Socket) error
+	webConn() webConn
 	markBroken()
 }
 

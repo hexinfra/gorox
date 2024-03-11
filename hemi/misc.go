@@ -134,4 +134,7 @@ func (r *Region) Free() {
 	}
 }
 
-var errNodeDown = errors.New("node is down")
+var (
+	errNodeDown = errors.New("node is down")
+	errNodeBusy = errors.New("node is busy")
+)

@@ -51,7 +51,6 @@ func (c *localCacher) OnConfigure() {
 	}, VarsDir()+"/cachers/"+c.Name())
 }
 func (c *localCacher) OnPrepare() {
-	// mkdirs
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}

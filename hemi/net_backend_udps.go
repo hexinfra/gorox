@@ -28,23 +28,19 @@ type UDPSBackend struct {
 	// Parent
 	Backend_[*udpsNode]
 	// Mixins
-	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b._loadBalancer_.init()
 }
 
 func (b *UDPSBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._loadBalancer_.onConfigure(b)
 }
 func (b *UDPSBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 func (b *UDPSBackend) CreateNode(name string) Node {
@@ -54,17 +50,17 @@ func (b *UDPSBackend) CreateNode(name string) Node {
 	return node
 }
 
+func (b *UDPSBackend) Dial() (*UConn, error) {
+	node := b.nodes[b.getNext()]
+	return node.dial()
+}
+
 func (b *UDPSBackend) FetchConn() (*UConn, error) {
 	node := b.nodes[b.getNext()]
 	return node.fetchConn()
 }
 func (b *UDPSBackend) StoreConn(uConn *UConn) {
 	uConn.node.(*udpsNode).storeConn(uConn)
-}
-
-func (b *UDPSBackend) Dial() (*UConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.dial()
 }
 
 // udpsNode is a node in UDPSBackend.
@@ -103,22 +99,27 @@ func (n *udpsNode) dial() (*UConn, error) {
 }
 
 func (n *udpsNode) fetchConn() (*UConn, error) {
-	conn := n.pullConn()
-	if conn != nil {
-		uConn := conn.(*UConn)
-		if uConn.isAlive() {
-			return uConn, nil
+	return nil, nil
+	/*
+		conn := n.pullConn()
+		if conn != nil {
+			uConn := conn.(*UConn)
+			if uConn.isAlive() {
+				return uConn, nil
+			}
+			n.closeConn(uConn)
 		}
-		n.closeConn(uConn)
-	}
-	return n.dial()
+		return n.dial()
+	*/
 }
 func (n *udpsNode) storeConn(uConn *UConn) {
-	if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
-		n.closeConn(uConn)
-	} else {
-		n.pushConn(uConn)
-	}
+	/*
+		if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
+			n.closeConn(uConn)
+		} else {
+			n.pushConn(uConn)
+		}
+	*/
 }
 
 // poolUConn

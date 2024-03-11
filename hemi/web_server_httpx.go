@@ -301,7 +301,7 @@ func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.R
 	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		httpConn = new(http1Conn)
-		stream := &httpConn.stream
+		stream := httpConn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -325,8 +325,6 @@ type http1Conn struct {
 	ServerConn_
 	// Mixins
 	_webConn_
-	// Assocs
-	stream http1Stream // an http1Conn has exactly one stream at a time, so just embed it
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -334,12 +332,23 @@ type http1Conn struct {
 	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
+
+	// Assocs
+	request  http1Request  // the server-side http/1 request.
+	response http1Response // the server-side http/1 response.
+	socket   *http1Socket  // the server-side http/1 socket.
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
 }
 
 func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
-	req := &c.stream.request
+	req := &c.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -348,7 +357,7 @@ func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 func (c *http1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	req := &c.stream.request
+	req := &c.request
 	if cap(req.input) != cap(req.stockInput) { // fetched from pool
 		// req.input is conn scoped but put in stream scoped c.request for convenience
 		PutNK(req.input)
@@ -366,19 +375,13 @@ func (c *http1Conn) makeTempName(p []byte, unixTime int64) int {
 }
 
 func (c *http1Conn) serve() { // runner
-	defer putHTTP1Conn(c)
-
-	stream := &c.stream
-	for c.persistent { // each stream
-		stream.onUse(c)
+	stream := c
+	for c.persistent { // each queued stream
+		stream.onUse()
 		stream.execute()
 		stream.onEnd()
 	}
 
-	c.closeConn()
-}
-
-func (c *http1Conn) closeConn() {
 	// RFC 7230 (section 6.6):
 	//
 	// If a server performs an immediate close of a TCP connection, there is
@@ -399,18 +402,251 @@ func (c *http1Conn) closeConn() {
 	// certain that its own TCP stack has received the client's
 	// acknowledgement of the packet(s) containing the server's last
 	// response.  Finally, the server fully closes the connection.
+	netConn := c.netConn
 	if !c.closeSafe {
 		if c.IsUDS() {
-			c.netConn.(*net.UnixConn).CloseWrite()
+			netConn.(*net.UnixConn).CloseWrite()
 		} else if c.IsTLS() {
-			c.netConn.(*tls.Conn).CloseWrite()
+			netConn.(*tls.Conn).CloseWrite()
 		} else {
-			c.netConn.(*net.TCPConn).CloseWrite()
+			netConn.(*net.TCPConn).CloseWrite()
 		}
 		time.Sleep(time.Second)
 	}
-	c.netConn.Close()
+	putHTTP1Conn(c)
+	netConn.Close()
 	c.gate.OnConnClosed()
+}
+
+// http1Stream is the server-side HTTP/1 stream.
+type http1Stream = http1Conn
+
+func (s *http1Stream) onUse() { // for non-zeros
+	s.region.Init()
+	s.request.onUse(Version1_1)
+	s.response.onUse(Version1_1)
+}
+func (s *http1Stream) onEnd() { // for zeros
+	s.response.onEnd()
+	s.request.onEnd()
+	if s.socket != nil {
+		s.socket.onEnd()
+		s.socket = nil
+	}
+	s.region.Free()
+}
+
+func (s *http1Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *http1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (s *http1Stream) execute() {
+	req, resp := &s.request, &s.response
+
+	req.recvHead()
+
+	if req.HeadResult() != StatusOK { // receiving request error
+		s.serveAbnormal(req, resp)
+		return
+	}
+
+	if req.methodCode == MethodCONNECT {
+		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented here"
+		s.serveAbnormal(req, resp)
+		return
+	}
+
+	conn := s
+	server := conn.Server().(*httpxServer)
+	// RFC 9112:
+	// If the server's configuration provides for a fixed URI scheme, or a
+	// scheme is provided by a trusted outbound gateway, that scheme is
+	// used for the target URI. This is common in large-scale deployments
+	// because a gateway server will receive the client's connection context
+	// and replace that with their own connection to the inbound server.
+	// Otherwise, if the request is received over a secured connection, the
+	// target URI's scheme is "https"; if not, the scheme is "http".
+	if server.forceScheme != -1 { // forceScheme is set explicitly
+		req.schemeCode = uint8(server.forceScheme)
+	} else { // scheme is not forced
+		if conn.IsTLS() {
+			if req.schemeCode == SchemeHTTP && server.adjustScheme {
+				req.schemeCode = SchemeHTTPS
+			}
+		} else { // not secured
+			if req.schemeCode == SchemeHTTPS && server.adjustScheme {
+				req.schemeCode = SchemeHTTP
+			}
+		}
+	}
+
+	webapp := server.findApp(req.UnsafeHostname())
+
+	if webapp == nil {
+		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
+		s.serveAbnormal(req, resp)
+		return
+	}
+	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes()) {
+		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
+		s.serveAbnormal(req, resp)
+		return
+	}
+
+	req.webapp = webapp
+	resp.webapp = webapp
+
+	if !req.upgradeSocket { // exchan mode?
+		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+			req.maxContentSizeAllowed = webapp.maxUpfileSize
+		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
+			req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
+		}
+		if req.contentSize > req.maxContentSizeAllowed {
+			if req.expectContinue {
+				req.headResult = StatusExpectationFailed
+			} else {
+				req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
+			}
+			s.serveAbnormal(req, resp)
+			return
+		}
+
+		// Prepare the response according to the request
+		if req.methodCode == MethodHEAD {
+			resp.forbidContent = true
+		}
+
+		if req.expectContinue && !s.writeContinue() {
+			return
+		}
+		conn.usedStreams.Add(1)
+		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || conn.gate.IsShut() {
+			conn.persistent = false // reaches limit, or client told us to close, or gate was shut
+		}
+
+		s.executeExchan(webapp, req, resp)
+
+		if s.isBroken() {
+			conn.persistent = false // i/o error
+		}
+	} else { // socket mode.
+		if req.expectContinue && !s.writeContinue() {
+			return
+		}
+
+		s.executeSocket()
+
+		conn.persistent = false // explicitly
+	}
+}
+
+func (c *http1Stream) webAgent() webAgent   { return c.webServer() }
+func (c *http1Stream) webConn() webConn     { return c }
+func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+
+func (s *http1Stream) writeContinue() bool { // 100 continue
+	conn := s
+	// This is an interim response, write directly.
+	if s.setWriteDeadline(time.Now().Add(conn.Server().WriteTimeout())) == nil {
+		if _, err := s.write(http1BytesContinue); err == nil {
+			return true
+		}
+	}
+	// i/o error
+	conn.persistent = false
+	return false
+}
+
+func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
+	webapp.exchanDispatch(req, resp)
+	if !resp.isSent { // only happens on sized content because response must be sent on echo
+		resp.sendChain()
+	} else if resp.isVague() { // end vague content and write trailers (if exist)
+		resp.endVague()
+	}
+	if !req.contentReceived { // content exists but is not used, we receive and drop it here
+		req.dropContent()
+	}
+}
+func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
+	conn := s
+	if Debug() >= 2 {
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
+	}
+	conn.persistent = false // close anyway.
+	status := req.headResult
+	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
+		return // send nothing.
+	}
+	// So we need to send something...
+	if status == StatusContentTooLarge || status == StatusURITooLong || status == StatusRequestHeaderFieldsTooLarge {
+		// The receiving side may has data when we close the connection
+		conn.closeSafe = false
+	}
+	var content []byte
+	if errorPage, ok := webErrorPages[status]; !ok {
+		content = http1Controls[status]
+	} else if req.failReason == "" {
+		content = errorPage
+	} else {
+		content = ConstBytes(req.failReason)
+	}
+	// Use response as a dumb struct here, don't use its methods (like Send) to send anything!
+	resp.status = status
+	resp.AddHeaderBytes(bytesContentType, bytesTypeHTMLUTF8)
+	resp.contentSize = int64(len(content))
+	if status == StatusMethodNotAllowed {
+		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
+		resp.AddHeaderBytes(bytesAllow, bytesGET)
+	}
+	resp.finalizeHeaders()
+	if req.methodCode == MethodHEAD || resp.forbidContent { // we follow the method semantic even we are in abnormal
+		resp.vector = resp.fixedVector[0:3]
+	} else {
+		resp.vector = resp.fixedVector[0:4]
+		resp.vector[3] = content
+	}
+	resp.vector[0] = resp.control()
+	resp.vector[1] = resp.addedHeaders()
+	resp.vector[2] = resp.fixedHeaders()
+	// Ignore any error, as the connection will be closed anyway.
+	if s.setWriteDeadline(time.Now().Add(conn.Server().WriteTimeout())) == nil {
+		s.writev(&resp.vector)
+	}
+}
+
+func (s *http1Stream) executeSocket() { // upgrade: websocket
+	// TODO(diogin): implementation (RFC 6455). use s.serveSocket()?
+	// NOTICE: use idle timeout or clear read timeout otherwise
+	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
+}
+
+func (s *http1Stream) setReadDeadline(deadline time.Time) error {
+	conn := s
+	if deadline.Sub(conn.lastRead) >= time.Second {
+		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		conn.lastRead = deadline
+	}
+	return nil
+}
+func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
+	conn := s
+	if deadline.Sub(conn.lastWrite) >= time.Second {
+		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		conn.lastWrite = deadline
+	}
+	return nil
+}
+
+func (c *http1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
+func (c *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
+func (c *http1Stream) write(p []byte) (int, error)    { return c.netConn.Write(p) }
+func (c *http1Stream) writev(vector *net.Buffers) (int64, error) {
+	return vector.WriteTo(c.netConn)
 }
 
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
@@ -1196,245 +1432,6 @@ func (c *http2Conn) closeConn() {
 	c.netConn.Close()
 	c.gate.OnConnClosed()
 }
-
-// http1Stream is the server-side HTTP/1 stream.
-type http1Stream struct {
-	// Mixins
-	_webStream_[*http1Conn]
-	// Assocs
-	request  http1Request  // the server-side http/1 request.
-	response http1Response // the server-side http/1 response.
-	socket   *http1Socket  // ...
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *http1Stream) onUse(conn *http1Conn) { // for non-zeros
-	s._webStream_.onUse(conn)
-	s.request.onUse(Version1_1)
-	s.response.onUse(Version1_1)
-}
-func (s *http1Stream) onEnd() { // for zeros
-	s.response.onEnd()
-	s.request.onEnd()
-	if s.socket != nil {
-		s.socket.onEnd()
-		s.socket = nil
-	}
-	s._webStream_.onEnd()
-	s.conn = nil
-}
-
-func (s *http1Stream) execute() {
-	req, resp := &s.request, &s.response
-
-	req.recvHead()
-
-	if req.HeadResult() != StatusOK { // receiving request error
-		s.serveAbnormal(req, resp)
-		return
-	}
-
-	if req.methodCode == MethodCONNECT {
-		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented here"
-		s.serveAbnormal(req, resp)
-		return
-	}
-
-	server := s.conn.Server().(*httpxServer)
-	// RFC 9112:
-	// If the server's configuration provides for a fixed URI scheme, or a
-	// scheme is provided by a trusted outbound gateway, that scheme is
-	// used for the target URI. This is common in large-scale deployments
-	// because a gateway server will receive the client's connection context
-	// and replace that with their own connection to the inbound server.
-	// Otherwise, if the request is received over a secured connection, the
-	// target URI's scheme is "https"; if not, the scheme is "http".
-	if server.forceScheme != -1 { // forceScheme is set explicitly
-		req.schemeCode = uint8(server.forceScheme)
-	} else { // scheme is not forced
-		if s.conn.IsTLS() {
-			if req.schemeCode == SchemeHTTP && server.adjustScheme {
-				req.schemeCode = SchemeHTTPS
-			}
-		} else { // not secured
-			if req.schemeCode == SchemeHTTPS && server.adjustScheme {
-				req.schemeCode = SchemeHTTP
-			}
-		}
-	}
-
-	webapp := server.findApp(req.UnsafeHostname())
-
-	if webapp == nil {
-		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
-		s.serveAbnormal(req, resp)
-		return
-	}
-	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes()) {
-		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
-		s.serveAbnormal(req, resp)
-		return
-	}
-
-	req.webapp = webapp
-	resp.webapp = webapp
-
-	if !req.upgradeSocket { // exchan mode?
-		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-			req.maxContentSizeAllowed = webapp.maxUpfileSize
-		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
-			req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
-		}
-		if req.contentSize > req.maxContentSizeAllowed {
-			if req.expectContinue {
-				req.headResult = StatusExpectationFailed
-			} else {
-				req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
-			}
-			s.serveAbnormal(req, resp)
-			return
-		}
-
-		// Prepare the response according to the request
-		if req.methodCode == MethodHEAD {
-			resp.forbidContent = true
-		}
-
-		if req.expectContinue && !s.writeContinue() {
-			return
-		}
-		s.conn.usedStreams.Add(1)
-		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && s.conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || s.conn.gate.IsShut() {
-			s.conn.persistent = false // reaches limit, or client told us to close, or gate was shut
-		}
-
-		s.executeExchan(webapp, req, resp)
-
-		if s.isBroken() {
-			s.conn.persistent = false // i/o error
-		}
-	} else { // socket mode.
-		if req.expectContinue && !s.writeContinue() {
-			return
-		}
-		s.executeSocket()
-
-		s.conn.persistent = false // explicitly
-	}
-}
-
-func (s *http1Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
-
-func (s *http1Stream) writeContinue() bool { // 100 continue
-	// This is an interim response, write directly.
-	if s.setWriteDeadline(time.Now().Add(s.conn.Server().WriteTimeout())) == nil {
-		if _, err := s.write(http1BytesContinue); err == nil {
-			return true
-		}
-	}
-	// i/o error
-	s.conn.persistent = false
-	return false
-}
-
-func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
-	webapp.exchanDispatch(req, resp)
-	if !resp.isSent { // only happens on sized content because response must be sent on echo
-		resp.sendChain()
-	} else if resp.isVague() { // end vague content and write trailers (if exist)
-		resp.endVague()
-	}
-	if !req.contentReceived { // content exists but is not used, we receive and drop it here
-		req.dropContent()
-	}
-}
-func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
-	conn := s.conn
-	if Debug() >= 2 {
-		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
-	}
-	s.conn.persistent = false // close anyway.
-	status := req.headResult
-	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
-		return // send nothing.
-	}
-	// So we need to send something...
-	if status == StatusContentTooLarge || status == StatusURITooLong || status == StatusRequestHeaderFieldsTooLarge {
-		// The receiving side may has data when we close the connection
-		conn.closeSafe = false
-	}
-	var content []byte
-	if errorPage, ok := webErrorPages[status]; !ok {
-		content = http1Controls[status]
-	} else if req.failReason == "" {
-		content = errorPage
-	} else {
-		content = ConstBytes(req.failReason)
-	}
-	// Use response as a dumb struct here, don't use its methods (like Send) to send anything!
-	resp.status = status
-	resp.AddHeaderBytes(bytesContentType, bytesTypeHTMLUTF8)
-	resp.contentSize = int64(len(content))
-	if status == StatusMethodNotAllowed {
-		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
-		resp.AddHeaderBytes(bytesAllow, bytesGET)
-	}
-	resp.finalizeHeaders()
-	if req.methodCode == MethodHEAD || resp.forbidContent { // we follow the method semantic even we are in abnormal
-		resp.vector = resp.fixedVector[0:3]
-	} else {
-		resp.vector = resp.fixedVector[0:4]
-		resp.vector[3] = content
-	}
-	resp.vector[0] = resp.control()
-	resp.vector[1] = resp.addedHeaders()
-	resp.vector[2] = resp.fixedHeaders()
-	// Ignore any error, as the connection will be closed anyway.
-	if s.setWriteDeadline(time.Now().Add(conn.Server().WriteTimeout())) == nil {
-		s.writev(&resp.vector)
-	}
-}
-
-func (s *http1Stream) executeSocket() { // upgrade: websocket
-	// TODO(diogin): implementation (RFC 6455). use s.serveSocket()?
-	// NOTICE: use idle timeout or clear read timeout otherwise
-	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
-}
-
-func (s *http1Stream) setReadDeadline(deadline time.Time) error {
-	conn := s.conn
-	if deadline.Sub(conn.lastRead) >= time.Second {
-		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		conn.lastRead = deadline
-	}
-	return nil
-}
-func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
-	conn := s.conn
-	if deadline.Sub(conn.lastWrite) >= time.Second {
-		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		conn.lastWrite = deadline
-	}
-	return nil
-}
-
-func (s *http1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
-func (s *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
-func (s *http1Stream) write(p []byte) (int, error)    { return s.conn.netConn.Write(p) }
-func (s *http1Stream) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(s.conn.netConn)
-}
-
-func (s *http1Stream) isBroken() bool { return s.conn.isBroken() }
-func (s *http1Stream) markBroken()    { s.conn.markBroken() }
 
 // poolHTTP2Stream is the server-side HTTP/2 stream pool.
 var poolHTTP2Stream sync.Pool

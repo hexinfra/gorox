@@ -32,9 +32,7 @@ Thumbs.db
 
 local.conf
 
-logs/
-tmps/
-vars/
+data/
 
 /hemi/develop/develop
 /goben

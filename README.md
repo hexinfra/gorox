@@ -155,11 +155,12 @@ By default, Gorox uses these directories:
   * svcs/ - Place your RPC services,
   * test/ - Place tests for your project.
 
-After Gorox is started, 3 extra directories will be created:
+After Gorox is started, an extra directory called "data/" will be created, with
+3 sub directories in it:
 
-  * logs/ - Place running logs,
-  * tmps/ - Place temp files which are safe to remove after Gorox is shutdown,
-  * vars/ - Place dynamic data files used by Gorox.
+  * data/logs/ - Place running logs,
+  * data/tmps/ - Place files which are safe to remove after Gorox is shutdown,
+  * data/vars/ - Place dynamic data files used by Gorox.
 
 
 Architecture

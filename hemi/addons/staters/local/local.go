@@ -51,7 +51,6 @@ func (s *localStater) OnConfigure() {
 	}, VarsDir()+"/staters/"+s.Name())
 }
 func (s *localStater) OnPrepare() {
-	// mkdirs
 	if err := os.MkdirAll(s.stateDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}

@@ -191,6 +191,83 @@ func (g *udpsGate) justClose(pktConn net.PacketConn) {
 	g.OnConnClosed()
 }
 
+// poolUDPSConn
+var poolUDPSConn sync.Pool
+
+func getUDPSConn(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPSConn {
+	var udpsConn *UDPSConn
+	if x := poolUDPSConn.Get(); x == nil {
+		udpsConn = new(UDPSConn)
+	} else {
+		udpsConn = x.(*UDPSConn)
+	}
+	udpsConn.onGet(id, gate, pktConn, rawConn)
+	return udpsConn
+}
+func putUDPSConn(udpsConn *UDPSConn) {
+	udpsConn.onPut()
+	poolUDPSConn.Put(udpsConn)
+}
+
+// UDPSConn
+type UDPSConn struct {
+	// Parent
+	ServerConn_
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	pktConn net.PacketConn
+	rawConn syscall.RawConn
+	// Conn states (zeros)
+}
+
+func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
+	c.ServerConn_.OnGet(id, gate)
+	c.pktConn = pktConn
+	c.rawConn = rawConn
+}
+func (c *UDPSConn) onPut() {
+	c.pktConn = nil
+	c.rawConn = nil
+	c.ServerConn_.OnPut()
+}
+
+func (c *UDPSConn) serve() { // runner
+	router := c.Server().(*UDPSRouter)
+	router.dispatch(c)
+	c.closeConn()
+	putUDPSConn(c)
+}
+
+func (c *UDPSConn) Close() error {
+	pktConn := c.pktConn
+	putUDPSConn(c)
+	return pktConn.Close()
+}
+
+func (c *UDPSConn) closeConn() {
+	// TODO: uds, tls?
+	if router := c.Server(); router.IsUDS() {
+	} else if router.IsTLS() {
+	} else {
+	}
+	c.pktConn.Close()
+}
+
+func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
+	return udpsConnVariables[code](c)
+}
+
+// udpsConnVariables
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
+	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isUDS
+	nil, // isTLS
+}
+
 // UDPSDealet
 type UDPSDealet interface {
 	// Imports
@@ -292,81 +369,4 @@ func (c *udpsCase) notContainMatch(conn *UDPSConn, value []byte) bool { // value
 }
 func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
 	return c.case_._notRegexpMatch(value)
-}
-
-// poolUDPSConn
-var poolUDPSConn sync.Pool
-
-func getUDPSConn(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPSConn {
-	var udpsConn *UDPSConn
-	if x := poolUDPSConn.Get(); x == nil {
-		udpsConn = new(UDPSConn)
-	} else {
-		udpsConn = x.(*UDPSConn)
-	}
-	udpsConn.onGet(id, gate, pktConn, rawConn)
-	return udpsConn
-}
-func putUDPSConn(udpsConn *UDPSConn) {
-	udpsConn.onPut()
-	poolUDPSConn.Put(udpsConn)
-}
-
-// UDPSConn
-type UDPSConn struct {
-	// Parent
-	ServerConn_
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	pktConn net.PacketConn
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-}
-
-func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id, gate)
-	c.pktConn = pktConn
-	c.rawConn = rawConn
-}
-func (c *UDPSConn) onPut() {
-	c.pktConn = nil
-	c.rawConn = nil
-	c.ServerConn_.OnPut()
-}
-
-func (c *UDPSConn) serve() { // runner
-	router := c.Server().(*UDPSRouter)
-	router.dispatch(c)
-	c.closeConn()
-	putUDPSConn(c)
-}
-
-func (c *UDPSConn) Close() error {
-	pktConn := c.pktConn
-	putUDPSConn(c)
-	return pktConn.Close()
-}
-
-func (c *UDPSConn) closeConn() {
-	// TODO: uds, tls?
-	if router := c.Server(); router.IsUDS() {
-	} else if router.IsTLS() {
-	} else {
-	}
-	c.pktConn.Close()
-}
-
-func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
-	return udpsConnVariables[code](c)
-}
-
-// udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
-	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isUDS
-	nil, // isTLS
 }

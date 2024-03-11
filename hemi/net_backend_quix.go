@@ -29,25 +29,21 @@ type QUIXBackend struct {
 	Backend_[*quixNode]
 	// Mixins
 	_streamHolder_
-	_loadBalancer_
 	// States
 	health any // TODO
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b._loadBalancer_.init()
 }
 
 func (b *QUIXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 	b._streamHolder_.onConfigure(b, 1000)
-	b._loadBalancer_.onConfigure(b)
 }
 func (b *QUIXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 	b._streamHolder_.onPrepare(b)
-	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 func (b *QUIXBackend) CreateNode(name string) Node {
@@ -58,15 +54,20 @@ func (b *QUIXBackend) CreateNode(name string) Node {
 }
 
 func (b *QUIXBackend) Dial() (*QConn, error) {
-	// TODO
-	return nil, nil
+	node := b.nodes[b.getNext()]
+	return node.dial()
 }
+
 func (b *QUIXBackend) FetchConn() (*QConn, error) {
-	// TODO
 	return nil, nil
 }
 func (b *QUIXBackend) StoreConn(qConn *QConn) {
-	// TODO
+}
+
+func (b *QUIXBackend) FetchStream() (*QStream, error) {
+	return nil, nil
+}
+func (b *QUIXBackend) StoreStream(qStream *QStream) {
 }
 
 // quixNode is a node in QUIXBackend.
@@ -114,6 +115,12 @@ func (n *quixNode) storeConn(qConn *QConn) {
 	// TODO
 }
 
+func (n *quixNode) fetchStream() (*QStream, error) {
+	return nil, nil
+}
+func (n *quixNode) storeStream(qStream *QStream) {
+}
+
 // poolQConn
 var poolQConn sync.Pool
 
@@ -140,7 +147,7 @@ type QConn struct {
 	quicConn   *quic.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
 	// Conn states (zeros)
-	usedStreams atomic.Int32 // how many streams has been used?
+	usedStreams atomic.Int32 // how many streams have been used?
 	broken      atomic.Bool  // is connection broken?
 }
 
@@ -161,9 +168,9 @@ func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 func (c *QConn) isBroken() bool { return c.broken.Load() }
 func (c *QConn) markBroken()    { c.broken.Store(true) }
 
-func (c *QConn) FetchStream() *QStream {
+func (c *QConn) FetchStream() (*QStream, error) {
 	// TODO
-	return nil
+	return nil, nil
 }
 func (c *QConn) StoreStream(stream *QStream) {
 	// TODO

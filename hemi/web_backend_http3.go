@@ -50,9 +50,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	b.AddNode(node)
 	return node
 }
-func (b *HTTP3Backend) FetchConn() (WebBackendConn, error) {
-	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+
+func (b *HTTP3Backend) FetchStream() (WebBackendStream, error) {
+	return nil, nil
+}
+func (b *HTTP3Backend) StoreStream(stream WebBackendStream) {
 }
 
 // http3Node
@@ -88,6 +90,7 @@ func (n *http3Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
+/*
 func (n *http3Node) fetchConn() (WebBackendConn, error) {
 	// TODO: dynamic address names?
 	// TODO
@@ -100,6 +103,13 @@ func (n *http3Node) fetchConn() (WebBackendConn, error) {
 }
 func (n *http3Node) storeConn(conn WebBackendConn) {
 	// TODO
+}
+*/
+
+func (n *http3Node) fetchStream() (WebBackendStream, error) {
+	return nil, nil
+}
+func (n *http3Node) storeStream(stream WebBackendStream) {
 }
 
 // poolH3Conn is the backend-side HTTP/3 connection pool.
@@ -163,10 +173,10 @@ func (c *H3Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *H3Conn) FetchStream() WebBackendStream {
+func (c *H3Conn) FetchStream() (WebBackendStream, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
-	return nil
+	return nil, nil
 }
 func (c *H3Conn) StoreStream(stream WebBackendStream) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.

@@ -31,13 +31,13 @@ const ( // list of components
 	compTCPSRouter            // tcpsRouter
 	compTCPSDealet            // tcpsProxy, redisProxy, ...
 	compUDPSRouter            // udpsRouter
-	compUDPSDealet            // udpsProxy, ...
+	compUDPSDealet            // udpsProxy, dnsDealet, ...
 	compCase                  // case
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
 	compService               // service
 	compWebapp                // webapp
-	compHandlet               // static, ...
+	compHandlet               // static, httpProxy, ...
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
@@ -74,23 +74,35 @@ func registerFixture(sign string) {
 	signComp(sign, compFixture)
 }
 
-var (
+var ( // component creators
 	creatorsLock       sync.RWMutex
 	backendCreators    = make(map[string]func(name string, stage *Stage) Backend) // indexed by sign, same below.
+	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
+	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
+	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
+	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 	quixDealetCreators = make(map[string]func(name string, stage *Stage, router *QUIXRouter) QUIXDealet)
 	tcpsDealetCreators = make(map[string]func(name string, stage *Stage, router *TCPSRouter) TCPSDealet)
 	udpsDealetCreators = make(map[string]func(name string, stage *Stage, router *UDPSRouter) UDPSDealet)
-	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
-	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
 	handletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Handlet)
 	reviserCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Reviser)
 	sockletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Socklet)
-	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
 )
 
 func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
+}
+func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
+	_registerComponent0(sign, compStater, staterCreators, create)
+}
+func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
+	_registerComponent0(sign, compCacher, cacherCreators, create)
+}
+func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
+	_registerComponent0(sign, compServer, serverCreators, create)
+}
+func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
+	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 func RegisterQUIXDealet(sign string, create func(name string, stage *Stage, router *QUIXRouter) QUIXDealet) {
 	_registerComponent1(sign, compQUIXDealet, quixDealetCreators, create)
@@ -101,12 +113,6 @@ func RegisterTCPSDealet(sign string, create func(name string, stage *Stage, rout
 func RegisterUDPSDealet(sign string, create func(name string, stage *Stage, router *UDPSRouter) UDPSDealet) {
 	_registerComponent1(sign, compUDPSDealet, udpsDealetCreators, create)
 }
-func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
-	_registerComponent0(sign, compStater, staterCreators, create)
-}
-func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
-	_registerComponent0(sign, compCacher, cacherCreators, create)
-}
 func RegisterHandlet(sign string, create func(name string, stage *Stage, webapp *Webapp) Handlet) {
 	_registerComponent1(sign, compHandlet, handletCreators, create)
 }
@@ -115,12 +121,6 @@ func RegisterReviser(sign string, create func(name string, stage *Stage, webapp 
 }
 func RegisterSocklet(sign string, create func(name string, stage *Stage, webapp *Webapp) Socklet) {
 	_registerComponent1(sign, compSocklet, sockletCreators, create)
-}
-func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
-	_registerComponent0(sign, compServer, serverCreators, create)
-}
-func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
-	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
 
 func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, cacher, server, cronjob
@@ -144,7 +144,7 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 	signComp(sign, comp)
 }
 
-var (
+var ( // initializer of services and webapps
 	initsLock    sync.RWMutex
 	serviceInits = make(map[string]func(service *Service) error) // indexed by service name.
 	webappInits  = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
@@ -351,22 +351,22 @@ type Stage struct {
 	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by cronjobName
 	// States
+	id      int32
+	numCPU  int32
 	cpuFile string
 	hepFile string
 	thrFile string
 	grtFile string
 	blkFile string
-	id      int32
-	numCPU  int32
 }
 
 func (s *Stage) onCreate() {
 	s.MakeComp("stage")
 
-	s.fixtures = make(compDict[fixture])
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
 	s.namer = createNamer(s)
+	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signNamer] = s.namer
@@ -635,7 +635,7 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 func (s *Stage) Clock() *clockFixture               { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture             { return s.fcache }
 func (s *Stage) Namer() *namerFixture               { return s.namer }
-func (s *Stage) fixture(sign string) fixture        { return s.fixtures[sign] }
+func (s *Stage) Fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUIXRouter(name string) *QUIXRouter { return s.quixRouters[name] }
 func (s *Stage) TCPSRouter(name string) *TCPSRouter { return s.tcpsRouters[name] }
@@ -703,13 +703,22 @@ func (s *Stage) Start(id int32) {
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 }
-func (s *Stage) Quit() {
-	s.OnShutdown()
-	if Debug() >= 2 {
-		Printf("stage id=%d: quit.\n", s.id)
-	}
-}
 
+func (s *Stage) configure() (err error) {
+	if Debug() >= 1 {
+		Println("now configure stage")
+	}
+	defer func() {
+		if x := recover(); x != nil {
+			err = x.(error)
+		}
+		if Debug() >= 1 {
+			Println("stage configured")
+		}
+	}()
+	s.OnConfigure()
+	return nil
+}
 func (s *Stage) bindServerServices() {
 	if Debug() >= 1 {
 		Println("bind services to rpc servers")
@@ -729,6 +738,21 @@ func (s *Stage) bindServerWebapps() {
 			webServer.bindApps()
 		}
 	}
+}
+func (s *Stage) prepare() (err error) {
+	if Debug() >= 1 {
+		Println("now prepare stage")
+	}
+	defer func() {
+		if x := recover(); x != nil {
+			err = x.(error)
+		}
+		if Debug() >= 1 {
+			Println("stage prepared")
+		}
+	}()
+	s.OnPrepare()
+	return nil
 }
 
 func (s *Stage) startFixtures() {
@@ -816,37 +840,6 @@ func (s *Stage) startCronjobs() {
 	}
 }
 
-func (s *Stage) configure() (err error) {
-	if Debug() >= 1 {
-		Println("now configure stage")
-	}
-	defer func() {
-		if x := recover(); x != nil {
-			err = x.(error)
-		}
-		if Debug() >= 1 {
-			Println("stage configured")
-		}
-	}()
-	s.OnConfigure()
-	return nil
-}
-func (s *Stage) prepare() (err error) {
-	if Debug() >= 1 {
-		Println("now prepare stage")
-	}
-	defer func() {
-		if x := recover(); x != nil {
-			err = x.(error)
-		}
-		if Debug() >= 1 {
-			Println("stage prepared")
-		}
-	}()
-	s.OnPrepare()
-	return nil
-}
-
 func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }
 
@@ -898,6 +891,13 @@ func (s *Stage) ProfBlock() {
 	time.Sleep(5 * time.Second)
 	pprof.Lookup("block").WriteTo(file, 1)
 	runtime.SetBlockProfileRate(0)
+}
+
+func (s *Stage) Quit() {
+	s.OnShutdown()
+	if Debug() >= 2 {
+		Printf("stage id=%d: quit.\n", s.id)
+	}
 }
 
 // fixture component.
@@ -953,21 +953,6 @@ func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
 
-// Cronjob component
-type Cronjob interface {
-	// Imports
-	Component
-	// Methods
-	Schedule() // runner
-}
-
-// Cronjob_ is the parent for all cronjobs.
-type Cronjob_ struct {
-	// Parent
-	Component_
-	// States
-}
-
 // Backend component. A Backend is a group of nodes.
 type Backend interface {
 	// Imports
@@ -994,14 +979,6 @@ type Node interface {
 	IsTLS() bool
 }
 
-// BackendConn
-type BackendConn interface {
-	// Methods
-	getNext() BackendConn
-	setNext(next BackendConn)
-	Close() error
-}
-
 // Server component. A Server is a group of gates.
 type Server interface {
 	// Imports
@@ -1020,16 +997,17 @@ type Server interface {
 	MaxConnsPerGate() int32
 }
 
-// Gate is the interface for all gates. Gates are not components.
-type Gate interface {
+// Cronjob component
+type Cronjob interface {
+	// Imports
+	Component
 	// Methods
-	Server() Server
-	Address() string
-	ID() int32
-	IsUDS() bool
-	IsTLS() bool
-	Open() error
-	Shut() error
-	IsShut() bool
-	OnConnClosed()
+	Schedule() // runner
+}
+
+// Cronjob_ is the parent for all cronjobs.
+type Cronjob_ struct {
+	// Parent
+	Component_
+	// States
 }

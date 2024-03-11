@@ -296,7 +296,7 @@ type fcgiExchan struct {
 	// Exchan states (non-zeros)
 	region Region     // a region-based memory pool
 	proxy  *fcgiProxy // associated proxy
-	conn   *TConn     // associated conn
+	conn   *TConn     // the connection used
 	// Exchan states (zeros)
 }
 
@@ -317,10 +317,6 @@ func (x *fcgiExchan) onEnd() {
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
-
-func (x *fcgiExchan) makeTempName(p []byte, unixTime int64) int {
-	return x.conn.MakeTempName(p, unixTime)
-}
 
 func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
 	return x.conn.SetWriteDeadline(deadline)
@@ -1314,7 +1310,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
 	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
-	n += r.exchan.makeTempName(filePath[n:], r.recvTime.Unix())
+	n += r.exchan.conn.MakeTempName(filePath[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {

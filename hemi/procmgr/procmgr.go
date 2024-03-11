@@ -150,7 +150,7 @@ func Main(args *Args) {
 
 		setDir := func(pDir *string, name string, set func(string)) {
 			if dir := *pDir; dir == "" {
-				*pDir = common.BaseDir + "/" + name
+				*pDir = common.BaseDir + "/data/" + name
 			} else if !filepath.IsAbs(dir) {
 				*pDir = common.BaseDir + "/" + dir
 			}

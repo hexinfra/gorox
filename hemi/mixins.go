@@ -10,6 +10,7 @@ package hemi
 import (
 	"crypto/tls"
 	"errors"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -22,6 +23,8 @@ import (
 type Backend_[N Node] struct {
 	// Parent
 	Component_
+	// Mixins
+	_loadBalancer_
 	// Assocs
 	stage *Stage      // current stage
 	nodes compList[N] // nodes of this backend
@@ -35,6 +38,7 @@ type Backend_[N Node] struct {
 
 func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
 	b.MakeComp(name)
+	b._loadBalancer_.init()
 	b.stage = stage
 }
 func (b *Backend_[N]) OnShutdown() {
@@ -42,6 +46,8 @@ func (b *Backend_[N]) OnShutdown() {
 }
 
 func (b *Backend_[N]) OnConfigure() {
+	b._loadBalancer_.onConfigure(b)
+
 	// readTimeout
 	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -75,6 +81,7 @@ func (b *Backend_[N]) OnConfigure() {
 	}, 5*time.Second)
 }
 func (b *Backend_[N]) OnPrepare() {
+	b._loadBalancer_.onPrepare(len(b.nodes))
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -123,12 +130,6 @@ type Node_ struct {
 	weight    int32       // 1, 22, 333, ...
 	keepConns int32       // max conns to keep alive
 	down      atomic.Bool // TODO: false-sharing
-	freeList  struct {    // free list of conns in this node
-		sync.Mutex
-		head BackendConn // head element
-		tail BackendConn // tail element
-		qnty int         // size of the list
-	}
 }
 
 func (n *Node_) OnCreate(name string, backend Backend) {
@@ -189,54 +190,7 @@ func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_) pullConn() BackendConn {
-	list := &n.freeList
-
-	list.Lock()
-	defer list.Unlock()
-
-	if list.qnty == 0 {
-		return nil
-	}
-	conn := list.head
-	list.head = conn.getNext()
-	conn.setNext(nil)
-	list.qnty--
-
-	return conn
-}
-func (n *Node_) pushConn(conn BackendConn) {
-	list := &n.freeList
-
-	list.Lock()
-	defer list.Unlock()
-
-	if list.qnty == 0 {
-		list.head = conn
-		list.tail = conn
-	} else { // >= 1
-		list.tail.setNext(conn)
-		list.tail = conn
-	}
-	list.qnty++
-}
-func (n *Node_) closeFree() int {
-	list := &n.freeList
-
-	list.Lock()
-	defer list.Unlock()
-
-	for conn := list.head; conn != nil; conn = conn.getNext() {
-		conn.Close()
-	}
-	qnty := list.qnty
-	list.qnty = 0
-	list.head, list.tail = nil, nil
-
-	return qnty
-}
-
-func (n *Node_) closeConn(conn BackendConn) {
+func (n *Node_) closeConn(conn io.Closer) {
 	conn.Close()
 	n.DecSub()
 }
@@ -244,8 +198,7 @@ func (n *Node_) closeConn(conn BackendConn) {
 // BackendConn_ is the parent for backend conns.
 type BackendConn_ struct {
 	// Conn states (non-zeros)
-	next    BackendConn // the linked-list
-	id      int64       // the conn id
+	id      int64 // the conn id
 	backend Backend
 	node    Node
 	expire  time.Time // when the conn is considered expired
@@ -276,9 +229,6 @@ func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }
-
-func (c *BackendConn_) getNext() BackendConn     { return c.next }
-func (c *BackendConn_) setNext(next BackendConn) { c.next = next }
 
 // Server_ is the parent for all servers.
 type Server_[G Gate] struct {
@@ -388,6 +338,20 @@ func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
+
+// Gate is the interface for all gates. Gates are not components.
+type Gate interface {
+	// Methods
+	Server() Server
+	Address() string
+	ID() int32
+	IsUDS() bool
+	IsTLS() bool
+	Open() error
+	Shut() error
+	IsShut() bool
+	OnConnClosed()
+}
 
 // Gate_ is the parent for all gates.
 type Gate_ struct {
@@ -608,3 +572,32 @@ type _identifiable_ struct {
 func (i *_identifiable_) ID() uint8 { return i.id }
 
 func (i *_identifiable_) setID(id uint8) { i.id = id }
+
+/*
+// _connPool_
+type _connPool_[T any] struct {
+	freeList struct{
+		sync.Mutex
+		head T
+		tail T
+		qnty int
+	}
+}
+
+func (p *_connPool_[T]) pullConn() T {
+	list := &p.freeList
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.getNext()
+	conn.setNext(nil)
+	list.qnty--
+
+	return conn
+}
+*/

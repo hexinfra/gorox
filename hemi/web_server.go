@@ -2001,7 +2001,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 							return
 						}
 						nameBuffer := r.stream.buffer256() // enough for tempName
-						m := r.stream.makeTempName(nameBuffer, r.recvTime.Unix())
+						m := r.stream.webConn().makeTempName(nameBuffer, r.recvTime.Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return

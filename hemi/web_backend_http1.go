@@ -51,9 +51,12 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	b.AddNode(node)
 	return node
 }
-func (b *HTTP1Backend) FetchConn() (WebBackendConn, error) {
+
+func (b *HTTP1Backend) FetchStream() (WebBackendStream, error) {
 	node := b.nodes[b.getNext()]
-	return node.fetchConn()
+	return node.fetchStream()
+}
+func (b *HTTP1Backend) StoreStream(stream WebBackendStream) {
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -62,6 +65,12 @@ type http1Node struct {
 	Node_
 	// Assocs
 	// States
+	connPool struct {
+		sync.Mutex
+		head *H1Conn
+		tail *H1Conn
+		qnty int
+	}
 }
 
 func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
@@ -94,29 +103,33 @@ func (n *http1Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http1Node) fetchConn() (WebBackendConn, error) {
-	conn := n.pullConn()
+func (n *http1Node) fetchStream() (WebBackendStream, error) {
+	h1Conn := n.pullConn()
 	down := n.isDown()
-	if conn != nil {
-		h1Conn := conn.(*H1Conn)
+	if h1Conn != nil {
 		if h1Conn.isAlive() && !h1Conn.reachLimit() && !down {
-			return h1Conn, nil
+			return h1Conn.FetchStream()
 		}
 		n.closeConn(h1Conn)
 	}
 	if down {
 		return nil, errNodeDown
 	}
-
+	var err error
 	if n.IsUDS() {
-		return n._dialUDS()
+		h1Conn, err = n._dialUDS()
 	} else if n.IsTLS() {
-		return n._dialTLS()
+		h1Conn, err = n._dialTLS()
 	} else {
-		return n._dialTCP()
+		h1Conn, err = n._dialTCP()
+	}
+	if err == nil {
+		return h1Conn.FetchStream()
+	} else {
+		return nil, errNodeDown
 	}
 }
-func (n *http1Node) _dialUDS() (WebBackendConn, error) {
+func (n *http1Node) _dialUDS() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -135,7 +148,7 @@ func (n *http1Node) _dialUDS() (WebBackendConn, error) {
 	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) _dialTLS() (WebBackendConn, error) {
+func (n *http1Node) _dialTLS() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -158,7 +171,7 @@ func (n *http1Node) _dialTLS() (WebBackendConn, error) {
 	n.IncSub()
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
-func (n *http1Node) _dialTCP() (WebBackendConn, error) {
+func (n *http1Node) _dialTCP() (*H1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -177,8 +190,9 @@ func (n *http1Node) _dialTCP() (WebBackendConn, error) {
 	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) storeConn(conn WebBackendConn) {
-	h1Conn := conn.(*H1Conn)
+func (n *http1Node) storeStream(stream WebBackendStream) {
+	h1Stream := stream.(*H1Stream)
+	h1Conn := h1Stream
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.persistent {
 		if Debug() >= 2 {
 			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
@@ -192,6 +206,53 @@ func (n *http1Node) storeConn(conn WebBackendConn) {
 	}
 }
 
+func (n *http1Node) pullConn() *H1Conn {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.next
+	conn.next = nil
+	list.qnty--
+
+	return conn
+}
+func (n *http1Node) pushConn(conn *H1Conn) {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		list.head = conn
+		list.tail = conn
+	} else { // >= 1
+		list.tail.next = conn
+		list.tail = conn
+	}
+	list.qnty++
+}
+func (n *http1Node) closeFree() int {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	for conn := list.head; conn != nil; conn = conn.next {
+		conn.Close()
+	}
+	qnty := list.qnty
+	list.qnty = 0
+	list.head, list.tail = nil, nil
+
+	return qnty
+}
+
 // poolH1Conn is the backend-side HTTP/1 connection pool.
 var poolH1Conn sync.Pool
 
@@ -199,7 +260,7 @@ func getH1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawC
 	var h1Conn *H1Conn
 	if x := poolH1Conn.Get(); x == nil {
 		h1Conn = new(H1Conn)
-		stream := &h1Conn.stream
+		stream := h1Conn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -224,13 +285,24 @@ type H1Conn struct {
 	// Mixins
 	_webConn_
 	// Assocs
-	stream H1Stream // an H1Conn has exactly one stream at a time, so just embed it
+	next   *H1Conn  // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	netConn net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn syscall.RawConn // used when netConn is TCP or UDS
 	// Conn states (zeros)
+
+	// Assocs
+	request  H1Request  // the backend-side http/1 request
+	response H1Response // the backend-side http/1 response
+	socket   *H1Socket  // the backend-side http/1 socket
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
 }
 
 func (c *H1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -257,10 +329,10 @@ func (c *H1Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *H1Conn) FetchStream() WebBackendStream {
-	stream := &c.stream
-	stream.onUse(c)
-	return stream
+func (c *H1Conn) FetchStream() (WebBackendStream, error) {
+	stream := c
+	stream.onUse()
+	return stream, nil
 }
 func (c *H1Conn) StoreStream(stream WebBackendStream) {
 	stream.(*H1Stream).onEnd()
@@ -273,21 +345,10 @@ func (c *H1Conn) Close() error {
 }
 
 // H1Stream is the backend-side HTTP/1 stream.
-type H1Stream struct {
-	// Mixins
-	_webStream_[*H1Conn]
-	// Assocs
-	request  H1Request  // the backend-side http/1 request
-	response H1Response // the backend-side http/1 response
-	socket   *H1Socket  // the backend-side http/1 socket
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non zeros)
-	// Stream states (zeros)
-}
+type H1Stream = H1Conn
 
-func (s *H1Stream) onUse(conn *H1Conn) { // for non-zeros
-	s._webStream_.onUse(conn)
+func (s *H1Stream) onUse() { // for non-zeros
+	s.region.Init()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -298,12 +359,15 @@ func (s *H1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s._webStream_.onEnd()
-	s.conn = nil
+	s.region.Free()
 }
 
-func (s *H1Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *H1Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *H1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+func (c *H1Stream) webAgent() webAgent   { return c.WebBackend() }
+func (c *H1Stream) webConn() webConn   { return c }
+func (c *H1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H1Stream) Response() WebBackendResponse { return &s.response }
@@ -326,7 +390,7 @@ func (s *H1Stream) ReverseSocket(req Request, sock Socket) error {
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {
-	conn := s.conn
+	conn := s
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -336,7 +400,7 @@ func (s *H1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (s *H1Stream) setReadDeadline(deadline time.Time) error {
-	conn := s.conn
+	conn := s
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -346,13 +410,10 @@ func (s *H1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (s *H1Stream) write(p []byte) (int, error)               { return s.conn.netConn.Write(p) }
-func (s *H1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(s.conn.netConn) }
-func (s *H1Stream) read(p []byte) (int, error)                { return s.conn.netConn.Read(p) }
-func (s *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(s.conn.netConn, p) }
-
-func (s *H1Stream) isBroken() bool { return s.conn.isBroken() }
-func (s *H1Stream) markBroken()    { s.conn.markBroken() }
+func (c *H1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *H1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *H1Stream) read(p []byte) (int, error)                { return c.netConn.Read(p) }
+func (c *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
 
 // H1Request is the backend-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building

@@ -7,7 +7,7 @@ Hemi is the engine of Gorox.
 Layout
 ======
 
-Hemi uses these directories:
+Hemi contains these directories:
 
   * addons/   - Place optional addons,
   * common/   - Place general purpose libraries,
@@ -28,7 +28,7 @@ Architecture
 Logical
 -------
 
-The logical architecture of a stage in Hemi looks like this:
+The logical architecture of a stage in Hemi engine looks like this:
 
 ```
    ^     +---------------------------------------------+  shutdown
@@ -56,7 +56,7 @@ prepare  +-----------+---------------+-----------------+     v
 Dependencies
 ------------
 
-A program (like Gorox) using Hemi typically has the following dependencies:
+A program (like Gorox) using Hemi engine typically has these dependencies:
 
 ```
   +-------------------------------------------------------------+

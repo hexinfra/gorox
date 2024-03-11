@@ -47,6 +47,16 @@ func (b *RedisBackend) CreateNode(name string) Node {
 	return node
 }
 
+func (b *RedisBackend) Dial() (*RedisConn, error) {
+	return nil, nil
+}
+
+func (b *RedisBackend) FetchConn() (*RedisConn, error) {
+	return nil, nil
+}
+func (b *RedisBackend) StoreConn(redisConn *RedisConn) {
+}
+
 // redisNode is a node in RedisBackend.
 type redisNode struct {
 	// Parent

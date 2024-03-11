@@ -42,6 +42,11 @@ func (v *Value) Int64() (i64 int64, ok bool) {
 	i64, ok = v.value.(int64)
 	return
 }
+func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
+func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
+func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
+func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
+func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
 func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
 	i64, ok := v.Int64()
 	i = T(i64)
@@ -50,11 +55,6 @@ func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 
 	}
 	return
 }
-func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
-func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
-func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
-func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
-func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
 func (v *Value) String() (s string, ok bool) {
 	s, ok = v.value.(string)
 	return
@@ -267,7 +267,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 }
 func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	fixtureSign := sign.text
-	fixture := stage.fixture(fixtureSign)
+	fixture := stage.Fixture(fixtureSign)
 	if fixture == nil {
 		panic(errors.New("config error: unknown fixture: " + fixtureSign))
 	}

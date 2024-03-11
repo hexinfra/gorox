@@ -112,7 +112,7 @@ type _webConn_ struct {
 	persistent bool // persist the connection after current stream? true by default
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
-	usedStreams atomic.Int32 // num of streams served or used
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
 	broken      atomic.Bool  // is conn broken?
 }
 
@@ -138,7 +138,6 @@ type webStream interface {
 
 	buffer256() []byte
 	unsafeMake(size int) []byte
-	makeTempName(p []byte, unixTime int64) int // temp name is small enough to be placed in buffer256() of stream
 
 	setReadDeadline(deadline time.Time) error
 	setWriteDeadline(deadline time.Time) error
@@ -152,7 +151,7 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// _webStream_ is a mixin for http[1-3]Stream and H[1-3]Stream.
+// _webStream_ is a mixin for http[2-3]Stream and H[2-3]Stream.
 type _webStream_[C webConn] struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
@@ -176,10 +175,6 @@ func (s *_webStream_[C]) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *_webStream_[C]) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *_webStream_[C]) webConn() webConn { return s.conn }
-
-func (s *_webStream_[C]) makeTempName(p []byte, unixTime int64) int {
-	return s.conn.makeTempName(p, unixTime)
-}
 
 // webIn_ is the parent for webServerRequest_ and webBackendResponse_.
 type webIn_ struct { // incoming. needs parsing
@@ -1529,7 +1524,7 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 	filesDir := r.saveContentFilesDir()
 	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
-	n += r.stream.makeTempName(filePath[n:], r.recvTime.Unix())
+	n += r.stream.webConn().makeTempName(filePath[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *webIn_) _beforeRead(toTime *time.Time) error {

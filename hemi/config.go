@@ -310,7 +310,6 @@ func (c *config) parseNode(backend Backend) { // node <name> {}
 	}
 	node := backend.CreateNode(nodeName)
 	node.setParent(backend)
-	c.forward()
 	c._parseLeaf(node)
 }
 func (c *config) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}

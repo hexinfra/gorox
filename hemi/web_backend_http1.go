@@ -285,7 +285,7 @@ type H1Conn struct {
 	// Mixins
 	_webConn_
 	// Assocs
-	next   *H1Conn  // the linked-list
+	next *H1Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -366,7 +366,7 @@ func (s *H1Stream) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *H1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (c *H1Stream) webAgent() webAgent   { return c.WebBackend() }
-func (c *H1Stream) webConn() webConn   { return c }
+func (c *H1Stream) webConn() webConn     { return c }
 func (c *H1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() WebBackendRequest   { return &s.request }

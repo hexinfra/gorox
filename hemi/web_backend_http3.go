@@ -164,13 +164,12 @@ func (c *H3Conn) onPut() {
 
 func (c *H3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
 func (c *H3Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+func (c *H3Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *H3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
-}
-
-func (c *H3Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H3Conn) FetchStream() (WebBackendStream, error) {
@@ -217,7 +216,7 @@ func putH3Stream(stream *H3Stream) {
 // H3Stream
 type H3Stream struct {
 	// Mixins
-	_webStream_[*H3Conn]
+	_webStream_
 	// Assocs
 	request  H3Request
 	response H3Response
@@ -225,12 +224,14 @@ type H3Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	conn       *H3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 }
 
 func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._webStream_.onUse(conn)
+	s._webStream_.onUse()
+	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -242,13 +243,10 @@ func (s *H3Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
+	s.conn = nil
 	s.quicStream = nil
 	s._webStream_.onEnd()
-	s.conn = nil
 }
-
-func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H3Stream) Response() WebBackendResponse { return &s.response }
@@ -257,16 +255,9 @@ func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H3Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-
 func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
 	// TODO, use s.startSocket()
 	return s.socket
-}
-func (s *H3Stream) ReverseSocket(req Request, sock Socket) error {
-	return nil
 }
 
 func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
@@ -275,6 +266,13 @@ func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i
 func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
+
+func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+
+func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
+func (s *H3Stream) webConn() webConn     { return s.conn }
+func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *H3Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
@@ -288,9 +286,6 @@ func (s *H3Stream) read(p []byte) (int, error) { // for content i/o only?
 func (s *H3Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-
-func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H3Request is the backend-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building

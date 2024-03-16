@@ -2594,7 +2594,7 @@ type Response interface { // for *http[1-3]Response
 	proxyPass1xx(resp WebBackendResponse) bool
 	proxyPass(resp WebBackendResponse) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp WebBackendResponse, viaName []byte) bool
+	proxyCopyHead(resp WebBackendResponse, args *WebExchanProxyArgs) bool
 	proxyCopyTail(resp WebBackendResponse) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
@@ -2900,7 +2900,7 @@ func (r *webServerResponse_) proxyPass(resp WebBackendResponse) error { // sync 
 	}
 	return nil
 }
-func (r *webServerResponse_) proxyCopyHead(resp WebBackendResponse, viaName []byte) bool {
+func (r *webServerResponse_) proxyCopyHead(resp WebBackendResponse, args *WebExchanProxyArgs) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)

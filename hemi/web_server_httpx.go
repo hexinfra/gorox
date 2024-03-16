@@ -333,15 +333,15 @@ type http1Conn struct {
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 
+	// Mixins
+	_webStream_
 	// Assocs
 	request  http1Request  // the server-side http/1 request.
 	response http1Response // the server-side http/1 response.
 	socket   *http1Socket  // the server-side http/1 socket.
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
@@ -369,12 +369,13 @@ func (c *http1Conn) onPut() {
 }
 
 func (c *http1Conn) webServer() webServer { return c.Server().(webServer) }
-
 func (c *http1Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *http1Conn) serve() { // runner
+	defer putHTTP1Conn(c)
+
 	stream := c
 	for c.persistent { // each queued stream
 		stream.onUse()
@@ -413,7 +414,6 @@ func (c *http1Conn) serve() { // runner
 		}
 		time.Sleep(time.Second)
 	}
-	putHTTP1Conn(c)
 	netConn.Close()
 	c.gate.OnConnClosed()
 }
@@ -422,7 +422,7 @@ func (c *http1Conn) serve() { // runner
 type http1Stream = http1Conn
 
 func (s *http1Stream) onUse() { // for non-zeros
-	s.region.Init()
+	s._webStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -433,11 +433,8 @@ func (s *http1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.region.Free()
+	s._webStream_.onEnd()
 }
-
-func (s *http1Stream) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *http1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 func (s *http1Stream) execute() {
 	req, resp := &s.request, &s.response
@@ -540,10 +537,6 @@ func (s *http1Stream) execute() {
 	}
 }
 
-func (c *http1Stream) webAgent() webAgent   { return c.webServer() }
-func (c *http1Stream) webConn() webConn     { return c }
-func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
-
 func (s *http1Stream) writeContinue() bool { // 100 continue
 	conn := s
 	// This is an interim response, write directly.
@@ -641,6 +634,10 @@ func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
+
+func (c *http1Stream) webAgent() webAgent   { return c.webServer() }
+func (c *http1Stream) webConn() webConn     { return c }
+func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (c *http1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
 func (c *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
@@ -750,7 +747,6 @@ func (c *http2Conn) onPut() {
 }
 
 func (c *http2Conn) webServer() webServer { return c.Server().(webServer) }
-
 func (c *http2Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
@@ -1460,7 +1456,7 @@ func putHTTP2Stream(stream *http2Stream) {
 // http2Stream is the server-side HTTP/2 stream.
 type http2Stream struct {
 	// Mixins
-	_webStream_[*http2Conn]
+	_webStream_
 	// Assocs
 	request  http2Request  // the http/2 request.
 	response http2Response // the http/2 response.
@@ -1468,6 +1464,7 @@ type http2Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	conn      *http2Conn
 	id        uint32 // stream id
 	inWindow  int32  // stream-level window size for incoming DATA frames
 	outWindow int32  // stream-level window size for outgoing DATA frames
@@ -1481,7 +1478,8 @@ type http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
-	s._webStream_.onUse(conn)
+	s._webStream_.onUse()
+	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
@@ -1495,21 +1493,18 @@ func (s *http2Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
+	s.conn = nil
 	s.http2Stream0 = http2Stream0{}
 	s._webStream_.onEnd()
-	s.conn = nil
 }
 
 func (s *http2Stream) execute() { // runner
+	defer putHTTP2Stream(s)
 	// TODO ...
 	if Debug() >= 2 {
 		Println("stream processing...")
 	}
-	putHTTP2Stream(s)
 }
-
-func (s *http2Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) writeContinue() bool { // 100 continue
 	// TODO
@@ -1535,6 +1530,13 @@ func (s *http2Stream) setWriteDeadline(deadline time.Time) error { // for conten
 	return nil
 }
 
+func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+
+func (s *http2Stream) webAgent() webAgent   { return s.conn.webServer() }
+func (s *http2Stream) webConn() webConn     { return s.conn }
+func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+
 func (s *http2Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
@@ -1547,9 +1549,6 @@ func (s *http2Stream) write(p []byte) (int, error) { // for content i/o only
 func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
-
-func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct { // incoming. needs parsing

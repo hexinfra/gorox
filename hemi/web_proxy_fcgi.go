@@ -46,19 +46,14 @@ type fcgiProxy struct {
 	backend *TCPSBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	bufferClientContent   bool              // client content is buffered anyway?
-	bufferServerContent   bool              // server content is buffered anyway?
-	persistent            bool              // instructs FCGI server to keep conn?
-	preferUnderscore      bool              // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename        []byte            // for SCRIPT_FILENAME
-	indexFile             []byte            // for indexFile
-	addRequestHeaders     map[string]Value  // headers appended to backend request
-	delRequestHeaders     [][]byte          // backend request headers to delete
-	addResponseHeaders    map[string]string // headers appended to server response
-	delResponseHeaders    [][]byte          // server response headers to delete
-	sendTimeout           time.Duration     // timeout to send the whole request
-	recvTimeout           time.Duration     // timeout to recv the whole response content
-	maxContentSizeAllowed int64             // max response content size allowed
+	WebExchanProxyArgs
+	persistent            bool          // instructs FCGI server to keep conn?
+	preferUnderscore      bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
+	scriptFilename        []byte        // for SCRIPT_FILENAME
+	indexFile             []byte        // for indexFile
+	sendTimeout           time.Duration // timeout to send the whole request
+	recvTimeout           time.Duration // timeout to recv the whole response content
+	maxContentSizeAllowed int64         // max response content size allowed
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -104,9 +99,9 @@ func (h *fcgiProxy) OnConfigure() {
 	}
 
 	// bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
 	// bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 	// persistent
 	h.ConfigureBool("persistent", &h.persistent, false)
 	// preferUnderscore
@@ -158,7 +153,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 
 	var content any
 	hasContent := req.HasContent()
-	if hasContent && (h.bufferClientContent || req.IsVague()) { // including size 0
+	if hasContent && (h.BufferClientContent || req.IsVague()) { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
 			// exchan is marked as broken
@@ -190,12 +185,12 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	defer putFCGIExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
-	if !fcgiReq.proxyCopyHead(req, h.scriptFilename, h.indexFile) {
+	if !fcgiReq.proxyCopyHead(req, h) {
 		fcgiExchan.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
-	if hasContent && !h.bufferClientContent && !req.IsVague() {
+	if hasContent && !h.BufferClientContent && !req.IsVague() {
 		fcgiErr = fcgiReq.proxyPass(req)
 	} else { // nil, []byte, tempFile
 		fcgiErr = fcgiReq.proxyPost(content)
@@ -238,7 +233,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	if req.MethodCode() != MethodHEAD {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
-	if fcgiHasContent && h.bufferServerContent { // including size 0
+	if fcgiHasContent && h.BufferServerContent { // including size 0
 		fcgiContent = fcgiResp.takeContent()
 		if fcgiContent == nil { // take failed
 			// fcgiExchan is marked as broken
@@ -247,11 +242,11 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.proxyCopyHead(fcgiResp, nil) { // viaName = nil
+	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyArgs) {
 		fcgiExchan.markBroken()
 		return
 	}
-	if fcgiHasContent && !h.bufferServerContent {
+	if fcgiHasContent && !h.BufferServerContent {
 		if err := resp.proxyPass(fcgiResp); err != nil {
 			fcgiExchan.markBroken()
 			return
@@ -376,7 +371,7 @@ func (r *fcgiRequest) onEnd() {
 	r.fcgiRequest0 = fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHead(req Request, scriptFilename, indexFile []byte) bool {
+func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -405,8 +400,10 @@ func (r *fcgiRequest) proxyCopyHead(req Request, scriptFilename, indexFile []byt
 	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
+	scriptFilename := proxy.scriptFilename
 	if len(scriptFilename) == 0 {
 		absPath := req.unsafeAbsPath()
+		indexFile := proxy.indexFile
 		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
 			scriptFilename = req.UnsafeMake(len(absPath) + len(indexFile))
 			copy(scriptFilename, absPath)

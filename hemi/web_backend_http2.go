@@ -181,13 +181,12 @@ func (c *H2Conn) onPut() {
 
 func (c *H2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
 func (c *H2Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+func (c *H2Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *H2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
-}
-
-func (c *H2Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H2Conn) FetchStream() (WebBackendStream, error) {
@@ -262,7 +261,7 @@ func putH2Stream(stream *H2Stream) {
 // H2Stream
 type H2Stream struct {
 	// Mixins
-	_webStream_[*H2Conn]
+	_webStream_
 	// Assocs
 	request  H2Request
 	response H2Response
@@ -270,12 +269,14 @@ type H2Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	id uint32
+	conn *H2Conn
+	id   uint32
 	// Stream states (zeros)
 }
 
 func (s *H2Stream) onUse(conn *H2Conn, id uint32) { // for non-zeros
-	s._webStream_.onUse(conn)
+	s._webStream_.onUse()
+	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
@@ -287,12 +288,9 @@ func (s *H2Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s._webStream_.onEnd()
 	s.conn = nil
+	s._webStream_.onEnd()
 }
-
-func (s *H2Stream) webAgent() webAgent   { return s.conn.WebBackend() }
-func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H2Stream) Response() WebBackendResponse { return &s.response }
@@ -301,16 +299,9 @@ func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H2Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) {
-	// TODO
-}
-
 func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO, use s.startSocket()
 	return s.socket
-}
-func (s *H2Stream) ReverseSocket(req Request, sock Socket) error {
-	return nil
 }
 
 func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
@@ -319,6 +310,13 @@ func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i
 func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
+
+func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+
+func (s *H2Stream) webAgent() webAgent   { return s.conn.WebBackend() }
+func (s *H2Stream) webConn() webConn     { return s.conn }
+func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *H2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
@@ -332,9 +330,6 @@ func (s *H2Stream) read(p []byte) (int, error) { // for content i/o only?
 func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-
-func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // H2Request is the backend-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building

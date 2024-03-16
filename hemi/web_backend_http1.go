@@ -293,15 +293,15 @@ type H1Conn struct {
 	rawConn syscall.RawConn // used when netConn is TCP or UDS
 	// Conn states (zeros)
 
+	// Mixins
+	_webStream_
 	// Assocs
 	request  H1Request  // the backend-side http/1 request
 	response H1Response // the backend-side http/1 response
 	socket   *H1Socket  // the backend-side http/1 socket
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
@@ -320,13 +320,12 @@ func (c *H1Conn) onPut() {
 
 func (c *H1Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
 func (c *H1Conn) WebNode() WebNode       { return c.Node().(WebNode) }
+func (c *H1Conn) makeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *H1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
-}
-
-func (c *H1Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *H1Conn) FetchStream() (WebBackendStream, error) {
@@ -348,7 +347,7 @@ func (c *H1Conn) Close() error {
 type H1Stream = H1Conn
 
 func (s *H1Stream) onUse() { // for non-zeros
-	s.region.Init()
+	s._webStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -359,15 +358,8 @@ func (s *H1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.region.Free()
+	s._webStream_.onEnd()
 }
-
-func (s *H1Stream) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *H1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-func (c *H1Stream) webAgent() webAgent   { return c.WebBackend() }
-func (c *H1Stream) webConn() webConn     { return c }
-func (c *H1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H1Stream) Response() WebBackendResponse { return &s.response }
@@ -376,17 +368,9 @@ func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H1Stream) ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error {
-	// TODO
-	return nil
-}
-
 func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
 	// TODO, use s.startSocket()
 	return s.socket
-}
-func (s *H1Stream) ReverseSocket(req Request, sock Socket) error {
-	return nil
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {
@@ -409,6 +393,10 @@ func (s *H1Stream) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
+
+func (c *H1Stream) webAgent() webAgent   { return c.WebBackend() }
+func (c *H1Stream) webConn() webConn     { return c }
+func (c *H1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (c *H1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
 func (c *H1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }

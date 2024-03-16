@@ -70,8 +70,6 @@ type WebBackendConn interface { // *H[1-3]Conn
 type WebBackendStream interface { // for *H[1-3]Stream
 	Request() WebBackendRequest
 	Response() WebBackendResponse
-	ReverseExchan(req Request, resp Response, bufferClientContent bool, bufferServerContent bool) error
-	ReverseSocket(req Request, sock Socket) error
 	webConn() webConn
 	markBroken()
 }
@@ -81,7 +79,7 @@ type WebBackendRequest interface { // for *H[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool
+	proxyCopyHead(req Request, args *WebExchanProxyArgs) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
 	proxyCopyTail(req Request) bool
@@ -268,7 +266,7 @@ func (r *webBackendRequest_) proxyPass(req Request) error { // sync content to b
 	}
 	return nil
 }
-func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPort []byte, viaName []byte, headersToAdd map[string]Value, headersToDel [][]byte) bool {
+func (r *webBackendRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -282,18 +280,26 @@ func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPo
 	if !r.shell.(WebBackendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
-	if req.IsAbsoluteForm() || len(hostname) != 0 || len(colonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if req.IsAbsoluteForm() || len(args.Hostname) != 0 || len(args.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
 			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority (hostname or colonPort)
-			if len(hostname) == 0 { // no custom hostname
+			var (
+				hostname  []byte
+				colonPort []byte
+			)
+			if len(args.Hostname) == 0 { // no custom hostname
 				hostname = req.UnsafeHostname()
+			} else {
+				hostname = args.Hostname
 			}
-			if len(colonPort) == 0 { // no custom colonPort
+			if len(args.ColonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
+			} else {
+				colonPort = args.ColonPort
 			}
 			if !r.shell.(WebBackendRequest).setAuthority(hostname, colonPort) {
 				return false
@@ -318,12 +324,12 @@ func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPo
 	if req.HasCookies() && !r.shell.(WebBackendRequest).proxyCopyCookies(req) {
 		return false
 	}
-	if !r.shell.addHeader(bytesVia, viaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.shell.addHeader(bytesVia, args.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 
 	// copy added headers
-	for name, vValue := range headersToAdd {
+	for name, vValue := range args.AddRequestHeaders {
 		var value []byte
 		if vValue.IsVariable() {
 			value = vValue.BytesVar(req)
@@ -344,7 +350,7 @@ func (r *webBackendRequest_) proxyCopyHead(req Request, hostname []byte, colonPo
 		return false
 	}
 
-	for _, name := range headersToDel {
+	for _, name := range args.DelRequestHeaders {
 		r.shell.delHeader(name)
 	}
 

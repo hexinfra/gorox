@@ -24,117 +24,25 @@ func init() {
 	})
 }
 
-// httpProxy handlet passes web requests to backend web servers and cache responses.
-type httpProxy struct {
-	// Parent
-	Handlet_
-	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to
-	cacher  Cacher     // the cacher which is used by this proxy
-	// States
-	hostname            []byte            // hostname used in ":authority" and "host" header
-	colonPort           []byte            // colonPort used in ":authority" and "host" header
-	viaName             []byte            // ...
-	bufferClientContent bool              // buffer client content into tempFile?
-	bufferServerContent bool              // buffer server content into tempFile?
-	addRequestHeaders   map[string]Value  // headers appended to backend request
-	delRequestHeaders   [][]byte          // backend request headers to delete
-	addResponseHeaders  map[string]string // headers appended to server response
-	delResponseHeaders  [][]byte          // server response headers to delete
+// WebExchanProxyArgs
+type WebExchanProxyArgs struct {
+	BufferClientContent bool
+	Hostname            []byte
+	ColonPort           []byte
+	InboundViaName      []byte
+	AddRequestHeaders   map[string]Value
+	DelRequestHeaders   [][]byte
+
+	BufferServerContent bool
+	OutboundViaName     []byte
+	AddResponseHeaders  map[string]string
+	DelResponseHeaders  [][]byte
 }
 
-func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
-	h.stage = stage
-	h.webapp = webapp
-}
-func (h *httpProxy) OnShutdown() {
-	h.webapp.DecSub()
-}
-
-func (h *httpProxy) OnConfigure() {
-	// toBackend
-	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else {
-				h.backend = backend.(WebBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for http proxy")
-	}
-
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
-			} else {
-				h.cacher = cacher
-			}
-		} else {
-			UseExitln("invalid withCacher")
-		}
-	}
-
-	// addRequestHeaders
-	if v, ok := h.Find("addRequestHeaders"); ok {
-		addedHeaders := make(map[string]Value)
-		if vHeaders, ok := v.Dict(); ok {
-			for name, vValue := range vHeaders {
-				if vValue.IsVariable() {
-					name := vValue.name
-					if p := strings.IndexByte(name, '_'); p != -1 {
-						p++ // skip '_'
-						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
-					}
-				} else if _, ok := vValue.Bytes(); !ok {
-					UseExitf("bad value in .addRequestHeaders")
-				}
-				addedHeaders[name] = vValue
-			}
-			h.addRequestHeaders = addedHeaders
-		} else {
-			UseExitln("invalid addRequestHeaders")
-		}
-	}
-
-	// hostname
-	h.ConfigureBytes("hostname", &h.hostname, nil, nil)
-	// colonPort
-	h.ConfigureBytes("colonPort", &h.colonPort, nil, nil)
-	// viaName
-	h.ConfigureBytes("viaName", &h.viaName, nil, bytesGorox)
-	// bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.bufferClientContent, true)
-	// bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.bufferServerContent, true)
-	// delRequestHeaders
-	h.ConfigureBytesList("delRequestHeaders", &h.delRequestHeaders, nil, [][]byte{})
-	// addResponseHeaders
-	h.ConfigureStringDict("addResponseHeaders", &h.addResponseHeaders, nil, map[string]string{})
-	// delResponseHeaders
-	h.ConfigureBytesList("delResponseHeaders", &h.delResponseHeaders, nil, [][]byte{})
-}
-func (h *httpProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (h *httpProxy) IsProxy() bool { return true }
-func (h *httpProxy) IsCache() bool { return h.cacher != nil }
-
-func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	handled = true
-
+func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args *WebExchanProxyArgs) {
 	var content any
 	hasContent := req.HasContent()
-	if hasContent && h.bufferClientContent { // including size 0
+	if hasContent && args.BufferClientContent { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
 			// stream is marked as broken
@@ -144,23 +52,21 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	backStream, backErr := h.backend.FetchStream()
+	backStream, backErr := backend.FetchStream()
 	if backErr != nil {
 		resp.SendBadGateway(nil)
 		return
 	}
-	defer h.backend.StoreStream(backStream)
-
-	// TODO: use backStream.ReverseExchan()
+	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHead(req, h.hostname, h.colonPort, h.viaName, h.addRequestHeaders, h.delRequestHeaders) {
+	if !backReq.proxyCopyHead(req, args) {
 		backStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	if !hasContent || h.bufferClientContent {
+	if !hasContent || args.BufferClientContent {
 		hasTrailers := req.HasTrailers()
 		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
 		if backErr == nil && hasTrailers {
@@ -225,7 +131,7 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 	if req.MethodCode() != MethodHEAD {
 		backHasContent = backResp.HasContent()
 	}
-	if backHasContent && h.bufferServerContent { // including size 0
+	if backHasContent && args.BufferServerContent { // including size 0
 		backContent = backResp.takeContent()
 		if backContent == nil { // take failed
 			// backStream is marked as broken
@@ -234,11 +140,11 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.proxyCopyHead(backResp, nil) { // viaName = nil
+	if !resp.proxyCopyHead(backResp, args) {
 		backStream.markBroken()
 		return
 	}
-	if !backHasContent || h.bufferServerContent {
+	if !backHasContent || args.BufferServerContent {
 		backHasTrailers := backResp.HasTrailers()
 		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
 			if backHasTrailers {
@@ -253,8 +159,116 @@ func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
 		backStream.markBroken()
 		return
 	}
+}
 
-	return
+// httpProxy handlet passes web requests to backend web servers and cache responses.
+type httpProxy struct {
+	// Parent
+	Handlet_
+	// Assocs
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to
+	cacher  Cacher     // the cacher which is used by this proxy
+	// States
+	WebExchanProxyArgs
+}
+
+func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(name)
+	h.stage = stage
+	h.webapp = webapp
+}
+func (h *httpProxy) OnShutdown() {
+	h.webapp.DecSub()
+}
+
+func (h *httpProxy) OnConfigure() {
+	// toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := h.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				h.backend = backend.(WebBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for http proxy")
+	}
+
+	// withCacher
+	if v, ok := h.Find("withCacher"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if cacher := h.stage.Cacher(name); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", name)
+			} else {
+				h.cacher = cacher
+			}
+		} else {
+			UseExitln("invalid withCacher")
+		}
+	}
+
+	// addRequestHeaders
+	if v, ok := h.Find("addRequestHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for name, vValue := range vHeaders {
+				if vValue.IsVariable() {
+					name := vValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vValue.Bytes(); !ok {
+					UseExitf("bad value in .addRequestHeaders")
+				}
+				addedHeaders[name] = vValue
+			}
+			h.AddRequestHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addRequestHeaders")
+		}
+	}
+
+	// hostname
+	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
+	// colonPort
+	h.ConfigureBytes("colonPort", &h.ColonPort, nil, nil)
+	// inboundViaName
+	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
+	// bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
+	// bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+	// delRequestHeaders
+	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
+	// addResponseHeaders
+	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
+	// delResponseHeaders
+	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
+}
+func (h *httpProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (h *httpProxy) IsProxy() bool { return true }
+func (h *httpProxy) IsCache() bool { return h.cacher != nil }
+
+func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
+	ReverseProxyWebExchan(req, resp, h.backend, &h.WebExchanProxyArgs)
+	return true
+}
+
+// WebSocketProxyArgs
+type WebSocketProxyArgs struct {
+	// TODO
+}
+
+func ReverseProxyWebSocket(req Request, sock Socket, backend WebBackend, args *WebSocketProxyArgs) {
 }
 
 // sockProxy socklet passes web sockets to backend websocket servers.

@@ -57,5 +57,6 @@ func (h *grpcProxy) OnPrepare() {
 func (h *grpcProxy) IsProxy() bool { return true }
 
 func (h *grpcProxy) Handle(req Request, resp Response) (handled bool) {
+	// TODO
 	return true
 }

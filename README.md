@@ -10,12 +10,14 @@ used as:
   * Go Application Server (Frameworks, Applications)
   * RPC Framework for Go (HRPC, gRPC)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
+  * RPC Reverse Proxy (HRPC, gRPC)
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
   * Layer 4 Reverse Proxy (TCP, UDP, QUIC, UDS, Load Balancing)
   * SOCKS Proxy, HTTP Tunnel Proxy (TCP, UDP, IP)
   * ... and more through its highly extensible compoments design!
 
-For more details about Gorox, see: https://gorox.io/.
+Gorox is currently under heavy development. For more details about Gorox, please
+see our project site: https://gorox.io/.
 
 
 Why?

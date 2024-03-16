@@ -1,6 +1,6 @@
 httpProxy "h1p1" {
 	.toBackend = "backendName"
-	.viaName = "gorox"
+	.inboundViaName = "gorox"
 	.bufferClientContent = true
 	.bufferServerContent = true
 	.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")

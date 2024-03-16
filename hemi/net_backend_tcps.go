@@ -299,11 +299,11 @@ func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
 func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
 
-func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
-
 func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
+
+func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {

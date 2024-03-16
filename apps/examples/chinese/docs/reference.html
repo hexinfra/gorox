@@ -630,19 +630,19 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 
 					<p>.handlets 使用自定义的 handlets 进行处理。</p>
-					<code>语法：.handlets = ("handlets_bar", "handlets_foo")
+					<code>语法：.handlets = ("handlet_bar", "handlet_foo")
 						默认值： -
 						取值范围：任意值
 					</code>
 
 					<p>.socklets 使用自定义的 socklets 进行处理。</p>
-					<code>语法：.socklets = ("socklets_bar", "socklets_foo")
+					<code>语法：.socklets = ("socklet_bar", "socklet_foo")
 						默认值： -
 						取值范围：-
 					</code>
 
 					<p>.revisers 使用自定义的 revisers 进行处理。</p>
-					<code>语法：.revisers = ("revisers_bar", "revisers_foo")
+					<code>语法：.revisers = ("reviser_bar", "reviser_foo")
 						默认值： -
 						取值范围：-
 					</code>
@@ -1104,7 +1104,7 @@ stage {
 
 httpProxy {
 	.toBackend = "backendName"
-	.viaName = "gorox"
+	.inboundViaName = "gorox"
 	.bufferClientContent = true
 	.bufferServerContent = true
 	.delRequestHeaders = ("sec-ch-ua-platform", "sec-ch-ua")
@@ -1142,8 +1142,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p> .viaName 配置代理的名称 </p>
-					<code>语法： .viaName = ""
+					<p> .inboundViaName 配置代理的名称 </p>
+					<code>语法： .inboundViaName = ""
 							默认值： -  
 							取值范围：-
 					</code>

@@ -39,9 +39,9 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     | e | [tcps] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udps] +--------------+-----------------+     |
    |     | v | router |              |webapp(*) handlet|     |
-   |     | e | dealet |  service(*)  | socklet reviser |     |
-   |     | r |  case  |              |     rule        |     |
-   |     |(*)|        |          +---+--+       +------+     |
+   |     | e |        |  service(*)  | socklet reviser |     |
+   |     | r | dealet |              |     rule        |     |
+   |     |(*)|  case  |          +---+--+       +------+     |
    |     |   |        |          |stater|       |cacher|     |
    |     +---+--------+----------+------+-------+------+     |
    |     |                  backend                    |     |
@@ -50,6 +50,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     +-----------+---------------+-----------------+     |
    |     |   clock   |     fcache    |      namer      |     |
 prepare  +-----------+---------------+-----------------+     v
+                              stage
 
 ```
 

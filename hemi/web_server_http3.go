@@ -182,7 +182,6 @@ func (c *http3Conn) onPut() {
 }
 
 func (c *http3Conn) webServer() webServer { return c.Server().(webServer) }
-
 func (c *http3Conn) makeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
@@ -239,7 +238,7 @@ func putHTTP3Stream(stream *http3Stream) {
 // http3Stream is the server-side HTTP/3 stream.
 type http3Stream struct {
 	// Mixins
-	_webStream_[*http3Conn]
+	_webStream_
 	// Assocs
 	request  http3Request  // the http/3 request.
 	response http3Response // the http/3 response.
@@ -247,6 +246,7 @@ type http3Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	conn       *http3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 	http3Stream0 // all values must be zero by default in this struct!
@@ -258,7 +258,8 @@ type http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._webStream_.onUse(conn)
+	s._webStream_.onUse()
+	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -270,19 +271,16 @@ func (s *http3Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
+	s.conn = nil
 	s.quicStream = nil
 	s.http3Stream0 = http3Stream0{}
 	s._webStream_.onEnd()
-	s.conn = nil
 }
 
 func (s *http3Stream) execute() { // runner
 	// TODO ...
 	putHTTP3Stream(s)
 }
-
-func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
-func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *http3Stream) writeContinue() bool { // 100 continue
 	// TODO
@@ -308,6 +306,13 @@ func (s *http3Stream) setWriteDeadline(deadline time.Time) error { // for conten
 	return nil
 }
 
+func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+
+func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
+func (s *http3Stream) webConn() webConn     { return s.conn }
+func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
+
 func (s *http3Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
@@ -320,9 +325,6 @@ func (s *http3Stream) write(p []byte) (int, error) { // for content i/o only
 func (s *http3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
-
-func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct { // incoming. needs parsing

@@ -56,7 +56,7 @@ loop:
 			fmt.Printf("hello, gorox! time=%s\n", now.String())
 		}
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("helloCronjob=%s done\n", j.Name())
 	}
 	j.stage.DecSub()

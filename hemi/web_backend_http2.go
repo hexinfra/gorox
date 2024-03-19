@@ -86,7 +86,7 @@ func (n *http2Node) Maintain() { // runner
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("http2Node=%s done\n", n.name)
 	}
 	n.backend.DecSub()

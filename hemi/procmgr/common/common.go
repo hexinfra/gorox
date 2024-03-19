@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	DebugLevel int
+	DbgLevel   int
 	TargetAddr string
 	CmdUIAddr  string
 	WebUIAddr  string

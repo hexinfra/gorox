@@ -23,7 +23,7 @@ import (
 func Main() {
 	// Check worker's config
 	configBase, configFile := common.GetConfig()
-	if hemi.Debug() >= 1 {
+	if hemi.DbgLevel() >= 1 {
 		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
 	}
 	if _, err := hemi.NewStageFile(configBase, configFile); err != nil { // the returned stage is ignored and not used
@@ -61,7 +61,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 
 	worker := newWorker(connKey)
 	worker.start(configBase, configFile, dieChan)
-	if hemi.Debug() >= 1 {
+	if hemi.DbgLevel() >= 1 {
 		hemi.Printf("[leader] worker process id=%d started\n", worker.pid())
 	}
 	keeperChan <- nil // reply that we have created the worker.
@@ -81,7 +81,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 					dieChan2 := make(chan int)
 					worker2 := newWorker(connKey)
 					worker2.start(configBase, configFile, dieChan2)
-					if hemi.Debug() >= 1 {
+					if hemi.DbgLevel() >= 1 {
 						hemi.Printf("[leader] new worker process id=%d started\n", worker2.pid())
 					}
 					// Quit old worker
@@ -89,7 +89,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 					worker.tell(req)
 					worker.closeConn()
 					<-dieChan
-					if hemi.Debug() >= 1 {
+					if hemi.DbgLevel() >= 1 {
 						hemi.Printf("[leader] old worker process id=%d exited\n", worker.pid())
 					}
 					// Use new worker

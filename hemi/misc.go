@@ -198,7 +198,7 @@ func (b *Backend_[N]) Maintain() { // runner
 		node.OnShutdown()
 	}
 	b.WaitSubs() // nodes
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("backend=%s done\n", b.Name())
 	}
 	b.stage.DecSub()

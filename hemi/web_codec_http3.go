@@ -134,7 +134,7 @@ func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
 func (b *http3Buffer) incRef()       { b.ref.Add(1) }
 func (b *http3Buffer) decRef() {
 	if b.ref.Add(-1) == 0 {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
 		}
 		putHTTP3Buffer(b)

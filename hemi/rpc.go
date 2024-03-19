@@ -99,7 +99,7 @@ func (s *Service) maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("service=%s done\n", s.Name())
 	}
 	s.stage.DecSub()

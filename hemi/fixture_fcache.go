@@ -100,7 +100,7 @@ func (f *fcacheFixture) run() { // runner
 				entry.decRef()
 			}
 			delete(f.entries, path)
-			if Debug() >= 2 {
+			if DbgLevel() >= 2 {
 				Printf("fcache entry deleted: %s\n", path)
 			}
 		}
@@ -110,7 +110,7 @@ func (f *fcacheFixture) run() { // runner
 	f.entries = nil
 	f.rwMutex.Unlock()
 
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("fcache done")
 	}
 	f.stage.DecSub()
@@ -208,7 +208,7 @@ func (e *fcacheEntry) addRef() {
 }
 func (e *fcacheEntry) decRef() {
 	if e.nRef.Add(-1) < 0 {
-		if Debug() >= 2 {
+		if DbgLevel() >= 2 {
 			Printf("fcache large entry closed: %s\n", e.file.Name())
 		}
 		e.file.Close()

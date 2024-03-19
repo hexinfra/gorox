@@ -52,7 +52,7 @@ func (c *redisCacher) Maintain() { // runner
 	c.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("redisCacher=%s done\n", c.Name())
 	}
 	c.stage.DecSub()

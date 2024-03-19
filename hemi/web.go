@@ -239,7 +239,7 @@ func (a *Webapp) maintain() { // runner
 	if a.logger != nil {
 		a.logger.Close()
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("webapp=%s done\n", a.Name())
 	}
 	a.stage.DecSub()
@@ -968,7 +968,7 @@ func (h *staticHandlet) OnConfigure() {
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
 	h.useAppWebRoot = h.webRoot == h.webapp.webRoot
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		if h.useAppWebRoot {
 			Printf("static=%s use webapp web root\n", h.Name())
 		} else {
@@ -1064,7 +1064,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	fcache := h.stage.Fcache()
 	entry, err := fcache.getEntry(openPath)
 	if err != nil { // entry does not exist
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Println("entry MISS")
 		}
 		if entry, err = fcache.newEntry(string(openPath)); err != nil {
@@ -1123,7 +1123,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
 		resp.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
 		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
-		if Debug() >= 2 { // TODO
+		if DbgLevel() >= 2 { // TODO
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
 		} else {
 			resp.AddHeaderBytes(bytesETag, etag)

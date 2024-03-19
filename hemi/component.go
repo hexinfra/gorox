@@ -382,7 +382,7 @@ func (s *Stage) onCreate() {
 	s.cronjobs = make(compDict[Cronjob])
 }
 func (s *Stage) OnShutdown() {
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("stage id=%d shutdown start!!\n", s.id)
 	}
 
@@ -434,7 +434,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	// stage
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("stage close log file")
 	}
 }
@@ -651,7 +651,7 @@ func (s *Stage) Start(id int32) {
 	s.id = id
 	s.numCPU = int32(runtime.NumCPU())
 
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
 		Printf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
 		Printf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
@@ -663,7 +663,7 @@ func (s *Stage) Start(id int32) {
 		Printf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
 		Printf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
 	}
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		Printf("stageID=%d\n", s.id)
 		Printf("numCPU=%d\n", s.numCPU)
 		Printf("baseDir=%s\n", BaseDir())
@@ -705,14 +705,14 @@ func (s *Stage) Start(id int32) {
 }
 
 func (s *Stage) configure() (err error) {
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		Println("now configure stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Println("stage configured")
 		}
 	}()
@@ -720,7 +720,7 @@ func (s *Stage) configure() (err error) {
 	return nil
 }
 func (s *Stage) bindServerServices() {
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		Println("bind services to rpc servers")
 	}
 	for _, server := range s.servers {
@@ -730,7 +730,7 @@ func (s *Stage) bindServerServices() {
 	}
 }
 func (s *Stage) bindServerWebapps() {
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		Println("bind webapps to web servers")
 	}
 	for _, server := range s.servers {
@@ -740,14 +740,14 @@ func (s *Stage) bindServerWebapps() {
 	}
 }
 func (s *Stage) prepare() (err error) {
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		Println("now prepare stage")
 	}
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Println("stage prepared")
 		}
 	}()
@@ -757,7 +757,7 @@ func (s *Stage) prepare() (err error) {
 
 func (s *Stage) startFixtures() {
 	for _, fixture := range s.fixtures {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("fixture=%s go run()\n", fixture.Name())
 		}
 		go fixture.run()
@@ -765,7 +765,7 @@ func (s *Stage) startFixtures() {
 }
 func (s *Stage) startBackends() {
 	for _, backend := range s.backends {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("backend=%s go maintain()\n", backend.Name())
 		}
 		go backend.Maintain()
@@ -773,19 +773,19 @@ func (s *Stage) startBackends() {
 }
 func (s *Stage) startRouters() {
 	for _, quixRouter := range s.quixRouters {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("quixRouter=%s go serve()\n", quixRouter.Name())
 		}
 		go quixRouter.Serve()
 	}
 	for _, tcpsRouter := range s.tcpsRouters {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("tcpsRouter=%s go serve()\n", tcpsRouter.Name())
 		}
 		go tcpsRouter.Serve()
 	}
 	for _, udpsRouter := range s.udpsRouters {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("udpsRouter=%s go serve()\n", udpsRouter.Name())
 		}
 		go udpsRouter.Serve()
@@ -793,7 +793,7 @@ func (s *Stage) startRouters() {
 }
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("stater=%s go Maintain()\n", stater.Name())
 		}
 		go stater.Maintain()
@@ -801,7 +801,7 @@ func (s *Stage) startStaters() {
 }
 func (s *Stage) startCachers() {
 	for _, cacher := range s.cachers {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("cacher=%s go Maintain()\n", cacher.Name())
 		}
 		go cacher.Maintain()
@@ -809,7 +809,7 @@ func (s *Stage) startCachers() {
 }
 func (s *Stage) startServices() {
 	for _, service := range s.services {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("service=%s go maintain()\n", service.Name())
 		}
 		go service.maintain()
@@ -817,7 +817,7 @@ func (s *Stage) startServices() {
 }
 func (s *Stage) startWebapps() {
 	for _, webapp := range s.webapps {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("webapp=%s go maintain()\n", webapp.Name())
 		}
 		go webapp.maintain()
@@ -825,7 +825,7 @@ func (s *Stage) startWebapps() {
 }
 func (s *Stage) startServers() {
 	for _, server := range s.servers {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("server=%s go Serve()\n", server.Name())
 		}
 		go server.Serve()
@@ -833,7 +833,7 @@ func (s *Stage) startServers() {
 }
 func (s *Stage) startCronjobs() {
 	for _, cronjob := range s.cronjobs {
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("cronjob=%s go Schedule()\n", cronjob.Name())
 		}
 		go cronjob.Schedule()
@@ -895,7 +895,7 @@ func (s *Stage) ProfBlock() {
 
 func (s *Stage) Quit() {
 	s.OnShutdown()
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("stage id=%d: quit.\n", s.id)
 	}
 }

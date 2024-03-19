@@ -58,7 +58,7 @@ func (s *http3Server) Serve() { // runner
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("http3Server=%s done\n", s.Name())
 	}
 	s.stage.DecSub()
@@ -111,7 +111,7 @@ func (g *http3Gate) serve() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
 	g.server.DecSub()

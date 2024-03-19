@@ -838,7 +838,7 @@ func (r *fcgiResponse) onEnd() {
 
 	if r.contentFile != nil {
 		r.contentFile.Close()
-		if Debug() >= 2 {
+		if DbgLevel() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
@@ -1227,7 +1227,7 @@ func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know th
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
 		// TODO: log err?
-		if Debug() >= 2 {
+		if DbgLevel() >= 2 {
 			Println(content.Error())
 		}
 	}
@@ -1336,7 +1336,7 @@ recv:
 		return from, edge, nil
 	}
 	if kind == fcgiKindStderr {
-		if edge > from && Debug() >= 2 {
+		if edge > from && DbgLevel() >= 2 {
 			Printf("fcgi stderr=[%s]\n", r.records[from:edge])
 		}
 		goto recv
@@ -1353,7 +1353,7 @@ recv:
 				return 0, 0, fcgiReadBadRecord
 			}
 			// Must be stderr.
-			if edge > from && Debug() >= 2 {
+			if edge > from && DbgLevel() >= 2 {
 				Printf("fcgi stderr=[%s]\n", r.records[from:edge])
 			}
 		}
@@ -1398,7 +1398,7 @@ func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err 
 	kind = r.records[r.recordsFrom+1]
 	from = r.recordsFrom + fcgiHeaderSize
 	edge = from + payloadLen // payload edge, ignoring padding
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("fcgiRecvRecord: kind=%d from=%d edge=%d payload=[%s] paddingLen=%d\n", kind, from, edge, r.records[from:edge], paddingLen)
 	}
 	// Clean up positions for next call.

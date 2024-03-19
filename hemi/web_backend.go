@@ -471,7 +471,7 @@ func (r *webBackendResponse_) examineHead() bool {
 			return false
 		}
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))

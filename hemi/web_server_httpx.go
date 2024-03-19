@@ -70,7 +70,7 @@ func (s *httpxServer) OnConfigure() {
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 
-	if Debug() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
+	if DbgLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// enableHTTP2
 		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, true)
 		// http2Only
@@ -112,7 +112,7 @@ func (s *httpxServer) Serve() { // runner
 		}
 	}
 	s.WaitSubs() // gates
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("httpxServer=%s done\n", s.Name())
 	}
 	s.stage.DecSub()
@@ -146,7 +146,7 @@ func (g *httpxGate) _openUnix() error {
 	listener, err := net.Listen("unix", address)
 	if err == nil {
 		g.listener = listener.(*net.UnixListener)
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
@@ -163,7 +163,7 @@ func (g *httpxGate) _openInet() error {
 	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
 	if err == nil {
 		g.listener = listener.(*net.TCPListener)
-		if Debug() >= 1 {
+		if DbgLevel() >= 1 {
 			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
 		}
 	}
@@ -207,7 +207,7 @@ func (g *httpxGate) serveUDS() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
@@ -245,7 +245,7 @@ func (g *httpxGate) serveTLS() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
 	g.server.DecSub()
@@ -283,7 +283,7 @@ func (g *httpxGate) serveTCP() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
@@ -563,7 +563,7 @@ func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *htt
 }
 func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
 	conn := s
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	conn.persistent = false // close anyway.
@@ -858,7 +858,7 @@ func (c *http2Conn) handshake() error {
 	return err
 }
 func (c *http2Conn) receive() { // runner
-	if Debug() >= 1 {
+	if DbgLevel() >= 1 {
 		defer Printf("conn=%d c.receive() quit\n", c.id)
 	}
 	for { // each incoming frame
@@ -1181,7 +1181,7 @@ func (c *http2Conn) findStream(streamID uint32) *http2Stream {
 	if index == http2MaxActiveStreams { // not found.
 		return nil
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
 	}
 	return c.streams[index]
@@ -1195,7 +1195,7 @@ func (c *http2Conn) joinStream(stream *http2Stream) {
 	if index == http2MaxActiveStreams { // this should not happen
 		BugExitln("joinStream cannot find an empty slot")
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.id, index)
 	}
 	stream.index = index
@@ -1207,7 +1207,7 @@ func (c *http2Conn) quitStream(streamID uint32) {
 	if stream == nil {
 		BugExitln("quitStream cannot find the stream")
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("conn=%d quitStream=%d at %d\n", c.id, streamID, stream.index)
 	}
 	c.streams[stream.index] = nil
@@ -1261,7 +1261,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 			return nil, err
 		}
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("conn=%d <--- %+v\n", c.id, inFrame)
 	}
 	return inFrame, nil
@@ -1289,10 +1289,10 @@ func (c *http2Conn) _growFrame(size uint32) error {
 }
 func (c *http2Conn) _fillBuffer(size uint32) error {
 	n, err := c.readAtLeast(c.buffer.buf[c.bufferEdge:], int(size))
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
 	}
-	if err != nil && Debug() >= 2 {
+	if err != nil && DbgLevel() >= 2 {
 		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	c.bufferEdge += uint32(n)
@@ -1386,7 +1386,7 @@ func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
 	}
 	c.vector[0] = header
 	n, err := c.writev(&c.vector)
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
 		Printf("conn=%d ---> %+v\n", c.id, outFrame)
 	}
@@ -1422,7 +1422,7 @@ func (c *http2Conn) writev(vector *net.Buffers) (int64, error) {
 }
 
 func (c *http2Conn) closeConn() {
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("conn=%d connClosed by serve()\n", c.id)
 	}
 	c.netConn.Close()
@@ -1501,7 +1501,7 @@ func (s *http2Stream) onEnd() { // for zeros
 func (s *http2Stream) execute() { // runner
 	defer putHTTP2Stream(s)
 	// TODO ...
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("stream processing...")
 	}
 }
@@ -1575,7 +1575,7 @@ func (r *http1Request) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }

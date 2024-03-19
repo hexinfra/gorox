@@ -74,7 +74,7 @@ func (f *clockFixture) run() { // runner
 		date |= int64(weekday) << 8
 		f.date.Store(date)
 	})
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("clock done")
 	}
 	f.stage.DecSub()

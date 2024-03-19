@@ -7,7 +7,7 @@ Gorox is a pragmatic Webapp Server, RPC Framework, and Network Proxy. It can be
 used as:
 
   * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi, AJP)
-  * Go Application Server (Frameworks, Applications)
+  * Go Application Server (Web Frameworks, Web Applications)
   * RPC Framework for Go (HRPC, gRPC)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
   * RPC Reverse Proxy (HRPC, gRPC)

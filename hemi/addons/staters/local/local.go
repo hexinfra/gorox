@@ -60,7 +60,7 @@ func (s *localStater) Maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("localStater=%s done\n", s.Name())
 	}
 	s.stage.DecSub()

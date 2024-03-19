@@ -94,7 +94,7 @@ func (n *quixNode) Maintain() { // runner
 		// TODO: health check
 	})
 	// TODO: wait for all conns
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("quixNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()

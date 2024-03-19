@@ -20,14 +20,17 @@ const Version = "0.2.0-dev"
 var ( // basic variables
 	_baseOnce sync.Once    // protects _baseDir
 	_baseDir  atomic.Value // directory of the executable
+
 	_logsOnce sync.Once    // protects _logsDir
 	_logsDir  atomic.Value // directory of the log files
+
 	_tmpsOnce sync.Once    // protects _tmpsDir
 	_tmpsDir  atomic.Value // directory of the temp files
+
 	_varsOnce sync.Once    // protects _varsDir
 	_varsDir  atomic.Value // directory of the run-time data
 
-	_debug atomic.Int32 // debug level
+	_dbgLevel atomic.Int32 // debug level
 )
 
 func SetBaseDir(dir string) { // only once!
@@ -60,7 +63,7 @@ func _mustMkdir(dir string) {
 	}
 }
 
-func SetDebug(level int32) { _debug.Store(level) }
+func SetDbgLevel(level int32) { _dbgLevel.Store(level) }
 
 func NewStageText(text string) (*Stage, error) {
 	_checkDirs()
@@ -78,7 +81,7 @@ func _checkDirs() {
 	}
 }
 
-func Debug() int32    { return _debug.Load() }
+func DbgLevel() int32 { return _dbgLevel.Load() }
 func BaseDir() string { return _baseDir.Load().(string) }
 func LogsDir() string { return _logsDir.Load().(string) }
 func TmpsDir() string { return _tmpsDir.Load().(string) }

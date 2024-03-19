@@ -61,7 +61,7 @@ func (s *echoServer) Serve() { // runner
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("echoServer=%s done\n", s.Name())
 	}
 	s.Stage().DecSub()
@@ -117,7 +117,7 @@ func (g *echoGate) serve() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
 	g.Server().DecSub()

@@ -12,7 +12,8 @@ Hemi contains these directories:
   * addons/   - Place optional addons,
   * common/   - Place general purpose libraries,
   * develop/  - A prototype application used to develop Hemi,
-  * procmgr/  - A process manager for applications using Hemi,
+  * procmgr/  - A process manager for programs using Hemi,
+  * program/  - The recommended directory hierarchy for programs using Hemi,
   * toolkit/  - Place useful commands.
 
 

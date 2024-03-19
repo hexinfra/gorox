@@ -113,7 +113,7 @@ func (r *QUIXRouter) Serve() { // runner
 	if r.logger != nil {
 		r.logger.Close()
 	}
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Printf("quixRouter=%s done\n", r.Name())
 	}
 	r.stage.DecSub()

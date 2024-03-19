@@ -76,12 +76,12 @@ func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
 }
 func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("BeforeEcho")
 	}
 }
 func (r *wrapReviser) OnOutput(req Request, resp Response, chain *Chain) {
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		piece := GetPiece()
 		piece.SetText([]byte("d"))
 		chain.PushTail(piece)
@@ -89,7 +89,7 @@ func (r *wrapReviser) OnOutput(req Request, resp Response, chain *Chain) {
 }
 func (r *wrapReviser) FinishEcho(req Request, resp Response) { // vague
 	// TODO
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		Println("FinishEcho")
 	}
 }

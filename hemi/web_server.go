@@ -101,7 +101,7 @@ func (s *webServer_[G]) bindApps() {
 			if err != nil {
 				UseExitln(err.Error())
 			}
-			if Debug() >= 1 {
+			if DbgLevel() >= 1 {
 				Printf("adding certificate to %s\n", s.ColonPort())
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
@@ -664,7 +664,7 @@ func (r *webServerRequest_) examineHead() bool {
 			}
 		}
 	}
-	if Debug() >= 3 {
+	if DbgLevel() >= 3 {
 		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
@@ -1142,7 +1142,7 @@ func (r *webServerRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge u
 		r.zones.acceptLanguage.from = from
 	}
 	r.zones.acceptLanguage.edge = edge
-	if Debug() >= 2 {
+	if DbgLevel() >= 2 {
 		/*
 			for i := from; i < edge; i++ {
 				// NOTE: test pair.kind == kindHeader
@@ -1855,7 +1855,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 		}
 		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
-			if Debug() >= 2 {
+			if DbgLevel() >= 2 {
 				Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
@@ -2066,12 +2066,12 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 			part.upfile.typeSize, part.upfile.typeFrom = uint8(part.type_.size()), part.type_.from
 			part.upfile.pathSize, part.upfile.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
-				if Debug() >= 2 {
+				if DbgLevel() >= 2 {
 					Println("OPENED")
 				}
 				part.osFile = osFile
 			} else {
-				if Debug() >= 2 {
+				if DbgLevel() >= 2 {
 					Println(err.Error())
 				}
 				part.osFile = nil
@@ -2114,7 +2114,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 				if mode == 1 { // file part ends
 					r.addUpfile(&part.upfile)
 					part.osFile.Close()
-					if Debug() >= 2 {
+					if DbgLevel() >= 2 {
 						Println("CLOSED")
 					}
 				}

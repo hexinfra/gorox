@@ -81,12 +81,12 @@ OPTIONS
 
 // Args is the args passed to Main() to control its behavior.
 type Args struct {
-	Title      string
-	Program    string
-	DebugLevel int
-	CmdUIAddr  string
-	WebUIAddr  string
-	Usage      string
+	Title     string
+	Program   string
+	DbgLevel  int
+	CmdUIAddr string
+	WebUIAddr string
+	Usage     string
 }
 
 // Main is the main() for both leader process and worker process.
@@ -99,12 +99,12 @@ func Main(args *Args) {
 
 	flag.Usage = func() {
 		if args.Usage == "" {
-			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DebugLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program, args.Program)
+			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DbgLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program, args.Program)
 		} else {
 			fmt.Println(args.Usage)
 		}
 	}
-	flag.IntVar(&common.DebugLevel, "debug", args.DebugLevel, "")
+	flag.IntVar(&common.DbgLevel, "debug", args.DbgLevel, "")
 	flag.StringVar(&common.TargetAddr, "target", args.CmdUIAddr, "")
 	flag.StringVar(&common.CmdUIAddr, "cmdui", args.CmdUIAddr, "")
 	flag.StringVar(&common.WebUIAddr, "webui", args.WebUIAddr, "")
@@ -134,7 +134,7 @@ func Main(args *Args) {
 	case "advise":
 		system.Advise()
 	case "serve", "check":
-		hemi.SetDebug(int32(common.DebugLevel))
+		hemi.SetDbgLevel(int32(common.DbgLevel))
 
 		if common.BaseDir == "" {
 			common.BaseDir = system.ExeDir

@@ -8,7 +8,6 @@
 package hemi
 
 import (
-	"bytes"
 	"regexp"
 )
 
@@ -58,85 +57,4 @@ func (c *case_[R]) OnConfigure() {
 }
 func (c *case_[R]) OnPrepare() {
 	// Currently nothing.
-}
-
-func (c *case_[R]) _equalMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.Equal(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (c *case_[R]) _prefixMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (c *case_[R]) _suffixMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (c *case_[R]) _containMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.Contains(value, pattern) {
-			return true
-		}
-	}
-	return false
-}
-func (c *case_[R]) _regexpMatch(value []byte) bool {
-	for _, regexp := range c.regexps {
-		if regexp.Match(value) {
-			return true
-		}
-	}
-	return false
-}
-func (c *case_[R]) _notEqualMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.Equal(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (c *case_[R]) _notPrefixMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (c *case_[R]) _notSuffixMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (c *case_[R]) _notContainMatch(value []byte) bool {
-	for _, pattern := range c.patterns {
-		if bytes.Contains(value, pattern) {
-			return false
-		}
-	}
-	return true
-}
-func (c *case_[R]) _notRegexpMatch(value []byte) bool {
-	for _, regexp := range c.regexps {
-		if regexp.Match(value) {
-			return false
-		}
-	}
-	return true
 }

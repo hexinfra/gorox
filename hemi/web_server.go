@@ -15,12 +15,12 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 	"reflect"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
 // Webapp is the Web application.
@@ -743,44 +743,19 @@ var ruleMatchers = map[string]struct {
 }
 
 func (r *Rule) equalMatch(req Request, value []byte) bool { // value == patterns
-	for _, pattern := range r.patterns {
-		if bytes.Equal(value, pattern) {
-			return true
-		}
-	}
-	return false
+	return equalMatch(value, r.patterns)
 }
 func (r *Rule) prefixMatch(req Request, value []byte) bool { // value ^= patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return true
-		}
-	}
-	return false
+	return prefixMatch(value, r.patterns)
 }
 func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return true
-		}
-	}
-	return false
+	return suffixMatch(value, r.patterns)
 }
 func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patterns
-	for _, pattern := range r.patterns {
-		if bytes.Contains(value, pattern) {
-			return true
-		}
-	}
-	return false
+	return containMatch(value, r.patterns)
 }
 func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
-	for _, regexp := range r.regexps {
-		if regexp.Match(value) {
-			return true
-		}
-	}
-	return false
+	return regexpMatch(value, r.regexps)
 }
 func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
 	pathInfo := req.getPathInfo()
@@ -809,44 +784,19 @@ func (r *Rule) existMatchWithWebRoot(req Request, _ []byte) bool { // value -E
 	return pathInfo != nil
 }
 func (r *Rule) notEqualMatch(req Request, value []byte) bool { // value != patterns
-	for _, pattern := range r.patterns {
-		if bytes.Equal(value, pattern) {
-			return false
-		}
-	}
-	return true
+	return notEqualMatch(value, r.patterns)
 }
 func (r *Rule) notPrefixMatch(req Request, value []byte) bool { // value !^ patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasPrefix(value, pattern) {
-			return false
-		}
-	}
-	return true
+	return notPrefixMatch(value, r.patterns)
 }
 func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patterns
-	for _, pattern := range r.patterns {
-		if bytes.HasSuffix(value, pattern) {
-			return false
-		}
-	}
-	return true
+	return notSuffixMatch(value, r.patterns)
 }
 func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* patterns
-	for _, pattern := range r.patterns {
-		if bytes.Contains(value, pattern) {
-			return false
-		}
-	}
-	return true
+	return notContainMatch(value, r.patterns)
 }
 func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
-	for _, regexp := range r.regexps {
-		if regexp.Match(value) {
-			return false
-		}
-	}
-	return true
+	return notRegexpMatch(value, r.regexps)
 }
 func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f
 	pathInfo := req.getPathInfo()

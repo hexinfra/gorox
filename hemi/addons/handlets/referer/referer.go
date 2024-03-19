@@ -72,7 +72,7 @@ func (h *refererChecker) OnPrepare() {
 		r := &refererRule{}
 		if serverName[0] == '~' {
 			r.matchType = regexpMatch
-			r.pcre = regexp.MustCompile(string(serverName[1:]))
+			r.regexp = regexp.MustCompile(string(serverName[1:]))
 			h.serverNameRules = append(h.serverNameRules, r)
 			continue
 		}
@@ -229,7 +229,7 @@ type refererRule struct {
 	matchType int
 	hostname  []byte
 	path      []byte
-	pcre      *regexp.Regexp
+	regexp    *regexp.Regexp
 }
 
 func (r *refererRule) match(hostname []byte) bool {
@@ -257,5 +257,5 @@ func (r *refererRule) prefixMatch(hostname []byte) bool { // for example: www.ba
 	return bytes.HasPrefix(hostname, r.hostname[:len(r.hostname)-1])
 }
 func (r *refererRule) regexpMatch(hostname []byte) bool { // for example:  ~\.bar\.
-	return r.pcre.Match(hostname)
+	return r.regexp.Match(hostname)
 }

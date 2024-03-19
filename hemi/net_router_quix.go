@@ -323,32 +323,32 @@ var quixCaseMatchers = map[string]func(kase *quixCase, conn *QUIXConn, value []b
 }
 
 func (c *quixCase) equalMatch(conn *QUIXConn, value []byte) bool { // value == patterns
-	return c.case_._equalMatch(value)
+	return equalMatch(value, c.patterns)
 }
 func (c *quixCase) prefixMatch(conn *QUIXConn, value []byte) bool { // value ^= patterns
-	return c.case_._prefixMatch(value)
+	return prefixMatch(value, c.patterns)
 }
 func (c *quixCase) suffixMatch(conn *QUIXConn, value []byte) bool { // value $= patterns
-	return c.case_._suffixMatch(value)
+	return suffixMatch(value, c.patterns)
 }
 func (c *quixCase) containMatch(conn *QUIXConn, value []byte) bool { // value *= patterns
-	return c.case_._containMatch(value)
+	return containMatch(value, c.patterns)
 }
 func (c *quixCase) regexpMatch(conn *QUIXConn, value []byte) bool { // value ~= patterns
-	return c.case_._regexpMatch(value)
+	return regexpMatch(value, c.regexps)
 }
 func (c *quixCase) notEqualMatch(conn *QUIXConn, value []byte) bool { // value != patterns
-	return c.case_._notEqualMatch(value)
+	return notEqualMatch(value, c.patterns)
 }
 func (c *quixCase) notPrefixMatch(conn *QUIXConn, value []byte) bool { // value !^ patterns
-	return c.case_._notPrefixMatch(value)
+	return notPrefixMatch(value, c.patterns)
 }
 func (c *quixCase) notSuffixMatch(conn *QUIXConn, value []byte) bool { // value !$ patterns
-	return c.case_._notSuffixMatch(value)
+	return notSuffixMatch(value, c.patterns)
 }
 func (c *quixCase) notContainMatch(conn *QUIXConn, value []byte) bool { // value !* patterns
-	return c.case_._notContainMatch(value)
+	return notContainMatch(value, c.patterns)
 }
 func (c *quixCase) notRegexpMatch(conn *QUIXConn, value []byte) bool { // value !~ patterns
-	return c.case_._notRegexpMatch(value)
+	return notRegexpMatch(value, c.regexps)
 }

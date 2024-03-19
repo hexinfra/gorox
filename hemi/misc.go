@@ -8,6 +8,7 @@
 package hemi
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -830,3 +832,84 @@ var (
 	errNodeDown = errors.New("node is down")
 	errNodeBusy = errors.New("node is busy")
 )
+
+func equalMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.Equal(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func prefixMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func suffixMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func containMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.Contains(value, pattern) {
+			return true
+		}
+	}
+	return false
+}
+func regexpMatch(value []byte, regexps []*regexp.Regexp) bool {
+	for _, regexp := range regexps {
+		if regexp.Match(value) {
+			return true
+		}
+	}
+	return false
+}
+func notEqualMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.Equal(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func notPrefixMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.HasPrefix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func notSuffixMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.HasSuffix(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func notContainMatch(value []byte, patterns [][]byte) bool {
+	for _, pattern := range patterns {
+		if bytes.Contains(value, pattern) {
+			return false
+		}
+	}
+	return true
+}
+func notRegexpMatch(value []byte, regexps []*regexp.Regexp) bool {
+	for _, regexp := range regexps {
+		if regexp.Match(value) {
+			return false
+		}
+	}
+	return true
+}

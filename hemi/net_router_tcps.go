@@ -492,32 +492,32 @@ var tcpsCaseMatchers = map[string]func(kase *tcpsCase, conn *TCPSConn, value []b
 }
 
 func (c *tcpsCase) equalMatch(conn *TCPSConn, value []byte) bool { // value == patterns
-	return c.case_._equalMatch(value)
+	return equalMatch(value, c.patterns)
 }
 func (c *tcpsCase) prefixMatch(conn *TCPSConn, value []byte) bool { // value ^= patterns
-	return c.case_._prefixMatch(value)
+	return prefixMatch(value, c.patterns)
 }
 func (c *tcpsCase) suffixMatch(conn *TCPSConn, value []byte) bool { // value $= patterns
-	return c.case_._suffixMatch(value)
+	return suffixMatch(value, c.patterns)
 }
 func (c *tcpsCase) containMatch(conn *TCPSConn, value []byte) bool { // value *= patterns
-	return c.case_._containMatch(value)
+	return containMatch(value, c.patterns)
 }
 func (c *tcpsCase) regexpMatch(conn *TCPSConn, value []byte) bool { // value ~= patterns
-	return c.case_._regexpMatch(value)
+	return regexpMatch(value, c.regexps)
 }
 func (c *tcpsCase) notEqualMatch(conn *TCPSConn, value []byte) bool { // value != patterns
-	return c.case_._notEqualMatch(value)
+	return notEqualMatch(value, c.patterns)
 }
 func (c *tcpsCase) notPrefixMatch(conn *TCPSConn, value []byte) bool { // value !^ patterns
-	return c.case_._notPrefixMatch(value)
+	return notPrefixMatch(value, c.patterns)
 }
 func (c *tcpsCase) notSuffixMatch(conn *TCPSConn, value []byte) bool { // value !$ patterns
-	return c.case_._notSuffixMatch(value)
+	return notSuffixMatch(value, c.patterns)
 }
 func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value !* patterns
-	return c.case_._notContainMatch(value)
+	return notContainMatch(value, c.patterns)
 }
 func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
-	return c.case_._notRegexpMatch(value)
+	return notRegexpMatch(value, c.regexps)
 }

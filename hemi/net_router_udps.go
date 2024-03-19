@@ -341,32 +341,32 @@ var udpsCaseMatchers = map[string]func(kase *udpsCase, conn *UDPSConn, value []b
 }
 
 func (c *udpsCase) equalMatch(conn *UDPSConn, value []byte) bool { // value == patterns
-	return c.case_._equalMatch(value)
+	return equalMatch(value, c.patterns)
 }
 func (c *udpsCase) prefixMatch(conn *UDPSConn, value []byte) bool { // value ^= patterns
-	return c.case_._prefixMatch(value)
+	return prefixMatch(value, c.patterns)
 }
 func (c *udpsCase) suffixMatch(conn *UDPSConn, value []byte) bool { // value $= patterns
-	return c.case_._suffixMatch(value)
+	return suffixMatch(value, c.patterns)
 }
 func (c *udpsCase) containMatch(conn *UDPSConn, value []byte) bool { // value *= patterns
-	return c.case_._containMatch(value)
+	return containMatch(value, c.patterns)
 }
 func (c *udpsCase) regexpMatch(conn *UDPSConn, value []byte) bool { // value ~= patterns
-	return c.case_._regexpMatch(value)
+	return regexpMatch(value, c.regexps)
 }
 func (c *udpsCase) notEqualMatch(conn *UDPSConn, value []byte) bool { // value != patterns
-	return c.case_._notEqualMatch(value)
+	return notEqualMatch(value, c.patterns)
 }
 func (c *udpsCase) notPrefixMatch(conn *UDPSConn, value []byte) bool { // value !^ patterns
-	return c.case_._notPrefixMatch(value)
+	return notPrefixMatch(value, c.patterns)
 }
 func (c *udpsCase) notSuffixMatch(conn *UDPSConn, value []byte) bool { // value !$ patterns
-	return c.case_._notSuffixMatch(value)
+	return notSuffixMatch(value, c.patterns)
 }
 func (c *udpsCase) notContainMatch(conn *UDPSConn, value []byte) bool { // value !* patterns
-	return c.case_._notContainMatch(value)
+	return notContainMatch(value, c.patterns)
 }
 func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value !~ patterns
-	return c.case_._notRegexpMatch(value)
+	return notRegexpMatch(value, c.regexps)
 }

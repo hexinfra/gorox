@@ -9,6 +9,7 @@ package mongo
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	. "github.com/hexinfra/gorox/hemi/addons/backends/mongo"
 )
 
 func init() {
@@ -24,8 +25,9 @@ type mongoProxy struct {
 	// Parent
 	TCPSDealet_
 	// Assocs
-	stage  *Stage // current stage
-	router *TCPSRouter
+	stage   *Stage // current stage
+	router  *TCPSRouter
+	backend *MongoBackend // the backend to pass to
 	// States
 }
 

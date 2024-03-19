@@ -16,11 +16,19 @@ type rpcClientConn interface {
 type rpcClientExchan interface {
 }
 
+// rpcClientRequest is the client-side RPC request.
+type rpcClientRequest interface {
+}
+
 // rpcClientRequest_
 type rpcClientRequest_ struct {
 	// Parent
 	rpcOut_
 	// TODO
+}
+
+// rpcClientResponse is the client-side RPC response.
+type rpcClientResponse interface {
 }
 
 // rpcClientResponse_

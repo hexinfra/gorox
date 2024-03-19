@@ -1,1 +1,1 @@
-Place your mappers.
+Place your mappers. Mappers are not components.

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// HTTP Huffman stuff. Used by HTTP/2 and HTTP/3.
+// HTTP Huffman stuff. Used by HTTP/2 HPACK and HTTP/3 QPACK.
 
 package http
 

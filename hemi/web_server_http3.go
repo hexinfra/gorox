@@ -380,7 +380,6 @@ func (r *http3Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
-func (r *http3Response) setConnectionClose() { BugExitln("not used in HTTP/3") }
 
 func (r *http3Response) AddCookie(cookie *Cookie) bool {
 	// TODO

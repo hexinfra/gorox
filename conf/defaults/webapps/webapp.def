@@ -7,7 +7,6 @@ webapp "a1" {
 	.accessLog            = []
 	.maxUpfileSize = 128M
 	.settings             = []
-	.proxyOnly            = false
 	.withStater           = "ls"
 
 	// handlets

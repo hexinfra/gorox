@@ -2271,7 +2271,6 @@ func (r *http2Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
-func (r *http2Response) setConnectionClose() { BugExitln("not used in HTTP/2") }
 
 func (r *http2Response) AddCookie(cookie *Cookie) bool {
 	// TODO

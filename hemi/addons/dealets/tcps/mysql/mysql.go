@@ -9,6 +9,7 @@ package mysql
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	. "github.com/hexinfra/gorox/hemi/addons/backends/mysql"
 )
 
 func init() {
@@ -24,8 +25,9 @@ type mysqlProxy struct {
 	// Parent
 	TCPSDealet_
 	// Assocs
-	stage  *Stage // current stage
-	router *TCPSRouter
+	stage   *Stage // current stage
+	router  *TCPSRouter
+	backend *MySQLBackend // the backend to pass to
 	// States
 }
 

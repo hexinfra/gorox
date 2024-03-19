@@ -9,6 +9,7 @@ package redis
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
+	. "github.com/hexinfra/gorox/hemi/addons/backends/redis"
 )
 
 func init() {
@@ -24,8 +25,9 @@ type redisProxy struct {
 	// Parent
 	TCPSDealet_
 	// Assocs
-	stage  *Stage // current stage
-	router *TCPSRouter
+	stage   *Stage // current stage
+	router  *TCPSRouter
+	backend *RedisBackend // the backend to pass to
 	// States
 }
 

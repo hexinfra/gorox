@@ -168,7 +168,7 @@ type httpProxy struct {
 	// Assocs
 	stage   *Stage     // current stage
 	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	cacher  Cacher     // the cacher which is used by this proxy
 	// States
 	WebExchanProxyArgs
@@ -278,7 +278,7 @@ type sockProxy struct {
 	// Assocs
 	stage   *Stage     // current stage
 	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	// States
 }
 

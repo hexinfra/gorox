@@ -4,4 +4,4 @@ To build (take hello as an example):
 
   shell> cd ..
   shell> go build ./bins/examples/hello
-  shell> ls
+  shell> ./hello

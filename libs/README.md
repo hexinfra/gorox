@@ -1,1 +1,1 @@
-Place libs created by you in this directory. They are used by your apps, bins, exts, and svcs.
+Place libs created by you and your colleague. Libs are used by your apps, bins, exts, and svcs.

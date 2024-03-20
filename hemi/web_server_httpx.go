@@ -294,10 +294,15 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 	g.OnConnClosed()
 }
 
+// httpxConn is the server-side web conn.
+type httpxConn interface { // for *http[1-2]Conn
+	serve() // runner
+}
+
 // poolHTTP1Conn is the server-side HTTP/1 connection pool.
 var poolHTTP1Conn sync.Pool
 
-func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
+func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http1Conn
 	if x := poolHTTP1Conn.Get(); x == nil {
 		httpConn = new(http1Conn)
@@ -369,9 +374,6 @@ func (c *http1Conn) onPut() {
 }
 
 func (c *http1Conn) webServer() webServer { return c.Server().(webServer) }
-func (c *http1Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *http1Conn) serve() { // runner
 	defer putHTTP1Conn(c)
@@ -649,7 +651,7 @@ func (c *http1Stream) writev(vector *net.Buffers) (int64, error) {
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
 var poolHTTP2Conn sync.Pool
 
-func getHTTP2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) webServerConn {
+func getHTTP2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
 	var httpConn *http2Conn
 	if x := poolHTTP2Conn.Get(); x == nil {
 		httpConn = new(http2Conn)
@@ -747,9 +749,6 @@ func (c *http2Conn) onPut() {
 }
 
 func (c *http2Conn) webServer() webServer { return c.Server().(webServer) }
-func (c *http2Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *http2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
@@ -2192,7 +2191,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.unixTimes.lastModified >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
-	conn := r.stream.webConn().(*http1Conn)
+	conn := r.stream.webConn()
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n
@@ -2205,7 +2204,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
 				// response containing Transfer-Encoding unless the corresponding
 				// request indicates HTTP/1.1 (or later).
-				conn.persistent = false // close conn anyway for HTTP/1.0
+				conn.setPersistent(false) // close conn anyway for HTTP/1.0
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
@@ -2213,7 +2212,7 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
-	if conn.persistent { // connection: keep-alive\r\n
+	if conn.isPersistent() { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))

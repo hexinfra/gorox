@@ -53,11 +53,12 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP1Backend) FetchStream() (WebBackendStream, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream WebBackendStream) {
-	// TODO
+	node := stream.webConn().(*H1Conn).webNode()
+	node.storeStream(stream)
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -109,7 +110,7 @@ func (n *http1Node) fetchStream() (WebBackendStream, error) {
 	down := n.isDown()
 	if h1Conn != nil {
 		if h1Conn.isAlive() && !h1Conn.reachLimit() && !down {
-			return h1Conn.FetchStream()
+			return h1Conn.fetchStream()
 		}
 		n.closeConn(h1Conn)
 	}
@@ -125,7 +126,7 @@ func (n *http1Node) fetchStream() (WebBackendStream, error) {
 		h1Conn, err = n._dialTCP()
 	}
 	if err == nil {
-		return h1Conn.FetchStream()
+		return h1Conn.fetchStream()
 	} else {
 		return nil, errNodeDown
 	}
@@ -194,6 +195,8 @@ func (n *http1Node) _dialTCP() (*H1Conn, error) {
 func (n *http1Node) storeStream(stream WebBackendStream) {
 	h1Stream := stream.(*H1Stream)
 	h1Conn := h1Stream
+	h1Conn.storeStream(stream)
+
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.persistent {
 		if DbgLevel() >= 2 {
 			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
@@ -320,21 +323,18 @@ func (c *H1Conn) onPut() {
 }
 
 func (c *H1Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *H1Conn) WebNode() WebNode       { return c.Node().(WebNode) }
-func (c *H1Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
+func (c *H1Conn) webNode() *http1Node    { return c.Node().(*http1Node) }
 
 func (c *H1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H1Conn) FetchStream() (WebBackendStream, error) {
+func (c *H1Conn) fetchStream() (WebBackendStream, error) {
 	stream := c
 	stream.onUse()
 	return stream, nil
 }
-func (c *H1Conn) StoreStream(stream WebBackendStream) {
+func (c *H1Conn) storeStream(stream WebBackendStream) {
 	stream.(*H1Stream).onEnd()
 }
 
@@ -364,14 +364,15 @@ func (s *H1Stream) onEnd() { // for zeros
 
 func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H1Stream) Response() WebBackendResponse { return &s.response }
+func (s *H1Stream) Socket() WebBackendSocket     { return nil } // TODO
 
 func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H1Stream) ExecuteSocket() *H1Socket { // upgrade: websocket
-	// TODO, use s.startSocket()
-	return s.socket
+func (s *H1Stream) ExecuteSocket() error { // upgrade: websocket
+	// TODO
+	return nil
 }
 
 func (s *H1Stream) setWriteDeadline(deadline time.Time) error {

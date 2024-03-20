@@ -51,12 +51,12 @@ func (b *UDPSBackend) CreateNode(name string) Node {
 }
 
 func (b *UDPSBackend) Dial() (*UConn, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.dial()
 }
 
 func (b *UDPSBackend) FetchConn() (*UConn, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.fetchConn()
 }
 func (b *UDPSBackend) StoreConn(uConn *UConn) {

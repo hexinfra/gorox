@@ -22,7 +22,7 @@ type grpcProxy struct {
 	// Assocs
 	stage   *Stage     // current stage
 	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to. can be *HTTP2Backend or *HTTP3Backend
+	backend WebBackend // the backend to pass to. can be a *HTTP2Backend or *HTTP3Backend to support gRPC/2 or gRPC/3 respectively
 	// States
 }
 

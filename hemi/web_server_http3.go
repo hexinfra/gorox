@@ -182,9 +182,6 @@ func (c *http3Conn) onPut() {
 }
 
 func (c *http3Conn) webServer() webServer { return c.Server().(webServer) }
-func (c *http3Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Server().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *http3Conn) serve() { // runner
 	// TODO
@@ -306,8 +303,8 @@ func (s *http3Stream) setWriteDeadline(deadline time.Time) error { // for conten
 	return nil
 }
 
-func (s *http3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *http3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *http3Stream) isBroken() bool { return false } // TODO
+func (s *http3Stream) markBroken()    {}               // TODO
 
 func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
 func (s *http3Stream) webConn() webConn     { return s.conn }

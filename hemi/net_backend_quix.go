@@ -54,7 +54,7 @@ func (b *QUIXBackend) CreateNode(name string) Node {
 }
 
 func (b *QUIXBackend) Dial() (*QConn, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.dial()
 }
 

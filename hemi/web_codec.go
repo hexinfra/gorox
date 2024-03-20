@@ -96,7 +96,8 @@ type webConn interface {
 	ID() int64
 	IsUDS() bool
 	IsTLS() bool
-	makeTempName(p []byte, unixTime int64) int
+	MakeTempName(p []byte, unixTime int64) int
+	isPersistent() bool
 	setPersistent(persistent bool)
 	isBroken() bool
 	markBroken()
@@ -109,7 +110,6 @@ type _webConn_ struct {
 	// Conn states (non-zeros)
 	persistent bool // persist the connection after current stream? true by default
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
 	usedStreams atomic.Int32 // accumulated num of streams served or fired
 	broken      atomic.Bool  // is conn broken?
 }
@@ -118,11 +118,11 @@ func (c *_webConn_) onGet() {
 	c.persistent = true
 }
 func (c *_webConn_) onPut() {
-	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 }
 
+func (c *_webConn_) isPersistent() bool            { return c.persistent }
 func (c *_webConn_) setPersistent(persistent bool) { c.persistent = persistent }
 
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
@@ -1518,7 +1518,7 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 	filesDir := r.saveContentFilesDir()
 	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
-	n += r.stream.webConn().makeTempName(filePath[n:], r.recvTime.Unix())
+	n += r.stream.webConn().MakeTempName(filePath[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *webIn_) _beforeRead(toTime *time.Time) error {

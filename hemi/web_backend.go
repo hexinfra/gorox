@@ -29,7 +29,7 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 }
 
 // webBackend_ is the parent for HTTP[1-3]Backend.
-type webBackend_[N WebNode] struct {
+type webBackend_[N Node] struct {
 	// Parent
 	Backend_[N]
 	// Mixins
@@ -51,25 +51,15 @@ func (b *webBackend_[N]) onPrepare(shell Component) {
 	b._webAgent_.onPrepare(shell)
 }
 
-// WebNode
-type WebNode interface { // for *http[1-3]Node
-	// Imports
-	Node
-	// Methods
-	fetchStream() (WebBackendStream, error)
-	storeStream(stream WebBackendStream)
-}
-
-// WebBackendConn is the backend-side web conn.
-type WebBackendConn interface { // *H[1-3]Conn
-	WebNode() WebNode
-	Close() error
-}
-
 // WebBackendStream is the backend-side web stream.
 type WebBackendStream interface { // for *H[1-3]Stream
 	Request() WebBackendRequest
 	Response() WebBackendResponse
+	Socket() WebBackendSocket
+
+	ExecuteExchan() error
+	ExecuteSocket() error
+
 	webConn() webConn
 	markBroken()
 }

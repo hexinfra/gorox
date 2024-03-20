@@ -52,11 +52,12 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP3Backend) FetchStream() (WebBackendStream, error) {
-	// TODO
-	return nil, nil
+	node := b.nodes[b.nextIndex()]
+	return node.fetchStream()
 }
 func (b *HTTP3Backend) StoreStream(stream WebBackendStream) {
-	// TODO
+	node := stream.webConn().(*H3Conn).webNode()
+	node.storeStream(stream)
 }
 
 // http3Node
@@ -92,8 +93,16 @@ func (n *http3Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
+func (n *http3Node) fetchStream() (WebBackendStream, error) {
+	// TODO
+	return nil, nil
+}
+func (n *http3Node) storeStream(stream WebBackendStream) {
+	// TODO
+}
+
 /*
-func (n *http3Node) fetchConn() (WebBackendConn, error) {
+func (n *http3Node) fetchConn() (*H3Conn, error) {
 	// TODO: dynamic address names?
 	// TODO
 	conn, err := quic.DialTimeout(n.address, n.backend.DialTimeout())
@@ -103,18 +112,10 @@ func (n *http3Node) fetchConn() (WebBackendConn, error) {
 	connID := n.backend.nextConnID()
 	return getH3Conn(connID, n, conn), nil
 }
-func (n *http3Node) storeConn(conn WebBackendConn) {
+func (n *http3Node) storeConn(conn *H3Conn) {
 	// TODO
 }
 */
-
-func (n *http3Node) fetchStream() (WebBackendStream, error) {
-	// TODO
-	return nil, nil
-}
-func (n *http3Node) storeStream(stream WebBackendStream) {
-	// TODO
-}
 
 // poolH3Conn is the backend-side HTTP/3 connection pool.
 var poolH3Conn sync.Pool
@@ -167,21 +168,18 @@ func (c *H3Conn) onPut() {
 }
 
 func (c *H3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *H3Conn) WebNode() WebNode       { return c.Node().(WebNode) }
-func (c *H3Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
+func (c *H3Conn) webNode() *http3Node    { return c.Node().(*http3Node) }
 
 func (c *H3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H3Conn) FetchStream() (WebBackendStream, error) {
+func (c *H3Conn) fetchStream() (WebBackendStream, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
 	return nil, nil
 }
-func (c *H3Conn) StoreStream(stream WebBackendStream) {
+func (c *H3Conn) storeStream(stream WebBackendStream) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
@@ -254,14 +252,15 @@ func (s *H3Stream) onEnd() { // for zeros
 
 func (s *H3Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H3Stream) Response() WebBackendResponse { return &s.response }
+func (s *H3Stream) Socket() WebBackendSocket     { return nil } // TODO
 
 func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H3Stream) ExecuteSocket() *H3Socket { // see RFC 9220
-	// TODO, use s.startSocket()
-	return s.socket
+func (s *H3Stream) ExecuteSocket() error { // see RFC 9220
+	// TODO
+	return nil
 }
 
 func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
@@ -271,8 +270,8 @@ func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content i/
 	return nil
 }
 
-func (s *H3Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *H3Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *H3Stream) isBroken() bool { return false } // TODO
+func (s *H3Stream) markBroken()    {}               // TODO
 
 func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }

@@ -128,7 +128,6 @@ type Backend_[N Node] struct {
 	// Parent
 	Component_
 	// Mixins
-	_loadBalancer_
 	// Assocs
 	stage *Stage      // current stage
 	nodes compList[N] // nodes of this backend
@@ -138,19 +137,29 @@ type Backend_[N Node] struct {
 	writeTimeout time.Duration // write() timeout
 	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
+	balancer     string        // roundRobin, ipHash, random, ...
+	indexGet     func() int64  // ...
+	nodeIndex    atomic.Int64  // for roundRobin. won't overflow because it is so large!
+	numNodes     int64         // num of nodes
 }
 
 func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
 	b.MakeComp(name)
-	b._loadBalancer_.init()
 	b.stage = stage
+	b.nodeIndex.Store(-1)
 }
 func (b *Backend_[N]) OnShutdown() {
 	close(b.ShutChan) // notifies Maintain()
 }
 
 func (b *Backend_[N]) OnConfigure() {
-	b._loadBalancer_.onConfigure(b)
+	// dialTimeout
+	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
+		if value >= time.Second {
+			return nil
+		}
+		return errors.New(".dialTimeout has an invalid value")
+	}, 10*time.Second)
 
 	// readTimeout
 	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
@@ -168,14 +177,6 @@ func (b *Backend_[N]) OnConfigure() {
 		return errors.New(".writeTimeout has an invalid value")
 	}, 30*time.Second)
 
-	// dialTimeout
-	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
-		if value >= time.Second {
-			return nil
-		}
-		return errors.New(".dialTimeout has an invalid value")
-	}, 10*time.Second)
-
 	// aliveTimeout
 	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -183,9 +184,27 @@ func (b *Backend_[N]) OnConfigure() {
 		}
 		return errors.New(".readTimeout has an invalid value")
 	}, 5*time.Second)
+
+	// balancer
+	b.ConfigureString("balancer", &b.balancer, func(value string) error {
+		if value == "roundRobin" || value == "ipHash" || value == "random" {
+			return nil
+		}
+		return errors.New(".balancer has an invalid value")
+	}, "roundRobin")
 }
 func (b *Backend_[N]) OnPrepare() {
-	b._loadBalancer_.onPrepare(len(b.nodes))
+	switch b.balancer {
+	case "roundRobin":
+		b.indexGet = b.nextIndexByRoundRobin
+	case "ipHash":
+		b.indexGet = b.nextIndexByIPHash
+	case "random":
+		b.indexGet = b.nextIndexByRandom
+	default:
+		BugExitln("unknown balancer")
+	}
+	b.numNodes = int64(len(b.nodes))
 }
 
 func (b *Backend_[N]) Maintain() { // runner
@@ -212,13 +231,25 @@ func (b *Backend_[N]) AddNode(node N) {
 }
 
 func (b *Backend_[N]) Stage() *Stage               { return b.stage }
+func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
 func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
 func (b *Backend_[N]) WriteTimeout() time.Duration { return b.writeTimeout }
-
-func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
 func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
+
+func (b *Backend_[N]) nextIndex() int64 { return b.indexGet() }
+func (b *Backend_[N]) nextIndexByRoundRobin() int64 {
+	index := b.nodeIndex.Add(1)
+	return index % b.numNodes
+}
+func (b *Backend_[N]) nextIndexByIPHash() int64 {
+	// TODO
+	return 0
+}
+func (b *Backend_[N]) nextIndexByRandom() int64 {
+	return rand.Int63n(b.numNodes)
+}
 
 // Node_ is the parent for all backend nodes.
 type Node_ struct {
@@ -307,8 +338,9 @@ type BackendConn_ struct {
 	node    Node
 	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
-	lastWrite time.Time // deadline of last write operation
-	lastRead  time.Time // deadline of last read operation
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
 }
 
 func (c *BackendConn_) OnGet(id int64, node Node) {
@@ -321,6 +353,7 @@ func (c *BackendConn_) OnPut() {
 	c.backend = nil
 	c.node = nil
 	c.expire = time.Time{}
+	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
@@ -328,6 +361,9 @@ func (c *BackendConn_) OnPut() {
 func (c *BackendConn_) ID() int64        { return c.id }
 func (c *BackendConn_) Backend() Backend { return c.backend }
 func (c *BackendConn_) Node() Node       { return c.node }
+func (c *BackendConn_) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
@@ -501,8 +537,9 @@ type ServerConn_ struct {
 	server Server
 	gate   Gate
 	// Conn states (zeros)
-	lastRead  time.Time // deadline of last read operation
-	lastWrite time.Time // deadline of last write operation
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *ServerConn_) OnGet(id int64, gate Gate) {
@@ -513,6 +550,7 @@ func (c *ServerConn_) OnGet(id int64, gate Gate) {
 func (c *ServerConn_) OnPut() {
 	c.server = nil
 	c.gate = nil
+	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
 }
@@ -520,6 +558,9 @@ func (c *ServerConn_) OnPut() {
 func (c *ServerConn_) ID() int64      { return c.id }
 func (c *ServerConn_) Server() Server { return c.server }
 func (c *ServerConn_) Gate() Gate     { return c.gate }
+func (c *ServerConn_) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
@@ -579,56 +620,6 @@ func (s *_contentSaver_) onPrepare(shell Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-
-// _loadBalancer_ is a mixin.
-type _loadBalancer_ struct {
-	// States
-	balancer  string       // roundRobin, ipHash, random, ...
-	indexGet  func() int64 // ...
-	nodeIndex atomic.Int64 // for roundRobin. won't overflow because it is so large!
-	numNodes  int64        // num of nodes
-}
-
-func (b *_loadBalancer_) init() {
-	b.nodeIndex.Store(-1)
-}
-
-func (b *_loadBalancer_) onConfigure(shell Component) {
-	// balancer
-	shell.ConfigureString("balancer", &b.balancer, func(value string) error {
-		if value == "roundRobin" || value == "ipHash" || value == "random" {
-			return nil
-		}
-		return errors.New(".balancer has an invalid value")
-	}, "roundRobin")
-}
-func (b *_loadBalancer_) onPrepare(numNodes int) {
-	switch b.balancer {
-	case "roundRobin":
-		b.indexGet = b.getNextByRoundRobin
-	case "ipHash":
-		b.indexGet = b.getNextByIPHash
-	case "random":
-		b.indexGet = b.getNextByRandom
-	default:
-		BugExitln("unknown balancer")
-	}
-	b.numNodes = int64(numNodes)
-}
-
-func (b *_loadBalancer_) getNext() int64 { return b.indexGet() }
-
-func (b *_loadBalancer_) getNextByRoundRobin() int64 {
-	index := b.nodeIndex.Add(1)
-	return index % b.numNodes
-}
-func (b *_loadBalancer_) getNextByIPHash() int64 {
-	// TODO
-	return 0
-}
-func (b *_loadBalancer_) getNextByRandom() int64 {
-	return rand.Int63n(b.numNodes)
-}
 
 // _subsWaiter_ is a mixin.
 type _subsWaiter_ struct {
@@ -698,7 +689,7 @@ func (p *_connPool_[T]) pullConn() T {
 		return nil
 	}
 	conn := list.head
-	list.head = conn.getNext()
+	list.head = conn.next
 	conn.setNext(nil)
 	list.qnty--
 

@@ -30,6 +30,7 @@ type WebExchanProxyArgs struct {
 	Hostname            []byte
 	ColonPort           []byte
 	InboundViaName      []byte
+	AppendPathPrefix    []byte
 	AddRequestHeaders   map[string]Value
 	DelRequestHeaders   [][]byte
 
@@ -110,7 +111,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 			}
 			break
 		}
-		// We got 1xx
+		// We got a 1xx
 		if req.VersionCode() == Version1_0 {
 			backStream.markBroken()
 			resp.SendBadGateway(nil)

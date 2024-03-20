@@ -56,12 +56,12 @@ func (b *TCPSBackend) CreateNode(name string) Node {
 }
 
 func (b *TCPSBackend) Dial() (*TConn, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.dial()
 }
 
 func (b *TCPSBackend) FetchConn() (*TConn, error) {
-	node := b.nodes[b.getNext()]
+	node := b.nodes[b.nextIndex()]
 	return node.fetchConn()
 }
 func (b *TCPSBackend) StoreConn(tConn *TConn) {
@@ -273,7 +273,6 @@ type TConn struct {
 	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
 	maxStreams int32           // how many streams are allowed on this conn?
 	// Conn states (zeros)
-	counter     atomic.Int64 // used to make temp name
 	usedStreams atomic.Int32 // how many streams have been used?
 	writeBroken atomic.Bool  // write-side broken?
 	readBroken  atomic.Bool  // read-side broken?
@@ -288,7 +287,6 @@ func (c *TConn) onGet(id int64, node *tcpsNode, netConn net.Conn, rawConn syscal
 func (c *TConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.counter.Store(0)
 	c.usedStreams.Store(0)
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
@@ -298,10 +296,6 @@ func (c *TConn) onPut() {
 func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
 func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
-
-func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 

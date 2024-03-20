@@ -53,11 +53,12 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP2Backend) FetchStream() (WebBackendStream, error) {
-	// TODO
-	return nil, nil
+	node := b.nodes[b.nextIndex()]
+	return node.fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(stream WebBackendStream) {
-	// TODO
+	node := stream.webConn().(*H2Conn).webNode()
+	node.storeStream(stream)
 }
 
 // http2Node
@@ -94,8 +95,18 @@ func (n *http2Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
+func (n *http2Node) fetchStream() (WebBackendStream, error) {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
+	// TODO
+	return nil, nil
+}
+func (n *http2Node) storeStream(stream WebBackendStream) {
+	// Note: An H2Conn can be used concurrently, limited by maxStreams.
+	// TODO
+}
+
 /*
-func (n *http2Node) fetchConn() (WebBackendConn, error) {
+func (n *http2Node) fetchConn() (*H2Conn, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var netConn net.Conn
@@ -103,32 +114,23 @@ func (n *http2Node) fetchConn() (WebBackendConn, error) {
 	connID := n.backend.nextConnID()
 	return getH2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http2Node) _dialTCP() (WebBackendConn, error) {
+func (n *http2Node) _dialTCP() (*H2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) _dialTLS() (WebBackendConn, error) {
+func (n *http2Node) _dialTLS() (*H2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) _dialUDS() (WebBackendConn, error) {
+func (n *http2Node) _dialUDS() (*H2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) storeConn(conn WebBackendConn) {
+func (n *http2Node) storeConn(conn *H2Conn) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: decRef
-	h2Conn := conn.(*H2Conn)
-	if h2Conn.nStreams.Add(-1) > 0 {
+	if conn.nStreams.Add(-1) > 0 {
 		return
 	}
 }
 */
-
-func (n *http2Node) fetchStream() (WebBackendStream, error) {
-	// TODO
-	return nil, nil
-}
-func (n *http2Node) storeStream(stream WebBackendStream) {
-	// TODO
-}
 
 // poolH2Conn is the backend-side HTTP/2 connection pool.
 var poolH2Conn sync.Pool
@@ -184,21 +186,18 @@ func (c *H2Conn) onPut() {
 }
 
 func (c *H2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *H2Conn) WebNode() WebNode       { return c.Node().(WebNode) }
-func (c *H2Conn) makeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.Backend().Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
+func (c *H2Conn) webNode() *http2Node    { return c.Node().(*http2Node) }
 
 func (c *H2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H2Conn) FetchStream() (WebBackendStream, error) {
+func (c *H2Conn) fetchStream() (WebBackendStream, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: incRef, stream.onUse()
 	return nil, nil
 }
-func (c *H2Conn) StoreStream(stream WebBackendStream) {
+func (c *H2Conn) storeStream(stream WebBackendStream) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
@@ -298,14 +297,15 @@ func (s *H2Stream) onEnd() { // for zeros
 
 func (s *H2Stream) Request() WebBackendRequest   { return &s.request }
 func (s *H2Stream) Response() WebBackendResponse { return &s.response }
+func (s *H2Stream) Socket() WebBackendSocket     { return nil } // TODO
 
 func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H2Stream) ExecuteSocket() *H2Socket { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
-	// TODO, use s.startSocket()
-	return s.socket
+func (s *H2Stream) ExecuteSocket() error { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
+	// TODO
+	return nil
 }
 
 func (s *H2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?

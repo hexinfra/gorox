@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"net"
 	"os"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -437,26 +438,55 @@ type TCPSDealet_ struct {
 // tcpsCase
 type tcpsCase struct {
 	// Parent
-	case_[*TCPSRouter]
+	Component_
 	// Assocs
+	router  *TCPSRouter
 	dealets []TCPSDealet
 	// States
-	matcher func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
+	general  bool
+	varCode  int16
+	varName  string
+	patterns [][]byte
+	regexps  []*regexp.Regexp
+	matcher  func(kase *tcpsCase, conn *TCPSConn, value []byte) bool
+}
+
+func (c *tcpsCase) onCreate(name string, router *TCPSRouter) {
+	c.MakeComp(name)
+	c.router = router
+}
+func (c *tcpsCase) OnShutdown() {
+	c.router.DecSub()
 }
 
 func (c *tcpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
+	if c.info == nil {
+		c.general = true
+		return
+	}
+	cond := c.info.(caseCond)
+	c.varCode = cond.varCode
+	c.varName = cond.varName
+	isRegexp := cond.compare == "~=" || cond.compare == "!~"
+	for _, pattern := range cond.patterns {
+		if pattern == "" {
+			UseExitln("empty case cond pattern")
 		}
+		if !isRegexp {
+			c.patterns = append(c.patterns, []byte(pattern))
+		} else if exp, err := regexp.Compile(pattern); err == nil {
+			c.regexps = append(c.regexps, exp)
+		} else {
+			UseExitln(err.Error())
+		}
+	}
+	if matcher, ok := tcpsCaseMatchers[cond.compare]; ok {
+		c.matcher = matcher
+	} else {
+		UseExitln("unknown compare in case condition")
 	}
 }
 func (c *tcpsCase) OnPrepare() {
-	c.case_.OnPrepare()
 }
 
 func (c *tcpsCase) addDealet(dealet TCPSDealet) { c.dealets = append(c.dealets, dealet) }

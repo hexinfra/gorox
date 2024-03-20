@@ -8,6 +8,7 @@
 package hemi
 
 import (
+	"regexp"
 	"sync"
 	"time"
 
@@ -272,26 +273,55 @@ type QUIXDealet_ struct {
 // quixCase
 type quixCase struct {
 	// Parent
-	case_[*QUIXRouter]
+	Component_
 	// Assocs
+	router  *QUIXRouter
 	dealets []QUIXDealet
 	// States
-	matcher func(kase *quixCase, conn *QUIXConn, value []byte) bool
+	general  bool
+	varCode  int16
+	varName  string
+	patterns [][]byte
+	regexps  []*regexp.Regexp
+	matcher  func(kase *quixCase, conn *QUIXConn, value []byte) bool
+}
+
+func (c *quixCase) onCreate(name string, router *QUIXRouter) {
+	c.MakeComp(name)
+	c.router = router
+}
+func (c *quixCase) OnShutdown() {
+	c.router.DecSub()
 }
 
 func (c *quixCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := quixCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
+	if c.info == nil {
+		c.general = true
+		return
+	}
+	cond := c.info.(caseCond)
+	c.varCode = cond.varCode
+	c.varName = cond.varName
+	isRegexp := cond.compare == "~=" || cond.compare == "!~"
+	for _, pattern := range cond.patterns {
+		if pattern == "" {
+			UseExitln("empty case cond pattern")
 		}
+		if !isRegexp {
+			c.patterns = append(c.patterns, []byte(pattern))
+		} else if exp, err := regexp.Compile(pattern); err == nil {
+			c.regexps = append(c.regexps, exp)
+		} else {
+			UseExitln(err.Error())
+		}
+	}
+	if matcher, ok := quixCaseMatchers[cond.compare]; ok {
+		c.matcher = matcher
+	} else {
+		UseExitln("unknown compare in case condition")
 	}
 }
 func (c *quixCase) OnPrepare() {
-	c.case_.OnPrepare()
 }
 
 func (c *quixCase) addDealet(dealet QUIXDealet) { c.dealets = append(c.dealets, dealet) }

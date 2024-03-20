@@ -53,9 +53,11 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP2Backend) FetchStream() (WebBackendStream, error) {
+	// TODO
 	return nil, nil
 }
 func (b *HTTP2Backend) StoreStream(stream WebBackendStream) {
+	// TODO
 }
 
 // http2Node
@@ -121,9 +123,11 @@ func (n *http2Node) storeConn(conn WebBackendConn) {
 */
 
 func (n *http2Node) fetchStream() (WebBackendStream, error) {
+	// TODO
 	return nil, nil
 }
 func (n *http2Node) storeStream(stream WebBackendStream) {
+	// TODO
 }
 
 // poolH2Conn is the backend-side HTTP/2 connection pool.

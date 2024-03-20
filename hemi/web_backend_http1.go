@@ -57,6 +57,7 @@ func (b *HTTP1Backend) FetchStream() (WebBackendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream WebBackendStream) {
+	// TODO
 }
 
 // http1Node is a node in HTTP1Backend.

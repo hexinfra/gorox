@@ -52,9 +52,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP3Backend) FetchStream() (WebBackendStream, error) {
+	// TODO
 	return nil, nil
 }
 func (b *HTTP3Backend) StoreStream(stream WebBackendStream) {
+	// TODO
 }
 
 // http3Node
@@ -107,9 +109,11 @@ func (n *http3Node) storeConn(conn WebBackendConn) {
 */
 
 func (n *http3Node) fetchStream() (WebBackendStream, error) {
+	// TODO
 	return nil, nil
 }
 func (n *http3Node) storeStream(stream WebBackendStream) {
+	// TODO
 }
 
 // poolH3Conn is the backend-side HTTP/3 connection pool.

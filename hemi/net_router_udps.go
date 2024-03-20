@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"net"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -286,26 +287,55 @@ type UDPSDealet_ struct {
 // udpsCase
 type udpsCase struct {
 	// Parent
-	case_[*UDPSRouter]
+	Component_
 	// Assocs
+	router  *UDPSRouter
 	dealets []UDPSDealet
 	// States
-	matcher func(kase *udpsCase, conn *UDPSConn, value []byte) bool
+	general  bool
+	varCode  int16
+	varName  string
+	patterns [][]byte
+	regexps  []*regexp.Regexp
+	matcher  func(kase *udpsCase, conn *UDPSConn, value []byte) bool
+}
+
+func (c *udpsCase) onCreate(name string, router *UDPSRouter) {
+	c.MakeComp(name)
+	c.router = router
+}
+func (c *udpsCase) OnShutdown() {
+	c.router.DecSub()
 }
 
 func (c *udpsCase) OnConfigure() {
-	c.case_.OnConfigure()
-	if c.info != nil {
-		cond := c.info.(caseCond)
-		if matcher, ok := udpsCaseMatchers[cond.compare]; ok {
-			c.matcher = matcher
-		} else {
-			UseExitln("unknown compare in case condition")
+	if c.info == nil {
+		c.general = true
+		return
+	}
+	cond := c.info.(caseCond)
+	c.varCode = cond.varCode
+	c.varName = cond.varName
+	isRegexp := cond.compare == "~=" || cond.compare == "!~"
+	for _, pattern := range cond.patterns {
+		if pattern == "" {
+			UseExitln("empty case cond pattern")
 		}
+		if !isRegexp {
+			c.patterns = append(c.patterns, []byte(pattern))
+		} else if exp, err := regexp.Compile(pattern); err == nil {
+			c.regexps = append(c.regexps, exp)
+		} else {
+			UseExitln(err.Error())
+		}
+	}
+	if matcher, ok := udpsCaseMatchers[cond.compare]; ok {
+		c.matcher = matcher
+	} else {
+		UseExitln("unknown compare in case condition")
 	}
 }
 func (c *udpsCase) OnPrepare() {
-	c.case_.OnPrepare()
 }
 
 func (c *udpsCase) addDealet(dealet UDPSDealet) { c.dealets = append(c.dealets, dealet) }

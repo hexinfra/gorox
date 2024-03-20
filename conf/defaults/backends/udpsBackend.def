@@ -8,11 +8,11 @@ udpsBackend "ub1" {
 	node {
 		.address = "127.0.0.1:3080"
 		.weight = 9
-		.keepConns = 2
+		.keepAliveConns = 2
 	}
 	node {
 		.address = "127.0.0.1:3081"
 		.weight = 8
-		.keepConns = 3
+		.keepAliveConns = 3
 	}
 }

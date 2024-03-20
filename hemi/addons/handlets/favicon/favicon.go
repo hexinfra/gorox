@@ -38,12 +38,8 @@ func (h *faviconHandlet) OnShutdown() {
 	h.webapp.DecSub()
 }
 
-func (h *faviconHandlet) OnConfigure() {
-	// TODO
-}
-func (h *faviconHandlet) OnPrepare() {
-	// TODO
-}
+func (h *faviconHandlet) OnConfigure() {}
+func (h *faviconHandlet) OnPrepare()   {}
 
 func (h *faviconHandlet) Handle(req Request, resp Response) (handled bool) {
 	const asOrigin = true

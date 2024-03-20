@@ -258,13 +258,13 @@ type Node_ struct {
 	// Assocs
 	backend Backend
 	// States
-	udsMode   bool        // uds or not
-	tlsMode   bool        // tls or not
-	tlsConfig *tls.Config // TLS config if TLS is enabled
-	address   string      // hostname:port, /path/to/unix.sock
-	weight    int32       // 1, 22, 333, ...
-	keepConns int32       // max conns to keep alive
-	down      atomic.Bool // TODO: false-sharing
+	udsMode        bool        // uds or not
+	tlsMode        bool        // tls or not
+	tlsConfig      *tls.Config // TLS config if TLS is enabled
+	address        string      // hostname:port, /path/to/unix.sock
+	weight         int32       // 1, 22, 333, ...
+	keepAliveConns int32       // max conns to keep alive
+	down           atomic.Bool // TODO: false-sharing
 }
 
 func (n *Node_) OnCreate(name string, backend Backend) {
@@ -306,12 +306,12 @@ func (n *Node_) OnConfigure() {
 		return errors.New("bad node weight")
 	}, 1)
 
-	// keepConns
-	n.ConfigureInt32("keepConns", &n.keepConns, func(value int32) error {
+	// keepAliveConns
+	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New("bad keepConns in node")
+		return errors.New("bad keepAliveConns in node")
 	}, 10)
 }
 func (n *Node_) OnPrepare() {
@@ -378,16 +378,18 @@ type Server_[G Gate] struct {
 	stage *Stage // current stage
 	gates []G    // a server has many gates
 	// States
-	readTimeout     time.Duration // read() timeout
-	writeTimeout    time.Duration // write() timeout
-	address         string        // hostname:port, /path/to/unix.sock
-	colonPort       string        // like: ":9876"
-	colonPortBytes  []byte        // like: []byte(":9876")
-	udsMode         bool          // is address a unix domain socket?
-	tlsMode         bool          // use tls to secure the transport?
-	tlsConfig       *tls.Config   // set if tls mode is true
-	maxConnsPerGate int32         // max concurrent connections allowed per gate
-	numGates        int32         // number of gates
+	readTimeout       time.Duration // read() timeout
+	writeTimeout      time.Duration // write() timeout
+	address           string        // hostname:port, /path/to/unix.sock
+	colonPort         string        // like: ":9876"
+	colonPortBytes    []byte        // []byte(colonPort)
+	udsColonPort      string        // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonPortBytes []byte        // []byte(udsColonPort)
+	udsMode           bool          // is address a unix domain socket?
+	tlsMode           bool          // use tls to secure the transport?
+	tlsConfig         *tls.Config   // set if tls mode is true
+	maxConnsPerGate   int32         // max concurrent connections allowed per gate
+	numGates          int32         // number of gates
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
@@ -435,6 +437,9 @@ func (s *Server_[G]) OnConfigure() {
 		UseExitln(".address is required for servers")
 	}
 
+	s.ConfigureString("udsColonPort", &s.udsColonPort, nil, ":80")
+	s.udsColonPortBytes = []byte(s.udsColonPort)
+
 	// tlsMode
 	s.ConfigureBool("tlsMode", &s.tlsMode, false)
 	if s.tlsMode {
@@ -469,9 +474,21 @@ func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
 
-func (s *Server_[G]) Address() string        { return s.address }
-func (s *Server_[G]) ColonPort() string      { return s.colonPort }
-func (s *Server_[G]) ColonPortBytes() []byte { return s.colonPortBytes }
+func (s *Server_[G]) Address() string { return s.address }
+func (s *Server_[G]) ColonPort() string {
+	if s.udsMode {
+		return s.udsColonPort
+	} else {
+		return s.colonPort
+	}
+}
+func (s *Server_[G]) ColonPortBytes() []byte {
+	if s.udsMode {
+		return s.udsColonPortBytes
+	} else {
+		return s.colonPortBytes
+	}
+}
 func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
 func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }

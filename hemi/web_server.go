@@ -47,12 +47,10 @@ type webServer_[G Gate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	webapps           []string               // for what webapps
-	exactApps         []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixApps        []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixApps        []*hostnameTo[*Webapp] // like: ("www.example.*")
-	udsColonPort      string                 // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonPortBytes []byte                 // []byte(udsColonPort)
+	webapps    []string               // for what webapps
+	exactApps  []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixApps []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixApps []*hostnameTo[*Webapp] // like: ("www.example.*")
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
@@ -65,29 +63,10 @@ func (s *webServer_[G]) onConfigure(shell Component) {
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
-
-	// udsColonPort
-	s.ConfigureString("udsColonPort", &s.udsColonPort, nil, ":80")
-	s.udsColonPortBytes = []byte(s.udsColonPort)
 }
 func (s *webServer_[G]) onPrepare(shell Component) {
 	s.Server_.OnPrepare()
 	s._webAgent_.onPrepare(shell)
-}
-
-func (s *webServer_[G]) ColonPort() string { // override
-	if s.IsUDS() {
-		return s.udsColonPort
-	} else {
-		return s.Server_.ColonPort()
-	}
-}
-func (s *webServer_[G]) ColonPortBytes() []byte { // override
-	if s.IsUDS() {
-		return s.udsColonPortBytes
-	} else {
-		return s.Server_.ColonPortBytes()
-	}
 }
 
 func (s *webServer_[G]) bindApps() {

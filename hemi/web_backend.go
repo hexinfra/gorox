@@ -40,15 +40,16 @@ type webBackend_[N Node] struct {
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
+	b.health = nil
 }
 
-func (b *webBackend_[N]) onConfigure(shell Component) {
+func (b *webBackend_[N]) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webAgent_.onConfigure(shell, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
+	b._webAgent_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
 }
-func (b *webBackend_[N]) onPrepare(shell Component) {
+func (b *webBackend_[N]) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webAgent_.onPrepare(shell)
+	b._webAgent_.onPrepare(b)
 }
 
 // WebBackendStream is the backend-side web stream.

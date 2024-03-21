@@ -128,11 +128,6 @@ func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 	return s.defaultApp // may be nil
 }
 
-// webServerStream is the server-side web stream.
-type webServerStream interface { // for *http[1-3]Stream
-	execute() // runner
-}
-
 // Request is the server-side web request.
 type Request interface { // for *http[1-3]Request
 	RemoteAddr() net.Addr
@@ -3380,6 +3375,8 @@ func (a *Webapp) createRule(name string) *Rule {
 	return rule
 }
 
+func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
+
 func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
 func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }
 func (a *Webapp) Socklet(name string) Socklet { return a.socklets[name] }
@@ -3391,8 +3388,6 @@ func (a *Webapp) Rule(name string) *Rule {
 	}
 	return nil
 }
-
-func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
 
 func (a *Webapp) reviserByID(id uint8) Reviser { return a.revisersByID[id] }
 
@@ -3424,7 +3419,7 @@ func (a *Webapp) Logf(format string, args ...any) {
 	}
 }
 
-func (a *Webapp) exchanDispatch(req Request, resp Response) {
+func (a *Webapp) dispatchExchan(req Request, resp Response) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -3440,7 +3435,7 @@ func (a *Webapp) exchanDispatch(req Request, resp Response) {
 	// If we reach here, it means the exchan is not handled by any rules or handlets in this webapp.
 	resp.SendNotFound(a.text404)
 }
-func (a *Webapp) socketDispatch(req Request, sock Socket) {
+func (a *Webapp) dispatchSocket(req Request, sock Socket) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -3462,8 +3457,8 @@ type Handle func(req Request, resp Response)
 
 // Mapper performs request mapping in handlets. Mappers are not components.
 type Mapper interface {
-	FindHandle(req Request) Handle // firstly
-	HandleName(req Request) string // secondly
+	FindHandle(req Request) Handle // called firstly
+	HandleName(req Request) string // called secondly
 }
 
 // Handlet component handles the incoming request and gives an outgoing response if the request is handled.
@@ -3506,6 +3501,7 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 			}
 		}
 	}
+	// No handle was found.
 	if notFound == nil {
 		resp.SendNotFound(nil)
 	} else {

@@ -164,7 +164,6 @@ func (s *_webStream_) onUse() {
 }
 func (s *_webStream_) onEnd() {
 	s.region.Free()
-	// s.conn is set as nil in concrete type due to Go's limited generic support :(
 }
 
 func (s *_webStream_) buffer256() []byte          { return s.stockBuffer[:] }

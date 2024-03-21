@@ -33,18 +33,6 @@ type HTTP2Backend struct {
 	// States
 }
 
-func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage)
-}
-
-func (b *HTTP2Backend) OnConfigure() {
-	b.webBackend_.onConfigure(b)
-}
-func (b *HTTP2Backend) OnPrepare() {
-	b.webBackend_.onPrepare(b)
-	// TODO: nextProtos?
-}
-
 func (b *HTTP2Backend) CreateNode(name string) Node {
 	node := new(http2Node)
 	node.onCreate(name, b)

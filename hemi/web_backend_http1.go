@@ -34,17 +34,6 @@ type HTTP1Backend struct {
 	// States
 }
 
-func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage)
-}
-
-func (b *HTTP1Backend) OnConfigure() {
-	b.webBackend_.onConfigure(b)
-}
-func (b *HTTP1Backend) OnPrepare() {
-	b.webBackend_.onPrepare(b)
-}
-
 func (b *HTTP1Backend) CreateNode(name string) Node {
 	node := new(http1Node)
 	node.onCreate(name, b)
@@ -197,7 +186,7 @@ func (n *http1Node) storeStream(stream WebBackendStream) {
 	h1Conn := h1Stream
 	h1Conn.storeStream(stream)
 
-	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.persistent {
+	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.isPersistent() {
 		if DbgLevel() >= 2 {
 			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
 		}

@@ -33,17 +33,6 @@ type HTTP3Backend struct {
 	// States
 }
 
-func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.onCreate(name, stage)
-}
-
-func (b *HTTP3Backend) OnConfigure() {
-	b.webBackend_.onConfigure(b)
-}
-func (b *HTTP3Backend) OnPrepare() {
-	b.webBackend_.onPrepare(b)
-}
-
 func (b *HTTP3Backend) CreateNode(name string) Node {
 	node := new(http3Node)
 	node.onCreate(name, b)

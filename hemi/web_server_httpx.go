@@ -553,13 +553,15 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 }
 
 func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
-	webapp.exchanDispatch(req, resp)
-	if !resp.isSent { // only happens on sized content because response must be sent on echo
+	webapp.dispatchExchan(req, resp)
+
+	if !resp.isSent { // only happens on sized contents because for vague contents the response must be sent on echo()
 		resp.sendChain()
-	} else if resp.isVague() { // end vague content and write trailers (if exist)
+	} else if resp.isVague() { // for vague contents, we end vague content and write trailers (if exist) here
 		resp.endVague()
 	}
-	if !req.contentReceived { // content exists but is not used, we receive and drop it here
+
+	if !req.contentReceived { // request content exists but was not used, we receive and drop it here
 		req.dropContent()
 	}
 }
@@ -569,6 +571,7 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	conn.persistent = false // close anyway.
+
 	status := req.headResult
 	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
 		return // send nothing.
@@ -611,8 +614,8 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 }
 
 func (s *http1Stream) executeSocket() { // upgrade: websocket
-	// TODO(diogin): implementation (RFC 6455). use s.serveSocket()?
-	// NOTICE: use idle timeout or clear read timeout otherwise
+	// TODO(diogin): implementation (RFC 6455).
+	// NOTICE: use idle timeout or clear read timeout otherwise?
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
@@ -646,6 +649,686 @@ func (c *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.net
 func (c *http1Stream) write(p []byte) (int, error)    { return c.netConn.Write(p) }
 func (c *http1Stream) writev(vector *net.Buffers) (int64, error) {
 	return vector.WriteTo(c.netConn)
+}
+
+// http1Request is the server-side HTTP/1 request.
+type http1Request struct { // incoming. needs parsing
+	// Parent
+	webServerRequest_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
+func (r *http1Request) recvHead() { // control + headers
+	// The entire request head must be received in one timeout
+	if err := r._beforeRead(&r.recvTime); err != nil {
+		r.headResult = -1
+		return
+	}
+	if r.inputEdge == 0 && !r.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
+		// r.headResult is set.
+		return
+	}
+	if !r._recvControl() || !r.recvHeaders1() || !r.examineHead() {
+		// r.headResult is set.
+		return
+	}
+	r.cleanInput()
+	if DbgLevel() >= 2 {
+		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
+	}
+}
+func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
+	r.pBack, r.pFore = 0, 0
+
+	// method = token
+	// token = 1*tchar
+	hash := uint16(0)
+	for {
+		if b := r.input[r.pFore]; webTchar[b] != 0 {
+			hash += uint16(b)
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+		} else if b == ' ' {
+			break
+		} else {
+			r.headResult, r.failReason = StatusBadRequest, "invalid character in method"
+			return false
+		}
+	}
+	if r.pBack == r.pFore {
+		r.headResult, r.failReason = StatusBadRequest, "empty method"
+		return false
+	}
+	r.gotInput = true
+	r.method.set(r.pBack, r.pFore)
+	r.recognizeMethod(r.input[r.pBack:r.pFore], hash)
+	// Skip SP after method
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		return false
+	}
+
+	// Now r.pFore is at request-target.
+	r.pBack = r.pFore
+	// request-target = absolute-form / origin-form / authority-form / asterisk-form
+	if b := r.input[r.pFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
+		if b != '/' { // absolute-form
+			r.targetForm = webTargetAbsolute
+			// absolute-form = absolute-URI
+			// absolute-URI = scheme ":" hier-part [ "?" query ]
+			// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+			// hier-part = "//" authority path-abempty
+			// authority = host [ ":" port ]
+			// path-abempty = *( "/" segment)
+
+			// Scheme
+			for {
+				if b := r.input[r.pFore]; b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '-' || b == '.' {
+					// Do nothing
+				} else if b >= 'A' && b <= 'Z' {
+					// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
+					// The scheme and host are case-insensitive and normally provided in lowercase;
+					// all other components are compared in a case-sensitive manner.
+					r.input[r.pFore] = b + 0x20 // to lower
+				} else if b == ':' {
+					break
+				} else {
+					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
+					return false
+				}
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+					return false
+				}
+			}
+			if scheme := r.input[r.pBack:r.pFore]; bytes.Equal(scheme, bytesHTTP) {
+				r.schemeCode = SchemeHTTP
+			} else if bytes.Equal(scheme, bytesHTTPS) {
+				r.schemeCode = SchemeHTTPS
+			} else {
+				r.headResult, r.failReason = StatusBadRequest, "unknown scheme"
+				return false
+			}
+			// Skip ':'
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+			if r.input[r.pFore] != '/' {
+				r.headResult, r.failReason = StatusBadRequest, "bad first slash"
+				return false
+			}
+			// Skip '/'
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+			if r.input[r.pFore] != '/' {
+				r.headResult, r.failReason = StatusBadRequest, "bad second slash"
+				return false
+			}
+			// Skip '/'
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+			// authority = host [ ":" port ]
+			// host = IP-literal / IPv4address / reg-name
+			r.pBack = r.pFore
+			for {
+				if b = r.input[r.pFore]; b >= 'A' && b <= 'Z' {
+					r.input[r.pFore] = b + 0x20 // to lower
+				} else if b == '/' || b == ' ' {
+					break
+				}
+				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+					return false
+				}
+			}
+			if r.pBack == r.pFore {
+				r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
+				return false
+			}
+			if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
+				r.headResult, r.failReason = StatusBadRequest, "bad authority"
+				return false
+			}
+			if b == ' ' { // ends of request-target
+				// Don't treat this as webTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
+				if r.methodCode == MethodOPTIONS {
+					// OPTIONS http://www.example.org:8001 HTTP/1.1
+					r.asteriskOptions = true
+				} else {
+					// GET http://www.example.org HTTP/1.1
+					// Do nothing.
+				}
+				goto beforeVersion // request target is done, since origin-form always starts with '/', while b is ' ' here.
+			}
+			r.pBack = r.pFore // at '/'.
+		}
+		// RFC 7230 (5.3.1.  origin-form)
+		//
+		// The most common form of request-target is the origin-form.
+		//
+		//   origin-form = absolute-path [ "?" query ]
+		//       absolute-path = 1*( "/" segment )
+		//           segment = *pchar
+		//       query = *( pchar / "/" / "?" )
+		//
+		// When making a request directly to an origin server, other than a
+		// CONNECT or server-wide OPTIONS request (as detailed below), a client
+		// MUST send only the absolute path and query components of the target
+		// URI as the request-target.  If the target URI's path component is
+		// empty, the client MUST send "/" as the path within the origin-form of
+		// request-target.  A Host header field is also sent, as defined in
+		// Section 5.4.
+		var (
+			state = 1   // in path
+			octet byte  // byte value of %xx
+			qsOff int32 // offset of query string, if exists
+		)
+		query := &r.mainPair
+		query.zero()
+		query.kind = kindQuery
+		query.place = placeArray // all received queries are placed in r.array because queries have been decoded
+
+		// r.pFore is at '/'.
+	uri:
+		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.
+			b := r.input[r.pFore]
+			switch state {
+			case 1: // in path
+				if webPchar[b] == 1 { // excluding '?'
+					r.arrayPush(b)
+				} else if b == '%' {
+					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG
+				} else if b == '?' {
+					// Path is over, switch to query string parsing
+					r.path = r.array[0:r.arrayEdge]
+					r.queries.from = uint8(len(r.primes))
+					r.queries.edge = r.queries.from
+					query.nameFrom = r.arrayEdge
+					qsOff = r.pFore - r.pBack
+					state = 2
+				} else if b == ' ' { // end of request-target
+					break uri
+				} else {
+					r.headResult, r.failReason = StatusBadRequest, "invalid path"
+					return false
+				}
+			case 2: // in query string and expecting '=' to get a name
+				if b == '=' {
+					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
+						query.nameSize = uint8(nameSize)
+						query.value.from = r.arrayEdge
+					} else {
+						r.headResult, r.failReason = StatusBadRequest, "query name too long"
+						return false
+					}
+					state = 3
+				} else if webPchar[b] > 0 { // including '?'
+					if b == '+' {
+						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
+					}
+					query.hash += uint16(b)
+					r.arrayPush(b)
+				} else if b == '%' {
+					state = 0x2f // '2' means from state 2, 'f' means first HEXDIG
+				} else if b == ' ' { // end of request-target
+					break uri
+				} else {
+					r.headResult, r.failReason = StatusBadRequest, "invalid query name"
+					return false
+				}
+			case 3: // in query string and expecting '&' to get a value
+				if b == '&' {
+					query.value.edge = r.arrayEdge
+					if query.nameSize > 0 && !r.addQuery(query) {
+						return false
+					}
+					query.hash = 0 // reset for next query
+					query.nameFrom = r.arrayEdge
+					state = 2
+				} else if webPchar[b] > 0 { // including '?'
+					if b == '+' {
+						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
+					}
+					r.arrayPush(b)
+				} else if b == '%' {
+					state = 0x3f // '3' means from state 3, 'f' means first HEXDIG
+				} else if b == ' ' { // end of request-target
+					break uri
+				} else {
+					r.headResult, r.failReason = StatusBadRequest, "invalid query value"
+					return false
+				}
+			default: // in query string and expecting HEXDIG
+				if b == ' ' { // end of request-target
+					break uri
+				}
+				nybble, ok := byteFromHex(b)
+				if !ok {
+					r.headResult, r.failReason = StatusBadRequest, "invalid pct encoding"
+					return false
+				}
+				if state&0xf == 0xf { // Expecting the first HEXDIG
+					octet = nybble << 4
+					state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
+				} else { // Expecting the second HEXDIG
+					octet |= nybble
+					if state == 0x20 { // in name
+						query.hash += uint16(octet)
+					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
+						r.headResult, r.failReason = StatusBadRequest, "malformed path"
+						return false
+					}
+					r.arrayPush(octet)
+					state >>= 4 // restore previous state
+				}
+			}
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+		}
+		if state == 1 { // path ends without a '?'
+			r.path = r.array[0:r.arrayEdge]
+		} else if state == 2 { // in query string and no '=' found
+			r.queryString.set(r.pBack+qsOff, r.pFore)
+			// Since there is no '=', we ignore this query
+		} else if state == 3 { // in query string and no '&' found
+			r.queryString.set(r.pBack+qsOff, r.pFore)
+			query.value.edge = r.arrayEdge
+			if query.nameSize > 0 && !r.addQuery(query) {
+				return false
+			}
+		} else { // incomplete pct-encoded
+			r.headResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
+			return false
+		}
+
+		r.uri.set(r.pBack, r.pFore)
+		if qsOff == 0 {
+			r.encodedPath = r.uri
+		} else {
+			r.encodedPath.set(r.pBack, r.pBack+qsOff)
+		}
+		r.cleanPath()
+	} else if b == '*' { // OPTIONS *, asterisk-form
+		r.targetForm = webTargetAsterisk
+		// RFC 7230 (section 5.3.4):
+		// The asterisk-form of request-target is only used for a server-wide
+		// OPTIONS request (Section 4.3.7 of [RFC7231]).
+		if r.methodCode != MethodOPTIONS {
+			r.headResult, r.failReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
+			return false
+		}
+		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			return false
+		}
+		r.asteriskOptions = true
+		// Expect SP
+		if r.input[r.pFore] != ' ' {
+			r.headResult, r.failReason = StatusBadRequest, "malformed asterisk-form"
+			return false
+		}
+		// RFC 7230 (section 5.5):
+		// If the request-target is in authority-form or asterisk-form, the
+		// effective request URI's combined path and query component is empty.
+	} else { // r.methodCode == MethodCONNECT, authority-form
+		r.targetForm = webTargetAuthority
+		// RFC 7230 (section 5.3.3. authority-form:
+		// The authority-form of request-target is only used for CONNECT
+		// requests (Section 4.3.6 of [RFC7231]).
+		//
+		//   authority-form = authority
+		//   authority      = host [ ":" port ]
+		//
+		// When making a CONNECT request to establish a tunnel through one or
+		// more proxies, a client MUST send only the target URI's authority
+		// component (excluding any userinfo and its "@" delimiter) as the
+		// request-target.
+		for {
+			if b := r.input[r.pFore]; b >= 'A' && b <= 'Z' {
+				r.input[r.pFore] = b + 0x20 // to lower
+			} else if b == ' ' {
+				break
+			}
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+		}
+		if r.pBack == r.pFore {
+			r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
+			return false
+		}
+		if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
+			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
+			return false
+		}
+		// RFC 7230 (section 5.5):
+		// If the request-target is in authority-form or asterisk-form, the
+		// effective request URI's combined path and query component is empty.
+	}
+
+beforeVersion: // r.pFore is at ' '.
+	// Skip SP before HTTP-version
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		return false
+	}
+
+	// Now r.pFore is at HTTP-version.
+	r.pBack = r.pFore
+	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
+	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
+	if have := r.inputEdge - r.pFore; have >= 9 {
+		// r.pFore -> EOL
+		// r.inputEdge -> after EOL or more
+		r.pFore += 8
+	} else { // have < 9, but len("HTTP/1.X\n") = 9.
+		// r.pFore at 'H' -> EOL
+		// r.inputEdge at "TTP/1.X\n" -> after EOL
+		r.pFore = r.inputEdge - 1
+		for i, n := int32(0), 9-have; i < n; i++ {
+			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				return false
+			}
+		}
+	}
+	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, bytesHTTP1_1) {
+		r.versionCode = Version1_1
+	} else if bytes.Equal(version, bytesHTTP1_0) {
+		r.versionCode = Version1_0
+	} else { // i don't believe there will be a HTTP/1.2 in the future.
+		r.headResult = StatusHTTPVersionNotSupported
+		return false
+	}
+	if r.input[r.pFore] == '\r' {
+		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			return false
+		}
+	}
+	if r.input[r.pFore] != '\n' {
+		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
+		return false
+	}
+	r.receiving = webSectionHeaders
+	// Skip '\n'
+	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		return false
+	}
+
+	return true
+}
+func (r *http1Request) cleanInput() {
+	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
+	if r.contentSize == -1 { // no content
+		r.contentReceived = true   // we treat it as "received"
+		r.formReceived = true      // set anyway
+		if r.pFore < r.inputEdge { // still has data, stream is pipelined
+			r.inputNext = r.pFore // mark the beginning of the next request
+		} else { // r.pFore == r.inputEdge, no data anymore
+			r.inputNext, r.inputEdge = 0, 0 // reset
+		}
+		return
+	}
+	// content exists (sized or vague)
+	r.imme.set(r.pFore, r.inputEdge)
+	if r.contentSize >= 0 { // sized mode
+		immeSize := int64(r.imme.size())
+		if immeSize == 0 || immeSize <= r.contentSize {
+			r.inputNext, r.inputEdge = 0, 0 // reset
+		}
+		if immeSize >= r.contentSize {
+			r.contentReceived = true
+			edge := r.pFore + int32(r.contentSize)
+			if immeSize > r.contentSize { // still has data, stream is pipelined
+				r.imme.set(r.pFore, edge)
+				r.inputNext = edge // mark the beginning of next request
+			}
+			r.receivedSize = r.contentSize        // content is received entirely.
+			r.contentText = r.input[r.pFore:edge] // exact.
+			r.contentTextKind = webContentTextInput
+		}
+		if r.contentSize == 0 {
+			r.formReceived = true // no content means no form, so mark it as "received"
+		}
+	} else { // vague mode
+		// We don't know the size of vague content. Let chunked receivers to decide & clean r.input.
+	}
+}
+
+func (r *http1Request) readContent() (p []byte, err error) { return r.readContent1() }
+
+// http1Response is the server-side HTTP/1 response.
+type http1Response struct { // outgoing. needs building
+	// Parent
+	webServerResponse_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
+func (r *http1Response) control() []byte { // HTTP/1.1 xxx ?
+	var start []byte
+	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
+		r.start = http1Template
+		r.start[9] = byte(r.status/100 + '0')
+		r.start[10] = byte(r.status/10%10 + '0')
+		r.start[11] = byte(r.status%10 + '0')
+		start = r.start[:]
+	} else {
+		start = http1Controls[r.status]
+	}
+	return start
+}
+
+func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *http1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
+
+func (r *http1Response) AddHTTPSRedirection(authority string) bool {
+	headerSize := len(http1BytesLocationHTTPS)
+	if authority == "" {
+		headerSize += len(r.request.UnsafeAuthority())
+	} else {
+		headerSize += len(authority)
+	}
+	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], http1BytesLocationHTTPS)
+		if authority == "" {
+			from += copy(r.fields[from:], r.request.UnsafeAuthority())
+		} else {
+			from += copy(r.fields[from:], authority)
+		}
+		from += copy(r.fields[from:], r.request.UnsafeURI())
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
+func (r *http1Response) AddHostnameRedirection(hostname string) bool {
+	var prefix []byte
+	if r.request.IsHTTPS() {
+		prefix = http1BytesLocationHTTPS
+	} else {
+		prefix = http1BytesLocationHTTP
+	}
+	headerSize := len(prefix)
+	// TODO: remove colonPort if colonPort is default?
+	colonPort := r.request.UnsafeColonPort()
+	headerSize += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], prefix)
+		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
+		from += copy(r.fields[from:], colonPort)
+		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
+func (r *http1Response) AddDirectoryRedirection() bool {
+	var prefix []byte
+	if r.request.IsHTTPS() {
+		prefix = http1BytesLocationHTTPS
+	} else {
+		prefix = http1BytesLocationHTTP
+	}
+	req := r.request
+	headerSize := len(prefix)
+	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], prefix)
+		from += copy(r.fields[from:], req.UnsafeAuthority())
+		from += copy(r.fields[from:], req.UnsafeEncodedPath())
+		r.fields[from] = '/'
+		from++
+		if len(req.UnsafeQueryString()) > 0 {
+			from += copy(r.fields[from:], req.UnsafeQueryString())
+		}
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
+func (r *http1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
+
+func (r *http1Response) AddCookie(cookie *Cookie) bool {
+	if cookie.name == "" || cookie.invalid {
+		return false
+	}
+	headerSize := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], bytesSetCookie)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += cookie.writeTo(r.fields[from:])
+		r._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
+
+func (r *http1Response) sendChain() error { return r.sendChain1() }
+
+func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
+func (r *http1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
+
+func (r *http1Response) addTrailer(name []byte, value []byte) bool {
+	if r.request.VersionCode() == Version1_1 {
+		return r.addTrailer1(name, value)
+	}
+	return true // HTTP/1.0 doesn't support trailer.
+}
+func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+
+func (r *http1Response) proxyPass1xx(resp WebBackendResponse) bool {
+	resp.delHopHeaders()
+	r.status = resp.Status()
+	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r.insertHeader(header.hash, name, value)
+	}) {
+		return false
+	}
+	r.vector = r.fixedVector[0:3]
+	r.vector[0] = r.control()
+	r.vector[1] = r.addedHeaders()
+	r.vector[2] = bytesCRLF
+	// 1xx has no content.
+	if r.writeVector1() != nil {
+		return false
+	}
+	// For next use.
+	r.onEnd()
+	r.onUse(Version1_1)
+	return true
+}
+func (r *http1Response) passHeaders() error       { return r.writeHeaders1() }
+func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
+
+func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
+	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.iDate == 0 {
+		r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+	}
+	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.unixTimes.expires >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesExpires, r.unixTimes.expires))
+	}
+	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.unixTimes.lastModified >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
+	}
+	conn := r.stream.webConn()
+	if r.contentSize != -1 { // with content
+		if !r.forbidFraming {
+			if !r.isVague() { // content-length: >=0\r\n
+				sizeBuffer := r.stream.buffer256() // enough for content-length
+				n := i64ToDec(r.contentSize, sizeBuffer)
+				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
+			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
+				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
+			} else {
+				// RFC 7230 (section 3.3.1): A server MUST NOT send a
+				// response containing Transfer-Encoding unless the corresponding
+				// request indicates HTTP/1.1 (or later).
+				conn.setPersistent(false) // close conn anyway for HTTP/1.0
+			}
+		}
+		// content-type: text/html; charset=utf-8\r\n
+		if r.iContentType == 0 {
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+		}
+	}
+	if conn.isPersistent() { // connection: keep-alive\r\n
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+	} else { // connection: close\r\n
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
+	}
+}
+func (r *http1Response) finalizeVague() error {
+	if r.request.VersionCode() == Version1_1 {
+		return r.finalizeVague1()
+	}
+	return nil // HTTP/1.0 does nothing.
+}
+
+func (r *http1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
+func (r *http1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
+
+// poolHTTP1Socket
+var poolHTTP1Socket sync.Pool
+
+func getHTTP1Socket(stream *http1Stream) *http1Socket {
+	return nil
+}
+func putHTTP1Socket(socket *http1Socket) {
+}
+
+// http1Socket is the server-side HTTP/1 websocket.
+type http1Socket struct {
+	// Parent
+	webServerSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
+func (s *http1Socket) onUse() {
+	s.webServerSocket_.onUse()
+}
+func (s *http1Socket) onEnd() {
+	s.webServerSocket_.onEnd()
 }
 
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
@@ -1512,7 +2195,7 @@ func (s *http2Stream) writeContinue() bool { // 100 continue
 
 func (s *http2Stream) executeExchan(webapp *Webapp, req *http2Request, resp *http2Response) { // request & response
 	// TODO
-	webapp.exchanDispatch(req, resp)
+	webapp.dispatchExchan(req, resp)
 }
 func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
 	// TODO
@@ -1549,454 +2232,6 @@ func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 	return 0, nil
 }
 
-// http1Request is the server-side HTTP/1 request.
-type http1Request struct { // incoming. needs parsing
-	// Parent
-	webServerRequest_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (r *http1Request) recvHead() { // control + headers
-	// The entire request head must be received in one timeout
-	if err := r._beforeRead(&r.recvTime); err != nil {
-		r.headResult = -1
-		return
-	}
-	if r.inputEdge == 0 && !r.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
-		// r.headResult is set.
-		return
-	}
-	if !r._recvControl() || !r.recvHeaders1() || !r.examineHead() {
-		// r.headResult is set.
-		return
-	}
-	r.cleanInput()
-	if DbgLevel() >= 2 {
-		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
-	}
-}
-func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
-	r.pBack, r.pFore = 0, 0
-
-	// method = token
-	// token = 1*tchar
-	hash := uint16(0)
-	for {
-		if b := r.input[r.pFore]; webTchar[b] != 0 {
-			hash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-		} else if b == ' ' {
-			break
-		} else {
-			r.headResult, r.failReason = StatusBadRequest, "invalid character in method"
-			return false
-		}
-	}
-	if r.pBack == r.pFore {
-		r.headResult, r.failReason = StatusBadRequest, "empty method"
-		return false
-	}
-	r.gotInput = true
-	r.method.set(r.pBack, r.pFore)
-	r.recognizeMethod(r.input[r.pBack:r.pFore], hash)
-	// Skip SP after method
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-		return false
-	}
-
-	// Now r.pFore is at request-target.
-	r.pBack = r.pFore
-	// request-target = absolute-form / origin-form / authority-form / asterisk-form
-	if b := r.input[r.pFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
-		if b != '/' { // absolute-form
-			r.targetForm = webTargetAbsolute
-			// absolute-form = absolute-URI
-			// absolute-URI = scheme ":" hier-part [ "?" query ]
-			// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
-			// hier-part = "//" authority path-abempty
-			// authority = host [ ":" port ]
-			// path-abempty = *( "/" segment)
-
-			// Scheme
-			for {
-				if b := r.input[r.pFore]; b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '-' || b == '.' {
-					// Do nothing
-				} else if b >= 'A' && b <= 'Z' {
-					// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
-					// The scheme and host are case-insensitive and normally provided in lowercase;
-					// all other components are compared in a case-sensitive manner.
-					r.input[r.pFore] = b + 0x20 // to lower
-				} else if b == ':' {
-					break
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
-					return false
-				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-					return false
-				}
-			}
-			if scheme := r.input[r.pBack:r.pFore]; bytes.Equal(scheme, bytesHTTP) {
-				r.schemeCode = SchemeHTTP
-			} else if bytes.Equal(scheme, bytesHTTPS) {
-				r.schemeCode = SchemeHTTPS
-			} else {
-				r.headResult, r.failReason = StatusBadRequest, "unknown scheme"
-				return false
-			}
-			// Skip ':'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-			if r.input[r.pFore] != '/' {
-				r.headResult, r.failReason = StatusBadRequest, "bad first slash"
-				return false
-			}
-			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-			if r.input[r.pFore] != '/' {
-				r.headResult, r.failReason = StatusBadRequest, "bad second slash"
-				return false
-			}
-			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-			// authority = host [ ":" port ]
-			// host = IP-literal / IPv4address / reg-name
-			r.pBack = r.pFore
-			for {
-				if b = r.input[r.pFore]; b >= 'A' && b <= 'Z' {
-					r.input[r.pFore] = b + 0x20 // to lower
-				} else if b == '/' || b == ' ' {
-					break
-				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-					return false
-				}
-			}
-			if r.pBack == r.pFore {
-				r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
-				return false
-			}
-			if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
-				r.headResult, r.failReason = StatusBadRequest, "bad authority"
-				return false
-			}
-			if b == ' ' { // ends of request-target
-				// Don't treat this as webTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
-				if r.methodCode == MethodOPTIONS {
-					// OPTIONS http://www.example.org:8001 HTTP/1.1
-					r.asteriskOptions = true
-				} else {
-					// GET http://www.example.org HTTP/1.1
-					// Do nothing.
-				}
-				goto beforeVersion // request target is done, since origin-form always starts with '/', while b is ' ' here.
-			}
-			r.pBack = r.pFore // at '/'.
-		}
-		// RFC 7230 (5.3.1.  origin-form)
-		//
-		// The most common form of request-target is the origin-form.
-		//
-		//   origin-form = absolute-path [ "?" query ]
-		//       absolute-path = 1*( "/" segment )
-		//           segment = *pchar
-		//       query = *( pchar / "/" / "?" )
-		//
-		// When making a request directly to an origin server, other than a
-		// CONNECT or server-wide OPTIONS request (as detailed below), a client
-		// MUST send only the absolute path and query components of the target
-		// URI as the request-target.  If the target URI's path component is
-		// empty, the client MUST send "/" as the path within the origin-form of
-		// request-target.  A Host header field is also sent, as defined in
-		// Section 5.4.
-		var (
-			state = 1   // in path
-			octet byte  // byte value of %xx
-			qsOff int32 // offset of query string, if exists
-		)
-		query := &r.mainPair
-		query.zero()
-		query.kind = kindQuery
-		query.place = placeArray // all received queries are placed in r.array because queries have been decoded
-
-		// r.pFore is at '/'.
-	uri:
-		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.
-			b := r.input[r.pFore]
-			switch state {
-			case 1: // in path
-				if webPchar[b] == 1 { // excluding '?'
-					r.arrayPush(b)
-				} else if b == '%' {
-					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG
-				} else if b == '?' {
-					// Path is over, switch to query string parsing
-					r.path = r.array[0:r.arrayEdge]
-					r.queries.from = uint8(len(r.primes))
-					r.queries.edge = r.queries.from
-					query.nameFrom = r.arrayEdge
-					qsOff = r.pFore - r.pBack
-					state = 2
-				} else if b == ' ' { // end of request-target
-					break uri
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "invalid path"
-					return false
-				}
-			case 2: // in query string and expecting '=' to get a name
-				if b == '=' {
-					if nameSize := r.arrayEdge - query.nameFrom; nameSize <= 255 {
-						query.nameSize = uint8(nameSize)
-						query.value.from = r.arrayEdge
-					} else {
-						r.headResult, r.failReason = StatusBadRequest, "query name too long"
-						return false
-					}
-					state = 3
-				} else if webPchar[b] > 0 { // including '?'
-					if b == '+' {
-						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
-					}
-					query.hash += uint16(b)
-					r.arrayPush(b)
-				} else if b == '%' {
-					state = 0x2f // '2' means from state 2, 'f' means first HEXDIG
-				} else if b == ' ' { // end of request-target
-					break uri
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "invalid query name"
-					return false
-				}
-			case 3: // in query string and expecting '&' to get a value
-				if b == '&' {
-					query.value.edge = r.arrayEdge
-					if query.nameSize > 0 && !r.addQuery(query) {
-						return false
-					}
-					query.hash = 0 // reset for next query
-					query.nameFrom = r.arrayEdge
-					state = 2
-				} else if webPchar[b] > 0 { // including '?'
-					if b == '+' {
-						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
-					}
-					r.arrayPush(b)
-				} else if b == '%' {
-					state = 0x3f // '3' means from state 3, 'f' means first HEXDIG
-				} else if b == ' ' { // end of request-target
-					break uri
-				} else {
-					r.headResult, r.failReason = StatusBadRequest, "invalid query value"
-					return false
-				}
-			default: // in query string and expecting HEXDIG
-				if b == ' ' { // end of request-target
-					break uri
-				}
-				nybble, ok := byteFromHex(b)
-				if !ok {
-					r.headResult, r.failReason = StatusBadRequest, "invalid pct encoding"
-					return false
-				}
-				if state&0xf == 0xf { // Expecting the first HEXDIG
-					octet = nybble << 4
-					state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
-				} else { // Expecting the second HEXDIG
-					octet |= nybble
-					if state == 0x20 { // in name
-						query.hash += uint16(octet)
-					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
-						r.headResult, r.failReason = StatusBadRequest, "malformed path"
-						return false
-					}
-					r.arrayPush(octet)
-					state >>= 4 // restore previous state
-				}
-			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-		}
-		if state == 1 { // path ends without a '?'
-			r.path = r.array[0:r.arrayEdge]
-		} else if state == 2 { // in query string and no '=' found
-			r.queryString.set(r.pBack+qsOff, r.pFore)
-			// Since there is no '=', we ignore this query
-		} else if state == 3 { // in query string and no '&' found
-			r.queryString.set(r.pBack+qsOff, r.pFore)
-			query.value.edge = r.arrayEdge
-			if query.nameSize > 0 && !r.addQuery(query) {
-				return false
-			}
-		} else { // incomplete pct-encoded
-			r.headResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
-			return false
-		}
-
-		r.uri.set(r.pBack, r.pFore)
-		if qsOff == 0 {
-			r.encodedPath = r.uri
-		} else {
-			r.encodedPath.set(r.pBack, r.pBack+qsOff)
-		}
-		r.cleanPath()
-	} else if b == '*' { // OPTIONS *, asterisk-form
-		r.targetForm = webTargetAsterisk
-		// RFC 7230 (section 5.3.4):
-		// The asterisk-form of request-target is only used for a server-wide
-		// OPTIONS request (Section 4.3.7 of [RFC7231]).
-		if r.methodCode != MethodOPTIONS {
-			r.headResult, r.failReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
-			return false
-		}
-		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-			return false
-		}
-		r.asteriskOptions = true
-		// Expect SP
-		if r.input[r.pFore] != ' ' {
-			r.headResult, r.failReason = StatusBadRequest, "malformed asterisk-form"
-			return false
-		}
-		// RFC 7230 (section 5.5):
-		// If the request-target is in authority-form or asterisk-form, the
-		// effective request URI's combined path and query component is empty.
-	} else { // r.methodCode == MethodCONNECT, authority-form
-		r.targetForm = webTargetAuthority
-		// RFC 7230 (section 5.3.3. authority-form:
-		// The authority-form of request-target is only used for CONNECT
-		// requests (Section 4.3.6 of [RFC7231]).
-		//
-		//   authority-form = authority
-		//   authority      = host [ ":" port ]
-		//
-		// When making a CONNECT request to establish a tunnel through one or
-		// more proxies, a client MUST send only the target URI's authority
-		// component (excluding any userinfo and its "@" delimiter) as the
-		// request-target.
-		for {
-			if b := r.input[r.pFore]; b >= 'A' && b <= 'Z' {
-				r.input[r.pFore] = b + 0x20 // to lower
-			} else if b == ' ' {
-				break
-			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-		}
-		if r.pBack == r.pFore {
-			r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
-			return false
-		}
-		if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
-			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
-			return false
-		}
-		// RFC 7230 (section 5.5):
-		// If the request-target is in authority-form or asterisk-form, the
-		// effective request URI's combined path and query component is empty.
-	}
-
-beforeVersion: // r.pFore is at ' '.
-	// Skip SP before HTTP-version
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-		return false
-	}
-
-	// Now r.pFore is at HTTP-version.
-	r.pBack = r.pFore
-	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
-	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
-	if have := r.inputEdge - r.pFore; have >= 9 {
-		// r.pFore -> EOL
-		// r.inputEdge -> after EOL or more
-		r.pFore += 8
-	} else { // have < 9, but len("HTTP/1.X\n") = 9.
-		// r.pFore at 'H' -> EOL
-		// r.inputEdge at "TTP/1.X\n" -> after EOL
-		r.pFore = r.inputEdge - 1
-		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-				return false
-			}
-		}
-	}
-	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, bytesHTTP1_1) {
-		r.versionCode = Version1_1
-	} else if bytes.Equal(version, bytesHTTP1_0) {
-		r.versionCode = Version1_0
-	} else { // i don't believe there will be a HTTP/1.2 in the future.
-		r.headResult = StatusHTTPVersionNotSupported
-		return false
-	}
-	if r.input[r.pFore] == '\r' {
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-			return false
-		}
-	}
-	if r.input[r.pFore] != '\n' {
-		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
-		return false
-	}
-	r.receiving = webSectionHeaders
-	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
-		return false
-	}
-
-	return true
-}
-func (r *http1Request) cleanInput() {
-	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
-	if r.contentSize == -1 { // no content
-		r.contentReceived = true   // we treat it as "received"
-		r.formReceived = true      // set anyway
-		if r.pFore < r.inputEdge { // still has data, stream is pipelined
-			r.inputNext = r.pFore // mark the beginning of the next request
-		} else { // r.pFore == r.inputEdge, no data anymore
-			r.inputNext, r.inputEdge = 0, 0 // reset
-		}
-		return
-	}
-	// content exists (sized or vague)
-	r.imme.set(r.pFore, r.inputEdge)
-	if r.contentSize >= 0 { // sized mode
-		immeSize := int64(r.imme.size())
-		if immeSize == 0 || immeSize <= r.contentSize {
-			r.inputNext, r.inputEdge = 0, 0 // reset
-		}
-		if immeSize >= r.contentSize {
-			r.contentReceived = true
-			edge := r.pFore + int32(r.contentSize)
-			if immeSize > r.contentSize { // still has data, stream is pipelined
-				r.imme.set(r.pFore, edge)
-				r.inputNext = edge // mark the beginning of next request
-			}
-			r.receivedSize = r.contentSize        // content is received entirely.
-			r.contentText = r.input[r.pFore:edge] // exact.
-			r.contentTextKind = webContentTextInput
-		}
-		if r.contentSize == 0 {
-			r.formReceived = true // no content means no form, so mark it as "received"
-		}
-	} else { // vague mode
-		// We don't know the size of vague content. Let chunked receivers to decide & clean r.input.
-	}
-}
-
-func (r *http1Request) readContent() (p []byte, err error) { return r.readContent1() }
-
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct { // incoming. needs parsing
 	// Parent
@@ -2021,212 +2256,6 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false
 }
-
-// http1Response is the server-side HTTP/1 response.
-type http1Response struct { // outgoing. needs building
-	// Parent
-	webServerResponse_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (r *http1Response) control() []byte { // HTTP/1.1 xxx ?
-	var start []byte
-	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
-		r.start = http1Template
-		r.start[9] = byte(r.status/100 + '0')
-		r.start[10] = byte(r.status/10%10 + '0')
-		r.start[11] = byte(r.status%10 + '0')
-		start = r.start[:]
-	} else {
-		start = http1Controls[r.status]
-	}
-	return start
-}
-
-func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
-func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
-func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *http1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
-
-func (r *http1Response) AddHTTPSRedirection(authority string) bool {
-	headerSize := len(http1BytesLocationHTTPS)
-	if authority == "" {
-		headerSize += len(r.request.UnsafeAuthority())
-	} else {
-		headerSize += len(authority)
-	}
-	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], http1BytesLocationHTTPS)
-		if authority == "" {
-			from += copy(r.fields[from:], r.request.UnsafeAuthority())
-		} else {
-			from += copy(r.fields[from:], authority)
-		}
-		from += copy(r.fields[from:], r.request.UnsafeURI())
-		r._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
-}
-func (r *http1Response) AddHostnameRedirection(hostname string) bool {
-	var prefix []byte
-	if r.request.IsHTTPS() {
-		prefix = http1BytesLocationHTTPS
-	} else {
-		prefix = http1BytesLocationHTTP
-	}
-	headerSize := len(prefix)
-	// TODO: remove colonPort if colonPort is default?
-	colonPort := r.request.UnsafeColonPort()
-	headerSize += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], prefix)
-		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
-		from += copy(r.fields[from:], colonPort)
-		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
-		r._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
-}
-func (r *http1Response) AddDirectoryRedirection() bool {
-	var prefix []byte
-	if r.request.IsHTTPS() {
-		prefix = http1BytesLocationHTTPS
-	} else {
-		prefix = http1BytesLocationHTTP
-	}
-	req := r.request
-	headerSize := len(prefix)
-	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], prefix)
-		from += copy(r.fields[from:], req.UnsafeAuthority())
-		from += copy(r.fields[from:], req.UnsafeEncodedPath())
-		r.fields[from] = '/'
-		from++
-		if len(req.UnsafeQueryString()) > 0 {
-			from += copy(r.fields[from:], req.UnsafeQueryString())
-		}
-		r._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
-}
-func (r *http1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
-
-func (r *http1Response) AddCookie(cookie *Cookie) bool {
-	if cookie.name == "" || cookie.invalid {
-		return false
-	}
-	headerSize := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], bytesSetCookie)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
-		from += 2
-		from += cookie.writeTo(r.fields[from:])
-		r._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
-}
-
-func (r *http1Response) sendChain() error { return r.sendChain1() }
-
-func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
-func (r *http1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
-
-func (r *http1Response) addTrailer(name []byte, value []byte) bool {
-	if r.request.VersionCode() == Version1_1 {
-		return r.addTrailer1(name, value)
-	}
-	return true // HTTP/1.0 doesn't support trailer.
-}
-func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
-
-func (r *http1Response) proxyPass1xx(resp WebBackendResponse) bool {
-	resp.delHopHeaders()
-	r.status = resp.Status()
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.hash, name, value)
-	}) {
-		return false
-	}
-	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.control()
-	r.vector[1] = r.addedHeaders()
-	r.vector[2] = bytesCRLF
-	// 1xx has no content.
-	if r.writeVector1() != nil {
-		return false
-	}
-	// For next use.
-	r.onEnd()
-	r.onUse(Version1_1)
-	return true
-}
-func (r *http1Response) passHeaders() error       { return r.writeHeaders1() }
-func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
-
-func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
-	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
-	}
-	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.unixTimes.expires >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesExpires, r.unixTimes.expires))
-	}
-	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.unixTimes.lastModified >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
-	}
-	conn := r.stream.webConn()
-	if r.contentSize != -1 { // with content
-		if !r.forbidFraming {
-			if !r.isVague() { // content-length: >=0\r\n
-				sizeBuffer := r.stream.buffer256() // enough for content-length
-				n := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
-			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
-				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
-			} else {
-				// RFC 7230 (section 3.3.1): A server MUST NOT send a
-				// response containing Transfer-Encoding unless the corresponding
-				// request indicates HTTP/1.1 (or later).
-				conn.setPersistent(false) // close conn anyway for HTTP/1.0
-			}
-		}
-		// content-type: text/html; charset=utf-8\r\n
-		if r.iContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
-		}
-	}
-	if conn.isPersistent() { // connection: keep-alive\r\n
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
-	} else { // connection: close\r\n
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
-	}
-}
-func (r *http1Response) finalizeVague() error {
-	if r.request.VersionCode() == Version1_1 {
-		return r.finalizeVague1()
-	}
-	return nil // HTTP/1.0 does nothing.
-}
-
-func (r *http1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
-func (r *http1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
 // http2Response is the server-side HTTP/2 response.
 type http2Response struct { // outgoing. needs building
@@ -2321,32 +2350,6 @@ func (r *http2Response) finalizeVague() error {
 
 func (r *http2Response) addedHeaders() []byte { return nil } // TODO
 func (r *http2Response) fixedHeaders() []byte { return nil } // TODO
-
-// poolHTTP1Socket
-var poolHTTP1Socket sync.Pool
-
-func getHTTP1Socket(stream *http1Stream) *http1Socket {
-	return nil
-}
-func putHTTP1Socket(socket *http1Socket) {
-}
-
-// http1Socket is the server-side HTTP/1 websocket.
-type http1Socket struct {
-	// Parent
-	webServerSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (s *http1Socket) onUse() {
-	s.webServerSocket_.onUse()
-}
-func (s *http1Socket) onEnd() {
-	s.webServerSocket_.onEnd()
-}
 
 // poolHTTP2Socket
 var poolHTTP2Socket sync.Pool

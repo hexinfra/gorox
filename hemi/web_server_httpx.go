@@ -51,7 +51,7 @@ func (s *httpxServer) onCreate(name string, stage *Stage) {
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.webServer_.onConfigure(s)
+	s.webServer_.onConfigure()
 
 	var scheme string
 	// forceScheme
@@ -78,7 +78,7 @@ func (s *httpxServer) OnConfigure() {
 	}
 }
 func (s *httpxServer) OnPrepare() {
-	s.webServer_.onPrepare(s)
+	s.webServer_.onPrepare()
 	if s.IsTLS() {
 		var nextProtos []string
 		if !s.enableHTTP2 {
@@ -294,7 +294,7 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 	g.OnConnClosed()
 }
 
-// httpxConn is the server-side web conn.
+// httpxConn is the server-side HTTP/1 and HTTP/2 conn.
 type httpxConn interface { // for *http[1-2]Conn
 	serve() // runner
 }
@@ -2220,15 +2220,19 @@ func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *http2Stream) read(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *http2Stream) readFull(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *http2Stream) write(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 

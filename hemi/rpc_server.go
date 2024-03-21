@@ -43,7 +43,7 @@ func (s *rpcServer_[G]) onShutdown() {
 	s.Server_.OnShutdown()
 }
 
-func (s *rpcServer_[G]) onConfigure(shell Component) {
+func (s *rpcServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
 
 	// forServices
@@ -65,7 +65,7 @@ func (s *rpcServer_[G]) onConfigure(shell Component) {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 }
-func (s *rpcServer_[G]) onPrepare(shell Component) {
+func (s *rpcServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
 }
 

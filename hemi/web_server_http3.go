@@ -39,11 +39,11 @@ func (s *http3Server) onCreate(name string, stage *Stage) {
 }
 
 func (s *http3Server) OnConfigure() {
-	s.webServer_.onConfigure(s)
+	s.webServer_.onConfigure()
 	// TODO: forceScheme & adjustScheme?
 }
 func (s *http3Server) OnPrepare() {
-	s.webServer_.onPrepare(s)
+	s.webServer_.onPrepare()
 }
 
 func (s *http3Server) Serve() { // runner

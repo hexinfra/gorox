@@ -57,16 +57,16 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
 
-func (s *webServer_[G]) onConfigure(shell Component) {
+func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webAgent_.onConfigure(shell, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
+	s._webAgent_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 }
-func (s *webServer_[G]) onPrepare(shell Component) {
+func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._webAgent_.onPrepare(shell)
+	s._webAgent_.onPrepare(s)
 }
 
 func (s *webServer_[G]) bindApps() {

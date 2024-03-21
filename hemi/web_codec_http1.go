@@ -914,6 +914,7 @@ func (r *webOut_) writeBytes1(p []byte) error {
 // HTTP/1 websocket
 
 func (s *webSocket_) example1() {
+	// TODO
 }
 
 // HTTP/1 protocol

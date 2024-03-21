@@ -1,1 +1,1 @@
-Sitex handlet implements a simple MVC Web application framework.
+Sitex handlet implements a simple Web application framework.

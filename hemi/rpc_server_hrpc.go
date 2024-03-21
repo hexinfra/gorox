@@ -30,10 +30,10 @@ func (s *hrpcServer) OnShutdown() {
 }
 
 func (s *hrpcServer) OnConfigure() {
-	s.rpcServer_.onConfigure(s)
+	s.rpcServer_.onConfigure()
 }
 func (s *hrpcServer) OnPrepare() {
-	s.rpcServer_.onPrepare(s)
+	s.rpcServer_.onPrepare()
 }
 
 func (s *hrpcServer) Serve() { // runner

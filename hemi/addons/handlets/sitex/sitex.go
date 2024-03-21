@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Sitex handlets implement a simple MVC Web application framework.
+// Sitex handlets implement a simple Web application framework.
 
 package sitex
 
@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// Sitex handlet implements a simple MVC Web application framework.
+// Sitex handlet implements a simple Web application framework.
 type Sitex struct {
 	// Parent
 	Handlet_

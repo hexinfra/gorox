@@ -23,8 +23,8 @@ import (
 	"time"
 )
 
-// webServer
-type webServer interface { // for *httpxServer and *http3Server
+// WebServer
+type WebServer interface { // for *httpxServer and *http3Server
 	// Imports
 	Server
 	contentSaver
@@ -88,7 +88,7 @@ func (s *webServer_[G]) bindApps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		webapp.bindServer(s.shell.(webServer))
+		webapp.bindServer(s.shell.(WebServer))
 		if webapp.isDefault {
 			s.defaultApp = webapp
 		}
@@ -3117,7 +3117,7 @@ type Webapp struct {
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
-	servers  []webServer       // bound web servers. may be empty
+	servers  []WebServer       // bound web servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
@@ -3375,7 +3375,7 @@ func (a *Webapp) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *Webapp) bindServer(server webServer) { a.servers = append(a.servers, server) }
+func (a *Webapp) bindServer(server WebServer) { a.servers = append(a.servers, server) }
 
 func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
 func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }

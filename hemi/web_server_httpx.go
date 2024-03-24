@@ -373,7 +373,7 @@ func (c *http1Conn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *http1Conn) webServer() webServer { return c.Server().(webServer) }
+func (c *http1Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
 func (c *http1Conn) serve() { // runner
 	defer putHTTP1Conn(c)
@@ -640,7 +640,7 @@ func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *http1Stream) webAgent() webAgent   { return c.webServer() }
+func (c *http1Stream) webAgent() webAgent   { return c.WebServer() }
 func (c *http1Stream) webConn() webConn     { return c }
 func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
@@ -1431,7 +1431,7 @@ func (c *http2Conn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *http2Conn) webServer() webServer { return c.Server().(webServer) }
+func (c *http2Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
 func (c *http2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
@@ -2215,7 +2215,7 @@ func (s *http2Stream) setWriteDeadline(deadline time.Time) error { // for conten
 func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *http2Stream) webAgent() webAgent   { return s.conn.webServer() }
+func (s *http2Stream) webAgent() webAgent   { return s.conn.WebServer() }
 func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

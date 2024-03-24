@@ -181,7 +181,7 @@ func (c *http3Conn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *http3Conn) webServer() webServer { return c.Server().(webServer) }
+func (c *http3Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
 func (c *http3Conn) serve() { // runner
 	// TODO
@@ -306,7 +306,7 @@ func (s *http3Stream) setWriteDeadline(deadline time.Time) error { // for conten
 func (s *http3Stream) isBroken() bool { return false } // TODO
 func (s *http3Stream) markBroken()    {}               // TODO
 
-func (s *http3Stream) webAgent() webAgent   { return s.conn.webServer() }
+func (s *http3Stream) webAgent() webAgent   { return s.conn.WebServer() }
 func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 

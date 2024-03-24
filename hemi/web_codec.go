@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-// webAgent collects shared methods between webServer or webBackend.
+// webAgent collects shared methods between WebServer or WebBackend.
 type webAgent interface {
 	// Imports
 	contentSaver

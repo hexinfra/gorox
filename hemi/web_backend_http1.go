@@ -81,7 +81,7 @@ func (n *http1Node) OnPrepare() {
 
 func (n *http1Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check, markUp()
+		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {

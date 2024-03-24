@@ -73,7 +73,7 @@ func (n *http3Node) OnPrepare() {
 
 func (n *http3Node) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markDown, markUp()
 	})
 	// TODO: wait for all conns
 	if DbgLevel() >= 2 {

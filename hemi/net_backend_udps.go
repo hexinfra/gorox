@@ -29,19 +29,23 @@ type UDPSBackend struct {
 	Backend_[*udpsNode]
 	// Mixins
 	// States
-	healthCheck any
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b.healthCheck = nil
 }
 
 func (b *UDPSBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *UDPSBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *UDPSBackend) CreateNode(name string) Node {
@@ -85,7 +89,7 @@ func (n *udpsNode) OnPrepare() {
 
 func (n *udpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markDown, markUp()
 	})
 	// TODO: wait for all conns
 	if DbgLevel() >= 2 {

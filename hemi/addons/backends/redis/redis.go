@@ -29,6 +29,8 @@ func init() {
 type RedisBackend struct {
 	// Parent
 	Backend_[*redisNode]
+	// Mixins
+	// States
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
@@ -36,8 +38,16 @@ func (b *RedisBackend) onCreate(name string, stage *Stage) {
 }
 
 func (b *RedisBackend) OnConfigure() {
+	b.Backend_.OnConfigure()
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *RedisBackend) OnPrepare() {
+	b.Backend_.OnPrepare()
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *RedisBackend) CreateNode(name string) Node {
@@ -76,6 +86,7 @@ func (n *redisNode) OnPrepare() {
 }
 
 func (n *redisNode) Maintain() { // runner
+	// TODO
 }
 
 func (n *redisNode) dial() (*RedisConn, error) {

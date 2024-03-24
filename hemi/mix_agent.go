@@ -36,15 +36,17 @@ type Backend_[N Node] struct {
 	indexGet     func() int64  // ...
 	nodeIndex    atomic.Int64  // for roundRobin. won't overflow because it is so large!
 	numNodes     int64         // num of nodes
+	healthCheck  any           // TODO
 }
 
 func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
 	b.MakeComp(name)
 	b.stage = stage
 	b.nodeIndex.Store(-1)
+	b.healthCheck = nil // TODO
 }
 func (b *Backend_[N]) OnShutdown() {
-	close(b.ShutChan) // notifies Maintain()
+	close(b.ShutChan) // notifies Maintain() which shutdown sub components
 }
 
 func (b *Backend_[N]) OnConfigure() {
@@ -102,6 +104,13 @@ func (b *Backend_[N]) OnPrepare() {
 	b.numNodes = int64(len(b.nodes))
 }
 
+func (b *Backend_[N]) ConfigureNodes() {
+	b.nodes.walk(N.OnConfigure)
+}
+func (b *Backend_[N]) PrepareNodes() {
+	b.nodes.walk(N.OnPrepare)
+}
+
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub()
@@ -111,9 +120,10 @@ func (b *Backend_[N]) Maintain() { // runner
 
 	// Backend was told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
-		node.OnShutdown()
+		go node.OnShutdown()
 	}
 	b.WaitSubs() // nodes
+
 	if DbgLevel() >= 2 {
 		Printf("backend=%s done\n", b.Name())
 	}
@@ -160,14 +170,16 @@ type Node_ struct {
 	weight         int32       // 1, 22, 333, ...
 	keepAliveConns int32       // max conns to keep alive
 	down           atomic.Bool // TODO: false-sharing
+	health         any         // TODO
 }
 
 func (n *Node_) OnCreate(name string, backend Backend) {
 	n.MakeComp(name)
 	n.backend = backend
+	n.health = nil // TODO
 }
 func (n *Node_) OnShutdown() {
-	close(n.ShutChan) // notifies Maintain()
+	close(n.ShutChan) // notifies Maintain() which close conns
 }
 
 func (n *Node_) OnConfigure() {

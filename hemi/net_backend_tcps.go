@@ -33,12 +33,10 @@ type TCPSBackend struct {
 	// Mixins
 	// States
 	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
-	healthCheck       any
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b.healthCheck = nil
 }
 
 func (b *TCPSBackend) OnConfigure() {
@@ -51,9 +49,15 @@ func (b *TCPSBackend) OnConfigure() {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *TCPSBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *TCPSBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
@@ -105,7 +109,7 @@ func (n *tcpsNode) OnPrepare() {
 
 func (n *tcpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check, markUp()
+		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {

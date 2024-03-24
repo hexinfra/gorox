@@ -175,7 +175,7 @@ func (s *Service) onCreate(name string, stage *Stage) {
 	s.stage = stage
 }
 func (s *Service) OnShutdown() {
-	close(s.ShutChan) // notifies maintain()
+	close(s.ShutChan) // notifies maintain() which shutdown sub components
 }
 
 func (s *Service) OnConfigure() {

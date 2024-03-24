@@ -35,21 +35,25 @@ type webBackend_[N Node] struct {
 	// Mixins
 	_webAgent_
 	// States
-	healthCheck any
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b.healthCheck = nil
 }
 
 func (b *webBackend_[N]) OnConfigure() {
 	b.Backend_.OnConfigure()
 	b._webAgent_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *webBackend_[N]) OnPrepare() {
 	b.Backend_.OnPrepare()
 	b._webAgent_.onPrepare(b)
+
+	// sub components
+	b.PrepareNodes()
 }
 
 // WebBackendStream is the backend-side web stream.

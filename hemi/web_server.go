@@ -1739,7 +1739,7 @@ func (r *webServerRequest_) _loadURLEncodedForm() { // into memory entirely
 				state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
 			} else { // expecting the second HEXDIG
 				octet |= nybble
-				if state == 0x20 { // in name
+				if state == 0x20 { // in name, calculate name hash
 					form.hash += uint16(octet)
 				}
 				r.arrayPush(octet)
@@ -1942,7 +1942,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 							return
 						}
 						part.name.edge = r.arrayEdge
-						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value to hint this?
+						// TODO: Is this a good implementation? If size is too large, just use bytes.Equal? Use a special hash value (like 0xffff) to hint this?
 						for p := para.value.from; p < para.value.edge; p++ {
 							part.hash += uint16(r.formWindow[p])
 						}
@@ -3151,7 +3151,7 @@ func (a *Webapp) onCreate(name string, stage *Stage) {
 	a.nRevisers = 1 // position 0 is not used
 }
 func (a *Webapp) OnShutdown() {
-	close(a.ShutChan) // notifies maintain()
+	close(a.ShutChan) // notifies maintain() which shutdown sub components
 }
 
 func (a *Webapp) OnConfigure() {

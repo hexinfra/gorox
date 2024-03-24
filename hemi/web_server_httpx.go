@@ -915,7 +915,7 @@ func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP
 					state &= 0xf0 // this reserves last state and leads to the state of second HEXDIG
 				} else { // Expecting the second HEXDIG
 					octet |= nybble
-					if state == 0x20 { // in name
+					if state == 0x20 { // in name, calculate name hash
 						query.hash += uint16(octet)
 					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
 						r.headResult, r.failReason = StatusBadRequest, "malformed path"

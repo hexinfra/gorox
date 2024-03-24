@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// Misc components and elements for web.
+// Misc elements for web.
 
 package hemi
 
@@ -515,7 +515,7 @@ func putPairs(pairs []pair) {
 
 // pair is used to hold queries, headers, cookies, forms, trailers, and params.
 type pair struct { // 24 bytes
-	hash     uint16 // name hash, to support fast search. 0 means empty
+	hash     uint16 // name hash, to support fast search. 0 means empty pair
 	kind     int8   // see pair kinds
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from

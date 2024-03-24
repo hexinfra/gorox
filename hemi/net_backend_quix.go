@@ -31,12 +31,10 @@ type QUIXBackend struct {
 	// Mixins
 	// States
 	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
-	healthCheck       any
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b.healthCheck = nil
 }
 
 func (b *QUIXBackend) OnConfigure() {
@@ -49,9 +47,15 @@ func (b *QUIXBackend) OnConfigure() {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *QUIXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *QUIXBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
@@ -101,7 +105,7 @@ func (n *quixNode) OnPrepare() {
 
 func (n *quixNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
-		// TODO: health check
+		// TODO: health check, markDown, markUp()
 	})
 	// TODO: wait for all conns
 	if DbgLevel() >= 2 {

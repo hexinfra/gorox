@@ -8,6 +8,7 @@
 package hemi
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,23 +29,32 @@ type QUIXBackend struct {
 	// Parent
 	Backend_[*quixNode]
 	// Mixins
-	_streamHolder_
 	// States
-	health any // TODO
+	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
+	healthCheck       any
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
+	b.healthCheck = nil
 }
 
 func (b *QUIXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._streamHolder_.onConfigure(b, 1000)
+
+	// maxStreamsPerConn
+	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
 }
 func (b *QUIXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._streamHolder_.onPrepare(b)
 }
+
+func (b *QUIXBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
 
 func (b *QUIXBackend) CreateNode(name string) Node {
 	node := new(quixNode)

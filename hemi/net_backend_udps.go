@@ -29,11 +29,12 @@ type UDPSBackend struct {
 	Backend_[*udpsNode]
 	// Mixins
 	// States
-	health any // TODO
+	healthCheck any
 }
 
 func (b *UDPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
+	b.healthCheck = nil
 }
 
 func (b *UDPSBackend) OnConfigure() {

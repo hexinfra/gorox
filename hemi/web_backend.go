@@ -17,13 +17,13 @@ import (
 type WebBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
-	streamHolder
 	contentSaver
 	// Methods
 	FetchStream() (WebBackendStream, error)
 	StoreStream(stream WebBackendStream)
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
+	MaxStreamsPerConn() int32
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
 }
@@ -35,12 +35,12 @@ type webBackend_[N Node] struct {
 	// Mixins
 	_webAgent_
 	// States
-	health any // TODO
+	healthCheck any
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
-	b.health = nil
+	b.healthCheck = nil
 }
 
 func (b *webBackend_[N]) OnConfigure() {

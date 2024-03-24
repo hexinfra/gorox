@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -30,23 +31,32 @@ type TCPSBackend struct {
 	// Parent
 	Backend_[*tcpsNode]
 	// Mixins
-	_streamHolder_
 	// States
-	health any // TODO
+	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
+	healthCheck       any
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
+	b.healthCheck = nil
 }
 
 func (b *TCPSBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._streamHolder_.onConfigure(b, 1000)
+
+	// maxStreamsPerConn
+	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
 }
 func (b *TCPSBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._streamHolder_.onPrepare(b)
 }
+
+func (b *TCPSBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
 
 func (b *TCPSBackend) CreateNode(name string) Node {
 	node := new(tcpsNode)

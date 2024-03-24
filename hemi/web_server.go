@@ -27,11 +27,11 @@ import (
 type webServer interface { // for *httpxServer and *http3Server
 	// Imports
 	Server
-	streamHolder
 	contentSaver
 	// Methods
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
+	MaxStreamsPerConn() int32
 	RecvTimeout() time.Duration
 	SendTimeout() time.Duration
 	bindApps()
@@ -297,14 +297,14 @@ type webServerRequest_ struct { // incoming. needs parsing
 	path              []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath           []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo          os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	webapp            *Webapp     // target webapp of this request. set before processing stream
+	webapp            *Webapp     // target webapp of this request. set before executing the stream
 	formWindow        []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	webServerRequest0             // all values must be zero by default in this struct!
 }
 type webServerRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
 	targetForm      int8     // request-target form. see webTargetXXX
-	asteriskOptions bool     // OPTIONS *?
+	asteriskOptions bool     // true if method and uri is: OPTIONS *
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
 	method          span     // raw method -> r.input
@@ -335,12 +335,12 @@ type webServerRequest0 struct { // for fast reset, entirely
 		userAgent          uint8 // user-agent header ->r.input
 		_                  byte  // padding
 	}
-	zones struct { // zones of some selected headers, for fast accessing
+	zones struct { // zones (may not be continuous) of some selected headers, for fast accessing
 		acceptLanguage zone
 		expect         zone
 		forwarded      zone
-		ifMatch        zone // the zone of if-match in r.primes. may be not continuous
-		ifNoneMatch    zone // the zone of if-none-match in r.primes. may be not continuous
+		ifMatch        zone // the zone of if-match in r.primes
+		ifNoneMatch    zone // the zone of if-none-match in r.primes
 		xForwardedFor  zone
 		_              [4]byte // padding
 	}
@@ -3541,8 +3541,9 @@ type Wobject struct {
 type Reviser interface {
 	// Imports
 	Component
-	identifiable
 	// Methods
+	ID() uint8
+	setID(id uint8)
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
 	BeforeRecv(req Request, resp Response) // for sized content
@@ -3561,9 +3562,12 @@ type Reviser_ struct {
 	// Parent
 	Component_
 	// Mixins
-	_identifiable_
 	// States
+	id uint8
 }
+
+func (r *Reviser_) ID() uint8      { return r.id }
+func (r *Reviser_) setID(id uint8) { r.id = id }
 
 // Socklet component handles the websocket.
 type Socklet interface {

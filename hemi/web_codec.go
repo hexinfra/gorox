@@ -36,18 +36,25 @@ type webAgent interface {
 // _webAgent_ is a mixin for webServer_ and webBackend_.
 type _webAgent_ struct {
 	// Mixins
-	_streamHolder_
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	recvTimeout           time.Duration // timeout to recv the whole message content
 	sendTimeout           time.Duration // timeout to send the whole message
 	maxContentSizeAllowed int64         // max content size allowed
 	maxMemoryContentSize  int32         // max content size that can be loaded into memory directly
+	maxStreamsPerConn     int32         // max streams of one conn. 0 means infinite
 }
 
 func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	a._streamHolder_.onConfigure(shell, defaultMaxStreams)
 	a._contentSaver_.onConfigure(shell, defaultDir)
+
+	// maxStreamsPerConn
+	shell.ConfigureInt32("maxStreamsPerConn", &a.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, defaultMaxStreams)
 
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
@@ -82,7 +89,6 @@ func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, rec
 	}, _16M)
 }
 func (a *_webAgent_) onPrepare(shell Component) {
-	a._streamHolder_.onPrepare(shell)
 	a._contentSaver_.onPrepare(shell, 0755)
 }
 
@@ -90,6 +96,7 @@ func (a *_webAgent_) RecvTimeout() time.Duration   { return a.recvTimeout }
 func (a *_webAgent_) SendTimeout() time.Duration   { return a.sendTimeout }
 func (a *_webAgent_) MaxContentSizeAllowed() int64 { return a.maxContentSizeAllowed }
 func (a *_webAgent_) MaxMemoryContentSize() int32  { return a.maxMemoryContentSize }
+func (a *_webAgent_) MaxStreamsPerConn() int32     { return a.maxStreamsPerConn }
 
 // webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
 type webConn interface {
@@ -1373,6 +1380,7 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
 
+	// Now remove options in primes and extras. Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
 		prime := &r.primes[i]
 		// Skip fields that are not "connection: xxx"
@@ -1386,7 +1394,6 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
 			continue
 		}
-		// Now remove options in primes and extras. Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
 		for j := fields.from; j < fields.edge; j++ {
 			if field := &r.primes[j]; field.hash == optionHash && field.nameEqualBytes(p, optionName) {
 				field.zero()
@@ -1432,7 +1439,7 @@ func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field
 	return true
 }
 
-func (r *webIn_) arrayCopy(p []byte) bool {
+func (r *webIn_) arrayCopy(p []byte) bool { // callers don't guarantee the intended memory cost is limited
 	if len(p) > 0 {
 		edge := r.arrayEdge + int32(len(p))
 		if edge < r.arrayEdge { // overflow
@@ -1448,7 +1455,7 @@ func (r *webIn_) arrayCopy(p []byte) bool {
 	}
 	return true
 }
-func (r *webIn_) arrayPush(b byte) {
+func (r *webIn_) arrayPush(b byte) { // callers must ensure the intended memory cost is limited
 	r.array[r.arrayEdge] = b
 	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
 		r._growArray(1)

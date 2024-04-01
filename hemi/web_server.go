@@ -29,11 +29,11 @@ type WebServer interface { // for *httpxServer and *http3Server
 	Server
 	contentSaver
 	// Methods
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
 	bindApps()
 	findApp(hostname []byte) *Webapp
 }

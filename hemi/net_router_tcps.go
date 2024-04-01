@@ -46,6 +46,7 @@ func (r *TCPSRouter) OnConfigure() {
 
 	// accessLog, TODO
 
+	// sub components
 	r.dealets.walk(TCPSDealet.OnConfigure)
 	r.cases.walk((*tcpsCase).OnConfigure)
 }
@@ -57,6 +58,7 @@ func (r *TCPSRouter) OnPrepare() {
 		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
+	// sub components
 	r.dealets.walk(TCPSDealet.OnPrepare)
 	r.cases.walk((*tcpsCase).OnPrepare)
 }
@@ -120,6 +122,7 @@ func (r *TCPSRouter) Serve() { // runner
 		}
 	}
 	r.WaitSubs() // gates
+
 	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.cases.walk((*tcpsCase).OnShutdown)
 	r.dealets.walk(TCPSDealet.OnShutdown)
@@ -179,7 +182,7 @@ func (g *tcpsGate) _openUnix() error {
 func (g *tcpsGate) _openInet() error {
 	listenConfig := new(net.ListenConfig)
 	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option
+		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option?
 		return system.SetReusePort(rawConn)
 	}
 	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())

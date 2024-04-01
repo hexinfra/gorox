@@ -72,16 +72,12 @@ func (b *QUIXBackend) Dial() (*QConn, error) {
 	return node.dial()
 }
 
-func (b *QUIXBackend) FetchConn() (*QConn, error) {
-	return nil, nil
-}
-func (b *QUIXBackend) StoreConn(qConn *QConn) {
-}
-
 func (b *QUIXBackend) FetchStream() (*QStream, error) {
+	// TODO
 	return nil, nil
 }
 func (b *QUIXBackend) StoreStream(qStream *QStream) {
+	// TODO
 }
 
 // quixNode is a node in QUIXBackend.
@@ -115,24 +111,18 @@ func (n *quixNode) Maintain() { // runner
 }
 
 func (n *quixNode) dial() (*QConn, error) {
-	// TODO
+	// TODO. note: use n.IncSub()
 	return nil, nil
-}
-
-func (n *quixNode) fetchConn() (*QConn, error) {
-	// Note: A QConn can be used concurrently, limited by maxStreams.
-	// TODO
-	return nil, nil
-}
-func (n *quixNode) storeConn(qConn *QConn) {
-	// Note: A QConn can be used concurrently, limited by maxStreams.
-	// TODO
 }
 
 func (n *quixNode) fetchStream() (*QStream, error) {
+	// Note: A QConn can be used concurrently, limited by maxStreams.
+	// TODO
 	return nil, nil
 }
 func (n *quixNode) storeStream(qStream *QStream) {
+	// Note: A QConn can be used concurrently, limited by maxStreams.
+	// TODO
 }
 
 // poolQConn

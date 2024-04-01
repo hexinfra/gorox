@@ -91,6 +91,7 @@ func (n *udpsNode) Maintain() { // runner
 	n.Loop(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
+	n.markDown()
 	// TODO: wait for all conns
 	if DbgLevel() >= 2 {
 		Printf("udpsNode=%s done\n", n.name)
@@ -99,32 +100,16 @@ func (n *udpsNode) Maintain() { // runner
 }
 
 func (n *udpsNode) dial() (*UConn, error) {
-	// TODO
+	// TODO. note: use n.IncSub()
 	return nil, nil
 }
 
 func (n *udpsNode) fetchConn() (*UConn, error) {
+	// TODO
 	return nil, nil
-	/*
-		conn := n.pullConn()
-		if conn != nil {
-			uConn := conn.(*UConn)
-			if uConn.isAlive() {
-				return uConn, nil
-			}
-			n.closeConn(uConn)
-		}
-		return n.dial()
-	*/
 }
 func (n *udpsNode) storeConn(uConn *UConn) {
-	/*
-		if uConn.isBroken() || n.isDown() || !uConn.isAlive() {
-			n.closeConn(uConn)
-		} else {
-			n.pushConn(uConn)
-		}
-	*/
+	// TODO
 }
 
 // poolUConn

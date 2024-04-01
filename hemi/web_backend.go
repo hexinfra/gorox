@@ -19,13 +19,13 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	FetchStream() (WebBackendStream, error)
-	StoreStream(stream WebBackendStream)
+	SendTimeout() time.Duration
+	RecvTimeout() time.Duration
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
-	SendTimeout() time.Duration
-	RecvTimeout() time.Duration
+	FetchStream() (WebBackendStream, error)
+	StoreStream(stream WebBackendStream)
 }
 
 // webBackend_ is the parent for HTTP[1-3]Backend.

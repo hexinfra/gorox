@@ -115,7 +115,7 @@ func (n *tcpsNode) Maintain() { // runner
 	if size := n.closeFree(); size > 0 {
 		n.SubsAddn(-size)
 	}
-	n.WaitSubs() // conns
+	n.WaitSubs() // conns. TODO: max timeout?
 	if DbgLevel() >= 2 {
 		Printf("tcpsNode=%s done\n", n.name)
 	}
@@ -126,17 +126,40 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if DbgLevel() >= 2 {
 		Printf("tcpsNode=%s dial %s\n", n.name, n.address)
 	}
+	var (
+		tConn *TConn
+		err   error
+	)
 	if n.IsUDS() {
-		return n._dialUDS()
+		tConn, err = n._dialUDS()
 	} else if n.IsTLS() {
-		return n._dialTLS()
+		tConn, err = n._dialTLS()
 	} else {
-		return n._dialTCP()
+		tConn, err = n._dialTCP()
 	}
+	if err != nil {
+		return nil, errNodeDown
+	}
+	n.IncSub()
+	return tConn, err
 }
 func (n *tcpsNode) _dialUDS() (*TConn, error) {
-	// TODO
-	return nil, nil
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DbgLevel() >= 2 {
+		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpsNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -191,11 +214,7 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 	if down {
 		return nil, errNodeDown
 	}
-	tConn, err := n.dial()
-	if err == nil {
-		n.IncSub()
-	}
-	return tConn, err
+	return n.dial()
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
@@ -338,6 +357,30 @@ func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Re
 func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
 func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
 	return io.ReadAtLeast(c.netConn, p, min)
+}
+
+func (c *TConn) ProxyPass(conn *TCPSConn) error {
+	var (
+		p   []byte
+		err error
+	)
+	for {
+		p, err = conn.Recv()
+		if err != nil {
+			return err
+		}
+		if p == nil {
+			if err = c.CloseWrite(); err != nil {
+				c.markWriteBroken()
+				return err
+			}
+			return nil
+		}
+		if _, err = c.Write(p); err != nil {
+			c.markWriteBroken()
+			return err
+		}
+	}
 }
 
 func (c *TConn) IsBroken() bool { return c.writeBroken.Load() || c.readBroken.Load() }

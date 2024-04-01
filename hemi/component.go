@@ -420,7 +420,8 @@ func (s *Stage) OnShutdown() {
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
-	// fixtures
+	// fixtures, manually one by one
+
 	s.IncSub()
 	s.fcache.OnShutdown()
 	s.WaitSubs()

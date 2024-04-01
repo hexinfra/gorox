@@ -40,6 +40,7 @@ func (r *UDPSRouter) OnConfigure() {
 
 	// accessLog, TODO
 
+	// sub components
 	r.dealets.walk(UDPSDealet.OnConfigure)
 	r.cases.walk((*udpsCase).OnConfigure)
 }
@@ -51,6 +52,7 @@ func (r *UDPSRouter) OnPrepare() {
 		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
+	// sub components
 	r.dealets.walk(UDPSDealet.OnPrepare)
 	r.cases.walk((*udpsCase).OnPrepare)
 }
@@ -114,6 +116,7 @@ func (r *UDPSRouter) Serve() { // runner
 		}
 	}
 	r.WaitSubs() // gates
+
 	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.cases.walk((*udpsCase).OnShutdown)
 	r.dealets.walk(UDPSDealet.OnShutdown)

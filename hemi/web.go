@@ -552,12 +552,12 @@ type pair struct { // 24 bytes
 
 const ( // pair kinds
 	kindUnknown = iota
-	kindQuery
-	kindHeader // field
-	kindCookie
-	kindForm
+	kindQuery   // normal
+	kindHeader  // field
+	kindCookie  // normal
+	kindForm    // normal
 	kindTrailer // field
-	kindParam   // parameter of fields
+	kindParam   // parameter of fields, normal
 )
 
 const ( // pair places

@@ -87,7 +87,7 @@ func (n *http1Node) Maintain() { // runner
 	if size := n.closeFree(); size > 0 {
 		n.SubsAddn(-size)
 	}
-	n.WaitSubs() // conns
+	n.WaitSubs() // conns. TODO: max timeout?
 	if DbgLevel() >= 2 {
 		Printf("http1Node=%s done\n", n.name)
 	}
@@ -114,11 +114,11 @@ func (n *http1Node) fetchStream() (WebBackendStream, error) {
 	} else {
 		h1Conn, err = n._dialTCP()
 	}
-	if err == nil {
-		return h1Conn.fetchStream()
-	} else {
+	if err != nil {
 		return nil, errNodeDown
 	}
+	n.IncSub()
+	return h1Conn.fetchStream()
 }
 func (n *http1Node) _dialUDS() (*H1Conn, error) {
 	// TODO: dynamic address names?
@@ -136,7 +136,6 @@ func (n *http1Node) _dialUDS() (*H1Conn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) _dialTLS() (*H1Conn, error) {
@@ -159,7 +158,6 @@ func (n *http1Node) _dialTLS() (*H1Conn, error) {
 		tlsConn.Close()
 		return nil, err
 	}
-	n.IncSub()
 	return getH1Conn(connID, n, tlsConn, nil), nil
 }
 func (n *http1Node) _dialTCP() (*H1Conn, error) {
@@ -178,7 +176,6 @@ func (n *http1Node) _dialTCP() (*H1Conn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	n.IncSub()
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) storeStream(stream WebBackendStream) {

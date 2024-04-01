@@ -38,6 +38,7 @@ func (r *QUIXRouter) OnShutdown() {
 func (r *QUIXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 
+	// sub components
 	r.dealets.walk(QUIXDealet.OnConfigure)
 	r.cases.walk((*quixCase).OnConfigure)
 }
@@ -49,6 +50,7 @@ func (r *QUIXRouter) OnPrepare() {
 		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
+	// sub components
 	r.dealets.walk(QUIXDealet.OnPrepare)
 	r.cases.walk((*quixCase).OnPrepare)
 }
@@ -106,6 +108,7 @@ func (r *QUIXRouter) Serve() { // runner
 		go gate.serve()
 	}
 	r.WaitSubs() // gates
+
 	r.SubsAddn(len(r.dealets) + len(r.cases))
 	r.cases.walk((*quixCase).OnShutdown)
 	r.dealets.walk(QUIXDealet.OnShutdown)

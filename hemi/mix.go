@@ -11,7 +11,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"os"
 	"regexp"
+	"sync"
+	"time"
 )
 
 const ( // array kinds
@@ -33,112 +36,6 @@ func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter
 	unixTime &= 0xffffff
 	counter &= 0xffff
 	return i64ToDec(stageID<<56|connID<<40|unixTime<<16|counter, p)
-}
-
-// hostnameTo
-type hostnameTo[T Component] struct {
-	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	target   T
-}
-
-var varCodes = map[string]int16{ // TODO
-	// general conn vars for quix, tcps, and udps
-	"srcHost": 0,
-	"srcPort": 1,
-	"isUDS":   2,
-	"isTLS":   3,
-
-	// quix conn vars
-
-	// tcps conn vars
-	"serverName": 4,
-	"nextProto":  5,
-
-	// udps conn vars
-
-	// web request vars
-	"method":      0, // GET, POST, ...
-	"scheme":      1, // http, https
-	"authority":   2, // example.com, example.org:8080
-	"hostname":    3, // example.com, example.org
-	"colonPort":   4, // :80, :8080
-	"path":        5, // /abc, /def/
-	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
-	"encodedPath": 7, // /abc, /%cc%dd
-	"queryString": 8, // ?x=y, ?y=z&z=%ff
-	"contentType": 9, // application/json
-}
-
-// varKeeper holdes values of variables.
-type varKeeper interface {
-	unsafeVariable(code int16, name string) (value []byte)
-}
-
-// tempFile is used to temporarily save request/response content in local file system.
-type tempFile interface {
-	Name() string // used by os.Remove()
-	Write(p []byte) (n int, err error)
-	Seek(offset int64, whence int) (ret int64, err error)
-	Close() error
-}
-
-// fakeFile
-var fakeFile _fakeFile
-
-// _fakeFile implements tempFile.
-type _fakeFile struct{}
-
-func (f _fakeFile) Name() string                           { return "" }
-func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
-func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
-func (f _fakeFile) Close() error                           { return nil }
-
-// Region
-type Region struct { // 512B
-	blocks [][]byte  // the blocks. [<stocks>/make]
-	stocks [4][]byte // for blocks. 96B
-	block0 [392]byte // for blocks[0]
-}
-
-func (r *Region) Init() {
-	r.blocks = r.stocks[0:1:cap(r.stocks)]                    // block0 always at 0
-	r.stocks[0] = r.block0[:]                                 // first block is always block0
-	binary.BigEndian.PutUint16(r.block0[cap(r.block0)-2:], 0) // reset used size of block0
-}
-func (r *Region) Make(size int) []byte { // good for a lot of small buffers
-	if size <= 0 {
-		BugExitln("bad size")
-	}
-	block := r.blocks[len(r.blocks)-1]
-	edge := cap(block)
-	ceil := edge - 2
-	used := int(binary.BigEndian.Uint16(block[ceil:edge]))
-	want := used + size
-	if want <= 0 {
-		BugExitln("size too large")
-	}
-	if want <= ceil {
-		binary.BigEndian.PutUint16(block[ceil:edge], uint16(want))
-		return block[used:want]
-	}
-	ceil = _4K - 2
-	if size > ceil {
-		return make([]byte, size)
-	}
-	block = Get4K()
-	binary.BigEndian.PutUint16(block[ceil:_4K], uint16(size))
-	r.blocks = append(r.blocks, block)
-	return block[0:size]
-}
-func (r *Region) Free() {
-	for i := 1; i < len(r.blocks); i++ {
-		PutNK(r.blocks[i])
-		r.blocks[i] = nil
-	}
-	if cap(r.blocks) != cap(r.stocks) {
-		r.stocks = [4][]byte{}
-		r.blocks = nil
-	}
 }
 
 func equalMatch(value []byte, patterns [][]byte) bool {
@@ -221,3 +118,201 @@ func notRegexpMatch(value []byte, regexps []*regexp.Regexp) bool {
 	}
 	return true
 }
+
+// hostnameTo
+type hostnameTo[T Component] struct {
+	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
+	target   T
+}
+
+// varKeeper holdes values of variables.
+type varKeeper interface {
+	unsafeVariable(code int16, name string) (value []byte)
+}
+
+var varCodes = map[string]int16{ // TODO
+	// general conn vars for quix, tcps, and udps
+	"srcHost": 0,
+	"srcPort": 1,
+	"isUDS":   2,
+	"isTLS":   3,
+
+	// quix conn vars
+
+	// tcps conn vars
+	"serverName": 4,
+	"nextProto":  5,
+
+	// udps conn vars
+
+	// web request vars
+	"method":      0, // GET, POST, ...
+	"scheme":      1, // http, https
+	"authority":   2, // example.com, example.org:8080
+	"hostname":    3, // example.com, example.org
+	"colonPort":   4, // :80, :8080
+	"path":        5, // /abc, /def/
+	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
+	"encodedPath": 7, // /abc, /%cc%dd
+	"queryString": 8, // ?x=y, ?y=z&z=%ff
+	"contentType": 9, // application/json
+}
+
+// tempFile is used to temporarily save request/response content in local file system.
+type tempFile interface {
+	Name() string // used by os.Remove()
+	Write(p []byte) (n int, err error)
+	Seek(offset int64, whence int) (ret int64, err error)
+	Close() error
+}
+
+// _fakeFile implements tempFile.
+type _fakeFile struct{}
+
+func (f _fakeFile) Name() string                           { return "" }
+func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
+func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
+func (f _fakeFile) Close() error                           { return nil }
+
+// fakeFile
+var fakeFile _fakeFile
+
+// Region
+type Region struct { // 512B
+	blocks [][]byte  // the blocks. [<stocks>/make]
+	stocks [4][]byte // for blocks. 96B
+	block0 [392]byte // for blocks[0]
+}
+
+func (r *Region) Init() {
+	r.blocks = r.stocks[0:1:cap(r.stocks)]                    // block0 always at 0
+	r.stocks[0] = r.block0[:]                                 // first block is always block0
+	binary.BigEndian.PutUint16(r.block0[cap(r.block0)-2:], 0) // reset used size of block0
+}
+func (r *Region) Make(size int) []byte { // good for a lot of small buffers
+	if size <= 0 {
+		BugExitln("bad size")
+	}
+	block := r.blocks[len(r.blocks)-1]
+	edge := cap(block)
+	ceil := edge - 2
+	used := int(binary.BigEndian.Uint16(block[ceil:edge]))
+	want := used + size
+	if want <= 0 {
+		BugExitln("size too large")
+	}
+	if want <= ceil {
+		binary.BigEndian.PutUint16(block[ceil:edge], uint16(want))
+		return block[used:want]
+	}
+	ceil = _4K - 2
+	if size > ceil {
+		return make([]byte, size)
+	}
+	block = Get4K()
+	binary.BigEndian.PutUint16(block[ceil:_4K], uint16(size))
+	r.blocks = append(r.blocks, block)
+	return block[0:size]
+}
+func (r *Region) Free() {
+	for i := 1; i < len(r.blocks); i++ {
+		PutNK(r.blocks[i])
+		r.blocks[i] = nil
+	}
+	if cap(r.blocks) != cap(r.stocks) {
+		r.stocks = [4][]byte{}
+		r.blocks = nil
+	}
+}
+
+// contentSaver
+type contentSaver interface {
+	SaveContentFilesDir() string
+}
+
+// _contentSaver_ is a mixin.
+type _contentSaver_ struct {
+	// States
+	saveContentFilesDir string
+}
+
+func (s *_contentSaver_) onConfigure(shell Component, defaultDir string) {
+	// saveContentFilesDir
+	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
+		if value != "" && len(value) <= 232 {
+			return nil
+		}
+		return errors.New(".saveContentFilesDir has an invalid value")
+	}, defaultDir)
+}
+func (s *_contentSaver_) onPrepare(shell Component, perm os.FileMode) {
+	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
+		EnvExitln(err.Error())
+	}
+	if s.saveContentFilesDir[len(s.saveContentFilesDir)-1] != '/' {
+		s.saveContentFilesDir += "/"
+	}
+}
+
+func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
+
+// _subsWaiter_ is a mixin.
+type _subsWaiter_ struct {
+	subs sync.WaitGroup
+}
+
+func (w *_subsWaiter_) IncSub()        { w.subs.Add(1) }
+func (w *_subsWaiter_) SubsAddn(n int) { w.subs.Add(n) }
+func (w *_subsWaiter_) WaitSubs()      { w.subs.Wait() }
+func (w *_subsWaiter_) DecSub()        { w.subs.Done() }
+
+// _shutdownable_ is a mixin.
+type _shutdownable_ struct {
+	ShutChan chan struct{} // used to notify target to shutdown
+}
+
+func (s *_shutdownable_) init() {
+	s.ShutChan = make(chan struct{})
+}
+
+func (s *_shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.ShutChan:
+			return
+		case now := <-ticker.C:
+			callback(now)
+		}
+	}
+}
+
+/*
+// _connPool_
+type _connPool_[T any] struct {
+	freeList struct{
+		sync.Mutex
+		head T
+		tail T
+		qnty int
+	}
+}
+
+func (p *_connPool_[T]) pullConn() T {
+	list := &p.freeList
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.next
+	conn.setNext(nil)
+	list.qnty--
+
+	return conn
+}
+*/

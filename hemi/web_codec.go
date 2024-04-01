@@ -31,6 +31,7 @@ type webAgent interface {
 	SendTimeout() time.Duration // timeout to send the whole message
 	MaxContentSizeAllowed() int64
 	MaxMemoryContentSize() int32
+	MaxStreamsPerConn() int32
 }
 
 // _webAgent_ is a mixin for webServer_ and webBackend_.
@@ -45,16 +46,8 @@ type _webAgent_ struct {
 	maxStreamsPerConn     int32         // max streams of one conn. 0 means infinite
 }
 
-func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, recvTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+func (a *_webAgent_) onConfigure(shell Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
 	a._contentSaver_.onConfigure(shell, defaultDir)
-
-	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &a.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, defaultMaxStreams)
 
 	// recvTimeout
 	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
@@ -87,6 +80,14 @@ func (a *_webAgent_) onConfigure(shell Component, sendTimeout time.Duration, rec
 		}
 		return errors.New(".maxMemoryContentSize has an invalid value")
 	}, _16M)
+
+	// maxStreamsPerConn
+	shell.ConfigureInt32("maxStreamsPerConn", &a.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, defaultMaxStreams)
 }
 func (a *_webAgent_) onPrepare(shell Component) {
 	a._contentSaver_.onPrepare(shell, 0755)

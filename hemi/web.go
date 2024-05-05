@@ -424,7 +424,7 @@ var webKchar = [256]int8{ // cookie-octet = 0x21 / 0x23-0x2B / 0x2D-0x3A / 0x3C-
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
-var webNchar = [256]int8{ // for hostname
+var webHchar = [256]int8{ // for hostname
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, //                           - .
@@ -670,7 +670,7 @@ type para struct { // 16 bytes
 
 // Range defines a range.
 type Range struct { // 16 bytes
-	from, last int64 // [from:last], inclusive
+	From, Last int64 // [From:Last], inclusive
 }
 
 // poolPiece

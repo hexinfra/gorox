@@ -1299,7 +1299,7 @@ func (r *webServerRequest_) parseAuthority(from int32, edge int32, save bool) bo
 		}
 	} else { // IPv4address or reg-name
 		for fore < edge {
-			if b := r.input[fore]; webNchar[b] == 1 {
+			if b := r.input[fore]; webHchar[b] == 1 {
 				fore++
 			} else if b == ':' {
 				break
@@ -1611,31 +1611,31 @@ func (r *webServerRequest_) MeasureRanges(contentSize int64) []Range { // return
 	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
 		rang := &r.ranges[i]
-		if rang.from == -1 { // "-" suffix-length, the last `suffix-length` bytes
-			if rang.last == 0 {
+		if rang.From == -1 { // "-" suffix-length, the last `suffix-length` bytes
+			if rang.Last == 0 {
 				return nil
 			}
-			if rang.last >= contentSize {
-				rang.from = 0
+			if rang.Last >= contentSize {
+				rang.From = 0
 			} else {
-				rang.from = contentSize - rang.last
+				rang.From = contentSize - rang.Last
 			}
-			rang.last = contentSize
+			rang.Last = contentSize
 		} else { // first-pos "-" [ last-pos ]
-			if rang.from >= contentSize {
+			if rang.From >= contentSize {
 				return nil
 			}
-			if rang.last == -1 { // first-pos "-", to the end if last-pos is not present
-				rang.last = contentSize
+			if rang.Last == -1 { // first-pos "-", to the end if last-pos is not present
+				rang.Last = contentSize
 			} else { // first-pos "-" last-pos
-				if rang.last >= contentSize {
-					rang.last = contentSize
+				if rang.Last >= contentSize {
+					rang.Last = contentSize
 				} else {
-					rang.last++
+					rang.Last++
 				}
 			}
 		}
-		rangedSize += rang.last - rang.from
+		rangedSize += rang.Last - rang.From
 		if rangedSize > contentSize { // possible attack
 			return nil
 		}

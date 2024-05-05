@@ -700,10 +700,10 @@ func (r *webOut_) _sendSingleRange1() error {
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "bytes ")
 	theRange := r.ranges[0]
-	n += i64ToDec(theRange.from, valueBuffer[n:])
+	n += i64ToDec(theRange.From, valueBuffer[n:])
 	valueBuffer[n] = '-'
 	n++
-	n += i64ToDec(theRange.last-1, valueBuffer[n:])
+	n += i64ToDec(theRange.Last-1, valueBuffer[n:])
 	valueBuffer[n] = '/'
 	n++
 	n += i64ToDec(r.contentSize, valueBuffer[n:])

@@ -77,7 +77,7 @@ type WebBackendRequest interface { // for *H[1-3]Request
 	proxyCopyHead(req Request, args *WebExchanProxyArgs) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyTail(req Request) bool
+	proxyCopyTail(req Request, args *WebExchanProxyArgs) bool
 	isVague() bool
 	endVague() error
 }
@@ -351,7 +351,7 @@ func (r *webBackendRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs
 
 	return true
 }
-func (r *webBackendRequest_) proxyCopyTail(req Request) bool {
+func (r *webBackendRequest_) proxyCopyTail(req Request, args *WebExchanProxyArgs) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
@@ -466,7 +466,7 @@ func (r *webBackendResponse_) examineHead() bool {
 			return false
 		}
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))

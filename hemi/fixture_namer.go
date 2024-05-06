@@ -50,7 +50,7 @@ func (f *namerFixture) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Println("namer done")
 	}
 	f.stage.DecSub()

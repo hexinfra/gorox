@@ -71,7 +71,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 		hasTrailers := req.HasTrailers()
 		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
 		if backErr == nil && hasTrailers {
-			if !backReq.proxyCopyTail(req) {
+			if !backReq.proxyCopyTail(req, args) {
 				backStream.markBroken()
 				backErr = webOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
@@ -153,7 +153,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 			}
 			return
 		}
-		if backHasTrailers && !resp.proxyCopyTail(backResp) {
+		if backHasTrailers && !resp.proxyCopyTail(backResp, args) {
 			return
 		}
 	} else if err := resp.proxyPass(backResp); err != nil {

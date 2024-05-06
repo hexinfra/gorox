@@ -131,7 +131,7 @@ func (r *TCPSRouter) Serve() { // runner
 	if r.logger != nil {
 		r.logger.Close()
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsRouter=%s done\n", r.Name())
 	}
 	r.stage.DecSub()
@@ -223,7 +223,7 @@ func (g *tcpsGate) serveUDS() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
@@ -255,7 +255,7 @@ func (g *tcpsGate) serveTLS() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
 	g.server.DecSub()
@@ -282,7 +282,7 @@ func (g *tcpsGate) serveTCP() { // runner
 				continue
 			}
 			conn := getTCPSConn(connID, g, tcpConn, rawConn)
-			if DbgLevel() >= 1 {
+			if DebugLevel() >= 1 {
 				Printf("%+v\n", conn)
 			}
 			go conn.serve() // conn is put to pool in serve()
@@ -290,7 +290,7 @@ func (g *tcpsGate) serveTCP() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()

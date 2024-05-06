@@ -22,7 +22,7 @@ type rpcServer interface {
 }
 
 // rpcServer_
-type rpcServer_[G rpcGate] struct {
+type rpcServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Assocs
@@ -110,11 +110,6 @@ func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 		}
 	}
 	return nil
-}
-
-// rpcGate
-type rpcGate interface {
-	Gate
 }
 
 // rpcServerConn
@@ -238,7 +233,7 @@ func (s *Service) maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("service=%s done\n", s.Name())
 	}
 	s.stage.DecSub()

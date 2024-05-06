@@ -146,7 +146,7 @@ func (b *http2Buffer) getRef() int32 { return b.ref.Load() }
 func (b *http2Buffer) incRef()       { b.ref.Add(1) }
 func (b *http2Buffer) decRef() {
 	if b.ref.Add(-1) == 0 {
-		if DbgLevel() >= 1 {
+		if DebugLevel() >= 1 {
 			Printf("putHTTP2Buffer ref=%d\n", b.ref.Load())
 		}
 		putHTTP2Buffer(b)

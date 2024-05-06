@@ -330,7 +330,7 @@ func (r *webIn_) onEnd() { // for zeros
 
 	if r.contentFile != nil {
 		r.contentFile.Close()
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
 			// TODO: log?
@@ -973,7 +973,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSizeAllowed]
 			}
 		}
 		contentFile.Close()
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(contentFile.Name()); err != nil {
 			// TODO: r.webapp.log
@@ -1130,7 +1130,7 @@ func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
 			return 0, false
 		}
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Println("use large primes!")
 		}
 		r.primes = getPairs()
@@ -1179,7 +1179,7 @@ func (r *webIn_) _addExtra(extra *pair) bool {
 		if cap(r.extras) != cap(r.stockExtras) { // too many extras
 			return false
 		}
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Println("use large extras!")
 		}
 		r.extras = getPairs()

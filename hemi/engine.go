@@ -34,7 +34,7 @@ var ( // basic variables
 	_varsOnce sync.Once    // protects _varsDir
 	_varsDir  atomic.Value // directory of the run-time data
 
-	_dbgLevel atomic.Int32 // debug level
+	_debugLevel atomic.Int32 // debug level
 )
 
 func SetBaseDir(dir string) { // only once!
@@ -67,7 +67,7 @@ func _mustMkdir(dir string) {
 	}
 }
 
-func SetDbgLevel(level int32) { _dbgLevel.Store(level) }
+func SetDebugLevel(level int32) { _debugLevel.Store(level) }
 
 func NewStageText(text string) (*Stage, error) {
 	_checkDirs()
@@ -85,11 +85,11 @@ func _checkDirs() {
 	}
 }
 
-func DbgLevel() int32 { return _dbgLevel.Load() }
-func BaseDir() string { return _baseDir.Load().(string) }
-func LogsDir() string { return _logsDir.Load().(string) }
-func TmpsDir() string { return _tmpsDir.Load().(string) }
-func VarsDir() string { return _varsDir.Load().(string) }
+func DebugLevel() int32 { return _debugLevel.Load() }
+func BaseDir() string   { return _baseDir.Load().(string) }
+func LogsDir() string   { return _logsDir.Load().(string) }
+func TmpsDir() string   { return _tmpsDir.Load().(string) }
+func VarsDir() string   { return _varsDir.Load().(string) }
 
 func Print(args ...any) {
 	_printTime(os.Stdout)

@@ -22,7 +22,7 @@ var (
 
 func webuiServer() { // runner
 	webChan = make(chan *msgx.Message)
-	if hemi.DbgLevel() >= 1 {
+	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
 	}
 	// TODO

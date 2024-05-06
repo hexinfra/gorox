@@ -49,7 +49,7 @@ func (j *cleanCronjob) Schedule() { // runner
 	j.Loop(time.Minute, func(now time.Time) {
 		// TODO
 	})
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("cleanCronjob=%s done\n", j.Name())
 	}
 	j.stage.DecSub()

@@ -62,7 +62,7 @@ func (s *socksServer) Serve() { // runner
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("socksServer=%s done\n", s.Name())
 	}
 	s.Stage().DecSub()
@@ -118,7 +118,7 @@ func (g *socksGate) serve() { // runner
 		}
 	}
 	g.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
 	g.Server().DecSub()

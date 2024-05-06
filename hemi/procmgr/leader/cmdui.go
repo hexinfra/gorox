@@ -19,7 +19,7 @@ import (
 )
 
 func cmduiServer() { // runner
-	if hemi.DbgLevel() >= 1 {
+	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
 	}
 	cmdGate, err := net.Listen("tcp", common.CmdUIAddr) // cmdGate is for receiving cmdConns from control client
@@ -31,13 +31,13 @@ func cmduiServer() { // runner
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
 		if err != nil {
-			if hemi.DbgLevel() >= 1 {
+			if hemi.DebugLevel() >= 1 {
 				hemi.Println("[leader] accept error: " + err.Error())
 			}
 			continue
 		}
 		if err = cmdConn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-			if hemi.DbgLevel() >= 1 {
+			if hemi.DebugLevel() >= 1 {
 				hemi.Println("[leader]: SetReadDeadline error: " + err.Error())
 			}
 			goto closeNext
@@ -45,13 +45,13 @@ func cmduiServer() { // runner
 		if req, err = msgx.Recv(cmdConn, 16<<20); err != nil {
 			goto closeNext
 		}
-		if hemi.DbgLevel() >= 1 {
+		if hemi.DebugLevel() >= 1 {
 			hemi.Printf("[leader] recv: %+v\n", req)
 		}
 		if req.IsTell() {
 			switch req.Comd { // some messages are telling leader only, hijack them.
 			case common.ComdStop:
-				if hemi.DbgLevel() >= 1 {
+				if hemi.DebugLevel() >= 1 {
 					hemi.Println("[leader] received stop")
 				}
 				common.Stop() // worker will stop immediately after admConn is closed
@@ -63,7 +63,7 @@ func cmduiServer() { // runner
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
 					cmdGate.Close()
 					cmdGate = newGate
-					if hemi.DbgLevel() >= 1 {
+					if hemi.DebugLevel() >= 1 {
 						hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
 					}
 					goto closeNext
@@ -87,7 +87,7 @@ func cmduiServer() { // runner
 				cmdChan <- req
 				resp = <-cmdChan
 			}
-			if hemi.DbgLevel() >= 1 {
+			if hemi.DebugLevel() >= 1 {
 				hemi.Printf("[leader] send: %+v\n", resp)
 			}
 			msgx.Send(cmdConn, resp)

@@ -125,7 +125,7 @@ func (r *UDPSRouter) Serve() { // runner
 	if r.logger != nil {
 		r.logger.Close()
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("udpsRouter=%s done\n", r.Name())
 	}
 	r.stage.DecSub()

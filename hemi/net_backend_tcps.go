@@ -116,14 +116,14 @@ func (n *tcpsNode) Maintain() { // runner
 		n.SubsAddn(-size)
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
 }
 
 func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s dial %s\n", n.name, n.address)
 	}
 	var (
@@ -150,7 +150,7 @@ func (n *tcpsNode) _dialUDS() (*TConn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -168,7 +168,7 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -190,7 +190,7 @@ func (n *tcpsNode) _dialTCP() (*TConn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -218,12 +218,12 @@ func (n *tcpsNode) fetchConn() (*TConn, error) {
 }
 func (n *tcpsNode) storeConn(tConn *TConn) {
 	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Printf("TConn[node=%s id=%d] closed\n", tConn.node.Name(), tConn.id)
 		}
 		n.closeConn(tConn)
 	} else {
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Printf("TConn[node=%s id=%d] pushed\n", tConn.node.Name(), tConn.id)
 		}
 		n.pushConn(tConn)

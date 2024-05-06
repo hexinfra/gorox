@@ -93,7 +93,7 @@ func (n *udpsNode) Maintain() { // runner
 	})
 	n.markDown()
 	// TODO: wait for all conns
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("udpsNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()

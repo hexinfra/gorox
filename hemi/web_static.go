@@ -107,7 +107,7 @@ func (h *staticHandlet) OnConfigure() {
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
 	h.useAppWebRoot = h.webRoot == h.webapp.webRoot
-	if DbgLevel() >= 1 {
+	if DebugLevel() >= 1 {
 		if h.useAppWebRoot {
 			Printf("static=%s use webapp web root\n", h.Name())
 		} else {
@@ -203,7 +203,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	fcache := h.stage.Fcache()
 	entry, err := fcache.getEntry(openPath)
 	if err != nil { // entry does not exist
-		if DbgLevel() >= 1 {
+		if DebugLevel() >= 1 {
 			Println("entry MISS")
 		}
 		if entry, err = fcache.newEntry(string(openPath)); err != nil {
@@ -262,7 +262,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
 		resp.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
 		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
-		if DbgLevel() >= 2 { // TODO
+		if DebugLevel() >= 2 { // TODO
 			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
 		} else {
 			resp.AddHeaderBytes(bytesETag, etag)

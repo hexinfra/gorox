@@ -88,7 +88,7 @@ func (n *http1Node) Maintain() { // runner
 		n.SubsAddn(-size)
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("http1Node=%s done\n", n.name)
 	}
 	n.backend.DecSub()
@@ -127,7 +127,7 @@ func (n *http1Node) _dialUDS() (*H1Conn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -145,7 +145,7 @@ func (n *http1Node) _dialTLS() (*H1Conn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -167,7 +167,7 @@ func (n *http1Node) _dialTCP() (*H1Conn, error) {
 		n.markDown()
 		return nil, err
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.backend.nextConnID()
@@ -184,12 +184,12 @@ func (n *http1Node) storeStream(stream WebBackendStream) {
 	h1Conn.storeStream(stream)
 
 	if h1Conn.isBroken() || n.isDown() || !h1Conn.isAlive() || !h1Conn.isPersistent() {
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Printf("H1Conn[node=%s id=%d] closed\n", h1Conn.node.Name(), h1Conn.id)
 		}
 		n.closeConn(h1Conn)
 	} else {
-		if DbgLevel() >= 2 {
+		if DebugLevel() >= 2 {
 			Printf("H1Conn[node=%s id=%d] pushed\n", h1Conn.node.Name(), h1Conn.id)
 		}
 		n.pushConn(h1Conn)
@@ -553,7 +553,7 @@ func (r *H1Response) recvHead() { // control + headers
 		return
 	}
 	r.cleanInput()
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("[H1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }

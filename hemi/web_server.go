@@ -83,7 +83,7 @@ func (s *webServer_[G]) bindApps() {
 			if err != nil {
 				UseExitln(err.Error())
 			}
-			if DbgLevel() >= 1 {
+			if DebugLevel() >= 1 {
 				Printf("adding certificate to %s\n", s.ColonPort())
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
@@ -499,7 +499,7 @@ func (r *webServerRequest_) cleanPath() {
 		// Must be '/'.
 		return
 	}
-	slash := r.path[nPath-1] == '/'
+	slashed := r.path[nPath-1] == '/'
 	pOrig, pReal := 1, 1
 	for pOrig < nPath {
 		if b := r.path[pOrig]; b == '/' {
@@ -527,7 +527,7 @@ func (r *webServerRequest_) cleanPath() {
 		}
 	}
 	if pReal != nPath {
-		if slash && pReal > 1 {
+		if slashed && pReal > 1 {
 			r.path[pReal] = '/'
 			pReal++
 		}
@@ -629,7 +629,7 @@ func (r *webServerRequest_) examineHead() bool {
 			}
 		}
 	}
-	if DbgLevel() >= 3 {
+	if DebugLevel() >= 3 {
 		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
@@ -1107,7 +1107,7 @@ func (r *webServerRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge u
 		r.zones.acceptLanguage.from = from
 	}
 	r.zones.acceptLanguage.edge = edge
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		/*
 			for i := from; i < edge; i++ {
 				// NOTE: test pair.kind == kindHeader
@@ -1611,7 +1611,7 @@ func (r *webServerRequest_) MeasureRanges(contentSize int64) []Range { // return
 	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
 		rang := &r.ranges[i]
-		if rang.From == -1 { // "-" suffix-length, the last `suffix-length` bytes
+		if rang.From == -1 { // "-" suffix-length, means the last `suffix-length` bytes
 			if rang.Last == 0 {
 				return nil
 			}
@@ -1820,7 +1820,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 		}
 		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
-			if DbgLevel() >= 2 {
+			if DebugLevel() >= 2 {
 				Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
@@ -2031,12 +2031,12 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 			part.upfile.typeSize, part.upfile.typeFrom = uint8(part.type_.size()), part.type_.from
 			part.upfile.pathSize, part.upfile.pathFrom = uint8(part.path.size()), part.path.from
 			if osFile, err := os.OpenFile(WeakString(r.array[part.path.from:part.path.edge]), os.O_RDWR|os.O_CREATE, 0644); err == nil {
-				if DbgLevel() >= 2 {
+				if DebugLevel() >= 2 {
 					Println("OPENED")
 				}
 				part.osFile = osFile
 			} else {
-				if DbgLevel() >= 2 {
+				if DebugLevel() >= 2 {
 					Println(err.Error())
 				}
 				part.osFile = nil
@@ -2079,7 +2079,7 @@ func (r *webServerRequest_) _recvMultipartForm() { // into memory or tempFile. s
 				if mode == 1 { // file part ends
 					r.addUpfile(&part.upfile)
 					part.osFile.Close()
-					if DbgLevel() >= 2 {
+					if DebugLevel() >= 2 {
 						Println("CLOSED")
 					}
 				}
@@ -2559,7 +2559,7 @@ type Response interface { // for *http[1-3]Response
 	proxyPass(resp WebBackendResponse) error
 	proxyPost(content any, hasTrailers bool) error
 	proxyCopyHead(resp WebBackendResponse, args *WebExchanProxyArgs) bool
-	proxyCopyTail(resp WebBackendResponse) bool
+	proxyCopyTail(resp WebBackendResponse, args *WebExchanProxyArgs) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2885,7 +2885,7 @@ func (r *webServerResponse_) proxyCopyHead(resp WebBackendResponse, args *WebExc
 
 	return true
 }
-func (r *webServerResponse_) proxyCopyTail(resp WebBackendResponse) bool {
+func (r *webServerResponse_) proxyCopyTail(resp WebBackendResponse, args *WebExchanProxyArgs) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
@@ -3307,7 +3307,7 @@ func (a *Webapp) maintain() { // runner
 	if a.logger != nil {
 		a.logger.Close()
 	}
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("webapp=%s done\n", a.Name())
 	}
 	a.stage.DecSub()

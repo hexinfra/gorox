@@ -60,7 +60,7 @@ func (c *localCacher) Maintain() { // runner
 	c.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if DbgLevel() >= 2 {
+	if DebugLevel() >= 2 {
 		Printf("localCacher=%s done\n", c.Name())
 	}
 	c.stage.DecSub()

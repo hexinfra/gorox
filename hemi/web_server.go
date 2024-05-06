@@ -320,7 +320,7 @@ type webServerRequest0 struct { // for fast reset, entirely
 	forms           zone     // decoded forms -> r.array
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
-	nRanges         int8     // num of ranges
+	nRanges         int8     // num of ranges. controls r.ranges
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
 	pathInfoGot     bool     // is r.pathInfo got?
@@ -959,18 +959,18 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 		r.headResult, r.failReason = StatusBadRequest, "empty range-set"
 		return false
 	}
-	var from, last int64 // [from-last], inclusive, begins from 0
+	var rang Range // [from-last], inclusive, begins from 0
 	state := 0
 	for i, n := 0, len(rangeSet); i < n; i++ {
 		b := rangeSet[i]
 		switch state {
 		case 0: // select int-range or suffix-range
 			if b >= '0' && b <= '9' {
-				from = int64(b - '0')
+				rang.From = int64(b - '0')
 				state = 1 // int-range
 			} else if b == '-' {
-				from = -1
-				last = 0
+				rang.From = -1
+				rang.Last = 0
 				state = 4 // suffix-range
 			} else if b != ',' && b != ' ' {
 				goto badRange
@@ -978,8 +978,8 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 		case 1: // in first-pos = 1*DIGIT
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					from = from*10 + int64(b-'0')
-					if from < 0 { // overflow
+					rang.From = rang.From*10 + int64(b-'0')
+					if rang.From < 0 { // overflow
 						goto badRange
 					}
 				} else if b == '-' {
@@ -991,11 +991,11 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 			}
 		case 2: // select last-pos or not
 			if b >= '0' && b <= '9' { // last-pos
-				last = int64(b - '0')
+				rang.Last = int64(b - '0')
 				state = 3 // first-pos "-" last-pos
 			} else if b == ',' || b == ' ' { // got: first-pos "-"
-				last = -1
-				if !r._addRange(from, last) {
+				rang.Last = -1
+				if !r._addRange(rang) {
 					return false
 				}
 				state = 0 // select int-range or suffix-range
@@ -1005,16 +1005,16 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 		case 3: // in last-pos = 1*DIGIT
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					last = last*10 + int64(b-'0')
-					if last < 0 { // overflow
+					rang.Last = rang.Last*10 + int64(b-'0')
+					if rang.Last < 0 { // overflow
 						goto badRange
 					}
 				} else if b == ',' || b == ' ' { // got: first-pos "-" last-pos
 					// An int-range is invalid if the last-pos value is present and less than the first-pos.
-					if from > last {
+					if rang.From > rang.Last {
 						goto badRange
 					}
-					if !r._addRange(from, last) {
+					if !r._addRange(rang) {
 						return false
 					}
 					state = 0 // select int-range or suffix-range
@@ -1026,12 +1026,12 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 		case 4: // in suffix-length = 1*DIGIT
 			for ; i < n; i++ {
 				if b := rangeSet[i]; b >= '0' && b <= '9' {
-					last = last*10 + int64(b-'0')
-					if last < 0 { // overflow
+					rang.Last = rang.Last*10 + int64(b-'0')
+					if rang.Last < 0 { // overflow
 						goto badRange
 					}
 				} else if b == ',' || b == ' ' { // got: "-" suffix-length
-					if !r._addRange(from, last) {
+					if !r._addRange(rang) {
 						return false
 					}
 					state = 0 // select int-range or suffix-range
@@ -1046,9 +1046,9 @@ func (r *webServerRequest_) checkRange(header *pair, index uint8) bool { // Rang
 		goto badRange
 	}
 	if state == 2 {
-		last = -1
+		rang.Last = -1
 	}
-	if (state == 2 || state == 3 || state == 4) && !r._addRange(from, last) {
+	if (state == 2 || state == 3 || state == 4) && !r._addRange(rang) {
 		return false
 	}
 	return true
@@ -1056,12 +1056,12 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
-func (r *webServerRequest_) _addRange(from int64, last int64) bool {
+func (r *webServerRequest_) _addRange(rang Range) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
 	}
-	r.ranges[r.nRanges] = Range{from, last}
+	r.ranges[r.nRanges] = rang
 	r.nRanges++
 	return true
 }

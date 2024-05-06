@@ -153,7 +153,7 @@ type webStream interface {
 	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 
-	isBroken() bool // if either side of the stream is broken, then it is broken
+	isBroken() bool // returns true if either side of the stream is broken
 	markBroken()    // mark stream as broken
 }
 

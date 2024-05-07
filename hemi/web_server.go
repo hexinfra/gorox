@@ -133,6 +133,9 @@ type Request interface { // for *http[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
+	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
+	IsAsteriskOptions() bool // OPTIONS *
+
 	VersionCode() uint8
 	IsHTTP1_0() bool
 	IsHTTP1_1() bool
@@ -152,9 +155,6 @@ type Request interface { // for *http[1-3]Request
 	IsPOST() bool
 	IsPUT() bool
 	IsDELETE() bool
-
-	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
-	IsAsteriskOptions() bool // OPTIONS *
 
 	Authority() string // hostname[:port]
 	Hostname() string  // hostname
@@ -196,8 +196,7 @@ type Request interface { // for *http[1-3]Request
 
 	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
 	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
-
-	MeasureRanges(size int64) []Range
+	EvalRanges(size int64) []Range
 
 	AddCookie(name string, value string) bool
 	HasCookies() bool
@@ -276,7 +275,7 @@ type Request interface { // for *http[1-3]Request
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	unsetHost()
-	takeContent() any
+	holdContent() any
 	readContent() (p []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)
@@ -402,6 +401,9 @@ func (r *webServerRequest_) onEnd() { // for zeros
 
 func (r *webServerRequest_) Webapp() *Webapp { return r.webapp }
 
+func (r *webServerRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
+func (r *webServerRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
+
 func (r *webServerRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *webServerRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
 func (r *webServerRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
@@ -420,9 +422,6 @@ func (r *webServerRequest_) recognizeMethod(method []byte, hash uint16) {
 		r.methodCode = m.code
 	}
 }
-
-func (r *webServerRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
-func (r *webServerRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
 
 func (r *webServerRequest_) Authority() string { return string(r.UnsafeAuthority()) }
 func (r *webServerRequest_) UnsafeAuthority() []byte {
@@ -1607,7 +1606,7 @@ func (r *webServerRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	return r.unixTimes.ifRange == date
 }
 
-func (r *webServerRequest_) MeasureRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
+func (r *webServerRequest_) EvalRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
 	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
 		rang := &r.ranges[i]

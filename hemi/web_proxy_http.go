@@ -44,7 +44,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && args.BufferClientContent { // including size 0
-		content = req.takeContent()
+		content = req.holdContent()
 		if content == nil { // take failed
 			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
@@ -133,7 +133,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 		backHasContent = backResp.HasContent()
 	}
 	if backHasContent && args.BufferServerContent { // including size 0
-		backContent = backResp.takeContent()
+		backContent = backResp.holdContent()
 		if backContent == nil { // take failed
 			// backStream is marked as broken
 			resp.SendBadGateway(nil)

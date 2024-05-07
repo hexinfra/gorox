@@ -373,7 +373,7 @@ type WebBackendResponse interface { // for *H[1-3]Response
 	HasTrailers() bool
 	IsVague() bool
 	examineTail() bool
-	takeContent() any
+	holdContent() any
 	readContent() (p []byte, err error)
 	delHopHeaders()
 	delHopTrailers()

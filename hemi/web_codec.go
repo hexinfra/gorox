@@ -202,21 +202,21 @@ type webIn_ struct { // incoming. needs parsing
 	primes                []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras                []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	recvTimeout           time.Duration // timeout to recv the whole message content
-	maxContentSizeAllowed int64         // max content size allowed for current message. if content is vague, size will be calculated on receiving
+	maxContentSizeAllowed int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	contentSize           int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
 	versionCode           uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse            bool          // treat this message as response?
-	keepAlive             int8          // HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	asResponse            bool          // treat this message as a response?
+	keepAlive             int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	_                     byte          // padding
-	headResult            int16         // result of receiving message head. values are same as http status for convenience
-	bodyResult            int16         // result of receiving message body. values are same as http status for convenience
+	headResult            int16         // result of receiving message head. values are as same as http status for convenience
+	bodyResult            int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
 	webIn0                // all values must be zero by default in this struct!
 }
 type webIn0 struct { // for fast reset, entirely
@@ -983,7 +983,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSizeAllowed]
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) takeContent() any { // used by proxies
+func (r *webIn_) holdContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate
@@ -1540,7 +1540,7 @@ func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming cont
 }
 
 var ( // web incoming message errors
-	webInBadChunk = errors.New("bad chunk")
+	webInBadChunk = errors.New("bad incoming web chunk")
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
@@ -2004,3 +2004,7 @@ func (s *webSocket_) onEnd() {
 
 func (s *webSocket_) example() {
 }
+
+var ( // web socket errors
+	webSocketWriteBroken = errors.New("write broken")
+)

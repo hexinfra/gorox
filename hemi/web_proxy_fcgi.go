@@ -154,7 +154,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && (h.BufferClientContent || req.IsVague()) { // including size 0
-		content = req.takeContent()
+		content = req.holdContent()
 		if content == nil { // take failed
 			// exchan is marked as broken
 			resp.SetStatus(StatusBadRequest)
@@ -234,7 +234,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
 	if fcgiHasContent && h.BufferServerContent { // including size 0
-		fcgiContent = fcgiResp.takeContent()
+		fcgiContent = fcgiResp.holdContent()
 		if fcgiContent == nil { // take failed
 			// fcgiExchan is marked as broken
 			resp.SendBadGateway(nil)
@@ -747,7 +747,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	recvTime      time.Time // the time when receiving response
 	bodyTime      time.Time // the time when first body read operation is performed on this exchan
 	contentText   []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
-	contentFile   *os.File  // used by r.takeContent(), if content is tempFile. will be closed on exchan ends
+	contentFile   *os.File  // used by r.holdContent(), if content is tempFile. will be closed on exchan ends
 	fcgiResponse0           // all values must be zero by default in this struct!
 }
 type fcgiResponse0 struct { // for fast reset, entirely
@@ -1220,7 +1220,7 @@ func (r *fcgiResponse) HasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of vague content
+func (r *fcgiResponse) holdContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r.recvContent().(type) {
 	case tempFile: // [0, r.maxContentSizeAllowed]
 		r.contentFile = content.(*os.File)

@@ -494,11 +494,13 @@ func (s *http1Stream) execute() {
 	req.webapp = webapp
 	resp.webapp = webapp
 
-	if !req.upgradeSocket { // exchan mode?
-		if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-			req.maxContentSizeAllowed = webapp.maxUpfileSize
-		} else { // other content types, including application/x-www-form-urlencoded, are limited in a smaller size.
-			req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
+	if !req.upgradeSocket { // exchan mode
+		if req.formKind != webFormNotForm {
+			if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+				req.maxContentSizeAllowed = webapp.maxUpfileSize
+			} else { // application/x-www-form-urlencoded is limited in a smaller size.
+				req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
+			}
 		}
 		if req.contentSize > req.maxContentSizeAllowed {
 			if req.expectContinue {

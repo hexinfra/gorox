@@ -21,7 +21,7 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	// Methods
 	SendTimeout() time.Duration
 	RecvTimeout() time.Duration
-	MaxContentSizeAllowed() int64
+	MaxContentSizeAllowed() int64 // in response
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 	FetchStream() (WebBackendStream, error)

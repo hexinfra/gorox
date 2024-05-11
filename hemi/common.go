@@ -304,9 +304,9 @@ func loadURL(scheme string, host string, path string) (content string, err error
 		return
 	}
 	if p := bytes.Index(response, []byte("\r\n\r\n")); p == -1 {
-		return "", errors.New("bad http response")
+		return "", errors.New("bad response")
 	} else if len(response) < 12 || response[9] != '2' { // HTTP/1.1 200
-		return "", errors.New("invalid http response")
+		return "", errors.New("invalid response")
 	} else {
 		return string(response[p+4:]), nil
 	}

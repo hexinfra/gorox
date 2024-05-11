@@ -40,11 +40,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream() (WebBackendStream, error) {
+func (b *HTTP3Backend) FetchStream() (HStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream WebBackendStream) {
+func (b *HTTP3Backend) StoreStream(stream HStream) {
 	node := stream.webConn().(*H3Conn).webNode()
 	node.storeStream(stream)
 }
@@ -82,11 +82,11 @@ func (n *http3Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http3Node) fetchStream() (WebBackendStream, error) {
+func (n *http3Node) fetchStream() (HStream, error) {
 	// TODO
 	return nil, nil
 }
-func (n *http3Node) storeStream(stream WebBackendStream) {
+func (n *http3Node) storeStream(stream HStream) {
 	// TODO
 }
 
@@ -163,12 +163,12 @@ func (c *H3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H3Conn) fetchStream() (WebBackendStream, error) {
+func (c *H3Conn) fetchStream() (HStream, error) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
 	return nil, nil
 }
-func (c *H3Conn) storeStream(stream WebBackendStream) {
+func (c *H3Conn) storeStream(stream HStream) {
 	// Note: An H3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
@@ -239,9 +239,9 @@ func (s *H3Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *H3Stream) Request() WebBackendRequest   { return &s.request }
-func (s *H3Stream) Response() WebBackendResponse { return &s.response }
-func (s *H3Stream) Socket() WebBackendSocket     { return nil } // TODO
+func (s *H3Stream) Request() HRequest   { return &s.request }
+func (s *H3Stream) Response() HResponse { return &s.response }
+func (s *H3Stream) Socket() HSocket     { return nil } // TODO
 
 func (s *H3Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -282,7 +282,7 @@ func (s *H3Stream) readFull(p []byte) (int, error) { // for content i/o only?
 // H3Request is the backend-side HTTP/3 request.
 type H3Request struct { // outgoing. needs building
 	// Parent
-	webBackendRequest_
+	hRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -321,9 +321,7 @@ func (r *H3Request) echoChain() error   { return r.echoChain3() }
 func (r *H3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
-func (r *H3Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer3(name)
-}
+func (r *H3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
 func (r *H3Request) passHeaders() error       { return r.writeHeaders3() }
 func (r *H3Request) passBytes(p []byte) error { return r.passBytes3(p) }
@@ -342,7 +340,7 @@ func (r *H3Request) fixedHeaders() []byte { return nil } // TODO
 // H3Response is the backend-side HTTP/3 response.
 type H3Response struct { // incoming. needs parsing
 	// Parent
-	webBackendResponse_
+	hResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -367,7 +365,7 @@ func putH3Socket(socket *H3Socket) {
 // H3Socket is the backend-side HTTP/3 websocket.
 type H3Socket struct {
 	// Parent
-	webBackendSocket_
+	hSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -375,8 +373,8 @@ type H3Socket struct {
 }
 
 func (s *H3Socket) onUse() {
-	s.webBackendSocket_.onUse()
+	s.hSocket_.onUse()
 }
 func (s *H3Socket) onEnd() {
-	s.webBackendSocket_.onEnd()
+	s.hSocket_.onEnd()
 }

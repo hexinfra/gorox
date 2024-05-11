@@ -326,7 +326,7 @@ func (s *http3Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 // http3Request is the server-side HTTP/3 request.
 type http3Request struct { // incoming. needs parsing
 	// Parent
-	webServerRequest_
+	httpRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -338,7 +338,7 @@ func (r *http3Request) readContent() (p []byte, err error) { return r.readConten
 // http3Response is the server-side HTTP/3 response.
 type http3Response struct { // outgoing. needs building
 	// Parent
-	webServerResponse_
+	httpResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -391,11 +391,9 @@ func (r *http3Response) echoChain() error   { return r.echoChain3() }
 func (r *http3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
-func (r *http3Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer3(name)
-}
+func (r *http3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *http3Response) proxyPass1xx(resp WebBackendResponse) bool {
+func (r *http3Response) proxyPass1xx(resp HResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -441,7 +439,7 @@ func putHTTP3Socket(socket *http3Socket) {
 // http3Socket is the server-side HTTP/3 websocket.
 type http3Socket struct {
 	// Parent
-	webServerSocket_
+	httpSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -449,8 +447,8 @@ type http3Socket struct {
 }
 
 func (s *http3Socket) onUse() {
-	s.webServerSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *http3Socket) onEnd() {
-	s.webServerSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }

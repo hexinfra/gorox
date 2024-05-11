@@ -40,11 +40,11 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream() (WebBackendStream, error) {
+func (b *HTTP2Backend) FetchStream() (HStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(stream WebBackendStream) {
+func (b *HTTP2Backend) StoreStream(stream HStream) {
 	node := stream.webConn().(*H2Conn).webNode()
 	node.storeStream(stream)
 }
@@ -83,12 +83,12 @@ func (n *http2Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http2Node) fetchStream() (WebBackendStream, error) {
+func (n *http2Node) fetchStream() (HStream, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *http2Node) storeStream(stream WebBackendStream) {
+func (n *http2Node) storeStream(stream HStream) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -180,12 +180,12 @@ func (c *H2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H2Conn) fetchStream() (WebBackendStream, error) {
+func (c *H2Conn) fetchStream() (HStream, error) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO: incRef, stream.onUse()
 	return nil, nil
 }
-func (c *H2Conn) storeStream(stream WebBackendStream) {
+func (c *H2Conn) storeStream(stream HStream) {
 	// Note: An H2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
@@ -283,9 +283,9 @@ func (s *H2Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *H2Stream) Request() WebBackendRequest   { return &s.request }
-func (s *H2Stream) Response() WebBackendResponse { return &s.response }
-func (s *H2Stream) Socket() WebBackendSocket     { return nil } // TODO
+func (s *H2Stream) Request() HRequest   { return &s.request }
+func (s *H2Stream) Response() HResponse { return &s.response }
+func (s *H2Stream) Socket() HSocket     { return nil } // TODO
 
 func (s *H2Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -326,7 +326,7 @@ func (s *H2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 // H2Request is the backend-side HTTP/2 request.
 type H2Request struct { // outgoing. needs building
 	// Parent
-	webBackendRequest_
+	hRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -365,9 +365,7 @@ func (r *H2Request) echoChain() error   { return r.echoChain2() }
 func (r *H2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
-func (r *H2Request) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer2(name)
-}
+func (r *H2Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
 func (r *H2Request) passHeaders() error       { return r.writeHeaders2() }
 func (r *H2Request) passBytes(p []byte) error { return r.passBytes2(p) }
@@ -386,7 +384,7 @@ func (r *H2Request) fixedHeaders() []byte { return nil } // TODO
 // H2Response is the backend-side HTTP/2 response.
 type H2Response struct { // incoming. needs parsing
 	// Parent
-	webBackendResponse_
+	hResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -411,7 +409,7 @@ func putH2Socket(socket *H2Socket) {
 // H2Socket is the backend-side HTTP/2 websocket.
 type H2Socket struct {
 	// Parent
-	webBackendSocket_
+	hSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -419,8 +417,8 @@ type H2Socket struct {
 }
 
 func (s *H2Socket) onUse() {
-	s.webBackendSocket_.onUse()
+	s.hSocket_.onUse()
 }
 func (s *H2Socket) onEnd() {
-	s.webBackendSocket_.onEnd()
+	s.hSocket_.onEnd()
 }

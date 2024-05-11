@@ -41,11 +41,11 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream() (WebBackendStream, error) {
+func (b *HTTP1Backend) FetchStream() (HStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream WebBackendStream) {
+func (b *HTTP1Backend) StoreStream(stream HStream) {
 	node := stream.webConn().(*H1Conn).webNode()
 	node.storeStream(stream)
 }
@@ -94,7 +94,7 @@ func (n *http1Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http1Node) fetchStream() (WebBackendStream, error) {
+func (n *http1Node) fetchStream() (HStream, error) {
 	h1Conn := n.pullConn()
 	down := n.isDown()
 	if h1Conn != nil {
@@ -178,7 +178,7 @@ func (n *http1Node) _dialTCP() (*H1Conn, error) {
 	}
 	return getH1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) storeStream(stream WebBackendStream) {
+func (n *http1Node) storeStream(stream HStream) {
 	h1Stream := stream.(*H1Stream)
 	h1Conn := h1Stream
 	h1Conn.storeStream(stream)
@@ -315,12 +315,12 @@ func (c *H1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H1Conn) fetchStream() (WebBackendStream, error) {
+func (c *H1Conn) fetchStream() (HStream, error) {
 	stream := c
 	stream.onUse()
 	return stream, nil
 }
-func (c *H1Conn) storeStream(stream WebBackendStream) {
+func (c *H1Conn) storeStream(stream HStream) {
 	stream.(*H1Stream).onEnd()
 }
 
@@ -348,9 +348,9 @@ func (s *H1Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *H1Stream) Request() WebBackendRequest   { return &s.request }
-func (s *H1Stream) Response() WebBackendResponse { return &s.response }
-func (s *H1Stream) Socket() WebBackendSocket     { return nil } // TODO
+func (s *H1Stream) Request() HRequest   { return &s.request }
+func (s *H1Stream) Response() HResponse { return &s.response }
+func (s *H1Stream) Socket() HSocket     { return nil } // TODO
 
 func (s *H1Stream) ExecuteExchan() error { // request & response
 	// TODO
@@ -394,7 +394,7 @@ func (c *H1Stream) readFull(p []byte) (int, error)            { return io.ReadFu
 // H1Request is the backend-side HTTP/1 request.
 type H1Request struct { // outgoing. needs building
 	// Parent
-	webBackendRequest_
+	hRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -531,7 +531,7 @@ func (r *H1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders
 // H1Response is the backend-side HTTP/1 response.
 type H1Response struct { // incoming. needs parsing
 	// Parent
-	webBackendResponse_
+	hResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -688,7 +688,7 @@ func putH1Socket(socket *H1Socket) {
 // H1Socket is the backend-side HTTP/1 websocket.
 type H1Socket struct {
 	// Parent
-	webBackendSocket_
+	hSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -696,8 +696,8 @@ type H1Socket struct {
 }
 
 func (s *H1Socket) onUse() {
-	s.webBackendSocket_.onUse()
+	s.hSocket_.onUse()
 }
 func (s *H1Socket) onEnd() {
-	s.webBackendSocket_.onEnd()
+	s.hSocket_.onEnd()
 }

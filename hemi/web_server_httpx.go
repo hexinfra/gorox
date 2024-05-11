@@ -656,7 +656,7 @@ func (c *http1Stream) writev(vector *net.Buffers) (int64, error) {
 // http1Request is the server-side HTTP/1 request.
 type http1Request struct { // incoming. needs parsing
 	// Parent
-	webServerRequest_
+	httpRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1104,7 +1104,7 @@ func (r *http1Request) readContent() (p []byte, err error) { return r.readConten
 // http1Response is the server-side HTTP/1 response.
 type http1Response struct { // outgoing. needs building
 	// Parent
-	webServerResponse_
+	httpResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1233,7 +1233,7 @@ func (r *http1Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *http1Response) proxyPass1xx(resp WebBackendResponse) bool {
+func (r *http1Response) proxyPass1xx(resp HResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -1319,7 +1319,7 @@ func putHTTP1Socket(socket *http1Socket) {
 // http1Socket is the server-side HTTP/1 websocket.
 type http1Socket struct {
 	// Parent
-	webServerSocket_
+	httpSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1327,10 +1327,10 @@ type http1Socket struct {
 }
 
 func (s *http1Socket) onUse() {
-	s.webServerSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *http1Socket) onEnd() {
-	s.webServerSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }
 
 // poolHTTP2Conn is the server-side HTTP/2 connection pool.
@@ -2241,7 +2241,7 @@ func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for conten
 // http2Request is the server-side HTTP/2 request.
 type http2Request struct { // incoming. needs parsing
 	// Parent
-	webServerRequest_
+	httpRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -2266,7 +2266,7 @@ func (r *http2Request) joinTrailers(p []byte) bool {
 // http2Response is the server-side HTTP/2 response.
 type http2Response struct { // outgoing. needs building
 	// Parent
-	webServerResponse_
+	httpResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -2319,11 +2319,9 @@ func (r *http2Response) echoChain() error   { return r.echoChain2() }
 func (r *http2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
-func (r *http2Response) trailer(name []byte) (value []byte, ok bool) {
-	return r.trailer2(name)
-}
+func (r *http2Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
-func (r *http2Response) proxyPass1xx(resp WebBackendResponse) bool {
+func (r *http2Response) proxyPass1xx(resp HResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -2369,7 +2367,7 @@ func putHTTP2Socket(socket *http2Socket) {
 // http2Socket is the server-side HTTP/2 websocket.
 type http2Socket struct {
 	// Parent
-	webServerSocket_
+	httpSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -2377,8 +2375,8 @@ type http2Socket struct {
 }
 
 func (s *http2Socket) onUse() {
-	s.webServerSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *http2Socket) onEnd() {
-	s.webServerSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }

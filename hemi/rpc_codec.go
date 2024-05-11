@@ -42,15 +42,12 @@ func (x *_rpcExchan_) onEnd() {
 func (x *_rpcExchan_) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *_rpcExchan_) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-// rpcIn is the interface for *hrpcRequest and *HResponse. Used as shell by rpcIn_.
-type rpcIn interface {
-	// TODO
-}
-
 // rpcIn_ is the parent for rpcServerRequest_ and rpcClientResponse_.
 type rpcIn_ struct {
 	// Assocs
-	shell rpcIn
+	shell interface { // *hrpcRequest, *HResponse
+		// TODO
+	}
 	// TODO
 	rpcIn0
 }
@@ -58,15 +55,12 @@ type rpcIn0 struct {
 	arrayKind int8 // kind of current r.array. see arrayKindXXX
 }
 
-// rpcOut is the interface for *hrpcResponse and *HRequest. Used as shell by rpcOut_.
-type rpcOut interface {
-	// TODO
-}
-
 // rpcOut_ is the parent for rpcServerResponse_ and rpcClientRequest_.
 type rpcOut_ struct {
 	// Assocs
-	shell rpcOut
+	shell interface { // *hrpcResponse, *HRequest
+		// TODO
+	}
 	// TODO
 	rpcOut0
 }

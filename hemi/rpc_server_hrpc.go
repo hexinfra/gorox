@@ -94,8 +94,8 @@ type hrpcExchan struct {
 	// Mixins
 	_rpcExchan_
 	// Assocs
-	request  hrpcRequest
-	response hrpcResponse
+	//request  hrpcRequest
+	//response hrpcResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
@@ -108,24 +108,4 @@ func (x *hrpcExchan) onUse() {
 }
 func (x *hrpcExchan) onEnd() {
 	x._rpcExchan_.onEnd()
-}
-
-// hrpcRequest is the server-side HRPC request.
-type hrpcRequest struct {
-	// Mixins
-	rpcServerRequest_
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	// Exchan states (zeros)
-}
-
-// hrpcResponse is the server-side HRPC response.
-type hrpcResponse struct {
-	// Mixins
-	rpcServerResponse_
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	// Exchan states (zeros)
 }

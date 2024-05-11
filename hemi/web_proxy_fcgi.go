@@ -721,7 +721,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse must implements the WebBackendResponse interface.
+// fcgiResponse must implements the HResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

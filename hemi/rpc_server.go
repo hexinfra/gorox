@@ -120,32 +120,6 @@ type rpcServerConn interface {
 type rpcServerExchan interface {
 }
 
-// rpcServerRequest is the server-side RPC request.
-type rpcServerRequest interface {
-	Service() *Service
-	// TODO
-}
-
-// rpcServerRequest_
-type rpcServerRequest_ struct {
-	// Parent
-	rpcIn_
-	// TODO
-}
-
-// rpcServerResponse is the server-side RPC response.
-type rpcServerResponse interface {
-	Req() rpcServerRequest
-	// TODO
-}
-
-// rpcServerResponse_
-type rpcServerResponse_ struct {
-	// Parent
-	rpcOut_
-	// TODO
-}
-
 // Service is the RPC service.
 type Service struct {
 	// Parent
@@ -239,9 +213,11 @@ func (s *Service) maintain() { // runner
 	s.stage.DecSub()
 }
 
+/*
 func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 	// TODO
 }
+*/
 
 // Bundlet is a collection of related procedures in a service. A service has many bundlets.
 // Bundlets are not components.
@@ -252,5 +228,7 @@ type Bundlet interface {
 type Bundlet_ struct {
 }
 
+/*
 func (b *Bundlet_) dispatch(req rpcServerRequest, resp rpcServerResponse) {
 }
+*/

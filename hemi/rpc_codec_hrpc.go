@@ -12,12 +12,4 @@ package hemi
 
 // HRPC incoming
 
-func (r *rpcIn_) readContentH() {
-	// TODO
-}
-
 // HRPC outgoing
-
-func (r *rpcOut_) writeBytesH() {
-	// TODO
-}

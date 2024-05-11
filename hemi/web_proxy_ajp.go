@@ -193,7 +193,7 @@ func (r *ajpRequest) onEnd() {
 	// TODO
 }
 
-// ajpResponse must implements the WebBackendResponse interface.
+// ajpResponse must implements the HResponse interface.
 type ajpResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *ajpExchan

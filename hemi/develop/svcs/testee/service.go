@@ -11,23 +11,6 @@ import (
 
 func init() {
 	RegisterServiceInit("testee", func(service *Service) error {
-		/*
-			ss := service.Servers()
-			for _, s := range ss {
-				g := s.GRPCServer().(*grpc.Server)
-				pb.RegisterGreeterServer(g, &greetService{})
-			}
-		*/
 		return nil
 	})
 }
-
-/*
-type greetService struct {
-	pb.UnimplementedGreeterServer
-}
-
-func (s *greetService) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-}
-*/

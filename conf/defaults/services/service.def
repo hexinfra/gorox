@@ -1,4 +1,4 @@
 service "s1" {
 	.withStater = "Stater name"
-	.maxContentSizeAllowed = 16G
+	.maxContentSize = 16G
 }

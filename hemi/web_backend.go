@@ -19,9 +19,9 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	SendTimeout() time.Duration
-	RecvTimeout() time.Duration
-	MaxContentSizeAllowed() int64 // in response
+	SendTimeout() time.Duration // timeout to send the whole message
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	MaxContentSize() int64      // in response
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 	FetchStream() (HStream, error)
@@ -33,7 +33,7 @@ type webBackend_[N Node] struct {
 	// Parent
 	Backend_[N]
 	// Mixins
-	_webAgent_
+	_webKeeper_
 	// States
 }
 
@@ -43,14 +43,14 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webAgent_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
+	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpsDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *webBackend_[N]) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webAgent_.onPrepare(b)
+	b._webKeeper_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -493,7 +493,7 @@ func (r *hResponse_) examineHead() bool {
 		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
-	if r.contentSize > r.maxContentSizeAllowed {
+	if r.contentSize > r.maxContentSize {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http client's limit"
 		return false
 	}
@@ -508,7 +508,7 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) { // fully
+		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -518,7 +518,7 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 		}
 	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.desc, r.input) {
+		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -540,21 +540,21 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 var ( // perfect hash table for singleton response headers
 	hResponseSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*hResponse_, *pair, uint8) bool
 	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
-		0:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*hResponse_).checkDate},
-		1:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*hResponse_).checkContentLength},
-		2:  {false, desc{hashAge, false, false, false, false, bytesAge}, (*hResponse_).checkAge},
-		3:  {false, desc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {false, desc{hashLastModified, false, false, false, false, bytesLastModified}, (*hResponse_).checkLastModified},
-		5:  {false, desc{hashLocation, false, false, false, false, bytesLocation}, (*hResponse_).checkLocation},
-		6:  {false, desc{hashExpires, false, false, false, false, bytesExpires}, (*hResponse_).checkExpires},
-		7:  {false, desc{hashContentRange, false, false, false, false, bytesContentRange}, (*hResponse_).checkContentRange},
-		8:  {false, desc{hashETag, false, false, false, false, bytesETag}, (*hResponse_).checkETag},
-		9:  {false, desc{hashServer, false, false, false, true, bytesServer}, (*hResponse_).checkServer},
-		10: {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*hResponse_).checkContentType},
-		11: {false, desc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*hResponse_).checkRetryAfter},
+		0:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*hResponse_).checkDate},
+		1:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*hResponse_).checkContentLength},
+		2:  {false, fdesc{hashAge, false, false, false, false, bytesAge}, (*hResponse_).checkAge},
+		3:  {false, fdesc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {false, fdesc{hashLastModified, false, false, false, false, bytesLastModified}, (*hResponse_).checkLastModified},
+		5:  {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*hResponse_).checkLocation},
+		6:  {false, fdesc{hashExpires, false, false, false, false, bytesExpires}, (*hResponse_).checkExpires},
+		7:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*hResponse_).checkContentRange},
+		8:  {false, fdesc{hashETag, false, false, false, false, bytesETag}, (*hResponse_).checkETag},
+		9:  {false, fdesc{hashServer, false, false, false, true, bytesServer}, (*hResponse_).checkServer},
+		10: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*hResponse_).checkContentType},
+		11: {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*hResponse_).checkRetryAfter},
 	}
 	hResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
@@ -616,26 +616,26 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 
 var ( // perfect hash table for important response headers
 	hResponseImportantHeaderTable = [17]struct {
-		desc  // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*hResponse_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
-		0:  {desc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
-		1:  {desc{hashVia, false, false, false, true, bytesVia}, (*hResponse_).checkVia},
-		2:  {desc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*hResponse_).checkWWWAuthenticate},
-		3:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*hResponse_).checkConnection},
-		4:  {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*hResponse_).checkContentEncoding},
-		5:  {desc{hashAllow, false, true, false, false, bytesAllow}, (*hResponse_).checkAllow},
-		6:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*hResponse_).checkTransferEncoding}, // deliberately false
-		7:  {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*hResponse_).checkTrailer},
-		8:  {desc{hashVary, false, false, false, false, bytesVary}, (*hResponse_).checkVary},
-		9:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*hResponse_).checkUpgrade},
-		10: {desc{hashProxyAuthenticate, false, false, false, false, bytesProxyAuthenticate}, (*hResponse_).checkProxyAuthenticate},
-		11: {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*hResponse_).checkCacheControl},
-		12: {desc{hashAltSvc, false, false, true, false, bytesAltSvc}, (*hResponse_).checkAltSvc},
-		13: {desc{hashCDNCacheControl, false, false, false, false, bytesCDNCacheControl}, (*hResponse_).checkCDNCacheControl},
-		14: {desc{hashCacheStatus, false, false, true, false, bytesCacheStatus}, (*hResponse_).checkCacheStatus},
-		15: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*hResponse_).checkAcceptEncoding},
-		16: {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*hResponse_).checkContentLanguage},
+		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
+		1:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*hResponse_).checkVia},
+		2:  {fdesc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*hResponse_).checkWWWAuthenticate},
+		3:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*hResponse_).checkConnection},
+		4:  {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*hResponse_).checkContentEncoding},
+		5:  {fdesc{hashAllow, false, true, false, false, bytesAllow}, (*hResponse_).checkAllow},
+		6:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*hResponse_).checkTransferEncoding}, // deliberately false
+		7:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*hResponse_).checkTrailer},
+		8:  {fdesc{hashVary, false, false, false, false, bytesVary}, (*hResponse_).checkVary},
+		9:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*hResponse_).checkUpgrade},
+		10: {fdesc{hashProxyAuthenticate, false, false, false, false, bytesProxyAuthenticate}, (*hResponse_).checkProxyAuthenticate},
+		11: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*hResponse_).checkCacheControl},
+		12: {fdesc{hashAltSvc, false, false, true, false, bytesAltSvc}, (*hResponse_).checkAltSvc},
+		13: {fdesc{hashCDNCacheControl, false, false, false, false, bytesCDNCacheControl}, (*hResponse_).checkCDNCacheControl},
+		14: {fdesc{hashCacheStatus, false, false, true, false, bytesCacheStatus}, (*hResponse_).checkCacheStatus},
+		15: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*hResponse_).checkAcceptEncoding},
+		16: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*hResponse_).checkContentLanguage},
 	}
 	hResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )

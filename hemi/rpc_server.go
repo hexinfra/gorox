@@ -129,14 +129,14 @@ type Service struct {
 	stater  Stater      // the stater which is used by this service
 	servers []rpcServer // bound rpc servers. may be empty
 	// States
-	hostnames             [][]byte           // ...
-	accessLog             *logcfg            // ...
-	logger                *logger            // service access logger
-	maxContentSizeAllowed int64              // max content size allowed
-	exactHostnames        [][]byte           // like: ("example.com")
-	suffixHostnames       [][]byte           // like: ("*.example.com")
-	prefixHostnames       [][]byte           // like: ("www.example.*")
-	bundlets              map[string]Bundlet // ...
+	hostnames       [][]byte           // ...
+	accessLog       *logcfg            // ...
+	logger          *logger            // service access logger
+	maxContentSize  int64              // max content size allowed
+	exactHostnames  [][]byte           // like: ("example.com")
+	suffixHostnames [][]byte           // like: ("*.example.com")
+	prefixHostnames [][]byte           // like: ("www.example.*")
+	bundlets        map[string]Bundlet // ...
 }
 
 func (s *Service) onCreate(name string, stage *Stage) {
@@ -161,12 +161,12 @@ func (s *Service) OnConfigure() {
 		}
 	}
 
-	// maxContentSizeAllowed
-	s.ConfigureInt64("maxContentSizeAllowed", &s.maxContentSizeAllowed, func(value int64) error {
+	// maxContentSize
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 && value <= _1G {
 			return nil
 		}
-		return errors.New(".maxContentSizeAllowed has an invalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _16M)
 }
 func (s *Service) OnPrepare() {

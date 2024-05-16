@@ -19,38 +19,38 @@ import (
 	"time"
 )
 
-// webAgent collects shared methods between WebServer or WebBackend.
-type webAgent interface {
+// webKeeper collects shared methods between WebServer or WebBackend.
+type webKeeper interface {
 	// Imports
 	contentSaver
 	// Methods
 	Stage() *Stage
-	ReadTimeout() time.Duration
-	RecvTimeout() time.Duration // timeout to recv the whole message content
-	WriteTimeout() time.Duration
-	SendTimeout() time.Duration // timeout to send the whole message
-	MaxContentSizeAllowed() int64
+	ReadTimeout() time.Duration  // timeout for a single read operation
+	WriteTimeout() time.Duration // timeout for a single write operation
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	SendTimeout() time.Duration  // timeout to send the whole message
+	MaxContentSize() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 }
 
-// _webAgent_ is a mixin for webServer_ and webBackend_.
-type _webAgent_ struct {
+// _webKeeper_ is a mixin for webServer_ and webBackend_.
+type _webKeeper_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	recvTimeout           time.Duration // timeout to recv the whole message content
-	sendTimeout           time.Duration // timeout to send the whole message
-	maxContentSizeAllowed int64         // max content size allowed
-	maxMemoryContentSize  int32         // max content size that can be loaded into memory directly
-	maxStreamsPerConn     int32         // max streams of one conn. 0 means infinite
+	recvTimeout          time.Duration // timeout to recv the whole message content
+	sendTimeout          time.Duration // timeout to send the whole message
+	maxContentSize       int64         // max content size allowed
+	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
 }
 
-func (a *_webAgent_) onConfigure(shell Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	a._contentSaver_.onConfigure(shell, defaultDir)
+func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+	k._contentSaver_.onConfigure(shell, defaultDir)
 
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &a.recvTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -58,23 +58,23 @@ func (a *_webAgent_) onConfigure(shell Component, recvTimeout time.Duration, sen
 	}, recvTimeout)
 
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &a.sendTimeout, func(value time.Duration) error {
+	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".sendTimeout has an invalid value")
 	}, sendTimeout)
 
-	// maxContentSizeAllowed
-	shell.ConfigureInt64("maxContentSizeAllowed", &a.maxContentSizeAllowed, func(value int64) error {
+	// maxContentSize
+	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSizeAllowed has an invalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 
 	// maxMemoryContentSize
-	shell.ConfigureInt32("maxMemoryContentSize", &a.maxMemoryContentSize, func(value int32) error {
+	shell.ConfigureInt32("maxMemoryContentSize", &k.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
@@ -82,22 +82,22 @@ func (a *_webAgent_) onConfigure(shell Component, recvTimeout time.Duration, sen
 	}, _16M)
 
 	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &a.maxStreamsPerConn, func(value int32) error {
+	shell.ConfigureInt32("maxStreamsPerConn", &k.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
-func (a *_webAgent_) onPrepare(shell Component) {
-	a._contentSaver_.onPrepare(shell, 0755)
+func (k *_webKeeper_) onPrepare(shell Component) {
+	k._contentSaver_.onPrepare(shell, 0755)
 }
 
-func (a *_webAgent_) RecvTimeout() time.Duration   { return a.recvTimeout }
-func (a *_webAgent_) SendTimeout() time.Duration   { return a.sendTimeout }
-func (a *_webAgent_) MaxContentSizeAllowed() int64 { return a.maxContentSizeAllowed }
-func (a *_webAgent_) MaxMemoryContentSize() int32  { return a.maxMemoryContentSize }
-func (a *_webAgent_) MaxStreamsPerConn() int32     { return a.maxStreamsPerConn }
+func (k *_webKeeper_) RecvTimeout() time.Duration  { return k.recvTimeout }
+func (k *_webKeeper_) SendTimeout() time.Duration  { return k.sendTimeout }
+func (k *_webKeeper_) MaxContentSize() int64       { return k.maxContentSize }
+func (k *_webKeeper_) MaxMemoryContentSize() int32 { return k.maxMemoryContentSize }
+func (k *_webKeeper_) MaxStreamsPerConn() int32    { return k.maxStreamsPerConn }
 
 // webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
 type webConn interface {
@@ -138,7 +138,7 @@ func (c *_webConn_) markBroken()    { c.broken.Store(true) }
 
 // webStream collects shared methods between *http[1-3]Stream and *H[1-3]Stream.
 type webStream interface {
-	webAgent() webAgent
+	webKeeper() webKeeper
 	webConn() webConn
 	remoteAddr() net.Addr
 
@@ -197,19 +197,19 @@ type webIn_ struct { // incoming. needs parsing
 	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
-	input                 []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array                 []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	primes                []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras                []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
-	recvTimeout           time.Duration // timeout to recv the whole message content
-	maxContentSizeAllowed int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
-	contentSize           int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
-	versionCode           uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse            bool          // treat this message as a response?
-	keepAlive             int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	_                     byte          // padding
-	headResult            int16         // result of receiving message head. values are as same as http status for convenience
-	bodyResult            int16         // result of receiving message body. values are as same as http status for convenience
+	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	recvTimeout    time.Duration // timeout to recv the whole message content
+	maxContentSize int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
+	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
+	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse     bool          // treat this message as a response?
+	keepAlive      int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_              byte          // padding
+	headResult     int16         // result of receiving message head. values are as same as http status for convenience
+	bodyResult     int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
@@ -267,9 +267,9 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.array = r.stockArray[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	agent := r.stream.webAgent()
-	r.recvTimeout = agent.RecvTimeout()
-	r.maxContentSizeAllowed = agent.MaxContentSizeAllowed()
+	keeper := r.stream.webKeeper()
+	r.recvTimeout = keeper.RecvTimeout()
+	r.maxContentSize = keeper.MaxContentSize()
 	r.contentSize = -1 // no content
 	r.versionCode = versionCode
 	r.asResponse = asResponse
@@ -413,7 +413,7 @@ func (r *webIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(WeakString(name), hash, r.headers, kindHeader)
 }
 
-func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) bool { // for field data and value params
+func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
 	field.setParsed()
 
 	if field.value.isEmpty() {
@@ -630,7 +630,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *desc, p []byte, fully bool) boo
 		text.from = text.edge // for next parameter
 	}
 }
-func (r *webIn_) _splitField(field *pair, fdesc *desc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
+func (r *webIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
 	field.setParsed()
 
 	subField := *field
@@ -945,7 +945,7 @@ func (r *webIn_) unsafeContent() []byte {
 	}
 	return r.contentText[0:r.receivedSize]
 }
-func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSizeAllowed]
+func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.contentText already.
 		return
@@ -955,7 +955,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSizeAllowed]
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = webContentTextPool
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		contentFile := content.(*os.File)
 		if r.receivedSize == 0 { // vague content can has 0 size
 			r.contentText = r.input
@@ -996,7 +996,7 @@ func (r *webIn_) holdContent() any { // used by proxies
 		r.contentText = content
 		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
 		return r.contentText[0:r.receivedSize]
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -1009,7 +1009,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 	switch content := r.recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		if content != fakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
@@ -1020,7 +1020,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 }
 func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webAgent().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webKeeper().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
@@ -1037,7 +1037,7 @@ func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content 
 		}
 		r.receivedSize += int64(n)
 		return contentText // []byte, fetched from pool
-	} else { // (64K1, r.maxContentSizeAllowed] when sized, or [0, r.maxContentSizeAllowed] when vague. save to tempFile and return the file
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when vague. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
 			return err
@@ -1446,7 +1446,7 @@ func (r *webIn_) arrayCopy(p []byte) bool { // callers don't guarantee the inten
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
-		if edge > r.stream.webAgent().MaxMemoryContentSize() {
+		if edge > r.stream.webKeeper().MaxMemoryContentSize() {
 			return false
 		}
 		if !r._growArray(int32(len(p))) {
@@ -1516,7 +1516,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 }
 
 func (r *webIn_) saveContentFilesDir() string {
-	return r.stream.webAgent().SaveContentFilesDir()
+	return r.stream.webKeeper().SaveContentFilesDir()
 }
 func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
@@ -1533,7 +1533,7 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.webAgent().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.webKeeper().ReadTimeout()))
 }
 func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1608,7 +1608,7 @@ type webOut0 struct { // for fast reset, entirely
 
 func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.sendTimeout = r.stream.webAgent().SendTimeout()
+	r.sendTimeout = r.stream.webKeeper().SendTimeout()
 	r.contentSize = -1 // not set
 	r.versionCode = versionCode
 	r.asRequest = asRequest
@@ -1967,7 +1967,7 @@ func (r *webOut_) _beforeWrite() error {
 	if r.sendTime.IsZero() { // only once
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.webAgent().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.webKeeper().WriteTimeout()))
 }
 func (r *webOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {

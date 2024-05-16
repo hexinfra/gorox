@@ -475,24 +475,6 @@ func (s *span) sub(delta int32) {
 	}
 }
 
-// defaultDesc
-var defaultDesc = &desc{ // sec-ch-ua: "Microsoft Edge";v="111", "Not(A:Brand";v="8", "Chromium";v="111"
-	allowQuote: true,
-	allowEmpty: false,
-	allowParam: true,
-	hasComment: false,
-}
-
-// desc describes a web field.
-type desc struct {
-	hash       uint16 // name hash
-	allowQuote bool   // allow data quote or not
-	allowEmpty bool   // allow empty data or not
-	allowParam bool   // allow parameters or not
-	hasComment bool   // has comment or not
-	name       []byte // field name
-}
-
 // poolPairs
 var poolPairs sync.Pool
 
@@ -666,6 +648,24 @@ func (p *pair) show(place []byte) { // TODO: optimize, or simply remove
 // para is a name-value parameter in multipart/form-data.
 type para struct { // 16 bytes
 	name, value span
+}
+
+// defaultDesc
+var defaultDesc = &fdesc{
+	allowQuote: true,
+	allowEmpty: false,
+	allowParam: true,
+	hasComment: false,
+}
+
+// fdesc describes a web field.
+type fdesc struct {
+	hash       uint16 // name hash
+	allowQuote bool   // allow data quote or not
+	allowEmpty bool   // allow empty data or not
+	allowParam bool   // allow parameters or not
+	hasComment bool   // has comment or not
+	name       []byte // field name
 }
 
 // Range defines a range.

@@ -292,7 +292,7 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			goto badRead
 		}
 		// Check target size
-		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSizeAllowed {
+		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
 			r.chunkSize = chunkSize
 		} else { // invalid target size.
 			// TODO: log error?

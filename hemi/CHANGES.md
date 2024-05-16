@@ -17,7 +17,7 @@ v0.1.6                                                        (2023-06-06 UTC+8)
 
   * Conn and Conn_ are now exported.
   * Cachers are renamed as storers.
-  * AJP, FCGI, and uwsgi now support unix domain sockets.
+  * FCGI and uwsgi now support unix domain sockets.
   * Add "contains" and "not contains" support for cases and rules.
   * Add regexp conditions in cases and rules.
   * Option "-out" and "-err" are changed to "-stdout" and "-stderr".

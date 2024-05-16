@@ -129,7 +129,6 @@ article table.none tr td {
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
 		<li><a href="#stage-webapp-accessChecker">stage &gt; webapp &gt; [rule &gt;] accessChecker</a></li>
-		<li><a href="#stage-webapp-ajpProxy">stage &gt; webapp &gt; [rule &gt;] ajpProxy</a></li>
 		<li><a href="#stage-webapp-hostnameChecker">stage &gt; webapp &gt; [rule &gt;] hostnameChecker</a></li>
 		<li><a href="#stage-webapp-httpsChecker">stage &gt; webapp &gt; [rule &gt;] httpsChecker</a></li>
 		<li><a href="#stage-webapp-limitChecker">stage &gt; webapp &gt; [rule &gt;] limitChecker</a></li>
@@ -319,7 +318,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.aliveTimeout = 4s
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
-		.maxContentSizeAllowed = 1T
+		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
 		.balancer = "roundRobin"
@@ -391,8 +390,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSizeAllowed http 内容的最大限制。</p>
-					<code>语法：.maxContentSizeAllowed = Size
+					<p>.maxContentSize http 内容的最大限制。</p>
+					<code>语法：.maxContentSize = Size
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
@@ -925,10 +924,6 @@ webapp "main" {
 			<h4>stage &gt; webapp &gt; favicon </h4>
 		</li>
 
-		<li id="stage-webapp-ajpProxy">
-			<h4>stage &gt; webapp &gt; ajpProxy </h4>
-		</li>
-
 		<li id="stage-webapp-uwsgiProxy">
 			<h4>stage &gt; webapp &gt; uwsgiProxy </h4>
 		</li>
@@ -1041,8 +1036,8 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSizeAllowed cgi 内容体最大限制</p>
-					<code>语法：.maxContentSizeAllowed = 128M
+					<p>.maxContentSize cgi 内容体最大限制</p>
+					<code>语法：.maxContentSize = 128M
 						默认值：1T
 						取值范围： [0, +]
 					</code>
@@ -1407,7 +1402,7 @@ httpProxy {
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConnsPerGate = 10000
 		.webapps = ("example_com")
-		.maxContentSizeAllowed = 1T
+		.maxContentSize = 1T
 		.recvTimeout = 120s
 		.sendTimeout = 120s
 		.forceScheme = ""
@@ -1465,8 +1460,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSizeAllowed 数据包最大限制。</p>
-					<code>语法：.maxContentSizeAllowed = Size
+					<p>.maxContentSize 数据包最大限制。</p>
+					<code>语法：.maxContentSize = Size
 						默认值：1T
 						取值范围： (0s, 内存最大值)
 					</code>

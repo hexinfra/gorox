@@ -47,13 +47,13 @@ type fcgiProxy struct {
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
 	WebExchanProxyArgs
-	persistent            bool          // instructs FCGI server to keep conn?
-	preferUnderscore      bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename        []byte        // for SCRIPT_FILENAME
-	indexFile             []byte        // for indexFile
-	sendTimeout           time.Duration // timeout to send the whole request
-	recvTimeout           time.Duration // timeout to recv the whole response content
-	maxContentSizeAllowed int64         // max response content size allowed
+	persistent       bool          // instructs FCGI server to keep conn?
+	preferUnderscore bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
+	scriptFilename   []byte        // for SCRIPT_FILENAME
+	indexFile        []byte        // for indexFile
+	sendTimeout      time.Duration // timeout to send the whole request
+	recvTimeout      time.Duration // timeout to recv the whole response content
+	maxContentSize   int64         // max response content size allowed
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -133,12 +133,12 @@ func (h *fcgiProxy) OnConfigure() {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 
-	// maxContentSizeAllowed
-	h.ConfigureInt64("maxContentSizeAllowed", &h.maxContentSizeAllowed, func(value int64) error {
+	// maxContentSize
+	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSizeAllowed has an invalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 }
 func (h *fcgiProxy) OnPrepare() {
@@ -733,15 +733,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Exchan states (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// Exchan states (non-zeros)
-	records               []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
-	input                 []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	primes                []pair        // prime fcgi response headers
-	extras                []pair        // extra fcgi response headers
-	recvTimeout           time.Duration // timeout to recv the whole response content
-	maxContentSizeAllowed int64         // max content size allowed for current response
-	status                int16         // 200, 302, 404, ...
-	headResult            int16         // result of receiving response head. values are same as http status for convenience
-	bodyResult            int16         // result of receiving response body. values are same as http status for convenience
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
+	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	primes         []pair        // prime fcgi response headers
+	extras         []pair        // extra fcgi response headers
+	recvTimeout    time.Duration // timeout to recv the whole response content
+	maxContentSize int64         // max content size allowed for current response
+	status         int16         // 200, 302, 404, ...
+	headResult     int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
 	failReason    string    // the reason of headResult or bodyResult
 	recvTime      time.Time // the time when receiving response
@@ -804,7 +804,7 @@ func (r *fcgiResponse) onUse() {
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.exchan.proxy.recvTimeout
-	r.maxContentSizeAllowed = r.exchan.proxy.maxContentSizeAllowed
+	r.maxContentSize = r.exchan.proxy.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1081,7 +1081,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
-		} else if !r._parseHeader(header, &sh.desc, true) {
+		} else if !r._parseHeader(header, &sh.fdesc, true) {
 			// r.headResult is set.
 			return false
 		}
@@ -1091,7 +1091,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 		}
 	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
 		extraFrom := len(r.extras)
-		if !r._splitHeader(header, &mh.desc) {
+		if !r._splitHeader(header, &mh.fdesc) {
 			// r.headResult is set.
 			return false
 		}
@@ -1110,12 +1110,12 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, fdesc *desc, fully bool) bool { // data and params
+func (r *fcgiResponse) _parseHeader(header *pair, fdesc *fdesc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
 	return true
 }
-func (r *fcgiResponse) _splitHeader(header *pair, fdesc *desc) bool {
+func (r *fcgiResponse) _splitHeader(header *pair, fdesc *fdesc) bool {
 	// TODO
 	// use r._addExtra
 	return true
@@ -1137,13 +1137,13 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 var ( // perfect hash table for singleton response headers
 	fcgiResponseSingletonHeaderTable = [4]struct {
 		parse bool // need general parse or not
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, *pair, int) bool
 	}{ // content-length content-type location status
-		0: {false, desc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, (*fcgiResponse).checkStatus},
-		1: {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*fcgiResponse).checkContentLength},
-		2: {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
-		3: {false, desc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
+		0: {false, fdesc{fcgiHashStatus, false, false, false, false, fcgiBytesStatus}, (*fcgiResponse).checkStatus},
+		1: {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*fcgiResponse).checkContentLength},
+		2: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
+		3: {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
 	}
 	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
 )
@@ -1177,12 +1177,12 @@ func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
 
 var ( // perfect hash table for important response headers
 	fcgiResponseImportantHeaderTable = [3]struct {
-		desc  // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, []pair, int, int) bool
 	}{ // connection transfer-encoding upgrade
-		0: {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
-		1: {desc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
-		2: {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
+		0: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*fcgiResponse).checkTransferEncoding}, // deliberately false
+		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
+		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
 	}
 	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
 )
@@ -1222,7 +1222,7 @@ func (r *fcgiResponse) HasContent() bool {
 }
 func (r *fcgiResponse) holdContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r.recvContent().(type) {
-	case tempFile: // [0, r.maxContentSizeAllowed]
+	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF

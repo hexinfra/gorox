@@ -262,7 +262,7 @@ func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content i/
 func (s *H3Stream) isBroken() bool { return false } // TODO
 func (s *H3Stream) markBroken()    {}               // TODO
 
-func (s *H3Stream) webAgent() webAgent   { return s.conn.WebBackend() }
+func (s *H3Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
 func (s *H3Stream) webConn() webConn     { return s.conn }
 func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
 

@@ -497,12 +497,12 @@ func (s *http1Stream) execute() {
 	if !req.upgradeSocket { // exchan mode
 		if req.formKind != webFormNotForm {
 			if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-				req.maxContentSizeAllowed = webapp.maxUpfileSize
+				req.maxContentSize = webapp.maxUpfileSize
 			} else { // application/x-www-form-urlencoded is limited in a smaller size.
-				req.maxContentSizeAllowed = int64(server.MaxMemoryContentSize())
+				req.maxContentSize = int64(server.MaxMemoryContentSize())
 			}
 		}
-		if req.contentSize > req.maxContentSizeAllowed {
+		if req.contentSize > req.maxContentSize {
 			if req.expectContinue {
 				req.headResult = StatusExpectationFailed
 			} else {
@@ -642,7 +642,7 @@ func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *http1Stream) webAgent() webAgent   { return c.WebServer() }
+func (c *http1Stream) webKeeper() webKeeper { return c.WebServer() }
 func (c *http1Stream) webConn() webConn     { return c }
 func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
@@ -1260,7 +1260,7 @@ func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {
@@ -2217,7 +2217,7 @@ func (s *http2Stream) setWriteDeadline(deadline time.Time) error { // for conten
 func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *http2Stream) webAgent() webAgent   { return s.conn.WebServer() }
+func (s *http2Stream) webKeeper() webKeeper { return s.conn.WebServer() }
 func (s *http2Stream) webConn() webConn     { return s.conn }
 func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -2343,7 +2343,7 @@ func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

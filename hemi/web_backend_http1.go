@@ -382,7 +382,7 @@ func (s *H1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *H1Stream) webAgent() webAgent   { return c.WebBackend() }
+func (c *H1Stream) webKeeper() webKeeper { return c.WebBackend() }
 func (c *H1Stream) webConn() webConn     { return c }
 func (c *H1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 

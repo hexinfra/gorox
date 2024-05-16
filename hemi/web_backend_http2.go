@@ -306,7 +306,7 @@ func (s *H2Stream) setReadDeadline(deadline time.Time) error { // for content i/
 func (s *H2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *H2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *H2Stream) webAgent() webAgent   { return s.conn.WebBackend() }
+func (s *H2Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
 func (s *H2Stream) webConn() webConn     { return s.conn }
 func (s *H2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

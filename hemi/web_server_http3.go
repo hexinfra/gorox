@@ -306,7 +306,7 @@ func (s *http3Stream) setWriteDeadline(deadline time.Time) error { // for conten
 func (s *http3Stream) isBroken() bool { return false } // TODO
 func (s *http3Stream) markBroken()    {}               // TODO
 
-func (s *http3Stream) webAgent() webAgent   { return s.conn.WebServer() }
+func (s *http3Stream) webKeeper() webKeeper { return s.conn.WebServer() }
 func (s *http3Stream) webConn() webConn     { return s.conn }
 func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -415,7 +415,7 @@ func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.webAgent().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

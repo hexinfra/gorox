@@ -29,9 +29,9 @@ type WebServer interface { // for *httpxServer and *http3Server
 	Server
 	contentSaver
 	// Methods
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
-	MaxContentSizeAllowed() int64
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	SendTimeout() time.Duration // timeout to send the whole message
+	MaxContentSize() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 	bindApps()
@@ -43,7 +43,7 @@ type webServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_webAgent_
+	_webKeeper_
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -59,14 +59,14 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webAgent_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
+	s._webKeeper_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 }
 func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._webAgent_.onPrepare(s)
+	s._webKeeper_.onPrepare(s)
 }
 
 func (s *webServer_[G]) bindApps() {
@@ -143,27 +143,37 @@ type Request interface { // for *http[1-3]Request
 	IsHTTP2() bool
 	IsHTTP3() bool
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
+	UnsafeVersion() []byte
 
 	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
 	IsHTTP() bool
 	IsHTTPS() bool
 	Scheme() string // http, https
+	UnsafeScheme() []byte
 
 	MethodCode() uint32
-	Method() string // GET, POST, ...
 	IsGET() bool
 	IsPOST() bool
 	IsPUT() bool
 	IsDELETE() bool
+	Method() string // GET, POST, ...
+	UnsafeMethod() []byte
 
-	Authority() string // hostname[:port]
-	Hostname() string  // hostname
-	ColonPort() string // :port
+	Authority() string       // hostname[:port]
+	UnsafeAuthority() []byte // hostname[:port]
+	Hostname() string        // hostname
+	UnsafeHostname() []byte  // hostname
+	ColonPort() string       // :port
+	UnsafeColonPort() []byte // :port
 
-	URI() string         // /encodedPath?queryString
-	Path() string        // /decodedPath
-	EncodedPath() string // /encodedPath
-	QueryString() string // including '?' if query string exists, otherwise empty
+	URI() string               // /encodedPath?queryString
+	UnsafeURI() []byte         // /encodedPath?queryString
+	Path() string              // /decodedPath
+	UnsafePath() []byte        // /decodedPath
+	EncodedPath() string       // /encodedPath
+	UnsafeEncodedPath() []byte // /encodedPath
+	QueryString() string       // including '?' if query string exists, otherwise empty
+	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
 
 	AddQuery(name string, value string) bool
 	HasQueries() bool
@@ -172,6 +182,7 @@ type Request interface { // for *http[1-3]Request
 	Qstr(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
+	UnsafeQuery(name string) (value []byte, ok bool)
 	Queries(name string) (values []string, ok bool)
 	HasQuery(name string) bool
 	DelQuery(name string) (deleted bool)
@@ -183,19 +194,28 @@ type Request interface { // for *http[1-3]Request
 	Hstr(name string, defaultValue string) string
 	Hint(name string, defaultValue int) int
 	Header(name string) (value string, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
 	Headers(name string) (values []string, ok bool)
 	HasHeader(name string) bool
 	DelHeader(name string) (deleted bool)
 
-	ContentType() string
-	ContentSize() int64
-	AcceptTrailers() bool
-	HasRanges() bool
-	HasIfRange() bool
 	UserAgent() string
+	UnsafeUserAgent() []byte
+
+	ContentType() string
+	UnsafeContentType() []byte
+
+	ContentSize() int64
+	UnsafeContentLength() []byte
+
+	AcceptTrailers() bool
 
 	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
+
+	HasIfRange() bool
 	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
+
+	HasRanges() bool
 	EvalRanges(size int64) []Range
 
 	AddCookie(name string, value string) bool
@@ -205,6 +225,7 @@ type Request interface { // for *http[1-3]Request
 	Cstr(name string, defaultValue string) string
 	Cint(name string, defaultValue int) int
 	Cookie(name string) (value string, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
 	Cookies(name string) (values []string, ok bool)
 	HasCookie(name string) bool
 	DelCookie(name string) (deleted bool)
@@ -214,6 +235,7 @@ type Request interface { // for *http[1-3]Request
 	HasContent() bool // true if content exists
 	IsVague() bool    // true if content exists and is not sized
 	Content() string
+	UnsafeContent() []byte
 
 	AddForm(name string, value string) bool
 	HasForms() bool
@@ -222,6 +244,7 @@ type Request interface { // for *http[1-3]Request
 	Fstr(name string, defaultValue string) string
 	Fint(name string, defaultValue int) int
 	Form(name string) (value string, ok bool)
+	UnsafeForm(name string) (value []byte, ok bool)
 	Forms(name string) (values []string, ok bool)
 	HasForm(name string) bool
 
@@ -239,31 +262,12 @@ type Request interface { // for *http[1-3]Request
 	Tstr(name string, defaultValue string) string
 	Tint(name string, defaultValue int) int
 	Trailer(name string) (value string, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
 	Trailers(name string) (values []string, ok bool)
 	HasTrailer(name string) bool
 	DelTrailer(name string) (deleted bool)
 
-	// Unsafe
 	UnsafeMake(size int) []byte
-	UnsafeVersion() []byte
-	UnsafeScheme() []byte
-	UnsafeMethod() []byte
-	UnsafeAuthority() []byte // hostname[:port]
-	UnsafeHostname() []byte  // hostname
-	UnsafeColonPort() []byte // :port
-	UnsafeURI() []byte
-	UnsafePath() []byte
-	UnsafeEncodedPath() []byte
-	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
-	UnsafeQuery(name string) (value []byte, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
-	UnsafeUserAgent() []byte
-	UnsafeContentLength() []byte
-	UnsafeContentType() []byte
-	UnsafeContent() []byte
-	UnsafeForm(name string) (value []byte, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
 
 	// Internal only
 	getPathInfo() os.FileInfo
@@ -293,10 +297,10 @@ type httpRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	upfiles []Upfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
+	webapp       *Webapp     // target webapp of this request. set before executing the stream
 	path         []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath      []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo     os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	webapp       *Webapp     // target webapp of this request. set before executing the stream
 	formWindow   []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	httpRequest0             // all values must be zero by default in this struct!
 }
@@ -389,10 +393,10 @@ func (r *httpRequest_) onEnd() { // for zeros
 	}
 	r.upfiles = nil
 
+	r.webapp = nil
 	r.path = nil
 	r.absPath = nil
 	r.pathInfo = nil
-	r.webapp = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.httpRequest0 = httpRequest0{}
 
@@ -401,8 +405,8 @@ func (r *httpRequest_) onEnd() { // for zeros
 
 func (r *httpRequest_) Webapp() *Webapp { return r.webapp }
 
-func (r *httpRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 func (r *httpRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
+func (r *httpRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
 func (r *httpRequest_) SchemeCode() uint8    { return r.schemeCode }
 func (r *httpRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
@@ -672,7 +676,7 @@ func (r *httpRequest_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
-	if r.contentSize > r.maxContentSizeAllowed {
+	if r.contentSize > r.maxContentSize {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds server's limit"
 		return false
 	}
@@ -800,7 +804,7 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
 			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.desc, r.input, true) { // fully
+		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -810,7 +814,7 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 		}
 	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.desc, r.input) {
+		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
@@ -832,21 +836,21 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 var ( // perfect hash table for singleton request headers
 	httpRequestSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
-		desc       // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*httpRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
-		0:  {false, desc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {false, desc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*httpRequest_).checkUserAgent},
-		2:  {false, desc{hashContentLength, false, false, false, false, bytesContentLength}, (*httpRequest_).checkContentLength},
-		3:  {false, desc{hashRange, false, false, false, false, bytesRange}, (*httpRequest_).checkRange},
-		4:  {false, desc{hashDate, false, false, false, false, bytesDate}, (*httpRequest_).checkDate},
-		5:  {false, desc{hashHost, false, false, false, false, bytesHost}, (*httpRequest_).checkHost},
-		6:  {false, desc{hashCookie, false, false, false, false, bytesCookie}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {true, desc{hashContentType, false, false, true, false, bytesContentType}, (*httpRequest_).checkContentType},
-		8:  {false, desc{hashIfRange, false, false, false, false, bytesIfRange}, (*httpRequest_).checkIfRange},
-		9:  {false, desc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*httpRequest_).checkIfModifiedSince},
-		10: {false, desc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*httpRequest_).checkAuthorization},
-		11: {false, desc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*httpRequest_).checkProxyAuthorization},
+		0:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*httpRequest_).checkIfUnmodifiedSince},
+		1:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*httpRequest_).checkUserAgent},
+		2:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*httpRequest_).checkContentLength},
+		3:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*httpRequest_).checkRange},
+		4:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*httpRequest_).checkDate},
+		5:  {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*httpRequest_).checkHost},
+		6:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		7:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*httpRequest_).checkContentType},
+		8:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*httpRequest_).checkIfRange},
+		9:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*httpRequest_).checkIfModifiedSince},
+		10: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*httpRequest_).checkAuthorization},
+		11: {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*httpRequest_).checkProxyAuthorization},
 	}
 	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
 )
@@ -1075,25 +1079,25 @@ func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-
 
 var ( // perfect hash table for important request headers
 	httpRequestImportantHeaderTable = [16]struct {
-		desc  // allowQuote, allowEmpty, allowParam, hasComment
+		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*httpRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {desc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
-		1:  {desc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
-		2:  {desc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
-		3:  {desc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		4:  {desc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
-		5:  {desc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
-		6:  {desc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		7:  {desc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
-		8:  {desc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
-		9:  {desc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
-		10: {desc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
-		11: {desc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
-		12: {desc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
-		13: {desc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
-		14: {desc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
-		15: {desc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
+		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
+		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
+		2:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
+		3:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
+		4:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
+		5:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
+		6:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		7:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
+		8:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
+		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
+		10: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
+		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
+		12: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
+		13: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
+		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
+		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
 	}
 	httpRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )

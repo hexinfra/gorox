@@ -963,8 +963,8 @@ type Backend interface {
 	Stage() *Stage
 	CreateNode(name string) Node
 	DialTimeout() time.Duration
-	ReadTimeout() time.Duration
-	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration  // timeout for a single read operation
+	WriteTimeout() time.Duration // timeout for a single write operation
 	AliveTimeout() time.Duration
 	nextConnID() int64
 }
@@ -987,8 +987,8 @@ type Server interface {
 	// Methods
 	Serve() // runner
 	Stage() *Stage
-	ReadTimeout() time.Duration
-	WriteTimeout() time.Duration
+	ReadTimeout() time.Duration  // timeout for a single read operation
+	WriteTimeout() time.Duration // timeout for a single write operation
 	Address() string
 	ColonPort() string
 	ColonPortBytes() []byte

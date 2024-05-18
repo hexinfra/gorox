@@ -8,9 +8,9 @@
 package hemi
 
 import (
-	"time"
-	"errors"
 	"bytes"
+	"errors"
+	"time"
 )
 
 func init() {
@@ -191,8 +191,8 @@ type Service struct {
 	// Parent
 	Component_
 	// Assocs
-	stage   *Stage      // current stage
-	stater  Stater      // the stater which is used by this service
+	stage   *Stage        // current stage
+	stater  Stater        // the stater which is used by this service
 	servers []*hrpcServer // bound hrpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...

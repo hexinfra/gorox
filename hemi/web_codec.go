@@ -140,6 +140,7 @@ func (c *_webConn_) markBroken()    { c.broken.Store(true) }
 type webStream interface {
 	webKeeper() webKeeper
 	webConn() webConn
+
 	remoteAddr() net.Addr
 
 	buffer256() []byte
@@ -186,21 +187,21 @@ type webIn_ struct { // incoming. needs parsing
 	}
 	stream webStream // *http[1-3]Stream, *H[1-3]Stream
 	// Stream states (stocks)
-	stockInput  [1536]byte // for r.input
-	stockArray  [768]byte  // for r.array
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [30]pair   // for r.extras
+	stockArray  [768]byte  // for r.array
+	stockInput  [1536]byte // for r.input
 	// Stream states (controlled)
+	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
+	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see webCodingXXX. values: none compress deflate gzip br
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see webCodingXXX. values: identity(none) compress deflate gzip br
-	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
-	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	// Stream states (non-zeros)
-	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	maxContentSize int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
@@ -211,8 +212,8 @@ type webIn_ struct { // incoming. needs parsing
 	headResult     int16         // result of receiving message head. values are as same as http status for convenience
 	bodyResult     int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
-	failReason  string    // the reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	failReason  string    // the reason of headResult or bodyResult
 	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
@@ -259,14 +260,14 @@ type webIn0 struct { // for fast reset, entirely
 }
 
 func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
+	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
+	r.array = r.stockArray[:]
 	if versionCode >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	r.array = r.stockArray[:]
-	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
-	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	keeper := r.stream.webKeeper()
 	r.recvTimeout = keeper.RecvTimeout()
 	r.maxContentSize = keeper.MaxContentSize()
@@ -278,6 +279,18 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.bodyResult = StatusOK
 }
 func (r *webIn_) onEnd() { // for zeros
+	if cap(r.primes) != cap(r.stockPrimes) {
+		putPairs(r.primes)
+		r.primes = nil
+	}
+	if cap(r.extras) != cap(r.stockExtras) {
+		putPairs(r.extras)
+		r.extras = nil
+	}
+	if r.arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = nil                                  // array of other kinds is only a reference, so just reset.
 	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, incoming responses are not pipelined.
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
@@ -287,20 +300,6 @@ func (r *webIn_) onEnd() { // for zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
-	if r.arrayKind == arrayKindPool {
-		PutNK(r.array)
-	}
-	r.array = nil // array of other kinds is only a reference, so just reset.
-	if cap(r.primes) != cap(r.stockPrimes) {
-		putPairs(r.primes)
-		r.primes = nil
-	}
-	if cap(r.extras) != cap(r.stockExtras) {
-		putPairs(r.extras)
-		r.extras = nil
-	}
-
-	r.failReason = ""
 
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked mode
@@ -319,6 +318,8 @@ func (r *webIn_) onEnd() { // for zeros
 		PutNK(r.bodyWindow)
 	}
 	r.bodyWindow = nil
+
+	r.failReason = ""
 
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
@@ -727,6 +728,7 @@ func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content
 }
 func (r *webIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
 	if r.iContentLocation == 0 && header.value.notEmpty() {
+		// TODO: check syntax
 		r.iContentLocation = index
 		return true
 	}
@@ -734,8 +736,8 @@ func (r *webIn_) checkContentLocation(header *pair, index uint8) bool { // Conte
 	return false
 }
 func (r *webIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
-	// TODO: check syntax
 	if r.iContentRange == 0 && header.value.notEmpty() {
+		// TODO: check syntax
 		r.iContentRange = index
 		return true
 	}
@@ -748,6 +750,7 @@ func (r *webIn_) checkContentType(header *pair, index uint8) bool { // Content-T
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
 	if r.iContentType == 0 && !header.dataEmpty() {
+		// TODO: check syntax
 		r.iContentType = index
 		return true
 	}
@@ -770,7 +773,7 @@ func (r *webIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime
 }
 
 func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
-	// codings        = content-coding / "identity" / "*"
+	// codings = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nAcceptCodings == int8(cap(r.acceptCodings)) {
@@ -859,14 +862,16 @@ func (r *webIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool
 		r.zContentLanguage.from = from
 	}
 	r.zContentLanguage.edge = edge
+	// TODO: check syntax
 	return true
 }
 func (r *webIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
-	// field-name = token
 	if r.zTrailer.isEmpty() {
 		r.zTrailer.from = from
 	}
 	r.zTrailer.edge = edge
+	// field-name = token
+	// TODO: check syntax
 	return true
 }
 func (r *webIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -895,12 +900,13 @@ func (r *webIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = 
 		r.zVia.from = from
 	}
 	r.zVia.edge = edge
+	// TODO: check syntax
 	return true
 }
 
 func (r *webIn_) determineContentMode() bool {
 	if r.transferChunked { // must be HTTP/1.1 and there is a transfer-encoding: chunked
-		if r.contentSize != -1 { // there is a content-length: nnn
+		if r.contentSize != -1 { // there is also a content-length: nnn
 			// RFC 7230 (section 3.3.3):
 			// If a message is received with both a Transfer-Encoding and a
 			// Content-Length header field, the Transfer-Encoding overrides the
@@ -938,7 +944,7 @@ func (r *webIn_) UnsafeContentType() []byte {
 
 func (r *webIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
-func (r *webIn_) unsafeContent() []byte {
+func (r *webIn_) unsafeContent() []byte { // load content into memory anyway
 	r.loadContent()
 	if r.stream.isBroken() {
 		return nil
@@ -951,7 +957,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 		return
 	}
 	r.contentReceived = true
-	switch content := r.recvContent(true).(type) { // retain
+	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = webContentTextPool
@@ -961,7 +967,7 @@ func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
 			r.contentText = r.input
 			r.contentTextKind = webContentTextInput
 		} else { // r.receivedSize > 0
-			if r.receivedSize <= _64K1 { // must be vague content because sized content is a []byte if <= _64K1
+			if r.receivedSize <= _64K1 { // must be vague content because sized content is a []byte if size <= _64K1
 				r.contentText = GetNK(r.receivedSize) // 4K/16K/64K1. real content is r.content[:r.receivedSize]
 				r.contentTextKind = webContentTextPool
 			} else { // r.receivedSize > 64K1, content can be sized or vague. just alloc
@@ -991,7 +997,7 @@ func (r *webIn_) holdContent() any { // used by proxies
 		return r.contentFile
 	}
 	r.contentReceived = true
-	switch content := r.recvContent(true).(type) { // retain
+	switch content := r._recvContent(true).(type) { // retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content
 		r.contentTextKind = webContentTextPool // so r.contentText can be freed on end
@@ -1006,7 +1012,7 @@ func (r *webIn_) holdContent() any { // used by proxies
 	return nil
 }
 func (r *webIn_) dropContent() { // if message content is not received, this will be called at last
-	switch content := r.recvContent(false).(type) { // don't retain
+	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
 	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
@@ -1018,7 +1024,7 @@ func (r *webIn_) dropContent() { // if message content is not received, this wil
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
+func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webKeeper().ReadTimeout())); err != nil {
 			return err
@@ -1030,13 +1036,13 @@ func (r *webIn_) recvContent(retain bool) any { // to []byte (for small content 
 			copy(contentText, r.input[r.imme.from:r.imme.edge])
 			r.imme.zero()
 		}
-		n, err := r.stream.readFull(contentText[r.receivedSize:r.contentSize])
-		if err != nil {
+		if n, err := r.stream.readFull(contentText[r.receivedSize:r.contentSize]); err == nil {
+			r.receivedSize += int64(n)
+			return contentText // []byte, fetched from pool
+		} else {
 			PutNK(contentText)
 			return err
 		}
-		r.receivedSize += int64(n)
-		return contentText // []byte, fetched from pool
 	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when vague. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
@@ -1523,10 +1529,10 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 		return fakeFile, nil
 	}
 	filesDir := r.saveContentFilesDir()
-	filePath := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
-	n := copy(filePath, filesDir)
-	n += r.stream.webConn().MakeTempName(filePath[n:], r.recvTime.Unix())
-	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
+	pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+	n := copy(pathBuffer, filesDir)
+	n += r.stream.webConn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
+	return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	now := time.Now()

@@ -150,7 +150,6 @@ By default, Gorox uses these directories:
   * docs/ - Place docs of your project,
   * exts/ - Place extended components written for your project,
   * hemi/ - The Hemi Engine,
-  * idls/ - Place your Interface Description Language files,
   * libs/ - Place libs written by you for your project,
   * misc/ - Place misc resource of your project,
   * svcs/ - Place your RPC services,

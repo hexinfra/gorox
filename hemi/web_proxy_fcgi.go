@@ -1221,7 +1221,7 @@ func (r *fcgiResponse) HasContent() bool {
 	return true
 }
 func (r *fcgiResponse) holdContent() any { // to tempFile since we don't know the size of vague content
-	switch content := r.recvContent().(type) {
+	switch content := r._recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
@@ -1234,7 +1234,7 @@ func (r *fcgiResponse) holdContent() any { // to tempFile since we don't know th
 	r.exchan.markBroken()
 	return nil
 }
-func (r *fcgiResponse) recvContent() any { // to tempFile
+func (r *fcgiResponse) _recvContent() any { // to tempFile
 	contentFile, err := r._newTempFile()
 	if err != nil {
 		return err

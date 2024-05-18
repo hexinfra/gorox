@@ -1769,7 +1769,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RF
 		r.formEdge = int32(len(r.formWindow))
 	} else { // content is not received
 		r.contentReceived = true
-		switch content := r.recvContent(true).(type) { // retain
+		switch content := r._recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentText = content
 			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end

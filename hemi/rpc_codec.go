@@ -3,24 +3,12 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General RPC incoming and outgoing messages implementation.
+// HRPC incoming message and outgoing message implementation.
+
+// HRPC is a request/response RPC protocol designed for IDC.
+// HRPC is under design, its transport protocol is not determined. Maybe we can build it upon QUIC without TLS?
 
 package hemi
-
-// rpcConn
-type rpcConn interface {
-	// TODO
-}
-
-// _rpcConn_
-type _rpcConn_ struct {
-}
-
-// rpcExchan is the interface for *hrpcExchan and *HExchan.
-type rpcExchan interface {
-	buffer256() []byte
-	unsafeMake(size int) []byte
-}
 
 // _rpcExchan_
 type _rpcExchan_ struct {
@@ -41,28 +29,3 @@ func (x *_rpcExchan_) onEnd() {
 
 func (x *_rpcExchan_) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *_rpcExchan_) unsafeMake(size int) []byte { return x.region.Make(size) }
-
-// rpcIn_ is the parent for rpcServerRequest_ and rpcClientResponse_.
-type rpcIn_ struct {
-	// Assocs
-	shell interface { // *hrpcRequest, *HResponse
-		// TODO
-	}
-	// TODO
-	rpcIn0
-}
-type rpcIn0 struct {
-	arrayKind int8 // kind of current r.array. see arrayKindXXX
-}
-
-// rpcOut_ is the parent for rpcServerResponse_ and rpcClientRequest_.
-type rpcOut_ struct {
-	// Assocs
-	shell interface { // *hrpcResponse, *HRequest
-		// TODO
-	}
-	// TODO
-	rpcOut0
-}
-type rpcOut0 struct {
-}

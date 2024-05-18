@@ -725,7 +725,7 @@ func (s *Stage) bindServerServices() {
 		Println("bind services to rpc servers")
 	}
 	for _, server := range s.servers {
-		if rpcServer, ok := server.(rpcServer); ok {
+		if rpcServer, ok := server.(*hrpcServer); ok {
 			rpcServer.BindServices()
 		}
 	}

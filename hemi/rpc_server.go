@@ -3,28 +3,28 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// General RPC server implementation.
+// HRPC server implementation.
 
 package hemi
 
 import (
-	"bytes"
-	"errors"
 	"time"
+	"errors"
+	"bytes"
 )
 
-// rpcServer
-type rpcServer interface {
-	// Imports
-	Server
-	// Methods
-	BindServices()
+func init() {
+	RegisterServer("hrpcServer", func(name string, stage *Stage) Server {
+		s := new(hrpcServer)
+		s.onCreate(name, stage)
+		return s
+	})
 }
 
-// rpcServer_
-type rpcServer_[G Gate] struct {
+// hrpcServer is the HRPC server.
+type hrpcServer struct {
 	// Parent
-	Server_[G]
+	Server_[*hrpcGate]
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
@@ -36,14 +36,14 @@ type rpcServer_[G Gate] struct {
 	sendTimeout    time.Duration           // timeout to send the whole message
 }
 
-func (s *rpcServer_[G]) onCreate(name string, stage *Stage) {
+func (s *hrpcServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
-func (s *rpcServer_[G]) onShutdown() {
+func (s *hrpcServer) OnShutdown() {
 	s.Server_.OnShutdown()
 }
 
-func (s *rpcServer_[G]) onConfigure() {
+func (s *hrpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
 
 	// forServices
@@ -65,17 +65,17 @@ func (s *rpcServer_[G]) onConfigure() {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 }
-func (s *rpcServer_[G]) onPrepare() {
+func (s *hrpcServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
 
-func (s *rpcServer_[G]) BindServices() {
+func (s *hrpcServer) BindServices() {
 	for _, serviceName := range s.forServices {
 		service := s.stage.Service(serviceName)
 		if service == nil {
 			continue
 		}
-		service.BindServer(s.shell.(rpcServer))
+		service.BindServer(s)
 		// TODO: use hash table?
 		for _, hostname := range service.exactHostnames {
 			s.exactServices = append(s.exactServices, &hostnameTo[*Service]{hostname, service})
@@ -90,7 +90,7 @@ func (s *rpcServer_[G]) BindServices() {
 		}
 	}
 }
-func (s *rpcServer_[G]) findService(hostname []byte) *Service {
+func (s *hrpcServer) findService(hostname []byte) *Service {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactServices {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -112,22 +112,88 @@ func (s *rpcServer_[G]) findService(hostname []byte) *Service {
 	return nil
 }
 
-// rpcServerConn
-type rpcServerConn interface {
+func (s *hrpcServer) Serve() { // runner
+	// TODO
 }
 
-// rpcServerExchan
-type rpcServerExchan interface {
+// hrpcGate is a gate of hrpcServer.
+type hrpcGate struct {
+	// Parent
+	Gate_
+	// Assocs
+	// States
 }
 
-// Service is the RPC service.
+func (g *hrpcGate) init(id int32, server *hrpcServer) {
+	g.Gate_.Init(id, server)
+}
+
+func (g *hrpcGate) Open() error {
+	// TODO
+	return nil
+}
+func (g *hrpcGate) _openUnix() error {
+	// TODO
+	return nil
+}
+func (g *hrpcGate) _openInet() error {
+	// TODO
+	return nil
+}
+func (g *hrpcGate) Shut() error {
+	g.MarkShut()
+	// TODO
+	return nil
+}
+
+func (g *hrpcGate) serve() { // runner
+	// TODO
+}
+
+// hrpcConn
+type hrpcConn struct {
+	// Parent
+	ServerConn_
+}
+
+func (c *hrpcConn) onGet(id int64, gate *hrpcGate) {
+	c.ServerConn_.OnGet(id, gate)
+}
+func (c *hrpcConn) onPut() {
+	c.ServerConn_.OnPut()
+}
+
+func (c *hrpcConn) rpcServer() *hrpcServer { return c.Server().(*hrpcServer) }
+
+// hrpcExchan is the server-side HRPC exchan.
+type hrpcExchan struct {
+	// Mixins
+	_rpcExchan_
+	// Assocs
+	//request  hrpcRequest
+	//response hrpcResponse
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	gate *hrpcGate
+	// Exchan states (zeros)
+}
+
+func (x *hrpcExchan) onUse() {
+	x._rpcExchan_.onUse()
+}
+func (x *hrpcExchan) onEnd() {
+	x._rpcExchan_.onEnd()
+}
+
+// Service is the HRPC service.
 type Service struct {
 	// Parent
 	Component_
 	// Assocs
 	stage   *Stage      // current stage
 	stater  Stater      // the stater which is used by this service
-	servers []rpcServer // bound rpc servers. may be empty
+	servers []*hrpcServer // bound hrpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
 	accessLog       *logcfg            // ...
@@ -200,8 +266,8 @@ func (s *Service) Logf(format string, args ...any) {
 	}
 }
 
-func (s *Service) BindServer(server rpcServer) { s.servers = append(s.servers, server) }
-func (s *Service) Servers() []rpcServer        { return s.servers }
+func (s *Service) BindServer(server *hrpcServer) { s.servers = append(s.servers, server) }
+func (s *Service) Servers() []*hrpcServer        { return s.servers }
 
 func (s *Service) maintain() { // runner
 	s.Loop(time.Second, func(now time.Time) {

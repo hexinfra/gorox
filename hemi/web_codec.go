@@ -2006,7 +2006,14 @@ type webSocket_ struct {
 		Write(p []byte) (int, error)
 		Close() error
 	}
-	// TODO
+	stream webStream // *http[1-3]Stream, *H[1-3]Stream
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+	webSocket0 // all values must be zero by default in this struct!
+}
+type webSocket0 struct { // for fast reset, entirely
 }
 
 func (s *webSocket_) onUse() {

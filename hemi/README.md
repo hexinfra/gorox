@@ -9,8 +9,8 @@ Layout
 
 Hemi contains these directories:
 
-  * addons/   - Place optional addons,
   * common/   - Place general purpose libraries,
+  * contrib/  - Place optional components,
   * develop/  - A prototype application used to develop Hemi,
   * example/  - The recommended directory hierarchy for programs using Hemi,
   * procmgr/  - A process manager for programs using Hemi,
@@ -72,7 +72,7 @@ A program (like Gorox) using Hemi engine typically has these dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <addons>        |-->+              <hemi>             |
+  |       <contrib>       |-->+              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

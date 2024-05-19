@@ -6,7 +6,7 @@
 package chinese
 
 import (
-	"github.com/hexinfra/gorox/hemi/addons/handlets/sitex"
+	"github.com/hexinfra/gorox/hemi/contrib/handlets/sitex"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

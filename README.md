@@ -19,12 +19,6 @@ Gorox is currently under heavy development. For more details about Gorox, please
 see our project site: https://gorox.io/.
 
 
-Why?
-====
-
-To be written.
-
-
 Platforms
 =========
 
@@ -55,8 +49,8 @@ If you would like to use Gorox as a Network Proxy, you can download the official
 binary distribution and read the "Start and stop Gorox" section below. But if
 you choose to build it from source, please read below.
 
-Using Gorox as a Webapp Server or RPC Framework
------------------------------------------------
+Using Gorox as a Webapp Server / RPC Framework
+----------------------------------------------
 
 When using Gorox as a Webapp Server or RPC Framework, you have to build it from
 source. Before building, please ensure you have Go >= 1.20 installed:
@@ -111,6 +105,12 @@ For example, if you are using Gorox as an HTTP reverse proxy, there is a demo
 config in conf/examples/http_proxy.conf, you can modify it and start Gorox like:
 
     shell> ./gorox -daemon -config conf/examples/http_proxy.conf
+
+
+Why Gorox?
+==========
+
+To be written.
 
 
 Performance

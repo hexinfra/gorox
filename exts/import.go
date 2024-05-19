@@ -7,9 +7,9 @@
 
 package exts
 
-import _ "github.com/hexinfra/gorox/hemi/addons"
+import _ "github.com/hexinfra/gorox/hemi/contrib"
 
-import ( // import extra addons here
+import ( // import extra contrib here
 )
 
 import ( // import vendor exts here

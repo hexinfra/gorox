@@ -366,12 +366,6 @@ func (r *webIn_) addHeader(header *pair) bool { // as prime
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *webIn_) AddHeader(name string, value string) bool { // as extra
-	// TODO: add restrictions on what headers are allowed to add? should we check the value?
-	// TODO: parse and check?
-	// setFlags?
-	return r.addExtra(name, value, 0, kindHeader)
-}
 func (r *webIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, kindHeader) }
 func (r *webIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, kindHeader) }
 func (r *webIn_) H(name string) string {
@@ -412,6 +406,12 @@ func (r *webIn_) DelHeader(name string) (deleted bool) {
 }
 func (r *webIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(WeakString(name), hash, r.headers, kindHeader)
+}
+func (r *webIn_) AddHeader(name string, value string) bool { // as extra
+	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// TODO: parse and check?
+	// setFlags?
+	return r.addExtra(name, value, 0, kindHeader)
 }
 
 func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
@@ -1084,12 +1084,6 @@ func (r *webIn_) addTrailer(trailer *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
 }
-func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
-	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
-	// TODO: parse and check?
-	// setFlags?
-	return r.addExtra(name, value, 0, kindTrailer)
-}
 func (r *webIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, kindTrailer) }
 func (r *webIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, kindTrailer) }
 func (r *webIn_) T(name string) string {
@@ -1129,6 +1123,12 @@ func (r *webIn_) DelTrailer(name string) (deleted bool) {
 }
 func (r *webIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(WeakString(name), hash, r.trailers, kindTrailer)
+}
+func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
+	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// TODO: parse and check?
+	// setFlags?
+	return r.addExtra(name, value, 0, kindTrailer)
 }
 
 func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {

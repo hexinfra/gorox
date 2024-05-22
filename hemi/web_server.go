@@ -175,7 +175,6 @@ type Request interface { // for *http[1-3]Request
 	QueryString() string       // including '?' if query string exists, otherwise empty
 	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
 
-	AddQuery(name string, value string) bool
 	HasQueries() bool
 	AllQueries() (queries [][2]string)
 	Q(name string) string
@@ -186,8 +185,8 @@ type Request interface { // for *http[1-3]Request
 	Queries(name string) (values []string, ok bool)
 	HasQuery(name string) bool
 	DelQuery(name string) (deleted bool)
+	AddQuery(name string, value string) bool
 
-	AddHeader(name string, value string) bool
 	HasHeaders() bool
 	AllHeaders() (headers [][2]string)
 	H(name string) string
@@ -198,6 +197,7 @@ type Request interface { // for *http[1-3]Request
 	Headers(name string) (values []string, ok bool)
 	HasHeader(name string) bool
 	DelHeader(name string) (deleted bool)
+	AddHeader(name string, value string) bool
 
 	UserAgent() string
 	UnsafeUserAgent() []byte
@@ -218,7 +218,6 @@ type Request interface { // for *http[1-3]Request
 	HasRanges() bool
 	EvalRanges(size int64) []Range
 
-	AddCookie(name string, value string) bool
 	HasCookies() bool
 	AllCookies() (cookies [][2]string)
 	C(name string) string
@@ -229,6 +228,7 @@ type Request interface { // for *http[1-3]Request
 	Cookies(name string) (values []string, ok bool)
 	HasCookie(name string) bool
 	DelCookie(name string) (deleted bool)
+	AddCookie(name string, value string) bool
 
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
 
@@ -237,7 +237,6 @@ type Request interface { // for *http[1-3]Request
 	Content() string
 	UnsafeContent() []byte
 
-	AddForm(name string, value string) bool
 	HasForms() bool
 	AllForms() (forms [][2]string)
 	F(name string) string
@@ -247,6 +246,7 @@ type Request interface { // for *http[1-3]Request
 	UnsafeForm(name string) (value []byte, ok bool)
 	Forms(name string) (values []string, ok bool)
 	HasForm(name string) bool
+	AddForm(name string, value string) bool
 
 	HasUpfiles() bool
 	AllUpfiles() (upfiles []*Upfile)
@@ -255,7 +255,6 @@ type Request interface { // for *http[1-3]Request
 	Upfiles(name string) (upfiles []*Upfile, ok bool)
 	HasUpfile(name string) bool
 
-	AddTrailer(name string, value string) bool
 	HasTrailers() bool
 	AllTrailers() (trailers [][2]string)
 	T(name string) string
@@ -266,6 +265,7 @@ type Request interface { // for *http[1-3]Request
 	Trailers(name string) (values []string, ok bool)
 	HasTrailer(name string) bool
 	DelTrailer(name string) (deleted bool)
+	AddTrailer(name string, value string) bool
 
 	UnsafeMake(size int) []byte
 
@@ -569,9 +569,6 @@ func (r *httpRequest_) addQuery(query *pair) bool { // as prime
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *httpRequest_) AddQuery(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindQuery)
-}
 func (r *httpRequest_) HasQueries() bool { return r.hasPairs(r.queries, kindQuery) }
 func (r *httpRequest_) AllQueries() (queries [][2]string) {
 	return r.allPairs(r.queries, kindQuery)
@@ -610,6 +607,9 @@ func (r *httpRequest_) HasQuery(name string) bool {
 }
 func (r *httpRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
+}
+func (r *httpRequest_) AddQuery(name string, value string) bool { // as extra
+	return r.addExtra(name, value, 0, kindQuery)
 }
 
 func (r *httpRequest_) examineHead() bool {
@@ -1445,9 +1445,6 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
 }
-func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindCookie)
-}
 func (r *httpRequest_) HasCookies() bool { return r.hasPairs(r.cookies, kindCookie) }
 func (r *httpRequest_) AllCookies() (cookies [][2]string) {
 	return r.allPairs(r.cookies, kindCookie)
@@ -1486,6 +1483,9 @@ func (r *httpRequest_) HasCookie(name string) bool {
 }
 func (r *httpRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
+}
+func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
+	return r.addExtra(name, value, 0, kindCookie)
 }
 func (r *httpRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
@@ -2213,9 +2213,6 @@ func (r *httpRequest_) addForm(form *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
 	return false
 }
-func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindForm)
-}
 func (r *httpRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)
@@ -2263,6 +2260,9 @@ func (r *httpRequest_) HasForm(name string) bool {
 func (r *httpRequest_) DelForm(name string) (deleted bool) {
 	r.parseHTMLForm()
 	return r.delPair(name, 0, r.forms, kindForm)
+}
+func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
+	return r.addExtra(name, value, 0, kindForm)
 }
 
 func (r *httpRequest_) addUpfile(upfile *Upfile) {

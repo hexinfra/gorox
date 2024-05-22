@@ -47,23 +47,25 @@ type httpxServer struct {
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
+
 	s.forceScheme = -1 // not forced
 }
 
 func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure()
 
-	var scheme string
 	// forceScheme
+	var scheme string
 	s.ConfigureString("forceScheme", &scheme, func(value string) error {
-		if value == "http" || value == "https" {
-			return nil
+		if value != "http" && value != "https" {
+			return errors.New(".forceScheme has an invalid value")
 		}
-		return errors.New(".forceScheme has an invalid value")
+		return nil
 	}, "")
-	if scheme == "http" {
+	switch scheme {
+	case "http":
 		s.forceScheme = SchemeHTTP
-	} else if scheme == "https" {
+	case "https":
 		s.forceScheme = SchemeHTTPS
 	}
 
@@ -79,6 +81,7 @@ func (s *httpxServer) OnConfigure() {
 }
 func (s *httpxServer) OnPrepare() {
 	s.webServer_.onPrepare()
+
 	if s.IsTLS() {
 		var nextProtos []string
 		if !s.enableHTTP2 {
@@ -353,6 +356,7 @@ type http1Conn struct {
 func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
+
 	req := &c.request
 	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
 	c.netConn = netConn
@@ -369,6 +373,7 @@ func (c *http1Conn) onPut() {
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped request for convenience
+
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }

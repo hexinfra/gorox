@@ -167,61 +167,59 @@ func Main(args *Args) {
 			} else {
 				fmt.Println("PASS")
 			}
-		} else { // serve!
-			if common.SingleMode { // run as single foreground process. for single mode
-				if stage, err := hemi.NewStageFile(common.GetConfig()); err == nil {
-					stage.Start(0)
-					select {} // waiting forever
-				} else {
-					fmt.Fprintln(os.Stderr, err.Error())
+		} else if common.SingleMode { // run as single foreground process. for single mode
+			if stage, err := hemi.NewStageFile(common.GetConfig()); err == nil {
+				stage.Start(0)
+				select {} // waiting forever
+			} else {
+				fmt.Fprintln(os.Stderr, err.Error())
+			}
+		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run process as daemon
+			if token == "leader" { // leader daemon
+				system.DaemonInit()
+				leader.Main()
+			} else { // worker daemon
+				worker.Main(token)
+			}
+		} else if common.DaemonMode { // start leader daemon and exit
+			newFile := func(file string, ext string, osFile *os.File) *os.File {
+				if file == "" {
+					file = common.LogsDir + "/" + common.Program + ext
+				} else if !filepath.IsAbs(file) {
+					file = common.BaseDir + "/" + file
 				}
-			} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run process as daemon
-				if token == "leader" { // leader daemon
-					system.DaemonInit()
-					leader.Main()
-				} else { // worker daemon
-					worker.Main(token)
+				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+					common.Crash(err.Error())
 				}
-			} else if common.DaemonMode { // start leader daemon and exit
-				newFile := func(file string, ext string, osFile *os.File) *os.File {
-					if file == "" {
-						file = common.LogsDir + "/" + common.Program + ext
-					} else if !filepath.IsAbs(file) {
-						file = common.BaseDir + "/" + file
-					}
-					if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-						common.Crash(err.Error())
-					}
-					if !common.DaemonMode {
-						osFile.Close()
-					}
-					osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
-					if err != nil {
-						common.Crash(err.Error())
-					}
-					return osFile
+				if !common.DaemonMode {
+					osFile.Close()
 				}
-				stdout := newFile(common.OutFile, ".out", os.Stdout)
-				stderr := newFile(common.ErrFile, ".err", os.Stderr)
-				devNull, err := os.Open(os.DevNull)
+				osFile, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0700)
 				if err != nil {
 					common.Crash(err.Error())
 				}
-				if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-					Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
-					Files: []*os.File{devNull, stdout, stderr},
-					Sys:   system.DaemonSysAttr(),
-				}); err == nil { // leader process started
-					process.Release()
-					devNull.Close()
-					stdout.Close()
-					stderr.Close()
-				} else {
-					common.Crash(err.Error())
-				}
-			} else { // run as foreground leader. default case
-				leader.Main()
+				return osFile
 			}
+			stdout := newFile(common.OutFile, ".out", os.Stdout)
+			stderr := newFile(common.ErrFile, ".err", os.Stderr)
+			devNull, err := os.Open(os.DevNull)
+			if err != nil {
+				common.Crash(err.Error())
+			}
+			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+				Files: []*os.File{devNull, stdout, stderr},
+				Sys:   system.DaemonSysAttr(),
+			}); err == nil { // leader process started
+				process.Release()
+				devNull.Close()
+				stdout.Close()
+				stderr.Close()
+			} else {
+				common.Crash(err.Error())
+			}
+		} else { // run as foreground leader. default case
+			leader.Main()
 		}
 	default: // as control client
 		client.Main(action)

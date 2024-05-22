@@ -231,6 +231,7 @@ const ( // hashes of web fields. value is calculated by adding all ASCII values.
 	hashIfNoneMatch        = 1254
 	hashIfRange            = 777 // same with hashIfMatch
 	hashIfUnmodifiedSince  = 1887
+	hashMaxForwards        = 1243
 	hashProxyAuthorization = 2048
 	hashProxyConnection    = 1695
 	hashRange              = 525
@@ -295,6 +296,7 @@ var ( // byteses of web fields.
 	bytesIfNoneMatch        = []byte("if-none-match")
 	bytesIfRange            = []byte("if-range")
 	bytesIfUnmodifiedSince  = []byte("if-unmodified-since")
+	bytesMaxForwards        = []byte("max-forwards")
 	bytesProxyAuthorization = []byte("proxy-authorization")
 	bytesProxyConnection    = []byte("proxy-connection")
 	bytesRange              = []byte("range")

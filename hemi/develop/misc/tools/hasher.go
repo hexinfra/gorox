@@ -5,7 +5,8 @@ import (
 )
 
 func main() {
-	calc([]byte("accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for"))
+	calc([]byte("authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range user-agent"))
+	//calc([]byte("accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for"))
 	//println(sum("cache-control"))
 	//println(sum("last-modified"))
 }

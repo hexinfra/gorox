@@ -1,4 +1,4 @@
-module example
+module newprog
 
 go 1.20
 

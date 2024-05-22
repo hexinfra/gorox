@@ -334,9 +334,9 @@ type httpRequest0 struct { // for fast reset, entirely
 		ifModifiedSince    uint8 // if-modified-since header ->r.input
 		ifRange            uint8 // if-range header ->r.input
 		ifUnmodifiedSince  uint8 // if-unmodified-since header ->r.input
+		maxForwards        uint8 // max-forwards header ->r.input
 		proxyAuthorization uint8 // proxy-authorization header ->r.input
 		userAgent          uint8 // user-agent header ->r.input
-		_                  byte  // padding
 	}
 	zones struct { // zones (may not be continuous) of some selected headers, for fast accessing
 		acceptLanguage zone
@@ -834,25 +834,26 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 }
 
 var ( // perfect hash table for singleton request headers
-	httpRequestSingletonHeaderTable = [12]struct {
+	httpRequestSingletonHeaderTable = [13]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*httpRequest_, *pair, uint8) bool
-	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since proxy-authorization range user-agent
-		0:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*httpRequest_).checkIfUnmodifiedSince},
-		1:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*httpRequest_).checkUserAgent},
-		2:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*httpRequest_).checkContentLength},
-		3:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*httpRequest_).checkRange},
-		4:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*httpRequest_).checkDate},
-		5:  {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*httpRequest_).checkHost},
-		6:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		7:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*httpRequest_).checkContentType},
-		8:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*httpRequest_).checkIfRange},
-		9:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*httpRequest_).checkIfModifiedSince},
+	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range user-agent
+		0:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*httpRequest_).checkContentLength},
+		1:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*httpRequest_).checkIfUnmodifiedSince},
+		2:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*httpRequest_).checkMaxForwards},
+		3:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*httpRequest_).checkUserAgent},
+		4:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*httpRequest_).checkIfRange},
+		5:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		6:  {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*httpRequest_).checkProxyAuthorization},
+		7:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*httpRequest_).checkIfModifiedSince},
+		8:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*httpRequest_).checkContentType},
+		9:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*httpRequest_).checkDate},
 		10: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*httpRequest_).checkAuthorization},
-		11: {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*httpRequest_).checkProxyAuthorization},
+		11: {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*httpRequest_).checkRange},
+		12: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*httpRequest_).checkHost},
 	}
-	httpRequestSingletonHeaderFind = func(hash uint16) int { return (612750 / int(hash)) % 12 }
+	httpRequestSingletonHeaderFind = func(hash uint16) int { return (811410 / int(hash)) % 13 }
 )
 
 func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
@@ -922,6 +923,15 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Rang
 }
 func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
+}
+func (r *httpRequest_) checkMaxForwards(header *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
+	if r.indexes.maxForwards != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header"
+		return false
+	}
+	// TODO
+	r.indexes.maxForwards = index
+	return true
 }
 func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token

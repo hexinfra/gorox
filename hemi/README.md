@@ -12,7 +12,7 @@ Hemi contains these directories:
   * common/   - Place general purpose libraries,
   * contrib/  - Place optional components,
   * develop/  - A prototype application used to develop Hemi,
-  * example/  - The recommended directory hierarchy for programs using Hemi,
+  * newprog/  - The recommended directory hierarchy for programs using Hemi,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands.
 
